@@ -43,6 +43,8 @@ public typealias StartRecordingCaptionHandler =
     @Sendable (TranscriptSegment) async -> Void
 public typealias StartRecordingChunkHandler =
     @Sendable (AudioChunk) -> Void
+public typealias StartRecordingLevelHandler =
+    @Sendable (PersistedAudioLevel) -> Void
 public typealias StartRecordingHealthHandler =
     @Sendable (RecordingCaptureHealthEvent) -> Void
 
@@ -63,17 +65,20 @@ public typealias StartRecordingLiveTranscriptionHandler =
 public struct StartRecordingLiveCallbacks: Sendable {
     public let caption: StartRecordingCaptionHandler
     public let chunk: StartRecordingChunkHandler
+    public let level: StartRecordingLevelHandler
     public let health: StartRecordingHealthHandler
     public let liveTranscription: StartRecordingLiveTranscriptionHandler
 
     public init(
         caption: @escaping StartRecordingCaptionHandler = { _ in },
         chunk: @escaping StartRecordingChunkHandler = { _ in },
+        level: @escaping StartRecordingLevelHandler = { _ in },
         health: @escaping StartRecordingHealthHandler = { _ in },
         liveTranscription: @escaping StartRecordingLiveTranscriptionHandler = { _ in }
     ) {
         self.caption = caption
         self.chunk = chunk
+        self.level = level
         self.health = health
         self.liveTranscription = liveTranscription
     }

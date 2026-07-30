@@ -885,6 +885,22 @@ Architecture ratchets keep `VerifiedModelLifecycle`, model stores, Whisper,
 MLX, and their release owners outside `AudioCaptureKit`; capture callbacks
 continue to write audio without model I/O or waits.
 
+Bounded persisted-level presentation is the first bounded live-pipeline
+boundary. After a writer accepts one PCM chunk, `RecordingSession` computes its
+peak and RMS in the same scan that accumulates final media-health evidence. It
+emits a compact `PersistedAudioLevel` after durable append; optional app
+presentation never scans that full sample array again.
+
+The recording controller submits those compact values synchronously to one
+lock-protected latest-value slot. Every value still updates the exact low-mic
+and missing-system-audio diagnostic state in O(1), but at most one MainActor
+delivery is scheduled per 50 ms display window. The delivery contains the
+newest complete snapshot; cancellation advances a generation and permanently
+fences late callbacks from the closed session. This coalescing can discard only
+obsolete visual meter states. Durable audio, health events, live-transcription
+feeds, and final transcript evidence remain on their existing lossless or
+explicitly bounded paths and cannot be backpressured by the meter.
+
 Resource evidence has a separate fail-closed boundary. One tracked contract
 requires idle, recording, Stop, Refine, summary, Ask, indexing,
 recording-plus-indexing, and recording-plus-batch observations on 8 GB, 16 GB,

@@ -1,6 +1,6 @@
 # Spec 01 — Audio capture (AudioCaptureKit)
 
-Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D125 (observational call-safe capture), D127 (audio-priority Stop and same-pass launch recovery), D162 (audio-first live-speech residency), D163 (generation-fenced route handoff).
+Status: implemented and verified in real meetings (Jul 2026). Decisions: D5 (dual-channel), D6 (process taps), D24 (superseded AEC default), D27 (audio first-class), D36/D37 (durable reservation and provisional rollback), D38 (validated atomic publication), D40 (evidence-first launch recovery), D46 (staged external-audio ownership), D48/D49 (application-owned Stop/Start policy), D50 (validated launch reconciliation), D51 (validated bundle-attachment Saga), D52 (off-main bundle audio export), D70 (model-independent capture and durable transcript recovery), D91 (captured Apuntador evidence conservation), D104 (application-owned post-capture execution), D120 (system callback liveness and recovery), D123 (long-call finalization and content-free capture evidence), D125 (observational call-safe capture), D127 (audio-priority Stop and same-pass launch recovery), D162 (audio-first live-speech residency), D163 (generation-fenced route handoff), D168 (bounded persisted-level presentation).
 
 ## Channel model (D5)
 
@@ -49,6 +49,17 @@ Two SEPARATE streams, never mixed before diarization:
 ## RecordingSession — `Sources/AudioCaptureKit/RecordingSession.swift`
 
 Actor that coordinates sources and writers by channel (created lazily with the first chunk, at the source's actual rate). `onChunk` is the seam where live transcription attaches without making the writer wait. `onHealthEvent` carries content-free stalled/retry/recovered/stream-failed evidence to the application boundary. The liveness policy itself is behind a short lock rather than an actor hop for every chunk; only a rare signal re-enters the actor for source lookup and recovery. A failed channel ends its file and does NOT kill the session (per-channel errors in the Summary). `Summary`: published files, `PublishedCaptureFile` evidence, seconds written, peak/RMS amplitudes, errors, and `driftSeconds`.
+
+### Persisted level evidence (D168)
+
+After `CaptureFileWriter.append` accepts a chunk, `RecordingSession` performs
+one PCM scan that both accumulates final peak/RMS media evidence and derives a
+compact per-chunk `PersistedAudioLevel`. The optional `onLevel` callback
+receives channel, clamped peak, RMS, and timestamp only after that durable
+append. The application can therefore drive meters and silence warnings
+without rescanning or retaining the full sample array. `onChunk` remains the
+independent live-consumer seam; neither callback can delay the writer with an
+actor hop or model operation.
 
 Startup is transactional at both levels. `ApplicationKit.StartRecording`
 samples title/language/vocabulary/capture preferences once, asks a private app

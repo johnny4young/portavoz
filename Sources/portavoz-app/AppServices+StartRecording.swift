@@ -476,10 +476,13 @@ private actor AppStartRecordingSession: StartRecordingSession {
         liveAttacher = attacher
         let liveFeeds = attacher.feeds
         let chunk = request.callbacks.chunk
+        let level = request.callbacks.level
         do {
             try await recordingSession.start(sources: sources) { audio in
                 liveFeeds.yield(audio)
                 chunk(audio)
+            } onLevel: { sample in
+                level(sample)
             } onHealthEvent: { event in
                 request.callbacks.health(event)
             }

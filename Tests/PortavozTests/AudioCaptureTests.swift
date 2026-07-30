@@ -263,6 +263,36 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertEqual(media.rmsDBFS, -12.041, accuracy: 0.01)
     }
 
+    func testPersistedChunkPublishesCompactLevelEvidenceFromWriterPass() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = FakeCaptureSource(
+            channel: .microphone,
+            chunks: [AudioChunk(
+                channel: .microphone,
+                samples: [-2, 0.5],
+                sampleRate: 48_000,
+                timestamp: 4.25)])
+        let probe = PersistedAudioLevelProbe()
+        let session = RecordingSession(outputDirectory: directory)
+
+        try await session.start(
+            sources: [source],
+            onLevel: { probe.record($0) })
+        _ = await session.stop()
+
+        let level = try XCTUnwrap(probe.values.first)
+        XCTAssertEqual(probe.values.count, 1)
+        XCTAssertEqual(level.channel, .microphone)
+        XCTAssertEqual(level.peak, 1, accuracy: 0.0001)
+        XCTAssertEqual(level.rms, 0.790_569, accuracy: 0.0001)
+        XCTAssertEqual(level.timestamp, 4.25)
+    }
+
     func testPublisherNeverOverwritesAnExistingFinalFile() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
@@ -585,6 +615,19 @@ private final class CaptureLivenessProbe: @unchecked Sendable {
 
     func record(event: RecordingCaptureHealthEvent) {
         lock.withLock { capturedEvents.append(event) }
+    }
+}
+
+private final class PersistedAudioLevelProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var capturedValues: [PersistedAudioLevel] = []
+
+    var values: [PersistedAudioLevel] {
+        lock.withLock { capturedValues }
+    }
+
+    func record(_ value: PersistedAudioLevel) {
+        lock.withLock { capturedValues.append(value) }
     }
 }
 

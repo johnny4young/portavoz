@@ -9,14 +9,6 @@ import StorageKit
 import SwiftUI
 import TranscriptionKit
 
-enum RecordingMeterPublicationPolicy {
-    static let minimumInterval = 0.05
-
-    static func shouldPublish(now: TimeInterval, last: TimeInterval) -> Bool {
-        now - last >= minimumInterval
-    }
-}
-
 /// Drives one recording end to end: capture (mic + system tap) → live
 /// captions → on stop, diarization + attribution + persistence + summary.
 /// The whole meeting pipeline, in the order the Kits were built.
@@ -110,10 +102,6 @@ final class RecordingController {
     /// shows the level is weak (the far-field built-in mic), not just silence.
     /// Field finding jul 2026: the built-in mic captured the user at ≤ -45 dBFS.
     private(set) var micLevel: Float = 0
-    private var smoothedMicLevel: Float = 0
-    private var lastMicLevelPublication = 0.0
-    private var voicedLevel: Float = 0
-    private var voicedChunks = 0
     private(set) var micLevelLow = false
 
     /// Whether YOUR mic is muted FOR PORTAVOZ (not the system input) — the
@@ -123,8 +111,7 @@ final class RecordingController {
     /// RMS of the system (incoming) channel, smoothed. Stays near zero when
     /// the other participants' audio isn't being captured (field bug jul 2026:
     /// AirPods output switch left the system tap silent → only the mic).
-    private var systemRMS: Float = 0
-    private var systemChunks = 0
+    private var hasSystemLevelSamples = false
     /// Sustained near-silence on the system channel — likely a call whose
     /// incoming audio isn't reaching the tap (or an in-person meeting, which
     /// the dismissable banner lets you wave off).
@@ -152,6 +139,7 @@ final class RecordingController {
     private var liveDiarizerTask: Task<Void, Never>?
     private var liveDiarizerFeed: AsyncStream<AudioChunk>.Continuation?
     private var liveDiarizerStream: AsyncStream<AudioChunk>?
+    private var levelRelay: RecordingLevelRelay?
 
     private let coalescer = CaptionCoalescer()
     private var session: (any StartRecordingSession)?
@@ -238,28 +226,20 @@ final class RecordingController {
         let (diarizerStream, diarizerFeed) = AsyncStream.makeStream(
             of: AudioChunk.self,
             bufferingPolicy: .bufferingNewest(128))
+        let levelRelay = RecordingLevelRelay { [weak self] snapshot in
+            self?.applyRecordingLevels(snapshot)
+        }
+        self.levelRelay = levelRelay
         let callbacks = StartRecordingLiveCallbacks(
             caption: { [weak self] segment in
                 await self?.receiveLiveCaption(segment)
             },
-            chunk: { [weak self] chunk in
+            chunk: { chunk in
                 if chunk.channel == .system {
                     diarizerFeed.yield(chunk)
-                    var sumSquares: Float = 0
-                    for sample in chunk.samples { sumSquares += sample * sample }
-                    let rms = chunk.samples.isEmpty
-                        ? 0 : (sumSquares / Float(chunk.samples.count)).squareRoot()
-                    Task { @MainActor in self?.updateSystemLevel(rms) }
-                    return
                 }
-                guard chunk.channel == .microphone else { return }
-                var peak: Float = 0
-                for sample in chunk.samples {
-                    let magnitude = abs(sample)
-                    if magnitude > peak { peak = magnitude }
-                }
-                Task { @MainActor in self?.updateMicLevel(peak) }
             },
+            level: { levelRelay.submit($0) },
             health: { [weak self] event in
                 Task { @MainActor in self?.receiveCaptureHealth(event) }
             },
@@ -283,6 +263,8 @@ final class RecordingController {
         objectives.reset()
         liveDiarizerFeed?.finish()
         liveDiarizerTask?.cancel()
+        levelRelay?.cancel()
+        levelRelay = nil
         liveDiarizerFeed = nil
         liveDiarizerStream = nil
         liveDiarizerTask = nil
@@ -306,13 +288,8 @@ final class RecordingController {
         turnEndpointTask = nil
         speculativeTurnMark = nil
         micLevel = 0
-        smoothedMicLevel = 0
-        lastMicLevelPublication = 0
-        voicedLevel = 0
-        voicedChunks = 0
         micLevelLow = false
-        systemRMS = 0
-        systemChunks = 0
+        hasSystemLevelSamples = false
         systemAudioMissing = false
         systemCaptureHealth = .healthy
         systemRecoveryNoticeTask?.cancel()
@@ -392,9 +369,13 @@ final class RecordingController {
             startRollingSummaryIfAvailable()
         case .preparationFailed(let failure):
             diarizerFeed.finish()
+            levelRelay?.cancel()
+            self.levelRelay = nil
             presentStartFailure(failure)
         case .captureFailed(let failure, let reservation, let invalidations):
             diarizerFeed.finish()
+            levelRelay?.cancel()
+            self.levelRelay = nil
             recordingShell = reservation?.meeting
             reservedAssets = reservation?.assets ?? []
             if invalidations > 0 { services.requestSpotlightReindex() }
@@ -506,28 +487,6 @@ final class RecordingController {
         liveSpeakerLabels = result.labels
     }
 
-    /// Feeds the on-screen meter from each mic chunk's peak: fast attack, slow
-    /// decay for a VU feel. `voicedLevel` is an EMA over only the VOICED chunks
-    /// (above a low gate) so the "low mic" flag reflects weak SPEECH, not
-    /// silence — the far-field built-in mic sits well below a close mic.
-    private func updateMicLevel(_ peak: Float) {
-        smoothedMicLevel = max(peak, smoothedMicLevel * 0.8)
-        let now = ProcessInfo.processInfo.systemUptime
-        if RecordingMeterPublicationPolicy.shouldPublish(
-            now: now,
-            last: lastMicLevelPublication
-        ) {
-            micLevel = smoothedMicLevel
-            lastMicLevelPublication = now
-        }
-        if peak > 0.004 {
-            voicedLevel = voicedLevel * 0.97 + peak * 0.03
-            voicedChunks += 1
-        }
-        let isLow = voicedChunks > 150 && voicedLevel < 0.03
-        if micLevelLow != isLow { micLevelLow = isLow }
-    }
-
     // MARK: - Companion (D26)
 
     /// Card state stays private to this file; the detection extension hands
@@ -565,6 +524,8 @@ extension RecordingController {
     /// boundary. This controller only maps typed results into presentation.
     func stop(services: AppServices) async {
         guard phase == .recording, let session else { return }
+        levelRelay?.cancel()
+        levelRelay = nil
         catchUp.dismiss()
         nextQuestion.dismiss()
         rollingTask?.cancel()
@@ -727,11 +688,17 @@ extension RecordingController {
 // Callback health is a cohesive presentation concern and stays outside the
 // already-large capture/persistence controller body.
 private extension RecordingController {
-    func updateSystemLevel(_ rms: Float) {
-        systemChunks += 1
-        systemRMS = systemRMS * 0.98 + rms * 0.02
-        let isMissing = systemChunks > 500 && systemRMS < 0.003
-        if systemAudioMissing != isMissing { systemAudioMissing = isMissing }
+    func applyRecordingLevels(_ snapshot: RecordingLevelSnapshot) {
+        if let level = snapshot.microphoneLevel {
+            micLevel = level
+        }
+        if micLevelLow != snapshot.microphoneIsLow {
+            micLevelLow = snapshot.microphoneIsLow
+        }
+        hasSystemLevelSamples = snapshot.hasSystemSamples
+        if systemAudioMissing != snapshot.systemAudioIsMissing {
+            systemAudioMissing = snapshot.systemAudioIsMissing
+        }
         if liveTranscriptState == .available {
             startLiveDiarizationIfReady()
         }
@@ -757,7 +724,7 @@ private extension RecordingController {
 
     func startLiveDiarizationIfReady() {
         guard phase == .recording,
-              systemChunks > 0,
+              hasSystemLevelSamples,
               liveDiarizerTask == nil,
               let stream = liveDiarizerStream,
               let session

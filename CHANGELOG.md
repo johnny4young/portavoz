@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## July 29, 2026
 
+- **⚡ Recording meters stay light** — Portavoz now measures each saved audio chunk once and keeps only the newest visual level update, so long calls stay responsive without dropping audio or weakening microphone and system-audio warnings.
 - **🎙️ Large AI tasks yield to live recording** — While a recording is protected, Portavoz avoids keeping Whisper and the built-in MLX summary model loaded together on unclassified or constrained Macs: an idle model yields immediately, while a busy one gives you clear guidance to finish the recording first.
 - **🧹 Idle AI yields under pressure** — When macOS reports memory or serious thermal pressure, Portavoz immediately unloads only idle on-device model runtimes; active recordings, Refine, Ask, and summaries keep their exact leases until they finish.
 - **🧠 Ask stays warm between questions** — Library semantic search and Ask now share one on-device language model per Portavoz process, avoiding repeated setup while exact per-operation leases prevent release during indexing or retrieval.

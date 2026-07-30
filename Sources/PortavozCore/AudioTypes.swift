@@ -33,3 +33,25 @@ public struct AudioChunk: Sendable {
         return Double(samples.count) / sampleRate
     }
 }
+
+/// Per-chunk signal evidence measured from PCM that the durable writer already
+/// accepted. Optional live presentation can consume this compact value without
+/// scanning the full sample buffer again.
+public struct PersistedAudioLevel: Equatable, Sendable {
+    public let channel: AudioChannel
+    public let peak: Float
+    public let rms: Float
+    public let timestamp: TimeInterval
+
+    public init(
+        channel: AudioChannel,
+        peak: Float,
+        rms: Float,
+        timestamp: TimeInterval
+    ) {
+        self.channel = channel
+        self.peak = peak
+        self.rms = rms
+        self.timestamp = timestamp
+    }
+}

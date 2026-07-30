@@ -598,6 +598,71 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Capture-exclusive heavy-model admission (D167)"))
     }
 
+    func testRecordingLevelsUseOneBoundedPersistedEvidencePipeline() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/AudioTypes.swift")
+        let session = try Self.contents(
+            of: "Sources/AudioCaptureKit/RecordingSession.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/StartRecording.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+StartRecording.swift")
+        let relay = try Self.contents(
+            of: "Sources/portavoz-app/RecordingLevelRelay.swift")
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+
+        XCTAssertTrue(core.contains(
+            "public struct PersistedAudioLevel: Equatable, Sendable"))
+        XCTAssertEqual(
+            session.components(separatedBy: "for sample in samples").count - 1,
+            1,
+            "Persisted signal evidence must reuse the writer's only PCM scan")
+        XCTAssertTrue(session.contains(
+            "let signal = PersistedChunkSignal.measure(chunk.samples)"))
+        XCTAssertTrue(session.contains(
+            "onLevel?(PersistedAudioLevel("))
+        XCTAssertTrue(application.contains(
+            "public let level: StartRecordingLevelHandler"))
+        XCTAssertTrue(adapter.contains(
+            "} onLevel: { sample in"))
+
+        for required in [
+            "private(set) var pendingValueCount = 0",
+            "pendingValueCount = 1",
+            "cadence: Duration = .milliseconds(50)",
+            "snapshot.microphoneIsLow",
+            "snapshot.systemAudioIsMissing",
+            "generation &+= 1",
+        ] {
+            XCTAssertTrue(
+                relay.contains(required),
+                "Bounded recording-level relay is missing \(required)")
+        }
+        XCTAssertTrue(controller.contains(
+            "level: { levelRelay.submit($0) }"))
+        XCTAssertFalse(controller.contains(
+            "for sample in chunk.samples"))
+        XCTAssertFalse(controller.contains(
+            "updateMicLevel("))
+        XCTAssertFalse(controller.contains(
+            "updateSystemLevel("))
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let captureSpec = try Self.contents(
+            of: "docs/specs/01-audio-capture.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains(
+            "Bounded persisted-level presentation"))
+        XCTAssertTrue(decisions.contains("## D168"))
+        XCTAssertTrue(captureSpec.contains(
+            "### Persisted level evidence (D168)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Bounded recording-level relay (D168)"))
+    }
+
     func testLiveSpeechRuntimePinsEveryProductionBorrower() throws {
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+LiveSpeechModels.swift")

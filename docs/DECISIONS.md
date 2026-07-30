@@ -5281,3 +5281,35 @@ atomically joining load admission with its ledger reservation closes concurrent
 acquisition races; the preparation and publication checks close suspension
 races. Exact-owner release preserves residency invariants, and callback
 ratchets keep model I/O entirely outside the real-time capture path.
+
+## D168 — Derive live levels once and publish only the newest snapshot (Jul 2026)
+
+**Context:** `RecordingSession` already scanned every accepted PCM chunk to
+produce final peak/RMS media evidence. The app callback scanned the same arrays
+again for microphone and system meters, then created one MainActor task per
+chunk. Long dual-channel calls could therefore accumulate optional
+presentation work even though the durable writer had already completed the
+only required operation. A simple display throttle was insufficient because
+the low-microphone and missing-system-audio diagnostics must still observe
+every chunk.
+
+**Decision:** after durable append, `RecordingSession` derives one compact
+`PersistedAudioLevel` in its existing PCM scan and emits it through the
+StartRecording callback boundary. The app submits each value synchronously to
+one recording-scoped, lock-protected state machine. Every submission updates
+the complete diagnostic state in O(1), while one latest-value slot retains the
+newest snapshot and schedules at most one MainActor delivery per 50 ms. Stop,
+failed Start, and reset cancel the relay; cancellation advances its generation
+and rejects all scheduled or late callbacks from that session.
+
+The meter may discard only obsolete presentation snapshots. Durable audio,
+capture-health events, bounded live-transcription feeds, and final transcript
+evidence retain their existing independent contracts. The app no longer scans
+audio arrays or schedules one actor task per chunk, and no optional consumer
+can backpressure the writer.
+
+**Rationale:** one persisted-evidence pass removes redundant O(samples) work
+from the presentation layer, while a generation-fenced latest-value relay
+bounds actor pressure regardless of call duration. Separating complete
+diagnostic ingestion from coalesced rendering preserves field warnings without
+pretending every intermediate meter frame has product value.

@@ -617,17 +617,6 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
     }
 }
 
-final class RecordingMeterPublicationPolicyTests: XCTestCase {
-    func testMeterPublishesAtMostTwentyFramesPerSecond() {
-        XCTAssertFalse(RecordingMeterPublicationPolicy.shouldPublish(
-            now: 10.04,
-            last: 10))
-        XCTAssertTrue(RecordingMeterPublicationPolicy.shouldPublish(
-            now: 10.05,
-            last: 10))
-    }
-}
-
 @MainActor
 final class RecordingSystemCaptureHealthPresentationTests: XCTestCase {
     func testOnlyProlongedRecoverableOutageSuggestsCallMayHaveEnded() {
