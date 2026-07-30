@@ -2684,7 +2684,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let indexer = try Self.contents(
             of: "Sources/ApplicationKit/IndexSemanticCorpus.swift")
         let maintenanceGate = try Self.contents(
-            of: "Sources/ApplicationKit/DurableMaintenanceGate.swift")
+            of: "Sources/PortavozCore/DurableMaintenanceGate.swift")
         let librarySearch = try Self.contents(
             of: "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift")
         let appAdapter = try Self.contents(of: "Sources/portavoz-app/AppServices+Ask.swift")
@@ -2759,7 +2759,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(askView.contains("onOpenCitation(citation)"))
         XCTAssertTrue(palette.contains("onOpenCitation?(citation)"))
         XCTAssertTrue(architecture.contains(
-            "ApplicationKit owns one reusable `DurableMaintenanceGate`"))
+            "PortavozCore owns one reusable `DurableMaintenanceGate`"))
         XCTAssertTrue(decisions.contains(
             "## D177 — Pause semantic maintenance"))
         XCTAssertTrue(intelligenceSpec.contains(
@@ -3305,7 +3305,8 @@ final class ArchitectureDependencyTests: XCTestCase {
                 tableDefinition.contains(contentField),
                 "sync journal must not persist \(contentField)")
         }
-        XCTAssertTrue(storage.contains("markAllMeetingsForInitialSync"))
+        XCTAssertTrue(storage.contains("markMeetingsForInitialSync"))
+        XCTAssertTrue(storage.contains("initial seed limit must be positive"))
         XCTAssertTrue(storage.contains("change.generation <= record.localGeneration"))
         XCTAssertTrue(storage.contains("max("))
         XCTAssertFalse(manifest.contains("CloudKit"))
@@ -3456,6 +3457,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(state.contains("accountScopeFingerprint"))
+        XCTAssertTrue(state.contains("initialSeedCursorMeetingID"))
+        XCTAssertTrue(state.contains("initialSeedPreparedAt"))
         XCTAssertTrue(state.contains("deferredReplays"))
         XCTAssertTrue(store.contains("persistEngineState"))
         XCTAssertTrue(store.contains("stageDeferredReplay"))
@@ -3467,7 +3470,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(protectedFile.contains("FileHandle"))
         XCTAssertTrue(protectedFile.contains("Darwin.rename"))
         XCTAssertTrue(coordinator.contains("applyRemoteMeetingSyncEnvelope"))
-        XCTAssertTrue(coordinator.contains("markAllMeetingsForInitialSync"))
+        XCTAssertTrue(coordinator.contains("markMeetingsForInitialSync"))
+        XCTAssertTrue(coordinator.contains("maintenanceGate.disposition("))
+        XCTAssertTrue(coordinator.contains("shouldProceed(at: .checkpoint)"))
+        XCTAssertTrue(coordinator.contains("recordInitialSeedProgress"))
         XCTAssertTrue(coordinator.contains("stageDeferredReplay"))
         XCTAssertTrue(coordinator.contains("shouldRetry: false"))
         XCTAssertTrue(delegate.contains("CKSyncEngineDelegate"))
@@ -3492,6 +3498,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(lifecycle.contains("guard snapshot.consentedAccountFingerprint != nil"))
         XCTAssertTrue(lifecycle.contains("protocol CloudMeetingSyncPlatform"))
         XCTAssertTrue(lifecycle.contains("includeExistingLibrary"))
+        XCTAssertTrue(lifecycle.contains("coordinator.prepareInitialSeed()"))
         XCTAssertTrue(lifecycle.contains("retryPendingAttempts"))
         XCTAssertTrue(lifecycle.contains("removeThisDeviceState"))
         XCTAssertTrue(observation.contains("observeMeetingSyncJournalStatus"))
@@ -3505,6 +3512,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let model = try Self.contents(of: "Sources/portavoz-app/MeetingSyncModel.swift")
         let composition = try Self.contents(
             of: "Sources/portavoz-app/AppServices+MeetingSync.swift")
+        let resourceAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
         let settings = try Self.contents(
             of: "Sources/portavoz-app/MeetingSyncSettingsSection.swift")
         let entitlements = try Self.contents(of: "packaging/portavoz.entitlements")
@@ -3532,10 +3541,17 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         XCTAssertTrue(model.contains("guard !didStart"))
         XCTAssertTrue(model.contains("guard status.isEnabled"))
+        XCTAssertTrue(model.contains("func maintenanceMayResume()"))
+        XCTAssertTrue(model.contains("status.initialSeedState == .requested"))
         XCTAssertTrue(model.contains("UITestMeetingSyncClient"))
         XCTAssertTrue(composition.contains("usesTemporaryStore"))
         XCTAssertTrue(composition.contains("CloudKitMeetingSyncPlatform()"))
+        XCTAssertTrue(composition.contains(
+            "AppResourceGovernorMaintenanceGate.make("))
+        XCTAssertTrue(composition.contains("maintenanceGate: maintenanceGate"))
         XCTAssertFalse(composition.contains("CKContainer("))
+        XCTAssertTrue(resourceAdapter.contains(
+            "meetingSync.maintenanceMayResume()"))
 
         for identifier in [
             "settings-sync-status", "settings-sync-enable", "settings-sync-now",
@@ -3574,6 +3590,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "notarytool submit \"$APP_ARCHIVE\"",
             range: preflight.upperBound..<diskImage.endIndex))
         XCTAssertTrue(decisions.contains("## D97"))
+        XCTAssertTrue(decisions.contains(
+            "## D179 — Checkpoint existing-library sync"))
     }
 
     func testDistributionNotarizesTheExtractedAppBeforeTheDMG() throws {

@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## July 30, 2026
 
+- **☁️ iCloud catch-up protects live calls** — Including an existing library now yields to active recording and resumes from a durable checkpoint instead of competing with capture.
 - **🔄 Semantic recall resumes by itself** — Portavoz now continues pending local semantic indexing after launch, meeting changes, and recording completion, using only Apple language assets already installed on the Mac and never a background polling timer.
 - **⏸️ Semantic backfill yields to recording** — Starting, active, and finishing capture now stop new local indexing batches; an admitted batch commits before pausing, and its remaining rows resume later without losing exact search evidence.
 - **🧭 Semantic search shares the work** — Library and Ask now use one local indexing lane, avoiding duplicate background AI work while exact search stays instant.

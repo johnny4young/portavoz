@@ -565,16 +565,17 @@ content-free maintenance/search-index intervals. Missing embeddings remain
 durable `NULL` rows, so coalescing or policy suspension loses no corpus
 evidence.
 
-ApplicationKit owns one reusable `DurableMaintenanceGate`. The macOS
-composition root maps its lock-protected capture mirror through the pure
-resource policy and injects the gate into semantic indexing. Starting, active,
-and stopping capture defer a new indexing pass. A pass already admitted
-finishes its current bounded database batch, publishes an explicit policy-pause
-result, and does not fetch the next batch. Ask then continues with lexical and
+PortavozCore owns one reusable `DurableMaintenanceGate`. The macOS composition
+root maps its lock-protected capture mirror through the pure resource policy
+and injects the gate into both ApplicationKit semantic indexing and
+IntegrationsKit's existing-library sync seed. Starting, active, and stopping
+capture defer a new maintenance pass. A pass already admitted finishes its
+current bounded database batch, publishes an explicit policy-pause result, and
+does not fetch the next batch. Ask then continues with lexical and
 already-indexed semantic evidence instead of turning expected suspension into
-an error. A later Library or Ask request resumes directly from remaining
-`NULL` rows; no timer, polling task, in-memory retry queue, or new schema is
-introduced.
+an error. Semantic indexing resumes from remaining `NULL` rows; the sync seed
+resumes from its protected opaque meeting cursor. Neither path adds a timer,
+polling task, or in-memory retry queue.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,
@@ -1440,6 +1441,18 @@ account identity, explicit consent/seed policy, opaque engine state, system
 fields, exact attempts, retries, replay cursors, and protected deferred
 payloads. A platform-neutral lifecycle owns enable, existing-library seed,
 retry, pause, remove-this-device, and account transitions.
+
+The existing-library choice first persists account-scoped intent, then admits
+the library through deterministic bounded StorageKit batches. Each batch
+commits before IntegrationsKit advances an opaque meeting cursor in its
+protected state. Replaying the cross-store crash window is idempotent: a row
+whose generation is already pending is updated in place rather than incremented
+again. A separate prepared marker proves that every meeting was admitted before
+the normal journal/attempt drain can declare the seed complete. Protected
+capture blocks the first batch and pauses between committed batches; capture
+completion emits one content-free wake that resumes from the cursor. This gate
+applies only to the explicit whole-library seed, not ordinary future-change
+delivery. It introduces no polling task, lease, or meeting-database migration.
 
 The macOS CloudKit adapter is inert until explicit consent and signed capability
 admission. It checks the exact private container, environment, CloudKit, and

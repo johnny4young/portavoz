@@ -91,6 +91,18 @@ final class MeetingSyncModelTests: XCTestCase {
         XCTAssertEqual(client.synchronizeCount, 1)
     }
 
+    func testCaptureCompletionResumesOnlyAnExplicitPendingSeed() async throws {
+        let client = TestMeetingSyncModelClient()
+        client.setStatus(.readyForTests(seed: .requested))
+        let model = MeetingSyncModel(client: client)
+        await model.start()
+
+        model.maintenanceMayResume()
+        try await waitUntil { client.synchronizeCount == 1 }
+
+        XCTAssertEqual(client.synchronizeCount, 1)
+    }
+
     func testUserActionQueuedWhileBusyIsNotReplacedBySynchronization() async throws {
         let client = TestMeetingSyncModelClient()
         client.suspendEnable = true
@@ -304,15 +316,25 @@ private final class TestMeetingSyncModelClient: MeetingSyncModelClient {
         synchronizationContinuation = nil
         continuation?.resume()
     }
+
+    func setStatus(_ status: CloudMeetingSyncStatus) {
+        self.status = status
+    }
 }
 
 private extension CloudMeetingSyncStatus {
     static var readyForTests: CloudMeetingSyncStatus {
+        readyForTests(seed: .notRequested)
+    }
+
+    static func readyForTests(
+        seed: CloudSyncInitialSeedState
+    ) -> CloudMeetingSyncStatus {
         CloudMeetingSyncStatus(
-            phase: .synchronized,
+            phase: seed == .requested ? .pending : .synchronized,
             accountStatus: .available,
             isEnabled: true,
-            initialSeedState: .notRequested,
+            initialSeedState: seed,
             progress: CloudMeetingSyncProgress(
                 pendingLocalChanges: 0,
                 queuedTransfers: 0,

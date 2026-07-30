@@ -120,7 +120,9 @@ extension CloudMeetingSyncStateStore {
         let seedHasAccount = snapshot.initialSeedAccountFingerprint != nil
         let seedHasRequest = snapshot.initialSeedRequestedAt != nil
         guard seedHasAccount == seedHasRequest,
-              snapshot.initialSeedCompletedAt == nil || seedHasRequest
+              snapshot.initialSeedPreparedAt == nil || seedHasRequest,
+              snapshot.initialSeedCompletedAt == nil || seedHasRequest,
+              snapshot.initialSeedCursorMeetingID == nil || seedHasRequest
         else {
             throw CloudMeetingTransportError.invalidState("incomplete initial seed state")
         }

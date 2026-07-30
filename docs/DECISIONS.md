@@ -2580,7 +2580,8 @@ embeddings, generation-run links, canonical-person links, jobs, model
 configuration/provenance, receipts, audio, secrets, and voiceprints never
 participate. Evidence relations are included because their content may change
 without changing the owning generated text. Migration itself backfills
-nothing; enabling sync must explicitly call `markAllMeetingsForInitialSync()`.
+nothing; including an existing library must explicitly enter the bounded
+`markMeetingsForInitialSync(after:limit:)` boundary.
 
 This slice deliberately adds no CloudKit import, CKSyncEngine state, network
 request, account UI, iOS target, conflict resolver, or audio transfer. A later
@@ -2720,9 +2721,9 @@ device-owned outgoing attempts. A real account switch clears old account-scoped
 engine state, system fields, replay cursors, deferred payloads, and seed state,
 then requires consent for the new account. Initial seeding is requested and
 completed explicitly; this adapter never opts an upgraded library in by itself.
-The coordinator's explicit request invokes StorageKit's
-`markAllMeetingsForInitialSync()` and marks the seed complete only after both
-the journal and protected attempts drain.
+The coordinator's explicit request invokes StorageKit's bounded
+`markMeetingsForInitialSync(after:limit:)` boundary and marks the seed complete
+only after preparation, the journal, and protected attempts drain.
 
 Each outgoing attempt is exact-generation and idempotent. A late success may
 update system fields but can remove only its matching attempt; it cannot erase a
@@ -5617,6 +5618,9 @@ persisted bounded batch and before fetching another. Policy suspension is a
 successful, explicit `pausedByPolicy` result rather than cancellation or
 failure.
 
+D179 later promotes this capability-neutral value to PortavozCore so
+IntegrationsKit can consume the same contract without a reverse dependency.
+
 The macOS composition root builds the gate from
 `AppResourceCaptureState` and the pure `ResourceGovernorPolicy`. Starting,
 active, and stopping capture pause semantic maintenance; inactive capture
@@ -5676,3 +5680,60 @@ self-maintaining without permanent process activity. One process owner, one
 shared coordinator, and one SQLite cursor keep concurrency and recovery
 bounded while capture remains the highest-priority workload and background
 maintenance cannot surprise the user with an asset download.
+
+## D179 — Checkpoint existing-library sync around protected capture (Jul 2026)
+
+**Context:** the explicit “include existing library” action persisted its
+request and then marked every meeting in one StorageKit transaction before
+starting a manually driven CloudKit cycle. Large libraries could therefore
+compete with protected capture, and the operation had no durable intermediate
+boundary. A single transaction also hid a two-store recovery problem:
+meeting-journal admission lives in SQLite while account-scoped transport
+progress lives in a separately protected IntegrationsKit snapshot. A crash
+between those stores must never skip a meeting or create an extra generation
+each time the same batch is retried.
+
+**Decision:** PortavozCore owns the capability-neutral
+`DurableMaintenanceGate`; D177's ApplicationKit operation and the
+IntegrationsKit seed coordinator both consume it. The macOS composition root
+continues to build the gate from `AppResourceCaptureState` and the pure
+`ResourceGovernorPolicy`. The sync descriptor is maintenance/library-sync
+execution. Starting, active, and stopping capture return `pause`; inactive
+capture returns `proceed`.
+
+The explicit action first persists account-scoped seed intent and does no
+library work inside that state mutation. StorageKit then marks meetings through
+`markMeetingsForInitialSync(after:limit:)`, ordered by opaque UUID identity.
+Each bounded batch is one transaction and returns its final identity plus
+completion state. A row whose generation is already pending remains at that
+generation; a fully acknowledged row receives a new generation. Deletion state
+and the newest change time remain current. Invalid limits fail closed.
+
+IntegrationsKit persists the SQLite batch first and only then advances its
+protected cursor. A crash in that window replays the same batch idempotently
+instead of skipping it. A separate prepared marker proves that the complete
+library has entered the journal before seed completion may consider the journal
+and protected attempts drained. Duplicate requests for the same account do not
+reset cursor, prepared state, or completion. The optional cursor and prepared
+fields preserve format-v1 decoding; an older requested snapshot safely
+re-admits pending rows before continuing.
+
+The coordinator evaluates admission before the first storage read and a
+checkpoint after every committed batch, including the final batch before any
+transport driver is constructed. Work already inside a transaction commits;
+the next batch pauses. AppServices emits one content-free wake when capture
+returns inactive, and `MeetingSyncModel` requests a cycle only when sync is
+enabled and a seed remains explicitly requested. Relaunch and ordinary manual
+sync also resume from the protected cursor. There is no timer, sleep, polling
+loop, volatile retry queue, lease, heartbeat, new SQLite schema, or audio
+callback work.
+
+This gate applies only to explicit existing-library admission. Ordinary
+future-change delivery keeps its released behavior; the decision does not claim
+that all CloudKit transport pauses during recording.
+
+**Rationale:** bounded, idempotent checkpoints give capture immediate priority
+at a proven commit boundary while preserving the user's opt-in across crashes,
+relaunches, and account-scoped transport recovery. Promoting the generic gate
+to Core avoids an IntegrationsKit-to-ApplicationKit dependency, and using the
+two existing durable stores is simpler than introducing a third job ledger.

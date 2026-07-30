@@ -23,12 +23,32 @@ final class CloudMeetingSyncStateTests: XCTestCase {
         snapshot = await store.currentSnapshot()
         XCTAssertEqual(snapshot.initialSeedState, .notRequested)
 
-        try await store.requestInitialSeed(at: now)
+        let requested = try await store.requestInitialSeed(at: now)
+        XCTAssertTrue(requested)
         snapshot = await store.currentSnapshot()
         XCTAssertEqual(snapshot.initialSeedState, .requested)
+        let cursor = MeetingID(rawValue: UUID(
+            uuidString: "10000000-0000-0000-0000-000000000001")!)
+        try await store.recordInitialSeedProgress(through: cursor)
+        try await store.markInitialSeedPrepared(at: now.addingTimeInterval(0.5))
+        let duplicateRequest = try await store.requestInitialSeed(
+            at: now.addingTimeInterval(0.75))
+        XCTAssertFalse(
+            duplicateRequest,
+            "duplicate user actions must not reset durable seed progress")
+        snapshot = await store.currentSnapshot()
+        XCTAssertEqual(snapshot.initialSeedCursorMeetingID, cursor)
+        XCTAssertNotNil(snapshot.initialSeedPreparedAt)
         try await store.markInitialSeedComplete(at: now.addingTimeInterval(1))
         snapshot = await store.currentSnapshot()
         XCTAssertEqual(snapshot.initialSeedState, .complete)
+
+        let restarted = try CloudMeetingSyncStateStore(rootDirectory: root)
+        let restartedSnapshot = await restarted.currentSnapshot()
+        XCTAssertEqual(restartedSnapshot.initialSeedCursorMeetingID, cursor)
+        XCTAssertEqual(
+            restartedSnapshot.initialSeedPreparedAt,
+            snapshot.initialSeedPreparedAt)
 
         try await store.updateAccount(status: .available, fingerprint: second)
         snapshot = await store.currentSnapshot()
@@ -39,6 +59,31 @@ final class CloudMeetingSyncStateTests: XCTestCase {
             snapshot.initialSeedState,
             .notRequested,
             "a different iCloud account requires its own explicit initial seed")
+    }
+
+    func testRequestedPreCheckpointSnapshotResumesWithEmptyProgress() async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try await readyStore(at: root)
+        try await store.requestInitialSeed(
+            at: Date(timeIntervalSince1970: 1_784_320_000))
+
+        let stateURL = root.appendingPathComponent("transport-state.json")
+        let encoded = try Data(contentsOf: stateURL)
+        var legacy = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        legacy.removeValue(forKey: "initialSeedCursorMeetingID")
+        legacy.removeValue(forKey: "initialSeedPreparedAt")
+        try JSONSerialization.data(
+            withJSONObject: legacy,
+            options: [.sortedKeys])
+            .write(to: stateURL, options: .atomic)
+
+        let restarted = try CloudMeetingSyncStateStore(rootDirectory: root)
+        let snapshot = await restarted.currentSnapshot()
+        XCTAssertEqual(snapshot.initialSeedState, .requested)
+        XCTAssertNil(snapshot.initialSeedCursorMeetingID)
+        XCTAssertNil(snapshot.initialSeedPreparedAt)
     }
 
     func testExactAttemptSurvivesRestartAndLateSuccessCannotEraseNewerGeneration() async throws {

@@ -109,6 +109,7 @@ extension AppServices {
         resourceCaptureState.update(next)
         guard next != .inactive else {
             semanticIndexingSupervisor.kick()
+            meetingSync.maintenanceMayResume()
             return
         }
         let pressure = resourcePressureMonitor?.current ?? .nominal

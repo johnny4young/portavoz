@@ -1,8 +1,6 @@
-import PortavozCore
-
-/// Narrow application boundary between durable work and the process resource
-/// governor. Capability use cases ask whether they may start or continue; the
-/// executable composition root owns the live host snapshot and policy mapping.
+/// Narrow boundary between durable work and a process resource governor.
+/// Capability owners ask whether they may start or continue; executable
+/// composition roots own the live host snapshot and policy mapping.
 public enum DurableMaintenanceDisposition: Equatable, Sendable {
     case proceed
     case pause

@@ -1,6 +1,6 @@
 import CloudKit
 import Foundation
-import IntegrationsKit
+@testable import IntegrationsKit
 import PortavozCore
 import StorageKit
 import XCTest
@@ -239,10 +239,17 @@ final class CloudMeetingSyncCoordinatorTests: XCTestCase {
             transportStore: transportStore)
         let now = Date(timeIntervalSince1970: 1_784_330_100)
 
-        let seededCount = try await delegate.requestInitialSeed(at: now)
+        let requested = try await delegate.requestInitialSeed(at: now)
         let requestedSnapshot = await transportStore.currentSnapshot()
-        XCTAssertEqual(seededCount, 1)
+        XCTAssertTrue(requested)
         XCTAssertEqual(requestedSnapshot.initialSeedState, .requested)
+        XCTAssertNil(requestedSnapshot.initialSeedCursorMeetingID)
+        XCTAssertNil(requestedSnapshot.initialSeedPreparedAt)
+        let preparation = try await coordinator.prepareInitialSeed(at: now)
+        XCTAssertEqual(preparation, .prepared(processedCount: 1))
+        let preparedSnapshot = await transportStore.currentSnapshot()
+        XCTAssertEqual(preparedSnapshot.initialSeedCursorMeetingID, meeting.id)
+        XCTAssertNotNil(preparedSnapshot.initialSeedPreparedAt)
         let stagedRecordIDs = try await coordinator.stagePendingChanges(at: now)
         let recordID = try XCTUnwrap(stagedRecordIDs.first)
         let encoded = try await coordinator.encodedRecord(for: recordID, at: now)

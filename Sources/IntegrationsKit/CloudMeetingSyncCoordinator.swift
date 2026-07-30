@@ -10,21 +10,39 @@ public enum CloudMeetingFetchResult: Equatable, Sendable {
     case ignoredDuplicate
 }
 
+enum CloudInitialSeedPreparationResult: Equatable, Sendable {
+    case notRequested
+    case paused(processedCount: Int)
+    case prepared(processedCount: Int)
+}
+
 /// Coordinates the deterministic transport state with StorageKit's journal
 /// and replay boundary. It does not create a CKContainer or start network work.
 public actor CloudMeetingSyncCoordinator {
+    private static let initialSeedWorkload = ResourceWorkloadDescriptor(
+        workloadClass: .maintenance,
+        kind: .librarySync,
+        operation: .execute)
+
     private let meetingStore: MeetingStore
     private let transportStore: CloudMeetingSyncStateStore
     private let localDeviceID: UUID
+    private let initialSeedBatchSize: Int
+    private let maintenanceGate: DurableMaintenanceGate
 
     public init(
         meetingStore: MeetingStore,
         transportStore: CloudMeetingSyncStateStore,
-        localDeviceID: UUID
+        localDeviceID: UUID,
+        initialSeedBatchSize: Int = 100,
+        maintenanceGate: DurableMaintenanceGate = .unrestricted
     ) {
+        precondition(initialSeedBatchSize > 0)
         self.meetingStore = meetingStore
         self.transportStore = transportStore
         self.localDeviceID = localDeviceID
+        self.initialSeedBatchSize = initialSeedBatchSize
+        self.maintenanceGate = maintenanceGate
     }
 
     @discardableResult
@@ -53,17 +71,55 @@ public actor CloudMeetingSyncCoordinator {
         try await transportStore.encodedRecord(for: recordID, at: date)
     }
 
-    /// Explicit opt-in is the only path that seeds an existing library. The
-    /// durable request is written first so a failed StorageKit seed remains
-    /// requested and can be retried without claiming completion.
+    /// Explicit opt-in writes only durable account-scoped intent. Preparation
+    /// runs separately so capture policy can pause before the first storage
+    /// read without losing the user's request.
     @discardableResult
-    public func requestInitialSeed(at date: Date = Date()) async throws -> Int {
+    public func requestInitialSeed(at date: Date = Date()) async throws -> Bool {
         try await transportStore.requestInitialSeed(at: date)
-        let count = try await meetingStore.markAllMeetingsForInitialSync()
-        if count == 0 {
-            try await transportStore.markInitialSeedComplete(at: date)
+    }
+
+    /// Advances the existing-library seed through bounded committed batches.
+    /// Storage publishes each batch before the opaque cursor, so replay after
+    /// a crash is idempotent and never skips a meeting.
+    func prepareInitialSeed(
+        at date: Date = Date()
+    ) async throws -> CloudInitialSeedPreparationResult {
+        var snapshot = await transportStore.currentSnapshot()
+        guard snapshot.initialSeedState == .requested else {
+            return .notRequested
         }
-        return count
+        if snapshot.initialSeedPreparedAt != nil {
+            return shouldProceed(at: .admission)
+                ? .prepared(processedCount: 0)
+                : .paused(processedCount: 0)
+        }
+        guard shouldProceed(at: .admission) else {
+            return .paused(processedCount: 0)
+        }
+
+        var processedCount = 0
+        while true {
+            let batch = try await meetingStore.markMeetingsForInitialSync(
+                after: snapshot.initialSeedCursorMeetingID,
+                limit: initialSeedBatchSize)
+            processedCount += batch.processedCount
+            if let lastMeetingID = batch.lastMeetingID {
+                try await transportStore.recordInitialSeedProgress(
+                    through: lastMeetingID)
+            }
+            if batch.isComplete {
+                try await transportStore.markInitialSeedPrepared(at: date)
+                _ = try await completeInitialSeedIfDrained(at: date)
+                return shouldProceed(at: .checkpoint)
+                    ? .prepared(processedCount: processedCount)
+                    : .paused(processedCount: processedCount)
+            }
+            guard shouldProceed(at: .checkpoint) else {
+                return .paused(processedCount: processedCount)
+            }
+            snapshot = await transportStore.currentSnapshot()
+        }
     }
 
     @discardableResult
@@ -71,6 +127,7 @@ public actor CloudMeetingSyncCoordinator {
         let snapshot = await transportStore.currentSnapshot()
         if snapshot.initialSeedState == .complete { return true }
         guard snapshot.initialSeedState == .requested,
+              snapshot.initialSeedPreparedAt != nil,
               snapshot.attempts.isEmpty,
               try await meetingStore.pendingMeetingSyncChanges(limit: 1).isEmpty
         else { return false }
@@ -187,6 +244,14 @@ public actor CloudMeetingSyncCoordinator {
     private static func isDeletion(_ envelope: MeetingSyncEnvelope) -> Bool {
         if case .delete = envelope.mutation { return true }
         return false
+    }
+
+    private func shouldProceed(
+        at phase: ResourceGovernorEvaluationPhase
+    ) -> Bool {
+        maintenanceGate.disposition(
+            for: Self.initialSeedWorkload,
+            phase: phase) == .proceed
     }
 
     private static func samePayload(

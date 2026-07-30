@@ -274,7 +274,7 @@ final class AppServices {
         meetingSync = Self.makeMeetingSyncModel(
             store: store,
             usesTemporaryStore: usesTemporaryStore,
-            telemetry: workloadTelemetry)
+            telemetry: workloadTelemetry, captureState: resourceCaptureState)
         libraryMarkdownBackup = LibraryMarkdownBackupModel(
             client: AppLibraryMarkdownBackupClient(store: store))
         spotlightIndexer = SpotlightIndexer(

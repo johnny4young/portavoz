@@ -106,8 +106,10 @@ public struct CloudMeetingSyncSnapshot: Codable, Equatable, Sendable {
     public var consentedAccountFingerprint: String?
     public var consentGrantedAt: Date?
     public var initialSeedRequestedAt: Date?
+    public var initialSeedPreparedAt: Date?
     public var initialSeedCompletedAt: Date?
     public var initialSeedAccountFingerprint: String?
+    public var initialSeedCursorMeetingID: MeetingID?
     public var engineStateData: Data?
     public var attempts: [CloudSyncAttempt] = []
     public var deferredReplays: [CloudSyncDeferredReplay] = []

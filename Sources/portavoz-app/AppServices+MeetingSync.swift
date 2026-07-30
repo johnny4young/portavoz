@@ -9,7 +9,8 @@ extension AppServices {
     static func makeMeetingSyncModel(
         store: MeetingStore,
         usesTemporaryStore: Bool,
-        telemetry: ResourceWorkloadTelemetry
+        telemetry: ResourceWorkloadTelemetry,
+        captureState: AppResourceCaptureState
     ) -> MeetingSyncModel {
         if usesTemporaryStore {
             return MeetingSyncModel(
@@ -20,6 +21,8 @@ extension AppServices {
         let transportRoot = supportRoot
             .appendingPathComponent("CloudMeetingSync", isDirectory: true)
         let localDeviceID = persistentMeetingSyncDeviceID()
+        let maintenanceGate = AppResourceGovernorMaintenanceGate.make(
+            captureState: captureState)
         let client = LifecycleMeetingSyncClient(
             transportRoot: transportRoot
         ) {
@@ -29,7 +32,8 @@ extension AppServices {
                 meetingStore: store,
                 transportStore: transportStore,
                 localDeviceID: localDeviceID,
-                platform: CloudKitMeetingSyncPlatform())
+                platform: CloudKitMeetingSyncPlatform(),
+                maintenanceGate: maintenanceGate)
         }
         return MeetingSyncModel(
             client: client,

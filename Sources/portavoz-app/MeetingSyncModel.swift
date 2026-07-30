@@ -120,6 +120,15 @@ final class MeetingSyncModel {
             await self?.requestSynchronization()
         }
     }
+
+    /// Protected capture completion is a content-free maintenance wake. Only
+    /// an already-consented, explicitly requested seed needs this signal.
+    func maintenanceMayResume() {
+        guard status.isEnabled, status.initialSeedState == .requested else { return }
+        Task { @MainActor [weak self] in
+            await self?.requestSynchronization()
+        }
+    }
 }
 
 private extension MeetingSyncModel {

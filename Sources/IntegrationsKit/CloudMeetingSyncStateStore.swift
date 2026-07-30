@@ -70,8 +70,10 @@ public actor CloudMeetingSyncStateStore {
                 snapshot.consentedAccountFingerprint = nil
                 snapshot.consentGrantedAt = nil
                 snapshot.initialSeedRequestedAt = nil
+                snapshot.initialSeedPreparedAt = nil
                 snapshot.initialSeedCompletedAt = nil
                 snapshot.initialSeedAccountFingerprint = nil
+                snapshot.initialSeedCursorMeetingID = nil
             }
             snapshot.accountStatus = status
             snapshot.currentAccountFingerprint = availableFingerprint
@@ -103,12 +105,50 @@ public actor CloudMeetingSyncStateStore {
         }
     }
 
-    public func requestInitialSeed(at date: Date) throws {
+    @discardableResult
+    public func requestInitialSeed(at date: Date) throws -> Bool {
         try requireReadyTransport()
+        if snapshot.initialSeedAccountFingerprint == snapshot.currentAccountFingerprint,
+           snapshot.initialSeedRequestedAt != nil {
+            return false
+        }
         try commitSnapshot {
             snapshot.initialSeedRequestedAt = date
+            snapshot.initialSeedPreparedAt = nil
             snapshot.initialSeedCompletedAt = nil
             snapshot.initialSeedAccountFingerprint = snapshot.currentAccountFingerprint
+            snapshot.initialSeedCursorMeetingID = nil
+        }
+        return true
+    }
+
+    public func recordInitialSeedProgress(
+        through meetingID: MeetingID
+    ) throws {
+        try requireRequestedInitialSeed()
+        guard snapshot.initialSeedPreparedAt == nil else {
+            throw CloudMeetingTransportError.invalidState(
+                "prepared initial seed cannot advance its cursor")
+        }
+        if let cursor = snapshot.initialSeedCursorMeetingID {
+            let current = cursor.rawValue.uuidString
+            let proposed = meetingID.rawValue.uuidString
+            guard proposed >= current else {
+                throw CloudMeetingTransportError.invalidState(
+                    "initial seed cursor cannot move backwards")
+            }
+            if proposed == current { return }
+        }
+        try commitSnapshot {
+            snapshot.initialSeedCursorMeetingID = meetingID
+        }
+    }
+
+    public func markInitialSeedPrepared(at date: Date) throws {
+        try requireRequestedInitialSeed()
+        guard snapshot.initialSeedPreparedAt == nil else { return }
+        try commitSnapshot {
+            snapshot.initialSeedPreparedAt = date
         }
     }
 
@@ -534,6 +574,14 @@ private extension CloudMeetingSyncStateStore {
         }
         guard snapshot.isTransportReady else {
             throw CloudMeetingTransportError.accountUnavailable
+        }
+    }
+
+    func requireRequestedInitialSeed() throws {
+        try requireReadyTransport()
+        guard snapshot.initialSeedState == .requested else {
+            throw CloudMeetingTransportError.invalidState(
+                "initial seed must be explicitly requested")
         }
     }
 
