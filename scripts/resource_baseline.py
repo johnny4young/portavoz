@@ -62,6 +62,7 @@ REQUIRED_SCENARIOS = {
 VERSION_PATTERN = re.compile(r"^[A-Za-z0-9._+\-]{1,40}$")
 BUILD_PATTERN = re.compile(r"^[A-Za-z0-9._+\-]{1,80}$")
 COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 PROFILE_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
 HARDWARE_PATTERN = re.compile(
     r"^(Mac|MacBookPro|MacBookAir|Macmini|MacStudio|iMac|MacPro)"
@@ -71,6 +72,15 @@ TIMESTAMP_PATTERN = re.compile(r"^[0-9T:.+\-Z]{10,64}$")
 SWIFT_VERSION_PATTERN = re.compile(
     r"(?:Apple )?Swift version ([0-9]+(?:\.[0-9]+){1,2})"
 )
+ASK_PIPELINE_STAGES = {
+    "corpusReadiness",
+    "expansion",
+    "lexicalQuery",
+    "queryEmbedding",
+    "semanticScan",
+    "fusion",
+    "citationFetch",
+}
 
 
 class ResourceBaselineError(ValueError):
@@ -411,6 +421,214 @@ def validate_duration_summary(raw, path):
     return {"p50": p50, "p95": p95, "maximum": maximum}
 
 
+def validate_ask_timing(raw, path):
+    timing = object_shape(
+        raw,
+        path,
+        ("wallDurationMilliseconds", "cpuTimeMilliseconds"),
+    )
+    return {
+        "wallDurationMilliseconds": number(
+            timing["wallDurationMilliseconds"],
+            f"{path}.wallDurationMilliseconds",
+        ),
+        "cpuTimeMilliseconds": number(
+            timing["cpuTimeMilliseconds"],
+            f"{path}.cpuTimeMilliseconds",
+        ),
+    }
+
+
+def validate_ask_pipeline_sample(raw, path):
+    sample = object_shape(
+        raw,
+        path,
+        (
+            "schemaVersion",
+            "run",
+            "operation",
+            "outcome",
+            "total",
+            "firstEvidence",
+            "firstToken",
+            "stages",
+            "corpus",
+            "citations",
+        ),
+    )
+    if integer(sample["schemaVersion"], f"{path}.schemaVersion") != 1:
+        raise ResourceBaselineError(f"{path}.schemaVersion must be 1")
+    run = integer(sample["run"], f"{path}.run", 1)
+    if sample["operation"] != "answer":
+        raise ResourceBaselineError(f"{path}.operation must be answer")
+    if sample["outcome"] != "completed":
+        raise ResourceBaselineError(f"{path}.outcome must be completed")
+    total = validate_ask_timing(sample["total"], f"{path}.total")
+    first_evidence = validate_ask_timing(
+        sample["firstEvidence"], f"{path}.firstEvidence"
+    )
+    first_token = validate_ask_timing(
+        sample["firstToken"], f"{path}.firstToken"
+    )
+    for name, timing in (
+        ("firstEvidence", first_evidence),
+        ("firstToken", first_token),
+    ):
+        for metric in ("wallDurationMilliseconds", "cpuTimeMilliseconds"):
+            if timing[metric] > total[metric]:
+                raise ResourceBaselineError(
+                    f"{path}.{name}.{metric} must not exceed total"
+                )
+    for metric in ("wallDurationMilliseconds", "cpuTimeMilliseconds"):
+        if first_evidence[metric] > first_token[metric]:
+            raise ResourceBaselineError(
+                f"{path}.firstEvidence must not follow firstToken"
+            )
+    if not isinstance(sample["stages"], list):
+        raise ResourceBaselineError(f"{path}.stages must be an array")
+    stages = {}
+    for index, raw_stage in enumerate(sample["stages"]):
+        stage_path = f"{path}.stages[{index}]"
+        stage = object_shape(
+            raw_stage,
+            stage_path,
+            (
+                "stage",
+                "outcome",
+                "wallDurationMilliseconds",
+                "cpuTimeMilliseconds",
+            ),
+        )
+        identifier = enum_value(
+            stage["stage"], f"{stage_path}.stage", ASK_PIPELINE_STAGES
+        )
+        if identifier in stages:
+            raise ResourceBaselineError(
+                f"{path} repeats Ask stage: {identifier}"
+            )
+        if stage["outcome"] != "completed":
+            raise ResourceBaselineError(
+                f"{stage_path}.outcome must be completed"
+            )
+        stages[identifier] = {
+            "wallDurationMilliseconds": number(
+                stage["wallDurationMilliseconds"],
+                f"{stage_path}.wallDurationMilliseconds",
+            ),
+            "cpuTimeMilliseconds": number(
+                stage["cpuTimeMilliseconds"],
+                f"{stage_path}.cpuTimeMilliseconds",
+            ),
+        }
+    if set(stages) != ASK_PIPELINE_STAGES:
+        missing = ASK_PIPELINE_STAGES - set(stages)
+        extra = set(stages) - ASK_PIPELINE_STAGES
+        details = []
+        if missing:
+            details.append("missing " + ", ".join(sorted(missing)))
+        if extra:
+            details.append("unexpected " + ", ".join(sorted(extra)))
+        raise ResourceBaselineError(
+            f"{path}.stages must be exact: {'; '.join(details)}"
+        )
+
+    corpus = object_shape(
+        sample["corpus"],
+        f"{path}.corpus",
+        (
+            "generation",
+            "checksum",
+            "fixtureSegmentCount",
+            "pendingBefore",
+            "pendingAfter",
+            "readyBefore",
+            "readyAfter",
+            "warmup",
+        ),
+    )
+    generation = safe_string(
+        corpus["generation"], f"{path}.corpus.generation", PROFILE_PATTERN
+    )
+    checksum = safe_string(
+        corpus["checksum"], f"{path}.corpus.checksum", SHA256_PATTERN
+    )
+    fixture_count = integer(
+        corpus["fixtureSegmentCount"],
+        f"{path}.corpus.fixtureSegmentCount",
+        1,
+    )
+    pending_before = integer(
+        corpus["pendingBefore"], f"{path}.corpus.pendingBefore"
+    )
+    pending_after = integer(
+        corpus["pendingAfter"], f"{path}.corpus.pendingAfter"
+    )
+    if not isinstance(corpus["readyBefore"], bool) or not isinstance(
+        corpus["readyAfter"], bool
+    ):
+        raise ResourceBaselineError(
+            f"{path}.corpus readiness fields must be booleans"
+        )
+    if (
+        pending_before != fixture_count
+        or pending_after != 0
+        or corpus["readyBefore"]
+        or not corpus["readyAfter"]
+        or corpus["warmup"] != "cold"
+    ):
+        raise ResourceBaselineError(
+            f"{path}.corpus must prove one cold complete backfill"
+        )
+
+    citations = object_shape(
+        sample["citations"],
+        f"{path}.citations",
+        ("count", "digest", "valid"),
+    )
+    citation_count = integer(
+        citations["count"], f"{path}.citations.count", 1
+    )
+    citation_digest = safe_string(
+        citations["digest"], f"{path}.citations.digest", SHA256_PATTERN
+    )
+    if citations["valid"] is not True:
+        raise ResourceBaselineError(f"{path}.citations.valid must be true")
+    return run, {
+        "total": total,
+        "firstEvidence": first_evidence,
+        "firstToken": first_token,
+        "stages": stages,
+        "corpus": {
+            "generation": generation,
+            "checksum": checksum,
+            "fixtureSegmentCount": fixture_count,
+            "warmup": "cold",
+        },
+        "citations": {
+            "count": citation_count,
+            "digest": citation_digest,
+        },
+    }
+
+
+def validate_ask_pipeline(raw, path):
+    pipeline = object_shape(raw, path, ("state", "samples"))
+    state = enum_value(pipeline["state"], f"{path}.state", OBSERVATION_STATES)
+    if not isinstance(pipeline["samples"], list):
+        raise ResourceBaselineError(f"{path}.samples must be an array")
+    runs = {}
+    for index, raw_sample in enumerate(pipeline["samples"]):
+        run, sample = validate_ask_pipeline_sample(
+            raw_sample, f"{path}.samples[{index}]"
+        )
+        if run in runs:
+            raise ResourceBaselineError(f"{path} repeats run: {run}")
+        runs[run] = sample
+    if state == "pass" and not runs:
+        raise ResourceBaselineError(f"{path}.samples must not be empty")
+    return {"state": state, "runs": runs}
+
+
 def validate_workload_summary(raw, path):
     summary = object_shape(
         raw,
@@ -582,6 +800,7 @@ def validate_receipt(document, contract, label):
             "toolchain",
             "scenarios",
         ),
+        ("askPipeline",),
     )
     if integer(receipt["schemaVersion"], f"{label}.schemaVersion") != SCHEMA_VERSION:
         raise ResourceBaselineError(
@@ -607,11 +826,27 @@ def validate_receipt(document, contract, label):
                 f"{label} repeats scenario: {identifier}"
             )
         scenarios[identifier] = {"state": state, "runs": runs}
+    ask_pipeline = None
+    if "askPipeline" in receipt:
+        ask_pipeline = validate_ask_pipeline(
+            receipt["askPipeline"], f"{label}.askPipeline"
+        )
+    ask_scenario = scenarios.get("ask")
+    if ask_scenario is not None and ask_scenario["state"] == "pass":
+        if ask_pipeline is None:
+            raise ResourceBaselineError(
+                f"{label}.askPipeline is required for a passing Ask scenario"
+            )
+        if set(ask_scenario["runs"]) != set(ask_pipeline["runs"]):
+            raise ResourceBaselineError(
+                f"{label}.askPipeline runs must match Ask resource runs"
+            )
     return {
         "build": dict(build),
         "host": dict(host),
         "toolchain": dict(toolchain),
         "scenarios": scenarios,
+        "askPipeline": ask_pipeline,
     }
 
 
@@ -653,6 +888,112 @@ def summarize_runs(runs):
         sample["lowPowerModeEnabled"] for sample in samples
     )
     return summary
+
+
+def summarize_ask_timings(values):
+    return {
+        metric: {
+            "p50": nearest_rank([value[metric] for value in values], 0.50),
+            "p95": nearest_rank([value[metric] for value in values], 0.95),
+            "maximum": max(value[metric] for value in values),
+        }
+        for metric in ("wallDurationMilliseconds", "cpuTimeMilliseconds")
+    }
+
+
+def summarize_ask_pipeline(runs):
+    samples = [sample for _, sample in sorted(runs.items())]
+    generation = [
+        {
+            metric: sample["firstToken"][metric]
+            - sample["firstEvidence"][metric]
+            for metric in (
+                "wallDurationMilliseconds",
+                "cpuTimeMilliseconds",
+            )
+        }
+        for sample in samples
+    ]
+    return {
+        "total": summarize_ask_timings(
+            [sample["total"] for sample in samples]
+        ),
+        "firstEvidence": summarize_ask_timings(
+            [sample["firstEvidence"] for sample in samples]
+        ),
+        "firstToken": summarize_ask_timings(
+            [sample["firstToken"] for sample in samples]
+        ),
+        "generation": summarize_ask_timings(generation),
+        "stages": {
+            stage: summarize_ask_timings(
+                [sample["stages"][stage] for sample in samples]
+            )
+            for stage in sorted(ASK_PIPELINE_STAGES)
+        },
+    }
+
+
+def ask_pipeline_row(
+    profile_id,
+    pipeline,
+    minimum_samples,
+    maximum_timing_ratio,
+):
+    if pipeline is None:
+        return {
+            "profile": profile_id,
+            "state": "missing",
+            "sampleCount": 0,
+            "corpus": None,
+            "citations": None,
+            "metrics": None,
+        }
+    runs = pipeline["runs"]
+    corpus_values = {tuple(sorted(run["corpus"].items())) for run in runs.values()}
+    if len(corpus_values) != 1:
+        raise ResourceBaselineError(
+            f"Ask pipeline corpus is inconsistent for profile {profile_id}"
+        )
+    citation_values = {
+        (run["citations"]["count"], run["citations"]["digest"])
+        for run in runs.values()
+    }
+    if len(citation_values) != 1:
+        raise ResourceBaselineError(
+            f"Ask pipeline citations are nondeterministic for profile {profile_id}"
+        )
+    sample_count = len(runs)
+    metrics = summarize_ask_pipeline(runs) if sample_count else None
+    state = pipeline["state"]
+    if state == "pass" and sample_count < minimum_samples:
+        state = "incomplete"
+    elif state == "pass" and metrics is not None:
+        timing_groups = [
+            metrics["total"],
+            metrics["firstEvidence"],
+            metrics["firstToken"],
+            metrics["generation"],
+            *metrics["stages"].values(),
+        ]
+        if any(
+            not timing_is_stable(group, maximum_timing_ratio)
+            for group in timing_groups
+        ):
+            state = "unstable"
+    corpus = dict(corpus_values.pop()) if corpus_values else None
+    citations = None
+    if citation_values:
+        count, digest = citation_values.pop()
+        citations = {"count": count, "digest": digest, "valid": True}
+    return {
+        "profile": profile_id,
+        "state": state,
+        "sampleCount": sample_count,
+        "corpus": corpus,
+        "citations": citations,
+        "metrics": metrics,
+    }
 
 
 def timing_is_stable(metrics, maximum_ratio):
@@ -831,6 +1172,27 @@ def assemble_namespace(arguments):
             )
         scenario_samples[run] = raw_sample
 
+    ask_pipeline_samples = {}
+    for index, sample_path in enumerate(arguments.ask_pipeline_sample):
+        raw_sample = load_json(
+            sample_path,
+            f"Ask pipeline sample {index + 1}",
+        )
+        run, _ = validate_ask_pipeline_sample(
+            raw_sample,
+            f"Ask pipeline sample {index + 1}",
+        )
+        if run in ask_pipeline_samples:
+            raise ResourceBaselineError(
+                f"Ask pipeline samples repeat run: {run}"
+            )
+        ask_pipeline_samples[run] = raw_sample
+    ask_resource_runs = set(samples_by_scenario.get("ask", {}))
+    if ask_resource_runs != set(ask_pipeline_samples):
+        raise ResourceBaselineError(
+            "Ask pipeline samples must match Ask resource sample runs"
+        )
+
     host, toolchain = detect_machine_metadata(profile, contract)
     receipt = {
         "schemaVersion": SCHEMA_VERSION,
@@ -851,6 +1213,14 @@ def assemble_namespace(arguments):
             for scenario, samples in sorted(samples_by_scenario.items())
         ],
     }
+    if ask_pipeline_samples:
+        receipt["askPipeline"] = {
+            "state": "pass",
+            "samples": [
+                ask_pipeline_samples[run]
+                for run in sorted(ask_pipeline_samples)
+            ],
+        }
     validate_receipt(receipt, contract, "assembled resource receipt")
     write_json(Path(arguments.output).expanduser(), receipt)
     return 0
@@ -893,6 +1263,62 @@ def render_markdown(scorecard):
         )
     lines += [
         "",
+        "## Ask pipeline",
+        "",
+        "Time to first evidence is reported separately from the subsequent "
+        "answer-generation interval. Every value is p50/p95 wall time with "
+        "process CPU in parentheses.",
+        "",
+        "| Profile | State | Samples | Total | First evidence | Generation | Corpus | Citations |",
+        "| --- | --- | ---: | ---: | ---: | ---: | --- | --- |",
+    ]
+    for row in scorecard["askPipelineMeasurements"]:
+        metrics = row["metrics"]
+        if metrics is None:
+            total = evidence = generation = corpus = citations = "—"
+        else:
+            def render_timing(timing):
+                wall = timing["wallDurationMilliseconds"]
+                cpu = timing["cpuTimeMilliseconds"]
+                return (
+                    f"{wall['p50']:.0f}/{wall['p95']:.0f} ms "
+                    f"({cpu['p50']:.0f}/{cpu['p95']:.0f} CPU ms)"
+                )
+
+            total = render_timing(metrics["total"])
+            evidence = render_timing(metrics["firstEvidence"])
+            generation = render_timing(metrics["generation"])
+            corpus = (
+                f"`{row['corpus']['generation']}` / "
+                f"`{row['corpus']['checksum']}`"
+            )
+            citations = (
+                f"{row['citations']['count']} / "
+                f"`{row['citations']['digest']}`"
+            )
+        lines.append(
+            f"| `{row['profile']}` | **{row['state']}** | "
+            f"{row['sampleCount']} | {total} | {evidence} | {generation} | "
+            f"{corpus} | {citations} |"
+        )
+    lines += [
+        "",
+        "| Profile | Stage | Wall p50/p95 | CPU p50/p95 |",
+        "| --- | --- | ---: | ---: |",
+    ]
+    for row in scorecard["askPipelineMeasurements"]:
+        if row["metrics"] is None:
+            continue
+        for stage, timing in row["metrics"]["stages"].items():
+            wall = timing["wallDurationMilliseconds"]
+            cpu = timing["cpuTimeMilliseconds"]
+            lines.append(
+                f"| `{row['profile']}` | `{stage}` | "
+                f"{wall['p50']:.0f}/{wall['p95']:.0f} ms | "
+                f"{cpu['p50']:.0f}/{cpu['p95']:.0f} ms |"
+            )
+    lines += [
+        "",
         "This scorecard proves measurement completeness only. It does not set "
         "resource budgets or authorize admission, eviction, or scheduling policy.",
         "",
@@ -933,6 +1359,7 @@ def evaluate_namespace(arguments):
         )
 
     measurements = []
+    ask_pipeline_measurements = []
     for profile in contract["profiles"]:
         receipt = receipts.get(profile)
         scenarios = receipt["scenarios"] if receipt is not None else {}
@@ -946,9 +1373,46 @@ def evaluate_namespace(arguments):
                     contract["maximumTimingRatio"],
                 )
             )
+        ask_pipeline_measurements.append(
+            ask_pipeline_row(
+                profile,
+                receipt["askPipeline"] if receipt is not None else None,
+                contract["minimumSamples"],
+                contract["maximumTimingRatio"],
+            )
+        )
+    comparable_ask = [
+        row for row in ask_pipeline_measurements
+        if row["corpus"] is not None and row["citations"] is not None
+    ]
+    corpus_identities = {
+        (
+            row["corpus"]["generation"],
+            row["corpus"]["checksum"],
+            row["corpus"]["fixtureSegmentCount"],
+            row["corpus"]["warmup"],
+        )
+        for row in comparable_ask
+    }
+    if len(corpus_identities) > 1:
+        raise ResourceBaselineError(
+            "Ask pipeline corpus is not comparable across profiles"
+        )
+    citation_identities = {
+        (row["citations"]["count"], row["citations"]["digest"])
+        for row in comparable_ask
+    }
+    if len(citation_identities) > 1:
+        raise ResourceBaselineError(
+            "Ask pipeline citations are nondeterministic across profiles"
+        )
     outcome = (
         "pass"
         if all(row["state"] == "pass" for row in measurements)
+        and all(
+            row["state"] == "pass"
+            for row in ask_pipeline_measurements
+        )
         else "blocked"
     )
     scorecard = {
@@ -961,6 +1425,7 @@ def evaluate_namespace(arguments):
         "maximumTimingP95ToP50Ratio": contract["maximumTimingRatio"],
         "profiles": sorted(profile_metadata, key=lambda value: value["profile"]),
         "measurements": measurements,
+        "askPipelineMeasurements": ask_pipeline_measurements,
     }
     output = Path(arguments.output).expanduser()
     write_json(output / "resource-baseline.json", scorecard)
@@ -991,6 +1456,12 @@ def build_parser():
         action="append",
         default=[],
         help="Scenario/sample assignment; repeat for every measured run.",
+    )
+    assemble.add_argument(
+        "--ask-pipeline-sample",
+        action="append",
+        default=[],
+        help="Content-free Ask pipeline sample; repeat for every Ask run.",
     )
     assemble.add_argument("--output", required=True)
     evaluate = subparsers.add_parser(

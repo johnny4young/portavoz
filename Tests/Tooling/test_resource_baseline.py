@@ -51,6 +51,17 @@ class ResourceBaselineTests(unittest.TestCase):
                 recording["metrics"]["wallDurationMilliseconds"],
                 {"maximum": 1030.0, "p50": 1020.0, "p95": 1030.0},
             )
+            ask = next(
+                row
+                for row in scorecard["askPipelineMeasurements"]
+                if row["profile"] == "memory-8gb"
+            )
+            self.assertEqual(ask["state"], "pass")
+            self.assertEqual(
+                ask["metrics"]["firstEvidence"]["wallDurationMilliseconds"],
+                {"maximum": 615.0, "p50": 610.0, "p95": 615.0},
+            )
+            self.assertEqual(ask["corpus"]["checksum"], "c" * 64)
             self.assertEqual(
                 os.stat(output / "resource-baseline.json").st_mode & 0o777,
                 0o600,
@@ -68,6 +79,12 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(len(scorecard["measurements"]), 27)
             self.assertTrue(
                 all(row["state"] == "missing" for row in scorecard["measurements"])
+            )
+            self.assertTrue(
+                all(
+                    row["state"] == "missing"
+                    for row in scorecard["askPipelineMeasurements"]
+                )
             )
 
     def test_pass_with_too_few_samples_is_incomplete_not_malformed(self):
@@ -219,6 +236,66 @@ class ResourceBaselineTests(unittest.TestCase):
             with self.assertRaisesRegex(
                 baseline.ResourceBaselineError,
                 "wallDurationMilliseconds must be finite",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([receipt], root / "scorecard")
+                    )
+                )
+
+    def test_invalid_ask_citation_evidence_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["askPipeline"]["samples"][0]["citations"][
+                "valid"
+            ] = False
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "citations.valid must be true",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([receipt], root / "scorecard")
+                    )
+                )
+
+    def test_nondeterministic_ask_citations_are_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["askPipeline"]["samples"][1]["citations"][
+                "digest"
+            ] = "e" * 64
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "citations are nondeterministic",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([receipt], root / "scorecard")
+                    )
+                )
+
+    def test_ask_pipeline_rejects_content_bearing_addition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            document["askPipeline"]["samples"][0][
+                "question"
+            ] = "private"
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "forbidden keys: question",
             ):
                 baseline.evaluate_namespace(
                     baseline.build_parser().parse_args(
@@ -412,6 +489,9 @@ class ResourceBaselineTests(unittest.TestCase):
 
             rendered = (output / "resource-baseline.md").read_text()
             encoded = (output / "resource-baseline.json").read_text()
+            self.assertIn("## Ask pipeline", rendered)
+            self.assertIn("| Profile | Stage |", rendered)
+            self.assertIn("`ask-resource-v1`", rendered)
             self.assertNotIn(str(receipt), rendered)
             self.assertNotIn(str(receipt), encoded)
             self.assertNotIn("meeting", encoded.lower())
@@ -424,6 +504,7 @@ class ResourceBaselineTests(unittest.TestCase):
             refine = root / "refine-1.json"
             summary = root / "summary-1.json"
             ask = root / "ask-1.json"
+            ask_pipeline = root / "ask-pipeline-1.json"
             indexing = root / "indexing-1.json"
             recording_indexing = root / "recording-indexing-1.json"
             recording_batch = root / "recording-batch-1.json"
@@ -440,6 +521,8 @@ class ResourceBaselineTests(unittest.TestCase):
                 self.sample(1, scenarios["summary"])))
             ask.write_text(json.dumps(
                 self.sample(1, scenarios["ask"])))
+            ask_pipeline.write_text(json.dumps(
+                self.ask_pipeline_sample(1)))
             indexing.write_text(json.dumps(
                 self.sample(1, scenarios["indexing"])))
             recording_indexing.write_text(json.dumps(
@@ -475,6 +558,8 @@ class ResourceBaselineTests(unittest.TestCase):
                     f"summary={summary}",
                     "--sample",
                     f"ask={ask}",
+                    "--ask-pipeline-sample",
+                    str(ask_pipeline),
                     "--sample",
                     f"indexing={indexing}",
                     "--sample",
@@ -490,6 +575,9 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(result, 0)
             receipt = json.loads(output.read_text())
             self.assertEqual(receipt["kind"], "resource-baseline")
+            self.assertEqual(
+                receipt["askPipeline"]["samples"][0]["run"], 1
+            )
             self.assertEqual(receipt["host"]["profile"], "memory-8gb")
             self.assertEqual(
                 [scenario["id"] for scenario in receipt["scenarios"]],
@@ -651,7 +739,15 @@ class ResourceBaselineTests(unittest.TestCase):
         )
         self.assertIn('ask_sample="$fragments/ask-$run.json"', runner)
         self.assertIn(
+            'ask_pipeline_sample="$fragments/ask-pipeline-$run.json"',
+            runner,
+        )
+        self.assertIn(
             'sample_arguments+=(--sample "ask=$ask_sample")',
+            runner,
+        )
+        self.assertIn(
+            '--ask-pipeline-sample "$ask_pipeline_sample"',
             runner,
         )
         self.assertIn(
@@ -781,6 +877,13 @@ class ResourceBaselineTests(unittest.TestCase):
                 self.scenario(identifier, required)
                 for identifier, required in self.required_scenarios()
             ],
+            "askPipeline": {
+                "state": "pass",
+                "samples": [
+                    self.ask_pipeline_sample(run)
+                    for run in range(1, 4)
+                ],
+            },
         }
         path.write_text(json.dumps(payload))
         return path
@@ -824,6 +927,51 @@ class ResourceBaselineTests(unittest.TestCase):
             "powerSource": "ac",
             "lowPowerModeEnabled": False,
             "workloads": workload_summaries,
+        }
+
+    @staticmethod
+    def ask_pipeline_sample(run):
+        return {
+            "schemaVersion": 1,
+            "run": run,
+            "operation": "answer",
+            "outcome": "completed",
+            "total": {
+                "wallDurationMilliseconds": 1000.0 + run * 10,
+                "cpuTimeMilliseconds": 500.0 + run * 5,
+            },
+            "firstEvidence": {
+                "wallDurationMilliseconds": 600.0 + run * 5,
+                "cpuTimeMilliseconds": 300.0 + run * 3,
+            },
+            "firstToken": {
+                "wallDurationMilliseconds": 950.0 + run * 8,
+                "cpuTimeMilliseconds": 475.0 + run * 4,
+            },
+            "stages": [
+                {
+                    "stage": stage,
+                    "outcome": "completed",
+                    "wallDurationMilliseconds": 100.0 + run,
+                    "cpuTimeMilliseconds": 50.0 + run,
+                }
+                for stage in sorted(baseline.ASK_PIPELINE_STAGES)
+            ],
+            "corpus": {
+                "generation": "ask-resource-v1",
+                "checksum": "c" * 64,
+                "fixtureSegmentCount": 10,
+                "pendingBefore": 10,
+                "pendingAfter": 0,
+                "readyBefore": False,
+                "readyAfter": True,
+                "warmup": "cold",
+            },
+            "citations": {
+                "count": 3,
+                "digest": "d" * 64,
+                "valid": True,
+            },
         }
 
     @staticmethod

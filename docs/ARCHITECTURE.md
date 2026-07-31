@@ -1254,7 +1254,30 @@ requires already-installed Apple Latin embedding assets and available
 Foundation Models, then measures the real `AskMeetings.local` workflow over the
 same fixed corpus, including current synchronous embedding backfill, bilingual
 query expansion, hybrid retrieval, and generated answer. It admits a sample
-only when both citations and nonempty generated text exist. Indexing prepares
+only when both citations and nonempty generated text exist.
+
+Each passing Ask resource run also publishes one separate, exact-shaped
+`ask-pipeline-<run>.json` receipt. A benchmark-only observer consumes the
+same closed ApplicationKit events as the Points of Interest adapter and records
+wall plus process-CPU time for the complete operation, first evidence, first
+observable answer token, and every declared Ask stage. The receipt contains no
+question, transcript, generated answer, durable identity, path, model name, or
+runtime correlation token. It binds measurements to a fixed corpus generation,
+SHA-256 corpus checksum, cold readiness transition, and validated citation
+ordinal digest. Native collection rejects duplicate, foreign, incomplete,
+failed, post-completion, malformed-digest, or misordered milestone evidence.
+
+The assembler pairs these sidecars with the exact Ask resource run numbers and
+the evaluator reports p50/p95 wall and CPU distributions per milestone and
+stage. A passing matrix requires the same corpus and citations within and
+across memory profiles; invalid citations, changed result identity, insufficient
+samples, or unstable timings block the scorecard. The current before-state
+contract intentionally proves a cold ten-segment corpus drains from ten pending
+embeddings to zero. Removing request-time corpus writes in SEARCH-1 must replace
+that readiness contract rather than silently reusing it. These reports remain
+benchmark evidence only; product scheduling and storage never read them.
+
+Indexing prepares
 the already-installed embedding runtime before sampling, drains 1,024 fixed
 public segments through the real ApplicationKit operation, and requires no
 missing rows afterward. Recording plus indexing runs in another real windowed

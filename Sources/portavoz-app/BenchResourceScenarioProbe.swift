@@ -154,6 +154,12 @@ final class BenchResourceScenarioProbe {
         removeObserver()
     }
 
+    var runIdentifier: Int { run }
+
+    func outputURL(named name: String) -> URL {
+        outputDirectory.appendingPathComponent("\(name)-\(run).json")
+    }
+
     @MainActor
     func measure<Value>(
         scenario: String,
@@ -295,6 +301,7 @@ enum BenchSummaryResourceError: Error, Equatable, LocalizedError {
 
 enum BenchAskResourceError: Error, Equatable, LocalizedError {
     case assetsNotReady
+    case invalidCitations
     case invalidTimeout
     case noCitations
     case noGeneratedAnswer
@@ -305,6 +312,8 @@ enum BenchAskResourceError: Error, Equatable, LocalizedError {
         switch self {
         case .assetsNotReady:
             "Ask requires installed Apple embedding assets and available Foundation Models"
+        case .invalidCitations:
+            "Ask resource operation returned invalid citations"
         case .invalidTimeout:
             "--bench-resource-timeout must be between 60 and 3600 seconds"
         case .noCitations:

@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,467 package tests passing (13 model-gated) + 56 XCUITest UI cases. CI
+Status: 1,473 package tests passing (13 model-gated) + 56 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -1319,9 +1319,9 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability gate is 1,237 XCTest package cases (13 gated),
-zero strict-lint violations across 397 Swift files, a 108-case
-recording/recovery corpus passing 25 consecutive iterations, and 55 XCUITest
+The current field-reliability gate is 1,473 XCTest package cases (13 gated),
+zero strict-lint violations across 431 Swift files, a 108-case
+recording/recovery corpus passing 25 consecutive iterations, and 56 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
 explicit Whisper language detection, split-lineage identity, full-pair
 translation fences, unsupported-lane progress, user-only macOS 14 scroll
@@ -1368,6 +1368,10 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   workflow over the same fixed transcript. Its measured window includes
   current synchronous embedding backfill, bilingual expansion, hybrid
   retrieval, and generated answer, and requires citations plus nonempty text.
+  The same run must emit a content-free pipeline sidecar with exact operation,
+  first-evidence, first-observable-token, seven stage, cold-corpus readiness,
+  and validated citation-digest evidence. The native probe refuses malformed
+  lifecycle, digest, milestone order, duplicate output, or incomplete success.
   Standalone indexing prepares already-installed Apple embedding assets and a
   fixed 1,024-segment corpus before measurement, then drains it through the
   real ApplicationKit operation. Recording plus indexing prepares that same
@@ -1419,14 +1423,19 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   thermal, and power summaries. Wall or CPU p95/p50 above 1.25 marks the row
   unstable. Missing, failed, not-observed, under-sampled, or unstable rows
   block without disappearing; malformed or payload-bearing evidence is an
-  error. Twenty-four deterministic tooling tests cover completeness,
+  error. Twenty-seven deterministic tooling tests cover completeness,
   blocking states, assembly, native host metadata, runner isolation,
   identity/memory-tier mismatches, exact privacy shape, non-finite metrics,
   duplicate keys/runs/profiles, required workloads, contract weakening, output
   permissions, absolute GUI output roots, source-path omission,
   canonical-runner delegation, and
   synthetic Refine, Summary, Ask, indexing, concurrent-indexing, and
-  concurrent-batch fixture/sample admission. This proves collector completeness
+  concurrent-batch fixture/sample admission. Ask-specific coverage additionally
+  rejects content-bearing fields, invalid citations, and nondeterministic
+  citation digests while proving one-to-one broad/pipeline run assembly. The
+  scorecard reports separate first-evidence and post-evidence generation timing
+  plus every stage's p50/p95 wall and CPU, and requires stable corpus/result
+  identity across profiles. This proves collector completeness
   for all nine scenarios, not a resource budget or governor decision; accepted
   multi-host evidence remains required.
 - `portavoz-cli bench-waveform`: Release first/repeat wall, process CPU, physical-footprint, exact-result, and replacement-invalidation evidence over source audio copied to scratch.

@@ -283,6 +283,36 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+Ask.swift")
         XCTAssertTrue(composition.contains("pipelineTelemetry: AskPipelineTelemetry"))
         XCTAssertTrue(composition.contains("pipelineTelemetry: pipelineTelemetry"))
+
+        let benchmarkProbe = try Self.contents(
+            of: "Sources/portavoz-app/AskPipelineRunProbe.swift")
+        guard let sampleStart = benchmarkProbe.range(
+            of: "struct AskPipelineTiming"),
+            let errorStart = benchmarkProbe.range(
+                of: "enum AskPipelineRunProbeError")
+        else {
+            return XCTFail("Ask pipeline benchmark receipt is missing")
+        }
+        let receiptContract = benchmarkProbe[
+            sampleStart.lowerBound..<errorStart.lowerBound]
+        for forbidden in [
+            "question", "meetingTitle", "Transcript", "generatedText",
+            "segmentID", "model", "path", "URL",
+        ] {
+            XCTAssertFalse(
+                receiptContract.contains(forbidden),
+                "Ask benchmark receipts must not admit content field \(forbidden)")
+        }
+        XCTAssertTrue(benchmarkProbe.contains("AskPipelineStage.allCases"))
+        XCTAssertTrue(benchmarkProbe.contains("pendingBefore"))
+        XCTAssertTrue(benchmarkProbe.contains("readyAfter"))
+        XCTAssertTrue(benchmarkProbe.contains("outputAlreadyExists"))
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        XCTAssertTrue(decisions.contains("## D193"))
+        XCTAssertTrue(quality.contains(
+            "The same run must emit a content-free pipeline sidecar"))
     }
 
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {

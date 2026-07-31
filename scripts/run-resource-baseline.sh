@@ -197,6 +197,7 @@ require_unsigned_integer "$fixture_audio_bytes" "Refine fixture audio bytes"
 
 fragments="$COLLECTION/fragments"
 sample_arguments=()
+ask_pipeline_arguments=()
 for ((run = 1; run <= RUNS; run++)); do
     audio_root="$RUN_ROOT/audio-$run"
     recording_indexing_audio_root="$RUN_ROOT/audio-recording-indexing-$run"
@@ -338,9 +339,10 @@ for ((run = 1; run <= RUNS; run++)); do
     fi
 
     ask_sample="$fragments/ask-$run.json"
-    if [[ ! -f "$ask_sample" ]]; then
+    ask_pipeline_sample="$fragments/ask-pipeline-$run.json"
+    if [[ ! -f "$ask_sample" || ! -f "$ask_pipeline_sample" ]]; then
         [[ -f "$ask_log" ]] && cat "$ask_log" >&2
-        fail "run $run did not produce the exact-shaped Ask sample"
+        fail "run $run did not produce both exact-shaped Ask samples"
     fi
 
     echo "Collecting semantic indexing resource sample $run of ${RUNS}…"
@@ -363,6 +365,9 @@ for ((run = 1; run <= RUNS; run++)); do
         fail "run $run did not produce the exact-shaped indexing sample"
     fi
     sample_arguments+=(--sample "ask=$ask_sample")
+    ask_pipeline_arguments+=(
+        --ask-pipeline-sample "$ask_pipeline_sample"
+    )
     sample_arguments+=(--sample "idle=$idle_sample")
     sample_arguments+=(--sample "indexing=$indexing_sample")
     sample_arguments+=(--sample "recording=$recording_sample")
@@ -383,6 +388,7 @@ python3 scripts/resource_baseline.py assemble \
     --commit "$COMMIT" \
     --profile "$PROFILE" \
     "${sample_arguments[@]}" \
+    "${ask_pipeline_arguments[@]}" \
     --output "$COLLECTION/receipt.json"
 
 mv "$COLLECTION" "$OUTPUT"

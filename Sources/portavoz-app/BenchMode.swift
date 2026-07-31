@@ -78,6 +78,16 @@ enum BenchMode {
 }
 
 extension BenchMode {
+    private struct AskResourceBenchmark {
+        let useCase: AskMeetings
+        let question: String
+        let meeting: Meeting
+        let segments: [TranscriptSegment]
+        let ordinalBySegmentID: [UUID: Int]
+        let corpusChecksum: String
+        let pendingBefore: Int
+    }
+
     /// `portavoz-app --mlx-smoke [real]` — loads the (already downloaded)
     /// embedded model and summarizes either a tiny synthetic Spanish meeting
     /// (default) or, with `real`, the most recent library meeting that has a
@@ -476,22 +486,10 @@ extension BenchMode {
         setbuf(stdout, nil)
         Task { @MainActor in
             do {
-                let benchmark = try await makeAskBenchmark(services: services)
-                let answer = try await probe.measure(scenario: "ask") {
-                    try await runAskBenchmark(
-                        useCase: benchmark.useCase,
-                        question: benchmark.question,
-                        timeoutSeconds: configuration.timeoutSeconds)
-                }
-                guard !answer.citations.isEmpty else {
-                    throw BenchAskResourceError.noCitations
-                }
-                guard let generated = answer.generatedText,
-                      !generated.trimmingCharacters(
-                        in: .whitespacesAndNewlines).isEmpty
-                else {
-                    throw BenchAskResourceError.noGeneratedAnswer
-                }
+                try await executeAskResourceBenchmark(
+                    services: services,
+                    configuration: configuration,
+                    probe: probe)
                 emit("bench-ask: resource sample complete")
                 exit(0)
             } catch {
@@ -503,9 +501,55 @@ extension BenchMode {
     }
 
     @MainActor
+    private static func executeAskResourceBenchmark(
+        services: AppServices,
+        configuration: BenchAskResourceConfiguration,
+        probe: BenchResourceScenarioProbe
+    ) async throws {
+        let benchmark = try await makeAskBenchmark(services: services)
+        let pipelineProbe = try AskPipelineRunProbe(run: probe.runIdentifier)
+        let observer = AppAskPipelineTelemetry.shared.addObserver(
+            pipelineProbe.receive)
+        defer { AppAskPipelineTelemetry.shared.removeObserver(observer) }
+
+        let answer = try await probe.measure(scenario: "ask") {
+            try await runAskBenchmark(
+                useCase: benchmark.useCase,
+                question: benchmark.question,
+                timeoutSeconds: configuration.timeoutSeconds)
+        }
+        guard !answer.citations.isEmpty else {
+            throw BenchAskResourceError.noCitations
+        }
+        guard let generated = answer.generatedText,
+              !generated.trimmingCharacters(
+                in: .whitespacesAndNewlines).isEmpty
+        else {
+            throw BenchAskResourceError.noGeneratedAnswer
+        }
+        let pendingAfter = try await services.store.segmentsNeedingEmbeddings(
+            limit: benchmark.segments.count + 1).count
+        let citations = try askCitationEvidence(
+            answer.citations,
+            benchmark: benchmark)
+        try pipelineProbe.writeSample(
+            to: probe.outputURL(named: "ask-pipeline"),
+            corpus: AskPipelineCorpusEvidence(
+                generation: "ask-resource-v1",
+                checksum: benchmark.corpusChecksum,
+                fixtureSegmentCount: benchmark.segments.count,
+                pendingBefore: benchmark.pendingBefore,
+                pendingAfter: pendingAfter,
+                readyBefore: benchmark.pendingBefore == 0,
+                readyAfter: pendingAfter == 0,
+                warmup: "cold"),
+            citations: citations)
+    }
+
+    @MainActor
     private static func makeAskBenchmark(
         services: AppServices
-    ) async throws -> (useCase: AskMeetings, question: String) {
+    ) async throws -> AskResourceBenchmark {
         guard #available(macOS 26.0, *),
               FoundationModelSummaryProvider.unavailabilityReason() == nil
         else {
@@ -519,13 +563,80 @@ extension BenchMode {
             fixture.meeting,
             speakers: fixture.speakers,
             segments: fixture.segments)
-        return (
-            AskMeetings.local(
+        let pendingBefore = try await services.store
+            .segmentsNeedingEmbeddings(limit: fixture.segments.count + 1).count
+        return AskResourceBenchmark(
+            useCase: AskMeetings.local(
                 store: services.store,
                 semanticRuntime: services.semanticEmbeddingRuntime,
-                telemetry: services.workloadTelemetry),
-            "What did we decide about background indexing during active calls?"
+                telemetry: services.workloadTelemetry,
+                pipelineTelemetry: AppAskPipelineTelemetry.shared.telemetry),
+            question: "What did we decide about background indexing during active calls?",
+            meeting: fixture.meeting,
+            segments: fixture.segments,
+            ordinalBySegmentID: Dictionary(uniqueKeysWithValues:
+                fixture.segments.enumerated().map { ($1.id, $0) }),
+            corpusChecksum: askCorpusChecksum(fixture),
+            pendingBefore: pendingBefore)
+    }
+
+    private static func askCorpusChecksum(
+        _ fixture: (
+            meeting: Meeting,
+            speakers: [Speaker],
+            segments: [TranscriptSegment]
         )
+    ) -> String {
+        let labels = Dictionary(uniqueKeysWithValues:
+            fixture.speakers.map { ($0.id, $0.label) })
+        let components = [fixture.meeting.title]
+            + fixture.segments.enumerated().map { index, segment in
+                [
+                    String(index),
+                    segment.speakerID.flatMap { labels[$0] } ?? "unknown",
+                    segment.channel.rawValue,
+                    segment.language ?? "",
+                    String(segment.startTime.bitPattern, radix: 16),
+                    String(segment.endTime.bitPattern, radix: 16),
+                    segment.text
+                ].joined(separator: "|")
+            }
+        return OperationFingerprint.make(
+            version: "ask-resource-corpus-v1",
+            components: components)
+    }
+
+    private static func askCitationEvidence(
+        _ citations: [AskCitation],
+        benchmark: AskResourceBenchmark
+    ) throws -> AskPipelineCitationEvidence {
+        let segmentsByID = Dictionary(uniqueKeysWithValues:
+            benchmark.segments.map { ($0.id, $0) })
+        var seen = Set<UUID>()
+        var ordinals: [String] = []
+        for citation in citations {
+            guard let segmentID = citation.segmentID,
+                  seen.insert(segmentID).inserted,
+                  let expected = segmentsByID[segmentID],
+                  citation.meetingID == benchmark.meeting.id,
+                  citation.meetingTitle == benchmark.meeting.title,
+                  citation.timestamp == expected.startTime,
+                  citation.text == expected.text,
+                  let ordinal = benchmark.ordinalBySegmentID[segmentID]
+            else {
+                throw BenchAskResourceError.invalidCitations
+            }
+            ordinals.append(String(ordinal))
+        }
+        guard !ordinals.isEmpty else {
+            throw BenchAskResourceError.noCitations
+        }
+        return AskPipelineCitationEvidence(
+            count: ordinals.count,
+            digest: OperationFingerprint.make(
+                version: "ask-resource-citations-v1",
+                components: ordinals),
+            valid: true)
     }
 
     @MainActor

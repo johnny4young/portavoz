@@ -6302,3 +6302,45 @@ component visible without weakening privacy or turning measurement labels into
 resource policy. Establishing stable before-state evidence first lets later
 progressive retrieval prove lower time-to-first-evidence and unchanged
 citations rather than merely moving work and assuming improvement.
+
+## D193 — Pair every Ask resource run with one authoritative pipeline receipt (Jul 2026)
+
+**Context:** D192 established a stable content-free event vocabulary, but the
+resource matrix still retained only broad process counters. A trace visible in
+Instruments was insufficient benchmark authority: it did not bind stage timing
+to the exact resource run, prove the current corpus readiness transition, or
+fail the matrix when citations changed. Parsing signpost text would also make
+the benchmark depend on a presentation format rather than the application
+contract.
+
+**Decision:** the hidden macOS Ask benchmark installs one observer around its
+single disposable `AskMeetings.local` operation. A strict native collector
+accepts one answer trace, every declared stage exactly once, first evidence,
+first observable answer token, and one successful terminal outcome. It samples
+monotonic wall and process CPU at those boundaries and atomically writes one
+owner-only, non-overwriting sidecar named for the same numeric run as the broad
+resource receipt. Duplicate, foreign, incomplete, failed, post-completion,
+misordered, or malformed-digest evidence cannot publish.
+
+The receipt contains only closed labels, timings, counts, a fixed corpus
+generation, a SHA-256 checksum over canonical public-fixture fields, cold
+readiness state, and a SHA-256 digest over validated fixture citation ordinals.
+Runtime trace/segment/meeting IDs, question and transcript text, generated
+answers, model names, paths, and errors remain outside the schema. Canonical
+timestamps use their IEEE-754 bit patterns rather than locale-sensitive text.
+
+The assembler requires exact one-to-one broad Ask and pipeline run sets. The
+evaluator reports p50/p95 wall and CPU for total time, first evidence, first
+observable token, post-evidence generation, and every stage; insufficient or
+unstable samples block. Corpus and citation identity must be deterministic
+within a memory profile and comparable across profiles. The current v1
+before-state deliberately requires all ten fixed segments to move from pending
+to ready during the request. SEARCH-1 must version or replace that readiness
+contract when request-time backfill is removed.
+
+**Rationale:** pairing native stage evidence with the already isolated host
+resource run makes performance changes explainable without exposing meeting
+content or allowing instrumentation to affect product policy. Exact corpus and
+citation gates distinguish a faster implementation from one that silently did
+less work, while an explicit before-state gives later progressive retrieval a
+real comparison boundary.

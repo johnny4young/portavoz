@@ -5,6 +5,8 @@ Status: implemented, signed with Developer ID, and used in real meetings; public
 D190 distinguishes intentional cancellation from owner-leased worker death.
 D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
+D193 lets only the resource-benchmark process observe that same closed stream
+and publish a strict content-free Ask pipeline sidecar per measured run.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -922,6 +924,16 @@ meeting-scoped seek request before opening Meeting Detail. The destination
 consumes it after playback is ready; if that meeting is already open, its
 detail observes the identity-bearing request directly instead of depending on
 a no-op route assignment to reconstruct the view (D100).
+
+The hidden Ask resource mode installs one observer only around its disposable
+`AskMeetings.local` call (D193). `AskPipelineRunProbe` accepts exactly one
+answer trace, one completion for every declared stage, first evidence, first
+observable token, and successful terminal completion. It samples process CPU
+and monotonic wall time at event boundaries, rejects invalid lifecycle or
+digest evidence, and atomically writes an owner-only, non-overwriting sidecar
+beside the broad resource sample. Fixed-corpus identity and citation validity
+are resolved locally after the operation; no product window, normal Ask model,
+or persisted meeting ever reads benchmark state.
 
 `AppServices` owns one process-scoped `FirstRunModel` and one process-scoped
 `LocalDataLedgerModel` (D101). `ResolveFirstRunExperience` decides whether one
