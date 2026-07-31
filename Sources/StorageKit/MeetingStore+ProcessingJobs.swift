@@ -152,6 +152,39 @@ extension MeetingStore {
         }
     }
 
+    /// Returns an intentionally suspended owned attempt to pending work.
+    /// Suspension is not worker failure: it clears the lease and refunds the
+    /// claim so repeated policy pauses cannot consume the bounded retry budget.
+    public func suspendProcessingJob(
+        _ id: ProcessingJobID,
+        owner: String,
+        at timestamp: Date = Date()
+    ) async throws -> ProcessingJob {
+        try Self.validateOwner(owner)
+        return try await database.write { db in
+            var record = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
+            guard record.attempt > 0 else {
+                throw StorageError.invalidProcessingJob(
+                    "a running job must have a claim attempt to suspend")
+            }
+            record.state = ProcessingJobState.pending.rawValue
+            record.progress = 0
+            record.attempt -= 1
+            record.notBefore = nil
+            record.leaseOwner = nil
+            record.leaseExpiresAt = nil
+            record.errorCode = nil
+            record.errorMessage = nil
+            record.finishedAt = nil
+            record.updatedAt = timestamp
+            try record.update(db)
+            let job = try record.job
+            try Self.reconcileProcessingLifecycle(
+                for: job.meetingID, at: timestamp, in: db)
+            return job
+        }
+    }
+
     /// Completes an owned attempt and derives the meeting's aggregate state
     /// from all of its durable jobs.
     public func completeProcessingJob(

@@ -31,6 +31,17 @@ extension MeetingStore: PostCaptureProcessingStore {
             at: timestamp)
     }
 
+    public func suspendPostCaptureJob(
+        _ id: ProcessingJobID,
+        owner: String,
+        at timestamp: Date
+    ) async throws {
+        _ = try await suspendProcessingJob(
+            id,
+            owner: owner,
+            at: timestamp)
+    }
+
     public func postCaptureDetail(_ meetingID: MeetingID) async throws -> MeetingDetail? {
         try await detail(meetingID)
     }

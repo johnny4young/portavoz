@@ -838,6 +838,56 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             "processing.lease.exhausted")
     }
 
+    func testIntentionalSuspensionReleasesLeaseWithoutConsumingAttempt() async throws {
+        let store = try MeetingStore.inMemory()
+        let captured = meeting()
+        try await store.save(captured)
+        _ = try await store.enqueueProcessingJobs(
+            for: captured.id,
+            requests: [
+                ProcessingJobRequest(
+                    kind: .summary,
+                    inputFingerprint: "summary-suspended",
+                    maxAttempts: 1),
+            ],
+            at: now)
+        let claimValue = try await store.claimNextProcessingJob(
+            kinds: [.summary], owner: "worker-a", leaseDuration: 10, at: now)
+        let claim = try XCTUnwrap(claimValue)
+        _ = try await store.heartbeatProcessingJob(
+            claim.id,
+            owner: "worker-a",
+            progress: 0.5,
+            leaseDuration: 10,
+            at: now.addingTimeInterval(1))
+
+        let suspended = try await store.suspendProcessingJob(
+            claim.id,
+            owner: "worker-a",
+            at: now.addingTimeInterval(2))
+
+        XCTAssertEqual(suspended.state, .pending)
+        XCTAssertEqual(suspended.attempt, 0)
+        XCTAssertEqual(suspended.progress, 0)
+        XCTAssertNil(suspended.leaseOwner)
+        XCTAssertNil(suspended.leaseExpiresAt)
+        XCTAssertNil(suspended.errorCode)
+        XCTAssertNil(suspended.notBefore)
+        let falseDeaths = try await store.recoverExpiredProcessingJobs(
+            at: now.addingTimeInterval(30))
+        XCTAssertTrue(falseDeaths.isEmpty)
+
+        let resumedValue = try await store.claimNextProcessingJob(
+            kinds: [.summary],
+            owner: "worker-b",
+            leaseDuration: 10,
+            at: now.addingTimeInterval(31))
+        let resumed = try XCTUnwrap(resumedValue)
+        XCTAssertEqual(resumed.id, claim.id)
+        XCTAssertEqual(resumed.attempt, 1)
+        XCTAssertEqual(resumed.leaseOwner, "worker-b")
+    }
+
     func testProcessingJobRecordRejectsCorruptIdentityStateAndLeaseContract() throws {
         let captured = meeting()
         let job = ProcessingJob(

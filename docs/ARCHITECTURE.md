@@ -719,6 +719,20 @@ are removed, the coordinator clears launch ownership; a later maintenance wake
 cannot reinterpret the destination URL as permission to start a fresh backup.
 None of these paths adds a timer, heartbeat, PID heuristic, or polling task.
 
+Durable ownership follows the smallest recovery boundary that can prove exact
+progress. Semantic corpus maintenance and the existing-library sync seed use
+idempotent database cursors, so an explicit paused result leaves replayable
+rows and needs no claimed-worker lease. Whole-library backup owns an immutable
+SQLite stage through a kernel lease and journals every safe source advance.
+Post-capture transcription, diarization, and summary are different: each is an
+exclusive claimed job whose generated publication must remain owner-fenced, so
+the worker renews a durable lease. Intentional suspension explicitly returns an
+owned job to pending, clears the lease, refunds that claim attempt, and ends the
+current drain invocation so it cannot immediately reclaim pending work; an
+expired running lease remains the distinct worker-death path consumed by launch
+recovery. Adding a timer or heartbeat to replay-safe checkpoint work is not a
+substitute for a durable cursor.
+
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,
 query embedding, and semantic retrieval as one operation, so Library and Ask
@@ -784,7 +798,15 @@ input fingerprint before capability work, publishes through owner- and
 revision-fenced StorageKit transactions, and derives the next dependency or
 terminal lifecycle outcome. Failed required work receives bounded persisted
 retry dates; superseded work and exhausted optional summaries are cancelled
-without hiding the captured meeting. The private macOS filesystem adapter
+without hiding the captured meeting. Intentional workflow cancellation releases
+the unexpired owner lease through an explicit StorageKit transition, resets
+non-resumable progress, and refunds the claim attempt before returning the job
+to pending. The current drain invocation then stops rather than reclaiming the
+same or later pending work. Suspension therefore cannot be misclassified as
+worker death or exhaust the retry budget; only an actually expired running
+lease enters launch recovery.
+
+The private macOS filesystem adapter
 revalidates staged/final files and reconciles them with persisted lifecycle
 state. Usable audio remains playable and exportable when derived work fails.
 A stale `recording` shell that already contains recovered transcript content is

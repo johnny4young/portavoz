@@ -2340,6 +2340,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(coordinator.contains("processPostCaptureJobs.nextScheduledDate"))
         for bypass in [
             "claimNextProcessingJob", "heartbeatProcessingJob",
+            "suspendProcessingJob",
             "completeTranscriptionJob", "completeDiarizationJob",
             "completeSummaryJob", "failProcessingJob",
             "cancelProcessingJob", "nextScheduledProcessingDate"
@@ -2351,6 +2352,7 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         for ownedPolicy in [
             "claimPostCaptureJob", "heartbeatPostCaptureJob",
+            "suspendPostCaptureJob",
             "processTranscription", "processDiarization", "processSummary",
             "SummaryOperationFingerprint.compute", "retryDate",
             "cancelPostCaptureJob", "failPostCaptureJob"
@@ -2373,6 +2375,47 @@ final class ArchitectureDependencyTests: XCTestCase {
         ] {
             XCTAssertTrue(adapter.contains(adapterDependency))
         }
+    }
+
+    func testDurableWorkOwnershipMatchesItsRecoveryGranularity() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/ProcessPostCaptureJobs.swift")
+        let jobs = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+ProcessingJobs.swift")
+        let semantic = try Self.contents(
+            of: "Sources/portavoz-app/SemanticCorpusIndexingSupervisor.swift")
+        let sync = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudMeetingSyncCoordinator.swift")
+        let backup = try Self.contents(
+            of: "Sources/ApplicationKit/ExportLibraryMarkdownBackup.swift")
+        let backupStore = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+LibraryMarkdownBackup.swift")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+
+        XCTAssertTrue(workflow.contains("suspendPostCaptureJob"))
+        XCTAssertTrue(workflow.contains("return (.suspended, true, nil)"))
+        XCTAssertTrue(workflow.contains("if execution.shouldStop { break }"))
+        XCTAssertTrue(jobs.contains("suspendProcessingJob"))
+        XCTAssertTrue(jobs.contains("record.attempt -= 1"))
+        XCTAssertTrue(jobs.contains("processing.lease.expired"))
+        XCTAssertTrue(semantic.contains("return .paused"))
+        XCTAssertTrue(sync.contains(".paused(processedCount:"))
+        XCTAssertTrue(backup.contains("return .suspended"))
+        XCTAssertTrue(backupStore.contains(".owner.lock"))
+        XCTAssertTrue(backupStore.contains("portavoBSDFileLock"))
+        for replaySafeOwner in [semantic, sync, backup, backupStore] {
+            XCTAssertFalse(replaySafeOwner.contains("heartbeat"))
+            XCTAssertFalse(replaySafeOwner.contains("Timer"))
+            XCTAssertFalse(replaySafeOwner.contains("Task.sleep"))
+        }
+        XCTAssertTrue(architecture.contains(
+            "Intentional suspension explicitly returns"))
+        XCTAssertTrue(decisions.contains("## D190"))
+        XCTAssertTrue(storageSpec.contains("Intentional suspension"))
+        XCTAssertTrue(appSpec.contains("Intentional workflow cancellation"))
     }
 
     func testAppMeetingBundleImportEntersThroughApplicationKit() throws {

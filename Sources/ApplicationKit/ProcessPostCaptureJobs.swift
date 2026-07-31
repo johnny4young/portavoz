@@ -21,6 +21,11 @@ public protocol PostCaptureProcessingStore: Sendable {
         leaseDuration: TimeInterval,
         at timestamp: Date
     ) async throws
+    func suspendPostCaptureJob(
+        _ id: ProcessingJobID,
+        owner: String,
+        at timestamp: Date
+    ) async throws
     func postCaptureDetail(_ meetingID: MeetingID) async throws -> MeetingDetail?
     func postCaptureAudioAssets(_ meetingID: MeetingID) async throws -> [AudioAsset]
     func postCaptureContextItems(_ meetingID: MeetingID) async throws -> [ContextItem]
@@ -136,6 +141,7 @@ public enum PostCaptureProcessingOutcome: String, Equatable, Sendable {
     case succeeded
     case failed
     case cancelled
+    case suspended
     case leaseLost
 }
 
@@ -275,6 +281,7 @@ public struct ProcessPostCaptureJobs: ApplicationUseCase {
             let execution = await execute(job, request: request)
             changed = changed || execution.changed
             if let issue = execution.issue { issues.append(issue) }
+            if execution.shouldStop { break }
         }
         return ProcessPostCaptureJobsResult(
             processedJobCount: processedJobCount,
@@ -293,7 +300,11 @@ private extension ProcessPostCaptureJobs {
     private func execute(
         _ job: ProcessingJob,
         request: ProcessPostCaptureJobsRequest
-    ) async -> (changed: Bool, issue: PostCaptureProcessingIssue?) {
+    ) async -> (
+        changed: Bool,
+        issue: PostCaptureProcessingIssue?,
+        shouldStop: Bool
+    ) {
         await request.progress(.started(kind: job.kind, attempt: job.attempt))
         let heartbeat = heartbeatTask(for: job, owner: request.owner)
         defer { heartbeat.cancel() }
@@ -305,21 +316,22 @@ private extension ProcessPostCaptureJobs {
                 attempt: job.attempt,
                 outcome: .succeeded,
                 durableStateChanged: true))
-            return (true, nil)
+            return (true, nil, false)
         } catch is CancellationError {
+            let suspension = await suspend(job, owner: request.owner)
             await request.progress(.finished(
                 kind: job.kind,
                 attempt: job.attempt,
-                outcome: .cancelled,
-                durableStateChanged: false))
-            return (false, nil)
+                outcome: suspension.outcome,
+                durableStateChanged: suspension.changed))
+            return (suspension.changed, suspension.issue, true)
         } catch let error as StorageError where error.isPostCaptureLeaseLoss {
             await request.progress(.finished(
                 kind: job.kind,
                 attempt: job.attempt,
                 outcome: .leaseLost,
                 durableStateChanged: false))
-            return (false, nil)
+            return (false, nil, false)
         } catch {
             let preservation = await preserveFailure(
                 error,
@@ -330,7 +342,7 @@ private extension ProcessPostCaptureJobs {
                 attempt: job.attempt,
                 outcome: .failed,
                 durableStateChanged: preservation.changed))
-            return preservation
+            return (preservation.changed, preservation.issue, false)
         }
     }
 
@@ -344,6 +356,29 @@ private extension ProcessPostCaptureJobs {
             try await processSummary(job, owner: owner)
         default:
             throw PostCaptureProcessingError.unsupportedKind(job.kind.rawValue)
+        }
+    }
+
+    private func suspend(
+        _ job: ProcessingJob,
+        owner: String
+    ) async -> (
+        outcome: PostCaptureProcessingOutcome,
+        changed: Bool,
+        issue: PostCaptureProcessingIssue?
+    ) {
+        do {
+            try await store.suspendPostCaptureJob(
+                job.id,
+                owner: owner,
+                at: now())
+            return (.suspended, true, nil)
+        } catch let error as StorageError where error.isPostCaptureLeaseLoss {
+            return (.leaseLost, false, nil)
+        } catch {
+            return (.failed, false, PostCaptureProcessingIssue(
+                stage: .failurePreservation(job.kind),
+                message: error.localizedDescription))
         }
     }
 
@@ -696,32 +731,6 @@ private extension ProcessPostCaptureJobs {
         case .diarization: "processing.diarization.failed"
         case .summary: "processing.summary.failed"
         default: "processing.worker.failed"
-        }
-    }
-}
-
-private enum PostCaptureProcessingError: LocalizedError {
-    case emptyTranscript
-    case inputNotReady
-    case inputSuperseded
-    case meetingUnavailable
-    case summaryProviderUnavailable
-    case unsupportedKind(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .emptyTranscript:
-            "The captured meeting has no transcript to process."
-        case .inputNotReady:
-            "The processing input does not have final durable evidence."
-        case .inputSuperseded:
-            "The processing input changed before execution."
-        case .meetingUnavailable:
-            "The meeting is no longer available."
-        case .summaryProviderUnavailable:
-            "No configured local summary provider is currently available."
-        case .unsupportedKind(let kind):
-            "The process worker does not support \(kind)."
         }
     }
 }

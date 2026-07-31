@@ -316,6 +316,60 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
         XCTAssertTrue(actions.isEmpty)
     }
 
+    func testCancellationSuspendsOwnedJobInsteadOfWaitingForLeaseExpiry() async throws {
+        let fixture = Fixture(now: now)
+        let segment = fixture.segment(
+            channel: .system, text: "Current", language: "en", start: 0)
+        let provider = CancelledSummaryProvider()
+        let summaryRequest = SummaryRequest(
+            meetingID: fixture.meeting.id,
+            segments: [segment],
+            speakers: [],
+            recipe: .general,
+            targetLanguage: "en")
+        let fingerprint = SummaryOperationFingerprint.compute(
+            request: summaryRequest,
+            providerID: CancelledSummaryProvider.providerID,
+            transcriptRevision: fixture.meeting.transcriptRevision)
+        let job = fixture.job(kind: .summary, fingerprint: fingerprint)
+        let untouchedJob = fixture.job(kind: .summary, fingerprint: fingerprint)
+        let store = WorkflowStoreFake(
+            jobs: [job, untouchedJob],
+            details: [fixture.meeting.id: fixture.detail(segments: [segment])])
+        let capabilities = WorkflowCapabilitiesFake(provider: PostCaptureSummaryProviderSelection(
+            provider: provider,
+            providerID: CancelledSummaryProvider.providerID,
+            modelID: "cancel-test",
+            modelRevision: nil))
+        let events = EventRecorder()
+        let workflow = ProcessPostCaptureJobs(
+            store: store,
+            capabilities: capabilities,
+            heartbeatInterval: .seconds(3_600),
+            now: { processPostCaptureNow })
+
+        let result = await workflow.execute(.init(owner: "test-owner") { event in
+            await events.record(event)
+        })
+
+        XCTAssertEqual(result.processedJobCount, 1)
+        XCTAssertTrue(result.durableStateChanged)
+        XCTAssertTrue(result.issues.isEmpty)
+        let suspensions = await store.suspensionRecords()
+        XCTAssertEqual(suspensions, [job.id])
+        let remainingJobs = await store.remainingJobIDs()
+        XCTAssertEqual(remainingJobs, [untouchedJob.id])
+        let recordedEvents = await events.snapshot()
+        XCTAssertEqual(recordedEvents, [
+            .started(kind: .summary, attempt: 1),
+            .finished(
+                kind: .summary,
+                attempt: 1,
+                outcome: .suspended,
+                durableStateChanged: true)
+        ])
+    }
+
     func testClaimAndFailurePreservationErrorsRemainTypedDiagnosticIssues() async throws {
         let fixture = Fixture(now: now)
         let claimStore = WorkflowStoreFake(claimError: .claimFailed)
@@ -501,6 +555,7 @@ private actor WorkflowStoreFake: PostCaptureProcessingStore {
     private var runs: [GenerationRun] = []
     private var failures: [FailureRecord] = []
     private var cancellations: [CancellationRecord] = []
+    private var suspensions: [ProcessingJobID] = []
     private var scheduledRequest: SchedulingRequest?
 
     init(
@@ -541,6 +596,14 @@ private actor WorkflowStoreFake: PostCaptureProcessingStore {
         leaseDuration: TimeInterval,
         at timestamp: Date
     ) {}
+
+    func suspendPostCaptureJob(
+        _ id: ProcessingJobID,
+        owner: String,
+        at timestamp: Date
+    ) {
+        suspensions.append(id)
+    }
 
     func postCaptureDetail(_ meetingID: MeetingID) -> MeetingDetail? {
         details[meetingID]
@@ -623,6 +686,8 @@ private actor WorkflowStoreFake: PostCaptureProcessingStore {
     func generationRuns() -> [GenerationRun] { runs }
     func failureRecords() -> [FailureRecord] { failures }
     func cancellationRecords() -> [CancellationRecord] { cancellations }
+    func suspensionRecords() -> [ProcessingJobID] { suspensions }
+    func remainingJobIDs() -> [ProcessingJobID] { jobs.map(\.id) }
     func schedulingRequest() -> SchedulingRequest? { scheduledRequest }
 
     private func commit(
@@ -742,6 +807,14 @@ private actor RecordingSummaryProvider: SummaryProvider {
     }
 
     func requests() -> [SummaryRequest] { recorded }
+}
+
+private actor CancelledSummaryProvider: SummaryProvider {
+    static let providerID = "cancelled-summary"
+
+    func summarize(_ request: SummaryRequest) throws -> SummaryDraft {
+        throw CancellationError()
+    }
 }
 
 private actor EventRecorder {

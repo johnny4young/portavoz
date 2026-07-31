@@ -6183,3 +6183,40 @@ protects user files, while explicit abandon separates retryable ownership
 release from terminal deletion. The implementation now supports relaunch
 continuation; a real process-kill/relaunch exercise remains field evidence, not
 a prerequisite for the code-level contract.
+
+## D190 — Release owner-leased jobs explicitly on intentional suspension (Jul 2026)
+
+**Context:** durable post-capture jobs use an exclusive owner lease and periodic
+heartbeat because their model work and generated publication cannot be resumed
+from an internal cursor. A task cancellation previously returned from
+ApplicationKit while leaving the row `running`. Launch recovery could only
+interpret the later lease expiration as worker death, consuming an attempt and
+eventually exhausting work that had merely been suspended by policy or process
+coordination. Reusing the same ownership mechanism for semantic indexing,
+existing-library sync, or staged backup would add timers without improving
+their already exact replay boundaries.
+
+**Decision:** StorageKit adds one owner- and unexpired-lease-fenced suspension
+transition. It returns the claimed job to `pending`, resets non-resumable
+progress, clears lease/error/terminal fields, and refunds exactly the claim
+attempt that opened the interrupted execution. Stale owners and repeated
+suspension fail as lease loss. `ProcessPostCaptureJobs` invokes this transition
+when capability work throws `CancellationError` and emits a distinct
+`suspended` outcome only after the durable write succeeds, then stops the
+current drain invocation so it cannot immediately reclaim pending work. Lease
+loss remains a separate outcome; another persistence error stays a typed
+preservation issue.
+
+Replay-safe maintenance keeps its existing narrower ownership. Semantic
+backfill and the existing-library seed publish explicit paused outcomes at
+their durable database cursors. Whole-library backup journals every safe source
+advance and uses a kernel lease for its immutable stage. None receives a timer,
+PID heuristic, or heartbeat. Future graph rebuild must select one of these
+contracts only after its derived index and rebuild cursor exist.
+
+**Rationale:** an explicit release makes intentional suspension observable and
+repeat-safe without waiting for time to prove a worker dead. Refunding the claim
+is required: a pending row at `maxAttempts` is not claimable and would otherwise
+be stranded. Matching ownership strength to recovery granularity keeps the
+durable worker strict while avoiding artificial liveness machinery around
+idempotent checkpoint workflows.
