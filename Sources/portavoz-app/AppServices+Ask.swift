@@ -107,6 +107,7 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
                 meetingID: hit.meetingID,
                 meetingTitle: hit.meetingTitle,
                 timestamp: hit.startTime,
+                transcriptRevision: hit.transcriptRevision,
                 text: hit.text)
         }
     }

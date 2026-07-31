@@ -66,7 +66,7 @@ EXACT_RANK_ONE_INTENTS = {
 }
 LANGUAGES = {"en", "es", "mixed"}
 ANSWER_POLICIES = {"answer", "abstain"}
-ANSWER_OUTCOMES = {"answered", "abstained"}
+ANSWER_OUTCOMES = {"answered", "abstained", "notEvaluated"}
 SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,79}$")
 SAFE_GENERATION = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
 SAFE_BUILD = re.compile(r"^[A-Za-z0-9._+-]{1,80}$")
@@ -165,6 +165,12 @@ def number(value, path, minimum=0, maximum=None):
         suffix = f" and <= {maximum}" if maximum is not None else ""
         raise AskQualityError(f"{path} must be >= {minimum}{suffix}")
     return value
+
+
+def optional_number(value, path, minimum=0, maximum=None):
+    if value is None:
+        return None
+    return number(value, path, minimum, maximum)
 
 
 def string_array(value, path, maximum_count=20):
@@ -431,27 +437,44 @@ def validate_observations(document, fixture):
             f"{path}.answer",
             ("outcome", "factuality", "citationCoverage", "unsupportedClaims"),
         )
+        outcome = enum_value(
+            answer["outcome"],
+            f"{path}.answer.outcome",
+            ANSWER_OUTCOMES,
+        )
+        factuality = optional_number(
+            answer["factuality"], f"{path}.answer.factuality", 0, 1
+        )
+        citation_coverage = optional_number(
+            answer["citationCoverage"],
+            f"{path}.answer.citationCoverage",
+            0,
+            1,
+        )
+        unsupported_claims = integer(
+            answer["unsupportedClaims"],
+            f"{path}.answer.unsupportedClaims",
+        )
+        if outcome == "notEvaluated":
+            if factuality is not None or citation_coverage is not None:
+                raise AskQualityError(
+                    f"{path}.answer unevaluated scores must be null"
+                )
+            if unsupported_claims != 0:
+                raise AskQualityError(
+                    f"{path}.answer unevaluated claims must be zero"
+                )
+        elif factuality is None or citation_coverage is None:
+            raise AskQualityError(
+                f"{path}.answer evaluated scores must be numeric"
+            )
         observations[query_id] = {
             "hits": hits,
             "answer": {
-                "outcome": enum_value(
-                    answer["outcome"],
-                    f"{path}.answer.outcome",
-                    ANSWER_OUTCOMES,
-                ),
-                "factuality": number(
-                    answer["factuality"], f"{path}.answer.factuality", 0, 1
-                ),
-                "citationCoverage": number(
-                    answer["citationCoverage"],
-                    f"{path}.answer.citationCoverage",
-                    0,
-                    1,
-                ),
-                "unsupportedClaims": integer(
-                    answer["unsupportedClaims"],
-                    f"{path}.answer.unsupportedClaims",
-                ),
+                "outcome": outcome,
+                "factuality": factuality,
+                "citationCoverage": citation_coverage,
+                "unsupportedClaims": unsupported_claims,
             },
         }
     missing = set(fixture["queries"]) - set(observations)

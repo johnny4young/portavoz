@@ -66,6 +66,8 @@ struct PortavozCLI {
             await BenchSpotlightCommand.run(arguments)
         case "bench-capture":
             await BenchCaptureCommand.run(arguments)
+        case "bench-ask-quality":
+            await BenchAskQualityCommand.run(arguments)
         default:
             printUsage()
         }
@@ -91,6 +93,8 @@ struct PortavozCLI {
                                           [--runs 3] [--delivery-items 1000] [--output <json>]
               portavoz-cli bench-capture [--duration-seconds 10800] [--chunk-frames 4800]
                                          [--source-commit <sha>] [--output <json>]
+              portavoz-cli bench-ask-quality --fixture <json> --output <json>
+                                              --build <id> --commit <sha>
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]

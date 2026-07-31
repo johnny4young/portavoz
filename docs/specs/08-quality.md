@@ -1334,7 +1334,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 ## Measurement harnesses
 
 - `make test-ask-quality`: verifies the canonical public-synthetic Ask fixture
-  and runs 19 deterministic evaluator cases without loading models or user
+  and runs 21 deterministic evaluator cases without loading models or user
   data. The fixture has exactly 240 judged queries: 60 Spanish-to-Spanish, 60
   English-to-English, 40 English-to-Spanish, 40 Spanish-to-English, 20
   code-switched, and 20 isolated robustness cases. Evaluation reports Hit@1,
@@ -1344,8 +1344,15 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   abstention, citation identity, hard-negative exclusion, and zero unsupported
   claims fail closed. The owner-only scorecard retains aggregate metrics plus
   fixture, adapter, build, and commit identity, never source payloads. This
-  adapter-neutral harness is a quality boundary, not product-path or model
-  performance evidence until a real observation adapter supplies the results.
+  adapter-neutral harness is the fail-closed quality boundary.
+- `portavoz-cli bench-ask-quality` accepts fixture, output, build, and commit
+  arguments, seeds a disposable database, and runs the real
+  `LocalAskMeetingRetrieval` path without opening the user library. Four Swift
+  tests cover product retrieval provenance plus owner-only, atomic,
+  non-overwriting publication. The adapter records transcript revisions and
+  intentionally emits `notEvaluated` answer fields, so retrieval can be scored
+  while answer-quality and answer-policy gates remain blocked until a separate
+  versioned judge exists.
 - `bench-m2`: live transcript lag (p50/p95/max) with concurrent batch processing.
 - `portavoz-cli der`: DER against reference RTTM (public fixture: pyannote sample.wav/rttm).
 - `scripts/verify_drift.py`: drift through envelope correlation (±5 s, edge warning, multi-point).

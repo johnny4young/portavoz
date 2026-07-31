@@ -1294,6 +1294,17 @@ queries, transcripts, answers, owners, or citation identifiers. This tooling is
 not linked into the application and does not choose or configure a retrieval
 engine.
 
+The CLI production-observation adapter loads that fixture into a disposable,
+owner-only database and executes the real `LocalAskMeetingRetrieval` hybrid
+path with deterministic no-expansion control. It never opens the user library.
+Search hits and Ask citations carry the meeting transcript revision through to
+the observation, so the evaluator can reject stale evidence. The adapter does
+not run or judge a generative answer: it emits explicit `notEvaluated` answer
+fields, preserving retrieval metrics while forcing the complete quality gate
+to remain blocked until a separately versioned answer judge supplies evidence.
+Observation publication is owner-only, atomic, non-overwriting, and remains
+outside the application dependency graph.
+
 Indexing prepares
 the already-installed embedding runtime before sampling, drains 1,024 fixed
 public segments through the real ApplicationKit operation, and requires no

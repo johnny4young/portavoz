@@ -6391,3 +6391,34 @@ annotation when producing a fixture. Freezing the scoring contract before the
 implementation changes makes latency improvements comparable rather than
 subjective and preserves multilingual, evidence-linked behavior as an explicit
 architecture invariant.
+
+## D195 — Observe production Ask retrieval without claiming answer quality (Jul 2026)
+
+**Context:** D194 freezes an adapter-neutral quality contract, but generated
+fixtures and evaluator tests do not prove that the shipped retrieval path can
+produce canonical observations. Linking benchmark code into the app or opening
+the user's library would weaken product boundaries and privacy. Conversely,
+filling answer scores from retrieval evidence would falsely claim generative
+factuality and citation coverage.
+
+**Decision:** `portavoz-cli bench-ask-quality` loads a verified quality fixture
+into a disposable owner-only `MeetingStore`, executes the real
+`LocalAskMeetingRetrieval` hybrid path with deterministic no-expansion control,
+maps ephemeral identities back to fixture identities, and atomically publishes
+one non-overwriting observation document. `SearchHit` and `AskCitation` carry
+the meeting transcript revision so every observed citation includes canonical
+revision provenance. The adapter never opens the user library and is not linked
+into the app.
+
+This first production adapter evaluates retrieval only. Every answer observation
+is explicitly `notEvaluated`, with null factuality and citation coverage and zero
+unsupported-claim assertions. The evaluator may report retrieval metrics, but
+the answer policy and quality gates remain blocked. A later separately versioned
+answer adapter or judge must provide that evidence; retrieval success cannot be
+promoted into an answer-quality claim.
+
+**Rationale:** exercising the shipped retrieval implementation closes the gap
+between a synthetic contract and product code while preserving privacy and
+dependency direction. Explicitly incomplete answer evidence keeps the release
+gate honest and lets retrieval architecture evolve without hiding the remaining
+generative-quality work.

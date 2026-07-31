@@ -129,16 +129,19 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             }
 
             return await trace.measure(.citationFetch) {
-                fused.compactMap { finalHitsByID[$0] }.map { hit in
-                    AskCitation(
-                        segmentID: hit.segmentID,
-                        meetingID: hit.meetingID,
-                        meetingTitle: hit.meetingTitle,
-                        timestamp: hit.startTime,
-                        text: hit.text)
-                }
+                fused.compactMap { finalHitsByID[$0] }.map(Self.citation)
             }
         }
+    }
+
+    private static func citation(_ hit: SearchHit) -> AskCitation {
+        AskCitation(
+            segmentID: hit.segmentID,
+            meetingID: hit.meetingID,
+            meetingTitle: hit.meetingTitle,
+            timestamp: hit.startTime,
+            transcriptRevision: hit.transcriptRevision,
+            text: hit.text)
     }
 
     private static func searchResult(_ hit: SearchHit) -> AskSearchResult {

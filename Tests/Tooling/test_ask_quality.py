@@ -264,6 +264,43 @@ class AskQualityTests(unittest.TestCase):
         ):
             quality.validate_observations(payload, fixture)
 
+    def test_retrieval_only_observations_remain_explicitly_blocked(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        observations = self.perfect_observations(fixture_document)
+        for observation in observations["queries"]:
+            observation["answer"] = {
+                "outcome": "notEvaluated",
+                "factuality": None,
+                "citationCoverage": None,
+                "unsupportedClaims": 0,
+            }
+
+        scorecard = quality.evaluate(
+            fixture, quality.validate_observations(observations, fixture)
+        )
+
+        self.assertEqual(scorecard["outcome"], "blocked")
+        self.assertTrue(scorecard["gates"]["retrievalQualityFloor"])
+        self.assertFalse(scorecard["gates"]["answerQualityFloor"])
+        self.assertFalse(scorecard["gates"]["answerPolicyHonored"])
+
+    def test_unevaluated_answers_reject_fabricated_scores(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        observations = self.perfect_observations(fixture_document)
+        observations["queries"][0]["answer"] = {
+            "outcome": "notEvaluated",
+            "factuality": 1,
+            "citationCoverage": None,
+            "unsupportedClaims": 0,
+        }
+
+        with self.assertRaisesRegex(
+            quality.AskQualityError, "unevaluated scores must be null"
+        ):
+            quality.validate_observations(observations, fixture)
+
     def test_scorecard_is_owner_only_and_never_overwritten(self):
         fixture_document = quality.public_fixture()
         observation_document = self.perfect_observations(fixture_document)

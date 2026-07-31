@@ -35,6 +35,7 @@ extension MeetingStore {
                        segment.startTime AS startTime,
                        segment.text AS text,
                        meeting.title AS title,
+                       meeting.transcriptRevision AS transcriptRevision,
                        snippet(segmentSearch, 0, '[', ']', '…', 12) AS snippet
                 FROM segmentSearch
                 JOIN segment ON segment.rowid = segmentSearch.rowid
@@ -61,7 +62,8 @@ extension MeetingStore {
                     row["segmentID"], table: "segment", column: "id"),
                 text: row["text"],
                 snippet: row["snippet"],
-                startTime: row["startTime"])
+                startTime: row["startTime"],
+                transcriptRevision: row["transcriptRevision"])
         }
     }
 
@@ -212,7 +214,8 @@ extension MeetingStore {
                            segment.meetingID AS meetingID,
                            segment.startTime AS startTime,
                            segment.text AS text,
-                           meeting.title AS title
+                           meeting.title AS title,
+                           meeting.transcriptRevision AS transcriptRevision
                     FROM segment
                     JOIN meeting ON meeting.id = segment.meetingID AND meeting.deletedAt IS NULL
                     WHERE segment.rowid IN (\(databaseQuestionMarks(count: chunk.count)))
@@ -228,7 +231,8 @@ extension MeetingStore {
                         row["segmentID"], table: "segment", column: "id"),
                     text: row["text"],
                     snippet: row["text"],
-                    startTime: row["startTime"])
+                    startTime: row["startTime"],
+                    transcriptRevision: row["transcriptRevision"])
             }
         }
         return try candidates.map { candidate in

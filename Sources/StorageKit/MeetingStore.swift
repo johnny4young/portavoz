@@ -104,6 +104,8 @@ public struct SearchHit: Sendable {
     /// Matched terms wrapped in [brackets] by FTS5.
     public let snippet: String
     public let startTime: TimeInterval
+    /// Revision of the meeting transcript that produced this evidence.
+    public let transcriptRevision: Int
 }
 
 /// The SQLite-backed store (GRDB + FTS5, D4 contract in `StorageSchema`).

@@ -39,7 +39,7 @@ struct CLIComposition {
 /// The CLI is a separate process and has no macOS app resource governor. It
 /// still shares one Apple embedding model across every Ask operation in that
 /// process instead of constructing a model per query.
-private actor CLISemanticEmbeddingRuntime:
+actor CLISemanticEmbeddingRuntime:
     SemanticEmbeddingRuntimeClient {
     private var embedder: SentenceEmbedder?
 

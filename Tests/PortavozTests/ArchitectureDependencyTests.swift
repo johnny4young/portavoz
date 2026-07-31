@@ -321,12 +321,27 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
         XCTAssertFalse(qualityHarness.contains("generatedText"))
 
+        let productionAdapter = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchAskQuality.swift")
+        for required in [
+            "LocalAskMeetingRetrieval", "MeetingStore(",
+            "local-hybrid-no-expansion-evidence-v1", "notEvaluated",
+            "transcriptRevision", "outputAlreadyExists",
+        ] {
+            XCTAssertTrue(
+                productionAdapter.contains(required),
+                "Ask production observation adapter is missing \(required)")
+        }
+        XCTAssertFalse(productionAdapter.contains("RecordingsLocation.default"))
+
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         let quality = try Self.contents(of: "docs/specs/08-quality.md")
         XCTAssertTrue(decisions.contains("## D194"))
+        XCTAssertTrue(decisions.contains("## D195"))
         XCTAssertTrue(quality.contains(
             "The same run must emit a content-free pipeline sidecar"))
         XCTAssertTrue(quality.contains("exactly 240 judged queries"))
+        XCTAssertTrue(quality.contains("portavoz-cli bench-ask-quality"))
     }
 
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {

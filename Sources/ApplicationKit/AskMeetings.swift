@@ -34,6 +34,7 @@ public struct AskCitation: Equatable, Sendable {
     public let meetingID: MeetingID
     public let meetingTitle: String
     public let timestamp: TimeInterval
+    public let transcriptRevision: Int
     public let text: String
 
     public init(
@@ -41,12 +42,14 @@ public struct AskCitation: Equatable, Sendable {
         meetingID: MeetingID,
         meetingTitle: String,
         timestamp: TimeInterval,
+        transcriptRevision: Int = 0,
         text: String
     ) {
         self.segmentID = segmentID
         self.meetingID = meetingID
         self.meetingTitle = meetingTitle
         self.timestamp = timestamp
+        self.transcriptRevision = transcriptRevision
         self.text = text
     }
 }
