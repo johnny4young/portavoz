@@ -18,7 +18,6 @@ struct ActiveLibraryMarkdownBackupRun: Sendable {
     var pendingJournalCompletion: LibraryMarkdownBackupRecoveryPublication?
     var pendingRecoveryCheckpoint: LibraryMarkdownBackupSourceCursor?
     var pendingTermination: PendingLibraryMarkdownBackupTermination?
-    var recoveryCursorCanAdvance = true
 
     var totalMeetings: Int { source.totalMeetings }
 }
@@ -26,6 +25,8 @@ struct ActiveLibraryMarkdownBackupRun: Sendable {
 enum PendingLibraryMarkdownBackupDocument: Sendable {
     case content(LibraryMarkdownBackupContent)
     case document(LibraryMarkdownBackupContent, Data)
+    case sourceFailure(LibraryMarkdownBackupSourceFailure)
+    case documentFailure(LibraryMarkdownBackupContent)
     case publicationFailure(LibraryMarkdownBackupContent)
 }
 

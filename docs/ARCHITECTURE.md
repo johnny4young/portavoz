@@ -510,7 +510,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 15. It includes:
+The current schema version is 16. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -616,8 +616,11 @@ Application Support root. Small metadata retains the regular bookmark and
 lifecycle status; one pending record carries the exact filename, meeting
 identity, SHA-256, byte count, contiguous sequence, and optional content-free
 source cursor. The cursor is present only while durable source advancement
-remains safe and is bound to the same meeting identity. Transcript, summary,
-and rendered Markdown bytes never enter this journal. The app reserves a
+remains safe and is bound to the same meeting identity. A separate immutable
+failure sequence carries the exact source cursor, optional matching meeting
+identity, a title normalized to at most 4 KiB of UTF-8, and the typed
+source/document/publication stage needed to reconstruct a partial result.
+Transcript, summary, and rendered Markdown bytes never enter this journal. The app reserves a
 filename before the atomic destination move, then moves the pending record atomically into the
 immutable completed-record directory. Steady-state journal I/O is O(1) per
 meeting rather than repeatedly rewriting a growing manifest. A post-move
@@ -646,17 +649,20 @@ must all be regular non-symlink entries of the expected shape. Missing work is
 reported as unavailable; malformed work and cursor mismatches fail closed and
 remain untouched.
 
-ApplicationKit maps that position into optional format-v1 recovery metadata
+ApplicationKit maps that position into optional format-versioned recovery metadata
 only after the corresponding destination publication has become an immutable
 completed record. The recovery adapter rejects a checkpoint while a pending
 reservation exists, rejects malformed or regressive positions, and accepts an
 equal position as an idempotent retry. If checkpoint persistence fails after
 publication completion, the process-owned actor retries only that metadata
 mutation before any next source read; it never repeats the destination move.
-After the first source, document, or publication failure, checkpoint advancement
-freezes because those typed failure outcomes are still process-local. The
-completed publication evidence remains durable, but a future adopted process
-must not skip an outcome it cannot reconstruct.
+Source, document, and publication failures become immutable recovery records
+before their source cursor advances. A failed record write leaves the row
+pending; a failed checkpoint retries only metadata and cannot duplicate the
+failure. Later healthy publications therefore keep carrying their exact cursor.
+If termination occurs before a publication reservation or failure record exists,
+the durable cursor remains behind that row and a future adopted immutable stage
+can safely reload and rerender it; rendered Markdown is never journaled.
 
 ApplicationKit also owns a bounded pending-publication reconciliation operation.
 It reacquires the stored destination lease, persists refreshed bookmark identity,
@@ -670,10 +676,10 @@ retry the same row. Matching bytes with a bound cursor promote the reservation
 and then checkpoint that cursor. A
 conflicting file or any matching reservation without a safe cursor remains
 blocked and untouched; cursor-less records include old journals and new
-publications after an earlier process-local failure froze advancement. If
-completion persisted but checkpointing did not, the next reconciliation repairs
-only the cursor from immutable completed evidence; it neither reacquires the
-destination nor rehashes or republishes the file.
+publications created before durable failure outcomes. If publication or failure
+evidence persisted but checkpointing did not, the next reconciliation repairs
+only the furthest durable outcome cursor; it neither reacquires the destination
+nor rehashes, rerenders, or republishes a file.
 
 Completion and source-read failure enter an explicit process-local terminal
 state. Terminal retry marks completion when needed, removes the recovery
@@ -681,8 +687,8 @@ journal, and only then closes the staged source. It does not reacquire the
 destination because no publication capability is needed after terminal work.
 
 Launch does not yet invoke pending-publication reconciliation or stage adoption
-before abandoned-work cleanup. Durable failure outcomes also remain absent.
-Full relaunch continuation is therefore still unclaimed. None of these paths
+before abandoned-work cleanup. Full relaunch continuation is therefore still
+unclaimed. None of these paths
 adds a timer, heartbeat, PID heuristic, or polling task.
 
 Both paths also borrow one process-owned semantic runtime through an injected

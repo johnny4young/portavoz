@@ -2693,6 +2693,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(recoveryContract.contains("pendingPublication"))
         XCTAssertTrue(recoveryContract.contains("completedPublications"))
         XCTAssertTrue(recoveryContract.contains(
+            "LibraryMarkdownBackupRecoveryFailure"))
+        XCTAssertTrue(recoveryContract.contains(
+            "case recordFailure(LibraryMarkdownBackupRecoveryFailure)"))
+        XCTAssertTrue(recoveryContract.contains(
             "LibraryMarkdownBackupSourceCursor"))
         XCTAssertTrue(recoveryContract.contains(
             "case checkpointSource(LibraryMarkdownBackupSourceCursor)"))
@@ -2710,6 +2714,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "pendingRecoveryCheckpoint"))
         XCTAssertTrue(useCase.contains(
             ".checkpointSource(cursor)"))
+        XCTAssertTrue(useCase.contains(".recordFailure(recoveryFailure)"))
         XCTAssertTrue(useCase.contains("try await recoveryStore.apply("))
         XCTAssertTrue(useCase.contains("destinationLease.close()"))
         XCTAssertTrue(useCase.contains("maintenanceGate.disposition"))
@@ -2775,12 +2780,16 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(resourceAdapter.contains(
             "libraryMarkdownBackup.maintenanceMayResume()"))
         XCTAssertTrue(recoveryAdapter.contains(
-            "private static let formatVersion = 1"))
+            "private static let metadataFormatVersion = 2"))
+        XCTAssertTrue(recoveryAdapter.contains(
+            "private static let recordFormatVersion = 1"))
         XCTAssertTrue(recoveryAdapter.contains("options: .atomic"))
         XCTAssertTrue(recoveryAdapter.contains(
             "fileManager.moveItem("))
         XCTAssertTrue(recoveryAdapter.contains(
             "nextSequenceByOperation"))
+        XCTAssertTrue(recoveryAdapter.contains(
+            "nextFailureSequenceByOperation"))
         XCTAssertTrue(recoveryAdapter.contains(
             "guard cursor == current || Self.isAfter(cursor, current)"))
         XCTAssertTrue(recoveryAdapter.contains(
@@ -2800,8 +2809,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(architecture.contains(
             "bounded pending-publication reconciliation operation"))
         XCTAssertTrue(decisions.contains("## D187"))
+        XCTAssertTrue(decisions.contains("## D188"))
         XCTAssertTrue(appSpec.contains(
-            "### Capture-safe staged whole-library backup (D180–D187)"))
+            "### Capture-safe staged whole-library backup (D180–D188)"))
     }
 
     func testAskSurfacesUseOneStorageIndependentApplicationWorkflow() throws {

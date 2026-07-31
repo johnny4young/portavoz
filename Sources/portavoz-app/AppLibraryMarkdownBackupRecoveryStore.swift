@@ -7,12 +7,15 @@ import Foundation
 /// the completed manifest is deferred to recovery.
 actor AppLibraryMarkdownBackupRecoveryStore:
     LibraryMarkdownBackupRecoveryStore {
-    private static let formatVersion = 1
+    private static let metadataFormatVersion = 2
+    private static let legacyMetadataFormatVersion = 1
+    private static let recordFormatVersion = 1
     private static let maximumRecordBytes = 1 * 1_024 * 1_024
 
     private let root: URL
     private let fileManager: FileManager
     private var nextSequenceByOperation: [UUID: Int] = [:]
+    private var nextFailureSequenceByOperation: [UUID: Int] = [:]
 
     init(
         root: URL,
@@ -32,58 +35,31 @@ actor AppLibraryMarkdownBackupRecoveryStore:
                 operationID: operationID,
                 destinationBookmark: destinationBookmark)
         case .updateDestinationBookmark(let destinationBookmark):
-            guard !destinationBookmark.data.isEmpty else {
-                throw RecoveryStoreError.invalidDocument
-            }
-            var metadata = try activeMetadata(operationID: operationID)
-            metadata.destinationBookmark = destinationBookmark
-            try write(metadata, to: metadataURL(operationID: operationID))
-        case .reserve(let publication):
-            _ = try activeMetadata(operationID: operationID)
-            try validateNext(publication, operationID: operationID)
-            try write(
-                PublicationDocument(
-                    version: Self.formatVersion,
-                    operationID: operationID,
-                    publication: publication),
-                to: pendingURL(operationID: operationID))
-        case .complete(let publication):
-            _ = try activeMetadata(operationID: operationID)
-            try validateNext(publication, operationID: operationID)
-            let pending = try loadPublication(
-                at: pendingURL(operationID: operationID),
+            try updateDestinationBookmark(
+                destinationBookmark,
                 operationID: operationID)
-            guard pending == publication else {
-                throw RecoveryStoreError.invalidDocument
-            }
-            let destination = completedURL(
-                operationID: operationID,
-                sequence: publication.sequence)
-            guard try !itemExists(destination) else {
-                throw RecoveryStoreError.invalidDocument
-            }
-            try fileManager.moveItem(
-                at: pendingURL(operationID: operationID),
-                to: destination)
-            nextSequenceByOperation[operationID] = publication.sequence + 1
+        case .reserve(let publication):
+            try reserve(
+                publication,
+                operationID: operationID)
+        case .complete(let publication):
+            try complete(
+                publication,
+                operationID: operationID)
         case .clearReservation:
             _ = try activeMetadata(operationID: operationID)
             try removeRegularFileIfPresent(
                 pendingURL(operationID: operationID))
+        case .recordFailure(let failure):
+            try recordFailure(
+                failure,
+                operationID: operationID)
         case .checkpointSource(let cursor):
             try checkpointSource(
                 cursor,
                 operationID: operationID)
         case .markCompleted:
-            var metadata = try loadMetadata(operationID: operationID)
-            guard try !itemExists(
-                pendingURL(operationID: operationID))
-            else {
-                throw RecoveryStoreError.invalidDocument
-            }
-            guard metadata.phase == .active else { return }
-            metadata.phase = .completed
-            try write(metadata, to: metadataURL(operationID: operationID))
+            try markCompleted(operationID: operationID)
         }
     }
 
@@ -95,6 +71,9 @@ actor AppLibraryMarkdownBackupRecoveryStore:
         try validateDirectory(operation)
         let metadata = try loadMetadata(operationID: operationID)
         let completed = try completedPublications(operationID: operationID)
+        let failures = try failureRecords(
+            operationID: operationID,
+            metadataVersion: metadata.version)
         let pendingURL = pendingURL(operationID: operationID)
         let pending = try itemExists(pendingURL)
             ? try loadPublication(at: pendingURL, operationID: operationID)
@@ -105,11 +84,13 @@ actor AppLibraryMarkdownBackupRecoveryStore:
             throw RecoveryStoreError.invalidDocument
         }
         nextSequenceByOperation[operationID] = completed.count
+        nextFailureSequenceByOperation[operationID] = failures.count
         return LibraryMarkdownBackupRecoveryState(
             operationID: operationID,
             destinationBookmark: metadata.destinationBookmark,
             sourceCursor: metadata.sourceCursor,
             completedPublications: completed,
+            failures: failures,
             pendingPublication: pending,
             phase: metadata.phase)
     }
@@ -120,12 +101,13 @@ actor AppLibraryMarkdownBackupRecoveryStore:
         try validateDirectory(target)
         try fileManager.removeItem(at: target)
         nextSequenceByOperation[operationID] = nil
+        nextFailureSequenceByOperation[operationID] = nil
     }
 }
 
 private extension AppLibraryMarkdownBackupRecoveryStore {
     struct MetadataDocument: Codable {
-        let version: Int
+        var version: Int
         let operationID: UUID
         var destinationBookmark: LibraryMarkdownBackupDestinationBookmark
         var sourceCursor: LibraryMarkdownBackupSourceCursor?
@@ -138,10 +120,78 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
         let publication: LibraryMarkdownBackupRecoveryPublication
     }
 
+    struct FailureDocument: Codable {
+        let version: Int
+        let operationID: UUID
+        let failure: LibraryMarkdownBackupRecoveryFailure
+    }
+
     enum RecoveryStoreError: Error {
         case documentTooLarge
         case invalidDocument
         case unsafePath
+    }
+
+    func updateDestinationBookmark(
+        _ destinationBookmark: LibraryMarkdownBackupDestinationBookmark,
+        operationID: UUID
+    ) throws {
+        guard !destinationBookmark.data.isEmpty else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        var metadata = try activeMetadata(operationID: operationID)
+        metadata.destinationBookmark = destinationBookmark
+        try write(metadata, to: metadataURL(operationID: operationID))
+    }
+
+    func reserve(
+        _ publication: LibraryMarkdownBackupRecoveryPublication,
+        operationID: UUID
+    ) throws {
+        _ = try activeMetadata(operationID: operationID)
+        try validateNext(publication, operationID: operationID)
+        try write(
+            PublicationDocument(
+                version: Self.recordFormatVersion,
+                operationID: operationID,
+                publication: publication),
+            to: pendingURL(operationID: operationID))
+    }
+
+    func complete(
+        _ publication: LibraryMarkdownBackupRecoveryPublication,
+        operationID: UUID
+    ) throws {
+        _ = try activeMetadata(operationID: operationID)
+        try validateNext(publication, operationID: operationID)
+        let pending = try loadPublication(
+            at: pendingURL(operationID: operationID),
+            operationID: operationID)
+        guard pending == publication else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        let destination = completedURL(
+            operationID: operationID,
+            sequence: publication.sequence)
+        guard try !itemExists(destination) else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        try fileManager.moveItem(
+            at: pendingURL(operationID: operationID),
+            to: destination)
+        nextSequenceByOperation[operationID] = publication.sequence + 1
+    }
+
+    func markCompleted(operationID: UUID) throws {
+        var metadata = try loadMetadata(operationID: operationID)
+        guard try !itemExists(
+            pendingURL(operationID: operationID))
+        else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        guard metadata.phase == .active else { return }
+        metadata.phase = .completed
+        try write(metadata, to: metadataURL(operationID: operationID))
     }
 
     func begin(
@@ -160,15 +210,18 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
         do {
             try createPrivateDirectory(
                 completedDirectoryURL(operationID: operationID))
+            try createPrivateDirectory(
+                failuresDirectoryURL(operationID: operationID))
             try write(
                 MetadataDocument(
-                    version: Self.formatVersion,
+                    version: Self.metadataFormatVersion,
                     operationID: operationID,
                     destinationBookmark: destinationBookmark,
                     sourceCursor: nil,
                     phase: .active),
                 to: metadataURL(operationID: operationID))
             nextSequenceByOperation[operationID] = 0
+            nextFailureSequenceByOperation[operationID] = 0
         } catch {
             try? fileManager.removeItem(at: operation)
             throw error
@@ -236,7 +289,10 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
         let metadata: MetadataDocument = try read(
             MetadataDocument.self,
             at: metadataURL(operationID: operationID))
-        guard metadata.version == Self.formatVersion,
+        guard [
+            Self.legacyMetadataFormatVersion,
+            Self.metadataFormatVersion
+        ].contains(metadata.version),
               metadata.operationID == operationID,
               !metadata.destinationBookmark.data.isEmpty
         else {
@@ -278,6 +334,113 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
         return publications
     }
 
+    func failureRecords(
+        operationID: UUID,
+        metadataVersion: Int
+    ) throws -> [LibraryMarkdownBackupRecoveryFailure] {
+        let directory = failuresDirectoryURL(operationID: operationID)
+        guard try itemExists(directory) else {
+            guard metadataVersion == Self.legacyMetadataFormatVersion else {
+                throw RecoveryStoreError.invalidDocument
+            }
+            return []
+        }
+        try validateDirectory(directory)
+        let urls = try fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [
+                .isRegularFileKey,
+                .isSymbolicLinkKey
+            ])
+        guard metadataVersion != Self.legacyMetadataFormatVersion
+                || urls.isEmpty
+        else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        let failures = try urls.map { url in
+            let failure = try loadFailure(
+                at: url,
+                operationID: operationID)
+            guard url.lastPathComponent == failureFileName(
+                sequence: failure.sequence)
+            else {
+                throw RecoveryStoreError.invalidDocument
+            }
+            return failure
+        }.sorted { $0.sequence < $1.sequence }
+        guard failures.indices.allSatisfy({
+            failures[$0].sequence == $0
+        }) else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        return failures
+    }
+
+    func recordFailure(
+        _ failure: LibraryMarkdownBackupRecoveryFailure,
+        operationID: UUID
+    ) throws {
+        try Self.validate(failure)
+        guard try !itemExists(pendingURL(operationID: operationID)) else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        var metadata = try activeMetadata(operationID: operationID)
+        let directory = failuresDirectoryURL(operationID: operationID)
+        if try itemExists(directory) {
+            try validateDirectory(directory)
+        } else {
+            guard metadata.version == Self.legacyMetadataFormatVersion else {
+                throw RecoveryStoreError.invalidDocument
+            }
+            try createPrivateDirectory(directory)
+        }
+        if metadata.version == Self.legacyMetadataFormatVersion {
+            metadata.version = Self.metadataFormatVersion
+            try write(metadata, to: metadataURL(operationID: operationID))
+        }
+
+        let destination = failureURL(
+            operationID: operationID,
+            sequence: failure.sequence)
+        if try itemExists(destination) {
+            if nextFailureSequenceByOperation[operationID] == nil {
+                nextFailureSequenceByOperation[operationID] = try failureRecords(
+                    operationID: operationID,
+                    metadataVersion: metadata.version).count
+            }
+            guard try loadFailure(
+                at: destination,
+                operationID: operationID) == failure
+            else {
+                throw RecoveryStoreError.invalidDocument
+            }
+            nextFailureSequenceByOperation[operationID] = max(
+                nextFailureSequenceByOperation[operationID] ?? 0,
+                failure.sequence + 1)
+            return
+        }
+
+        let expected: Int
+        if let cached = nextFailureSequenceByOperation[operationID] {
+            expected = cached
+        } else {
+            expected = try failureRecords(
+                operationID: operationID,
+                metadataVersion: metadata.version).count
+            nextFailureSequenceByOperation[operationID] = expected
+        }
+        guard failure.sequence == expected else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        try write(
+            FailureDocument(
+                version: Self.recordFormatVersion,
+                operationID: operationID,
+                failure: failure),
+            to: destination)
+        nextFailureSequenceByOperation[operationID] = failure.sequence + 1
+    }
+
     func validateNext(
         _ publication: LibraryMarkdownBackupRecoveryPublication,
         operationID: UUID
@@ -303,13 +466,29 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
         let document: PublicationDocument = try read(
             PublicationDocument.self,
             at: url)
-        guard document.version == Self.formatVersion,
+        guard document.version == Self.recordFormatVersion,
               document.operationID == operationID
         else {
             throw RecoveryStoreError.invalidDocument
         }
         try Self.validate(document.publication)
         return document.publication
+    }
+
+    func loadFailure(
+        at url: URL,
+        operationID: UUID
+    ) throws -> LibraryMarkdownBackupRecoveryFailure {
+        let document: FailureDocument = try read(
+            FailureDocument.self,
+            at: url)
+        guard document.version == Self.recordFormatVersion,
+              document.operationID == operationID
+        else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        try Self.validate(document.failure)
+        return document.failure
     }
 
     func write<T: Encodable>(
@@ -407,6 +586,11 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
             .appendingPathComponent("completed", isDirectory: true)
     }
 
+    func failuresDirectoryURL(operationID: UUID) -> URL {
+        operationURL(operationID: operationID)
+            .appendingPathComponent("failures", isDirectory: true)
+    }
+
     func completedURL(
         operationID: UUID,
         sequence: Int
@@ -416,6 +600,18 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
     }
 
     func completedFileName(sequence: Int) -> String {
+        String(format: "%012d.json", sequence)
+    }
+
+    func failureURL(
+        operationID: UUID,
+        sequence: Int
+    ) -> URL {
+        failuresDirectoryURL(operationID: operationID)
+            .appendingPathComponent(failureFileName(sequence: sequence))
+    }
+
+    func failureFileName(sequence: Int) -> String {
         String(format: "%012d.json", sequence)
     }
 
@@ -455,6 +651,26 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
               cursor.recordID.utf8.count <= 128
         else {
             throw RecoveryStoreError.invalidDocument
+        }
+    }
+
+    static func validate(
+        _ failure: LibraryMarkdownBackupRecoveryFailure
+    ) throws {
+        try validate(failure.sourceCursor)
+        guard failure.sequence >= 0,
+              failure.title.utf8.count
+                <= LibraryMarkdownBackupRecoveryFailure.maximumTitleBytes,
+              failure.stage == .source || failure.meetingID != nil
+        else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        if let meetingID = failure.meetingID {
+            guard failure.sourceCursor.recordID
+                == meetingID.rawValue.uuidString
+            else {
+                throw RecoveryStoreError.invalidDocument
+            }
         }
     }
 

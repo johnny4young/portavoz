@@ -6079,3 +6079,49 @@ safe, while missing and conflicting outcomes preserve user data. Separating the
 primitive from launch orchestration keeps the next restart slice independently
 reviewable and prevents a reusable recovery contract from being hidden in the
 macOS lifecycle model.
+
+## D188 — Journal typed backup failures before advancing the source (Jul 2026)
+
+**Context:** D186 conservatively froze the staged-source checkpoint after the
+first source, render, or publication failure because the released partial
+result existed only in process memory. D187 can reconcile destination bytes,
+but launch adoption still cannot continue past a failed row without either
+silently losing that outcome or repeating all later work. Persisting rendered
+Markdown would duplicate meeting content in private recovery state and create a
+second document lifecycle.
+
+**Decision:** the recovery journal now stores one immutable, independently
+sequenced failure record for each failed staged row. The bounded record contains
+the exact content-free source cursor, optional meeting identity, bounded title,
+and typed source/document/publication stage needed to reconstruct the released
+partial-result contract. It contains no transcript, summary, or rendered
+Markdown bytes. ApplicationKit normalizes the title to at most 4 KiB of UTF-8
+before persistence, so an unbounded domain title cannot strand the operation.
+Non-source failures require a meeting identity, and every
+present identity must match the cursor's staged record. Current metadata is
+format 2 and requires a private `failures` directory; format-1 journals without
+that directory remain readable and migrate before their first failure record.
+Failure files are immutable, contiguous, owner-only, bounded to 1 MiB, and an
+exact retry of an already persisted record is idempotent.
+
+ApplicationKit persists a failure before checkpointing that row. A failed
+failure write keeps the in-process row pending; a failed checkpoint retries only
+the metadata cursor and neither rerenders nor duplicates the failure record.
+Publication failure first clears its failed reservation, so a crash before the
+failure record leaves the durable cursor behind and safely retries the immutable
+source row. Later healthy publications again carry their exact cursor because
+all earlier outcomes are now durable. Reconciliation repairs a lagging cursor
+from the furthest durable publication or failure without destination access.
+
+Successful rendered documents are deliberately not journaled. Before a
+publication reservation exists, the durable cursor still points to the prior
+outcome, so an adopted immutable stage can replay the same row and render it
+again. This decision still does not invoke reconciliation or stage adoption at
+launch; T26 remains open and relaunch-safe whole-library backup is not claimed.
+
+**Rationale:** one minimal typed outcome per failed row restores monotonic source
+progress and exact partial-result reconstruction without turning the recovery
+journal into a second meeting-content store. Keeping the checkpoint behind both
+successful publication evidence and failure evidence makes every crash window
+conservative: work is either durably represented or replayed from the immutable
+stage.

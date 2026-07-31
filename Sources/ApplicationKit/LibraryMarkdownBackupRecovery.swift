@@ -60,6 +60,43 @@ public struct LibraryMarkdownBackupRecoveryPublication:
     }
 }
 
+/// Bounded, relaunch-readable evidence for one staged row that could not be
+/// exported. It retains the released partial-result fields but no transcript,
+/// summary, or rendered Markdown bytes.
+public struct LibraryMarkdownBackupRecoveryFailure:
+    Codable,
+    Equatable,
+    Sendable {
+    public static let maximumTitleBytes = 4 * 1_024
+
+    public let sequence: Int
+    public let sourceCursor: LibraryMarkdownBackupSourceCursor
+    public let meetingID: MeetingID?
+    public let title: String
+    public let stage: LibraryMarkdownBackupFailureStage
+
+    public init(
+        sequence: Int,
+        sourceCursor: LibraryMarkdownBackupSourceCursor,
+        meetingID: MeetingID?,
+        title: String,
+        stage: LibraryMarkdownBackupFailureStage
+    ) {
+        self.sequence = sequence
+        self.sourceCursor = sourceCursor
+        self.meetingID = meetingID
+        self.title = title
+        self.stage = stage
+    }
+
+    public var failure: LibraryMarkdownBackupFailure {
+        LibraryMarkdownBackupFailure(
+            meetingID: meetingID,
+            title: title,
+            stage: stage)
+    }
+}
+
 public enum LibraryMarkdownBackupRecoveryMutation:
     Equatable,
     Sendable {
@@ -68,6 +105,7 @@ public enum LibraryMarkdownBackupRecoveryMutation:
     case reserve(LibraryMarkdownBackupRecoveryPublication)
     case complete(LibraryMarkdownBackupRecoveryPublication)
     case clearReservation
+    case recordFailure(LibraryMarkdownBackupRecoveryFailure)
     case checkpointSource(LibraryMarkdownBackupSourceCursor)
     case markCompleted
 }
@@ -82,6 +120,7 @@ public struct LibraryMarkdownBackupRecoveryState:
     public var destinationBookmark: LibraryMarkdownBackupDestinationBookmark
     public var sourceCursor: LibraryMarkdownBackupSourceCursor?
     public var completedPublications: [LibraryMarkdownBackupRecoveryPublication]
+    public var failures: [LibraryMarkdownBackupRecoveryFailure]
     public var pendingPublication: LibraryMarkdownBackupRecoveryPublication?
     public var phase: LibraryMarkdownBackupRecoveryPhase
 
@@ -90,6 +129,7 @@ public struct LibraryMarkdownBackupRecoveryState:
         destinationBookmark: LibraryMarkdownBackupDestinationBookmark,
         sourceCursor: LibraryMarkdownBackupSourceCursor? = nil,
         completedPublications: [LibraryMarkdownBackupRecoveryPublication] = [],
+        failures: [LibraryMarkdownBackupRecoveryFailure] = [],
         pendingPublication: LibraryMarkdownBackupRecoveryPublication? = nil,
         phase: LibraryMarkdownBackupRecoveryPhase = .active
     ) {
@@ -97,6 +137,7 @@ public struct LibraryMarkdownBackupRecoveryState:
         self.destinationBookmark = destinationBookmark
         self.sourceCursor = sourceCursor
         self.completedPublications = completedPublications
+        self.failures = failures
         self.pendingPublication = pendingPublication
         self.phase = phase
     }

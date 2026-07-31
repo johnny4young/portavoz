@@ -1,7 +1,11 @@
 import Foundation
 import PortavozCore
 
-public enum LibraryMarkdownBackupFailureStage: String, Equatable, Sendable {
+public enum LibraryMarkdownBackupFailureStage:
+    String,
+    Codable,
+    Equatable,
+    Sendable {
     case source
     case document
     case publication
@@ -248,7 +252,7 @@ private extension ExportLibraryMarkdownBackup {
                 into: &run,
                 progress: progress)
         case .content(let content):
-            await render(
+            try await render(
                 content,
                 into: &run,
                 progress: progress)
@@ -259,6 +263,18 @@ private extension ExportLibraryMarkdownBackup {
                 for: content,
                 to: directory,
                 into: &run,
+                progress: progress)
+            return nil
+        case .sourceFailure(let failure):
+            try await recordSourceFailure(
+                failure,
+                in: &run,
+                progress: progress)
+            return nil
+        case .documentFailure(let content):
+            try await recordDocumentFailure(
+                for: content,
+                in: &run,
                 progress: progress)
             return nil
         case .publicationFailure(let content):
@@ -300,10 +316,7 @@ private extension ExportLibraryMarkdownBackup {
         case .content(let content):
             run.pending = .content(content)
         case .failure(let failure):
-            run.recoveryCursorCanAdvance = false
-            run.pendingSourceCursor = nil
-            run.failures.append(Self.sourceFailure(failure))
-            await publishProgress(for: run, through: progress)
+            run.pending = .sourceFailure(failure)
         }
         return nil
     }
@@ -312,19 +325,17 @@ private extension ExportLibraryMarkdownBackup {
         _ content: LibraryMarkdownBackupContent,
         into run: inout ActiveLibraryMarkdownBackupRun,
         progress: LibraryMarkdownBackupProgressHandler
-    ) async {
+    ) async throws {
         do {
             run.pending = .document(
                 content,
                 try await documents.markdownDocument(for: content))
         } catch {
-            run.pending = nil
-            run.pendingSourceCursor = nil
-            run.recoveryCursorCanAdvance = false
-            run.failures.append(Self.failure(
+            run.pending = .documentFailure(content)
+            try await recordDocumentFailure(
                 for: content,
-                stage: .document))
-            await publishProgress(for: run, through: progress)
+                in: &run,
+                progress: progress)
         }
     }
 
@@ -483,7 +494,7 @@ private extension ExportLibraryMarkdownBackup {
             fileName: candidateAllocator.nextFileName(for: content.meeting.title),
             sha256: ContentDigest.sha256(data),
             byteCount: data.count,
-            sourceCursor: run.recoveryCursorCanAdvance ? sourceCursor : nil)
+            sourceCursor: sourceCursor)
         var reservedState = run.recoveryState
         reservedState.pendingPublication = reservation
         try await applyRecovery(
@@ -545,22 +556,71 @@ private extension ExportLibraryMarkdownBackup {
         await publishProgress(for: run, through: progress)
     }
 
+    func recordSourceFailure(
+        _ sourceFailure: LibraryMarkdownBackupSourceFailure,
+        in run: inout ActiveLibraryMarkdownBackupRun,
+        progress: LibraryMarkdownBackupProgressHandler
+    ) async throws {
+        try await recordFailure(
+            Self.sourceFailure(sourceFailure),
+            in: &run,
+            progress: progress)
+    }
+
+    func recordDocumentFailure(
+        for content: LibraryMarkdownBackupContent,
+        in run: inout ActiveLibraryMarkdownBackupRun,
+        progress: LibraryMarkdownBackupProgressHandler
+    ) async throws {
+        try await recordFailure(
+            Self.failure(for: content, stage: .document),
+            in: &run,
+            progress: progress)
+    }
+
+    func recordFailure(
+        _ failure: LibraryMarkdownBackupFailure,
+        in run: inout ActiveLibraryMarkdownBackupRun,
+        progress: LibraryMarkdownBackupProgressHandler
+    ) async throws {
+        guard let cursor = run.pendingSourceCursor else {
+            preconditionFailure(
+                "failed backup content must retain its source cursor")
+        }
+        let recoveryFailure = LibraryMarkdownBackupRecoveryFailure(
+            sequence: run.recoveryState.failures.count,
+            sourceCursor: cursor,
+            meetingID: failure.meetingID,
+            title: Self.boundedRecoveryTitle(failure.title),
+            stage: failure.stage)
+        try await applyRecovery(
+            .recordFailure(recoveryFailure),
+            operationID: run.recoveryState.operationID)
+        run.recoveryState.failures.append(recoveryFailure)
+        run.failures.append(recoveryFailure.failure)
+        run.pending = nil
+        run.pendingSourceCursor = nil
+        run.pendingRecoveryCheckpoint = cursor
+        try await persistPendingRecoveryCheckpoint(
+            in: &run,
+            progress: progress)
+    }
+
     func recordPublicationFailure(
         for content: LibraryMarkdownBackupContent,
         in run: inout ActiveLibraryMarkdownBackupRun,
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws {
-        try await applyRecovery(
-            .clearReservation,
-            operationID: run.recoveryState.operationID)
-        run.pending = nil
-        run.pendingSourceCursor = nil
-        run.recoveryCursorCanAdvance = false
-        run.failures.append(Self.failure(
-            for: content,
-            stage: .publication))
-        run.recoveryState.pendingPublication = nil
-        await publishProgress(for: run, through: progress)
+        if run.recoveryState.pendingPublication != nil {
+            try await applyRecovery(
+                .clearReservation,
+                operationID: run.recoveryState.operationID)
+            run.recoveryState.pendingPublication = nil
+        }
+        try await recordFailure(
+            Self.failure(for: content, stage: .publication),
+            in: &run,
+            progress: progress)
     }
 
     func acquireDestination(
@@ -677,6 +737,21 @@ private extension ExportLibraryMarkdownBackup {
             meetingID: content.meeting.id,
             title: content.meeting.title,
             stage: stage)
+    }
+
+    static func boundedRecoveryTitle(_ title: String) -> String {
+        let maximumBytes = LibraryMarkdownBackupRecoveryFailure.maximumTitleBytes
+        guard title.utf8.count > maximumBytes else { return title }
+        var bounded = ""
+        bounded.reserveCapacity(maximumBytes)
+        var byteCount = 0
+        for scalar in title.unicodeScalars {
+            let scalarByteCount = scalar.utf8.count
+            guard byteCount + scalarByteCount <= maximumBytes else { break }
+            bounded.unicodeScalars.append(scalar)
+            byteCount += scalarByteCount
+        }
+        return bounded
     }
 
 }

@@ -163,15 +163,34 @@ private extension ReconcileBackupPublication {
     func repairCheckpointIfNeeded(
         state: inout LibraryMarkdownBackupRecoveryState
     ) async throws -> Bool {
-        guard let cursor = state.completedPublications.reversed()
+        let publicationCursors = state.completedPublications
             .compactMap(\.sourceCursor)
-            .first,
-              cursor != state.sourceCursor
-        else { return false }
+        let failureCursors = state.failures.map(\.sourceCursor)
+        let cursors = publicationCursors + failureCursors
+        guard var cursor = cursors.first else { return false }
+        for candidate in cursors.dropFirst()
+        where Self.isAfter(candidate, cursor) {
+            cursor = candidate
+        }
+        if let current = state.sourceCursor,
+           !Self.isAfter(cursor, current) {
+            return false
+        }
         try await apply(
             .checkpointSource(cursor),
             operationID: state.operationID)
         state.sourceCursor = cursor
         return true
+    }
+
+    static func isAfter(
+        _ candidate: LibraryMarkdownBackupSourceCursor,
+        _ current: LibraryMarkdownBackupSourceCursor
+    ) -> Bool {
+        candidate.startedAt < current.startedAt
+            || (
+                candidate.startedAt == current.startedAt
+                    && candidate.recordID > current.recordID
+            )
     }
 }

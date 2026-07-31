@@ -149,6 +149,49 @@ final class BackupPublicationReconcileTests: XCTestCase {
         XCTAssertEqual(finalEvidenceCalls, 1)
     }
 
+    func testDurableFailureRepairsLatestCheckpointWithoutDestination()
+        async throws {
+        let operationID = UUID()
+        let publication = recoveryPublication()
+        let publishedCursor = try XCTUnwrap(publication.sourceCursor)
+        let failedMeetingID = MeetingID()
+        let failureCursor = LibraryMarkdownBackupSourceCursor(
+            startedAt: publishedCursor.startedAt.addingTimeInterval(-1),
+            recordID: failedMeetingID.rawValue.uuidString)
+        let failure = LibraryMarkdownBackupRecoveryFailure(
+            sequence: 0,
+            sourceCursor: failureCursor,
+            meetingID: failedMeetingID,
+            title: "Unreadable",
+            stage: .source)
+        let recovery = ReconciliationRecoveryStoreFake(state:
+            LibraryMarkdownBackupRecoveryState(
+                operationID: operationID,
+                destinationBookmark: backupBookmark(),
+                sourceCursor: publishedCursor,
+                completedPublications: [publication],
+                failures: [failure]))
+        let files = ReconciliationFilesFake(evidence: .conflicting)
+        let destination = ReconciliationDestinationAccessFake()
+        let useCase = ReconcileBackupPublication(
+            files: files,
+            destinationAccess: destination,
+            recoveryStore: recovery)
+
+        let result = try await useCase.execute(
+            BackupReconcileRequest(operationID: operationID))
+        guard case .reconciled(let state) = result else {
+            return XCTFail("Expected failure checkpoint repair")
+        }
+
+        XCTAssertEqual(state.sourceCursor, failureCursor)
+        let mutations = await recovery.mutations
+        let evidenceCalls = await files.evidenceCalls
+        XCTAssertEqual(mutations, [.checkpointSource(failureCursor)])
+        XCTAssertEqual(destination.acquireCount, 0)
+        XCTAssertEqual(evidenceCalls, 0)
+    }
+
     func testMissingRecoveryStateDoesNotTouchDestination() async throws {
         let recovery = ReconciliationRecoveryStoreFake(state: nil)
         let files = ReconciliationFilesFake(evidence: .matching)
@@ -290,6 +333,8 @@ private actor ReconciliationRecoveryStoreFake:
             }
             state.pendingPublication = nil
             state.completedPublications.append(publication)
+        case .recordFailure(let failure):
+            state.failures.append(failure)
         case .checkpointSource(let cursor):
             if remainingCheckpointFailures > 0 {
                 remainingCheckpointFailures -= 1
