@@ -634,15 +634,27 @@ directories must use Portavoz's canonical lowercase UUID name; cleanup returns
 the exact UUIDs it proved abandoned, and the app removes only the matching
 recovery documents. Active, noncanonical, and unknown work are preserved.
 
+StorageKit exposes the immutable stage's content-free keyset cursor
+(`startedAt`, raw staged record identity) and can reopen one exact UUID stage
+after the prior process has released its kernel lease. Reopening holds the root
+coordination lock through ownership acquisition, rejects active work, opens the
+SQLite copy read-only, and requires a supplied cursor to match one exact live
+row before continuing after it. The stage root, owner file, and SQLite file
+must all be regular non-symlink entries of the expected shape. Missing work is
+reported as unavailable; malformed work and cursor mismatches fail closed and
+remain untouched.
+
 Completion and source-read failure enter an explicit process-local terminal
 state. Terminal retry marks completion when needed, removes the recovery
 journal, and only then closes the staged source. It does not reacquire the
 destination because no publication capability is needed after terminal work.
 
 The persisted reservation makes the move/manifest crash window observable but
-does not yet persist the staged source keyset cursor or reopen its SQLite
-workspace. Launch still cleans an abandoned stage and matching journal instead
-of adopting them. Relaunch-safe continuation therefore remains an explicit gap.
+does not yet persist the staged source keyset cursor through ApplicationKit's
+recovery port. The app does not invoke the StorageKit adoption primitive:
+launch still cleans an abandoned stage and matching journal instead of
+adopting them. Pending-publication destination digest reconciliation is also
+not implemented. Relaunch-safe continuation therefore remains an explicit gap.
 None of these paths adds a timer, heartbeat, PID heuristic, or polling task.
 
 Both paths also borrow one process-owned semantic runtime through an injected

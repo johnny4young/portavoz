@@ -5950,3 +5950,38 @@ second durable store. Exact UUID cleanup keeps stage and journal lifecycles
 aligned. Keeping source-cursor persistence and stage reopening for the next
 slice avoids claiming end-to-end relaunch resume before every boundary is
 actually adoptable.
+
+## D185 — Reopen only an exact staged source at an exact keyset cursor (Jul 2026)
+
+**Context:** D184 makes destination publication observable across a crash, but
+StorageKit still exposes only a process-local stage actor. Adding application
+relaunch orchestration before the immutable SQLite source can be reopened
+safely would force launch code either to trust a path, restart from the
+beginning, or delete evidence it cannot validate. Persisting a meeting title,
+transcript, summary, or rendered document merely to locate the next row would
+also enlarge the private recovery surface without being necessary.
+
+**Decision:** the immutable backup stage exposes a content-free keyset cursor:
+the exact `startedAt` value and raw staged record identity already used by its
+`startedAt DESC, id ASC` traversal. StorageKit provides one adoption operation
+for a canonical stage UUID and optional cursor. It coordinates through the
+existing root lock, requires the workspace, owner file, and `source.sqlite` to
+be expected non-symlink shapes, and acquires the owner lease nonblockingly
+before opening the database read-only. Active ownership or a missing workspace
+returns unavailable. Malformed shapes, an unreadable database, a nonfinite or
+empty cursor, and a cursor that does not match exactly one live staged row fail
+closed without deleting the workspace. An adopted stage continues strictly
+after the validated cursor and retains the existing close/removal lifecycle.
+
+The application recovery contract does not persist this cursor yet, and the
+launch path does not invoke adoption. Pending-publication digest reconciliation
+also remains absent. Consequently this decision adds the safe storage primitive
+needed for relaunch continuation but does not claim that backups now resume
+after app termination.
+
+**Rationale:** a narrow, validated adoption primitive separates filesystem and
+SQLite ownership correctness from application recovery orchestration. The
+ordering pair is sufficient to resume the immutable keyset scan and contains
+no meeting prose. Read-only reopening plus exact row validation prevents a
+stale or forged checkpoint from silently skipping source data, while keeping
+the remaining crash-window work explicit and independently testable.

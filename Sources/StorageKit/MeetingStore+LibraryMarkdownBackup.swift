@@ -45,6 +45,32 @@ public enum MeetingMarkdownBackupStagePreparation: Sendable {
     case suspended
 }
 
+/// Content-free keyset position inside one immutable backup stage.
+///
+/// The ordering pair is persisted by the application recovery boundary in a
+/// later slice; StorageKit validates it against the exact staged row before
+/// allowing adoption.
+public struct MeetingMarkdownBackupStageCursor:
+    Codable,
+    Equatable,
+    Sendable {
+    public let startedAt: Date
+    public let recordID: String
+
+    public init(
+        startedAt: Date,
+        recordID: String
+    ) {
+        self.startedAt = startedAt
+        self.recordID = recordID
+    }
+}
+
+public enum MeetingMarkdownBackupStageAdoption: Sendable {
+    case ready(MeetingMarkdownBackupStage)
+    case unavailable
+}
+
 /// A coherent, disk-backed source consumed one aggregate at a time.
 ///
 /// The stage never reads the live database after preparation. Closing it
@@ -56,7 +82,7 @@ public actor MeetingMarkdownBackupStage {
     let workspaceURL: URL
     private let database: DatabaseQueue
     private var workspaceLease: MeetingMarkdownBackupWorkspaceLease?
-    private var cursor: Cursor?
+    private var cursor: MeetingMarkdownBackupStageCursor?
     private var isClosed = false
 
     fileprivate init(
@@ -64,13 +90,15 @@ public actor MeetingMarkdownBackupStage {
         database: DatabaseQueue,
         workspaceURL: URL,
         workspaceLease: MeetingMarkdownBackupWorkspaceLease,
-        totalMeetings: Int
+        totalMeetings: Int,
+        cursor: MeetingMarkdownBackupStageCursor? = nil
     ) {
         self.id = id
         self.database = database
         self.workspaceURL = workspaceURL
         self.workspaceLease = workspaceLease
         self.totalMeetings = totalMeetings
+        self.cursor = cursor
     }
 
     deinit {
@@ -83,7 +111,8 @@ public actor MeetingMarkdownBackupStage {
             throw MeetingMarkdownBackupStageError.closed
         }
         let currentCursor = cursor
-        let result: (Cursor, MeetingMarkdownBackupStageEntry)? =
+        let result:
+            (MeetingMarkdownBackupStageCursor, MeetingMarkdownBackupStageEntry)? =
             try await database.read { database in
                 var request = MeetingRecord
                     .filter(Column("deletedAt") == nil)
@@ -93,14 +122,14 @@ public actor MeetingMarkdownBackupStage {
                         Column("startedAt") < currentCursor.startedAt
                             || (
                                 Column("startedAt") == currentCursor.startedAt
-                                    && Column("id") > currentCursor.id
+                                    && Column("id") > currentCursor.recordID
                             ))
                 }
                 guard let record = try request.fetchOne(database)
                 else { return nil }
-                let nextCursor = Cursor(
+                let nextCursor = MeetingMarkdownBackupStageCursor(
                     startedAt: record.startedAt,
-                    id: record.id)
+                    recordID: record.id)
                 do {
                     return (
                         nextCursor,
@@ -124,17 +153,19 @@ public actor MeetingMarkdownBackupStage {
         return result.1
     }
 
+    public func checkpoint() throws -> MeetingMarkdownBackupStageCursor? {
+        guard !isClosed else {
+            throw MeetingMarkdownBackupStageError.closed
+        }
+        return cursor
+    }
+
     public func close() {
         guard !isClosed else { return }
         isClosed = true
         try? database.close()
         try? FileManager.default.removeItem(at: workspaceURL)
         workspaceLease = nil
-    }
-
-    private struct Cursor: Sendable {
-        let startedAt: Date
-        let id: String
     }
 }
 
@@ -162,6 +193,19 @@ extension MeetingStore {
         }.value
     }
 
+    /// Reopens one exact immutable stage after its previous process released
+    /// the kernel lease. Active, missing, malformed, or cursor-mismatched work
+    /// is never guessed safe.
+    public func adoptLibraryMarkdownBackupStage(
+        id: UUID,
+        cursor: MeetingMarkdownBackupStageCursor?
+    ) async throws -> MeetingMarkdownBackupStageAdoption {
+        try await Self.adoptLibraryMarkdownBackupStage(
+            id: id,
+            cursor: cursor,
+            in: Self.defaultLibraryMarkdownBackupStagingRoot)
+    }
+
     static func cleanupAbandonedLibraryMarkdownBackupStages(
         in stagingRoot: URL
     ) throws -> Set<UUID> {
@@ -170,6 +214,63 @@ extension MeetingStore {
         return try withLibraryMarkdownBackupRootLock(in: stagingRoot) {
             cleanupAbandonedLibraryMarkdownBackupStagesWithRootLock(
                 in: stagingRoot)
+        }
+    }
+
+    static func adoptLibraryMarkdownBackupStage(
+        id: UUID,
+        cursor: MeetingMarkdownBackupStageCursor?,
+        in stagingRoot: URL
+    ) async throws -> MeetingMarkdownBackupStageAdoption {
+        guard try itemExistsWithoutFollowingSymbolicLinks(stagingRoot)
+        else { return .unavailable }
+
+        let workspace = try withLibraryMarkdownBackupRootLock(in: stagingRoot) {
+            try adoptableLibraryMarkdownBackupWorkspace(
+                id: id,
+                in: stagingRoot)
+        }
+        guard let workspace else { return .unavailable }
+
+        var configuration = Configuration()
+        configuration.readonly = true
+        let database: DatabaseQueue
+        do {
+            database = try DatabaseQueue(
+                path: workspace.databaseURL.path,
+                configuration: configuration)
+        } catch {
+            throw MeetingMarkdownBackupStageError.invalidWorkspace
+        }
+
+        do {
+            let total = try await database.read { database in
+                if let cursor {
+                    guard cursor.startedAt.timeIntervalSince1970.isFinite,
+                          !cursor.recordID.isEmpty,
+                          try MeetingRecord
+                            .filter(Column("deletedAt") == nil)
+                            .filter(Column("startedAt") == cursor.startedAt)
+                            .filter(Column("id") == cursor.recordID)
+                            .fetchCount(database) == 1
+                    else {
+                        throw MeetingMarkdownBackupStageError.invalidCursor
+                    }
+                }
+                return try MeetingRecord
+                    .filter(Column("deletedAt") == nil)
+                    .fetchCount(database)
+            }
+            return .ready(MeetingMarkdownBackupStage(
+                id: id,
+                database: database,
+                workspaceURL: workspace.url,
+                workspaceLease: workspace.lease,
+                totalMeetings: total,
+                cursor: cursor))
+        } catch {
+            try? database.close()
+            throw error
         }
     }
 }
@@ -310,6 +411,39 @@ private extension MeetingStore {
         }
     }
 
+    static func adoptableLibraryMarkdownBackupWorkspace(
+        id: UUID,
+        in stagingRoot: URL
+    ) throws -> MeetingMarkdownBackupWorkspace? {
+        let workspace = stagingRoot.appendingPathComponent(
+            id.uuidString.lowercased(),
+            isDirectory: true)
+        guard try itemExistsWithoutFollowingSymbolicLinks(workspace)
+        else { return nil }
+        try validateLibraryMarkdownBackupDirectory(workspace)
+
+        let ownerURL = workspace.appendingPathComponent(
+            libraryMarkdownBackupOwnerFileName)
+        try validateLibraryMarkdownBackupRegularFile(ownerURL)
+        guard let lease = try MeetingMarkdownBackupWorkspaceLease.acquire(
+            at: ownerURL,
+            create: false,
+            nonBlocking: true)
+        else { return nil }
+
+        do {
+            try validateLibraryMarkdownBackupRegularFile(
+                workspace.appendingPathComponent("source.sqlite"))
+            return MeetingMarkdownBackupWorkspace(
+                id: id,
+                url: workspace,
+                lease: lease)
+        } catch {
+            withExtendedLifetime(lease) {}
+            throw error
+        }
+    }
+
     static func cleanupAbandonedLibraryMarkdownBackupStagesWithRootLock(
         in stagingRoot: URL
     ) -> Set<UUID> {
@@ -368,9 +502,13 @@ private extension MeetingStore {
         _ operation: () throws -> T
     ) throws -> T {
         let manager = FileManager.default
-        try manager.createDirectory(
-            at: stagingRoot,
-            withIntermediateDirectories: true)
+        if try itemExistsWithoutFollowingSymbolicLinks(stagingRoot) {
+            try validateLibraryMarkdownBackupDirectory(stagingRoot)
+        } else {
+            try manager.createDirectory(
+                at: stagingRoot,
+                withIntermediateDirectories: true)
+        }
         try manager.setAttributes(
             [.posixPermissions: 0o700],
             ofItemAtPath: stagingRoot.path)
@@ -390,6 +528,50 @@ private extension MeetingStore {
         }
         defer { withExtendedLifetime(lease) {} }
         return try operation()
+    }
+
+    static func itemExistsWithoutFollowingSymbolicLinks(
+        _ url: URL
+    ) throws -> Bool {
+        var information = stat()
+        if Darwin.lstat(url.path, &information) == 0 {
+            return true
+        }
+        guard errno == ENOENT else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+        return false
+    }
+
+    static func validateLibraryMarkdownBackupDirectory(
+        _ url: URL
+    ) throws {
+        let values = try url.resourceValues(forKeys: [
+            .isDirectoryKey,
+            .isSymbolicLinkKey
+        ])
+        guard values.isDirectory == true,
+              values.isSymbolicLink != true
+        else {
+            throw MeetingMarkdownBackupStageError.invalidWorkspace
+        }
+    }
+
+    static func validateLibraryMarkdownBackupRegularFile(
+        _ url: URL
+    ) throws {
+        guard try itemExistsWithoutFollowingSymbolicLinks(url) else {
+            throw MeetingMarkdownBackupStageError.invalidWorkspace
+        }
+        let values = try url.resourceValues(forKeys: [
+            .isRegularFileKey,
+            .isSymbolicLinkKey
+        ])
+        guard values.isRegularFile == true,
+              values.isSymbolicLink != true
+        else {
+            throw MeetingMarkdownBackupStageError.invalidWorkspace
+        }
     }
 
     /// Preserves the released backup's General-recipe selection instead of
@@ -415,6 +597,8 @@ private enum MeetingMarkdownBackupSnapshotError: Error {
 
 private enum MeetingMarkdownBackupStageError: Error {
     case closed
+    case invalidCursor
+    case invalidWorkspace
     case suspended
     case workspaceUnavailable
 }
@@ -423,6 +607,10 @@ private struct MeetingMarkdownBackupWorkspace {
     let id: UUID
     let url: URL
     let lease: MeetingMarkdownBackupWorkspaceLease
+
+    var databaseURL: URL {
+        url.appendingPathComponent("source.sqlite")
+    }
 }
 
 private final class MeetingMarkdownBackupWorkspaceLease:

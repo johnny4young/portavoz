@@ -249,6 +249,151 @@ final class LibraryMarkdownBackupStoreTests: XCTestCase {
         await stage.close()
     }
 
+    func testStageAdoptionResumesAfterExactContentFreeCursor() async throws {
+        let stagingRoot = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: stagingRoot) }
+        let store = try MeetingStore.inMemory()
+        let base = Date(timeIntervalSince1970: 1_790_100_000)
+        let older = Meeting(title: "Older", startedAt: base)
+        let newer = Meeting(
+            title: "Newer",
+            startedAt: base.addingTimeInterval(60))
+        try await store.save(older)
+        try await store.save(newer)
+
+        let preparation = try await store.prepareLibraryMarkdownBackupStage(
+            in: stagingRoot,
+            pagesPerStep: 1,
+            mayContinue: { true })
+        guard case .ready(let original) = preparation else {
+            return XCTFail("Expected a prepared stage")
+        }
+        guard case .meeting(let first)? = try await original.next() else {
+            return XCTFail("Expected the newest staged meeting")
+        }
+        XCTAssertEqual(first.meeting.id, newer.id)
+        let currentCheckpoint = try await original.checkpoint()
+        let cursor = try XCTUnwrap(currentCheckpoint)
+        let persistedCursor = try JSONDecoder().decode(
+            MeetingMarkdownBackupStageCursor.self,
+            from: JSONEncoder().encode(cursor))
+        XCTAssertEqual(persistedCursor, cursor)
+
+        let activeAdoption = try await MeetingStore
+            .adoptLibraryMarkdownBackupStage(
+                id: original.id,
+                cursor: persistedCursor,
+                in: stagingRoot)
+        guard case .unavailable = activeAdoption else {
+            return XCTFail("An active kernel-owned stage must not be adopted")
+        }
+
+        let adoptedID = UUID()
+        let adoptedWorkspace = try await cloneStageWorkspace(
+            from: original,
+            as: adoptedID,
+            in: stagingRoot)
+        let adoption = try await MeetingStore.adoptLibraryMarkdownBackupStage(
+            id: adoptedID,
+            cursor: persistedCursor,
+            in: stagingRoot)
+        guard case .ready(let adopted) = adoption else {
+            return XCTFail("Expected the abandoned stage clone to be adopted")
+        }
+        XCTAssertEqual(adopted.totalMeetings, 2)
+        guard case .meeting(let resumed)? = try await adopted.next() else {
+            return XCTFail("Expected adoption to continue after the cursor")
+        }
+        XCTAssertEqual(resumed.meeting.id, older.id)
+        let resumedCheckpoint = try await adopted.checkpoint()
+        XCTAssertEqual(
+            resumedCheckpoint?.recordID,
+            older.id.rawValue.uuidString)
+        let exhaustedEntry = try await adopted.next()
+        XCTAssertNil(exhaustedEntry)
+
+        await adopted.close()
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: adoptedWorkspace.path))
+        await original.close()
+    }
+
+    func testStageAdoptionRejectsMismatchedCursorAndSymlinkDatabase() async throws {
+        let stagingRoot = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: stagingRoot) }
+        let store = try MeetingStore.inMemory()
+        try await store.save(Meeting(
+            title: "Planning",
+            startedAt: Date(timeIntervalSince1970: 1_790_200_000)))
+
+        let preparation = try await store.prepareLibraryMarkdownBackupStage(
+            in: stagingRoot,
+            pagesPerStep: 1,
+            mayContinue: { true })
+        guard case .ready(let original) = preparation else {
+            return XCTFail("Expected a prepared stage")
+        }
+        guard try await original.next() != nil else {
+            return XCTFail("Expected one staged meeting")
+        }
+        let currentCheckpoint = try await original.checkpoint()
+        let cursor = try XCTUnwrap(currentCheckpoint)
+
+        let mismatchedID = UUID()
+        let mismatchedWorkspace = try await cloneStageWorkspace(
+            from: original,
+            as: mismatchedID,
+            in: stagingRoot)
+        await XCTAssertThrowsErrorAsync {
+            _ = try await MeetingStore.adoptLibraryMarkdownBackupStage(
+                id: mismatchedID,
+                cursor: MeetingMarkdownBackupStageCursor(
+                    startedAt: cursor.startedAt,
+                    recordID: UUID().uuidString),
+                in: stagingRoot)
+        }
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: mismatchedWorkspace.path))
+
+        let symlinkID = UUID()
+        let symlinkWorkspace = try await cloneStageWorkspace(
+            from: original,
+            as: symlinkID,
+            in: stagingRoot)
+        let symlinkDatabase = symlinkWorkspace.appendingPathComponent(
+            "source.sqlite")
+        try FileManager.default.removeItem(at: symlinkDatabase)
+        let originalWorkspace = await original.workspaceURL
+        try FileManager.default.createSymbolicLink(
+            at: symlinkDatabase,
+            withDestinationURL: originalWorkspace
+                .appendingPathComponent("source.sqlite"))
+        await XCTAssertThrowsErrorAsync {
+            _ = try await MeetingStore.adoptLibraryMarkdownBackupStage(
+                id: symlinkID,
+                cursor: nil,
+                in: stagingRoot)
+        }
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: symlinkWorkspace.path))
+
+        await original.close()
+    }
+
+    private func cloneStageWorkspace(
+        from stage: MeetingMarkdownBackupStage,
+        as id: UUID,
+        in stagingRoot: URL
+    ) async throws -> URL {
+        let destination = stagingRoot.appendingPathComponent(
+            id.uuidString.lowercased(),
+            isDirectory: true)
+        try FileManager.default.copyItem(
+            at: await stage.workspaceURL,
+            to: destination)
+        return destination
+    }
+
     private func temporaryDirectory() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -273,5 +418,18 @@ private final class StageCheckpoint: @unchecked Sendable {
             calls += 1
             return calls <= firstAllowedCalls
         }
+    }
+}
+
+private func XCTAssertThrowsErrorAsync(
+    _ expression: () async throws -> Void,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) async {
+    do {
+        try await expression()
+        XCTFail("Expected an error", file: file, line: line)
+    } catch {
+        // Expected.
     }
 }

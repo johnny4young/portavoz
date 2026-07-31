@@ -2688,10 +2688,19 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("database.backup("))
         XCTAssertTrue(storage.contains("pagesPerStep: pagesPerStep"))
         XCTAssertTrue(storage.contains("database.read"))
-        XCTAssertTrue(storage.contains("private var cursor: Cursor?"))
+        XCTAssertTrue(storage.contains(
+            "private var cursor: MeetingMarkdownBackupStageCursor?"))
         XCTAssertTrue(storage.contains(
             "Column(\"startedAt\") < currentCursor.startedAt"))
-        XCTAssertTrue(storage.contains("Column(\"id\") > currentCursor.id"))
+        XCTAssertTrue(storage.contains(
+            "Column(\"id\") > currentCursor.recordID"))
+        XCTAssertTrue(storage.contains(
+            "adoptLibraryMarkdownBackupStage("))
+        XCTAssertTrue(storage.contains("configuration.readonly = true"))
+        XCTAssertTrue(storage.contains(
+            "try validateLibraryMarkdownBackupRegularFile("))
+        XCTAssertTrue(storage.contains(
+            "MeetingMarkdownBackupStageError.invalidCursor"))
         XCTAssertTrue(storage.contains(".posixPermissions: 0o600"))
         XCTAssertTrue(storage.contains("values.isExcludedFromBackup = true"))
         XCTAssertTrue(storage.contains(".workspace-coordinator.lock"))
