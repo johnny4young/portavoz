@@ -6344,3 +6344,50 @@ content or allowing instrumentation to affect product policy. Exact corpus and
 citation gates distinguish a faster implementation from one that silently did
 less work, while an explicit before-state gives later progressive retrieval a
 real comparison boundary.
+
+## D194 — Freeze multilingual Ask quality before retrieval changes (Jul 2026)
+
+**Context:** D192–D193 make the current Ask latency and resource path
+explainable, but deterministic citation identity over a ten-segment performance
+fixture does not prove retrieval or answer quality. Removing request-time
+corpus writes, changing progressive orchestration, chunking, embeddings, or the
+vector engine without one stable quality boundary could make Ask faster by
+silently losing bilingual evidence, exact facts, abstention, or citation
+integrity. Using a second model as the only judge would also make the release
+gate nondeterministic and difficult to reproduce offline.
+
+**Decision:** benchmark tooling owns an adapter-neutral schema and a canonical
+public-synthetic fixture with exactly 240 judged queries: 60
+Spanish-to-Spanish, 60 English-to-English, 40 English-to-Spanish, 40
+Spanish-to-English, 20 code-switched, and 20 robustness cases. Robustness keeps
+Spanish evidence fixed while independently testing accent removal, spelling
+errors, technical-identifier noise, and missing-fact abstention. Exact fact
+intents require relevant evidence at rank one. Every query also declares
+graded evidence, canonical timestamp/owner labels, hard negatives, and an
+answer-or-abstain policy.
+
+One strict local evaluator rejects duplicate or unknown fields, incomplete
+query coverage, duplicate hits, unsafe identities, stale citation revisions,
+non-finite scores, and noncanonical public fixtures. It reports Hit@1,
+Recall@10, reciprocal rank, nDCG@10, factuality, citation coverage, answer
+policy accuracy, hard-negative hits, invalid/stale citations, and unsupported
+claims overall and per relationship. Passing requires exact facts at rank one,
+explicit overall and per-relationship retrieval/answer floors, canonical
+citations, correct abstention, no hard negatives, and zero unsupported claims.
+The observation schema contains no question, transcript, generated answer, or
+owner text; the owner-only non-overwriting scorecard contains only aggregate
+metrics plus fixture, adapter, build, and commit identity.
+
+The public corpus is tracked and deterministic. A later private anonymized pack
+must use the same schema but remains untracked. This decision adds no product
+runtime dependency and does not select an index or embedding provider. SEARCH-1
+cannot claim quality parity until its real retrieval path emits complete
+observations that pass this contract.
+
+**Rationale:** deterministic labels make regression detection local,
+repeatable, and independent of whichever model is under test, while factuality
+and citation metrics still permit separately versioned human or model-assisted
+annotation when producing a fixture. Freezing the scoring contract before the
+implementation changes makes latency improvements comparable rather than
+subjective and preserves multilingual, evidence-linked behavior as an explicit
+architecture invariant.

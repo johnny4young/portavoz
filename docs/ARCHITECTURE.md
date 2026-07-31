@@ -1277,6 +1277,23 @@ embeddings to zero. Removing request-time corpus writes in SEARCH-1 must replace
 that readiness contract rather than silently reusing it. These reports remain
 benchmark evidence only; product scheduling and storage never read them.
 
+A separate adapter-neutral Ask quality boundary owns one canonical tracked
+public-synthetic corpus with exactly 240 judged queries: 60 Spanish-to-Spanish,
+60 English-to-English, 40 English-to-Spanish, 40 Spanish-to-English, 20
+code-switched, and 20 isolated robustness cases. The strict evaluator admits
+only complete observations bound to one fixture generation, adapter, build,
+and commit. It scores Hit@1, Recall@10, reciprocal rank, nDCG@10, factuality,
+citation coverage, answer-versus-abstention policy, hard negatives, unsupported
+claims, and canonical meeting/timestamp/revision evidence both overall and per
+language relationship. Exact facts must rank first; declared quality floors,
+canonical citations, abstention policy, hard-negative exclusion, and zero
+unsupported claims all fail closed. Public fixture text stays synthetic; an
+optional private fixture may remain anonymized and untracked. Published
+scorecards retain only aggregate metrics and source-control identity, never
+queries, transcripts, answers, owners, or citation identifiers. This tooling is
+not linked into the application and does not choose or configure a retrieval
+engine.
+
 Indexing prepares
 the already-installed embedding runtime before sampling, drains 1,024 fixed
 public segments through the real ApplicationKit operation, and requires no

@@ -308,11 +308,25 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(benchmarkProbe.contains("readyAfter"))
         XCTAssertTrue(benchmarkProbe.contains("outputAlreadyExists"))
 
+        let qualityHarness = try Self.contents(of: "scripts/ask_quality.py")
+        for required in [
+            "RELATIONSHIP_COUNTS", "RETRIEVAL_FLOORS", "ANSWER_FLOORS",
+            "exactFactsRankFirst", "retrievalQualityFloor",
+            "answerQualityFloor", "citationsCanonical",
+            "hardNegativesExcluded", "adapter", "commit",
+        ] {
+            XCTAssertTrue(
+                qualityHarness.contains(required),
+                "Ask quality contract is missing \(required)")
+        }
+        XCTAssertFalse(qualityHarness.contains("generatedText"))
+
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         let quality = try Self.contents(of: "docs/specs/08-quality.md")
-        XCTAssertTrue(decisions.contains("## D193"))
+        XCTAssertTrue(decisions.contains("## D194"))
         XCTAssertTrue(quality.contains(
             "The same run must emit a content-free pipeline sidecar"))
+        XCTAssertTrue(quality.contains("exactly 240 judged queries"))
     }
 
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {

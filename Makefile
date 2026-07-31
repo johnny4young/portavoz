@@ -12,7 +12,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
-.PHONY: build test test-recording-stress test-ui test-ui-en test-ui-es \
+.PHONY: build test test-ask-quality test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
 	release-reliability long-capture-baseline
@@ -20,6 +20,13 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 ## Unit tests (the package suite).
 test:
 	$(XCODE) swift test
+
+## Validate the adapter-neutral Ask quality contract and its canonical public
+## 240-query multilingual fixture without loading models or user data.
+test-ask-quality:
+	python3 -m unittest Tests.Tooling.test_ask_quality
+	python3 scripts/ask_quality.py verify-public \
+		--fixture Fixtures/AskQuality/public-synthetic-v1.json
 
 ## Release performance ledger (PERF-001/PERF-008): run the unattended
 ## benchmark harnesses, evaluate every journey against its declared budget and
