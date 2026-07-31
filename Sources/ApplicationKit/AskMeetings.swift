@@ -75,6 +75,35 @@ public struct AskMeetingAnswer: Equatable, Sendable {
 public protocol AskMeetingRetrieving: Sendable {
     func search(query: String, limit: Int) async throws -> [AskSearchResult]
     func retrieve(question: String, limit: Int) async throws -> [AskCitation]
+
+    func search(
+        query: String,
+        limit: Int,
+        trace: AskPipelineTrace
+    ) async throws -> [AskSearchResult]
+    func retrieve(
+        question: String,
+        limit: Int,
+        trace: AskPipelineTrace
+    ) async throws -> [AskCitation]
+}
+
+public extension AskMeetingRetrieving {
+    func search(
+        query: String,
+        limit: Int,
+        trace _: AskPipelineTrace
+    ) async throws -> [AskSearchResult] {
+        try await search(query: query, limit: limit)
+    }
+
+    func retrieve(
+        question: String,
+        limit: Int,
+        trace _: AskPipelineTrace
+    ) async throws -> [AskCitation] {
+        try await retrieve(question: question, limit: limit)
+    }
 }
 
 /// Optional local generation. Throwing or returning nil degrades to evidence;
@@ -100,19 +129,23 @@ public enum AskMeetingsResponse: Equatable, Sendable {
 public struct AskMeetings: ApplicationUseCase {
     private let retrieval: any AskMeetingRetrieving
     private let answering: any AskMeetingAnswering
+    private let telemetry: AskPipelineTelemetry
 
     public init(
         retrieval: any AskMeetingRetrieving,
-        answering: any AskMeetingAnswering
+        answering: any AskMeetingAnswering,
+        telemetry: AskPipelineTelemetry = .disabled
     ) {
         self.retrieval = retrieval
         self.answering = answering
+        self.telemetry = telemetry
     }
 
     public static func local(
         store: MeetingStore,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
         telemetry: ResourceWorkloadTelemetry = .disabled,
+        pipelineTelemetry: AskPipelineTelemetry = .disabled,
         indexingCoordinator: SemanticCorpusIndexingCoordinator? = nil
     ) -> Self {
         let intelligence = OnDeviceAskMeetingIntelligence()
@@ -123,7 +156,8 @@ public struct AskMeetings: ApplicationUseCase {
                 runtime: semanticRuntime,
                 telemetry: telemetry,
                 indexingCoordinator: indexingCoordinator),
-            answering: intelligence)
+            answering: intelligence,
+            telemetry: pipelineTelemetry)
     }
 
     public func execute(
@@ -145,7 +179,16 @@ public struct AskMeetings: ApplicationUseCase {
     ) async throws -> [AskSearchResult] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty, limit > 0 else { return [] }
-        return try await retrieval.search(query: query, limit: limit)
+        return try await telemetry.measure(.search) { trace in
+            let results = try await retrieval.search(
+                query: query,
+                limit: limit,
+                trace: trace)
+            if !results.isEmpty {
+                trace.reach(.firstEvidence)
+            }
+            return results
+        }
     }
 
     public func evidence(
@@ -154,7 +197,16 @@ public struct AskMeetings: ApplicationUseCase {
     ) async throws -> [AskCitation] {
         let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, limit > 0 else { return [] }
-        return try await retrieval.retrieve(question: question, limit: limit)
+        return try await telemetry.measure(.evidence) { trace in
+            let citations = try await retrieval.retrieve(
+                question: question,
+                limit: limit,
+                trace: trace)
+            if !citations.isEmpty {
+                trace.reach(.firstEvidence)
+            }
+            return citations
+        }
     }
 
     public func answer(
@@ -168,31 +220,40 @@ public struct AskMeetings: ApplicationUseCase {
                 generatedText: nil,
                 citations: [])
         }
-        let citations = try await retrieval.retrieve(
-            question: question,
-            limit: limit)
-        try Task.checkCancellation()
-        guard !citations.isEmpty else {
+        return try await telemetry.measure(.answer) { trace in
+            let citations = try await retrieval.retrieve(
+                question: question,
+                limit: limit,
+                trace: trace)
+            try Task.checkCancellation()
+            guard !citations.isEmpty else {
+                return AskMeetingAnswer(
+                    question: question,
+                    generatedText: nil,
+                    citations: [])
+            }
+            trace.reach(.firstEvidence)
+            let generatedText: String?
+            do {
+                generatedText = try await answering.answer(
+                    question: question,
+                    citations: citations)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                generatedText = nil
+            }
+            try Task.checkCancellation()
+            if generatedText?.contains(where: { !$0.isWhitespace }) == true {
+                // The current answer capability returns one complete String,
+                // so its first token becomes observable at this boundary.
+                trace.reach(.firstToken)
+            }
             return AskMeetingAnswer(
                 question: question,
-                generatedText: nil,
-                citations: [])
-        }
-        let generatedText: String?
-        do {
-            generatedText = try await answering.answer(
-                question: question,
+                generatedText: generatedText,
                 citations: citations)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            generatedText = nil
         }
-        try Task.checkCancellation()
-        return AskMeetingAnswer(
-            question: question,
-            generatedText: generatedText,
-            citations: citations)
     }
 }
 

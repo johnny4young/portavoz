@@ -32,65 +32,111 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         query: String,
         limit: Int
     ) async throws -> [AskSearchResult] {
+        try await search(
+            query: query,
+            limit: limit,
+            trace: AskPipelineTelemetry.disabledTrace(for: .search))
+    }
+
+    public func search(
+        query: String,
+        limit: Int,
+        trace: AskPipelineTrace
+    ) async throws -> [AskSearchResult] {
         guard limit > 0 else { return [] }
-        return try await store.search(query, limit: limit).map(Self.searchResult)
+        let hits = try await trace.measure(.lexicalQuery) { [store] in
+            try await store.search(query, limit: limit)
+        }
+        return await trace.measure(.citationFetch) {
+            hits.map(Self.searchResult)
+        }
     }
 
     public func retrieve(
         question: String,
         limit: Int
     ) async throws -> [AskCitation] {
+        try await retrieve(
+            question: question,
+            limit: limit,
+            trace: AskPipelineTelemetry.disabledTrace(for: .evidence))
+    }
+
+    public func retrieve(
+        question: String,
+        limit: Int,
+        trace: AskPipelineTrace
+    ) async throws -> [AskCitation] {
         try await runtime.withPreparedEmbedding(
             allowAssetDownload: true
-        ) { [indexingCoordinator, queryExpander, store] embedder in
+        ) { [indexingCoordinator, queryExpander, store, trace] embedder in
             // Index what's new, query lexically and semantically
             // (multi-query, cross-lingual when FM is around), then fuse by
             // reciprocal rank.
-            _ = try await indexingCoordinator.all(
-                using: embedder,
-                batchSize: 256)
+            _ = try await trace.measure(.corpusReadiness) {
+                try await indexingCoordinator.all(
+                    using: embedder,
+                    batchSize: 256)
+            }
 
-            let queries = await queryExpander.expand(question)
+            let queries = await trace.measure(.expansion) {
+                await queryExpander.expand(question)
+            }
 
             // Lexical: term-level top-k candidates over CONTENT words only.
             // Multi-term evidence climbs through reciprocal-rank fusion
             // without forcing FTS5 to score the broad OR union before LIMIT.
-            let lexical = try await Self.retrieveLexical(
-                queries: queries,
-                store: store,
-                limit: 12 * queries.count)
+            let lexical = try await trace.measure(.lexicalQuery) {
+                try await Self.retrieveLexical(
+                    queries: queries,
+                    store: store,
+                    limit: 12 * queries.count)
+            }
 
             // Semantic: best rank per segment across every query variant.
-            let vectors = try await embedder.vectors(for: queries)
-            var bestRank: [UUID: Int] = [:]
-            var hitsByID: [UUID: SearchHit] = [:]
-            for vector in vectors {
-                for (rank, hit) in try await store.searchSemantic(
-                    vector,
-                    limit: 12
-                ).enumerated()
-                where bestRank[hit.segmentID].map({ rank < $0 }) ?? true {
-                    bestRank[hit.segmentID] = rank
-                    hitsByID[hit.segmentID] = hit
-                }
+            let vectors = try await trace.measure(.queryEmbedding) {
+                try await embedder.vectors(for: queries)
             }
-            let semantic = bestRank.sorted { $0.value < $1.value }.map(\.key)
+            let semanticResult = try await trace.measure(.semanticScan) {
+                var bestRank: [UUID: Int] = [:]
+                var hitsByID: [UUID: SearchHit] = [:]
+                for vector in vectors {
+                    for (rank, hit) in try await store.searchSemantic(
+                        vector,
+                        limit: 12
+                    ).enumerated()
+                    where bestRank[hit.segmentID].map({ rank < $0 }) ?? true {
+                        bestRank[hit.segmentID] = rank
+                        hitsByID[hit.segmentID] = hit
+                    }
+                }
+                return (bestRank: bestRank, hitsByID: hitsByID)
+            }
+            let semantic = semanticResult.bestRank.sorted {
+                $0.value < $1.value
+            }.map(\.key)
+            var hitsByID = semanticResult.hitsByID
             for hit in lexical where hitsByID[hit.segmentID] == nil {
                 hitsByID[hit.segmentID] = hit
             }
+            let finalHitsByID = hitsByID
 
-            let fused = RAGFusion.fuse(
-                lexical: lexical.map(\.segmentID),
-                semantic: semantic,
-                limit: limit)
+            let fused = await trace.measure(.fusion) {
+                RAGFusion.fuse(
+                    lexical: lexical.map(\.segmentID),
+                    semantic: semantic,
+                    limit: limit)
+            }
 
-            return fused.compactMap { hitsByID[$0] }.map { hit in
-                AskCitation(
-                    segmentID: hit.segmentID,
-                    meetingID: hit.meetingID,
-                    meetingTitle: hit.meetingTitle,
-                    timestamp: hit.startTime,
-                    text: hit.text)
+            return await trace.measure(.citationFetch) {
+                fused.compactMap { finalHitsByID[$0] }.map { hit in
+                    AskCitation(
+                        segmentID: hit.segmentID,
+                        meetingID: hit.meetingID,
+                        meetingTitle: hit.meetingTitle,
+                        timestamp: hit.startTime,
+                        text: hit.text)
+                }
             }
         }
     }
@@ -182,5 +228,15 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
                 locale: Locale(identifier: "en_US_POSIX"))
             return seen.insert(key).inserted
         }
+    }
+}
+
+private extension AskPipelineTelemetry {
+    static func disabledTrace(
+        for operation: AskPipelineOperation
+    ) -> AskPipelineTrace {
+        AskPipelineTrace(
+            identity: AskPipelineTraceIdentity(operation: operation),
+            receiver: { _ in })
     }
 }

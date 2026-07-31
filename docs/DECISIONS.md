@@ -6265,3 +6265,40 @@ false real-call claims while still turning multi-hour capture and Stop into a
 repeatable release gate. Explicit close and scoped autorelease make the
 architecture's bounded-memory publication claim true rather than relying on
 ARC timing.
+
+## D192 — Trace Ask stages without admitting meeting content (Jul 2026)
+
+**Context:** progressive Ask must remove complete corpus backfill and optional
+generation from time-to-first-evidence without changing citation quality. The
+existing resource telemetry identifies only a broad user-initiated workload;
+the historical lexical and semantic probes cannot explain expansion,
+readiness, retrieval, or generation time inside one real Ask. Overloading the
+generic resource taxonomy with search-specific stages would couple unrelated
+governor policy to benchmark implementation.
+
+**Decision:** ApplicationKit owns a separate closed `AskPipelineTelemetry`
+port. One random process-local trace spans a validated search, evidence, or
+answer operation. `LocalAskMeetingRetrieval` emits matched intervals for corpus
+readiness, query expansion, lexical query, query embedding, semantic scan,
+fusion, and citation materialization. `AskMeetings` emits first evidence, the
+first token observable at its answer boundary, and a completed, cancelled, or
+failed terminal outcome. Empty and invalid requests create no trace.
+
+The trace types carry only closed operation/stage/milestone/outcome enums and
+random correlation UUIDs. The macOS composition root maps them to OSLog Points
+of Interest through one adapter whose API cannot receive question text,
+meeting or segment identity, citations, paths, model names, or error text. An
+explicit observer seam lets deterministic benchmarks receive the same event
+stream without parsing Instruments output. The current answer capability is
+not streaming, so first-token observation honestly coincides with the complete
+answer crossing ApplicationKit; it does not claim model-internal timing.
+
+This slice does not retain samples, create a benchmark report, alter corpus
+writes, reorder retrieval, or change model readiness. Those changes require a
+separate comparable evidence slice over this stable vocabulary.
+
+**Rationale:** a dedicated application-level trace makes every current latency
+component visible without weakening privacy or turning measurement labels into
+resource policy. Establishing stable before-state evidence first lets later
+progressive retrieval prove lower time-to-first-evidence and unchanged
+citations rather than merely moving work and assuming improvement.

@@ -1427,7 +1427,22 @@ meeting-brief retrieval. Its local adapter combines bounded per-term lexical
 candidates, exact semantic ranking, optional bilingual query expansion, and
 reciprocal-rank fusion. Local generation is optional: ordinary model failure
 preserves exact citations, while caller cancellation propagates. Embeddings are
-device-local derivation and do not mark a meeting for sync. Meeting Detail
+device-local derivation and do not mark a meeting for sync.
+
+One ApplicationKit trace spans each Ask search, evidence, or answer operation.
+The closed stage vocabulary covers corpus readiness, query expansion, lexical
+retrieval, query embedding, semantic scan, rank fusion, and citation materialization;
+separate milestones identify first evidence, the first answer token observable
+by the application, and terminal outcome. The trace admits only operation,
+stage, milestone, outcome, and random process-local correlation values. The
+macOS adapter converts them into Points of Interest intervals without logging a
+question, meeting, citation, path, model, or error. The current answer provider
+returns one complete string, so first-token observation currently coincides
+with that string crossing the ApplicationKit boundary. CLI distribution and
+quality aggregation remain separate benchmark work; this trace changes no
+retrieval ordering, persistence, model preparation, or user-visible output.
+
+Meeting Detail
 seeks exact transcript evidence only after its audio player is ready; early
 source selections remain queued until waveform preparation completes. Ask and
 command-palette citation seeks are meeting-scoped, identity-bearing navigation

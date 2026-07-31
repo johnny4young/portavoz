@@ -241,6 +241,50 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Resource workload measurement (D148)"))
     }
 
+    func testAskPipelineTelemetryRemainsContentFreeAndPlatformRecorded() throws {
+        let contract = try Self.contents(
+            of: "Sources/ApplicationKit/AskPipelineTelemetry.swift")
+        guard let identityStart = contract.range(
+            of: "public struct AskPipelineTraceIdentity"),
+            let traceStart = contract.range(
+                of: "public struct AskPipelineTrace:",
+                range: identityStart.upperBound..<contract.endIndex)
+        else {
+            return XCTFail("Ask pipeline telemetry boundary is missing")
+        }
+        let eventContract = contract[
+            identityStart.lowerBound..<traceStart.lowerBound]
+        for forbidden in [
+            "String", "URL", "MeetingID", "Transcript", "question",
+            "citation", "model", "path", "Error",
+        ] {
+            XCTAssertFalse(
+                eventContract.contains(forbidden),
+                "Ask telemetry events must not admit content field \(forbidden)")
+        }
+
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppAskPipelineTelemetry.swift")
+        for forbidden in [
+            "MeetingID", "TranscriptSegment", "URL", "localizedDescription",
+            "modelID", "relativePath", "Logger(",
+        ] {
+            XCTAssertFalse(
+                adapter.contains(forbidden),
+                "Platform Ask telemetry must not record \(forbidden)")
+        }
+        XCTAssertTrue(adapter.contains("operation.rawValue"))
+        XCTAssertTrue(adapter.contains("stage.rawValue"))
+        XCTAssertTrue(adapter.contains("milestone.rawValue"))
+        XCTAssertTrue(adapter.contains("outcome.rawValue"))
+        XCTAssertFalse(adapter.contains("trace.id, privacy:"))
+
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        XCTAssertTrue(composition.contains("pipelineTelemetry: AskPipelineTelemetry"))
+        XCTAssertTrue(composition.contains("pipelineTelemetry: pipelineTelemetry"))
+    }
+
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {
         let policy = try Self.contents(
             of: "Sources/PortavozCore/ResourceGovernorPolicy.swift")

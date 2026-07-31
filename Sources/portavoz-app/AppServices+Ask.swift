@@ -43,6 +43,7 @@ extension AppServices {
         usesTemporaryStore: Bool,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
         telemetry: ResourceWorkloadTelemetry,
+        pipelineTelemetry: AskPipelineTelemetry = AppAskPipelineTelemetry.shared.telemetry,
         captureState: AppResourceCaptureState
     ) -> AppSemanticSearchComposition {
         let maintenanceGate = AppResourceGovernorMaintenanceGate.make(
@@ -62,6 +63,7 @@ extension AppServices {
                 store: store,
                 semanticRuntime: semanticRuntime,
                 telemetry: telemetry,
+                pipelineTelemetry: pipelineTelemetry,
                 indexingCoordinator: coordinator)
         }
         let library = LocalLibrarySemanticSearch(
