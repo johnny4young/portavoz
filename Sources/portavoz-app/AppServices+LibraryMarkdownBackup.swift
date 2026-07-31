@@ -7,27 +7,37 @@ import StorageKit
 
 struct AppLibraryMarkdownBackupClient: LibraryMarkdownBackupModelClient {
     private let store: MeetingStore
+    private let recoveryStore: AppLibraryMarkdownBackupRecoveryStore
     private let useCase: ExportLibraryMarkdownBackup
     private let cleanupOnLaunch: Bool
 
     init(
         store: MeetingStore,
         maintenanceGate: DurableMaintenanceGate,
-        cleanupOnLaunch: Bool
+        cleanupOnLaunch: Bool,
+        recoveryRoot: URL
     ) {
         self.store = store
         self.cleanupOnLaunch = cleanupOnLaunch
+        let recoveryStore = AppLibraryMarkdownBackupRecoveryStore(
+            root: recoveryRoot)
+        self.recoveryStore = recoveryStore
         useCase = ExportLibraryMarkdownBackup(
             store: store,
             documents: AppLibraryMarkdownBackupDocuments(),
             files: AppLibraryMarkdownBackupFiles(),
             destinationAccess: AppBackupDestinationAccess(),
+            recoveryStore: recoveryStore,
             maintenanceGate: maintenanceGate)
     }
 
     func cleanupAbandonedLibraryMarkdownBackupStages() async {
         guard cleanupOnLaunch else { return }
-        await store.cleanupAbandonedLibraryMarkdownBackupStages()
+        let removedStageIDs =
+            await store.cleanupAbandonedLibraryMarkdownBackupStages()
+        for stageID in removedStageIDs {
+            try? await recoveryStore.remove(operationID: stageID)
+        }
     }
 
     func exportLibraryMarkdownBackup(
@@ -154,10 +164,22 @@ extension AppServices {
         captureState: AppResourceCaptureState,
         usesTemporaryStore: Bool
     ) -> LibraryMarkdownBackupModel {
-        LibraryMarkdownBackupModel(client: AppLibraryMarkdownBackupClient(
+        let recoveryRoot = usesTemporaryStore
+            ? FileManager.default.temporaryDirectory
+                .appendingPathComponent(
+                    "Portavoz-\(UUID().uuidString)",
+                    isDirectory: true)
+                .appendingPathComponent(
+                    "LibraryMarkdownBackupRecovery",
+                    isDirectory: true)
+            : supportRoot.appendingPathComponent(
+                "LibraryMarkdownBackupRecovery",
+                isDirectory: true)
+        return LibraryMarkdownBackupModel(client: AppLibraryMarkdownBackupClient(
             store: store,
             maintenanceGate: AppResourceGovernorMaintenanceGate.make(
                 captureState: captureState),
-            cleanupOnLaunch: !usesTemporaryStore))
+            cleanupOnLaunch: !usesTemporaryStore,
+            recoveryRoot: recoveryRoot))
     }
 }

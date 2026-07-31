@@ -50,6 +50,7 @@ public enum MeetingMarkdownBackupStagePreparation: Sendable {
 /// The stage never reads the live database after preparation. Closing it
 /// removes every transient SQLite file from its private workspace.
 public actor MeetingMarkdownBackupStage {
+    nonisolated public let id: UUID
     nonisolated public let totalMeetings: Int
 
     let workspaceURL: URL
@@ -59,11 +60,13 @@ public actor MeetingMarkdownBackupStage {
     private var isClosed = false
 
     fileprivate init(
+        id: UUID,
         database: DatabaseQueue,
         workspaceURL: URL,
         workspaceLease: MeetingMarkdownBackupWorkspaceLease,
         totalMeetings: Int
     ) {
+        self.id = id
         self.database = database
         self.workspaceURL = workspaceURL
         self.workspaceLease = workspaceLease
@@ -151,19 +154,19 @@ extension MeetingStore {
     /// Removes only stages whose kernel-owned lease proves that no live
     /// Portavoz process still owns them. Legacy or malformed workspaces are
     /// preserved rather than guessed stale.
-    public func cleanupAbandonedLibraryMarkdownBackupStages() async {
+    public func cleanupAbandonedLibraryMarkdownBackupStages() async -> Set<UUID> {
         let stagingRoot = Self.defaultLibraryMarkdownBackupStagingRoot
-        _ = await Task.detached(priority: .utility) {
-            try? Self.cleanupAbandonedLibraryMarkdownBackupStages(
-                in: stagingRoot)
+        return await Task.detached(priority: .utility) {
+            (try? Self.cleanupAbandonedLibraryMarkdownBackupStages(
+                in: stagingRoot)) ?? []
         }.value
     }
 
     static func cleanupAbandonedLibraryMarkdownBackupStages(
         in stagingRoot: URL
-    ) throws -> Int {
+    ) throws -> Set<UUID> {
         let manager = FileManager.default
-        guard manager.fileExists(atPath: stagingRoot.path) else { return 0 }
+        guard manager.fileExists(atPath: stagingRoot.path) else { return [] }
         return try withLibraryMarkdownBackupRootLock(in: stagingRoot) {
             cleanupAbandonedLibraryMarkdownBackupStagesWithRootLock(
                 in: stagingRoot)
@@ -226,6 +229,7 @@ extension MeetingStore {
                     .fetchCount(database)
             }
             return .ready(MeetingMarkdownBackupStage(
+                id: workspace.id,
                 database: stagedDatabase,
                 workspaceURL: workspace.url,
                 workspaceLease: workspace.lease,
@@ -276,8 +280,9 @@ private extension MeetingStore {
         in stagingRoot: URL
     ) throws -> MeetingMarkdownBackupWorkspace {
         let manager = FileManager.default
+        let id = UUID()
         let workspace = stagingRoot.appendingPathComponent(
-            UUID().uuidString.lowercased(),
+            id.uuidString.lowercased(),
             isDirectory: true)
         try manager.createDirectory(
             at: workspace,
@@ -296,6 +301,7 @@ private extension MeetingStore {
                 throw MeetingMarkdownBackupStageError.workspaceUnavailable
             }
             return MeetingMarkdownBackupWorkspace(
+                id: id,
                 url: workspace,
                 lease: lease)
         } catch {
@@ -306,7 +312,7 @@ private extension MeetingStore {
 
     static func cleanupAbandonedLibraryMarkdownBackupStagesWithRootLock(
         in stagingRoot: URL
-    ) -> Int {
+    ) -> Set<UUID> {
         let manager = FileManager.default
         guard let children = try? manager.contentsOfDirectory(
             at: stagingRoot,
@@ -315,12 +321,14 @@ private extension MeetingStore {
                 .isRegularFileKey,
                 .isSymbolicLinkKey
             ])
-        else { return 0 }
+        else { return [] }
 
-        var removedCount = 0
+        var removedIDs: Set<UUID> = []
         for workspace in children {
             guard workspace.lastPathComponent !=
                 libraryMarkdownBackupCoordinatorFileName,
+                let stageID = UUID(uuidString: workspace.lastPathComponent),
+                stageID.uuidString.lowercased() == workspace.lastPathComponent,
                 let values = try? workspace.resourceValues(forKeys: [
                     .isDirectoryKey,
                     .isSymbolicLinkKey
@@ -348,11 +356,11 @@ private extension MeetingStore {
             }
 
             if (try? manager.removeItem(at: workspace)) != nil {
-                removedCount += 1
+                removedIDs.insert(stageID)
             }
             withExtendedLifetime(lease) {}
         }
-        return removedCount
+        return removedIDs
     }
 
     static func withLibraryMarkdownBackupRootLock<T>(
@@ -412,6 +420,7 @@ private enum MeetingMarkdownBackupStageError: Error {
 }
 
 private struct MeetingMarkdownBackupWorkspace {
+    let id: UUID
     let url: URL
     let lease: MeetingMarkdownBackupWorkspaceLease
 }

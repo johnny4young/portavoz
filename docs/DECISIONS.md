@@ -5892,3 +5892,61 @@ normalizing unbounded access and gives a future sandbox adapter one auditable
 place to balance capability lifetime. Keeping persistence and the
 move/manifest crash window for the next slice avoids a false relaunch-resume
 claim.
+
+## D184 — Journal backup publication before and after the atomic move (Jul 2026)
+
+**Context:** D183 retains destination identity only inside the active actor.
+Even after persisting bookmark bytes, an app termination between moving a
+complete Markdown document into the destination and recording that move would
+leave the next process unable to distinguish “publish again” from “already
+published.” Persisting rendered Markdown in a work ledger would duplicate user
+content and enlarge the private recovery surface.
+
+**Decision:** every staged backup exposes the UUID already used by its private
+workspace. ApplicationKit uses that UUID as the recovery-operation identity
+and owns a narrow `LibraryMarkdownBackupRecoveryStore` port. Before publishing
+each rendered document, the workflow atomically saves one exact pending record:
+meeting identity, allocated portable filename, SHA-256, and byte count. After
+the no-replacement atomic move succeeds, it appends that record to completed
+publications and clears the pending reservation. Small operation metadata also
+stores the regular destination bookmark and an active/completed phase. The
+journal stores no transcript, summary, or rendered Markdown bytes.
+
+The macOS adapter writes version-1 JSON under one owner-only UUID operation
+directory in
+`Application Support/Portavoz/LibraryMarkdownBackupRecovery`. Metadata and one
+pending record are atomically replaced; successful completion moves that
+pending record atomically into an immutable sequence-named `completed`
+directory. This keeps steady-state work O(1) per document instead of rewriting
+the growing manifest after every meeting. Each record is capped at 1 MiB, all
+directories/files are private, and the root is excluded from backup. Loading
+and deletion reject symlinks, malformed or oversized records, unknown
+versions, noncontiguous sequences, invalid publication metadata, and
+operation-ID mismatches. Disposable composition uses a unique temporary root.
+
+The atomic move remains the publication commit point. A recovery-save failure
+after that move records the published result and exact pending journal
+completion in process memory before surfacing a stable fatal error. Retry
+finishes that journal transition before reading or publishing another document
+and therefore cannot publish the same document twice. A refreshed bookmark is
+persisted before replacing the actor's bookmark; failed publication clears its
+reservation before recording the typed failure. Terminal completion and
+source-read failure retain explicit process-local intent: retry removes the
+journal before closing the stage and does not reacquire a destination that is
+no longer needed. Storage cleanup now accepts only canonical lowercase
+UUID-named current-format workspaces and returns the exact IDs it proved
+abandoned. App launch removes only matching recovery documents, preserving
+active, noncanonical, malformed, and unknown work fail-closed.
+
+This decision persists evidence needed to reconcile the move/manifest crash
+window but does not perform that relaunch reconciliation yet. The SQLite
+stage's keyset cursor and any pending rendered document remain process-local,
+and launch still discards an abandoned stage plus its matching journal instead
+of adopting them.
+
+**Rationale:** reservation-before-move and completion-after-move establish the
+minimum auditable publication protocol without copying meeting content into a
+second durable store. Exact UUID cleanup keeps stage and journal lifecycles
+aligned. Keeping source-cursor persistence and stage reopening for the next
+slice avoids claiming end-to-end relaunch resume before every boundary is
+actually adoptable.

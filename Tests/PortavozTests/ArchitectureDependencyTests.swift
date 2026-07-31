@@ -2646,10 +2646,16 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testWholeLibraryMarkdownBackupUsesOneApplicationWorkflow() throws {
         let useCase = try Self.contents(
             of: "Sources/ApplicationKit/ExportLibraryMarkdownBackup.swift")
+        let recoveryContract = try Self.contents(
+            of: "Sources/ApplicationKit/LibraryMarkdownBackupRecovery.swift")
+        let destinationContract = try Self.contents(
+            of: "Sources/ApplicationKit/LibraryMarkdownBackupDestination.swift")
         let storage = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+LibraryMarkdownBackup.swift")
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+LibraryMarkdownBackup.swift")
+        let recoveryAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppLibraryMarkdownBackupRecoveryStore.swift")
         let model = try Self.contents(
             of: "Sources/portavoz-app/LibraryMarkdownBackupModel.swift")
         let view = try Self.contents(of: "Sources/portavoz-app/BackupSection.swift")
@@ -2663,8 +2669,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(useCase.contains("actor ExportLibraryMarkdownBackup"))
         XCTAssertTrue(useCase.contains("LibraryMarkdownBackupSourceSession"))
         XCTAssertTrue(useCase.contains("LibraryMarkdownBackupFailureStage"))
-        XCTAssertTrue(useCase.contains(
+        XCTAssertTrue(destinationContract.contains(
             "protocol LibraryMarkdownBackupDestinationAccess"))
+        XCTAssertTrue(recoveryContract.contains(
+            "protocol LibraryMarkdownBackupRecoveryStore"))
+        XCTAssertTrue(recoveryContract.contains("pendingPublication"))
+        XCTAssertTrue(recoveryContract.contains("completedPublications"))
+        XCTAssertTrue(useCase.contains("try await recoveryStore.apply("))
         XCTAssertTrue(useCase.contains("destinationLease.close()"))
         XCTAssertTrue(useCase.contains("maintenanceGate.disposition"))
         XCTAssertTrue(useCase.contains("workloadClass: .maintenance"))
@@ -2673,7 +2684,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(useCase.contains("shouldProceed(at: .checkpoint)"))
         XCTAssertTrue(useCase.contains("private var activeRun"))
         XCTAssertTrue(useCase.contains("existingMarkdownFileNames"))
-        XCTAssertTrue(useCase.contains("case .nameCollision: continue"))
+        XCTAssertTrue(useCase.contains("case .nameCollision:"))
         XCTAssertTrue(storage.contains("database.backup("))
         XCTAssertTrue(storage.contains("pagesPerStep: pagesPerStep"))
         XCTAssertTrue(storage.contains("database.read"))
@@ -2688,11 +2699,18 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("portavoBSDFileLock"))
         XCTAssertTrue(storage.contains("O_NOFOLLOW"))
         XCTAssertTrue(storage.contains(
+            "UUID(uuidString: workspace.lastPathComponent)"))
+        XCTAssertTrue(storage.contains(
+            "stageID.uuidString.lowercased() == workspace.lastPathComponent"))
+        XCTAssertTrue(storage.contains(
             "cleanupAbandonedLibraryMarkdownBackupStages"))
         XCTAssertTrue(storage.contains("generalSummarySnapshot"))
         XCTAssertTrue(adapter.contains("MeetingExporter.markdown"))
         XCTAssertTrue(adapter.contains("AppBackupDestinationAccess"))
         XCTAssertTrue(adapter.contains("PersistentFileBookmark().resolve"))
+        XCTAssertTrue(adapter.contains(
+            "AppLibraryMarkdownBackupRecoveryStore"))
+        XCTAssertTrue(adapter.contains("removedStageIDs"))
         XCTAssertTrue(adapter.contains("moveItem(at: temporary, to: destination)"))
         XCTAssertFalse(adapter.contains("[.atomic, .withoutOverwriting]"))
         XCTAssertTrue(bookmark.contains(".withoutImplicitSecurityScope"))
@@ -2707,6 +2725,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             "libraryMarkdownBackup.recoverAtLaunch()"))
         XCTAssertTrue(resourceAdapter.contains(
             "libraryMarkdownBackup.maintenanceMayResume()"))
+        XCTAssertTrue(recoveryAdapter.contains(
+            "private static let formatVersion = 1"))
+        XCTAssertTrue(recoveryAdapter.contains("options: .atomic"))
+        XCTAssertTrue(recoveryAdapter.contains(
+            "fileManager.moveItem("))
+        XCTAssertTrue(recoveryAdapter.contains(
+            "nextSequenceByOperation"))
+        XCTAssertTrue(recoveryAdapter.contains(".posixPermissions: 0o600"))
+        XCTAssertTrue(recoveryAdapter.contains(
+            "values.isExcludedFromBackup = true"))
         XCTAssertTrue(view.contains("services.libraryMarkdownBackup"))
         XCTAssertTrue(view.contains("NSOpenPanel"))
         XCTAssertFalse(view.contains("services.store"))

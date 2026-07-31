@@ -111,6 +111,9 @@ final class LibraryMarkdownBackupStoreTests: XCTestCase {
             title: "Corrupt")])
 
         let workspace = await stage.workspaceURL
+        XCTAssertEqual(
+            UUID(uuidString: workspace.lastPathComponent),
+            stage.id)
         let workspaceAttributes = try FileManager.default.attributesOfItem(
             atPath: workspace.path)
         let databaseAttributes = try FileManager.default.attributesOfItem(
@@ -186,8 +189,9 @@ final class LibraryMarkdownBackupStoreTests: XCTestCase {
         }
         let activeWorkspace = await stage.workspaceURL
 
+        let abandonedID = UUID()
         let abandonedWorkspace = stagingRoot.appendingPathComponent(
-            "abandoned",
+            abandonedID.uuidString.lowercased(),
             isDirectory: true)
         try FileManager.default.createDirectory(
             at: abandonedWorkspace,
@@ -196,6 +200,28 @@ final class LibraryMarkdownBackupStoreTests: XCTestCase {
             ".owner.lock")
         XCTAssertTrue(FileManager.default.createFile(
             atPath: abandonedOwner.path,
+            contents: Data()))
+
+        let malformedWorkspace = stagingRoot.appendingPathComponent(
+            "malformed-with-owner",
+            isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: malformedWorkspace,
+            withIntermediateDirectories: false)
+        XCTAssertTrue(FileManager.default.createFile(
+            atPath: malformedWorkspace
+                .appendingPathComponent(".owner.lock").path,
+            contents: Data()))
+
+        let noncanonicalWorkspace = stagingRoot.appendingPathComponent(
+            "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+            isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: noncanonicalWorkspace,
+            withIntermediateDirectories: false)
+        XCTAssertTrue(FileManager.default.createFile(
+            atPath: noncanonicalWorkspace
+                .appendingPathComponent(".owner.lock").path,
             contents: Data()))
 
         let legacyWorkspace = stagingRoot.appendingPathComponent(
@@ -208,11 +234,15 @@ final class LibraryMarkdownBackupStoreTests: XCTestCase {
         XCTAssertEqual(
             try MeetingStore.cleanupAbandonedLibraryMarkdownBackupStages(
                 in: stagingRoot),
-            1)
+            [abandonedID])
         XCTAssertTrue(FileManager.default.fileExists(
             atPath: activeWorkspace.path))
         XCTAssertFalse(FileManager.default.fileExists(
             atPath: abandonedWorkspace.path))
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: malformedWorkspace.path))
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: noncanonicalWorkspace.path))
         XCTAssertTrue(FileManager.default.fileExists(
             atPath: legacyWorkspace.path))
 

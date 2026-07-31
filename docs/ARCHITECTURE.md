@@ -115,7 +115,7 @@ self-contained over system frameworks and carries no module dependency.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
@@ -610,10 +610,40 @@ a security-scoped entitlement or keeping access open while capture has paused
 maintenance. A future sandbox composition can implement the same lease
 contract with balanced security-scope acquisition and release.
 
-Bookmark bytes, collision reservations, and a publication manifest are not yet
-persisted across process termination, so relaunch-safe continuation and stage
-adoption remain explicit gaps. None of these paths adds a timer, heartbeat,
-PID heuristic, or polling task.
+ApplicationKit assigns the stage UUID to the recovery operation and persists
+one versioned, content-minimized publication journal under the app's private
+Application Support root. Small metadata retains the regular bookmark and
+lifecycle status; one pending record carries the exact filename, meeting identity,
+SHA-256, byte count, and contiguous sequence. Transcript, summary, and rendered
+Markdown bytes never enter this journal. The app reserves a filename before the
+atomic destination move, then moves the pending record atomically into the
+immutable completed-record directory. Steady-state journal I/O is O(1) per
+meeting rather than repeatedly rewriting a growing manifest. A post-move
+journal failure records the published result in process memory before
+surfacing failure, then retries the exact pending completion before any next
+document, so it cannot republish that document in the same process. Bookmark
+refresh, failed-publication reservation clearing, and immutable completion each
+update durable state before their in-memory transition advances.
+
+Recovery directories are owner-only and excluded from backup. Metadata and
+pending files are atomically replaced, completed records are immutable, and
+each JSON record is bounded to 1 MiB. Symlinks, malformed/oversized records,
+noncontiguous sequences, unknown versions, and filename/operation-ID mismatches
+fail closed. Current-format stage
+directories must use Portavoz's canonical lowercase UUID name; cleanup returns
+the exact UUIDs it proved abandoned, and the app removes only the matching
+recovery documents. Active, noncanonical, and unknown work are preserved.
+
+Completion and source-read failure enter an explicit process-local terminal
+state. Terminal retry marks completion when needed, removes the recovery
+journal, and only then closes the staged source. It does not reacquire the
+destination because no publication capability is needed after terminal work.
+
+The persisted reservation makes the move/manifest crash window observable but
+does not yet persist the staged source keyset cursor or reopen its SQLite
+workspace. Launch still cleans an abandoned stage and matching journal instead
+of adopting them. Relaunch-safe continuation therefore remains an explicit gap.
+None of these paths adds a timer, heartbeat, PID heuristic, or polling task.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,

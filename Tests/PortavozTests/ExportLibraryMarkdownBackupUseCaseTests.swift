@@ -16,7 +16,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             store: BackupStoreFake(contents: [first, second]),
             documents: documents,
             files: files,
-            destinationAccess: BackupDestinationAccessFake())
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: BackupRecoveryStoreFake())
 
         let result = try completedResult(from: await useCase.execute(
             ExportLibraryMarkdownBackupRequest(
@@ -58,7 +59,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
                 failures: [sourceFailure]),
             documents: documents,
             files: files,
-            destinationAccess: BackupDestinationAccessFake())
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: BackupRecoveryStoreFake())
 
         let result = try completedResult(from: await useCase.execute(
             ExportLibraryMarkdownBackupRequest(
@@ -77,7 +79,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             store: BackupStoreFake(fails: true),
             documents: BackupDocumentsFake(),
             files: BackupFilesFake(),
-            destinationAccess: BackupDestinationAccessFake())
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: BackupRecoveryStoreFake())
 
         await XCTAssertThrowsErrorAsync(
             try await useCase.execute(ExportLibraryMarkdownBackupRequest(
@@ -93,7 +96,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             store: BackupStoreFake(contents: [backupContent(title: "Meeting")]),
             documents: BackupDocumentsFake(),
             files: BackupFilesFake(failsInspection: true),
-            destinationAccess: destinationAccess)
+            destinationAccess: destinationAccess,
+            recoveryStore: BackupRecoveryStoreFake())
 
         await XCTAssertThrowsErrorAsync(
             try await useCase.execute(ExportLibraryMarkdownBackupRequest(
@@ -109,7 +113,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             store: BackupStoreFake(contents: [backupContent(title: "Meeting")]),
             documents: BackupDocumentsFake(),
             files: BackupFilesFake(),
-            destinationAccess: BackupDestinationAccessFake(failsAcquisition: true))
+            destinationAccess: BackupDestinationAccessFake(failsAcquisition: true),
+            recoveryStore: BackupRecoveryStoreFake())
 
         await XCTAssertThrowsErrorAsync(
             try await useCase.execute(ExportLibraryMarkdownBackupRequest(
@@ -124,7 +129,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             store: BackupStoreFake(),
             documents: BackupDocumentsFake(),
             files: BackupFilesFake(),
-            destinationAccess: BackupDestinationAccessFake())
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: BackupRecoveryStoreFake())
 
         let result = try completedResult(from: await useCase.execute(
             ExportLibraryMarkdownBackupRequest(
@@ -146,7 +152,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             ]),
             documents: BackupDocumentsFake(),
             files: files,
-            destinationAccess: BackupDestinationAccessFake())
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: BackupRecoveryStoreFake())
 
         let result = try completedResult(from: await useCase.execute(
             ExportLibraryMarkdownBackupRequest(
@@ -170,6 +177,7 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             documents: documents,
             files: files,
             destinationAccess: destinationAccess,
+            recoveryStore: BackupRecoveryStoreFake(),
             maintenanceGate: DurableMaintenanceGate { descriptor, phase in
                 XCTAssertEqual(descriptor.workloadClass, .maintenance)
                 XCTAssertEqual(descriptor.kind, .mediaExport)
@@ -210,6 +218,7 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             documents: documents,
             files: files,
             destinationAccess: destinationAccess,
+            recoveryStore: BackupRecoveryStoreFake(),
             maintenanceGate: DurableMaintenanceGate { _, _ in
                 gateState.disposition
             })
@@ -255,6 +264,7 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             documents: documents,
             files: files,
             destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: BackupRecoveryStoreFake(),
             maintenanceGate: DurableMaintenanceGate { _, _ in
                 gateState.disposition
             })
@@ -276,6 +286,211 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         XCTAssertEqual(result.exportedFileNames, ["Rendered.md"])
         XCTAssertEqual(renderedAfterResume, ["Rendered"])
         XCTAssertEqual(publishedAfterResume, ["Rendered.md"])
+    }
+
+    func testPublicationJournalsReservationBeforeMoveAndCompletionAfterMove()
+        async throws {
+        let recoveryStore = BackupRecoveryStoreFake()
+        let files = BackupFilesFake(onPublish: {
+            let state = await recoveryStore.savedStates.last
+            XCTAssertEqual(state?.pendingPublication?.fileName, "Meeting.md")
+            XCTAssertTrue(state?.completedPublications.isEmpty == true)
+        })
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [backupContent(title: "Meeting")]),
+            documents: BackupDocumentsFake(),
+            files: files,
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: recoveryStore)
+
+        let result = try completedResult(from: await useCase.execute(
+            ExportLibraryMarkdownBackupRequest(
+                directory: URL(fileURLWithPath: "/backup", isDirectory: true))))
+        let states = await recoveryStore.savedStates
+        let removedIDs = await recoveryStore.removedOperationIDs
+
+        XCTAssertEqual(result.exportedFileNames, ["Meeting.md"])
+        XCTAssertEqual(states.count, 4)
+        XCTAssertEqual(states[0].phase, .active)
+        XCTAssertNil(states[0].pendingPublication)
+        XCTAssertEqual(states[1].pendingPublication?.fileName, "Meeting.md")
+        XCTAssertEqual(
+            states[1].pendingPublication?.sha256,
+            "6bac95bc3dee1a17ddc9660954f9e1d27545bbf9aaf51c96fe5b06611c167b3d")
+        XCTAssertEqual(states[2].completedPublications.count, 1)
+        XCTAssertNil(states[2].pendingPublication)
+        XCTAssertEqual(states[3].phase, .completed)
+        XCTAssertEqual(removedIDs, [states[0].operationID])
+    }
+
+    func testPostMoveJournalFailureDoesNotRepublishOnProcessLocalRetry()
+        async throws {
+        let recoveryStore = BackupRecoveryStoreFake(failingSaveCalls: [3])
+        let files = BackupFilesFake()
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [backupContent(title: "Meeting")]),
+            documents: BackupDocumentsFake(),
+            files: files,
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: recoveryStore)
+        let request = ExportLibraryMarkdownBackupRequest(
+            directory: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        await XCTAssertThrowsErrorAsync(
+            try await useCase.execute(request)
+        ) { error in
+            XCTAssertEqual(
+                error as? LibraryMarkdownBackupError,
+                .libraryUnavailable)
+        }
+        let namesAfterFailure = await files.publishedNames
+        XCTAssertEqual(namesAfterFailure, ["Meeting.md"])
+
+        let result = try completedResult(from: await useCase.execute(request))
+        let namesAfterRetry = await files.publishedNames
+        let finalState = await recoveryStore.savedStates.last
+
+        XCTAssertEqual(result.exportedFileNames, ["Meeting.md"])
+        XCTAssertEqual(namesAfterRetry, ["Meeting.md"])
+        XCTAssertEqual(finalState?.phase, .completed)
+    }
+
+    func testFailedPublicationClearRetriesWithoutPublishingAnotherName()
+        async throws {
+        let recoveryStore = BackupRecoveryStoreFake(failingSaveCalls: [3])
+        let files = BackupFilesFake(failingNames: ["Write failure.md"])
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [
+                backupContent(title: "Write failure"),
+            ]),
+            documents: BackupDocumentsFake(),
+            files: files,
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: recoveryStore)
+        let request = ExportLibraryMarkdownBackupRequest(
+            directory: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        await XCTAssertThrowsErrorAsync(
+            try await useCase.execute(request)
+        ) { error in
+            XCTAssertEqual(
+                error as? LibraryMarkdownBackupError,
+                .libraryUnavailable)
+        }
+        let namesAfterFailure = await files.publishedNames
+        XCTAssertEqual(namesAfterFailure, ["Write failure.md"])
+
+        let result = try completedResult(from: await useCase.execute(request))
+        let namesAfterRetry = await files.publishedNames
+
+        XCTAssertEqual(result.failures.map(\.stage), [.publication])
+        XCTAssertEqual(namesAfterRetry, ["Write failure.md"])
+    }
+
+    func testRefreshedBookmarkPersistenceRetriesBeforeAdvancing()
+        async throws {
+        let gateState = BackupMaintenanceGateState()
+        let destinationAccess = BackupDestinationAccessFake(
+            refreshAfterFirstAcquisition: true)
+        let recoveryStore = BackupRecoveryStoreFake(failingSaveCalls: [4])
+        let files = BackupFilesFake(onPublish: {
+            gateState.pauseOnce()
+        })
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [
+                backupContent(title: "Meeting"),
+            ]),
+            documents: BackupDocumentsFake(),
+            files: files,
+            destinationAccess: destinationAccess,
+            recoveryStore: recoveryStore,
+            maintenanceGate: DurableMaintenanceGate { _, _ in
+                gateState.disposition
+            })
+        let request = ExportLibraryMarkdownBackupRequest(
+            directory: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        let suspendedExecution = try await useCase.execute(request)
+        XCTAssertEqual(suspendedExecution, .suspended)
+        gateState.resume()
+        await XCTAssertThrowsErrorAsync(
+            try await useCase.execute(request)
+        ) { error in
+            XCTAssertEqual(
+                error as? LibraryMarkdownBackupError,
+                .libraryUnavailable)
+        }
+
+        let result = try completedResult(from: await useCase.execute(request))
+        let finalState = await recoveryStore.savedStates.last
+        let publishedNames = await files.publishedNames
+
+        XCTAssertEqual(result.exportedFileNames, ["Meeting.md"])
+        XCTAssertEqual(publishedNames, ["Meeting.md"])
+        XCTAssertEqual(
+            finalState?.destinationBookmark.data,
+            BackupDestinationAccessFake.refreshedBookmarkData)
+    }
+
+    func testTerminalJournalRemovalRetriesBeforeClosingTheStage()
+        async throws {
+        let recoveryStore = BackupRecoveryStoreFake(failingRemoveCalls: [1])
+        let files = BackupFilesFake()
+        let destinationAccess = BackupDestinationAccessFake()
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [backupContent(title: "Meeting")]),
+            documents: BackupDocumentsFake(),
+            files: files,
+            destinationAccess: destinationAccess,
+            recoveryStore: recoveryStore)
+        let request = ExportLibraryMarkdownBackupRequest(
+            directory: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        await XCTAssertThrowsErrorAsync(
+            try await useCase.execute(request)
+        ) { error in
+            XCTAssertEqual(
+                error as? LibraryMarkdownBackupError,
+                .libraryUnavailable)
+        }
+        let namesAfterFailure = await files.publishedNames
+        XCTAssertEqual(namesAfterFailure, ["Meeting.md"])
+
+        let result = try completedResult(from: await useCase.execute(request))
+        let namesAfterRetry = await files.publishedNames
+        let removedIDs = await recoveryStore.removedOperationIDs
+
+        XCTAssertEqual(result.exportedFileNames, ["Meeting.md"])
+        XCTAssertEqual(namesAfterRetry, ["Meeting.md"])
+        XCTAssertEqual(removedIDs.count, 1)
+        XCTAssertEqual(destinationAccess.acquireCount, 1)
+    }
+
+    func testSourceFailureCleanupRetriesWithoutReacquiringDestination() async {
+        let recoveryStore = BackupRecoveryStoreFake(failingRemoveCalls: [1])
+        let destinationAccess = BackupDestinationAccessFake()
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(failsWhileReading: true),
+            documents: BackupDocumentsFake(),
+            files: BackupFilesFake(),
+            destinationAccess: destinationAccess,
+            recoveryStore: recoveryStore)
+        let request = ExportLibraryMarkdownBackupRequest(
+            directory: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        for _ in 0..<2 {
+            await XCTAssertThrowsErrorAsync(
+                try await useCase.execute(request)
+            ) { error in
+                XCTAssertEqual(
+                    error as? LibraryMarkdownBackupError,
+                    .libraryUnavailable)
+            }
+        }
+
+        let removedIDs = await recoveryStore.removedOperationIDs
+        XCTAssertEqual(removedIDs.count, 1)
+        XCTAssertEqual(destinationAccess.acquireCount, 1)
     }
 }
 
@@ -307,15 +522,18 @@ private struct BackupStoreFake: LibraryMarkdownBackupStore {
     let contents: [LibraryMarkdownBackupContent]
     let failures: [LibraryMarkdownBackupSourceFailure]
     let fails: Bool
+    let failsWhileReading: Bool
 
     init(
         contents: [LibraryMarkdownBackupContent] = [],
         failures: [LibraryMarkdownBackupSourceFailure] = [],
-        fails: Bool = false
+        fails: Bool = false,
+        failsWhileReading: Bool = false
     ) {
         self.contents = contents
         self.failures = failures
         self.fails = fails
+        self.failsWhileReading = failsWhileReading
     }
 
     func prepareLibraryMarkdownBackupSource(
@@ -325,7 +543,8 @@ private struct BackupStoreFake: LibraryMarkdownBackupStore {
         guard mayContinue() else { return .suspended }
         return .ready(BackupSourceSessionFake(
             contents: contents,
-            failures: failures))
+            failures: failures,
+            failsWhileReading: failsWhileReading))
     }
 }
 
@@ -349,31 +568,125 @@ private actor BackupStoreProbe: LibraryMarkdownBackupStore {
         guard mayContinue() else { return .suspended }
         return .ready(BackupSourceSessionFake(
             contents: contents,
-            failures: failures))
+            failures: failures,
+            failsWhileReading: false))
     }
 }
 
 private actor BackupSourceSessionFake: LibraryMarkdownBackupSourceSession {
+    nonisolated let id = UUID()
     nonisolated let totalMeetings: Int
     private let entries: [LibraryMarkdownBackupSourceEntry]
+    private let failsWhileReading: Bool
     private var index = 0
+    private var didFailReading = false
 
     init(
         contents: [LibraryMarkdownBackupContent],
-        failures: [LibraryMarkdownBackupSourceFailure]
+        failures: [LibraryMarkdownBackupSourceFailure],
+        failsWhileReading: Bool
     ) {
         entries = failures.map(LibraryMarkdownBackupSourceEntry.failure)
             + contents.map(LibraryMarkdownBackupSourceEntry.content)
+        self.failsWhileReading = failsWhileReading
         totalMeetings = entries.count
     }
 
-    func next() -> LibraryMarkdownBackupSourceEntry? {
+    func next() throws -> LibraryMarkdownBackupSourceEntry? {
+        if failsWhileReading, !didFailReading {
+            didFailReading = true
+            throw BackupFakeError.expected
+        }
         guard index < entries.count else { return nil }
         defer { index += 1 }
         return entries[index]
     }
 
     func close() {}
+}
+
+private actor BackupRecoveryStoreFake:
+    LibraryMarkdownBackupRecoveryStore {
+    private let failingSaveCalls: Set<Int>
+    private let failingRemoveCalls: Set<Int>
+    private var saveCalls = 0
+    private var removeCalls = 0
+    private var states: [UUID: LibraryMarkdownBackupRecoveryState] = [:]
+    private(set) var savedStates: [LibraryMarkdownBackupRecoveryState] = []
+    private(set) var removedOperationIDs: [UUID] = []
+
+    init(
+        failingSaveCalls: Set<Int> = [],
+        failingRemoveCalls: Set<Int> = []
+    ) {
+        self.failingSaveCalls = failingSaveCalls
+        self.failingRemoveCalls = failingRemoveCalls
+    }
+
+    func apply(
+        _ mutation: LibraryMarkdownBackupRecoveryMutation,
+        operationID: UUID
+    ) throws {
+        saveCalls += 1
+        if failingSaveCalls.contains(saveCalls) {
+            throw BackupFakeError.expected
+        }
+        var state: LibraryMarkdownBackupRecoveryState
+        switch mutation {
+        case .begin(let bookmark):
+            state = LibraryMarkdownBackupRecoveryState(
+                operationID: operationID,
+                destinationBookmark: bookmark)
+        case .updateDestinationBookmark(let bookmark):
+            state = try currentState(operationID: operationID)
+            state.destinationBookmark = bookmark
+        case .reserve(let publication):
+            state = try currentState(operationID: operationID)
+            state.pendingPublication = publication
+        case .complete(let publication):
+            state = try currentState(operationID: operationID)
+            guard state.pendingPublication == publication else {
+                throw BackupFakeError.expected
+            }
+            state.completedPublications.append(publication)
+            state.pendingPublication = nil
+        case .clearReservation:
+            state = try currentState(operationID: operationID)
+            state.pendingPublication = nil
+        case .markCompleted:
+            state = try currentState(operationID: operationID)
+            guard state.pendingPublication == nil else {
+                throw BackupFakeError.expected
+            }
+            state.phase = .completed
+        }
+        states[operationID] = state
+        savedStates.append(state)
+    }
+
+    func load(
+        operationID: UUID
+    ) -> LibraryMarkdownBackupRecoveryState? {
+        states[operationID]
+    }
+
+    func remove(operationID: UUID) throws {
+        removeCalls += 1
+        if failingRemoveCalls.contains(removeCalls) {
+            throw BackupFakeError.expected
+        }
+        removedOperationIDs.append(operationID)
+        states[operationID] = nil
+    }
+
+    private func currentState(
+        operationID: UUID
+    ) throws -> LibraryMarkdownBackupRecoveryState {
+        guard let state = states[operationID] else {
+            throw BackupFakeError.expected
+        }
+        return state
+    }
 }
 
 private actor BackupDocumentsFake: LibraryMarkdownBackupDocuments {
@@ -403,7 +716,7 @@ private actor BackupFilesFake: LibraryMarkdownBackupFiles {
     let existing: Set<String>
     let failingNames: Set<String>
     let failsInspection: Bool
-    let onPublish: @Sendable () -> Void
+    let onPublish: @Sendable () async -> Void
     private var collisionCount: Int
     private(set) var publishedNames: [String] = []
 
@@ -412,7 +725,7 @@ private actor BackupFilesFake: LibraryMarkdownBackupFiles {
         failingNames: Set<String> = [],
         failsInspection: Bool = false,
         collisionCount: Int = 0,
-        onPublish: @escaping @Sendable () -> Void = {}
+        onPublish: @escaping @Sendable () async -> Void = {}
     ) {
         self.existing = existing
         self.failingNames = failingNames
@@ -432,7 +745,7 @@ private actor BackupFilesFake: LibraryMarkdownBackupFiles {
         in directory: URL
     ) async throws -> LibraryMarkdownBackupPublication {
         publishedNames.append(fileName)
-        onPublish()
+        await onPublish()
         if failingNames.contains(fileName) { throw BackupFakeError.expected }
         if collisionCount > 0 {
             collisionCount -= 1
@@ -445,14 +758,22 @@ private actor BackupFilesFake: LibraryMarkdownBackupFiles {
 private final class BackupDestinationAccessFake:
     LibraryMarkdownBackupDestinationAccess,
     @unchecked Sendable {
+    static let refreshedBookmarkData = Data("refreshed-bookmark".utf8)
+
     private let lock = NSLock()
     private let failsAcquisition: Bool
+    private let refreshAfterFirstAcquisition: Bool
     private var storedPrepareCount = 0
     private var storedAcquireCount = 0
     private var storedCloseCount = 0
+    private var storedDirectory: URL?
 
-    init(failsAcquisition: Bool = false) {
+    init(
+        failsAcquisition: Bool = false,
+        refreshAfterFirstAcquisition: Bool = false
+    ) {
         self.failsAcquisition = failsAcquisition
+        self.refreshAfterFirstAcquisition = refreshAfterFirstAcquisition
     }
 
     var prepareCount: Int {
@@ -470,7 +791,10 @@ private final class BackupDestinationAccessFake:
     func prepare(
         directory: URL
     ) async throws -> LibraryMarkdownBackupDestinationBookmark {
-        lock.withLock { storedPrepareCount += 1 }
+        lock.withLock {
+            storedPrepareCount += 1
+            storedDirectory = directory.standardizedFileURL
+        }
         return LibraryMarkdownBackupDestinationBookmark(
             data: Data(directory.standardizedFileURL.path.utf8))
     }
@@ -478,17 +802,33 @@ private final class BackupDestinationAccessFake:
     func acquire(
         bookmark: LibraryMarkdownBackupDestinationBookmark
     ) async throws -> any LibraryMarkdownBackupDestinationLease {
-        lock.withLock { storedAcquireCount += 1 }
-        if failsAcquisition { throw BackupFakeError.expected }
-        guard let path = String(data: bookmark.data, encoding: .utf8) else {
-            throw BackupFakeError.expected
+        let acquisition = lock.withLock {
+            storedAcquireCount += 1
+            return (
+                count: storedAcquireCount,
+                directory: storedDirectory)
         }
+        if failsAcquisition { throw BackupFakeError.expected }
+        let directory = try acquisition.directory ?? Self.directory(from: bookmark)
+        let resolvedBookmark = refreshAfterFirstAcquisition && acquisition.count > 1
+            ? LibraryMarkdownBackupDestinationBookmark(
+                data: Self.refreshedBookmarkData)
+            : bookmark
         return BackupDestinationLeaseFake(
-            directory: URL(fileURLWithPath: path, isDirectory: true),
-            bookmark: bookmark
+            directory: directory,
+            bookmark: resolvedBookmark
         ) { [self] in
             lock.withLock { storedCloseCount += 1 }
         }
+    }
+
+    private static func directory(
+        from bookmark: LibraryMarkdownBackupDestinationBookmark
+    ) throws -> URL {
+        guard let path = String(data: bookmark.data, encoding: .utf8) else {
+            throw BackupFakeError.expected
+        }
+        return URL(fileURLWithPath: path, isDirectory: true)
     }
 }
 
