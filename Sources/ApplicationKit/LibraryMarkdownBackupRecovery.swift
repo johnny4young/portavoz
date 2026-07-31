@@ -39,19 +39,24 @@ public struct LibraryMarkdownBackupRecoveryPublication:
     public let fileName: String
     public let sha256: String
     public let byteCount: Int
+    /// Exact source row represented by this publication. `nil` decodes older
+    /// journals and marks new publications that cannot advance after a failure.
+    public let sourceCursor: LibraryMarkdownBackupSourceCursor?
 
     public init(
         sequence: Int,
         meetingID: MeetingID,
         fileName: String,
         sha256: String,
-        byteCount: Int
+        byteCount: Int,
+        sourceCursor: LibraryMarkdownBackupSourceCursor? = nil
     ) {
         self.sequence = sequence
         self.meetingID = meetingID
         self.fileName = fileName
         self.sha256 = sha256
         self.byteCount = byteCount
+        self.sourceCursor = sourceCursor
     }
 }
 

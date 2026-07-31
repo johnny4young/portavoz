@@ -6028,3 +6028,54 @@ idempotent metadata retry closes the same-process crash boundary without
 rewriting completed evidence or republishing files. Keeping pending-digest
 reconciliation, failure reconstruction, and launch adoption as explicit later
 slices prevents a partial protocol from being described as restart-safe.
+
+## D187 — Reconcile only exact pending backup publication evidence (Jul 2026)
+
+**Context:** D184 reserves a destination filename and digest before the atomic
+move, while D186 advances the staged-source cursor only after immutable
+completion. A process can still terminate after reservation either before or
+after the move. On relaunch, the same pending record therefore cannot reveal
+whether the destination is absent, contains the intended bytes, or was occupied
+by different content. The reservation also did not retain the exact source
+cursor needed to complete a matching publication without restarting or
+silently skipping a row.
+
+**Decision:** every new pending publication carries the exact content-free
+source cursor when durable advancement remains safe. The recovery adapter
+validates the cursor independently and requires its record identity to equal the
+reserved meeting UUID. The optional field preserves decoding of format-v1
+journals created before this contract and marks new publications after an
+earlier process-local failure freezes advancement. No cursor-less reservation
+can advance source progress.
+
+`LibraryMarkdownBackupFiles` exposes typed evidence for one exact reservation.
+The macOS adapter opens the acquired destination directory with `O_NOFOLLOW`,
+opens the final filename relative to that directory descriptor with `openat`,
+`O_NOFOLLOW`, and `O_NONBLOCK`, requires a regular file with the reserved byte
+count, and streams SHA-256 in bounded chunks. It forwards cancellation into
+that utility task and checks it between reads. It never follows the reserved
+final name as a symbolic link.
+
+ApplicationKit owns one bounded reconciliation use case keyed by the immutable
+operation UUID. It loads active recovery state, repairs a lagging checkpoint
+from the latest immutable completed publication without destination access, and
+otherwise acquires one destination lease and persists refreshed bookmark
+identity before inspection. Missing evidence clears only the reservation so a
+future adopted source can retry that row. Exact matching evidence with a bound
+cursor promotes the pending record and then checkpoints its cursor. Conflicting
+evidence and every matching cursor-less record remain blocked and untouched.
+Destination and persistence failures are typed, cancellation propagates, and
+the lease always closes.
+
+This use case is not invoked by app launch yet. Typed failure/render
+reconstruction and the ordering of reconciliation, stage adoption, and cleanup
+also remain open. T26 therefore remains unresolved and Portavoz does not claim
+that a whole-library backup resumes after termination.
+
+**Rationale:** exact no-follow content evidence closes the reservation/move
+ambiguity without persisting meeting prose or guessing from filenames. Binding
+the source cursor to the same immutable publication makes a matching recovery
+safe, while missing and conflicting outcomes preserve user data. Separating the
+primitive from launch orchestration keeps the next restart slice independently
+reviewable and prevents a reusable recovery contract from being hidden in the
+macOS lifecycle model.

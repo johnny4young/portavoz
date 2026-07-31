@@ -613,10 +613,12 @@ contract with balanced security-scope acquisition and release.
 ApplicationKit assigns the stage UUID to the recovery operation and persists
 one versioned, content-minimized publication journal under the app's private
 Application Support root. Small metadata retains the regular bookmark and
-lifecycle status; one pending record carries the exact filename, meeting identity,
-SHA-256, byte count, and contiguous sequence. Transcript, summary, and rendered
-Markdown bytes never enter this journal. The app reserves a filename before the
-atomic destination move, then moves the pending record atomically into the
+lifecycle status; one pending record carries the exact filename, meeting
+identity, SHA-256, byte count, contiguous sequence, and optional content-free
+source cursor. The cursor is present only while durable source advancement
+remains safe and is bound to the same meeting identity. Transcript, summary,
+and rendered Markdown bytes never enter this journal. The app reserves a
+filename before the atomic destination move, then moves the pending record atomically into the
 immutable completed-record directory. Steady-state journal I/O is O(1) per
 meeting rather than repeatedly rewriting a growing manifest. A post-move
 journal failure records the published result in process memory before
@@ -656,16 +658,32 @@ freezes because those typed failure outcomes are still process-local. The
 completed publication evidence remains durable, but a future adopted process
 must not skip an outcome it cannot reconstruct.
 
+ApplicationKit also owns a bounded pending-publication reconciliation operation.
+It reacquires the stored destination lease, persists refreshed bookmark identity,
+and asks the filesystem port for exact evidence about the reserved filename. The
+macOS adapter opens the acquired directory without following a symlink, opens
+the final component relative to that descriptor with `O_NOFOLLOW` and
+`O_NONBLOCK`, requires a regular file with the reserved byte count, and streams
+its SHA-256 at utility priority while checking cancellation between bounded
+reads. A missing file clears only the reservation so the adopted source can
+retry the same row. Matching bytes with a bound cursor promote the reservation
+and then checkpoint that cursor. A
+conflicting file or any matching reservation without a safe cursor remains
+blocked and untouched; cursor-less records include old journals and new
+publications after an earlier process-local failure froze advancement. If
+completion persisted but checkpointing did not, the next reconciliation repairs
+only the cursor from immutable completed evidence; it neither reacquires the
+destination nor rehashes or republishes the file.
+
 Completion and source-read failure enter an explicit process-local terminal
 state. Terminal retry marks completion when needed, removes the recovery
 journal, and only then closes the staged source. It does not reacquire the
 destination because no publication capability is needed after terminal work.
 
-Launch does not yet reconcile a pending reservation against destination bytes
-or invoke stage adoption before abandoned-work cleanup. Durable failure
-outcomes also remain absent. Full relaunch continuation is therefore still
-unclaimed. None of these paths adds a timer, heartbeat, PID heuristic, or
-polling task.
+Launch does not yet invoke pending-publication reconciliation or stage adoption
+before abandoned-work cleanup. Durable failure outcomes also remain absent.
+Full relaunch continuation is therefore still unclaimed. None of these paths
+adds a timer, heartbeat, PID heuristic, or polling task.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,

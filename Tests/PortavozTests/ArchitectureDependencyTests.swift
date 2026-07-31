@@ -2646,10 +2646,14 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testWholeLibraryMarkdownBackupUsesOneApplicationWorkflow() throws {
         let useCase = try Self.contents(
             of: "Sources/ApplicationKit/ExportLibraryMarkdownBackup.swift")
+        let filesContract = try Self.contents(
+            of: "Sources/ApplicationKit/LibraryMarkdownBackupFiles.swift")
         let sourceContract = try Self.contents(
             of: "Sources/ApplicationKit/LibraryMarkdownBackupSource.swift")
         let recoveryContract = try Self.contents(
             of: "Sources/ApplicationKit/LibraryMarkdownBackupRecovery.swift")
+        let reconciliation = try Self.contents(
+            of: "Sources/ApplicationKit/ReconcileBackupPublication.swift")
         let destinationContract = try Self.contents(
             of: "Sources/ApplicationKit/LibraryMarkdownBackupDestination.swift")
         let storage = try Self.contents(
@@ -2667,8 +2671,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
         let bookmark = try Self.contents(
             of: "Sources/PlatformKit/PersistentFileBookmark.swift")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
 
         XCTAssertTrue(useCase.contains("actor ExportLibraryMarkdownBackup"))
+        XCTAssertTrue(filesContract.contains(
+            "protocol LibraryMarkdownBackupDocuments"))
+        XCTAssertTrue(filesContract.contains(
+            "protocol LibraryMarkdownBackupFiles"))
+        XCTAssertTrue(filesContract.contains("func evidence("))
         XCTAssertTrue(sourceContract.contains(
             "protocol LibraryMarkdownBackupSourceSession"))
         XCTAssertTrue(sourceContract.contains(
@@ -2684,6 +2696,14 @@ final class ArchitectureDependencyTests: XCTestCase {
             "LibraryMarkdownBackupSourceCursor"))
         XCTAssertTrue(recoveryContract.contains(
             "case checkpointSource(LibraryMarkdownBackupSourceCursor)"))
+        XCTAssertTrue(recoveryContract.contains(
+            "sourceCursor: LibraryMarkdownBackupSourceCursor?"))
+        XCTAssertTrue(reconciliation.contains(
+            "struct ReconcileBackupPublication: ApplicationUseCase"))
+        XCTAssertTrue(reconciliation.contains("files.evidence("))
+        XCTAssertTrue(reconciliation.contains(".clearReservation"))
+        XCTAssertTrue(reconciliation.contains(".complete(pending)"))
+        XCTAssertTrue(reconciliation.contains("repairCheckpointIfNeeded"))
         XCTAssertTrue(sourceContract.contains(
             "func checkpoint() async throws"))
         XCTAssertTrue(useCase.contains(
@@ -2736,6 +2756,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             "AppLibraryMarkdownBackupRecoveryStore"))
         XCTAssertTrue(adapter.contains("removedStageIDs"))
         XCTAssertTrue(adapter.contains("moveItem(at: temporary, to: destination)"))
+        XCTAssertTrue(adapter.contains("Darwin.openat("))
+        XCTAssertTrue(adapter.contains("O_NOFOLLOW"))
+        XCTAssertTrue(adapter.contains("O_NONBLOCK"))
+        XCTAssertTrue(adapter.contains("Darwin.fstat("))
+        XCTAssertTrue(adapter.contains("var hasher = SHA256()"))
         XCTAssertFalse(adapter.contains("[.atomic, .withoutOverwriting]"))
         XCTAssertTrue(bookmark.contains(".withoutImplicitSecurityScope"))
         XCTAssertFalse(bookmark.contains("startAccessingSecurityScopedResource"))
@@ -2760,6 +2785,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "guard cursor == current || Self.isAfter(cursor, current)"))
         XCTAssertTrue(recoveryAdapter.contains(
             "guard try !itemExists(pendingURL(operationID: operationID))"))
+        XCTAssertTrue(recoveryAdapter.contains(
+            "== publication.meetingID.rawValue.uuidString"))
         XCTAssertTrue(recoveryAdapter.contains(".posixPermissions: 0o600"))
         XCTAssertTrue(recoveryAdapter.contains(
             "values.isExcludedFromBackup = true"))
@@ -2770,6 +2797,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("Data(markdown"))
         XCTAssertFalse(view.contains("import IntegrationsKit"))
         XCTAssertFalse(view.contains("import StorageKit"))
+        XCTAssertTrue(architecture.contains(
+            "bounded pending-publication reconciliation operation"))
+        XCTAssertTrue(decisions.contains("## D187"))
+        XCTAssertTrue(appSpec.contains(
+            "### Capture-safe staged whole-library backup (D180–D187)"))
     }
 
     func testAskSurfacesUseOneStorageIndependentApplicationWorkflow() throws {

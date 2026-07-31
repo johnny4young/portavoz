@@ -689,12 +689,24 @@ private actor BackupSourceSessionFake: LibraryMarkdownBackupSourceSession {
             throw BackupFakeError.expected
         }
         guard index < entries.count else { return nil }
+        let entry = entries[index]
+        let cursorIdentity: (startedAt: Date, recordID: String)
+        switch entry {
+        case .content(let content):
+            cursorIdentity = (
+                content.meeting.startedAt,
+                content.meeting.id.rawValue.uuidString)
+        case .failure(let failure):
+            cursorIdentity = (
+                Date(timeIntervalSince1970: 1_800_000_000 - Double(index)),
+                failure.meetingID?.rawValue.uuidString
+                    ?? String(format: "%036d", index))
+        }
         currentCursor = LibraryMarkdownBackupSourceCursor(
-            startedAt: Date(
-                timeIntervalSince1970: 1_800_000_000 - Double(index)),
-            recordID: String(format: "%036d", index))
+            startedAt: cursorIdentity.startedAt,
+            recordID: cursorIdentity.recordID)
         defer { index += 1 }
-        return entries[index]
+        return entry
     }
 
     func checkpoint() -> LibraryMarkdownBackupSourceCursor? {
@@ -857,6 +869,13 @@ private actor BackupFilesFake: LibraryMarkdownBackupFiles {
             return .nameCollision
         }
         return .published
+    }
+
+    func evidence(
+        for publication: LibraryMarkdownBackupRecoveryPublication,
+        in directory: URL
+    ) -> BackupPublicationEvidence {
+        publishedNames.contains(publication.fileName) ? .matching : .missing
     }
 }
 

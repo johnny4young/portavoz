@@ -1,4 +1,6 @@
 import ApplicationKit
+import CryptoKit
+import Darwin
 import Foundation
 import IntegrationsKit
 import PlatformKit
@@ -140,6 +142,63 @@ struct AppLibraryMarkdownBackupFiles: LibraryMarkdownBackupFiles {
                 return .nameCollision
             }
         }.value
+    }
+
+    func evidence(
+        for publication: LibraryMarkdownBackupRecoveryPublication,
+        in directory: URL
+    ) async throws -> BackupPublicationEvidence {
+        let task = Task.detached(priority: .utility) {
+            () throws -> BackupPublicationEvidence in
+            guard Self.isSafeFileName(publication.fileName) else {
+                return .conflicting
+            }
+            let directoryDescriptor = Darwin.open(
+                directory.path,
+                O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW)
+            guard directoryDescriptor >= 0 else {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+            defer { Darwin.close(directoryDescriptor) }
+
+            let descriptor = Darwin.openat(
+                directoryDescriptor,
+                publication.fileName,
+                O_RDONLY | O_NONBLOCK | O_CLOEXEC | O_NOFOLLOW)
+            guard descriptor >= 0 else {
+                if errno == ENOENT { return .missing }
+                if errno == ELOOP { return .conflicting }
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+            let handle = FileHandle(
+                fileDescriptor: descriptor,
+                closeOnDealloc: true)
+            defer { try? handle.close() }
+
+            var information = stat()
+            guard Darwin.fstat(descriptor, &information) == 0 else {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+            guard information.st_mode & S_IFMT == S_IFREG,
+                  information.st_size == Int64(publication.byteCount)
+            else { return .conflicting }
+
+            var hasher = SHA256()
+            while let data = try handle.read(upToCount: 1 << 20),
+                  !data.isEmpty {
+                try Task.checkCancellation()
+                hasher.update(data: data)
+            }
+            let digest = hasher.finalize()
+                .map { String(format: "%02x", $0) }
+                .joined()
+            return digest == publication.sha256 ? .matching : .conflicting
+        }
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     private static func isSafeFileName(_ fileName: String) -> Bool {

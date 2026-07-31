@@ -180,9 +180,11 @@ durable journal before publication, and marks successful moves complete before
 advancing. It yields cleanly while recording; closing Settings does not cancel
 it and SwiftUI never coordinates Store or export-format work. Journal mutations
 retry before the actor advances; terminal journal cleanup no longer depends on
-reopening the destination. The journal closes the process-local move/retry
-ambiguity, but staged-source cursor adoption after relaunch remains an explicit
-gap. Full Ask,
+reopening the destination. ApplicationKit can classify an exact pending name as
+missing, matching, or conflicting through no-follow content evidence: missing
+work becomes retryable, cursor-bound matches complete, and unsafe evidence stays
+blocked. Launch does not invoke that boundary or adopt its staged source yet, so
+full relaunch continuation remains an explicit gap. Full Ask,
 ⌘K, CLI, MCP, and briefs share one ApplicationKit search/evidence/answer
 workflow; stale palette work is cancelled and exact citations retain their
 meeting timestamp. Meeting preparation uses the same evidence, one batched

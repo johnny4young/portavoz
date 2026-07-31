@@ -1,28 +1,6 @@
 import Foundation
 import PortavozCore
 
-/// External Markdown rendering remains behind an app adapter so
-/// IntegrationsKit never leaks into Settings presentation.
-public protocol LibraryMarkdownBackupDocuments: Sendable {
-    func markdownDocument(for content: LibraryMarkdownBackupContent) async throws -> Data
-}
-
-public enum LibraryMarkdownBackupPublication: Equatable, Sendable {
-    case published
-    case nameCollision
-}
-
-/// Filesystem capability. Implementations must publish complete files with a
-/// same-directory atomic move and must never replace an existing destination.
-public protocol LibraryMarkdownBackupFiles: Sendable {
-    func existingMarkdownFileNames(in directory: URL) async throws -> Set<String>
-    func publishMarkdownDocument(
-        _ data: Data,
-        named fileName: String,
-        in directory: URL
-    ) async throws -> LibraryMarkdownBackupPublication
-}
-
 public enum LibraryMarkdownBackupFailureStage: String, Equatable, Sendable {
     case source
     case document
@@ -494,13 +472,18 @@ private extension ExportLibraryMarkdownBackup {
         for content: LibraryMarkdownBackupContent,
         in run: inout ActiveLibraryMarkdownBackupRun
     ) async throws -> LibraryMarkdownBackupRecoveryPublication {
+        guard let sourceCursor = run.pendingSourceCursor else {
+            preconditionFailure(
+                "reserved backup content must retain its source cursor")
+        }
         var candidateAllocator = run.allocator
         let reservation = LibraryMarkdownBackupRecoveryPublication(
             sequence: run.recoveryState.completedPublications.count,
             meetingID: content.meeting.id,
             fileName: candidateAllocator.nextFileName(for: content.meeting.title),
             sha256: ContentDigest.sha256(data),
-            byteCount: data.count)
+            byteCount: data.count,
+            sourceCursor: run.recoveryCursorCanAdvance ? sourceCursor : nil)
         var reservedState = run.recoveryState
         reservedState.pendingPublication = reservation
         try await applyRecovery(
@@ -516,36 +499,29 @@ private extension ExportLibraryMarkdownBackup {
         in run: inout ActiveLibraryMarkdownBackupRun,
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws {
-        guard let sourceCursor = run.pendingSourceCursor else {
-            preconditionFailure(
-                "published backup content must retain its source cursor")
-        }
         run.pending = nil
         run.pendingSourceCursor = nil
         run.exportedFileNames.append(publication.fileName)
-        let completion = PendingBackupJournalCompletion(
-            publication: publication,
-            sourceCursor: sourceCursor)
-        run.pendingJournalCompletion = completion
+        run.pendingJournalCompletion = publication
         try await completeJournalPublication(
-            completion,
+            publication,
             in: &run,
             progress: progress)
     }
 
     func completeJournalPublication(
-        _ completion: PendingBackupJournalCompletion,
+        _ publication: LibraryMarkdownBackupRecoveryPublication,
         in run: inout ActiveLibraryMarkdownBackupRun,
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws {
         try await applyRecovery(
-            .complete(completion.publication),
+            .complete(publication),
             operationID: run.recoveryState.operationID)
-        run.recoveryState.completedPublications.append(completion.publication)
+        run.recoveryState.completedPublications.append(publication)
         run.recoveryState.pendingPublication = nil
         run.pendingJournalCompletion = nil
-        if run.recoveryCursorCanAdvance {
-            run.pendingRecoveryCheckpoint = completion.sourceCursor
+        if let sourceCursor = publication.sourceCursor {
+            run.pendingRecoveryCheckpoint = sourceCursor
             try await persistPendingRecoveryCheckpoint(
                 in: &run,
                 progress: progress)

@@ -11,7 +11,9 @@ final class LibraryMarkdownBackupRecoveryStoreTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         let store = AppLibraryMarkdownBackupRecoveryStore(root: root)
         let operationID = UUID()
-        let publication = recoveryPublication(fileName: "Meeting.md")
+        let publication = recoveryPublication(
+            fileName: "Meeting.md",
+            includesSourceCursor: true)
         let bookmark = LibraryMarkdownBackupDestinationBookmark(
             data: Data("bookmark".utf8))
 
@@ -30,7 +32,7 @@ final class LibraryMarkdownBackupRecoveryStoreTests: XCTestCase {
         try await store.apply(
             .complete(publication),
             operationID: operationID)
-        let sourceCursor = backupSourceCursor()
+        let sourceCursor = try XCTUnwrap(publication.sourceCursor)
         try await store.apply(
             .checkpointSource(sourceCursor),
             operationID: operationID)
@@ -309,6 +311,49 @@ final class LibraryMarkdownBackupRecoveryStoreTests: XCTestCase {
         XCTAssertEqual(retainedState?.sourceCursor, olderTimestampNext)
     }
 
+    func testReservationRejectsSourceCursorForAnotherMeeting() async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = AppLibraryMarkdownBackupRecoveryStore(root: root)
+        let operationID = UUID()
+        try await store.apply(
+            .begin(destinationBookmark: LibraryMarkdownBackupDestinationBookmark(
+                data: Data("bookmark".utf8))),
+            operationID: operationID)
+        let publication = LibraryMarkdownBackupRecoveryPublication(
+            sequence: 0,
+            meetingID: MeetingID(),
+            fileName: "Meeting.md",
+            sha256: String(repeating: "a", count: 64),
+            byteCount: 42,
+            sourceCursor: LibraryMarkdownBackupSourceCursor(
+                startedAt: Date(timeIntervalSince1970: 1_800_000_000),
+                recordID: MeetingID().rawValue.uuidString))
+
+        await assertRecoveryStoreThrows {
+            try await store.apply(
+                .reserve(publication),
+                operationID: operationID)
+        }
+        let retainedState = try await store.load(operationID: operationID)
+        XCTAssertNil(retainedState?.pendingPublication)
+    }
+
+    func testLegacyPublicationWithoutCursorStillDecodes() throws {
+        let publication = recoveryPublication(fileName: "Meeting.md")
+        let encoded = try JSONEncoder().encode(publication)
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertNil(object["sourceCursor"])
+
+        let decoded = try JSONDecoder().decode(
+            LibraryMarkdownBackupRecoveryPublication.self,
+            from: encoded)
+
+        XCTAssertEqual(decoded, publication)
+        XCTAssertNil(decoded.sourceCursor)
+    }
+
     private func temporaryDirectory() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -316,14 +361,21 @@ final class LibraryMarkdownBackupRecoveryStoreTests: XCTestCase {
 }
 
 private func recoveryPublication(
-    fileName: String
+    fileName: String,
+    includesSourceCursor: Bool = false
 ) -> LibraryMarkdownBackupRecoveryPublication {
-    LibraryMarkdownBackupRecoveryPublication(
+    let meetingID = MeetingID()
+    return LibraryMarkdownBackupRecoveryPublication(
         sequence: 0,
-        meetingID: MeetingID(),
+        meetingID: meetingID,
         fileName: fileName,
         sha256: String(repeating: "a", count: 64),
-        byteCount: 42)
+        byteCount: 42,
+        sourceCursor: includesSourceCursor
+            ? LibraryMarkdownBackupSourceCursor(
+                startedAt: Date(timeIntervalSince1970: 1_800_000_000),
+                recordID: meetingID.rawValue.uuidString)
+            : nil)
 }
 
 private func backupSourceCursor() -> LibraryMarkdownBackupSourceCursor {

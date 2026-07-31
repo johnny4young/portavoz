@@ -437,6 +437,14 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
         else {
             throw RecoveryStoreError.invalidDocument
         }
+        if let sourceCursor = publication.sourceCursor {
+            try validate(sourceCursor)
+            guard sourceCursor.recordID
+                == publication.meetingID.rawValue.uuidString
+            else {
+                throw RecoveryStoreError.invalidDocument
+            }
+        }
     }
 
     static func validate(
