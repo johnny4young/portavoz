@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints).
 
 ## Database
 
@@ -40,6 +40,11 @@ Singular camelCase tables, 1:1 with Codable records:
 | `meetingSyncState` (v14) | meetingID (TEXT PK, deliberately no FK), localGeneration, acknowledgedGeneration, changedAt, isDeleted; content-free coalesced mutation state with pending index and purge-surviving deletion evidence |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
 | `enhancedNote` (v15) | id, meetingID (UNIQUE, FK cascade), markdown, language, inputFingerprint (all checked non-empty), generationRunID (FK `setNull`, device-local), createdAt/updatedAt/deletedAt; ONE regenerable enhanced-notes document per meeting (D135), replaced in place preserving createdAt, portable via v15-registered `enhancedNote_sync_ai/au/ad` triggers over [markdown, language, inputFingerprint, deletedAt] |
+
+Schema v16 adds the partial
+`meeting_on_live_startedAt_id(startedAt DESC, id ASC)` index for deterministic
+newest-first keyset scans. It contains no new data and is copied into a backup
+stage with the database.
 
 Schema v6 is an additive foundation (D36). Existing meetings migrate to
 `ready`, revision zero, and no processing error. The migration does not inspect
@@ -385,19 +390,26 @@ The format adapter removes every `speaker.personID` before encoding and again
 when remapping imported speakers, so canonical device identity never travels
 in a `.portavoz` bundle; accepted meeting-local display names still round-trip.
 
-`libraryMarkdownBackupSnapshots()` is the dedicated whole-library open-format
-projection (D99). One `DatabaseQueue.read` selects every live meeting root
-newest-first, then loads each strict cast/transcript aggregate in that same
-SQLite snapshot. A corrupt required aggregate becomes a content-free
-`MeetingMarkdownBackupReadFailure` and does not block healthy meetings. The
-latest live General-recipe summary preserves the released Settings export
-contract; optional summary decode failure degrades to no summary. D180 checks
-capture admission in ApplicationKit before invoking this projection, so a
-deferred backup performs no database read. Once admitted, the D99 one-read
-contract remains unchanged; StorageKit does not expose a per-meeting reread
-that could silently combine different database moments. StorageKit returns
-values only—it does not render Markdown, inspect a destination folder, or
-publish files.
+`prepareLibraryMarkdownBackupStage(mayContinue:)` is the dedicated
+whole-library open-format source (D99/D181). StorageKit copies the live database
+into a private transient SQLite workspace through GRDB backup steps of 256
+pages. The synchronous checkpoint runs between page groups; if capture closes
+the gate, the partial stage is removed before returning a typed suspension.
+The stage root and workspace are owner-only, the database is `0600`, and the
+root is excluded from backup.
+
+After the copy completes, `MeetingMarkdownBackupStage.next()` selects one live
+meeting root at a time in `startedAt DESC, id ASC` order and loads its strict
+cast/transcript aggregate from the immutable stage. Later writes to the live
+database cannot change this backup. Schema v16's matching partial index keeps
+the keyset cursor logarithmic instead of rescanning previously exported roots.
+A corrupt required aggregate becomes a
+content-free `MeetingMarkdownBackupReadFailure` and does not block healthy
+meetings. The latest live General-recipe summary preserves the released
+Settings export contract; optional summary decode failure degrades to no
+summary. Closing the stage removes its workspace. StorageKit returns values
+only—it does not render Markdown, inspect a destination folder, or publish
+files.
 
 The existing aggregate API remains:
 `save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)` (preserves an existing run link and transactionally replaces optional typed evidence), `companionCards(for:)`, `deleteCompanionCard(_:)`, `saveCompanionGenerationRun(_:workflow:sourceTranscriptRevision:)` (current-revision failed/cancelled attempt), and `replaceCompanionCards(_:generated:for:)` (current-revision atomic card/run/evidence replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint and rejects user feedback), `setSummaryClaimFeedback(_:for:meetingID:)` (newest-claim-fenced replace/clear), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).

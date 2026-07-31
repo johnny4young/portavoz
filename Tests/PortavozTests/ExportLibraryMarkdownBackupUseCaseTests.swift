@@ -165,6 +165,82 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         XCTAssertTrue(renderedTitles.isEmpty)
         XCTAssertTrue(publishedNames.isEmpty)
     }
+
+    func testCaptureCheckpointResumesSameStageWithoutRepublishingCompletedMeetings()
+        async throws {
+        let gateState = BackupMaintenanceGateState()
+        let store = BackupStoreProbe(contents: [
+            backupContent(title: "First"),
+            backupContent(title: "Second"),
+        ])
+        let documents = BackupDocumentsFake()
+        let files = BackupFilesFake(onPublish: {
+            gateState.pauseOnce()
+        })
+        let useCase = ExportLibraryMarkdownBackup(
+            store: store,
+            documents: documents,
+            files: files,
+            maintenanceGate: DurableMaintenanceGate { _, _ in
+                gateState.disposition
+            })
+        let request = ExportLibraryMarkdownBackupRequest(
+            directory: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        let firstExecution = try await useCase.execute(request)
+        let firstStoreCalls = await store.calls
+        let firstRenderedTitles = await documents.renderedTitles
+        let firstPublishedNames = await files.publishedNames
+
+        XCTAssertEqual(firstExecution, .suspended)
+        XCTAssertEqual(firstStoreCalls, 1)
+        XCTAssertEqual(firstRenderedTitles, ["First"])
+        XCTAssertEqual(firstPublishedNames, ["First.md"])
+
+        gateState.resume()
+        let result = try completedResult(from: await useCase.execute(request))
+        let finalStoreCalls = await store.calls
+        let finalRenderedTitles = await documents.renderedTitles
+        let finalPublishedNames = await files.publishedNames
+
+        XCTAssertEqual(result.exportedFileNames, ["First.md", "Second.md"])
+        XCTAssertEqual(finalStoreCalls, 1)
+        XCTAssertEqual(finalRenderedTitles, ["First", "Second"])
+        XCTAssertEqual(finalPublishedNames, ["First.md", "Second.md"])
+    }
+
+    func testCaptureCheckpointRetainsRenderedDocumentAcrossResume() async throws {
+        let gateState = BackupMaintenanceGateState()
+        let documents = BackupDocumentsFake(onRender: {
+            gateState.pauseOnce()
+        })
+        let files = BackupFilesFake()
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [backupContent(title: "Rendered")]),
+            documents: documents,
+            files: files,
+            maintenanceGate: DurableMaintenanceGate { _, _ in
+                gateState.disposition
+            })
+        let request = ExportLibraryMarkdownBackupRequest(
+            directory: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        let firstExecution = try await useCase.execute(request)
+        let renderedBeforeResume = await documents.renderedTitles
+        let publishedBeforeResume = await files.publishedNames
+        XCTAssertEqual(firstExecution, .suspended)
+        XCTAssertEqual(renderedBeforeResume, ["Rendered"])
+        XCTAssertTrue(publishedBeforeResume.isEmpty)
+
+        gateState.resume()
+        let result = try completedResult(from: await useCase.execute(request))
+        let renderedAfterResume = await documents.renderedTitles
+        let publishedAfterResume = await files.publishedNames
+
+        XCTAssertEqual(result.exportedFileNames, ["Rendered.md"])
+        XCTAssertEqual(renderedAfterResume, ["Rendered"])
+        XCTAssertEqual(publishedAfterResume, ["Rendered.md"])
+    }
 }
 
 private func backupContent(title: String) -> LibraryMarkdownBackupContent {
@@ -206,35 +282,80 @@ private struct BackupStoreFake: LibraryMarkdownBackupStore {
         self.fails = fails
     }
 
-    func libraryMarkdownBackupSource() async throws
-        -> LibraryMarkdownBackupSourceSnapshot {
+    func prepareLibraryMarkdownBackupSource(
+        mayContinue: @escaping @Sendable () -> Bool
+    ) async throws -> LibraryMarkdownBackupSourcePreparation {
         if fails { throw BackupFakeError.expected }
-        return LibraryMarkdownBackupSourceSnapshot(
+        guard mayContinue() else { return .suspended }
+        return .ready(BackupSourceSessionFake(
             contents: contents,
-            failures: failures)
+            failures: failures))
     }
 }
 
 private actor BackupStoreProbe: LibraryMarkdownBackupStore {
+    private let contents: [LibraryMarkdownBackupContent]
+    private let failures: [LibraryMarkdownBackupSourceFailure]
     private(set) var calls = 0
 
-    func libraryMarkdownBackupSource() async throws
-        -> LibraryMarkdownBackupSourceSnapshot {
-        calls += 1
-        return LibraryMarkdownBackupSourceSnapshot(contents: [], failures: [])
+    init(
+        contents: [LibraryMarkdownBackupContent] = [],
+        failures: [LibraryMarkdownBackupSourceFailure] = []
+    ) {
+        self.contents = contents
+        self.failures = failures
     }
+
+    func prepareLibraryMarkdownBackupSource(
+        mayContinue: @escaping @Sendable () -> Bool
+    ) async throws -> LibraryMarkdownBackupSourcePreparation {
+        calls += 1
+        guard mayContinue() else { return .suspended }
+        return .ready(BackupSourceSessionFake(
+            contents: contents,
+            failures: failures))
+    }
+}
+
+private actor BackupSourceSessionFake: LibraryMarkdownBackupSourceSession {
+    nonisolated let totalMeetings: Int
+    private let entries: [LibraryMarkdownBackupSourceEntry]
+    private var index = 0
+
+    init(
+        contents: [LibraryMarkdownBackupContent],
+        failures: [LibraryMarkdownBackupSourceFailure]
+    ) {
+        entries = failures.map(LibraryMarkdownBackupSourceEntry.failure)
+            + contents.map(LibraryMarkdownBackupSourceEntry.content)
+        totalMeetings = entries.count
+    }
+
+    func next() -> LibraryMarkdownBackupSourceEntry? {
+        guard index < entries.count else { return nil }
+        defer { index += 1 }
+        return entries[index]
+    }
+
+    func close() {}
 }
 
 private actor BackupDocumentsFake: LibraryMarkdownBackupDocuments {
     let failingTitles: Set<String>
+    let onRender: @Sendable () -> Void
     private(set) var renderedTitles: [String] = []
 
-    init(failingTitles: Set<String> = []) {
+    init(
+        failingTitles: Set<String> = [],
+        onRender: @escaping @Sendable () -> Void = {}
+    ) {
         self.failingTitles = failingTitles
+        self.onRender = onRender
     }
 
     func markdownDocument(for content: LibraryMarkdownBackupContent) async throws -> Data {
         renderedTitles.append(content.meeting.title)
+        onRender()
         if failingTitles.contains(content.meeting.title) {
             throw BackupFakeError.expected
         }
@@ -246,6 +367,7 @@ private actor BackupFilesFake: LibraryMarkdownBackupFiles {
     let existing: Set<String>
     let failingNames: Set<String>
     let failsInspection: Bool
+    let onPublish: @Sendable () -> Void
     private var collisionCount: Int
     private(set) var publishedNames: [String] = []
 
@@ -253,12 +375,14 @@ private actor BackupFilesFake: LibraryMarkdownBackupFiles {
         existing: Set<String> = [],
         failingNames: Set<String> = [],
         failsInspection: Bool = false,
-        collisionCount: Int = 0
+        collisionCount: Int = 0,
+        onPublish: @escaping @Sendable () -> Void = {}
     ) {
         self.existing = existing
         self.failingNames = failingNames
         self.failsInspection = failsInspection
         self.collisionCount = collisionCount
+        self.onPublish = onPublish
     }
 
     func existingMarkdownFileNames(in directory: URL) async throws -> Set<String> {
@@ -272,12 +396,35 @@ private actor BackupFilesFake: LibraryMarkdownBackupFiles {
         in directory: URL
     ) async throws -> LibraryMarkdownBackupPublication {
         publishedNames.append(fileName)
+        onPublish()
         if failingNames.contains(fileName) { throw BackupFakeError.expected }
         if collisionCount > 0 {
             collisionCount -= 1
             return .nameCollision
         }
         return .published
+    }
+}
+
+private final class BackupMaintenanceGateState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isPaused = false
+    private var didPause = false
+
+    var disposition: DurableMaintenanceDisposition {
+        lock.withLock { isPaused ? .pause : .proceed }
+    }
+
+    func pauseOnce() {
+        lock.withLock {
+            guard !didPause else { return }
+            didPause = true
+            isPaused = true
+        }
+    }
+
+    func resume() {
+        lock.withLock { isPaused = false }
     }
 }
 

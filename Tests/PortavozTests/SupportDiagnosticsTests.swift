@@ -160,7 +160,7 @@ final class SupportDiagnosticsTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let report = try decoder.decode(SupportDiagnosticsReport.self, from: data)
         XCTAssertEqual(report.formatVersion, 2)
-        XCTAssertEqual(report.storage.schemaVersion, 15)
+        XCTAssertEqual(report.storage.schemaVersion, StorageSchema.version)
         XCTAssertEqual(report.storage.meetingCount, 1)
         XCTAssertTrue(report.meetings[0].reference.hasPrefix("meeting-"))
         XCTAssertEqual(report.meetings[0].lifecycleState, "needsAttention")

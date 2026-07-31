@@ -5775,3 +5775,45 @@ from calls without weakening D99 consistency, holding a complete library while
 waiting, or introducing a polling task and volatile retry queue. Retaining the
 chosen destination gives the user automatic recovery after Stop while keeping
 the limitation explicit for the next GOV-4 slice.
+
+## D181 — Checkpoint whole-library backup through one immutable SQLite stage (Jul 2026)
+
+**Context:** D180 defers backup before the coherent D99 source read, but an
+admitted export still loads the complete library into Swift memory and finishes
+even when protected capture starts. Reading each meeting independently from the
+live database would reduce memory but combine different database moments,
+weakening backup consistency.
+
+**Decision:** StorageKit copies the live database into one private transient
+SQLite workspace with GRDB's bounded backup API. Copy progress is checked after
+each 256-page group. If capture closes the maintenance gate, the partial stage
+is removed and preparation returns a typed suspension. The stage root and
+workspace are owner-only, the staged database is `0600`, and the root is
+excluded from backup. Schema v16 adds a partial
+`meeting(startedAt DESC, id ASC)` index for live roots; because the index is
+part of the coherent copy, staged iteration can use a stable keyset cursor
+without repeated offset scans.
+
+After a complete copy, a stage session reads one live meeting aggregate at a
+time in `startedAt DESC, id ASC` order. Later live-database mutations cannot
+change the export. Corrupt required aggregates remain typed per-meeting
+failures, while optional General-summary corruption degrades to no summary as
+before.
+
+`ExportLibraryMarkdownBackup` is an actor that owns one active run. It checks
+the shared maintenance gate before each staged read, after loading one
+aggregate, after rendering one document, and after atomic publication. A
+suspended run retains its stage cursor, filename allocator, typed results, and
+at most one pending aggregate or rendered document. Publication is the commit
+point, so resume does not rerender or republish completed meetings.
+
+Normal completion and failure close and remove the stage. This decision is
+process-local: it does not persist destination authorization, collision
+reservations, a publication manifest, or ownership needed to adopt an
+abandoned stage after app termination.
+
+**Rationale:** one immutable on-disk stage preserves a coherent library moment
+while bounding live-database contention and in-memory content. Explicit
+checkpoints let recording take priority without duplicate publication, polling,
+or a second durable-work ledger. Relaunch-safe destination and stage recovery
+remain separate work rather than being implied by process-local suspension.

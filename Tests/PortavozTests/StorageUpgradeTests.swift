@@ -82,6 +82,18 @@ final class StorageUpgradeTests: XCTestCase {
                 try Row.fetchAll(database, sql: "PRAGMA foreign_key_check").isEmpty,
                 file: file,
                 line: line)
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: """
+                        SELECT COUNT(*)
+                        FROM sqlite_master
+                        WHERE type = 'index'
+                          AND name = 'meeting_on_live_startedAt_id'
+                        """),
+                1,
+                file: file,
+                line: line)
         }
     }
 

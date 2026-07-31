@@ -143,7 +143,8 @@ The implemented application workflows include:
   persistence without overwriting an existing choice;
 - external-audio import with required transcription and degradable derivation;
 - relational `.portavoz` bundle import and read-consistent bundle export;
-- read-consistent whole-library Markdown backup with typed partial results;
+- read-consistent staged whole-library Markdown backup with typed partial
+  results and capture checkpoints;
 - reviewable refinement and revision-fenced acceptance;
 - pre-capture recording reservation and failure reconciliation;
 - audio-first stop, durable processing admission, and terminal recovery state;
@@ -534,9 +535,12 @@ use source-revision or owner-lease fences where applicable. Stale work is
 discarded rather than overwriting newer truth.
 
 Query-specific projections use explicit scope and ordering. Whole-library
-backup performs one newest-first database snapshot. Spotlight uses a bounded
-projection and client-state reconciliation. Library, Insights, Meeting Detail,
-and the menu bar use independent GRDB observations sized to their surface.
+backup first copies one immutable SQLite stage through bounded GRDB backup
+pages, then uses the copied live-root ordering index to load one newest-first
+aggregate at a time from that stage without offset rescans.
+Spotlight uses a bounded projection and client-state reconciliation. Library,
+Insights, Meeting Detail, and the menu bar use independent GRDB observations
+sized to their surface.
 Library search expands a small deterministic English/Spanish meeting lexicon
 locally, then groups each complete language variant under FTS5 `OR` rather
 than weakening every token into a broad union. FTS5 `unicode61` provides
@@ -577,15 +581,19 @@ evidence instead of turning expected suspension into an error. Semantic
 indexing resumes from remaining `NULL` rows; the sync seed resumes from its
 protected opaque meeting cursor.
 
-Whole-library backup currently checkpoints only at admission: protected
-capture is checked before the single coherent SQLite snapshot, the
-process-scoped model retains the selected destination, and capture completion
-resumes the same request. This prevents a waiting backup from touching SQLite
-or rendering documents during a call. If capture begins after admission, the
-already-opened backup finishes. Pausing later would either retain the complete
-content-heavy snapshot during the call or reread different database moments; a
-future intra-export checkpoint therefore requires durable bounded staging
-rather than a volatile loop. None of these paths adds a timer or polling task.
+Whole-library backup uses one private on-disk SQLite stage instead of retaining
+the complete library in Swift memory. The stage copy checkpoints after bounded
+GRDB page groups; an arriving protected capture aborts and removes a partial
+copy. Once the coherent stage exists, the process-owned use case checkpoints
+before each staged aggregate read, after loading one aggregate, after rendering
+one document, and after atomic publication. Suspension retains the stage cursor,
+filename allocator, completed results, and at most one pending
+aggregate/document. Capture completion resumes the same request without
+rereading the live database or republishing completed files. The stage is
+owner-only, excluded from backup, and removed after completion or ordinary
+failure. Destination authorization and a publication manifest are not yet
+recovered across process termination, so relaunch-safe continuation remains an
+explicit gap. None of these paths adds a timer or polling task.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,
@@ -1327,19 +1335,25 @@ credential; only a prepared destination emits presentation progress and
 proceeds to transport. Missing meetings and empty pending-item sets therefore
 do not touch Keychain or announce egress.
 
-Whole-library Markdown backup is coordinated by
-`ApplicationKit.ExportLibraryMarkdownBackup`. StorageKit provides one
-read-consistent snapshot containing every healthy live meeting, cast, ordered
-transcript, and latest General summary. Corrupt required aggregates become
-typed per-meeting failures while healthy meetings continue; corrupt optional
-summaries degrade to absent.
+Whole-library Markdown backup is coordinated by the
+`ApplicationKit.ExportLibraryMarkdownBackup` actor. StorageKit creates one
+read-consistent transient SQLite stage through bounded GRDB backup pages. The
+stage session then loads one healthy live meeting, cast, ordered transcript,
+and latest General summary at a time in newest-first order. Corrupt required
+aggregates become typed per-meeting failures while healthy meetings continue;
+corrupt optional summaries degrade to absent.
 
 After the user chooses a destination, the expensive process-owned backup is a
 maintenance/media-export workload. A protected recording returns an explicit
-suspension before the source snapshot; `LibraryMarkdownBackupModel` keeps the
-request in its preparing state and resumes it from the capture-stop signal.
-The destination is never rerequested, suspension is not reported as failure,
-and a stop signal racing with admission is remembered rather than lost.
+suspension before or during bounded stage creation, before the next staged
+aggregate read, after one aggregate load or render, or after publication.
+`LibraryMarkdownBackupModel` keeps the request in its preparing state and
+resumes it from the capture-stop signal. The destination is never rerequested,
+suspension is not reported as failure, and a stop signal racing with admission
+is remembered rather than lost. The use-case actor retains the immutable stage,
+cursor, collision allocator, completed results, and at most one pending
+aggregate or rendered document; atomic publication is the commit point, so
+resume never duplicates a completed file.
 
 Filename allocation accounts for existing Markdown files, Unicode
 normalization, case and width equivalence, hidden/empty titles, reserved device

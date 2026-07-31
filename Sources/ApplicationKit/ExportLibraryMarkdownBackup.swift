@@ -37,44 +37,74 @@ public struct LibraryMarkdownBackupSourceFailure: Equatable, Sendable {
     }
 }
 
-public struct LibraryMarkdownBackupSourceSnapshot: Sendable {
-    public let contents: [LibraryMarkdownBackupContent]
-    public let failures: [LibraryMarkdownBackupSourceFailure]
-
-    public init(
-        contents: [LibraryMarkdownBackupContent],
-        failures: [LibraryMarkdownBackupSourceFailure]
-    ) {
-        self.contents = contents
-        self.failures = failures
-    }
+public enum LibraryMarkdownBackupSourceEntry: Sendable {
+    case content(LibraryMarkdownBackupContent)
+    case failure(LibraryMarkdownBackupSourceFailure)
 }
 
-/// One read-consistent projection of every live meeting. Storage corruption is
-/// isolated per aggregate; failure to open the snapshot itself remains fatal.
+public protocol LibraryMarkdownBackupSourceSession: Sendable {
+    var totalMeetings: Int { get }
+    func next() async throws -> LibraryMarkdownBackupSourceEntry?
+    func close() async
+}
+
+public enum LibraryMarkdownBackupSourcePreparation: Sendable {
+    case ready(any LibraryMarkdownBackupSourceSession)
+    case suspended
+}
+
+/// Creates one read-consistent, incrementally consumed projection of the live
+/// library. Storage corruption remains isolated per aggregate.
 public protocol LibraryMarkdownBackupStore: Sendable {
-    func libraryMarkdownBackupSource() async throws
-        -> LibraryMarkdownBackupSourceSnapshot
+    func prepareLibraryMarkdownBackupSource(
+        mayContinue: @escaping @Sendable () -> Bool
+    ) async throws -> LibraryMarkdownBackupSourcePreparation
 }
 
 extension MeetingStore: LibraryMarkdownBackupStore {
-    public func libraryMarkdownBackupSource() async throws
-        -> LibraryMarkdownBackupSourceSnapshot {
-        let snapshot = try await libraryMarkdownBackupSnapshots()
-        return LibraryMarkdownBackupSourceSnapshot(
-            contents: snapshot.meetings.map {
-                LibraryMarkdownBackupContent(
-                    meeting: $0.meeting,
-                    speakers: $0.speakers,
-                    segments: $0.segments,
-                    summary: $0.summary,
-                    summaryVersion: $0.summaryVersion)
-            },
-            failures: snapshot.failures.map {
-                LibraryMarkdownBackupSourceFailure(
-                    meetingID: $0.meetingID,
-                    title: $0.title)
-            })
+    public func prepareLibraryMarkdownBackupSource(
+        mayContinue: @escaping @Sendable () -> Bool
+    ) async throws -> LibraryMarkdownBackupSourcePreparation {
+        switch try await prepareLibraryMarkdownBackupStage(
+            mayContinue: mayContinue
+        ) {
+        case .ready(let stage):
+            return .ready(MeetingStoreLibraryMarkdownBackupSource(stage: stage))
+        case .suspended:
+            return .suspended
+        }
+    }
+}
+
+private actor MeetingStoreLibraryMarkdownBackupSource:
+    LibraryMarkdownBackupSourceSession {
+    nonisolated let totalMeetings: Int
+    private let stage: MeetingMarkdownBackupStage
+
+    init(stage: MeetingMarkdownBackupStage) {
+        self.stage = stage
+        totalMeetings = stage.totalMeetings
+    }
+
+    func next() async throws -> LibraryMarkdownBackupSourceEntry? {
+        guard let entry = try await stage.next() else { return nil }
+        switch entry {
+        case .meeting(let snapshot):
+            return .content(LibraryMarkdownBackupContent(
+                meeting: snapshot.meeting,
+                speakers: snapshot.speakers,
+                segments: snapshot.segments,
+                summary: snapshot.summary,
+                summaryVersion: snapshot.summaryVersion))
+        case .failure(let failure):
+            return .failure(LibraryMarkdownBackupSourceFailure(
+                meetingID: failure.meetingID,
+                title: failure.title))
+        }
+    }
+
+    func close() async {
+        await stage.close()
     }
 }
 
@@ -175,6 +205,7 @@ public typealias LibraryMarkdownBackupProgressHandler =
 public enum LibraryMarkdownBackupError: Error, Equatable, Sendable {
     case libraryUnavailable
     case destinationUnavailable
+    case operationInProgress
 }
 
 public struct ExportLibraryMarkdownBackupRequest: Sendable {
@@ -191,8 +222,9 @@ public struct ExportLibraryMarkdownBackupRequest: Sendable {
 }
 
 /// Exports every healthy live meeting while preserving failures as typed,
-/// content-free partial results. Existing files are never replaced.
-public struct ExportLibraryMarkdownBackup: ApplicationUseCase {
+/// content-free partial results. Existing files are never replaced. The actor
+/// retains one staged run across capture-policy suspension.
+public actor ExportLibraryMarkdownBackup: ApplicationUseCase {
     private static let workload = ResourceWorkloadDescriptor(
         workloadClass: .maintenance,
         kind: .mediaExport,
@@ -202,6 +234,9 @@ public struct ExportLibraryMarkdownBackup: ApplicationUseCase {
     private let documents: any LibraryMarkdownBackupDocuments
     private let files: any LibraryMarkdownBackupFiles
     private let maintenanceGate: DurableMaintenanceGate
+    private var preparedSource: PreparedLibraryMarkdownBackupSource?
+    private var activeRun: ActiveLibraryMarkdownBackupRun?
+    private var isExecuting = false
 
     public init(
         store: any LibraryMarkdownBackupStore,
@@ -218,40 +253,41 @@ public struct ExportLibraryMarkdownBackup: ApplicationUseCase {
     public func execute(
         _ request: ExportLibraryMarkdownBackupRequest
     ) async throws -> LibraryMarkdownBackupExecution {
-        await request.progress(.preparing)
-        guard shouldProceed(at: .admission) else {
-            return .suspended
+        guard !isExecuting else {
+            throw LibraryMarkdownBackupError.operationInProgress
         }
-        let source = try await sourceSnapshot()
-        var allocator = try await fileNameAllocator(in: request.directory)
-        var failures = source.failures.map(Self.sourceFailure)
-        var exportedFileNames: [String] = []
-        let total = source.contents.count + failures.count
+        isExecuting = true
+        defer { isExecuting = false }
+
+        await request.progress(.preparing)
+        if activeRun == nil {
+            guard try await prepareRun(in: request.directory) else {
+                return .suspended
+            }
+        }
+        guard var run = activeRun,
+              Self.sameDirectory(run.directory, request.directory)
+        else {
+            throw LibraryMarkdownBackupError.operationInProgress
+        }
+
         await publishProgress(
-            total: total,
-            exported: exportedFileNames.count,
-            failures: failures.count,
+            total: run.totalMeetings,
+            exported: run.exportedFileNames.count,
+            failures: run.failures.count,
             through: request.progress)
 
-        for content in source.contents {
-            let outcome = await export(
-                content,
-                to: request.directory,
-                allocator: &allocator)
-            switch outcome {
-            case .success(let fileName): exportedFileNames.append(fileName)
-            case .failure(let failure): failures.append(failure)
+        while shouldProceed(at: .checkpoint) {
+            if let completion = try await advance(
+                run: &run,
+                progress: request.progress
+            ) {
+                return completion
             }
-            await publishProgress(
-                total: total,
-                exported: exportedFileNames.count,
-                failures: failures.count,
-                through: request.progress)
+            activeRun = run
         }
-        return .completed(LibraryMarkdownBackupResult(
-            totalMeetings: total,
-            exportedFileNames: exportedFileNames,
-            failures: failures))
+        activeRun = run
+        return .suspended
     }
 }
 
@@ -264,11 +300,144 @@ private extension ExportLibraryMarkdownBackup {
             phase: phase) == .proceed
     }
 
-    func sourceSnapshot() async throws -> LibraryMarkdownBackupSourceSnapshot {
+    func advance(
+        run: inout ActiveLibraryMarkdownBackupRun,
+        progress: LibraryMarkdownBackupProgressHandler
+    ) async throws -> LibraryMarkdownBackupExecution? {
+        switch run.pending {
+        case nil:
+            return try await loadNextEntry(
+                into: &run,
+                progress: progress)
+        case .content(let content):
+            await render(
+                content,
+                into: &run,
+                progress: progress)
+            return nil
+        case .document(let content, let data):
+            await publish(
+                data,
+                for: content,
+                into: &run,
+                progress: progress)
+            return nil
+        }
+    }
+
+    func loadNextEntry(
+        into run: inout ActiveLibraryMarkdownBackupRun,
+        progress: LibraryMarkdownBackupProgressHandler
+    ) async throws -> LibraryMarkdownBackupExecution? {
+        let entry: LibraryMarkdownBackupSourceEntry?
         do {
-            return try await store.libraryMarkdownBackupSource()
+            entry = try await run.source.next()
         } catch {
+            await run.source.close()
+            activeRun = nil
             throw LibraryMarkdownBackupError.libraryUnavailable
+        }
+        guard let entry else {
+            await run.source.close()
+            activeRun = nil
+            return .completed(LibraryMarkdownBackupResult(
+                totalMeetings: run.totalMeetings,
+                exportedFileNames: run.exportedFileNames,
+                failures: run.failures))
+        }
+        switch entry {
+        case .content(let content):
+            run.pending = .content(content)
+        case .failure(let failure):
+            run.failures.append(Self.sourceFailure(failure))
+            await publishProgress(for: run, through: progress)
+        }
+        return nil
+    }
+
+    func render(
+        _ content: LibraryMarkdownBackupContent,
+        into run: inout ActiveLibraryMarkdownBackupRun,
+        progress: LibraryMarkdownBackupProgressHandler
+    ) async {
+        do {
+            run.pending = .document(
+                content,
+                try await documents.markdownDocument(for: content))
+        } catch {
+            run.pending = nil
+            run.failures.append(Self.failure(
+                for: content,
+                stage: .document))
+            await publishProgress(for: run, through: progress)
+        }
+    }
+
+    func publish(
+        _ data: Data,
+        for content: LibraryMarkdownBackupContent,
+        into run: inout ActiveLibraryMarkdownBackupRun,
+        progress: LibraryMarkdownBackupProgressHandler
+    ) async {
+        let outcome = await publish(
+            data,
+            for: content,
+            to: run.directory,
+            allocator: &run.allocator)
+        run.pending = nil
+        switch outcome {
+        case .success(let fileName):
+            run.exportedFileNames.append(fileName)
+        case .failure(let failure):
+            run.failures.append(failure)
+        }
+        await publishProgress(for: run, through: progress)
+    }
+
+    func prepareRun(in directory: URL) async throws -> Bool {
+        if let preparedSource {
+            guard Self.sameDirectory(preparedSource.directory, directory) else {
+                throw LibraryMarkdownBackupError.operationInProgress
+            }
+        } else {
+            guard shouldProceed(at: .admission) else { return false }
+            let gate = maintenanceGate
+            let workload = Self.workload
+            let preparation: LibraryMarkdownBackupSourcePreparation
+            do {
+                preparation = try await store.prepareLibraryMarkdownBackupSource {
+                    gate.disposition(
+                        for: workload,
+                        phase: .checkpoint) == .proceed
+                }
+            } catch {
+                throw LibraryMarkdownBackupError.libraryUnavailable
+            }
+            switch preparation {
+            case .ready(let source):
+                preparedSource = PreparedLibraryMarkdownBackupSource(
+                    directory: directory,
+                    source: source)
+            case .suspended:
+                return false
+            }
+        }
+
+        guard shouldProceed(at: .checkpoint) else { return false }
+        guard let preparedSource else {
+            preconditionFailure("prepared backup source must exist")
+        }
+        do {
+            activeRun = ActiveLibraryMarkdownBackupRun(
+                directory: preparedSource.directory,
+                source: preparedSource.source,
+                allocator: try await fileNameAllocator(in: directory))
+            self.preparedSource = nil
+            return true
+        } catch {
+            await preparedSource.source.close()
+            self.preparedSource = nil
+            throw error
         }
     }
 
@@ -281,18 +450,12 @@ private extension ExportLibraryMarkdownBackup {
         }
     }
 
-    func export(
-        _ content: LibraryMarkdownBackupContent,
+    func publish(
+        _ data: Data,
+        for content: LibraryMarkdownBackupContent,
         to directory: URL,
         allocator: inout BackupFileNameAllocator
     ) async -> LibraryMarkdownBackupExportOutcome {
-        let data: Data
-        do {
-            data = try await documents.markdownDocument(for: content)
-        } catch {
-            return .failure(Self.failure(for: content, stage: .document))
-        }
-
         for _ in 0..<10_000 {
             let fileName = allocator.nextFileName(for: content.meeting.title)
             do {
@@ -324,6 +487,21 @@ private extension ExportLibraryMarkdownBackup {
             failedMeetings: failures)))
     }
 
+    func publishProgress(
+        for run: ActiveLibraryMarkdownBackupRun,
+        through handler: LibraryMarkdownBackupProgressHandler
+    ) async {
+        await publishProgress(
+            total: run.totalMeetings,
+            exported: run.exportedFileNames.count,
+            failures: run.failures.count,
+            through: handler)
+    }
+
+    static func sameDirectory(_ lhs: URL, _ rhs: URL) -> Bool {
+        lhs.standardizedFileURL == rhs.standardizedFileURL
+    }
+
     static func sourceFailure(
         _ failure: LibraryMarkdownBackupSourceFailure
     ) -> LibraryMarkdownBackupFailure {
@@ -342,6 +520,27 @@ private extension ExportLibraryMarkdownBackup {
             title: content.meeting.title,
             stage: stage)
     }
+}
+
+private struct PreparedLibraryMarkdownBackupSource: Sendable {
+    let directory: URL
+    let source: any LibraryMarkdownBackupSourceSession
+}
+
+private struct ActiveLibraryMarkdownBackupRun: Sendable {
+    let directory: URL
+    let source: any LibraryMarkdownBackupSourceSession
+    var allocator: BackupFileNameAllocator
+    var exportedFileNames: [String] = []
+    var failures: [LibraryMarkdownBackupFailure] = []
+    var pending: PendingLibraryMarkdownBackupDocument?
+
+    var totalMeetings: Int { source.totalMeetings }
+}
+
+private enum PendingLibraryMarkdownBackupDocument: Sendable {
+    case content(LibraryMarkdownBackupContent)
+    case document(LibraryMarkdownBackupContent, Data)
 }
 
 private enum LibraryMarkdownBackupExportOutcome {

@@ -88,6 +88,7 @@ final class LibraryMarkdownBackupModel {
             switch error {
             case .libraryUnavailable: phase = .failed(.libraryUnavailable)
             case .destinationUnavailable: phase = .failed(.destinationUnavailable)
+            case .operationInProgress: phase = .failed(.unexpected)
             }
         } catch {
             finish()

@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 15
+    public static let version = 16
 
     // Sequential migration registry (one per schema version);
     // inherently long body that grows with each migration.
@@ -245,6 +245,17 @@ public enum StorageSchema {
         migrator.registerMigration("v15") { db in
             try createEnhancedNotes(in: db)
             try createEnhancedNoteSyncTriggers(in: db)
+        }
+
+        // v16: stable keyset scans for newest-first live meeting roots.
+        // The mixed direction matches whole-library backup exactly and also
+        // avoids repeated temporary sorts in ordered library projections.
+        migrator.registerMigration("v16") { db in
+            try db.execute(sql: """
+                CREATE INDEX meeting_on_live_startedAt_id
+                ON meeting(startedAt DESC, id ASC)
+                WHERE deletedAt IS NULL
+                """)
         }
 
         return migrator
