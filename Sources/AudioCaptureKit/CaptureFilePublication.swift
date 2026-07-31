@@ -197,8 +197,14 @@ private struct CaptureFileEvidence {
         defer { try? handle.close() }
         var hasher = SHA256()
         while true {
-            guard let data = try handle.read(upToCount: 1 << 20), !data.isEmpty else { break }
-            hasher.update(data: data)
+            let reachedEnd = try autoreleasepool { () throws -> Bool in
+                guard let data = try handle.read(upToCount: 1 << 20),
+                      !data.isEmpty
+                else { return true }
+                hasher.update(data: data)
+                return false
+            }
+            if reachedEnd { break }
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }

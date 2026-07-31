@@ -10,6 +10,7 @@ public enum AudioCaptureError: Error, Sendable {
     case invalidCaptureFile(String)
     case captureDestinationExists(String)
     case nonAtomicCapturePublication(String)
+    case captureWriterClosed
 }
 
 enum AudioRouteTransitionTiming {

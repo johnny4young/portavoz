@@ -15,7 +15,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 .PHONY: build test test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
-	release-reliability
+	release-reliability long-capture-baseline
 
 ## Unit tests (the package suite).
 test:
@@ -57,6 +57,13 @@ resource-baseline:
 
 ## Backward-compatible alias for the original recording-only command name.
 resource-recording-baseline: resource-baseline
+
+## Accelerate three logical hours of bounded dual-channel PCM through the
+## production RecordingSession, then require exact frame and publication
+## conservation from a clean Release build. Output is local evidence only.
+PORTAVOZ_LONG_CAPTURE_OUTPUT ?=
+long-capture-baseline:
+	scripts/run-long-capture-baseline.sh "$(PORTAVOZ_LONG_CAPTURE_OUTPUT)"
 
 ## Run the deterministic release gates and write a receipt bound to the exact
 ## version, build, and current commit. Both release variables are required.

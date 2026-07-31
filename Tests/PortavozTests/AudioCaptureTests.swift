@@ -91,16 +91,17 @@ final class CaptureFileWriterTests: XCTestCase {
         try autoreleasepool {
             let writer = try CaptureFileWriter(url: url, sampleRate: 48_000)
             try writer.append([Float](repeating: 0.25, count: 4_800))
-            try writer.append([Float](repeating: -0.25, count: 4_800))
+            try writer.append([Float](repeating: -0.25, count: 2_400))
+            try writer.append([Float](repeating: 0.125, count: 7_200))
             framesWritten = writer.framesWritten
             secondsWritten = writer.secondsWritten
         }
 
-        XCTAssertEqual(framesWritten, 9_600)
-        XCTAssertEqual(secondsWritten, 0.2, accuracy: 0.0001)
+        XCTAssertEqual(framesWritten, 14_400)
+        XCTAssertEqual(secondsWritten, 0.3, accuracy: 0.0001)
 
         let read = try AVAudioFile(forReading: url)
-        XCTAssertEqual(read.length, 9_600)
+        XCTAssertEqual(read.length, 14_400)
         XCTAssertEqual(read.fileFormat.channelCount, 1)
         XCTAssertEqual(read.fileFormat.sampleRate, 48_000)
     }
@@ -113,6 +114,25 @@ final class CaptureFileWriterTests: XCTestCase {
         let writer = try CaptureFileWriter(url: url, sampleRate: 48_000)
         try writer.append([])
         XCTAssertEqual(writer.framesWritten, 0)
+    }
+
+    func testExplicitCloseIsIdempotentAndRejectsLaterPCM() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString).caf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let writer = try CaptureFileWriter(url: url, sampleRate: 48_000)
+        try writer.append([0.25])
+
+        writer.close()
+        writer.close()
+
+        XCTAssertThrowsError(try writer.append([0.25])) { error in
+            guard case AudioCaptureError.captureWriterClosed = error else {
+                return XCTFail("wrong error: \(error)")
+            }
+        }
+        XCTAssertEqual(writer.framesWritten, 1)
+        XCTAssertEqual(writer.secondsWritten, 1.0 / 48_000, accuracy: 0.000_001)
     }
 }
 
@@ -249,6 +269,7 @@ final class RecordingSummaryTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: stagingURL.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: finalURL.path))
         XCTAssertEqual(summary.files[.microphone], finalURL)
+        XCTAssertEqual(summary.framesWritten[.microphone], 4_800)
         XCTAssertEqual(media.url, finalURL)
         XCTAssertEqual(media.container, "caf")
         XCTAssertEqual(media.codec, "pcm-s16le")

@@ -1105,6 +1105,16 @@ emits a compact `PersistedAudioLevel` with channel, timestamp, and accepted
 chunk duration after durable append; optional app presentation never scans that
 full sample array again.
 
+Capture duration is conserved as integer PCM frames before it is projected as
+seconds. Each channel writer reuses one grow-only `AVAudioPCMBuffer` instead of
+allocating per callback, and Stop explicitly closes every native file before
+validation rather than waiting for completed task contexts to deinitialize.
+The utility publication worker still hashes in 1 MiB blocks, but each
+`FileHandle` read and hash update owns a short autorelease pool. Multi-hour
+finalization therefore remains streaming in both algorithm and retained heap;
+an Objective-C `Data` backing cannot accumulate once per block on the
+long-lived queue.
+
 The recording controller submits those compact values synchronously to one
 lock-protected latest-value slot. Every value still updates the exact low-mic
 and missing-system-audio diagnostic state in O(1). A constant-space
@@ -1170,6 +1180,23 @@ produce a complete blocked scorecard, while malformed, duplicate,
 mismatched-build, wrong-memory-tier, non-finite, or payload-bearing evidence
 fails validation. A complete matrix proves measurement coverage only: it does
 not define budgets or authorize governor policy.
+
+Accelerated long-capture conservation is a separate contract, not a tenth
+resource-matrix scenario. `make long-capture-baseline` requires a clean commit,
+refuses to replace an existing receipt, builds the CLI in Release, and
+revalidates the unchanged commit/worktree before atomically publishing from the
+destination filesystem. It drives exactly three logical hours of 16 kHz PCM
+through the production dual-channel `RecordingSession`. Its producer admits
+one chunk pair and waits for both post-persistence acknowledgements before
+admitting the next, so the fixture cannot hide loss behind an unbounded stream.
+The exact-shaped, source-commit-bound report requires 172,800,000 accepted and
+published frames per channel, healthy CAF evidence, zero frame drift, and no
+more than 16 MiB incremental allocator heap. The limit is a duration-invariance
+safety fence for this synthetic process, not a hardware memory tier. The
+accelerated process intentionally does not use physical footprint as an idle
+budget: writing 691 MiB in seconds creates dirty file-page pressure unlike a
+real three-hour clock. Real-time 90-minute and call-route runs remain the
+authority for physical footprint, thermal, power, and device interference.
 
 The native Release collector covers steady idle, active recording, Stop,
 Refine, Summary, Ask, standalone semantic indexing, and both concurrent

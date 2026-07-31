@@ -11,6 +11,11 @@ public actor RecordingSession {
         public let files: [AudioChannel: URL]
         /// Finalized media evidence keyed by structural capture channel.
         public let publishedFiles: [AudioChannel: PublishedCaptureFile]
+        /// Exact PCM frames accepted by each channel writer. Keeping the
+        /// integer count alongside derived seconds lets long-run evidence
+        /// detect even one lost or duplicated frame without floating-point
+        /// reconstruction.
+        public let framesWritten: [AudioChannel: Int64]
         public let secondsWritten: [AudioChannel: TimeInterval]
         /// Highest absolute sample per channel (0...1). A channel that wrote
         /// audio but peaks at 0 delivered pure silence — on `.system` that
@@ -24,6 +29,7 @@ public actor RecordingSession {
 
         public init(
             files: [AudioChannel: URL],
+            framesWritten: [AudioChannel: Int64] = [:],
             secondsWritten: [AudioChannel: TimeInterval],
             peaks: [AudioChannel: Float] = [:],
             rms: [AudioChannel: Float] = [:],
@@ -32,6 +38,7 @@ public actor RecordingSession {
         ) {
             self.files = files
             self.publishedFiles = publishedFiles
+            self.framesWritten = framesWritten
             self.secondsWritten = secondsWritten
             self.peaks = peaks
             self.rms = rms
@@ -187,8 +194,10 @@ public actor RecordingSession {
             await consumer.value
         }
 
+        var frames: [AudioChannel: Int64] = [:]
         var seconds: [AudioChannel: TimeInterval] = [:]
         for (channel, writer) in writers {
+            frames[channel] = Int64(writer.framesWritten)
             seconds[channel] = writer.secondsWritten
         }
 
@@ -199,6 +208,7 @@ public actor RecordingSession {
         let measuredRMS = rms
 
         sources.removeAll()
+        for writer in writers.values { writer.close() }
         writers.removeAll()
         consumers.removeAll()
         isRecording = false
@@ -217,6 +227,7 @@ public actor RecordingSession {
         }
         let summary = Summary(
             files: publication.files,
+            framesWritten: frames,
             secondsWritten: seconds,
             peaks: measuredPeaks,
             rms: measuredRMS,

@@ -6220,3 +6220,48 @@ is required: a pending row at `maxAttempts` is not claimable and would otherwise
 be stranded. Matching ownership strength to recovery granularity keeps the
 durable worker strict while avoiding artificial liveness machinery around
 idempotent checkpoint workflows.
+
+## D191 — Prove accelerated long capture separately and bound finalization heap (Jul 2026)
+
+**Context:** GOV-5 needs both synthetic three-hour continuity and real-time
+recording/interference evidence. Adding multi-hour cells to the exact 27-cell
+resource matrix would make ordinary collection impractical and would conflate
+deterministic file conservation with hardware, route, thermal, and power
+behavior. The first accelerated dual-channel Release run conserved every frame
+but retained roughly the full 691 MiB PCM payload after Stop. Short tests did
+not expose that `FileHandle.read(upToCount:)` produced one autoreleased `Data`
+per SHA-256 block on a long-lived utility queue.
+
+**Decision:** `RecordingSession.Summary` carries exact integer frame counts in
+addition to projected seconds. `CaptureFileWriter` owns one grow-only reusable
+PCM buffer per channel and an explicit idempotent close; Stop closes every
+writer before publication rather than depending on task-context destruction.
+The streaming SHA-256 loop reads and updates each 1 MiB block inside its own
+autorelease pool.
+
+A separate `bench-capture` CLI drives microphone and system sources through the
+production session. It admits one chunk pair, waits until both chunks have been
+persisted, then admits the next. `make long-capture-baseline` requires a clean
+commit and Release build, refuses to overwrite an existing receipt, rechecks
+source identity before destination-local atomic publication, and validates an
+exact-shaped, owner-only, source-commit-bound report. Canonical evidence
+requires exactly three logical hours at 16 kHz: 172,800,000 writer and
+published-file frames per channel, healthy CAFs, zero frame drift, and at most
+16 MiB incremental allocator heap. Unknown fields, private paths/content,
+debug builds, malformed numbers, partial channels, and inconsistent counts
+fail closed.
+
+Accelerated process physical footprint is excluded from this report because
+writing 691 MiB in seconds creates dirty-page pressure unlike real elapsed
+capture. The 16 MiB limit is a duration-invariance safety fence for the
+synthetic process, not a product RAM tier. The existing real-time resource
+contract remains unchanged and owns physical-footprint, thermal, power, disk,
+resident-model, and call-route acceptance.
+
+**Rationale:** deterministic frame conservation can run quickly and catch
+duration-proportional heap defects without multiplying every hardware cell.
+Keeping the contracts separate prevents a fast synthetic writer from making
+false real-call claims while still turning multi-hour capture and Stop into a
+repeatable release gate. Explicit close and scoped autorelease make the
+architecture's bounded-memory publication claim true rather than relying on
+ARC timing.

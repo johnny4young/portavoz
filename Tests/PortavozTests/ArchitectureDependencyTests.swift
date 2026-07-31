@@ -1462,6 +1462,56 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Production packages must not read resource evidence: \(appSources)")
     }
 
+    func testLongCaptureEvidenceUsesProductionSessionAndBoundedHeap() throws {
+        let writer = try Self.contents(
+            of: "Sources/AudioCaptureKit/CaptureFileWriter.swift")
+        let session = try Self.contents(
+            of: "Sources/AudioCaptureKit/RecordingSession.swift")
+        let publication = try Self.contents(
+            of: "Sources/AudioCaptureKit/CaptureFilePublication.swift")
+        let command = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchCapture.swift")
+        let dispatch = try Self.contents(of: "Sources/portavoz-cli/CLI.swift")
+        let runner = try Self.contents(
+            of: "scripts/run-long-capture-baseline.sh")
+        let validator = try Self.contents(
+            of: "scripts/long_capture_evidence.py")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(writer.contains(
+            "private var reusableBuffer: AVAudioPCMBuffer?"))
+        XCTAssertTrue(writer.contains("func close()"))
+        XCTAssertTrue(session.contains(
+            "public let framesWritten: [AudioChannel: Int64]"))
+        XCTAssertTrue(session.contains(
+            "for writer in writers.values { writer.close() }"))
+        XCTAssertTrue(publication.contains(
+            "let reachedEnd = try autoreleasepool"))
+        XCTAssertTrue(publication.contains(
+            "handle.read(upToCount: 1 << 20)"))
+
+        XCTAssertTrue(dispatch.contains(#"case "bench-capture":"#))
+        XCTAssertTrue(command.contains(
+            "let channels: [AudioChannel] = [.microphone, .system]"))
+        XCTAssertTrue(command.contains(
+            "barrier.wait("))
+        XCTAssertFalse(command.contains("bufferingNewest"))
+        XCTAssertTrue(command.contains(
+            "maximumIncrementalHeapBytesInUse: UInt64 = 16 * 1_024 * 1_024"))
+        XCTAssertTrue(runner.contains(
+            "git status --porcelain --untracked-files=all"))
+        XCTAssertTrue(runner.contains("output already exists"))
+        XCTAssertTrue(runner.contains(
+            "the source commit or worktree changed during collection"))
+        XCTAssertTrue(runner.contains("swift build -c release --product portavoz-cli"))
+        XCTAssertTrue(runner.contains("--duration-seconds 10800"))
+        XCTAssertTrue(runner.contains("--source-commit \"$COMMIT\""))
+        XCTAssertTrue(validator.contains("TOP_LEVEL_KEYS"))
+        XCTAssertTrue(validator.contains("contentSource must be synthetic-only"))
+        XCTAssertTrue(validator.contains("duration-invariant heap bound was exceeded"))
+        XCTAssertTrue(decisions.contains("## D191"))
+    }
+
     func testPlatformSecurityImplementationHasOneOuterOwner() throws {
         let securityImports = try Self.imports(under: "Sources")
             .filter { $0.module == "Security" }

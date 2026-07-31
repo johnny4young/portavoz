@@ -50,6 +50,12 @@ Two SEPARATE streams, never mixed before diarization:
 
 Actor that coordinates sources and writers by channel (created lazily with the first chunk, at the source's actual rate). `onChunk` is the seam where live transcription attaches without making the writer wait. `onHealthEvent` carries content-free stalled/retry/recovered/stream-failed evidence to the application boundary. The liveness policy itself is behind a short lock rather than an actor hop for every chunk; only a rare signal re-enters the actor for source lookup and recovery. A failed channel ends its file and does NOT kill the session (per-channel errors in the Summary). `Summary`: published files, `PublishedCaptureFile` evidence, seconds written, peak/RMS amplitudes, errors, and `driftSeconds`.
 
+`Summary.framesWritten` retains the exact integer PCM count for every created
+writer; seconds are a projection, not the conservation authority. Stop waits
+for both consumers, snapshots the counts, explicitly closes each native writer,
+and only then sends staging URLs to publication. This makes the publication
+boundary independent of when completed Swift task contexts release captures.
+
 ### Persisted level evidence (D168)
 
 After `CaptureFileWriter.append` accepts a chunk, `RecordingSession` performs
@@ -163,12 +169,18 @@ cards without their successful run are omitted rather than persisted with
 invented provenance. Every accepted rung remains atomic, discoverable, and
 recoverable.
 
-`CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers continue through `MeetingAudioLayout.channelFile`, which prefers user-compressed `.m4a`, then current `.caf`, then legacy `.wav`; staging files remain invisible. `verify_drift.py` converts CAF with afconvert.
+`CaptureFileWriter`: 16-bit mono PCM through AVAudioFile from Float32, **CAF** container — its data chunk remains sized "to EOF" while being written, so a crash leaves the file readable. One grow-only PCM buffer is reused for every callback and explicitly closed at Stop; variable-size chunks can grow the buffer but meeting duration cannot. Publication's 1 MiB SHA-256 loop drains every `FileHandle` block in its own autorelease pool, so finalizing a multi-hour file cannot retain one `Data` per block. **Empirically verified (Jul 2026)**: `kill -9` at 6 s of recording → WAV read 0.00 s / 0 bytes; CAF preserves 5.23 s. Readers continue through `MeetingAudioLayout.channelFile`, which prefers user-compressed `.m4a`, then current `.caf`, then legacy `.wav`; staging files remain invisible. `verify_drift.py` converts CAF with afconvert.
 
 ## Verified synchronization (M1)
 
 - **Measured drift: 4 ms over 22 real minutes** (+4 ppm, linear across 5 points; 30 min projection ≈ 7 ms; criterion < 50 ms). Harness: `scripts/verify_drift.py` (RMS envelope correlation, ±5 s range with edge warning — with ±2 s, the actual 2.4 s offset fell outside the range and reported false drift).
 - Method requirement: both channels must share real audio (meeting over speakers, or a real call where the mic captures the user).
+- **Accelerated long-capture proof (D191):** `make long-capture-baseline`
+  drives 172,800,000 frames per channel (three logical hours at 16 kHz) through
+  `RecordingSession`, with at most one unacknowledged chunk per channel. The
+  Release report requires exact writer and published-file frame counts, healthy
+  media, zero frame drift, and a 16 MiB duration-invariant heap fence. It is not
+  real-time route, thermal, disk-pressure, or physical-footprint evidence.
 
 ## Recordings folder
 
