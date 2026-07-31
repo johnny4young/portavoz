@@ -119,6 +119,38 @@ public enum LibraryMarkdownBackupPublication: Equatable, Sendable {
     case nameCollision
 }
 
+/// Opaque destination identity created only after backup admission. The
+/// application adapter decides whether this is a regular or security-scoped
+/// bookmark; ApplicationKit never interprets its bytes.
+public struct LibraryMarkdownBackupDestinationBookmark: Equatable, Sendable {
+    public let data: Data
+
+    public init(data: Data) {
+        self.data = data
+    }
+}
+
+/// One bounded access interval for a resolved destination. Implementations
+/// must make `close()` idempotent and balance any successful security-scope
+/// acquisition there.
+public protocol LibraryMarkdownBackupDestinationLease: AnyObject, Sendable {
+    var directory: URL { get }
+    var bookmark: LibraryMarkdownBackupDestinationBookmark { get }
+    func close()
+}
+
+/// Converts the user's selected directory into durable identity and resolves
+/// it only while one execution slice needs filesystem access.
+public protocol LibraryMarkdownBackupDestinationAccess: Sendable {
+    func prepare(
+        directory: URL
+    ) async throws -> LibraryMarkdownBackupDestinationBookmark
+
+    func acquire(
+        bookmark: LibraryMarkdownBackupDestinationBookmark
+    ) async throws -> any LibraryMarkdownBackupDestinationLease
+}
+
 /// Filesystem capability. Implementations must publish complete files with a
 /// same-directory atomic move and must never replace an existing destination.
 public protocol LibraryMarkdownBackupFiles: Sendable {
@@ -233,6 +265,7 @@ public actor ExportLibraryMarkdownBackup: ApplicationUseCase {
     private let store: any LibraryMarkdownBackupStore
     private let documents: any LibraryMarkdownBackupDocuments
     private let files: any LibraryMarkdownBackupFiles
+    private let destinationAccess: any LibraryMarkdownBackupDestinationAccess
     private let maintenanceGate: DurableMaintenanceGate
     private var preparedSource: PreparedLibraryMarkdownBackupSource?
     private var activeRun: ActiveLibraryMarkdownBackupRun?
@@ -242,11 +275,13 @@ public actor ExportLibraryMarkdownBackup: ApplicationUseCase {
         store: any LibraryMarkdownBackupStore,
         documents: any LibraryMarkdownBackupDocuments,
         files: any LibraryMarkdownBackupFiles,
+        destinationAccess: any LibraryMarkdownBackupDestinationAccess,
         maintenanceGate: DurableMaintenanceGate = .unrestricted
     ) {
         self.store = store
         self.documents = documents
         self.files = files
+        self.destinationAccess = destinationAccess
         self.maintenanceGate = maintenanceGate
     }
 
@@ -260,16 +295,28 @@ public actor ExportLibraryMarkdownBackup: ApplicationUseCase {
         defer { isExecuting = false }
 
         await request.progress(.preparing)
-        if activeRun == nil {
-            guard try await prepareRun(in: request.directory) else {
+        let destinationLease: any LibraryMarkdownBackupDestinationLease
+        if let activeRun {
+            guard Self.sameDirectory(activeRun.directory, request.directory) else {
+                throw LibraryMarkdownBackupError.operationInProgress
+            }
+            destinationLease = try await acquireDestination(
+                activeRun.destinationBookmark)
+        } else {
+            guard let preparedLease = try await prepareRun(
+                in: request.directory
+            ) else {
                 return .suspended
             }
+            destinationLease = preparedLease
         }
+        defer { destinationLease.close() }
         guard var run = activeRun,
               Self.sameDirectory(run.directory, request.directory)
         else {
             throw LibraryMarkdownBackupError.operationInProgress
         }
+        run.destinationBookmark = destinationLease.bookmark
 
         await publishProgress(
             total: run.totalMeetings,
@@ -280,6 +327,7 @@ public actor ExportLibraryMarkdownBackup: ApplicationUseCase {
         while shouldProceed(at: .checkpoint) {
             if let completion = try await advance(
                 run: &run,
+                directory: destinationLease.directory,
                 progress: request.progress
             ) {
                 return completion
@@ -302,6 +350,7 @@ private extension ExportLibraryMarkdownBackup {
 
     func advance(
         run: inout ActiveLibraryMarkdownBackupRun,
+        directory: URL,
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws -> LibraryMarkdownBackupExecution? {
         switch run.pending {
@@ -319,6 +368,7 @@ private extension ExportLibraryMarkdownBackup {
             await publish(
                 data,
                 for: content,
+                to: directory,
                 into: &run,
                 progress: progress)
             return nil
@@ -376,13 +426,14 @@ private extension ExportLibraryMarkdownBackup {
     func publish(
         _ data: Data,
         for content: LibraryMarkdownBackupContent,
+        to directory: URL,
         into run: inout ActiveLibraryMarkdownBackupRun,
         progress: LibraryMarkdownBackupProgressHandler
     ) async {
         let outcome = await publish(
             data,
             for: content,
-            to: run.directory,
+            to: directory,
             allocator: &run.allocator)
         run.pending = nil
         switch outcome {
@@ -394,13 +445,15 @@ private extension ExportLibraryMarkdownBackup {
         await publishProgress(for: run, through: progress)
     }
 
-    func prepareRun(in directory: URL) async throws -> Bool {
+    func prepareRun(
+        in directory: URL
+    ) async throws -> (any LibraryMarkdownBackupDestinationLease)? {
         if let preparedSource {
             guard Self.sameDirectory(preparedSource.directory, directory) else {
                 throw LibraryMarkdownBackupError.operationInProgress
             }
         } else {
-            guard shouldProceed(at: .admission) else { return false }
+            guard shouldProceed(at: .admission) else { return nil }
             let gate = maintenanceGate
             let workload = Self.workload
             let preparation: LibraryMarkdownBackupSourcePreparation
@@ -419,25 +472,45 @@ private extension ExportLibraryMarkdownBackup {
                     directory: directory,
                     source: source)
             case .suspended:
-                return false
+                return nil
             }
         }
 
-        guard shouldProceed(at: .checkpoint) else { return false }
+        guard shouldProceed(at: .checkpoint) else { return nil }
         guard let preparedSource else {
             preconditionFailure("prepared backup source must exist")
         }
+        var destinationLease: (any LibraryMarkdownBackupDestinationLease)?
         do {
+            let lease = try await acquireDestination(
+                try await destinationAccess.prepare(directory: directory))
+            destinationLease = lease
             activeRun = ActiveLibraryMarkdownBackupRun(
                 directory: preparedSource.directory,
+                destinationBookmark: lease.bookmark,
                 source: preparedSource.source,
-                allocator: try await fileNameAllocator(in: directory))
+                allocator: try await fileNameAllocator(
+                    in: lease.directory))
             self.preparedSource = nil
-            return true
+            return lease
         } catch {
+            destinationLease?.close()
             await preparedSource.source.close()
             self.preparedSource = nil
-            throw error
+            if error is LibraryMarkdownBackupError {
+                throw error
+            }
+            throw LibraryMarkdownBackupError.destinationUnavailable
+        }
+    }
+
+    func acquireDestination(
+        _ bookmark: LibraryMarkdownBackupDestinationBookmark
+    ) async throws -> any LibraryMarkdownBackupDestinationLease {
+        do {
+            return try await destinationAccess.acquire(bookmark: bookmark)
+        } catch {
+            throw LibraryMarkdownBackupError.destinationUnavailable
         }
     }
 
@@ -529,6 +602,7 @@ private struct PreparedLibraryMarkdownBackupSource: Sendable {
 
 private struct ActiveLibraryMarkdownBackupRun: Sendable {
     let directory: URL
+    var destinationBookmark: LibraryMarkdownBackupDestinationBookmark
     let source: any LibraryMarkdownBackupSourceSession
     var allocator: BackupFileNameAllocator
     var exportedFileNames: [String] = []

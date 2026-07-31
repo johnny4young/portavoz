@@ -153,7 +153,7 @@ the architecture source of truth.
 |---|---|
 | `PortavozCore` | Shared domain types (meetings, segments, meeting-local speakers, explicitly confirmed canonical people and aliases, audio, calendar-neutral upcoming events, durable processing jobs, bounded failure categories, privacy-safe generation provenance, content-free data-egress policy, per-meeting privacy receipts, and stable secret identifiers) plus platform-neutral capability ports |
 | `ApplicationKit` | Characterized workflows for lifecycle/trash, explicit canonical-person lookup/linking, provenance-linked summary, refined-transcript, and Apuntador generation, standalone file transcription/diarization/summarization, persisted quality refinement, `.portavoz` aggregate import/export, coherent meeting-document preparation and explicit document/action publication, Meeting Detail playback/waveform/clear-mix preparation plus failure-safe compression and clip export, exact-first local Library semantic augmentation, verified calendar-backed speaker-name suggestions, local voice capture/enrollment/status/deletion, participant voice-memory suggestion/admission/persistence and privacy-safe management, local summary-provider discovery and clean-install selection, microphone discovery, resumable recording-root changes, whole-library Markdown backup with typed partial results, one shared Ask search/evidence/answer boundary with storage-independent citations, bounded command-library reads, async secret/pinned-model management, first-run eligibility, exact local-data receipts, source-grounded pre-meeting preparation, redacted support diagnostics, durable recording Start/Stop/launch-recovery handoffs and post-capture transcription/diarization/summary execution with stable coded failures, storage-independent Library/Insights/Meeting Detail/menu-bar read contracts, and deterministic product policies over narrow capability ports |
-| `PlatformKit` | Concrete Apple platform/security adapters: device-only Keychain storage and microphone authorization, injected at the app and CLI composition roots |
+| `PlatformKit` | Concrete Apple platform/security adapters: device-only Keychain storage, microphone authorization, and regular persistent file bookmarks, injected at executable composition roots |
 | `ModelStoreKit` | Curated model registry; exact-revision SHA-256 downloads, atomic repair, verified-installation evidence, and a serialized shared process lifecycle |
 | `AudioCaptureKit` | Call-safe raw mic capture + per-app Core Audio process taps (macOS 14.4+), crash-safe CAF writer |
 | `TranscriptionKit` | Engine protocol, task-based routing, Parakeet (live + durable first-pass recovery) + Whisper (refine with one-shot CPU load fallback), exact privacy-safe initial/Refine operation fingerprints, scheduler |
@@ -173,7 +173,9 @@ Insights observes meeting chronology, participant/commitment facts, talk
 balance, and scope-bounded finding evidence; Meeting Detail observes its
 transcript/cast, newest immutable summary, Apuntador cards, privacy receipt,
 and durable processing independently. Whole-library backup uses a process-scoped
-model and private document/filesystem adapters, so closing Settings does not
+model and private document/filesystem adapters. Its admitted run retains opaque
+folder identity, reacquires and releases destination access around each active
+export interval, and yields cleanly while recording; closing Settings does not
 cancel it and SwiftUI never coordinates Store or export-format work. Full Ask,
 ⌘K, CLI, MCP, and briefs share one ApplicationKit search/evidence/answer
 workflow; stale palette work is cancelled and exact citations retain their

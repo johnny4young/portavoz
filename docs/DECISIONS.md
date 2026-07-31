@@ -5853,3 +5853,42 @@ Root serialization closes the only creation/cleanup race, while fail-closed
 shape validation protects concurrent and older Portavoz installations. Keeping
 adoption separate avoids claiming relaunch durability before publication can
 be made idempotent across its move/manifest crash window.
+
+## D183 — Retain backup destination identity, not open access (Jul 2026)
+
+**Context:** D181 retains an in-process backup run across capture-policy
+suspension, but it retains only the originally selected destination URL. A URL
+does not preserve filesystem identity when the directory moves, while holding
+security-scoped access for an arbitrarily long suspended interval would leak a
+bounded kernel resource. The current hardened-runtime app does not adopt App
+Sandbox, so describing its access as security-scoped would also be inaccurate.
+
+**Decision:** ApplicationKit owns an opaque destination-bookmark value and a
+destination-access port. The port prepares identity only after maintenance
+admission and coherent source staging, then acquires one destination lease for
+the current execution interval. The use case inspects and publishes through
+the lease's resolved URL, refreshes the retained bookmark when resolution marks
+it stale, and closes the lease on every completion, suspension, and error path.
+Resuming a process-local run reacquires from the retained identity instead of
+requesting the folder again.
+
+PlatformKit implements the current adapter with a regular Foundation bookmark
+created using `withoutImplicitSecurityScope`. Focused filesystem evidence
+proves that identity follows a directory rename on the current macOS target.
+The app lease is intentionally a no-op resource boundary today because the app
+is not sandboxed. A future App Sandbox composition may replace only that
+adapter with balanced `startAccessingSecurityScopedResource()` and
+`stopAccessingSecurityScopedResource()` calls; ApplicationKit and the backup
+workflow do not change.
+
+This decision does not persist bookmark bytes, the filename allocator,
+publication results, or an atomic manifest. Process termination therefore
+still cannot adopt the staged source or continue publication safely.
+
+**Rationale:** durable identity and bounded access are separate concerns. A
+regular non-implicit bookmark accurately matches the current entitlement
+model, while an explicit lease prevents today's process-local workflow from
+normalizing unbounded access and gives a future sandbox adapter one auditable
+place to balance capability lifetime. Keeping persistence and the
+move/manifest crash window for the next slice avoids a false relaunch-resume
+claim.

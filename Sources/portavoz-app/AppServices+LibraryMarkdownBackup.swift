@@ -1,6 +1,7 @@
 import ApplicationKit
 import Foundation
 import IntegrationsKit
+import PlatformKit
 import PortavozCore
 import StorageKit
 
@@ -20,6 +21,7 @@ struct AppLibraryMarkdownBackupClient: LibraryMarkdownBackupModelClient {
             store: store,
             documents: AppLibraryMarkdownBackupDocuments(),
             files: AppLibraryMarkdownBackupFiles(),
+            destinationAccess: AppBackupDestinationAccess(),
             maintenanceGate: maintenanceGate)
     }
 
@@ -36,6 +38,46 @@ struct AppLibraryMarkdownBackupClient: LibraryMarkdownBackupModelClient {
             directory: directory,
             progress: progress))
     }
+}
+
+struct AppBackupDestinationAccess: LibraryMarkdownBackupDestinationAccess {
+    func prepare(
+        directory: URL
+    ) async throws -> LibraryMarkdownBackupDestinationBookmark {
+        try await Task.detached(priority: .utility) {
+            LibraryMarkdownBackupDestinationBookmark(
+                data: try PersistentFileBookmark().make(for: directory))
+        }.value
+    }
+
+    func acquire(
+        bookmark: LibraryMarkdownBackupDestinationBookmark
+    ) async throws -> any LibraryMarkdownBackupDestinationLease {
+        try await Task.detached(priority: .utility) {
+            let resolution = try PersistentFileBookmark().resolve(bookmark.data)
+            return AppBackupDestinationLease(
+                directory: resolution.url,
+                bookmark: LibraryMarkdownBackupDestinationBookmark(
+                    data: resolution.bookmarkData))
+        }.value
+    }
+}
+
+private final class AppBackupDestinationLease:
+    LibraryMarkdownBackupDestinationLease,
+    @unchecked Sendable {
+    let directory: URL
+    let bookmark: LibraryMarkdownBackupDestinationBookmark
+
+    init(
+        directory: URL,
+        bookmark: LibraryMarkdownBackupDestinationBookmark
+    ) {
+        self.directory = directory
+        self.bookmark = bookmark
+    }
+
+    func close() {}
 }
 
 struct AppLibraryMarkdownBackupDocuments: LibraryMarkdownBackupDocuments {

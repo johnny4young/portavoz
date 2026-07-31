@@ -116,7 +116,7 @@ self-contained over system frameworks and carries no module dependency.
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
-| `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access and microphone authorization while depending only on `PortavozCore`. |
+| `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, segment mapping, and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
@@ -599,10 +599,21 @@ which proves that a crash released it. A live second Portavoz instance and an
 unknown legacy or malformed workspace are preserved fail-closed. Disposable
 test composition never scans the host staging root.
 
-Destination authorization, collision reservations, and a publication manifest
-are not yet recovered across process termination, so relaunch-safe continuation
-and stage adoption remain explicit gaps. None of these paths adds a timer,
-heartbeat, PID heuristic, or polling task.
+After staging admission, ApplicationKit asks a destination-access port to
+prepare opaque bookmark identity and acquire one bounded lease. Each execution
+interval resolves that identity, uses the resolved directory for inspection
+and publication, refreshes stale identity in the active run, and closes the
+lease on completion, suspension, or failure. The current non-App-Sandbox macOS
+adapter uses a regular Foundation bookmark with
+`withoutImplicitSecurityScope`; it follows a moved directory without inventing
+a security-scoped entitlement or keeping access open while capture has paused
+maintenance. A future sandbox composition can implement the same lease
+contract with balanced security-scope acquisition and release.
+
+Bookmark bytes, collision reservations, and a publication manifest are not yet
+persisted across process termination, so relaunch-safe continuation and stage
+adoption remain explicit gaps. None of these paths adds a timer, heartbeat,
+PID heuristic, or polling task.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,
@@ -1364,6 +1375,15 @@ cursor, collision allocator, completed results, and at most one pending
 aggregate or rendered document; atomic publication is the commit point, so
 resume never duplicates a completed file.
 
+The selected destination becomes opaque bookmark identity only after source
+staging and the final admission checkpoint. The actor acquires a fresh
+destination lease for each execution interval and closes it before returning,
+including process-local capture suspension. The current macOS adapter resolves
+a regular non-implicit Foundation bookmark because Portavoz does not yet adopt
+App Sandbox. This preserves folder identity across a move during the active
+process without retaining a filesystem capability between intervals; bookmark
+persistence and sandbox-scoped recovery remain separate work.
+
 Filename allocation accounts for existing Markdown files, Unicode
 normalization, case and width equivalence, hidden/empty titles, reserved device
 names, and concurrent collisions. The macOS filesystem adapter writes a UUID
@@ -1676,8 +1696,9 @@ behind aspirational diagrams:
 
 - `PortavozCore` contains no Security, AVFoundation, EventKit, SwiftUI, AppKit,
   GRDB, CloudKit, CoreML, or OSLog import.
-- `PlatformKit` depends only on `PortavozCore`; its Keychain adapter is created
-  only by the app and CLI composition roots.
+- `PlatformKit` depends only on `PortavozCore`; its Keychain, microphone, and
+  persistent-bookmark adapters are created only by executable composition
+  roots.
 - `portavoz-app` combines SwiftUI presentation and concrete macOS composition
   in one executable target, so the target links every capability module.
 - `portavoz-cli` links every capability module for product commands and

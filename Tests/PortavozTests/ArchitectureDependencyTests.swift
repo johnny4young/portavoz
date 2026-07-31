@@ -2657,10 +2657,15 @@ final class ArchitectureDependencyTests: XCTestCase {
         let app = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
         let resourceAdapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
+        let bookmark = try Self.contents(
+            of: "Sources/PlatformKit/PersistentFileBookmark.swift")
 
         XCTAssertTrue(useCase.contains("actor ExportLibraryMarkdownBackup"))
         XCTAssertTrue(useCase.contains("LibraryMarkdownBackupSourceSession"))
         XCTAssertTrue(useCase.contains("LibraryMarkdownBackupFailureStage"))
+        XCTAssertTrue(useCase.contains(
+            "protocol LibraryMarkdownBackupDestinationAccess"))
+        XCTAssertTrue(useCase.contains("destinationLease.close()"))
         XCTAssertTrue(useCase.contains("maintenanceGate.disposition"))
         XCTAssertTrue(useCase.contains("workloadClass: .maintenance"))
         XCTAssertTrue(useCase.contains("kind: .mediaExport"))
@@ -2686,8 +2691,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "cleanupAbandonedLibraryMarkdownBackupStages"))
         XCTAssertTrue(storage.contains("generalSummarySnapshot"))
         XCTAssertTrue(adapter.contains("MeetingExporter.markdown"))
+        XCTAssertTrue(adapter.contains("AppBackupDestinationAccess"))
+        XCTAssertTrue(adapter.contains("PersistentFileBookmark().resolve"))
         XCTAssertTrue(adapter.contains("moveItem(at: temporary, to: destination)"))
         XCTAssertFalse(adapter.contains("[.atomic, .withoutOverwriting]"))
+        XCTAssertTrue(bookmark.contains(".withoutImplicitSecurityScope"))
+        XCTAssertFalse(bookmark.contains("startAccessingSecurityScopedResource"))
         XCTAssertTrue(model.contains("@Observable"))
         XCTAssertTrue(model.contains("private var pendingDirectory: URL?"))
         XCTAssertTrue(model.contains("func recoverAtLaunch()"))

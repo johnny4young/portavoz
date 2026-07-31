@@ -15,7 +15,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         let useCase = ExportLibraryMarkdownBackup(
             store: BackupStoreFake(contents: [first, second]),
             documents: documents,
-            files: files)
+            files: files,
+            destinationAccess: BackupDestinationAccessFake())
 
         let result = try completedResult(from: await useCase.execute(
             ExportLibraryMarkdownBackupRequest(
@@ -56,7 +57,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
                 contents: [healthy, renderFailure, writeFailure],
                 failures: [sourceFailure]),
             documents: documents,
-            files: files)
+            files: files,
+            destinationAccess: BackupDestinationAccessFake())
 
         let result = try completedResult(from: await useCase.execute(
             ExportLibraryMarkdownBackupRequest(
@@ -74,7 +76,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         let useCase = ExportLibraryMarkdownBackup(
             store: BackupStoreFake(fails: true),
             documents: BackupDocumentsFake(),
-            files: BackupFilesFake())
+            files: BackupFilesFake(),
+            destinationAccess: BackupDestinationAccessFake())
 
         await XCTAssertThrowsErrorAsync(
             try await useCase.execute(ExportLibraryMarkdownBackupRequest(
@@ -85,10 +88,28 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
     }
 
     func testDestinationInspectionFailureMapsToStableFatalError() async {
+        let destinationAccess = BackupDestinationAccessFake()
         let useCase = ExportLibraryMarkdownBackup(
             store: BackupStoreFake(contents: [backupContent(title: "Meeting")]),
             documents: BackupDocumentsFake(),
-            files: BackupFilesFake(failsInspection: true))
+            files: BackupFilesFake(failsInspection: true),
+            destinationAccess: destinationAccess)
+
+        await XCTAssertThrowsErrorAsync(
+            try await useCase.execute(ExportLibraryMarkdownBackupRequest(
+                directory: URL(fileURLWithPath: "/backup", isDirectory: true)))
+        ) { error in
+            XCTAssertEqual(error as? LibraryMarkdownBackupError, .destinationUnavailable)
+        }
+        XCTAssertEqual(destinationAccess.closeCount, 1)
+    }
+
+    func testDestinationResolutionFailureMapsToStableFatalError() async {
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [backupContent(title: "Meeting")]),
+            documents: BackupDocumentsFake(),
+            files: BackupFilesFake(),
+            destinationAccess: BackupDestinationAccessFake(failsAcquisition: true))
 
         await XCTAssertThrowsErrorAsync(
             try await useCase.execute(ExportLibraryMarkdownBackupRequest(
@@ -102,7 +123,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         let useCase = ExportLibraryMarkdownBackup(
             store: BackupStoreFake(),
             documents: BackupDocumentsFake(),
-            files: BackupFilesFake())
+            files: BackupFilesFake(),
+            destinationAccess: BackupDestinationAccessFake())
 
         let result = try completedResult(from: await useCase.execute(
             ExportLibraryMarkdownBackupRequest(
@@ -123,7 +145,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
                 backupContent(title: decomposedResume),
             ]),
             documents: BackupDocumentsFake(),
-            files: files)
+            files: files,
+            destinationAccess: BackupDestinationAccessFake())
 
         let result = try completedResult(from: await useCase.execute(
             ExportLibraryMarkdownBackupRequest(
@@ -141,10 +164,12 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         let store = BackupStoreProbe()
         let documents = BackupDocumentsFake()
         let files = BackupFilesFake()
+        let destinationAccess = BackupDestinationAccessFake()
         let useCase = ExportLibraryMarkdownBackup(
             store: store,
             documents: documents,
             files: files,
+            destinationAccess: destinationAccess,
             maintenanceGate: DurableMaintenanceGate { descriptor, phase in
                 XCTAssertEqual(descriptor.workloadClass, .maintenance)
                 XCTAssertEqual(descriptor.kind, .mediaExport)
@@ -164,6 +189,8 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         XCTAssertEqual(storeCalls, 0)
         XCTAssertTrue(renderedTitles.isEmpty)
         XCTAssertTrue(publishedNames.isEmpty)
+        XCTAssertEqual(destinationAccess.prepareCount, 0)
+        XCTAssertEqual(destinationAccess.acquireCount, 0)
     }
 
     func testCaptureCheckpointResumesSameStageWithoutRepublishingCompletedMeetings()
@@ -177,10 +204,12 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         let files = BackupFilesFake(onPublish: {
             gateState.pauseOnce()
         })
+        let destinationAccess = BackupDestinationAccessFake()
         let useCase = ExportLibraryMarkdownBackup(
             store: store,
             documents: documents,
             files: files,
+            destinationAccess: destinationAccess,
             maintenanceGate: DurableMaintenanceGate { _, _ in
                 gateState.disposition
             })
@@ -196,6 +225,9 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         XCTAssertEqual(firstStoreCalls, 1)
         XCTAssertEqual(firstRenderedTitles, ["First"])
         XCTAssertEqual(firstPublishedNames, ["First.md"])
+        XCTAssertEqual(destinationAccess.prepareCount, 1)
+        XCTAssertEqual(destinationAccess.acquireCount, 1)
+        XCTAssertEqual(destinationAccess.closeCount, 1)
 
         gateState.resume()
         let result = try completedResult(from: await useCase.execute(request))
@@ -207,6 +239,9 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         XCTAssertEqual(finalStoreCalls, 1)
         XCTAssertEqual(finalRenderedTitles, ["First", "Second"])
         XCTAssertEqual(finalPublishedNames, ["First.md", "Second.md"])
+        XCTAssertEqual(destinationAccess.prepareCount, 1)
+        XCTAssertEqual(destinationAccess.acquireCount, 2)
+        XCTAssertEqual(destinationAccess.closeCount, 2)
     }
 
     func testCaptureCheckpointRetainsRenderedDocumentAcrossResume() async throws {
@@ -219,6 +254,7 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             store: BackupStoreFake(contents: [backupContent(title: "Rendered")]),
             documents: documents,
             files: files,
+            destinationAccess: BackupDestinationAccessFake(),
             maintenanceGate: DurableMaintenanceGate { _, _ in
                 gateState.disposition
             })
@@ -403,6 +439,85 @@ private actor BackupFilesFake: LibraryMarkdownBackupFiles {
             return .nameCollision
         }
         return .published
+    }
+}
+
+private final class BackupDestinationAccessFake:
+    LibraryMarkdownBackupDestinationAccess,
+    @unchecked Sendable {
+    private let lock = NSLock()
+    private let failsAcquisition: Bool
+    private var storedPrepareCount = 0
+    private var storedAcquireCount = 0
+    private var storedCloseCount = 0
+
+    init(failsAcquisition: Bool = false) {
+        self.failsAcquisition = failsAcquisition
+    }
+
+    var prepareCount: Int {
+        lock.withLock { storedPrepareCount }
+    }
+
+    var acquireCount: Int {
+        lock.withLock { storedAcquireCount }
+    }
+
+    var closeCount: Int {
+        lock.withLock { storedCloseCount }
+    }
+
+    func prepare(
+        directory: URL
+    ) async throws -> LibraryMarkdownBackupDestinationBookmark {
+        lock.withLock { storedPrepareCount += 1 }
+        return LibraryMarkdownBackupDestinationBookmark(
+            data: Data(directory.standardizedFileURL.path.utf8))
+    }
+
+    func acquire(
+        bookmark: LibraryMarkdownBackupDestinationBookmark
+    ) async throws -> any LibraryMarkdownBackupDestinationLease {
+        lock.withLock { storedAcquireCount += 1 }
+        if failsAcquisition { throw BackupFakeError.expected }
+        guard let path = String(data: bookmark.data, encoding: .utf8) else {
+            throw BackupFakeError.expected
+        }
+        return BackupDestinationLeaseFake(
+            directory: URL(fileURLWithPath: path, isDirectory: true),
+            bookmark: bookmark
+        ) { [self] in
+            lock.withLock { storedCloseCount += 1 }
+        }
+    }
+}
+
+private final class BackupDestinationLeaseFake:
+    LibraryMarkdownBackupDestinationLease,
+    @unchecked Sendable {
+    let directory: URL
+    let bookmark: LibraryMarkdownBackupDestinationBookmark
+    private let lock = NSLock()
+    private let onClose: @Sendable () -> Void
+    private var isClosed = false
+
+    init(
+        directory: URL,
+        bookmark: LibraryMarkdownBackupDestinationBookmark,
+        onClose: @escaping @Sendable () -> Void
+    ) {
+        self.directory = directory
+        self.bookmark = bookmark
+        self.onClose = onClose
+    }
+
+    func close() {
+        let shouldNotify = lock.withLock {
+            guard !isClosed else { return false }
+            isClosed = true
+            return true
+        }
+        if shouldNotify { onClose() }
     }
 }
 
