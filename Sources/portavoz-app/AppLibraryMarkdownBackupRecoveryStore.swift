@@ -70,6 +70,10 @@ actor AppLibraryMarkdownBackupRecoveryStore:
             _ = try activeMetadata(operationID: operationID)
             try removeRegularFileIfPresent(
                 pendingURL(operationID: operationID))
+        case .checkpointSource(let cursor):
+            try checkpointSource(
+                cursor,
+                operationID: operationID)
         case .markCompleted:
             var metadata = try loadMetadata(operationID: operationID)
             guard try !itemExists(
@@ -104,6 +108,7 @@ actor AppLibraryMarkdownBackupRecoveryStore:
         return LibraryMarkdownBackupRecoveryState(
             operationID: operationID,
             destinationBookmark: metadata.destinationBookmark,
+            sourceCursor: metadata.sourceCursor,
             completedPublications: completed,
             pendingPublication: pending,
             phase: metadata.phase)
@@ -123,6 +128,7 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
         let version: Int
         let operationID: UUID
         var destinationBookmark: LibraryMarkdownBackupDestinationBookmark
+        var sourceCursor: LibraryMarkdownBackupSourceCursor?
         var phase: LibraryMarkdownBackupRecoveryPhase
     }
 
@@ -159,6 +165,7 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
                     version: Self.formatVersion,
                     operationID: operationID,
                     destinationBookmark: destinationBookmark,
+                    sourceCursor: nil,
                     phase: .active),
                 to: metadataURL(operationID: operationID))
             nextSequenceByOperation[operationID] = 0
@@ -204,6 +211,24 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
         return metadata
     }
 
+    func checkpointSource(
+        _ cursor: LibraryMarkdownBackupSourceCursor,
+        operationID: UUID
+    ) throws {
+        try Self.validate(cursor)
+        guard try !itemExists(pendingURL(operationID: operationID)) else {
+            throw RecoveryStoreError.invalidDocument
+        }
+        var metadata = try activeMetadata(operationID: operationID)
+        if let current = metadata.sourceCursor {
+            guard cursor == current || Self.isAfter(cursor, current) else {
+                throw RecoveryStoreError.invalidDocument
+            }
+        }
+        metadata.sourceCursor = cursor
+        try write(metadata, to: metadataURL(operationID: operationID))
+    }
+
     func loadMetadata(
         operationID: UUID
     ) throws -> MetadataDocument {
@@ -216,6 +241,9 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
               !metadata.destinationBookmark.data.isEmpty
         else {
             throw RecoveryStoreError.invalidDocument
+        }
+        if let sourceCursor = metadata.sourceCursor {
+            try Self.validate(sourceCursor)
         }
         return metadata
     }
@@ -409,6 +437,28 @@ private extension AppLibraryMarkdownBackupRecoveryStore {
         else {
             throw RecoveryStoreError.invalidDocument
         }
+    }
+
+    static func validate(
+        _ cursor: LibraryMarkdownBackupSourceCursor
+    ) throws {
+        guard cursor.startedAt.timeIntervalSince1970.isFinite,
+              !cursor.recordID.isEmpty,
+              cursor.recordID.utf8.count <= 128
+        else {
+            throw RecoveryStoreError.invalidDocument
+        }
+    }
+
+    static func isAfter(
+        _ candidate: LibraryMarkdownBackupSourceCursor,
+        _ current: LibraryMarkdownBackupSourceCursor
+    ) -> Bool {
+        candidate.startedAt < current.startedAt
+            || (
+                candidate.startedAt == current.startedAt
+                    && candidate.recordID > current.recordID
+            )
     }
 }
 

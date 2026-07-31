@@ -1,115 +1,5 @@
 import Foundation
 import PortavozCore
-import StorageKit
-
-/// One storage-independent meeting document used by the whole-library backup.
-public struct LibraryMarkdownBackupContent: Sendable {
-    public let meeting: Meeting
-    public let speakers: [Speaker]
-    public let segments: [TranscriptSegment]
-    public let summary: SummaryDraft?
-    public let summaryVersion: Int?
-
-    public init(
-        meeting: Meeting,
-        speakers: [Speaker],
-        segments: [TranscriptSegment],
-        summary: SummaryDraft?,
-        summaryVersion: Int?
-    ) {
-        self.meeting = meeting
-        self.speakers = speakers
-        self.segments = segments
-        self.summary = summary
-        self.summaryVersion = summaryVersion
-    }
-}
-
-/// A corrupt live aggregate is reported without exposing a storage error or
-/// preventing healthy meetings from being backed up.
-public struct LibraryMarkdownBackupSourceFailure: Equatable, Sendable {
-    public let meetingID: MeetingID?
-    public let title: String
-
-    public init(meetingID: MeetingID?, title: String) {
-        self.meetingID = meetingID
-        self.title = title
-    }
-}
-
-public enum LibraryMarkdownBackupSourceEntry: Sendable {
-    case content(LibraryMarkdownBackupContent)
-    case failure(LibraryMarkdownBackupSourceFailure)
-}
-
-public protocol LibraryMarkdownBackupSourceSession: Sendable {
-    var id: UUID { get }
-    var totalMeetings: Int { get }
-    func next() async throws -> LibraryMarkdownBackupSourceEntry?
-    func close() async
-}
-
-public enum LibraryMarkdownBackupSourcePreparation: Sendable {
-    case ready(any LibraryMarkdownBackupSourceSession)
-    case suspended
-}
-
-/// Creates one read-consistent, incrementally consumed projection of the live
-/// library. Storage corruption remains isolated per aggregate.
-public protocol LibraryMarkdownBackupStore: Sendable {
-    func prepareLibraryMarkdownBackupSource(
-        mayContinue: @escaping @Sendable () -> Bool
-    ) async throws -> LibraryMarkdownBackupSourcePreparation
-}
-
-extension MeetingStore: LibraryMarkdownBackupStore {
-    public func prepareLibraryMarkdownBackupSource(
-        mayContinue: @escaping @Sendable () -> Bool
-    ) async throws -> LibraryMarkdownBackupSourcePreparation {
-        switch try await prepareLibraryMarkdownBackupStage(
-            mayContinue: mayContinue
-        ) {
-        case .ready(let stage):
-            return .ready(MeetingStoreLibraryMarkdownBackupSource(stage: stage))
-        case .suspended:
-            return .suspended
-        }
-    }
-}
-
-private actor MeetingStoreLibraryMarkdownBackupSource:
-    LibraryMarkdownBackupSourceSession {
-    nonisolated let id: UUID
-    nonisolated let totalMeetings: Int
-    private let stage: MeetingMarkdownBackupStage
-
-    init(stage: MeetingMarkdownBackupStage) {
-        self.stage = stage
-        id = stage.id
-        totalMeetings = stage.totalMeetings
-    }
-
-    func next() async throws -> LibraryMarkdownBackupSourceEntry? {
-        guard let entry = try await stage.next() else { return nil }
-        switch entry {
-        case .meeting(let snapshot):
-            return .content(LibraryMarkdownBackupContent(
-                meeting: snapshot.meeting,
-                speakers: snapshot.speakers,
-                segments: snapshot.segments,
-                summary: snapshot.summary,
-                summaryVersion: snapshot.summaryVersion))
-        case .failure(let failure):
-            return .failure(LibraryMarkdownBackupSourceFailure(
-                meetingID: failure.meetingID,
-                title: failure.title))
-        }
-    }
-
-    func close() async {
-        await stage.close()
-    }
-}
 
 /// External Markdown rendering remains behind an app adapter so
 /// IntegrationsKit never leaks into Settings presentation.
@@ -361,9 +251,15 @@ private extension ExportLibraryMarkdownBackup {
         directory: URL,
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws -> LibraryMarkdownBackupExecution? {
-        if let publication = run.pendingJournalCompletion {
+        if run.pendingRecoveryCheckpoint != nil {
+            try await persistPendingRecoveryCheckpoint(
+                in: &run,
+                progress: progress)
+            return nil
+        }
+        if let completion = run.pendingJournalCompletion {
             try await completeJournalPublication(
-                publication,
+                completion,
                 in: &run,
                 progress: progress)
             return nil
@@ -401,8 +297,14 @@ private extension ExportLibraryMarkdownBackup {
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws -> LibraryMarkdownBackupExecution? {
         let entry: LibraryMarkdownBackupSourceEntry?
+        let sourceCursor: LibraryMarkdownBackupSourceCursor?
         do {
             entry = try await run.source.next()
+            sourceCursor = if entry == nil {
+                nil
+            } else {
+                try await run.source.checkpoint()
+            }
         } catch {
             run.pendingTermination = .sourceFailure
             return try await finishTermination(run: &run)
@@ -411,10 +313,17 @@ private extension ExportLibraryMarkdownBackup {
             run.pendingTermination = .completed
             return try await finishTermination(run: &run)
         }
+        guard let sourceCursor else {
+            run.pendingTermination = .sourceFailure
+            return try await finishTermination(run: &run)
+        }
+        run.pendingSourceCursor = sourceCursor
         switch entry {
         case .content(let content):
             run.pending = .content(content)
         case .failure(let failure):
+            run.recoveryCursorCanAdvance = false
+            run.pendingSourceCursor = nil
             run.failures.append(Self.sourceFailure(failure))
             await publishProgress(for: run, through: progress)
         }
@@ -432,6 +341,8 @@ private extension ExportLibraryMarkdownBackup {
                 try await documents.markdownDocument(for: content))
         } catch {
             run.pending = nil
+            run.pendingSourceCursor = nil
+            run.recoveryCursorCanAdvance = false
             run.failures.append(Self.failure(
                 for: content,
                 stage: .document))
@@ -605,26 +516,56 @@ private extension ExportLibraryMarkdownBackup {
         in run: inout ActiveLibraryMarkdownBackupRun,
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws {
+        guard let sourceCursor = run.pendingSourceCursor else {
+            preconditionFailure(
+                "published backup content must retain its source cursor")
+        }
         run.pending = nil
+        run.pendingSourceCursor = nil
         run.exportedFileNames.append(publication.fileName)
-        run.pendingJournalCompletion = publication
+        let completion = PendingBackupJournalCompletion(
+            publication: publication,
+            sourceCursor: sourceCursor)
+        run.pendingJournalCompletion = completion
         try await completeJournalPublication(
-            publication,
+            completion,
             in: &run,
             progress: progress)
     }
 
     func completeJournalPublication(
-        _ publication: LibraryMarkdownBackupRecoveryPublication,
+        _ completion: PendingBackupJournalCompletion,
         in run: inout ActiveLibraryMarkdownBackupRun,
         progress: LibraryMarkdownBackupProgressHandler
     ) async throws {
         try await applyRecovery(
-            .complete(publication),
+            .complete(completion.publication),
             operationID: run.recoveryState.operationID)
-        run.recoveryState.completedPublications.append(publication)
+        run.recoveryState.completedPublications.append(completion.publication)
         run.recoveryState.pendingPublication = nil
         run.pendingJournalCompletion = nil
+        if run.recoveryCursorCanAdvance {
+            run.pendingRecoveryCheckpoint = completion.sourceCursor
+            try await persistPendingRecoveryCheckpoint(
+                in: &run,
+                progress: progress)
+        } else {
+            await publishProgress(for: run, through: progress)
+        }
+    }
+
+    func persistPendingRecoveryCheckpoint(
+        in run: inout ActiveLibraryMarkdownBackupRun,
+        progress: LibraryMarkdownBackupProgressHandler
+    ) async throws {
+        guard let cursor = run.pendingRecoveryCheckpoint else {
+            preconditionFailure("backup recovery checkpoint must exist")
+        }
+        try await applyRecovery(
+            .checkpointSource(cursor),
+            operationID: run.recoveryState.operationID)
+        run.recoveryState.sourceCursor = cursor
+        run.pendingRecoveryCheckpoint = nil
         await publishProgress(for: run, through: progress)
     }
 
@@ -637,6 +578,8 @@ private extension ExportLibraryMarkdownBackup {
             .clearReservation,
             operationID: run.recoveryState.operationID)
         run.pending = nil
+        run.pendingSourceCursor = nil
+        run.recoveryCursorCanAdvance = false
         run.failures.append(Self.failure(
             for: content,
             stage: .publication))

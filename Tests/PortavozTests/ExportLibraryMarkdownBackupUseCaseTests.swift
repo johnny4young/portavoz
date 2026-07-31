@@ -53,6 +53,7 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             title: "Unreadable")
         let documents = BackupDocumentsFake(failingTitles: ["Render failure"])
         let files = BackupFilesFake(failingNames: ["Write failure.md"])
+        let recoveryStore = BackupRecoveryStoreFake()
         let useCase = ExportLibraryMarkdownBackup(
             store: BackupStoreFake(
                 contents: [healthy, renderFailure, writeFailure],
@@ -60,7 +61,7 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
             documents: documents,
             files: files,
             destinationAccess: BackupDestinationAccessFake(),
-            recoveryStore: BackupRecoveryStoreFake())
+            recoveryStore: recoveryStore)
 
         let result = try completedResult(from: await useCase.execute(
             ExportLibraryMarkdownBackupRequest(
@@ -72,6 +73,58 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         XCTAssertEqual(result.failures.map(\.title), [
             "Unreadable", "Render failure", "Write failure",
         ])
+        let sourceCursors = await recoveryStore.savedStates
+            .compactMap(\.sourceCursor)
+        XCTAssertTrue(sourceCursors.isEmpty)
+    }
+
+    func testDocumentFailureFreezesCheckpointBeforeLaterHealthyPublication()
+        async throws {
+        let recoveryStore = BackupRecoveryStoreFake()
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [
+                backupContent(title: "Render failure"),
+                backupContent(title: "Healthy"),
+            ]),
+            documents: BackupDocumentsFake(
+                failingTitles: ["Render failure"]),
+            files: BackupFilesFake(),
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: recoveryStore)
+
+        let result = try completedResult(from: await useCase.execute(
+            ExportLibraryMarkdownBackupRequest(
+                directory: URL(fileURLWithPath: "/backup", isDirectory: true))))
+        let sourceCursors = await recoveryStore.savedStates
+            .compactMap(\.sourceCursor)
+
+        XCTAssertEqual(result.exportedFileNames, ["Healthy.md"])
+        XCTAssertEqual(result.failures.map(\.stage), [.document])
+        XCTAssertTrue(sourceCursors.isEmpty)
+    }
+
+    func testPublicationFailureFreezesCheckpointBeforeLaterHealthyPublication()
+        async throws {
+        let recoveryStore = BackupRecoveryStoreFake()
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [
+                backupContent(title: "Write failure"),
+                backupContent(title: "Healthy"),
+            ]),
+            documents: BackupDocumentsFake(),
+            files: BackupFilesFake(failingNames: ["Write failure.md"]),
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: recoveryStore)
+
+        let result = try completedResult(from: await useCase.execute(
+            ExportLibraryMarkdownBackupRequest(
+                directory: URL(fileURLWithPath: "/backup", isDirectory: true))))
+        let sourceCursors = await recoveryStore.savedStates
+            .compactMap(\.sourceCursor)
+
+        XCTAssertEqual(result.exportedFileNames, ["Healthy.md"])
+        XCTAssertEqual(result.failures.map(\.stage), [.publication])
+        XCTAssertTrue(sourceCursors.isEmpty)
     }
 
     func testSourceFailureMapsToStableFatalError() async {
@@ -310,16 +363,20 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         let removedIDs = await recoveryStore.removedOperationIDs
 
         XCTAssertEqual(result.exportedFileNames, ["Meeting.md"])
-        XCTAssertEqual(states.count, 4)
+        XCTAssertEqual(states.count, 5)
         XCTAssertEqual(states[0].phase, .active)
         XCTAssertNil(states[0].pendingPublication)
+        XCTAssertNil(states[0].sourceCursor)
         XCTAssertEqual(states[1].pendingPublication?.fileName, "Meeting.md")
         XCTAssertEqual(
             states[1].pendingPublication?.sha256,
             "6bac95bc3dee1a17ddc9660954f9e1d27545bbf9aaf51c96fe5b06611c167b3d")
         XCTAssertEqual(states[2].completedPublications.count, 1)
         XCTAssertNil(states[2].pendingPublication)
-        XCTAssertEqual(states[3].phase, .completed)
+        XCTAssertNotNil(states[3].sourceCursor)
+        XCTAssertEqual(states[3].phase, .active)
+        XCTAssertEqual(states[4].phase, .completed)
+        XCTAssertEqual(states[4].sourceCursor, states[3].sourceCursor)
         XCTAssertEqual(removedIDs, [states[0].operationID])
     }
 
@@ -352,6 +409,39 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
 
         XCTAssertEqual(result.exportedFileNames, ["Meeting.md"])
         XCTAssertEqual(namesAfterRetry, ["Meeting.md"])
+        XCTAssertEqual(finalState?.phase, .completed)
+    }
+
+    func testSourceCheckpointFailureDoesNotRepublishCompletedDocument()
+        async throws {
+        let recoveryStore = BackupRecoveryStoreFake(failingSaveCalls: [4])
+        let files = BackupFilesFake()
+        let useCase = ExportLibraryMarkdownBackup(
+            store: BackupStoreFake(contents: [backupContent(title: "Meeting")]),
+            documents: BackupDocumentsFake(),
+            files: files,
+            destinationAccess: BackupDestinationAccessFake(),
+            recoveryStore: recoveryStore)
+        let request = ExportLibraryMarkdownBackupRequest(
+            directory: URL(fileURLWithPath: "/backup", isDirectory: true))
+
+        await XCTAssertThrowsErrorAsync(
+            try await useCase.execute(request)
+        ) { error in
+            XCTAssertEqual(
+                error as? LibraryMarkdownBackupError,
+                .libraryUnavailable)
+        }
+        let namesAfterFailure = await files.publishedNames
+        XCTAssertEqual(namesAfterFailure, ["Meeting.md"])
+
+        let result = try completedResult(from: await useCase.execute(request))
+        let namesAfterRetry = await files.publishedNames
+        let finalState = await recoveryStore.savedStates.last
+
+        XCTAssertEqual(result.exportedFileNames, ["Meeting.md"])
+        XCTAssertEqual(namesAfterRetry, ["Meeting.md"])
+        XCTAssertNotNil(finalState?.sourceCursor)
         XCTAssertEqual(finalState?.phase, .completed)
     }
 
@@ -392,7 +482,7 @@ final class ExportLibraryMarkdownBackupUseCaseTests: XCTestCase {
         let gateState = BackupMaintenanceGateState()
         let destinationAccess = BackupDestinationAccessFake(
             refreshAfterFirstAcquisition: true)
-        let recoveryStore = BackupRecoveryStoreFake(failingSaveCalls: [4])
+        let recoveryStore = BackupRecoveryStoreFake(failingSaveCalls: [5])
         let files = BackupFilesFake(onPublish: {
             gateState.pauseOnce()
         })
@@ -580,6 +670,7 @@ private actor BackupSourceSessionFake: LibraryMarkdownBackupSourceSession {
     private let failsWhileReading: Bool
     private var index = 0
     private var didFailReading = false
+    private var currentCursor: LibraryMarkdownBackupSourceCursor?
 
     init(
         contents: [LibraryMarkdownBackupContent],
@@ -598,8 +689,16 @@ private actor BackupSourceSessionFake: LibraryMarkdownBackupSourceSession {
             throw BackupFakeError.expected
         }
         guard index < entries.count else { return nil }
+        currentCursor = LibraryMarkdownBackupSourceCursor(
+            startedAt: Date(
+                timeIntervalSince1970: 1_800_000_000 - Double(index)),
+            recordID: String(format: "%036d", index))
         defer { index += 1 }
         return entries[index]
+    }
+
+    func checkpoint() -> LibraryMarkdownBackupSourceCursor? {
+        currentCursor
     }
 
     func close() {}
@@ -653,6 +752,12 @@ private actor BackupRecoveryStoreFake:
         case .clearReservation:
             state = try currentState(operationID: operationID)
             state.pendingPublication = nil
+        case .checkpointSource(let cursor):
+            state = try currentState(operationID: operationID)
+            guard state.pendingPublication == nil else {
+                throw BackupFakeError.expected
+            }
+            state.sourceCursor = cursor
         case .markCompleted:
             state = try currentState(operationID: operationID)
             guard state.pendingPublication == nil else {

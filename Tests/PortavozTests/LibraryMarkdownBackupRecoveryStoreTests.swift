@@ -30,6 +30,10 @@ final class LibraryMarkdownBackupRecoveryStoreTests: XCTestCase {
         try await store.apply(
             .complete(publication),
             operationID: operationID)
+        let sourceCursor = backupSourceCursor()
+        try await store.apply(
+            .checkpointSource(sourceCursor),
+            operationID: operationID)
         try await store.apply(
             .markCompleted,
             operationID: operationID)
@@ -37,6 +41,7 @@ final class LibraryMarkdownBackupRecoveryStoreTests: XCTestCase {
         XCTAssertEqual(completedState, LibraryMarkdownBackupRecoveryState(
             operationID: operationID,
             destinationBookmark: bookmark,
+            sourceCursor: sourceCursor,
             completedPublications: [publication],
             phase: .completed))
 
@@ -244,6 +249,66 @@ final class LibraryMarkdownBackupRecoveryStoreTests: XCTestCase {
         XCTAssertEqual(retainedState?.phase, .active)
     }
 
+    func testSourceCheckpointRejectsPendingAndRegressivePositions()
+        async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = AppLibraryMarkdownBackupRecoveryStore(root: root)
+        let operationID = UUID()
+        let publication = recoveryPublication(fileName: "Meeting.md")
+        try await store.apply(
+            .begin(destinationBookmark: LibraryMarkdownBackupDestinationBookmark(
+                data: Data("bookmark".utf8))),
+            operationID: operationID)
+        try await store.apply(
+            .reserve(publication),
+            operationID: operationID)
+
+        await assertRecoveryStoreThrows {
+            try await store.apply(
+                .checkpointSource(backupSourceCursor()),
+                operationID: operationID)
+        }
+
+        try await store.apply(
+            .complete(publication),
+            operationID: operationID)
+        let first = backupSourceCursor()
+        await assertRecoveryStoreThrows {
+            try await store.apply(
+                .checkpointSource(LibraryMarkdownBackupSourceCursor(
+                    startedAt: first.startedAt,
+                    recordID: "")),
+                operationID: operationID)
+        }
+        try await store.apply(
+            .checkpointSource(first),
+            operationID: operationID)
+        try await store.apply(
+            .checkpointSource(first),
+            operationID: operationID)
+        let sameTimestampNext = LibraryMarkdownBackupSourceCursor(
+            startedAt: first.startedAt,
+            recordID: "\(first.recordID)-next")
+        try await store.apply(
+            .checkpointSource(sameTimestampNext),
+            operationID: operationID)
+        let olderTimestampNext = LibraryMarkdownBackupSourceCursor(
+            startedAt: first.startedAt.addingTimeInterval(-1),
+            recordID: "next-source-record")
+        try await store.apply(
+            .checkpointSource(olderTimestampNext),
+            operationID: operationID)
+        await assertRecoveryStoreThrows {
+            try await store.apply(
+                .checkpointSource(first),
+                operationID: operationID)
+        }
+
+        let retainedState = try await store.load(operationID: operationID)
+        XCTAssertEqual(retainedState?.sourceCursor, olderTimestampNext)
+    }
+
     private func temporaryDirectory() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -259,6 +324,12 @@ private func recoveryPublication(
         fileName: fileName,
         sha256: String(repeating: "a", count: 64),
         byteCount: 42)
+}
+
+private func backupSourceCursor() -> LibraryMarkdownBackupSourceCursor {
+    LibraryMarkdownBackupSourceCursor(
+        startedAt: Date(timeIntervalSince1970: 1_800_000_000),
+        recordID: "source-record")
 }
 
 private func recoveryOperation(

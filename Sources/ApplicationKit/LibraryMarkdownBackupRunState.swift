@@ -14,10 +14,18 @@ struct ActiveLibraryMarkdownBackupRun: Sendable {
     var exportedFileNames: [String] = []
     var failures: [LibraryMarkdownBackupFailure] = []
     var pending: PendingLibraryMarkdownBackupDocument?
-    var pendingJournalCompletion: LibraryMarkdownBackupRecoveryPublication?
+    var pendingSourceCursor: LibraryMarkdownBackupSourceCursor?
+    var pendingJournalCompletion: PendingBackupJournalCompletion?
+    var pendingRecoveryCheckpoint: LibraryMarkdownBackupSourceCursor?
     var pendingTermination: PendingLibraryMarkdownBackupTermination?
+    var recoveryCursorCanAdvance = true
 
     var totalMeetings: Int { source.totalMeetings }
+}
+
+struct PendingBackupJournalCompletion: Sendable {
+    let publication: LibraryMarkdownBackupRecoveryPublication
+    let sourceCursor: LibraryMarkdownBackupSourceCursor
 }
 
 enum PendingLibraryMarkdownBackupDocument: Sendable {

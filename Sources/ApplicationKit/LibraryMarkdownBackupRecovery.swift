@@ -10,6 +10,24 @@ public enum LibraryMarkdownBackupRecoveryPhase:
     case completed
 }
 
+/// Content-free position of the last source row whose outcome is durably
+/// represented by the recovery journal.
+public struct LibraryMarkdownBackupSourceCursor:
+    Codable,
+    Equatable,
+    Sendable {
+    public let startedAt: Date
+    public let recordID: String
+
+    public init(
+        startedAt: Date,
+        recordID: String
+    ) {
+        self.startedAt = startedAt
+        self.recordID = recordID
+    }
+}
+
 /// Content-minimized evidence for one destination publication. The journal
 /// retains no transcript, summary, or rendered Markdown bytes.
 public struct LibraryMarkdownBackupRecoveryPublication:
@@ -45,17 +63,19 @@ public enum LibraryMarkdownBackupRecoveryMutation:
     case reserve(LibraryMarkdownBackupRecoveryPublication)
     case complete(LibraryMarkdownBackupRecoveryPublication)
     case clearReservation
+    case checkpointSource(LibraryMarkdownBackupSourceCursor)
     case markCompleted
 }
 
 /// Relaunch-readable publication state keyed by the immutable source-stage ID.
-/// Source cursor adoption remains a separate storage increment.
+/// A source cursor is committed only after its publication is durable.
 public struct LibraryMarkdownBackupRecoveryState:
     Codable,
     Equatable,
     Sendable {
     public let operationID: UUID
     public var destinationBookmark: LibraryMarkdownBackupDestinationBookmark
+    public var sourceCursor: LibraryMarkdownBackupSourceCursor?
     public var completedPublications: [LibraryMarkdownBackupRecoveryPublication]
     public var pendingPublication: LibraryMarkdownBackupRecoveryPublication?
     public var phase: LibraryMarkdownBackupRecoveryPhase
@@ -63,12 +83,14 @@ public struct LibraryMarkdownBackupRecoveryState:
     public init(
         operationID: UUID,
         destinationBookmark: LibraryMarkdownBackupDestinationBookmark,
+        sourceCursor: LibraryMarkdownBackupSourceCursor? = nil,
         completedPublications: [LibraryMarkdownBackupRecoveryPublication] = [],
         pendingPublication: LibraryMarkdownBackupRecoveryPublication? = nil,
         phase: LibraryMarkdownBackupRecoveryPhase = .active
     ) {
         self.operationID = operationID
         self.destinationBookmark = destinationBookmark
+        self.sourceCursor = sourceCursor
         self.completedPublications = completedPublications
         self.pendingPublication = pendingPublication
         self.phase = phase

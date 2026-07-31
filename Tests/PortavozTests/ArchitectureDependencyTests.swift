@@ -2646,6 +2646,8 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testWholeLibraryMarkdownBackupUsesOneApplicationWorkflow() throws {
         let useCase = try Self.contents(
             of: "Sources/ApplicationKit/ExportLibraryMarkdownBackup.swift")
+        let sourceContract = try Self.contents(
+            of: "Sources/ApplicationKit/LibraryMarkdownBackupSource.swift")
         let recoveryContract = try Self.contents(
             of: "Sources/ApplicationKit/LibraryMarkdownBackupRecovery.swift")
         let destinationContract = try Self.contents(
@@ -2667,7 +2669,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/PlatformKit/PersistentFileBookmark.swift")
 
         XCTAssertTrue(useCase.contains("actor ExportLibraryMarkdownBackup"))
-        XCTAssertTrue(useCase.contains("LibraryMarkdownBackupSourceSession"))
+        XCTAssertTrue(sourceContract.contains(
+            "protocol LibraryMarkdownBackupSourceSession"))
+        XCTAssertTrue(sourceContract.contains(
+            "extension MeetingStore: LibraryMarkdownBackupStore"))
         XCTAssertTrue(useCase.contains("LibraryMarkdownBackupFailureStage"))
         XCTAssertTrue(destinationContract.contains(
             "protocol LibraryMarkdownBackupDestinationAccess"))
@@ -2675,6 +2680,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             "protocol LibraryMarkdownBackupRecoveryStore"))
         XCTAssertTrue(recoveryContract.contains("pendingPublication"))
         XCTAssertTrue(recoveryContract.contains("completedPublications"))
+        XCTAssertTrue(recoveryContract.contains(
+            "LibraryMarkdownBackupSourceCursor"))
+        XCTAssertTrue(recoveryContract.contains(
+            "case checkpointSource(LibraryMarkdownBackupSourceCursor)"))
+        XCTAssertTrue(sourceContract.contains(
+            "func checkpoint() async throws"))
+        XCTAssertTrue(useCase.contains(
+            "pendingRecoveryCheckpoint"))
+        XCTAssertTrue(useCase.contains(
+            ".checkpointSource(cursor)"))
         XCTAssertTrue(useCase.contains("try await recoveryStore.apply("))
         XCTAssertTrue(useCase.contains("destinationLease.close()"))
         XCTAssertTrue(useCase.contains("maintenanceGate.disposition"))
@@ -2741,6 +2756,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "fileManager.moveItem("))
         XCTAssertTrue(recoveryAdapter.contains(
             "nextSequenceByOperation"))
+        XCTAssertTrue(recoveryAdapter.contains(
+            "guard cursor == current || Self.isAfter(cursor, current)"))
+        XCTAssertTrue(recoveryAdapter.contains(
+            "guard try !itemExists(pendingURL(operationID: operationID))"))
         XCTAssertTrue(recoveryAdapter.contains(".posixPermissions: 0o600"))
         XCTAssertTrue(recoveryAdapter.contains(
             "values.isExcludedFromBackup = true"))

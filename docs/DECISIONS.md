@@ -5985,3 +5985,46 @@ ordering pair is sufficient to resume the immutable keyset scan and contains
 no meeting prose. Read-only reopening plus exact row validation prevents a
 stale or forged checkpoint from silently skipping source data, while keeping
 the remaining crash-window work explicit and independently testable.
+
+## D186 — Advance backup recovery only after durable publication (Jul 2026)
+
+**Context:** D185 makes an immutable source stage adoptable at an exact
+content-free keyset position, but persisting the stage actor's cursor as soon as
+it reads a row would be unsafe. Rendering or destination publication can still
+fail afterward, and those typed per-meeting outcomes are currently held only by
+the process-owned run. A relaunched process must not continue after an outcome
+that its journal cannot reconstruct. Publication completion and source position
+also cannot be one atomic write because completed records are immutable
+sequence files while the cursor belongs to bounded metadata.
+
+**Decision:** ApplicationKit maps each nonempty staged-source checkpoint into a
+`LibraryMarkdownBackupSourceCursor` and carries it beside the pending document.
+After a destination move succeeds, the workflow first promotes the exact
+publication reservation into its immutable completed record. Only then may it
+apply `checkpointSource` to optional format-v1 recovery metadata. The recovery
+adapter rejects malformed cursors and any checkpoint while a publication
+reservation remains pending. It accepts the current cursor as an idempotent
+retry and accepts only a position later in the immutable
+`startedAt DESC, id ASC` traversal; rollback fails closed.
+
+If the publication completion succeeds but cursor persistence fails, the active
+run retains only the pending metadata checkpoint and retries it before any next
+source read. The destination move and completed publication record are not
+repeated. After the first source-entry, document-render, or publication
+failure, the run keeps reporting and processing later healthy meetings but
+freezes durable cursor advancement because that failure outcome is not yet in
+the journal.
+
+This decision does not reconcile a pending reservation against destination
+bytes, persist typed failure outcomes or a rendered document, or invoke stage
+adoption during launch. Cleanup still removes abandoned current-format stages
+and their matching recovery journals. T26 therefore remains open and full
+relaunch continuation is not claimed.
+
+**Rationale:** completion-before-checkpoint makes every persisted source
+position conservative: all successful publications at or before it are already
+durable, while unjournaled failures can never be silently skipped. An
+idempotent metadata retry closes the same-process crash boundary without
+rewriting completed evidence or republishing files. Keeping pending-digest
+reconciliation, failure reconstruction, and launch adoption as explicit later
+slices prevents a partial protocol from being described as restart-safe.

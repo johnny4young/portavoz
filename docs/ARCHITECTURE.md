@@ -644,18 +644,28 @@ must all be regular non-symlink entries of the expected shape. Missing work is
 reported as unavailable; malformed work and cursor mismatches fail closed and
 remain untouched.
 
+ApplicationKit maps that position into optional format-v1 recovery metadata
+only after the corresponding destination publication has become an immutable
+completed record. The recovery adapter rejects a checkpoint while a pending
+reservation exists, rejects malformed or regressive positions, and accepts an
+equal position as an idempotent retry. If checkpoint persistence fails after
+publication completion, the process-owned actor retries only that metadata
+mutation before any next source read; it never repeats the destination move.
+After the first source, document, or publication failure, checkpoint advancement
+freezes because those typed failure outcomes are still process-local. The
+completed publication evidence remains durable, but a future adopted process
+must not skip an outcome it cannot reconstruct.
+
 Completion and source-read failure enter an explicit process-local terminal
 state. Terminal retry marks completion when needed, removes the recovery
 journal, and only then closes the staged source. It does not reacquire the
 destination because no publication capability is needed after terminal work.
 
-The persisted reservation makes the move/manifest crash window observable but
-does not yet persist the staged source keyset cursor through ApplicationKit's
-recovery port. The app does not invoke the StorageKit adoption primitive:
-launch still cleans an abandoned stage and matching journal instead of
-adopting them. Pending-publication destination digest reconciliation is also
-not implemented. Relaunch-safe continuation therefore remains an explicit gap.
-None of these paths adds a timer, heartbeat, PID heuristic, or polling task.
+Launch does not yet reconcile a pending reservation against destination bytes
+or invoke stage adoption before abandoned-work cleanup. Durable failure
+outcomes also remain absent. Full relaunch continuation is therefore still
+unclaimed. None of these paths adds a timer, heartbeat, PID heuristic, or
+polling task.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,
