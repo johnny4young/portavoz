@@ -591,9 +591,18 @@ filename allocator, completed results, and at most one pending
 aggregate/document. Capture completion resumes the same request without
 rereading the live database or republishing completed files. The stage is
 owner-only, excluded from backup, and removed after completion or ordinary
-failure. Destination authorization and a publication manifest are not yet
-recovered across process termination, so relaunch-safe continuation remains an
-explicit gap. None of these paths adds a timer or polling task.
+failure. Each current-format workspace holds a kernel-owned exclusive lease;
+creation and cleanup share one root coordination lock, closing the race between
+directory creation and owner acquisition. Process launch scans at utility
+priority and removes only a workspace whose valid owner lease can be acquired,
+which proves that a crash released it. A live second Portavoz instance and an
+unknown legacy or malformed workspace are preserved fail-closed. Disposable
+test composition never scans the host staging root.
+
+Destination authorization, collision reservations, and a publication manifest
+are not yet recovered across process termination, so relaunch-safe continuation
+and stage adoption remain explicit gaps. None of these paths adds a timer,
+heartbeat, PID heuristic, or polling task.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,

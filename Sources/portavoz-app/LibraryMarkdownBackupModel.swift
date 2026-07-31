@@ -4,6 +4,8 @@ import Observation
 
 @MainActor
 protocol LibraryMarkdownBackupModelClient: Sendable {
+    func cleanupAbandonedLibraryMarkdownBackupStages() async
+
     func exportLibraryMarkdownBackup(
         to directory: URL,
         progress: @escaping LibraryMarkdownBackupProgressHandler
@@ -34,6 +36,7 @@ final class LibraryMarkdownBackupModel {
     private var pendingDirectory: URL?
     private var isExecuting = false
     private var resumeRequested = false
+    private var didRecoverAtLaunch = false
 
     init(client: any LibraryMarkdownBackupModelClient) {
         self.client = client
@@ -42,6 +45,12 @@ final class LibraryMarkdownBackupModel {
     var isRunning: Bool {
         if case .running = phase { return true }
         return false
+    }
+
+    func recoverAtLaunch() async {
+        guard !didRecoverAtLaunch else { return }
+        didRecoverAtLaunch = true
+        await client.cleanupAbandonedLibraryMarkdownBackupStages()
     }
 
     func export(to directory: URL) async {

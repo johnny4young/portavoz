@@ -5,17 +5,27 @@ import PortavozCore
 import StorageKit
 
 struct AppLibraryMarkdownBackupClient: LibraryMarkdownBackupModelClient {
+    private let store: MeetingStore
     private let useCase: ExportLibraryMarkdownBackup
+    private let cleanupOnLaunch: Bool
 
     init(
         store: MeetingStore,
-        maintenanceGate: DurableMaintenanceGate
+        maintenanceGate: DurableMaintenanceGate,
+        cleanupOnLaunch: Bool
     ) {
+        self.store = store
+        self.cleanupOnLaunch = cleanupOnLaunch
         useCase = ExportLibraryMarkdownBackup(
             store: store,
             documents: AppLibraryMarkdownBackupDocuments(),
             files: AppLibraryMarkdownBackupFiles(),
             maintenanceGate: maintenanceGate)
+    }
+
+    func cleanupAbandonedLibraryMarkdownBackupStages() async {
+        guard cleanupOnLaunch else { return }
+        await store.cleanupAbandonedLibraryMarkdownBackupStages()
     }
 
     func exportLibraryMarkdownBackup(
@@ -99,11 +109,13 @@ private enum AppLibraryMarkdownBackupFileError: Error {
 extension AppServices {
     static func makeLibraryMarkdownBackupModel(
         store: MeetingStore,
-        captureState: AppResourceCaptureState
+        captureState: AppResourceCaptureState,
+        usesTemporaryStore: Bool
     ) -> LibraryMarkdownBackupModel {
         LibraryMarkdownBackupModel(client: AppLibraryMarkdownBackupClient(
             store: store,
             maintenanceGate: AppResourceGovernorMaintenanceGate.make(
-                captureState: captureState)))
+                captureState: captureState),
+            cleanupOnLaunch: !usesTemporaryStore))
     }
 }

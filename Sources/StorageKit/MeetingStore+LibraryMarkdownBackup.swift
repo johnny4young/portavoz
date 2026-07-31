@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import GRDB
 import PortavozCore
@@ -53,16 +54,19 @@ public actor MeetingMarkdownBackupStage {
 
     let workspaceURL: URL
     private let database: DatabaseQueue
+    private var workspaceLease: MeetingMarkdownBackupWorkspaceLease?
     private var cursor: Cursor?
     private var isClosed = false
 
-    init(
+    fileprivate init(
         database: DatabaseQueue,
         workspaceURL: URL,
+        workspaceLease: MeetingMarkdownBackupWorkspaceLease,
         totalMeetings: Int
     ) {
         self.database = database
         self.workspaceURL = workspaceURL
+        self.workspaceLease = workspaceLease
         self.totalMeetings = totalMeetings
     }
 
@@ -122,6 +126,7 @@ public actor MeetingMarkdownBackupStage {
         isClosed = true
         try? database.close()
         try? FileManager.default.removeItem(at: workspaceURL)
+        workspaceLease = nil
     }
 
     private struct Cursor: Sendable {
@@ -142,6 +147,28 @@ extension MeetingStore {
             pagesPerStep: 256,
             mayContinue: mayContinue)
     }
+
+    /// Removes only stages whose kernel-owned lease proves that no live
+    /// Portavoz process still owns them. Legacy or malformed workspaces are
+    /// preserved rather than guessed stale.
+    public func cleanupAbandonedLibraryMarkdownBackupStages() async {
+        let stagingRoot = Self.defaultLibraryMarkdownBackupStagingRoot
+        _ = await Task.detached(priority: .utility) {
+            try? Self.cleanupAbandonedLibraryMarkdownBackupStages(
+                in: stagingRoot)
+        }.value
+    }
+
+    static func cleanupAbandonedLibraryMarkdownBackupStages(
+        in stagingRoot: URL
+    ) throws -> Int {
+        let manager = FileManager.default
+        guard manager.fileExists(atPath: stagingRoot.path) else { return 0 }
+        return try withLibraryMarkdownBackupRootLock(in: stagingRoot) {
+            cleanupAbandonedLibraryMarkdownBackupStagesWithRootLock(
+                in: stagingRoot)
+        }
+    }
 }
 
 extension MeetingStore {
@@ -159,12 +186,12 @@ extension MeetingStore {
         guard mayContinue() else { return .suspended }
         let workspace = try Self.makeLibraryMarkdownBackupWorkspace(
             in: stagingRoot)
-        let databaseURL = workspace.appendingPathComponent("source.sqlite")
+        let databaseURL = workspace.url.appendingPathComponent("source.sqlite")
         let stagedDatabase: DatabaseQueue
         do {
             stagedDatabase = try DatabaseQueue(path: databaseURL.path)
         } catch {
-            try? FileManager.default.removeItem(at: workspace)
+            try? FileManager.default.removeItem(at: workspace.url)
             throw error
         }
 
@@ -187,7 +214,7 @@ extension MeetingStore {
 
             guard completed else {
                 try? stagedDatabase.close()
-                try? FileManager.default.removeItem(at: workspace)
+                try? FileManager.default.removeItem(at: workspace.url)
                 return .suspended
             }
             try FileManager.default.setAttributes(
@@ -200,11 +227,12 @@ extension MeetingStore {
             }
             return .ready(MeetingMarkdownBackupStage(
                 database: stagedDatabase,
-                workspaceURL: workspace,
+                workspaceURL: workspace.url,
+                workspaceLease: workspace.lease,
                 totalMeetings: total))
         } catch {
             try? stagedDatabase.close()
-            try? FileManager.default.removeItem(at: workspace)
+            try? FileManager.default.removeItem(at: workspace.url)
             throw error
         }
     }
@@ -230,9 +258,107 @@ extension MeetingStore {
 }
 
 private extension MeetingStore {
+    static let libraryMarkdownBackupCoordinatorFileName =
+        ".workspace-coordinator.lock"
+    static let libraryMarkdownBackupOwnerFileName = ".owner.lock"
+
     static func makeLibraryMarkdownBackupWorkspace(
         in stagingRoot: URL
-    ) throws -> URL {
+    ) throws -> MeetingMarkdownBackupWorkspace {
+        try withLibraryMarkdownBackupRootLock(in: stagingRoot) {
+            _ = cleanupAbandonedLibraryMarkdownBackupStagesWithRootLock(
+                in: stagingRoot)
+            return try createLibraryMarkdownBackupWorkspace(in: stagingRoot)
+        }
+    }
+
+    static func createLibraryMarkdownBackupWorkspace(
+        in stagingRoot: URL
+    ) throws -> MeetingMarkdownBackupWorkspace {
+        let manager = FileManager.default
+        let workspace = stagingRoot.appendingPathComponent(
+            UUID().uuidString.lowercased(),
+            isDirectory: true)
+        try manager.createDirectory(
+            at: workspace,
+            withIntermediateDirectories: false)
+        try manager.setAttributes(
+            [.posixPermissions: 0o700],
+            ofItemAtPath: workspace.path)
+        do {
+            let ownerURL = workspace.appendingPathComponent(
+                libraryMarkdownBackupOwnerFileName)
+            guard let lease = try MeetingMarkdownBackupWorkspaceLease.acquire(
+                at: ownerURL,
+                create: true,
+                nonBlocking: false)
+            else {
+                throw MeetingMarkdownBackupStageError.workspaceUnavailable
+            }
+            return MeetingMarkdownBackupWorkspace(
+                url: workspace,
+                lease: lease)
+        } catch {
+            try? manager.removeItem(at: workspace)
+            throw error
+        }
+    }
+
+    static func cleanupAbandonedLibraryMarkdownBackupStagesWithRootLock(
+        in stagingRoot: URL
+    ) -> Int {
+        let manager = FileManager.default
+        guard let children = try? manager.contentsOfDirectory(
+            at: stagingRoot,
+            includingPropertiesForKeys: [
+                .isDirectoryKey,
+                .isRegularFileKey,
+                .isSymbolicLinkKey
+            ])
+        else { return 0 }
+
+        var removedCount = 0
+        for workspace in children {
+            guard workspace.lastPathComponent !=
+                libraryMarkdownBackupCoordinatorFileName,
+                let values = try? workspace.resourceValues(forKeys: [
+                    .isDirectoryKey,
+                    .isSymbolicLinkKey
+                ]),
+                values.isDirectory == true,
+                values.isSymbolicLink != true
+            else { continue }
+
+            let ownerURL = workspace.appendingPathComponent(
+                libraryMarkdownBackupOwnerFileName)
+            guard let ownerValues = try? ownerURL.resourceValues(forKeys: [
+                .isRegularFileKey,
+                .isSymbolicLinkKey
+            ]),
+                ownerValues.isRegularFile == true,
+                ownerValues.isSymbolicLink != true,
+                let lease = try? MeetingMarkdownBackupWorkspaceLease.acquire(
+                    at: ownerURL,
+                    create: false,
+                    nonBlocking: true)
+            else {
+                // An active owner or an unknown legacy shape is not ours to
+                // delete. Cleanup intentionally fails closed.
+                continue
+            }
+
+            if (try? manager.removeItem(at: workspace)) != nil {
+                removedCount += 1
+            }
+            withExtendedLifetime(lease) {}
+        }
+        return removedCount
+    }
+
+    static func withLibraryMarkdownBackupRootLock<T>(
+        in stagingRoot: URL,
+        _ operation: () throws -> T
+    ) throws -> T {
         let manager = FileManager.default
         try manager.createDirectory(
             at: stagingRoot,
@@ -245,16 +371,17 @@ private extension MeetingStore {
         values.isExcludedFromBackup = true
         try root.setResourceValues(values)
 
-        let workspace = stagingRoot.appendingPathComponent(
-            UUID().uuidString.lowercased(),
-            isDirectory: true)
-        try manager.createDirectory(
-            at: workspace,
-            withIntermediateDirectories: false)
-        try manager.setAttributes(
-            [.posixPermissions: 0o700],
-            ofItemAtPath: workspace.path)
-        return workspace
+        let coordinatorURL = stagingRoot.appendingPathComponent(
+            libraryMarkdownBackupCoordinatorFileName)
+        guard let lease = try MeetingMarkdownBackupWorkspaceLease.acquire(
+            at: coordinatorURL,
+            create: true,
+            nonBlocking: false)
+        else {
+            throw MeetingMarkdownBackupStageError.workspaceUnavailable
+        }
+        defer { withExtendedLifetime(lease) {} }
+        return try operation()
     }
 
     /// Preserves the released backup's General-recipe selection instead of
@@ -281,4 +408,67 @@ private enum MeetingMarkdownBackupSnapshotError: Error {
 private enum MeetingMarkdownBackupStageError: Error {
     case closed
     case suspended
+    case workspaceUnavailable
 }
+
+private struct MeetingMarkdownBackupWorkspace {
+    let url: URL
+    let lease: MeetingMarkdownBackupWorkspaceLease
+}
+
+private final class MeetingMarkdownBackupWorkspaceLease:
+    @unchecked Sendable {
+    private let fileDescriptor: CInt
+
+    private init(fileDescriptor: CInt) {
+        self.fileDescriptor = fileDescriptor
+    }
+
+    deinit {
+        _ = portavoBSDFileLock(fileDescriptor, LOCK_UN)
+        _ = Darwin.close(fileDescriptor)
+    }
+
+    static func acquire(
+        at url: URL,
+        create: Bool,
+        nonBlocking: Bool
+    ) throws -> MeetingMarkdownBackupWorkspaceLease? {
+        var flags = O_RDWR | O_CLOEXEC | O_NOFOLLOW
+        if create { flags |= O_CREAT }
+        let descriptor = Darwin.open(
+            url.path,
+            flags,
+            mode_t(S_IRUSR | S_IWUSR))
+        guard descriptor >= 0 else {
+            if !create, errno == ENOENT { return nil }
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+        guard Darwin.fchmod(descriptor, mode_t(S_IRUSR | S_IWUSR)) == 0 else {
+            let code = errno
+            _ = Darwin.close(descriptor)
+            throw POSIXError(POSIXErrorCode(rawValue: code) ?? .EIO)
+        }
+
+        let operation = LOCK_EX | (nonBlocking ? LOCK_NB : 0)
+        guard portavoBSDFileLock(descriptor, operation) == 0 else {
+            let code = errno
+            _ = Darwin.close(descriptor)
+            if nonBlocking, code == EWOULDBLOCK || code == EAGAIN {
+                return nil
+            }
+            throw POSIXError(POSIXErrorCode(rawValue: code) ?? .EIO)
+        }
+        return MeetingMarkdownBackupWorkspaceLease(
+            fileDescriptor: descriptor)
+    }
+}
+
+/// The Darwin importer exposes `struct flock` under the same Swift name as
+/// BSD `flock(2)`. Bind the C symbol explicitly so workspace ownership keeps
+/// open-file-description semantics rather than process-scoped `fcntl` locks.
+@_silgen_name("flock")
+private func portavoBSDFileLock(
+    _ fileDescriptor: CInt,
+    _ operation: CInt
+) -> CInt

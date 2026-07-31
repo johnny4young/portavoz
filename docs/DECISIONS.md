@@ -5817,3 +5817,39 @@ while bounding live-database contention and in-memory content. Explicit
 checkpoints let recording take priority without duplicate publication, polling,
 or a second durable-work ledger. Relaunch-safe destination and stage recovery
 remain separate work rather than being implied by process-local suspension.
+
+## D182 — Prove backup-stage abandonment with kernel ownership (Jul 2026)
+
+**Context:** D181 removes a stage during normal completion and failure, but
+`SIGKILL`, a crash, or power loss can leave its private SQLite copy in the
+temporary directory. Deleting every directory at the next launch is unsafe:
+the release app, Dev app, or another process instance can still own an active
+export. A PID file can be reused, an age threshold guesses at ownership, and a
+heartbeat would add background work while still requiring a stale-time policy.
+
+**Decision:** every current-format stage holds an exclusive BSD `flock(2)` on
+an owner-only `.owner.lock` file for the full workspace lifetime. Stage
+creation and scanning also share a persistent root coordination lock so a
+scanner cannot observe a newly created directory before its owner lease exists.
+The coordinator file remains at the root; unlinking a lock file after release
+could let concurrent processes synchronize on different inodes.
+
+At process launch, the process-owned backup model asks StorageKit to scan at
+utility priority. Cleanup opens a regular, non-symlink owner file with
+`O_NOFOLLOW` and removes the workspace only when it can take a nonblocking
+exclusive lock, proving that no live owner retains the open-file-description
+lease. Active workspaces, symlinks, malformed entries, and legacy lockless
+directories are preserved fail-closed. Disposable test composition does not
+scan the host root. The scan contains no meeting content, path logging, timer,
+PID heuristic, or heartbeat.
+
+This establishes crash-safe ownership and cleanup only. It does not persist a
+destination security-scoped bookmark, reserve destination names, record atomic
+publication in a manifest, or adopt and continue a stage after relaunch.
+
+**Rationale:** the kernel releases `flock` ownership when a process exits, so
+abandonment is immediate and deterministic without guessing elapsed time.
+Root serialization closes the only creation/cleanup race, while fail-closed
+shape validation protects concurrent and older Portavoz installations. Keeping
+adoption separate avoids claiming relaunch durability before publication can
+be made idempotent across its move/manifest crash window.

@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## July 30, 2026
 
+- **🧹 Crashed backups clean up privately** — Portavoz now removes abandoned current-format backup stages after a terminated export while leaving another running app instance untouched.
 - **⏸️ Backups step aside mid-export** — Starting a recording now pauses a whole-library Markdown backup at a clean checkpoint and resumes from the same library snapshot without exporting completed meetings twice.
 - **📚 Backups wait for the meeting** — A whole-library Markdown backup requested during recording now stays pending before reading your library and resumes automatically after Stop without asking for the folder again.
 - **☁️ iCloud catch-up protects live calls** — Including an existing library now yields to active recording and resumes from a durable checkpoint instead of competing with capture.

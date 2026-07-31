@@ -2654,6 +2654,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/LibraryMarkdownBackupModel.swift")
         let view = try Self.contents(of: "Sources/portavoz-app/BackupSection.swift")
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let app = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
         let resourceAdapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
 
@@ -2677,14 +2678,24 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("Column(\"id\") > currentCursor.id"))
         XCTAssertTrue(storage.contains(".posixPermissions: 0o600"))
         XCTAssertTrue(storage.contains("values.isExcludedFromBackup = true"))
+        XCTAssertTrue(storage.contains(".workspace-coordinator.lock"))
+        XCTAssertTrue(storage.contains(".owner.lock"))
+        XCTAssertTrue(storage.contains("portavoBSDFileLock"))
+        XCTAssertTrue(storage.contains("O_NOFOLLOW"))
+        XCTAssertTrue(storage.contains(
+            "cleanupAbandonedLibraryMarkdownBackupStages"))
         XCTAssertTrue(storage.contains("generalSummarySnapshot"))
         XCTAssertTrue(adapter.contains("MeetingExporter.markdown"))
         XCTAssertTrue(adapter.contains("moveItem(at: temporary, to: destination)"))
         XCTAssertFalse(adapter.contains("[.atomic, .withoutOverwriting]"))
         XCTAssertTrue(model.contains("@Observable"))
         XCTAssertTrue(model.contains("private var pendingDirectory: URL?"))
+        XCTAssertTrue(model.contains("func recoverAtLaunch()"))
         XCTAssertTrue(model.contains("func maintenanceMayResume()"))
         XCTAssertTrue(services.contains("let libraryMarkdownBackup: LibraryMarkdownBackupModel"))
+        XCTAssertTrue(adapter.contains("cleanupOnLaunch: !usesTemporaryStore"))
+        XCTAssertTrue(app.contains(
+            "libraryMarkdownBackup.recoverAtLaunch()"))
         XCTAssertTrue(resourceAdapter.contains(
             "libraryMarkdownBackup.maintenanceMayResume()"))
         XCTAssertTrue(view.contains("services.libraryMarkdownBackup"))

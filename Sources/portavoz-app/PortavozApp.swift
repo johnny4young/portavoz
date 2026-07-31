@@ -54,6 +54,9 @@ struct PortavozApp: App {
             await appServices.meetingSync.start()
         }
         Task { @MainActor in
+            await appServices.libraryMarkdownBackup.recoverAtLaunch()
+        }
+        Task { @MainActor in
             await RecordingRecoveryCoordinator.runIfNeeded(services: appServices)
             await PostCaptureProcessingCoordinator.resumeAfterRecovery(
                 services: appServices)

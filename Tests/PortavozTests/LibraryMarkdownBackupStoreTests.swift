@@ -115,11 +115,16 @@ final class LibraryMarkdownBackupStoreTests: XCTestCase {
             atPath: workspace.path)
         let databaseAttributes = try FileManager.default.attributesOfItem(
             atPath: workspace.appendingPathComponent("source.sqlite").path)
+        let ownerAttributes = try FileManager.default.attributesOfItem(
+            atPath: workspace.appendingPathComponent(".owner.lock").path)
         XCTAssertEqual(
             (workspaceAttributes[.posixPermissions] as? NSNumber)?.intValue ?? 0,
             0o700)
         XCTAssertEqual(
             (databaseAttributes[.posixPermissions] as? NSNumber)?.intValue ?? 0,
+            0o600)
+        XCTAssertEqual(
+            (ownerAttributes[.posixPermissions] as? NSNumber)?.intValue ?? 0,
             0o600)
         XCTAssertEqual(
             try stagingRoot.resourceValues(
@@ -158,9 +163,60 @@ final class LibraryMarkdownBackupStoreTests: XCTestCase {
         }
         let leftovers = try FileManager.default.contentsOfDirectory(
             at: stagingRoot,
-            includingPropertiesForKeys: nil)
+            includingPropertiesForKeys: [.isDirectoryKey])
+            .filter {
+                try $0.resourceValues(
+                    forKeys: [.isDirectoryKey]).isDirectory == true
+            }
         XCTAssertTrue(leftovers.isEmpty)
         XCTAssertGreaterThanOrEqual(checkpoint.callCount, 2)
+    }
+
+    func testCleanupRemovesOnlyAbandonedOwnedWorkspaces() async throws {
+        let stagingRoot = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: stagingRoot) }
+        let store = try MeetingStore.inMemory()
+        try await store.save(Meeting(title: "Active", startedAt: Date()))
+        let preparation = try await store.prepareLibraryMarkdownBackupStage(
+            in: stagingRoot,
+            pagesPerStep: 1,
+            mayContinue: { true })
+        guard case .ready(let stage) = preparation else {
+            return XCTFail("Expected a prepared stage")
+        }
+        let activeWorkspace = await stage.workspaceURL
+
+        let abandonedWorkspace = stagingRoot.appendingPathComponent(
+            "abandoned",
+            isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: abandonedWorkspace,
+            withIntermediateDirectories: false)
+        let abandonedOwner = abandonedWorkspace.appendingPathComponent(
+            ".owner.lock")
+        XCTAssertTrue(FileManager.default.createFile(
+            atPath: abandonedOwner.path,
+            contents: Data()))
+
+        let legacyWorkspace = stagingRoot.appendingPathComponent(
+            "legacy-without-owner",
+            isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: legacyWorkspace,
+            withIntermediateDirectories: false)
+
+        XCTAssertEqual(
+            try MeetingStore.cleanupAbandonedLibraryMarkdownBackupStages(
+                in: stagingRoot),
+            1)
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: activeWorkspace.path))
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: abandonedWorkspace.path))
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: legacyWorkspace.path))
+
+        await stage.close()
     }
 
     private func temporaryDirectory() -> URL {

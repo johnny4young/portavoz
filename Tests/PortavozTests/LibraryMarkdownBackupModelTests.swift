@@ -6,6 +6,17 @@ import XCTest
 
 @MainActor
 final class LibraryMarkdownBackupModelTests: XCTestCase {
+    func testLaunchRecoveryCleansStagesOnlyOnce() async {
+        let client = LibraryMarkdownBackupModelClientFake()
+        let model = LibraryMarkdownBackupModel(client: client)
+
+        await model.recoverAtLaunch()
+        await model.recoverAtLaunch()
+
+        XCTAssertEqual(client.cleanupCalls, 1)
+        XCTAssertEqual(model.phase, .idle)
+    }
+
     func testExportPublishesProgressAndCompletedPartialResult() async {
         let result = LibraryMarkdownBackupResult(
             totalMeetings: 2,
@@ -104,6 +115,7 @@ private final class LibraryMarkdownBackupModelClientFake:
     LibraryMarkdownBackupModelClient {
     private var executions: [LibraryMarkdownBackupExecution]
     let error: Error?
+    var cleanupCalls = 0
     var calls = 0
     var directories: [URL] = []
     var observedProgress: [LibraryMarkdownBackupProgressEvent] = []
@@ -122,6 +134,10 @@ private final class LibraryMarkdownBackupModelClientFake:
     init(executions: [LibraryMarkdownBackupExecution]) {
         self.executions = executions
         error = nil
+    }
+
+    func cleanupAbandonedLibraryMarkdownBackupStages() async {
+        cleanupCalls += 1
     }
 
     func exportLibraryMarkdownBackup(
@@ -159,6 +175,8 @@ private final class ControlledLibraryMarkdownBackupModelClient:
     init(result: LibraryMarkdownBackupResult) {
         self.result = result
     }
+
+    func cleanupAbandonedLibraryMarkdownBackupStages() async {}
 
     func exportLibraryMarkdownBackup(
         to directory: URL,
