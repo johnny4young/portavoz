@@ -146,6 +146,9 @@ public struct LibraryMarkdownBackupRecoveryState:
 /// Private durable state used to reconcile the atomic move/manifest crash
 /// window. Implementations fail closed when persisted state is malformed.
 public protocol LibraryMarkdownBackupRecoveryStore: Sendable {
+    /// Enumerates canonical operation identities without trusting the journal
+    /// contents. Callers preserve every returned stage before loading records.
+    func operationIDs() async throws -> Set<UUID>
     func apply(
         _ mutation: LibraryMarkdownBackupRecoveryMutation,
         operationID: UUID

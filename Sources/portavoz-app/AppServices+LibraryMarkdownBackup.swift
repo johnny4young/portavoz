@@ -8,9 +8,8 @@ import PortavozCore
 import StorageKit
 
 struct AppLibraryMarkdownBackupClient: LibraryMarkdownBackupModelClient {
-    private let store: MeetingStore
-    private let recoveryStore: AppLibraryMarkdownBackupRecoveryStore
     private let useCase: ExportLibraryMarkdownBackup
+    private let recoveryUseCase: RecoverLibraryMarkdownBackup
     private let cleanupOnLaunch: Bool
 
     init(
@@ -19,27 +18,36 @@ struct AppLibraryMarkdownBackupClient: LibraryMarkdownBackupModelClient {
         cleanupOnLaunch: Bool,
         recoveryRoot: URL
     ) {
-        self.store = store
         self.cleanupOnLaunch = cleanupOnLaunch
         let recoveryStore = AppLibraryMarkdownBackupRecoveryStore(
             root: recoveryRoot)
-        self.recoveryStore = recoveryStore
-        useCase = ExportLibraryMarkdownBackup(
+        let files = AppLibraryMarkdownBackupFiles()
+        let destinationAccess = AppBackupDestinationAccess()
+        let useCase = ExportLibraryMarkdownBackup(
             store: store,
             documents: AppLibraryMarkdownBackupDocuments(),
-            files: AppLibraryMarkdownBackupFiles(),
-            destinationAccess: AppBackupDestinationAccess(),
+            files: files,
+            destinationAccess: destinationAccess,
             recoveryStore: recoveryStore,
+            maintenanceGate: maintenanceGate)
+        self.useCase = useCase
+        recoveryUseCase = RecoverLibraryMarkdownBackup(
+            sourceStore: store,
+            recoveryStore: recoveryStore,
+            reconciler: ReconcileBackupPublication(
+                files: files,
+                destinationAccess: destinationAccess,
+                recoveryStore: recoveryStore),
+            exporter: useCase,
             maintenanceGate: maintenanceGate)
     }
 
-    func cleanupAbandonedLibraryMarkdownBackupStages() async {
-        guard cleanupOnLaunch else { return }
-        let removedStageIDs =
-            await store.cleanupAbandonedLibraryMarkdownBackupStages()
-        for stageID in removedStageIDs {
-            try? await recoveryStore.remove(operationID: stageID)
-        }
+    func recoverLibraryMarkdownBackup(
+        progress: @escaping LibraryMarkdownBackupProgressHandler
+    ) async throws -> LibraryMarkdownBackupRecoveryExecution {
+        guard cleanupOnLaunch else { return .none }
+        return try await recoveryUseCase.execute(
+            RecoverLibraryMarkdownBackupRequest(progress: progress))
     }
 
     func exportLibraryMarkdownBackup(

@@ -84,6 +84,7 @@ public actor MeetingMarkdownBackupStage {
     private var workspaceLease: MeetingMarkdownBackupWorkspaceLease?
     private var cursor: MeetingMarkdownBackupStageCursor?
     private var isClosed = false
+    private let removesWorkspaceOnDeinit: Bool
 
     fileprivate init(
         id: UUID,
@@ -91,7 +92,8 @@ public actor MeetingMarkdownBackupStage {
         workspaceURL: URL,
         workspaceLease: MeetingMarkdownBackupWorkspaceLease,
         totalMeetings: Int,
-        cursor: MeetingMarkdownBackupStageCursor? = nil
+        cursor: MeetingMarkdownBackupStageCursor? = nil,
+        removesWorkspaceOnDeinit: Bool = true
     ) {
         self.id = id
         self.database = database
@@ -99,11 +101,14 @@ public actor MeetingMarkdownBackupStage {
         self.workspaceLease = workspaceLease
         self.totalMeetings = totalMeetings
         self.cursor = cursor
+        self.removesWorkspaceOnDeinit = removesWorkspaceOnDeinit
     }
 
     deinit {
         try? database.close()
-        try? FileManager.default.removeItem(at: workspaceURL)
+        if removesWorkspaceOnDeinit {
+            try? FileManager.default.removeItem(at: workspaceURL)
+        }
     }
 
     public func next() async throws -> MeetingMarkdownBackupStageEntry? {
@@ -167,6 +172,15 @@ public actor MeetingMarkdownBackupStage {
         try? FileManager.default.removeItem(at: workspaceURL)
         workspaceLease = nil
     }
+
+    /// Releases the process lease while preserving an adopted immutable stage
+    /// for a later exact recovery attempt.
+    public func abandon() {
+        guard !isClosed else { return }
+        isClosed = true
+        try? database.close()
+        workspaceLease = nil
+    }
 }
 
 extension MeetingStore {
@@ -185,11 +199,14 @@ extension MeetingStore {
     /// Removes only stages whose kernel-owned lease proves that no live
     /// Portavoz process still owns them. Legacy or malformed workspaces are
     /// preserved rather than guessed stale.
-    public func cleanupAbandonedLibraryMarkdownBackupStages() async -> Set<UUID> {
+    public func cleanupAbandonedLibraryMarkdownBackupStages(
+        preserving operationIDs: Set<UUID> = []
+    ) async -> Set<UUID> {
         let stagingRoot = Self.defaultLibraryMarkdownBackupStagingRoot
         return await Task.detached(priority: .utility) {
             (try? Self.cleanupAbandonedLibraryMarkdownBackupStages(
-                in: stagingRoot)) ?? []
+                in: stagingRoot,
+                preserving: operationIDs)) ?? []
         }.value
     }
 
@@ -207,13 +224,15 @@ extension MeetingStore {
     }
 
     static func cleanupAbandonedLibraryMarkdownBackupStages(
-        in stagingRoot: URL
+        in stagingRoot: URL,
+        preserving operationIDs: Set<UUID> = []
     ) throws -> Set<UUID> {
         let manager = FileManager.default
         guard manager.fileExists(atPath: stagingRoot.path) else { return [] }
         return try withLibraryMarkdownBackupRootLock(in: stagingRoot) {
             cleanupAbandonedLibraryMarkdownBackupStagesWithRootLock(
-                in: stagingRoot)
+                in: stagingRoot,
+                preserving: operationIDs)
         }
     }
 
@@ -267,7 +286,8 @@ extension MeetingStore {
                 workspaceURL: workspace.url,
                 workspaceLease: workspace.lease,
                 totalMeetings: total,
-                cursor: cursor))
+                cursor: cursor,
+                removesWorkspaceOnDeinit: false))
         } catch {
             try? database.close()
             throw error
@@ -445,7 +465,8 @@ private extension MeetingStore {
     }
 
     static func cleanupAbandonedLibraryMarkdownBackupStagesWithRootLock(
-        in stagingRoot: URL
+        in stagingRoot: URL,
+        preserving operationIDs: Set<UUID> = []
     ) -> Set<UUID> {
         let manager = FileManager.default
         guard let children = try? manager.contentsOfDirectory(
@@ -463,6 +484,7 @@ private extension MeetingStore {
                 libraryMarkdownBackupCoordinatorFileName,
                 let stageID = UUID(uuidString: workspace.lastPathComponent),
                 stageID.uuidString.lowercased() == workspace.lastPathComponent,
+                !operationIDs.contains(stageID),
                 let values = try? workspace.resourceValues(forKeys: [
                     .isDirectoryKey,
                     .isSymbolicLinkKey

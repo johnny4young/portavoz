@@ -6125,3 +6125,61 @@ journal into a second meeting-content store. Keeping the checkpoint behind both
 successful publication evidence and failure evidence makes every crash window
 conservative: work is either durably represented or replayed from the immutable
 stage.
+
+## D189 — Recover one whole-library backup from exact launch evidence (Jul 2026)
+
+**Context:** D185 can reopen one immutable SQLite stage at an exact content-free
+cursor, D187 can reconcile the reservation/move boundary, and D188 makes every
+failed-row outcome durable. Launch still removed abandoned stages before asking
+whether a matching journal needed them. Simply reversing that call order is not
+enough: a malformed journal might still name the only source, multiple journals
+make ownership ambiguous, recovered filenames can collide with files created
+while Portavoz was closed, and a destination failure after adoption must not
+delete the stage merely because its actor leaves scope.
+
+**Decision:** ApplicationKit owns one `RecoverLibraryMarkdownBackup` launch
+operation. It first catalogs every canonical lowercase UUID child of the private
+recovery root without trusting that child's shape or contents. The full catalog
+is passed to StorageKit cleanup as a preservation set, so even a canonical
+symlink or malformed journal protects its matching stage until strict loading
+reports the error. Zero operations performs ordinary abandoned-stage cleanup.
+More than one operation is ambiguous: Portavoz adopts none, deletes none, and
+blocks a new backup rather than choosing by timestamp, directory order, or PID.
+
+One operation enters the shared maintenance/media-export gate before
+reconciliation or stage adoption. ApplicationKit reconciles the exact pending
+publication and any lagging checkpoint, then adopts only the stage whose UUID
+and cursor match the journal. Recovered active state requires no pending
+reservation; contiguous publication and failure sequences; cursor-bound
+publications; unique filenames and source positions; a checkpoint equal to the
+furthest durable outcome; and an outcome count no greater than the immutable
+stage total. Completed state additionally requires the outcome count to equal
+that total. Invalid, missing, conflicting, cursor-less, or unavailable evidence
+remains untouched and blocks a second backup.
+
+The exporter rebuilds its collision allocator from the union of current
+destination Markdown names and durable completed filenames, reconstructs typed
+exported names and failures, and resumes strictly after the adopted cursor. A
+completed journal reconstructs its final result without destination access,
+removes the journal, and only then closes and deletes the stage. An adopted
+stage does not remove its workspace on deinitialization. Recovery setup failure
+uses explicit `abandon()` to close the read-only database and release the kernel
+lease while preserving the journal and source for a later launch. Capture can
+suspend recovery before reconciliation or adoption; the existing capture-stop
+signal retries the unresolved operation. No timer, polling task, PID heuristic,
+transcript, summary, or rendered Markdown is added.
+
+A fatal source read that completes terminal journal/stage cleanup also clears
+launch ownership. The coordinator checks whether the exporter still owns a
+prepared or active immutable run before treating an error as retryable, so a
+later capture-stop signal cannot reinterpret the remembered destination URL as
+authorization to start a new live-library backup.
+
+**Rationale:** catalog-before-cleanup prevents the recovery protocol from
+destroying evidence it has not yet validated. Exact reconciliation, adoption,
+and state validation turn every supported crash window into either durable
+progress or deterministic replay. Failing closed on ambiguity and conflict
+protects user files, while explicit abandon separates retryable ownership
+release from terminal deletion. The implementation now supports relaunch
+continuation; a real process-kill/relaunch exercise remains field evidence, not
+a prerequisite for the code-level contract.

@@ -25,6 +25,24 @@ actor AppLibraryMarkdownBackupRecoveryStore:
         self.fileManager = fileManager
     }
 
+    func operationIDs() throws -> Set<UUID> {
+        guard try itemExists(root) else { return [] }
+        try validateDirectory(root)
+        let children = try fileManager.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: nil)
+        return Set(children.compactMap { child in
+            let name = child.lastPathComponent
+            guard let operationID = UUID(uuidString: name),
+                  operationID.uuidString.lowercased() == name
+            else { return nil }
+            // Shape and contents are intentionally not trusted here. A
+            // canonical symlink or malformed directory still protects the
+            // matching immutable stage until strict load reports the error.
+            return operationID
+        })
+    }
+
     func apply(
         _ mutation: LibraryMarkdownBackupRecoveryMutation,
         operationID: UUID

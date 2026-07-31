@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,383 package tests passing (13 model-gated) + 56 XCUITest UI cases. CI
+Status: 1,450 package tests passing (13 model-gated) + 56 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -23,7 +23,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 414 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 426 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -46,7 +46,7 @@ documented below.
 | MeetingLibraryQueryTests / ManageSecretsTests | Empty and invalid request short circuits, normalized bounded list/search/open-item delegation, and async secret round-trip/delete behavior over deterministic injected ports |
 | AnalyzeAudioFileUseCaseTests / ManageLocalVoiceAndModelsUseCaseTests / PublishMeetingContentUseCaseTests | File admission and policy forwarding; deterministic transcription metrics; diarization threshold/timing/optional attribution; meeting-before-provider summary persistence; file, supplied-sample, and recorded local-voice enrollment with duration/sample validation, ordered progress, status/delete isolation, and capture-mode forwarding; catalog-order verification and sequential model installation; coherent Markdown/PDF/SRT/WebVTT/Gist export, canonical format/extension parsing, subtitle rendering without a Markdown prerequisite, pending-only owner-resolved action publication, typed missing/empty states, and zero concrete model, Keychain, filesystem, or network dependency |
 | MenuBarModelTests / MenuBarObservationTests | Storage-independent recent/pending composition, empty/degraded/failed phases, last-healthy-section preservation, and bounded newest-first live meeting roots through delete/restore |
-| ExportLibraryMarkdownBackupUseCaseTests / BackupPublicationReconcileTests / LibraryMarkdownBackupRecoveryStoreTests / LibraryMarkdownBackupStoreTests / LibraryMarkdownBackupFilesTests / LibraryMarkdownBackupModelTests | Portable canonical filename allocation, existing/concurrent collision retries, typed partial and fatal outcomes, bounded page-copy suspension with partial-stage cleanup, one immutable newest-first SQLite stage with corrupt-aggregate isolation and General-summary parity, one-at-a-time aggregate delivery, process-local suspension/resume without rerender or republish, atomic non-replacing file publication, cursor-bound reservations, no-follow exact-byte destination evidence, missing/matching/conflicting and cursor-less reconciliation, cancellation and destination-failure lease closure, publication-before-source-checkpoint ordering, idempotent and monotonic cursor persistence, checkpoint-only retry without destination inspection or republish, failure-frozen cursor advancement, and process-scoped progress/terminal state |
+| ExportLibraryMarkdownBackupUseCaseTests / BackupPublicationReconcileTests / RecoverLibraryMarkdownBackupTests / LibraryMarkdownBackupRecoveryStoreTests / LibraryMarkdownBackupStoreTests / LibraryMarkdownBackupFilesTests / LibraryMarkdownBackupModelTests | Portable canonical filename allocation, existing/concurrent collision retries, typed partial and fatal outcomes, bounded page-copy suspension with partial-stage cleanup, one immutable newest-first SQLite stage with corrupt-aggregate isolation and General-summary parity, one-at-a-time aggregate delivery, process-local suspension/resume without rerender or republish, atomic non-replacing file publication, cursor-bound reservations, no-follow exact-byte destination evidence, missing/matching/conflicting and cursor-less reconciliation, cancellation and destination-failure lease closure, publication-before-source-checkpoint ordering, idempotent and monotonic cursor persistence, checkpoint-only retry without destination inspection or republish, failure-frozen cursor advancement, catalog-before-cleanup stage preservation, ambiguous/conflicting launch fail-closed behavior, exact active continuation and completed-result reconstruction, retryable adopted-stage abandon after destination setup failure, terminal recovered-source cleanup without an implicit fresh export, and process-scoped progress/terminal state |
 | AskMeetingsUseCaseTests | Shared trimming/search/evidence/answer behavior, no-evidence generation skip, evidence-preserving ordinary generation failure, honest cancellation propagation, and capability bypass for empty/invalid requests |
 | AskPresentationModelTests | Full Ask evidence fallback, process-scoped palette search/answer ownership, stale completion rejection across reset/reopen, and Markdown answer receipts |
 | SuggestMeetingReviewMetadataTests / MeetingDetailModelTests | Title/structure/chapter eligibility, known-recipe and bounded-label admission, independent failure degradation, cancellation propagation, route-owned one-shot state, revision/request fencing, and suggestion preservation after failed title persistence |
@@ -1394,7 +1394,10 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   after counters start remains part of the sample. The probes sample process
   CPU, physical footprint, energy, disk I/O/free capacity,
   thermal, low-power, and invariant power-source state while aggregating the
-  closed workload descriptors. All seven app invocations per round use the
+  closed workload descriptors. Behavioral unit tests inject an immediate
+  readiness gate so host thermal pressure cannot delay or invalidate their
+  scenario assertions; production benchmark processes retain the real gate.
+  All seven app invocations per round use the
   copied signed bundle through LaunchServices—never the inner SwiftUI/AppKit
   executable—so each scenario receives the same application resource policy,
   bundle identity, environment, and TCC boundary. The Stop probe atomically

@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## July 31, 2026
+
+- **🛟 Library backups survive a restart** — If Portavoz closes during a whole-library Markdown backup, the next launch now validates the exact saved work and resumes without overwriting or republishing completed files; ambiguous or conflicting evidence stays untouched instead of being guessed safe.
+
 ## July 30, 2026
 
 - **🧹 Crashed backups clean up privately** — Portavoz now removes abandoned current-format backup stages after a terminated export while leaving another running app instance untouched.

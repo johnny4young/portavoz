@@ -6,6 +6,61 @@ import XCTest
 @testable import portavoz_app
 
 final class LibraryMarkdownBackupRecoveryStoreTests: XCTestCase {
+    func testCatalogPreservesCanonicalIDsWithoutTrustingJournalShape()
+        async throws {
+        let root = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = AppLibraryMarkdownBackupRecoveryStore(root: root)
+        let validID = UUID()
+        try await store.apply(
+            .begin(destinationBookmark: LibraryMarkdownBackupDestinationBookmark(
+                data: Data("bookmark".utf8))),
+            operationID: validID)
+
+        let malformedID = UUID()
+        let outside = root.deletingLastPathComponent()
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: outside) }
+        try FileManager.default.createDirectory(
+            at: outside,
+            withIntermediateDirectories: false)
+        try FileManager.default.createSymbolicLink(
+            at: recoveryOperation(root: root, operationID: malformedID),
+            withDestinationURL: outside)
+        let ignoredID = UUID()
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent(
+                ignoredID.uuidString.uppercased(),
+                isDirectory: true),
+            withIntermediateDirectories: false)
+        try Data().write(to: root.appendingPathComponent("unrelated"))
+
+        let operationIDs = try await store.operationIDs()
+
+        XCTAssertEqual(operationIDs, [validID, malformedID])
+    }
+
+    func testCatalogRejectsSymlinkRoot() async throws {
+        let root = temporaryDirectory()
+        let outside = root.deletingLastPathComponent()
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: outside)
+        }
+        try FileManager.default.createDirectory(
+            at: outside,
+            withIntermediateDirectories: false)
+        try FileManager.default.createSymbolicLink(
+            at: root,
+            withDestinationURL: outside)
+        let store = AppLibraryMarkdownBackupRecoveryStore(root: root)
+
+        await assertRecoveryStoreThrows {
+            _ = try await store.operationIDs()
+        }
+    }
+
     func testRoundTripsAndAtomicallyReplacesPrivateRecoveryState() async throws {
         let root = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }

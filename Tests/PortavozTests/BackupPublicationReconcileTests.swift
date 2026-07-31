@@ -310,6 +310,10 @@ private actor ReconciliationRecoveryStoreFake:
         remainingBookmarkFailures = bookmarkFailures
     }
 
+    func operationIDs() -> Set<UUID> {
+        state.map { [$0.operationID] } ?? []
+    }
+
     func apply(
         _ mutation: LibraryMarkdownBackupRecoveryMutation,
         operationID: UUID

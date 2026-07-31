@@ -202,11 +202,13 @@ final class ResourceRunProbeTests: XCTestCase {
             "BenchResourceScenarioProbe-\(UUID().uuidString)",
             isDirectory: true)
         defer { try? FileManager.default.removeItem(at: output) }
-        let probe = try BenchResourceScenarioProbe(arguments: [
-            "Portavoz",
-            "--bench-resource-output", output.path,
-            "--bench-resource-run", "3",
-        ])
+        let probe = try BenchResourceScenarioProbe(
+            arguments: [
+                "Portavoz",
+                "--bench-resource-output", output.path,
+                "--bench-resource-run", "3",
+            ],
+            readiness: {})
 
         let value = try await probe.measure(scenario: "refine") {
             try await Task.sleep(for: .milliseconds(10))
@@ -234,11 +236,13 @@ final class ResourceRunProbeTests: XCTestCase {
             "BenchResourceScenarioProbeFailure-\(UUID().uuidString)",
             isDirectory: true)
         defer { try? FileManager.default.removeItem(at: output) }
-        let probe = try BenchResourceScenarioProbe(arguments: [
-            "Portavoz",
-            "--bench-resource-output", output.path,
-            "--bench-resource-run", "4",
-        ])
+        let probe = try BenchResourceScenarioProbe(
+            arguments: [
+                "Portavoz",
+                "--bench-resource-output", output.path,
+                "--bench-resource-run", "4",
+            ],
+            readiness: {})
 
         do {
             let _: Int = try await probe.measure(scenario: "refine") {

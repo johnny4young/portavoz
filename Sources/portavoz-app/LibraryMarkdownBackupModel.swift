@@ -4,7 +4,9 @@ import Observation
 
 @MainActor
 protocol LibraryMarkdownBackupModelClient: Sendable {
-    func cleanupAbandonedLibraryMarkdownBackupStages() async
+    func recoverLibraryMarkdownBackup(
+        progress: @escaping LibraryMarkdownBackupProgressHandler
+    ) async throws -> LibraryMarkdownBackupRecoveryExecution
 
     func exportLibraryMarkdownBackup(
         to directory: URL,
@@ -37,6 +39,7 @@ final class LibraryMarkdownBackupModel {
     private var isExecuting = false
     private var resumeRequested = false
     private var didRecoverAtLaunch = false
+    private var hasPendingLaunchRecovery = false
 
     init(client: any LibraryMarkdownBackupModelClient) {
         self.client = client
@@ -50,11 +53,13 @@ final class LibraryMarkdownBackupModel {
     func recoverAtLaunch() async {
         guard !didRecoverAtLaunch else { return }
         didRecoverAtLaunch = true
-        await client.cleanupAbandonedLibraryMarkdownBackupStages()
+        hasPendingLaunchRecovery = true
+        phase = .running(.preparing)
+        await continueLaunchRecovery()
     }
 
     func export(to directory: URL) async {
-        guard !isRunning else { return }
+        guard !isRunning, !hasPendingLaunchRecovery else { return }
         pendingDirectory = directory
         resumeRequested = false
         phase = .running(.preparing)
@@ -64,11 +69,49 @@ final class LibraryMarkdownBackupModel {
     /// A capture-stop signal is remembered even if admission is still being
     /// evaluated, so the pending export cannot miss its only resume wake.
     func maintenanceMayResume() {
-        guard pendingDirectory != nil else { return }
+        guard pendingDirectory != nil || hasPendingLaunchRecovery else { return }
         resumeRequested = true
         guard !isExecuting else { return }
         Task { @MainActor [weak self] in
-            await self?.continuePendingExport()
+            guard let self else { return }
+            if self.hasPendingLaunchRecovery {
+                await self.continueLaunchRecovery()
+            } else {
+                await self.continuePendingExport()
+            }
+        }
+    }
+
+    private func continueLaunchRecovery() async {
+        guard !isExecuting, hasPendingLaunchRecovery else { return }
+        isExecuting = true
+        phase = .running(.preparing)
+        do {
+            let execution = try await client.recoverLibraryMarkdownBackup { [weak self] progress in
+                await self?.receive(progress)
+            }
+            switch execution {
+            case .none:
+                finishLaunchRecovery()
+                phase = .idle
+            case .completed(let result):
+                finishLaunchRecovery()
+                phase = .completed(result)
+            case .suspended:
+                isExecuting = false
+                if resumeRequested {
+                    resumeRequested = false
+                    await continueLaunchRecovery()
+                }
+            }
+        } catch {
+            if error as? LibraryMarkdownBackupLaunchRecoveryError == .terminated {
+                finishLaunchRecovery()
+            } else {
+                isExecuting = false
+                resumeRequested = false
+            }
+            phase = .failed(Self.failure(for: error))
         }
     }
 
@@ -111,8 +154,33 @@ final class LibraryMarkdownBackupModel {
         resumeRequested = false
     }
 
+    private func finishLaunchRecovery() {
+        hasPendingLaunchRecovery = false
+        isExecuting = false
+        resumeRequested = false
+    }
+
     private func receive(_ progress: LibraryMarkdownBackupProgressEvent) {
         guard isRunning else { return }
         phase = .running(progress)
+    }
+
+    private static func failure(for error: Error) -> Failure {
+        if let error = error as? LibraryMarkdownBackupError {
+            switch error {
+            case .libraryUnavailable: return .libraryUnavailable
+            case .destinationUnavailable: return .destinationUnavailable
+            case .operationInProgress: return .unexpected
+            }
+        }
+        if let error = error as? LibraryMarkdownBackupLaunchRecoveryError {
+            switch error {
+            case .recoveryUnavailable, .sourceUnavailable, .terminated:
+                return .libraryUnavailable
+            case .ambiguousRecovery, .blocked:
+                return .unexpected
+            }
+        }
+        return .unexpected
     }
 }

@@ -2646,6 +2646,12 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testWholeLibraryMarkdownBackupUsesOneApplicationWorkflow() throws {
         let useCase = try Self.contents(
             of: "Sources/ApplicationKit/ExportLibraryMarkdownBackup.swift")
+        let execution = try Self.contents(
+            of: "Sources/ApplicationKit/LibraryMarkdownBackupExecution.swift")
+        let recoveryUseCase = try Self.contents(
+            of: "Sources/ApplicationKit/RecoverLibraryMarkdownBackup.swift")
+        let recoveryValidation = try Self.contents(
+            of: "Sources/ApplicationKit/LibraryMarkdownBackupRecoveryValidation.swift")
         let filesContract = try Self.contents(
             of: "Sources/ApplicationKit/LibraryMarkdownBackupFiles.swift")
         let sourceContract = try Self.contents(
@@ -2685,11 +2691,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             "protocol LibraryMarkdownBackupSourceSession"))
         XCTAssertTrue(sourceContract.contains(
             "extension MeetingStore: LibraryMarkdownBackupStore"))
-        XCTAssertTrue(useCase.contains("LibraryMarkdownBackupFailureStage"))
+        XCTAssertTrue(execution.contains("LibraryMarkdownBackupFailureStage"))
+        XCTAssertTrue(recoveryUseCase.contains(
+            "actor RecoverLibraryMarkdownBackup"))
+        XCTAssertTrue(recoveryUseCase.contains(
+            "struct RecoverLibraryMarkdownBackupRequest"))
+        XCTAssertTrue(recoveryValidation.contains(
+            "enum LibraryMarkdownBackupRecoveryValidation"))
         XCTAssertTrue(destinationContract.contains(
             "protocol LibraryMarkdownBackupDestinationAccess"))
         XCTAssertTrue(recoveryContract.contains(
             "protocol LibraryMarkdownBackupRecoveryStore"))
+        XCTAssertTrue(recoveryContract.contains("func operationIDs()"))
         XCTAssertTrue(recoveryContract.contains("pendingPublication"))
         XCTAssertTrue(recoveryContract.contains("completedPublications"))
         XCTAssertTrue(recoveryContract.contains(
@@ -2710,6 +2723,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(reconciliation.contains("repairCheckpointIfNeeded"))
         XCTAssertTrue(sourceContract.contains(
             "func checkpoint() async throws"))
+        XCTAssertTrue(sourceContract.contains(
+            "protocol LibraryMarkdownBackupRecoverySourceStore"))
+        XCTAssertTrue(sourceContract.contains(
+            "func adoptLibraryMarkdownBackupSource("))
+        XCTAssertTrue(sourceContract.contains(
+            "preserving operationIDs: Set<UUID>"))
+        XCTAssertTrue(sourceContract.contains("func abandon() async"))
         XCTAssertTrue(useCase.contains(
             "pendingRecoveryCheckpoint"))
         XCTAssertTrue(useCase.contains(
@@ -2723,6 +2743,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(useCase.contains("shouldProceed(at: .admission)"))
         XCTAssertTrue(useCase.contains("shouldProceed(at: .checkpoint)"))
         XCTAssertTrue(useCase.contains("private var activeRun"))
+        XCTAssertTrue(useCase.contains("restoreRecoveredRun("))
+        XCTAssertTrue(useCase.contains("await source.abandon()"))
         XCTAssertTrue(useCase.contains("existingMarkdownFileNames"))
         XCTAssertTrue(useCase.contains("case .nameCollision:"))
         XCTAssertTrue(storage.contains("database.backup("))
@@ -2753,13 +2775,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             "stageID.uuidString.lowercased() == workspace.lastPathComponent"))
         XCTAssertTrue(storage.contains(
             "cleanupAbandonedLibraryMarkdownBackupStages"))
+        XCTAssertTrue(storage.contains("removesWorkspaceOnDeinit"))
+        XCTAssertTrue(storage.contains("public func abandon()"))
+        XCTAssertTrue(storage.contains(
+            "preserving operationIDs: Set<UUID> = []"))
         XCTAssertTrue(storage.contains("generalSummarySnapshot"))
         XCTAssertTrue(adapter.contains("MeetingExporter.markdown"))
         XCTAssertTrue(adapter.contains("AppBackupDestinationAccess"))
         XCTAssertTrue(adapter.contains("PersistentFileBookmark().resolve"))
         XCTAssertTrue(adapter.contains(
             "AppLibraryMarkdownBackupRecoveryStore"))
-        XCTAssertTrue(adapter.contains("removedStageIDs"))
+        XCTAssertTrue(adapter.contains("RecoverLibraryMarkdownBackup("))
+        XCTAssertTrue(adapter.contains("ReconcileBackupPublication("))
         XCTAssertTrue(adapter.contains("moveItem(at: temporary, to: destination)"))
         XCTAssertTrue(adapter.contains("Darwin.openat("))
         XCTAssertTrue(adapter.contains("O_NOFOLLOW"))
@@ -2772,6 +2799,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(model.contains("@Observable"))
         XCTAssertTrue(model.contains("private var pendingDirectory: URL?"))
         XCTAssertTrue(model.contains("func recoverAtLaunch()"))
+        XCTAssertTrue(model.contains("recoverLibraryMarkdownBackup"))
+        XCTAssertTrue(model.contains("hasPendingLaunchRecovery"))
         XCTAssertTrue(model.contains("func maintenanceMayResume()"))
         XCTAssertTrue(services.contains("let libraryMarkdownBackup: LibraryMarkdownBackupModel"))
         XCTAssertTrue(adapter.contains("cleanupOnLaunch: !usesTemporaryStore"))
@@ -2794,6 +2823,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             "guard cursor == current || Self.isAfter(cursor, current)"))
         XCTAssertTrue(recoveryAdapter.contains(
             "guard try !itemExists(pendingURL(operationID: operationID))"))
+        XCTAssertTrue(recoveryAdapter.contains("func operationIDs()"))
+        XCTAssertTrue(recoveryAdapter.contains(
+            "operationID.uuidString.lowercased() == name"))
         XCTAssertTrue(recoveryAdapter.contains(
             "== publication.meetingID.rawValue.uuidString"))
         XCTAssertTrue(recoveryAdapter.contains(".posixPermissions: 0o600"))
@@ -2810,8 +2842,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             "bounded pending-publication reconciliation operation"))
         XCTAssertTrue(decisions.contains("## D187"))
         XCTAssertTrue(decisions.contains("## D188"))
+        XCTAssertTrue(decisions.contains("## D189"))
         XCTAssertTrue(appSpec.contains(
-            "### Capture-safe staged whole-library backup (D180–D188)"))
+            "### Capture-safe staged whole-library backup (D180–D189)"))
     }
 
     func testAskSurfacesUseOneStorageIndependentApplicationWorkflow() throws {

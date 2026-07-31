@@ -794,6 +794,10 @@ private actor BackupRecoveryStoreFake:
         self.failingRemoveCalls = failingRemoveCalls
     }
 
+    func operationIDs() -> Set<UUID> {
+        Set(states.keys)
+    }
+
     func apply(
         _ mutation: LibraryMarkdownBackupRecoveryMutation,
         operationID: UUID

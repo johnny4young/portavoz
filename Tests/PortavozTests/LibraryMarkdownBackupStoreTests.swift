@@ -249,6 +249,40 @@ final class LibraryMarkdownBackupStoreTests: XCTestCase {
         await stage.close()
     }
 
+    func testCleanupPreservesEveryJournalOwnedStage() async throws {
+        let stagingRoot = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: stagingRoot) }
+        let store = try MeetingStore.inMemory()
+        try await store.save(Meeting(title: "Source", startedAt: Date()))
+        let preparation = try await store.prepareLibraryMarkdownBackupStage(
+            in: stagingRoot,
+            pagesPerStep: 1,
+            mayContinue: { true })
+        guard case .ready(let original) = preparation else {
+            return XCTFail("Expected a prepared stage")
+        }
+        let preservedID = UUID()
+        let removedID = UUID()
+        let preserved = try await cloneStageWorkspace(
+            from: original,
+            as: preservedID,
+            in: stagingRoot)
+        let removed = try await cloneStageWorkspace(
+            from: original,
+            as: removedID,
+            in: stagingRoot)
+
+        XCTAssertEqual(
+            try MeetingStore.cleanupAbandonedLibraryMarkdownBackupStages(
+                in: stagingRoot,
+                preserving: [preservedID]),
+            [removedID])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: preserved.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: removed.path))
+
+        await original.close()
+    }
+
     func testStageAdoptionResumesAfterExactContentFreeCursor() async throws {
         let stagingRoot = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: stagingRoot) }
@@ -315,6 +349,48 @@ final class LibraryMarkdownBackupStoreTests: XCTestCase {
         await adopted.close()
         XCTAssertFalse(FileManager.default.fileExists(
             atPath: adoptedWorkspace.path))
+        await original.close()
+    }
+
+    func testAbandonedAdoptedStageCanBeAdoptedAgain() async throws {
+        let stagingRoot = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: stagingRoot) }
+        let store = try MeetingStore.inMemory()
+        try await store.save(Meeting(title: "Retry", startedAt: Date()))
+        let preparation = try await store.prepareLibraryMarkdownBackupStage(
+            in: stagingRoot,
+            pagesPerStep: 1,
+            mayContinue: { true })
+        guard case .ready(let original) = preparation else {
+            return XCTFail("Expected a prepared stage")
+        }
+        let adoptedID = UUID()
+        let workspace = try await cloneStageWorkspace(
+            from: original,
+            as: adoptedID,
+            in: stagingRoot)
+        let firstAdoption = try await MeetingStore
+            .adoptLibraryMarkdownBackupStage(
+                id: adoptedID,
+                cursor: nil,
+                in: stagingRoot)
+        guard case .ready(let first) = firstAdoption else {
+            return XCTFail("Expected first adoption")
+        }
+
+        await first.abandon()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: workspace.path))
+
+        let secondAdoption = try await MeetingStore
+            .adoptLibraryMarkdownBackupStage(
+                id: adoptedID,
+                cursor: nil,
+                in: stagingRoot)
+        guard case .ready(let second) = secondAdoption else {
+            return XCTFail("Expected retry adoption")
+        }
+        await second.close()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: workspace.path))
         await original.close()
     }
 

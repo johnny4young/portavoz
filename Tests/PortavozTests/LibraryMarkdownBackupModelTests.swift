@@ -6,14 +6,14 @@ import XCTest
 
 @MainActor
 final class LibraryMarkdownBackupModelTests: XCTestCase {
-    func testLaunchRecoveryCleansStagesOnlyOnce() async {
+    func testLaunchRecoveryRunsOnlyOnceWhenNoBackupExists() async {
         let client = LibraryMarkdownBackupModelClientFake()
         let model = LibraryMarkdownBackupModel(client: client)
 
         await model.recoverAtLaunch()
         await model.recoverAtLaunch()
 
-        XCTAssertEqual(client.cleanupCalls, 1)
+        XCTAssertEqual(client.recoveryCalls, 1)
         XCTAssertEqual(model.phase, .idle)
     }
 
@@ -104,6 +104,54 @@ final class LibraryMarkdownBackupModelTests: XCTestCase {
         await waitUntil { model.phase == .completed(result) }
         XCTAssertEqual(client.calls, 2)
     }
+
+    func testSuspendedLaunchRecoveryResumesFromMaintenanceSignal() async {
+        let result = LibraryMarkdownBackupResult(
+            totalMeetings: 1,
+            exportedFileNames: ["Recovered.md"],
+            failures: [])
+        let client = LibraryMarkdownBackupModelClientFake()
+        client.recoveryExecutions = [.suspended, .completed(result)]
+        let model = LibraryMarkdownBackupModel(client: client)
+
+        await model.recoverAtLaunch()
+
+        XCTAssertEqual(model.phase, .running(.preparing))
+        XCTAssertEqual(client.recoveryCalls, 1)
+        model.maintenanceMayResume()
+        await waitUntil { model.phase == .completed(result) }
+        XCTAssertEqual(client.recoveryCalls, 2)
+    }
+
+    func testUnresolvedLaunchRecoveryBlocksStartingAnotherBackup() async {
+        let client = LibraryMarkdownBackupModelClientFake()
+        client.recoveryError = LibraryMarkdownBackupLaunchRecoveryError.blocked
+        let model = LibraryMarkdownBackupModel(client: client)
+
+        await model.recoverAtLaunch()
+        await model.export(to: URL(fileURLWithPath: "/new-backup"))
+
+        XCTAssertEqual(model.phase, .failed(.unexpected))
+        XCTAssertEqual(client.calls, 0)
+    }
+
+    func testTerminalLaunchFailureAllowsASeparateNewBackup() async {
+        let client = LibraryMarkdownBackupModelClientFake()
+        client.recoveryError = LibraryMarkdownBackupLaunchRecoveryError.terminated
+        let model = LibraryMarkdownBackupModel(client: client)
+
+        await model.recoverAtLaunch()
+        client.recoveryError = nil
+        await model.export(to: URL(fileURLWithPath: "/new-backup"))
+
+        XCTAssertEqual(
+            model.phase,
+            .completed(LibraryMarkdownBackupResult(
+                totalMeetings: 0,
+                exportedFileNames: [],
+                failures: [])))
+        XCTAssertEqual(client.calls, 1)
+    }
 }
 
 private enum LibraryMarkdownBackupModelTestError: Error {
@@ -115,7 +163,11 @@ private final class LibraryMarkdownBackupModelClientFake:
     LibraryMarkdownBackupModelClient {
     private var executions: [LibraryMarkdownBackupExecution]
     let error: Error?
-    var cleanupCalls = 0
+    var recoveryCalls = 0
+    var recoveryExecutions: [LibraryMarkdownBackupRecoveryExecution] = [
+        .none
+    ]
+    var recoveryError: Error?
     var calls = 0
     var directories: [URL] = []
     var observedProgress: [LibraryMarkdownBackupProgressEvent] = []
@@ -136,8 +188,12 @@ private final class LibraryMarkdownBackupModelClientFake:
         error = nil
     }
 
-    func cleanupAbandonedLibraryMarkdownBackupStages() async {
-        cleanupCalls += 1
+    func recoverLibraryMarkdownBackup(
+        progress: @escaping LibraryMarkdownBackupProgressHandler
+    ) async throws -> LibraryMarkdownBackupRecoveryExecution {
+        recoveryCalls += 1
+        if let recoveryError { throw recoveryError }
+        return recoveryExecutions.removeFirst()
     }
 
     func exportLibraryMarkdownBackup(
@@ -176,7 +232,11 @@ private final class ControlledLibraryMarkdownBackupModelClient:
         self.result = result
     }
 
-    func cleanupAbandonedLibraryMarkdownBackupStages() async {}
+    func recoverLibraryMarkdownBackup(
+        progress: @escaping LibraryMarkdownBackupProgressHandler
+    ) async throws -> LibraryMarkdownBackupRecoveryExecution {
+        .none
+    }
 
     func exportLibraryMarkdownBackup(
         to directory: URL,

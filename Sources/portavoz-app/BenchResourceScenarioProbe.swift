@@ -115,12 +115,20 @@ private enum BenchResourceArguments {
 /// indexing collectors. Scenario requirements remain in the tracked evidence
 /// contract and are validated again when the host receipt is assembled.
 final class BenchResourceScenarioProbe {
+    typealias Readiness = @MainActor @Sendable () async throws -> Void
+
     private let run: Int
     private let outputDirectory: URL
+    private let readiness: Readiness
     private var probe: ResourceRunProbe?
     private var observer: UUID?
 
-    init(arguments: [String]) throws {
+    init(
+        arguments: [String],
+        readiness: @escaping Readiness = {
+            try await ResourceProbeHostReadiness.waitUntilNominal()
+        }
+    ) throws {
         guard let outputIndex = arguments.firstIndex(
             of: "--bench-resource-output"),
               arguments.indices.contains(outputIndex + 1),
@@ -139,6 +147,7 @@ final class BenchResourceScenarioProbe {
         outputDirectory = URL(
             fileURLWithPath: arguments[outputIndex + 1],
             isDirectory: true).standardizedFileURL
+        self.readiness = readiness
     }
 
     deinit {
@@ -150,7 +159,7 @@ final class BenchResourceScenarioProbe {
         scenario: String,
         operation: () async throws -> Value
     ) async throws -> Value {
-        try await ResourceProbeHostReadiness.waitUntilNominal()
+        try await readiness()
         let probe = try ResourceRunProbe(run: run)
         let observer = AppResourceWorkloadTelemetry.shared.addObserver(
             replayingActive: true

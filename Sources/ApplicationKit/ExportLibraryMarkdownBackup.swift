@@ -1,101 +1,6 @@
 import Foundation
 import PortavozCore
 
-public enum LibraryMarkdownBackupFailureStage:
-    String,
-    Codable,
-    Equatable,
-    Sendable {
-    case source
-    case document
-    case publication
-}
-
-public struct LibraryMarkdownBackupFailure: Equatable, Sendable {
-    public let meetingID: MeetingID?
-    public let title: String
-    public let stage: LibraryMarkdownBackupFailureStage
-
-    public init(
-        meetingID: MeetingID?,
-        title: String,
-        stage: LibraryMarkdownBackupFailureStage
-    ) {
-        self.meetingID = meetingID
-        self.title = title
-        self.stage = stage
-    }
-}
-
-public struct LibraryMarkdownBackupResult: Equatable, Sendable {
-    public let totalMeetings: Int
-    public let exportedFileNames: [String]
-    public let failures: [LibraryMarkdownBackupFailure]
-
-    public init(
-        totalMeetings: Int,
-        exportedFileNames: [String],
-        failures: [LibraryMarkdownBackupFailure]
-    ) {
-        self.totalMeetings = totalMeetings
-        self.exportedFileNames = exportedFileNames
-        self.failures = failures
-    }
-
-    public var exportedCount: Int { exportedFileNames.count }
-}
-
-public enum LibraryMarkdownBackupExecution: Equatable, Sendable {
-    case completed(LibraryMarkdownBackupResult)
-    case suspended
-}
-
-public struct LibraryMarkdownBackupProgress: Equatable, Sendable {
-    public let completedMeetings: Int
-    public let totalMeetings: Int
-    public let exportedMeetings: Int
-    public let failedMeetings: Int
-
-    public init(
-        completedMeetings: Int,
-        totalMeetings: Int,
-        exportedMeetings: Int,
-        failedMeetings: Int
-    ) {
-        self.completedMeetings = completedMeetings
-        self.totalMeetings = totalMeetings
-        self.exportedMeetings = exportedMeetings
-        self.failedMeetings = failedMeetings
-    }
-}
-
-public enum LibraryMarkdownBackupProgressEvent: Equatable, Sendable {
-    case preparing
-    case exporting(LibraryMarkdownBackupProgress)
-}
-
-public typealias LibraryMarkdownBackupProgressHandler =
-    @Sendable (LibraryMarkdownBackupProgressEvent) async -> Void
-
-public enum LibraryMarkdownBackupError: Error, Equatable, Sendable {
-    case libraryUnavailable
-    case destinationUnavailable
-    case operationInProgress
-}
-
-public struct ExportLibraryMarkdownBackupRequest: Sendable {
-    public let directory: URL
-    public let progress: LibraryMarkdownBackupProgressHandler
-
-    public init(
-        directory: URL,
-        progress: @escaping LibraryMarkdownBackupProgressHandler = { _ in }
-    ) {
-        self.directory = directory
-        self.progress = progress
-    }
-}
-
 /// Exports every healthy live meeting while preserving failures as typed,
 /// content-free partial results. Existing files are never replaced. The actor
 /// retains one staged run across capture-policy suspension.
@@ -199,6 +104,74 @@ public actor ExportLibraryMarkdownBackup: ApplicationUseCase {
         }
         activeRun = run
         return .suspended
+    }
+
+    /// Restores one already-reconciled immutable run. The caller must have
+    /// adopted the exact source stage and cursor first. Setup failure releases
+    /// that lease without deleting the stage so a later launch can retry.
+    public func restoreRecoveredRun(
+        source: any LibraryMarkdownBackupSourceSession,
+        state recoveredState: LibraryMarkdownBackupRecoveryState
+    ) async throws -> URL {
+        guard !isExecuting,
+              preparedSource == nil,
+              activeRun == nil
+        else {
+            await source.abandon()
+            throw LibraryMarkdownBackupError.operationInProgress
+        }
+        guard LibraryMarkdownBackupRecoveryValidation.isValid(
+            recoveredState,
+            for: source,
+            phase: .active)
+        else {
+            await source.abandon()
+            throw LibraryMarkdownBackupError.libraryUnavailable
+        }
+
+        var destinationLease: (any LibraryMarkdownBackupDestinationLease)?
+        do {
+            let lease = try await acquireDestination(
+                recoveredState.destinationBookmark)
+            destinationLease = lease
+            var state = recoveredState
+            if lease.bookmark != state.destinationBookmark {
+                try await applyRecovery(
+                    .updateDestinationBookmark(lease.bookmark),
+                    operationID: state.operationID)
+                state.destinationBookmark = lease.bookmark
+            }
+            let existing = try await existingFileNames(
+                in: lease.directory)
+                .union(state.completedPublications.map(\.fileName))
+            activeRun = ActiveLibraryMarkdownBackupRun(
+                directory: lease.directory,
+                destinationBookmark: lease.bookmark,
+                source: source,
+                allocator: BackupFileNameAllocator(existing: existing),
+                recoveryState: state,
+                exportedFileNames: state.completedPublications.map(\.fileName),
+                failures: state.failures.map(\.failure))
+            destinationLease?.close()
+            return lease.directory
+        } catch {
+            destinationLease?.close()
+            await source.abandon()
+            if let error = error as? LibraryMarkdownBackupError {
+                throw error
+            }
+            if error is BackupRecoveryPersistenceError {
+                throw LibraryMarkdownBackupError.libraryUnavailable
+            }
+            throw LibraryMarkdownBackupError.destinationUnavailable
+        }
+    }
+
+    /// True while retrying this actor can continue an already-owned immutable
+    /// source. Launch recovery uses this only to distinguish a retryable error
+    /// from terminal cleanup that already removed the journal and stage.
+    public func hasPendingRun() -> Bool {
+        preparedSource != nil || activeRun != nil
     }
 }
 
@@ -634,9 +607,12 @@ private extension ExportLibraryMarkdownBackup {
     }
 
     func fileNameAllocator(in directory: URL) async throws -> BackupFileNameAllocator {
+        BackupFileNameAllocator(existing: try await existingFileNames(in: directory))
+    }
+
+    func existingFileNames(in directory: URL) async throws -> Set<String> {
         do {
-            return BackupFileNameAllocator(
-                existing: try await files.existingMarkdownFileNames(in: directory))
+            return try await files.existingMarkdownFileNames(in: directory)
         } catch {
             throw LibraryMarkdownBackupError.destinationUnavailable
         }

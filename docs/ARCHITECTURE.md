@@ -590,14 +590,18 @@ one document, and after atomic publication. Suspension retains the stage cursor,
 filename allocator, completed results, and at most one pending
 aggregate/document. Capture completion resumes the same request without
 rereading the live database or republishing completed files. The stage is
-owner-only, excluded from backup, and removed after completion or ordinary
-failure. Each current-format workspace holds a kernel-owned exclusive lease;
+owner-only and excluded from backup. A newly prepared stage is removed after
+completion or ordinary process-local failure; an adopted stage can instead
+release its lease without deletion when recovery setup fails so a later launch
+can retry it. Each current-format workspace holds a kernel-owned exclusive lease;
 creation and cleanup share one root coordination lock, closing the race between
-directory creation and owner acquisition. Process launch scans at utility
-priority and removes only a workspace whose valid owner lease can be acquired,
-which proves that a crash released it. A live second Portavoz instance and an
-unknown legacy or malformed workspace are preserved fail-closed. Disposable
-test composition never scans the host staging root.
+directory creation and owner acquisition. Before process-launch cleanup,
+ApplicationKit catalogs every canonical recovery-operation UUID. StorageKit
+then preserves those matching workspaces and removes only an unprotected
+workspace whose valid owner lease can be acquired, which proves that a crash
+released it. A live second Portavoz instance and an unknown legacy or malformed
+workspace are preserved fail-closed. Disposable test composition never scans
+the host staging root.
 
 After staging admission, ApplicationKit asks a destination-access port to
 prepare opaque bookmark identity and acquire one bounded lease. Each execution
@@ -630,7 +634,10 @@ document, so it cannot republish that document in the same process. Bookmark
 refresh, failed-publication reservation clearing, and immutable completion each
 update durable state before their in-memory transition advances.
 
-Recovery directories are owner-only and excluded from backup. Metadata and
+Recovery directories are owner-only and excluded from backup. Launch cataloging
+trusts only a canonical lowercase UUID child name, not its shape or content: a
+canonical symlink or malformed operation therefore still protects the matching
+immutable stage until strict loading rejects the journal. Metadata and
 pending files are atomically replaced, completed records are immutable, and
 each JSON record is bounded to 1 MiB. Symlinks, malformed/oversized records,
 noncontiguous sequences, unknown versions, and filename/operation-ID mismatches
@@ -681,15 +688,36 @@ evidence persisted but checkpointing did not, the next reconciliation repairs
 only the furthest durable outcome cursor; it neither reacquires the destination
 nor rehashes, rerenders, or republishes a file.
 
-Completion and source-read failure enter an explicit process-local terminal
+Completion and source-read failure enter an explicit terminal
 state. Terminal retry marks completion when needed, removes the recovery
 journal, and only then closes the staged source. It does not reacquire the
 destination because no publication capability is needed after terminal work.
 
-Launch does not yet invoke pending-publication reconciliation or stage adoption
-before abandoned-work cleanup. Full relaunch continuation is therefore still
-unclaimed. None of these paths
-adds a timer, heartbeat, PID heuristic, or polling task.
+`ApplicationKit.RecoverLibraryMarkdownBackup` owns launch continuation. It
+catalogs recovery operation IDs before cleanup, preserves every matching stage,
+and refuses to choose when more than one operation exists. For one operation it
+checks the shared maintenance gate before destination access, reconciles any
+pending publication or lagging checkpoint, and adopts only the exact stage UUID
+at the exact durable cursor. Active recovered state must have contiguous,
+cursor-bound publication and failure evidence, unique destination filenames and
+source positions, no pending reservation, a checkpoint equal to the furthest
+durable outcome, and no more outcomes than the immutable stage's meeting count.
+Completed state additionally requires the outcome count to equal that total.
+
+After validation, the exporter rebuilds the collision allocator from the union
+of current destination names and durable completed filenames, reconstructs the
+typed exported-name and failure result, and continues strictly after the adopted
+cursor. A completed journal reconstructs the final result without reacquiring
+the destination, removes the journal, and then deletes the stage. Missing,
+malformed, conflicting, cursor-less, multiply cataloged, or unavailable evidence
+remains untouched and blocks a second backup rather than guessing. Capture can
+suspend launch recovery before reconciliation or adoption; the existing
+capture-stop signal retries it. A destination setup failure abandons only the
+adopted lease and preserves both journal and immutable source for the next
+attempt. If a recovered source terminates fatally after its journal and stage
+are removed, the coordinator clears launch ownership; a later maintenance wake
+cannot reinterpret the destination URL as permission to start a fresh backup.
+None of these paths adds a timer, heartbeat, PID heuristic, or polling task.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,
