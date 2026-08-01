@@ -83,6 +83,7 @@ bash -n scripts/run-resource-baseline.sh
 bash -n scripts/run-resource-recording-baseline.sh
 python3 -m unittest Tests.Tooling.test_resource_baseline
 python3 -m unittest Tests.Tooling.test_ask_quality
+python3 -m unittest Tests.Tooling.test_ask_quality_pair
 python3 scripts/ask_quality.py verify-public \
   --fixture Fixtures/AskQuality/public-synthetic-v1.json
 python3 scripts/ask_quality.py verify-public \

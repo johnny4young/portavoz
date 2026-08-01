@@ -17,14 +17,15 @@ enum BenchAskQualityCommand {
                 fixture: fixture,
                 build: options.build,
                 commit: options.commit,
-                retrievalUnit: options.retrievalUnit)
+                retrievalUnit: options.retrievalUnit,
+                allowAssetDownload: options.allowAssetDownload)
             try AskQualityPrivateJSONWriter.write(
                 observations,
                 to: options.output)
             print("Ask quality observations: \(options.output.path)")
         } catch {
             FileHandle.standardError.write(
-                Data("bench-ask-quality error: \(error)\n".utf8))
+                Data("bench-ask-quality error: \(error.localizedDescription)\n".utf8))
             Foundation.exit(64)
         }
     }
@@ -36,6 +37,7 @@ struct AskQualityBenchmarkOptions: Equatable {
     let build: String
     let commit: String
     let retrievalUnit: AskQualityRetrievalUnit
+    let allowAssetDownload: Bool
 
     init(arguments: [String]) throws {
         let values = try Self.parse(arguments)
@@ -53,11 +55,17 @@ struct AskQualityBenchmarkOptions: Equatable {
         }
         let retrievalUnit = try AskQualityRetrievalUnit(
             argument: values["--retrieval-unit"] ?? AskQualityRetrievalUnit.segment.rawValue)
+        let assetDownloadPolicy = values["--asset-download"] ?? "never"
+        guard ["never", "if-needed"].contains(assetDownloadPolicy) else {
+            throw AskQualityBenchmarkError.invalidAssetDownloadPolicy(
+                assetDownloadPolicy)
+        }
         self.fixture = URL(fileURLWithPath: fixture).standardizedFileURL
         self.output = URL(fileURLWithPath: output).standardizedFileURL
         self.build = build
         self.commit = commit
         self.retrievalUnit = retrievalUnit
+        self.allowAssetDownload = assetDownloadPolicy == "if-needed"
         guard self.fixture != self.output else {
             throw AskQualityBenchmarkError.outputMatchesFixture
         }
@@ -65,7 +73,8 @@ struct AskQualityBenchmarkOptions: Equatable {
 
     private static func parse(_ arguments: [String]) throws -> [String: String] {
         let allowed = Set([
-            "--fixture", "--output", "--build", "--commit", "--retrieval-unit"
+            "--fixture", "--output", "--build", "--commit", "--retrieval-unit",
+            "--asset-download"
         ])
         var values: [String: String] = [:]
         var index = 0
@@ -85,18 +94,48 @@ struct AskQualityBenchmarkOptions: Equatable {
     }
 }
 
-enum AskQualityBenchmarkError: Error, Equatable {
+enum AskQualityBenchmarkError: Error, Equatable, LocalizedError {
     case unknownOption(String)
     case missingOptionValue(String)
     case missingOption(String)
     case invalidBuild
     case invalidCommit
     case invalidRetrievalUnit(String)
+    case invalidAssetDownloadPolicy(String)
     case outputMatchesFixture
     case invalidFixture(String)
     case invalidTimestamp
     case outputAlreadyExists
     case outputPublicationFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .unknownOption(let option):
+            "unknown option: \(option)"
+        case .missingOptionValue(let option):
+            "missing value for option: \(option)"
+        case .missingOption(let option):
+            "missing required option: \(option)"
+        case .invalidBuild:
+            "build must be a bounded receipt-safe identifier"
+        case .invalidCommit:
+            "commit must be one full lowercase SHA"
+        case .invalidRetrievalUnit(let unit):
+            "invalid retrieval unit: \(unit)"
+        case .invalidAssetDownloadPolicy(let policy):
+            "invalid asset download policy: \(policy)"
+        case .outputMatchesFixture:
+            "output must not replace the fixture"
+        case .invalidFixture(let reason):
+            "invalid fixture: \(reason)"
+        case .invalidTimestamp:
+            "fixture timestamp cannot be represented"
+        case .outputAlreadyExists:
+            "output already exists"
+        case .outputPublicationFailed:
+            "output publication failed"
+        }
+    }
 }
 
 private enum AskQualityIdentity {
@@ -301,7 +340,8 @@ enum AskQualityProductionBenchmark {
         fixture: AskQualityFixture,
         build: String,
         commit: String,
-        retrievalUnit: AskQualityRetrievalUnit = .segment
+        retrievalUnit: AskQualityRetrievalUnit = .segment,
+        allowAssetDownload: Bool = false
     ) async throws -> AskQualityObservationDocument {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(
@@ -321,7 +361,8 @@ enum AskQualityProductionBenchmark {
         let runtime = CLISemanticEmbeddingRuntime()
         _ = try await prepareCorpus(
             store: store,
-            runtime: runtime)
+            runtime: runtime,
+            allowAssetDownload: allowAssetDownload)
         let retrieval = LocalAskMeetingRetrieval(
             store: store,
             queryExpander: AskQualityNoExpansion(),
@@ -337,10 +378,11 @@ enum AskQualityProductionBenchmark {
 
     static func prepareCorpus(
         store: MeetingStore,
-        runtime: any SemanticEmbeddingRuntimeClient
+        runtime: any SemanticEmbeddingRuntimeClient,
+        allowAssetDownload: Bool = false
     ) async throws -> SemanticCorpusIndexingResult {
         try await runtime.withPreparedEmbedding(
-            allowAssetDownload: true
+            allowAssetDownload: allowAssetDownload
         ) { embedder in
             try await IndexSemanticCorpus(store: store).all(
                 using: embedder,

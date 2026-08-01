@@ -1375,6 +1375,19 @@ Candidate parity is quality evidence only; it cannot select product storage,
 indexing, or retrieval and does not replace the still-required resource and
 correction-cost matrix.
 
+The paired quality runner is the only accepted orchestration path for that
+comparison. It requires a clean worktree, derives one full commit identity,
+verifies the canonical public fixture, builds the Release CLI once, and runs
+the segment control and speaker-turn candidate with OS embedding downloads
+disabled. Both blocked source scorecards remain valid because answer evidence
+is deliberately unevaluated; the final comparator exit status alone reports
+retrieval parity. Artifacts are assembled in an owner-only staging directory
+and published as one non-overwriting directory only after every observation,
+scorecard, and comparison receipt is complete. Host/model unavailability
+removes the staging state and produces no comparable evidence. Direct CLI
+experiments may explicitly opt into an OS asset request, but such preparation
+is not admitted inside a paired evidence run.
+
 Indexing prepares
 the already-installed embedding runtime before sampling, drains 1,024 fixed
 public segments through the real ApplicationKit operation, and requires no

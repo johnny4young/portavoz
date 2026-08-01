@@ -12,7 +12,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
-.PHONY: build test test-ask-quality test-recording-stress test-ui test-ui-en test-ui-es \
+.PHONY: build test test-ask-quality ask-quality-pair test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
 	release-reliability long-capture-baseline
@@ -25,10 +25,23 @@ test:
 ## 240-query multilingual fixture without loading models or user data.
 test-ask-quality:
 	python3 -m unittest Tests.Tooling.test_ask_quality
+	python3 -m unittest Tests.Tooling.test_ask_quality_pair
 	python3 scripts/ask_quality.py verify-public \
 		--fixture Fixtures/AskQuality/public-synthetic-v1.json
 	python3 scripts/ask_quality.py verify-public \
 		--fixture Fixtures/AskQuality/public-synthetic-v2.json
+
+## Build one Release CLI and compare segment control with speaker-turn retrieval
+## from the same clean commit. Output is private, non-overwriting local evidence.
+ask-quality-pair:
+	@test -n "$(PORTAVOZ_ASK_QUALITY_BUILD)" || \
+		(echo "PORTAVOZ_ASK_QUALITY_BUILD is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASK_QUALITY_OUTPUT)" || \
+		(echo "PORTAVOZ_ASK_QUALITY_OUTPUT is required" >&2; exit 64)
+	python3 scripts/ask_quality_pair.py \
+		--fixture Fixtures/AskQuality/public-synthetic-v2.json \
+		--build "$(PORTAVOZ_ASK_QUALITY_BUILD)" \
+		--output "$(PORTAVOZ_ASK_QUALITY_OUTPUT)"
 
 ## Release performance ledger (PERF-001/PERF-008): run the unattended
 ## benchmark harnesses, evaluate every journey against its declared budget and

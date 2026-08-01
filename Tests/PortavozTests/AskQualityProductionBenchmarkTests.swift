@@ -16,6 +16,15 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
         XCTAssertEqual(options.build, "0.8.0+42")
         XCTAssertEqual(options.commit, String(repeating: "a", count: 40))
         XCTAssertEqual(options.retrievalUnit, .segment)
+        XCTAssertFalse(options.allowAssetDownload)
+        let downloadOptions = try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "0.8.0+42",
+            "--commit", String(repeating: "a", count: 40),
+            "--asset-download", "if-needed"
+        ])
+        XCTAssertTrue(downloadOptions.allowAssetDownload)
         XCTAssertThrowsError(try AskQualityBenchmarkOptions(arguments: [
             "--fixture", "/tmp/fixture.json",
             "--output", "/tmp/observations.json",
@@ -23,6 +32,17 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
             "--commit", "ABC"
         ])) { error in
             XCTAssertEqual(error as? AskQualityBenchmarkError, .invalidCommit)
+        }
+        XCTAssertThrowsError(try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "test",
+            "--commit", String(repeating: "a", count: 40),
+            "--asset-download", "always"
+        ])) { error in
+            XCTAssertEqual(
+                error as? AskQualityBenchmarkError,
+                .invalidAssetDownloadPolicy("always"))
         }
         XCTAssertThrowsError(try AskQualityBenchmarkOptions(arguments: [
             "--fixture", "/tmp/fixture.json",
@@ -53,6 +73,18 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
                 error as? AskQualityBenchmarkError,
                 .invalidFixture("invalid query"))
         }
+    }
+
+    func testCorpusPreparationDoesNotDownloadAssetsByDefault() async throws {
+        let store = try MeetingStore.inMemory()
+        let runtime = RecordingAssetPolicyRuntime()
+
+        _ = try await AskQualityProductionBenchmark.prepareCorpus(
+            store: store,
+            runtime: runtime)
+
+        let requests = await runtime.requests
+        XCTAssertEqual(requests, [false])
     }
 
     func testRealLocalRetrievalEmitsCanonicalRevisionWithoutPretendingToJudgeAnswers() async throws {
@@ -320,6 +352,25 @@ private struct FixedRuntime: SemanticEmbeddingRuntimeClient {
         ) async throws -> Result
     ) async throws -> Result {
         try await operation(FixedEmbedding())
+    }
+}
+
+private actor RecordingAssetPolicyRuntime: SemanticEmbeddingRuntimeClient {
+    private(set) var requests: [Bool] = []
+    var hasAvailableAssets: Bool { get async { true } }
+
+    func prepare(allowAssetDownload: Bool) async throws {
+        requests.append(allowAssetDownload)
+    }
+
+    func withPreparedEmbedding<Result: Sendable>(
+        allowAssetDownload: Bool,
+        operation: @Sendable (
+            _ embedder: any SemanticTextEmbedding
+        ) async throws -> Result
+    ) async throws -> Result {
+        requests.append(allowAssetDownload)
+        return try await operation(FixedEmbedding())
     }
 }
 

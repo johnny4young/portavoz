@@ -353,6 +353,23 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(quality.contains("public-synthetic-v2"))
     }
 
+    func testAskQualityPairRemainsCleanSourcePrivateAndFailClosed() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        XCTAssertTrue(decisions.contains("## D205"))
+        XCTAssertTrue(quality.contains("make ask-quality-pair"))
+
+        let pairedRunner = try Self.contents(of: "scripts/ask_quality_pair.py")
+        for required in [
+            "git\", \"status", "swift\", \"build", "--asset-download",
+            "candidate-parity", "os.rename", "0o600", "0o700"
+        ] {
+            XCTAssertTrue(
+                pairedRunner.contains(required),
+                "Ask paired runner is missing \(required)")
+        }
+    }
+
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {
         let policy = try Self.contents(
             of: "Sources/PortavozCore/ResourceGovernorPolicy.swift")

@@ -1335,7 +1335,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 ## Measurement harnesses
 
 - `make test-ask-quality`: verifies both canonical public-synthetic Ask fixture
-  generations and runs 32 deterministic evaluator/comparator cases without
+  generations and runs 38 deterministic evaluator/comparator/runner cases without
   loading models or user data. Each fixture has exactly 240 judged queries: 60
   Spanish-to-Spanish, 60
   English-to-English, 40 English-to-Spanish, 40 Spanish-to-English, 20
@@ -1351,11 +1351,12 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   `public-synthetic-v2` interleaves relationships
   into sixty four-segment meetings with two exact two-segment same-actor turns
   per meeting, multilingual turns, and hard negatives from another meeting.
-- `portavoz-cli bench-ask-quality` accepts fixture, output, build, commit, and
-  an optional `segment|speaker-turn` retrieval-unit argument. It seeds and
+- `portavoz-cli bench-ask-quality` accepts fixture, output, build, commit, an
+  optional `segment|speaker-turn` retrieval-unit argument, and an explicit
+  `never|if-needed` asset-download policy that defaults to `never`. It seeds and
   explicitly indexes a disposable database outside query observation and runs
   the real corpus-read-only `LocalAskMeetingRetrieval` path without opening the
-  user library. Six Swift tests cover product retrieval provenance,
+  user library. Seven Swift tests cover product retrieval provenance,
   multilingual same-actor turn projection, exact source membership, and
   owner-only atomic non-overwriting publication. Observation schema 2 records
   one ranked unit ID and every ordered source segment ID. The evaluator still
@@ -1365,6 +1366,18 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   adapters intentionally emit `notEvaluated` answer fields, so retrieval can
   be scored while answer-quality and answer-policy gates remain blocked until
   a separate versioned judge exists.
+- `make ask-quality-pair`: requires a receipt-safe build identity, explicit
+  private output, and a clean worktree. It verifies `public-synthetic-v2`,
+  derives the full HEAD identity, builds the Release CLI once, and runs both
+  retrieval units with asset download fixed to `never`. Evaluation exit 1 is
+  admitted only when its owner-only scorecard exists, because answer evidence
+  is intentionally absent; malformed evaluation remains a contract error. A
+  `candidate-parity` comparison exits 0, a valid blocked comparison exits 1,
+  and setup/contract failure exits 64. The five artifacts are mode 0600 inside
+  one mode-0700, non-overwriting directory. A hidden sibling stage and
+  exclusive lock prevent partial publication; failure removes both. Output
+  inside the repository must already be ignored. The runner never opens the
+  user library and never turns host/model unavailability into a quality score.
 - `scripts/ask_quality.py compare` accepts one canonical fixture plus segment
   control and speaker-turn candidate scorecards. It validates their complete
   scorecard shape, canonical quality floors, adapter roles, fixture checksum,

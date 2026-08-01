@@ -6779,3 +6779,41 @@ the judged distribution, while one paired receipt must prove both candidates
 were measured from the same source and build. Immutable generations preserve
 historical reproducibility; strict per-slice comparison prevents an aggregate
 gain from hiding a Spanish, English, mixed, or cross-lingual regression.
+
+## D205 — Publish retrieval comparisons only through a clean-source pair (Aug 2026)
+
+**Context:** D204 defines the comparison receipt, but manually invoking two
+CLI observations and three evaluator commands can mix commits, builds, fixture
+generations, or partial artifacts. The observation adapter also requested
+Apple's OS-managed embedding assets implicitly. That acquisition can take
+minutes, fail for host-service reasons, and contaminate the boundary between
+environment readiness and candidate retrieval quality.
+
+**Decision:** `make ask-quality-pair` is the accepted orchestration path for a
+segment versus speaker-turn comparison. It requires a clean worktree, derives
+the full HEAD SHA itself, validates the canonical v2 fixture, builds one Release
+CLI, and fixes both observations to the same receipt-safe build identity. The
+runner always passes `--asset-download never`. Direct development CLI runs may
+opt into `if-needed`, but the CLI default is also `never`; acquisition is a
+separate preparation concern and is never part of accepted quality evidence.
+
+The runner admits evaluator exit 1 only when a complete owner-only scorecard
+was published, because the current answer fields are deliberately
+`notEvaluated`. It then requires the comparator exit status to agree with its
+`candidate-parity|blocked` receipt and exact build/commit identity. All two
+observations, two scorecards, and the comparison are mode 0600 in one mode-0700
+staging directory. An exclusive sibling lock, non-overwriting destination, and
+final directory rename prevent a partial run from becoming comparable
+evidence. Setup, model, host-service, malformed receipt, or identity failure
+removes staging and exits as a contract error. Repository-local output must be
+ignored.
+
+This decision does not declare speaker-turn parity, choose production chunk
+storage, or weaken the resource, correction-cost, answer-quality, hardware, or
+field gates. Model unavailability is recorded as a blocked environment, never
+as a retrieval regression or fabricated score.
+
+**Rationale:** comparison evidence is useful only when both candidates have one
+immutable source identity and complete publication boundary. Separating asset
+preparation from measurement makes failures fast and attributable, while one
+private atomic run prevents accidental cross-build conclusions.

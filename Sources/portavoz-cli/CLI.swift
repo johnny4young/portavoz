@@ -96,6 +96,7 @@ struct PortavozCLI {
               portavoz-cli bench-ask-quality --fixture <json> --output <json>
                                               --build <id> --commit <sha>
                                               [--retrieval-unit segment|speaker-turn]
+                                              [--asset-download never|if-needed]
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]
