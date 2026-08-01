@@ -7486,3 +7486,38 @@ makes the composition root mechanically enforceable, and creates a stable
 Strangler seam without a feature-parity rewrite. Pure presentation formatting
 is deterministic and directly testable, while explicit action projection keeps
 future child views from gaining broad capabilities by convenience.
+
+## D224 — Compose Meeting Detail from explicit review sections (Aug 2026)
+
+**Context:** D223 established one route owner, but `MeetingDetailView` still
+implemented meeting identity and participants, durable processing/privacy
+trust, and the complete generated document in the same large presentation
+type. That concentration mixed unrelated local UI state, made narrow UI-test
+selection impossible, and allowed a canonical Markdown action-item appendix to
+appear beside the equivalent typed To-dos controls.
+
+**Decision:** extract `MeetingDetailHeaderSection`,
+`MeetingDetailTrustSection`, and `MeetingGeneratedDocumentSection`. Each child
+receives immutable values and explicit actions and is forbidden from reaching
+`AppServices`, `MeetingDetailModel`, storage, or global preferences. Header
+suggestions remain inert until accepted and expose independent dismissal
+actions. The trust section owns only retry progress. The generated-document
+section owns only tab selection and keeps current/stale/unavailable evidence
+actions adjacent to overview, decision, open-question, and action-item claims;
+Apuntador reuses the same content-free evidence control.
+
+Add a Foundation-only `MeetingGeneratedDocumentPresentation` projection. It
+preserves each Markdown section's original ordinal so persisted evidence keeps
+resolving after visual filtering. It suppresses canonical `Action Items` or
+`Pendientes` sections only when typed commitments exist; otherwise legacy or
+partial summaries retain their Markdown content. Expand the reviewed
+interaction boundary to 265 signals across fifteen source files while keeping
+the same 23 UI journeys and ten owners, and map each extracted section only to
+its owned feature tests.
+
+**Rationale:** focused sections make presentation ownership and mutation
+capability auditable without changing the route or application workflow.
+Keeping ephemeral state beside its control reduces unrelated invalidation.
+The pure projection prevents duplicate task presentation without weakening
+legacy data or proof coordinates, and the shared evidence surface keeps trust
+behavior consistent wherever generated claims appear.

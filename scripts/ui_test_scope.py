@@ -246,6 +246,12 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-performance"}
     if "transcriptsegments" in lowered:
         return {"meeting-audio", "meeting-evidence", "meeting-performance"}
+    if "meetingdetailheadersection" in lowered:
+        return {"meeting-export", "meeting-naming", "meeting-processing"}
+    if "meetinggenerateddocumentsection" in lowered:
+        return {"meeting-evidence", "meeting-summary"}
+    if "meetingdetailtrustsection" in lowered:
+        return {"meeting-health", "meeting-processing"}
     if "focusedtranscript" in lowered:
         return {"meeting-audio", "recording-recovery"}
     if any(token in lowered for token in ("meetingplayer", "audioworkflow", "meetingaudio")):
@@ -272,6 +278,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "meetinggenerateddocumentpresentation" in lowered:
+        return {"meeting-evidence", "meeting-summary"}
     if "queryexpander" in lowered:
         # Deterministic query variants feed only Library search, full Ask,
         # and the meeting-brief evidence lookup. Keep a lexicon-only change

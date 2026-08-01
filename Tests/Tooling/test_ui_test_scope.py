@@ -150,6 +150,32 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
+    def test_meeting_detail_sections_select_only_owned_journeys(self):
+        expected_features = {
+            "Sources/portavoz-app/MeetingDetailHeaderSection.swift": {
+                "meeting-export", "meeting-naming", "meeting-processing"
+            },
+            "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift": {
+                "meeting-evidence", "meeting-summary"
+            },
+            "Sources/portavoz-app/MeetingDetailTrustSection.swift": {
+                "meeting-health", "meeting-processing"
+            },
+            "Sources/ApplicationKit/MeetingGeneratedDocumentPresentation.swift": {
+                "meeting-evidence", "meeting-summary"
+            },
+        }
+        for path, features in expected_features.items():
+            selection = select_paths([path])
+            selected = {
+                test
+                for feature in features
+                for test in FEATURE_TESTS[feature]
+            }
+            expected = tuple(test for test in ALL_TESTS if test in selected)
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
         selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
         self.assertEqual(

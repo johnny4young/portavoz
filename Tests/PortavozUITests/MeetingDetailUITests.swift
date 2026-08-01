@@ -127,6 +127,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(
+            app.control(withIdentifier: "detail-header-section")
+                .waitForExistence(timeout: 10),
+            "meeting identity and participants must stay inside the header section")
+        XCTAssertTrue(
             app.control(withIdentifier: "detail-suggest-names")
                 .waitForExistence(timeout: 10),
             "an unnamed remote speaker must retain the explicit suggestion action")
@@ -176,6 +180,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = launchOnSeededMeeting(processingFailure: true)
         defer { app.terminate() }
 
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-trust-section")
+                .waitForExistence(timeout: 10),
+            "durable recovery and privacy state must stay inside the trust section")
         XCTAssertTrue(
             app.control(withIdentifier: "detail-processing-status")
                 .waitForExistence(timeout: 10),
@@ -244,6 +252,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
 
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-generated-document")
+                .waitForExistence(timeout: 10),
+            "generated claims and commitments must stay inside one document section")
         // The transcript rendered (this line is unique to the transcript).
         XCTAssertTrue(
             app.staticTexts["Revisemos el presupuesto de transcripción."]
@@ -255,6 +267,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.staticTexts["El equipo revisó el presupuesto y fijó el rollout."]
                 .waitForExistence(timeout: 10),
             "the summary's Summary tab must show the overview")
+        XCTAssertFalse(
+            app.control(withIdentifier: "summary-tab-2").exists,
+            "the canonical commitment appendix must not duplicate the typed To-dos tab")
 
         // The ▸ coauthoring marker lives under the Decisiones section, now
         // behind its own tab — switching to it reveals the bullet.
@@ -278,6 +293,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             for: NSPredicate(format: "label CONTAINS '1/1'"),
             evaluatedWith: todosTab)
         wait(for: [completed], timeout: 5)
+        attachScreenshot(of: app, named: "meeting-detail-generated-document")
     }
 
     @MainActor

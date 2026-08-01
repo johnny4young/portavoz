@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## August 1, 2026
+
+- **✅ One trustworthy task list** — A generated `Action Items` or `Pendientes` appendix no longer appears beside the same typed To-dos; older summaries without typed tasks still keep every original line.
+
 ## July 31, 2026
 
 - **⚡ Ask shows evidence before the answer** — Exact bilingual citations appear immediately while local semantic matching and answer generation continue, with clear progress and cancellation.

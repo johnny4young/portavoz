@@ -4421,6 +4421,65 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("Table(\"companionCardEvidenceSegment\")"))
     }
 
+    func testMeetingDetailSectionsReceiveOnlyExplicitValuesAndActions() throws {
+        let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let header = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailHeaderSection.swift")
+        let generatedDocument = try Self.contents(
+            of: "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift")
+        let trust = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailTrustSection.swift")
+        let documentPresentation = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingGeneratedDocumentPresentation.swift")
+
+        XCTAssertTrue(view.contains("MeetingDetailHeaderSection("))
+        XCTAssertTrue(view.contains("MeetingGeneratedDocumentSection("))
+        XCTAssertTrue(view.contains("MeetingDetailTrustSection("))
+        XCTAssertFalse(view.contains("private func header("))
+        XCTAssertFalse(view.contains("private func speakersRow("))
+        XCTAssertFalse(view.contains("private func summarySection("))
+        XCTAssertLessThanOrEqual(
+            view.components(separatedBy: .newlines).count,
+            1_750,
+            "Meeting Detail must not absorb extracted section presentation again")
+
+        for (name, source) in [
+            ("header", header),
+            ("generated document", generatedDocument),
+            ("trust", trust)
+        ] {
+            XCTAssertTrue(source.contains("Values"), name)
+            XCTAssertTrue(source.contains("Actions"), name)
+            XCTAssertTrue(
+                source.contains(".accessibilityElement(children: .contain)"),
+                "\(name) must preserve nested interaction identifiers")
+            for forbidden in [
+                "AppServices", "MeetingDetailModel", "MeetingStore",
+                "UserDefaults.standard", "@Environment", "services.", "model."
+            ] {
+                XCTAssertFalse(source.contains(forbidden), "\(name): \(forbidden)")
+            }
+        }
+        XCTAssertFalse(header.contains("@State"))
+        XCTAssertTrue(generatedDocument.contains("@State private var tabSelection"))
+        XCTAssertFalse(generatedDocument.contains("SummarySections.parse"))
+        XCTAssertFalse(generatedDocument.contains("CustomRecipeStore"))
+        XCTAssertTrue(generatedDocument.contains("MeetingEvidenceSources("))
+        XCTAssertTrue(trust.contains("@State private var retryingProcessing"))
+
+        XCTAssertEqual(
+            documentPresentation.components(separatedBy: .newlines)
+                .filter { $0.hasPrefix("import ") },
+            ["import Foundation"])
+        XCTAssertTrue(documentPresentation.contains("sourceOrdinal"))
+        XCTAssertTrue(documentPresentation.contains("hasTypedCommitments"))
+        for forbidden in [
+            "SwiftUI", "L10n", "AppServices", "MeetingStore", "@State", "@Environment",
+        ] {
+            XCTAssertFalse(documentPresentation.contains(forbidden), forbidden)
+        }
+    }
+
     func testCanonicalPeopleRequireConfirmationAndStayOutOfAutomaticEvidencePaths() throws {
         let core = try Self.contents(of: "Sources/PortavozCore/PersonIdentity.swift")
         let application = try Self.contents(of: "Sources/ApplicationKit/CanonicalPeople.swift")
@@ -4458,7 +4517,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let provider = try Self.contents(
             of: "Sources/IntelligenceKit/OpenAICompatibleSummaryProvider.swift")
         let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
-        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let generatedDocument = try Self.contents(
+            of: "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift")
 
         XCTAssertTrue(core.contains("enum SummaryClaimKind"))
         XCTAssertTrue(core.contains("currentTranscriptRevision"))
@@ -4474,8 +4534,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(provider.contains("overviewEvidence"))
         XCTAssertTrue(bundle.contains("segmentMap"))
         XCTAssertTrue(bundle.contains("sourceTranscriptRevision: nil"))
-        XCTAssertTrue(detail.contains("summary-evidence-stale"))
-        XCTAssertTrue(detail.contains("focusEvidence(segment)"))
+        XCTAssertTrue(generatedDocument.contains("summary-evidence-stale"))
+        XCTAssertTrue(generatedDocument.contains("focus: actions.focusEvidence"))
     }
 
     func testClaimFeedbackStaysSeparatePrivateAndExplicitlyPortable() throws {
@@ -4521,7 +4581,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let translation = try Self.contents(
             of: "Sources/IntelligenceKit/FoundationModelSummaryProvider.swift")
         let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
-        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let generatedDocument = try Self.contents(
+            of: "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift")
         let diagnostics = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
 
@@ -4539,8 +4600,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(translation.contains("Exactly one entry per instructed section heading"))
         XCTAssertFalse(translation.contains("Do NOT add a section for action items"))
         XCTAssertTrue(bundle.contains("decisionEvidence: summary.decisionEvidence.compactMap"))
-        XCTAssertTrue(detail.contains("summary-decision-"))
-        XCTAssertTrue(detail.contains("focusEvidence(segment)"))
+        XCTAssertTrue(generatedDocument.contains("summary-decision-"))
+        XCTAssertTrue(generatedDocument.contains("focus: actions.focusEvidence"))
         XCTAssertFalse(diagnostics.contains("SummaryDecisionEvidence"))
     }
 
@@ -4555,7 +4616,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let provider = try Self.contents(
             of: "Sources/IntelligenceKit/OpenAICompatibleSummaryProvider.swift")
         let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
-        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let generatedDocument = try Self.contents(
+            of: "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift")
         let companion = try Self.contents(of: "Sources/IntelligenceKit/Companion.swift")
         let diagnostics = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
@@ -4570,7 +4632,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(structured.contains("translatedActionItemEvidence"))
         XCTAssertTrue(provider.contains("\"evidence\": [\"E3\"]"))
         XCTAssertTrue(bundle.contains("actionItemMap[evidence.actionItemID]"))
-        XCTAssertTrue(detail.contains("summary-action-item-"))
+        XCTAssertTrue(generatedDocument.contains("summary-action-item-"))
         XCTAssertFalse(companion.contains("SummaryActionItemEvidence"))
         XCTAssertFalse(diagnostics.contains("SummaryActionItemEvidence"))
     }
@@ -5339,7 +5401,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            252)
+            265)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             10)

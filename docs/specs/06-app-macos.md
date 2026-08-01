@@ -20,6 +20,10 @@ D200 adds independent durable semantic-maintenance scheduling, bounded retry,
 and lease-expiry relaunch recovery without changing meeting lifecycle.
 D201 lets full Ask publish exact citations while semantic refinement and local
 generation continue, with generation-fenced progress and cancellation.
+D222 freezes Meeting Detail interactions and measured behavior before
+decomposition. D223 makes `MeetingDetailScene` the sole route composition
+owner. D224 extracts explicit header, trust, and generated-document sections
+without giving child presentation types model, service, or store access.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -170,6 +174,23 @@ model or observe the process composition root. Locale and time-zone rendering
 uses a pure Foundation-only `MeetingDetailPresentation` value. This shell
 changes no released control or workflow and is the seam for later section
 extraction.
+
+D224 uses that seam for three focused SwiftUI sections. The header receives
+formatted identity/facts, participants, inert recommendation values, and
+explicit rename/accept/dismiss actions. The trust section receives durable
+processing and privacy values plus retry/recovery/navigation actions; retry
+progress is its only local state. The generated-document section receives one
+summary snapshot, typed action items and evidence, available recipes/engines,
+and explicit copy/regenerate/feedback/seek actions; tab selection is its only
+local state. It shares one content-free evidence control with Apuntador, so
+current/stale/unavailable proof remains adjacent to the claim and navigation
+still returns through the route owner. A Foundation-only projection retains
+original Markdown section ordinals and removes `Action Items`/`Pendientes`
+from visual tabs only when typed action items already represent that appendix.
+Legacy summaries without typed commitments retain their Markdown section.
+The three section roots use accessibility containment so their stable section
+identifiers do not overwrite the nested controls exposed to Voice Control,
+assistive technologies, or XCUITest.
 
 ### Resource workload measurement (D148)
 

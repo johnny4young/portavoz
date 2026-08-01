@@ -243,6 +243,22 @@ the model. Presentation formatting receives its locale and time zone explicitly
 and imports Foundation only. The composition root is not an allowed dependency
 of child presentation types; scoped action values are their mutation boundary.
 
+The child is itself a composition surface rather than the owner of every visual
+section. `MeetingDetailHeaderSection` renders identity, facts, participants,
+and optional suggestions. `MeetingDetailTrustSection` renders processing,
+recovery, and the privacy receipt. `MeetingGeneratedDocumentSection` renders
+the summary overview, decision/open-question sections, typed commitments, and
+claim-adjacent proof controls. Each receives only explicit values and actions;
+none can reach the route model, services, stores, or global preferences. The
+generated section owns only tab selection, while the trust section owns only
+retry progress. A pure Foundation projection preserves Markdown source
+ordinals for evidence and suppresses a canonical `Action Items`/`Pendientes`
+appendix only when equivalent typed commitments exist, so legacy content is
+never discarded and the current document never renders the same task twice.
+Each extracted section is an accessibility containment group: its stable
+section boundary coexists with, rather than replacing, nested control
+identifiers used for interaction and automation.
+
 Meeting Detail audio uses the same route owner. `MeetingDetailModel` owns
 one-shot preparation, cancellation retry, compression state, playback
 invalidation, and clip-export effects. ApplicationKit owns the operation order
@@ -972,7 +988,8 @@ or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
 Meeting Detail decomposition is also preceded by a frozen presentation
-boundary. A generated contract inventories 252 source interaction signals,
+boundary. A generated contract inventories 265 interaction signals across
+fifteen source files,
 assigns all 23 detail XCUITest journeys to exactly one of ten feature owners,
 and digest-binds the reviewed performance harness and evidence. Hidden
 payload-free scroll and seek signposts activate only when a disposable temp
@@ -985,11 +1002,12 @@ body invalidation counts remain unavailable rather than being reported as
 zero. This contract is a refactor-parity guard, not product telemetry or a
 performance budget.
 
-The reviewed interaction boundary includes the current scene shell. This
-adds route-owned state and navigation signals without changing any journey,
-owner, control, accessibility identifier, sheet, keyboard shortcut, or
-performance fixture. Scene and presentation changes conservatively select all
-Meeting Detail XCUITest journeys; section files keep their narrower mappings.
+The reviewed interaction boundary includes the scene shell and extracted
+header, trust, and generated-document sections. It preserves every journey,
+owner, control, sheet, keyboard shortcut, and performance fixture while adding
+stable section identifiers. Scene/presentation changes conservatively select
+all Meeting Detail journeys; each section and the pure generated-document
+projection select only the feature journeys they own.
 
 Core also owns one pure resource-admission policy, separate from both
 measurement and runtime scheduling. Its immutable snapshot contains the

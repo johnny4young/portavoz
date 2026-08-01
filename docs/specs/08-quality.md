@@ -84,7 +84,7 @@ documented below.
 | ProcessingOperationFingerprintTests / InitialTranscriptionOperationFingerprintTests | Length-framed SHA-256 identity; diarization segment-order stability and material/revision sensitivity; finalized audio/voiceprint/model evidence; summary provider/language/revision separation; Refine channel-order stability plus material/revision/language sensitivity and invalid-evidence rejection; and deterministic first-pass recovery identity across channel order, revision/audio changes, pending/missing/silent rejection, and canonical request policy |
 | LiveSpeakerLabelerTests | 7 cases: row split with two voices, last row untouched, idempotency, mic never relabeled, "Me" by voiceprint |
 | IntelligenceTests | PromptFactory, naming filters, **NamingExcerpt**, **LiveSummaryPolicy** |
-| ChapterExtractorTests / PlaybackRangesTests / SummarySectionsTests / VoiceHueTests / TranscriptNoiseFilterTests | chapter boundaries/labels, safe duration-bounded voice-range complements, language-agnostic summary sections, stable speaker hues, and conservative fragment filtering without losing sentences/acronyms |
+| ChapterExtractorTests / PlaybackRangesTests / SummarySectionsTests / VoiceHueTests / TranscriptNoiseFilterTests | chapter boundaries/labels, safe duration-bounded voice-range complements, language-agnostic summary sections, source-ordinal-preserving generated-document projection, typed-commitment deduplication with a legacy Markdown fallback, stable speaker hues, and conservative fragment filtering without losing sentences/acronyms |
 | InsightsScopeTests / LibraryStatsTests / InsightsFindingsTests | current/previous calendar windows, duration averages, zero-filled weekly cadence and heatmaps, streaks, no-decision evidence thresholds, recurring-topic ranking, stoplists, and participant exclusion |
 | InsightsReadModelTests | complete scoped projection, current/previous totals, decision evidence from summaries/actions, recurring-topic extraction, and confirmed-participant exclusion |
 | InsightsModelTests | complete/empty/degraded/failed phases, one read snapshot, section-local replacement, scope restart, and no-global-version behavior through a database-free client fake |
@@ -1446,7 +1446,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   not substitute for the real-time physical-footprint or route matrix.
 - `make test-meeting-detail-baseline`: verifies the canonical source-derived
   interaction/feature-owner contract and the fail-closed Instruments parser.
-  The contract currently covers 248 interaction signals, ten owners, and all
+  The contract currently covers 265 interaction signals, ten owners, and all
   23 Meeting Detail UI journeys; both missing and duplicate ownership fail.
 - `make meeting-detail-baseline`: Portavoz Dev-only, disposable 5k playback-
   seek and 20k transcript-scroll profiles. Each interaction must produce

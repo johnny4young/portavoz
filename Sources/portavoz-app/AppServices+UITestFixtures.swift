@@ -123,6 +123,9 @@ extension AppServices {
                     ## Decisiones
                     - ▸ El rollout del modelo queda para el viernes.
                     - Se revisará el presupuesto de transcripción.
+
+                    ## Pendientes
+                    - [ ] Prepare the rollout — S1
                     """,
                 actionItems: [ActionItem(
                     id: UUID(uuidString: "B5E00000-0000-4000-8000-000000000001")!,

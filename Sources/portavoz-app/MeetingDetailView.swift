@@ -71,14 +71,10 @@ struct MeetingDetailView: View {
     /// atomic mutation and optional Companion refresh cross ApplicationKit.
     @State private var applying: String?
     @State private var actionError: String?
-    @State private var retryingProcessing = false
     @State private var editingTitle = false
     @State private var newTitle = ""
     /// Presents the "New structure…" sheet from the Structure menu.
     @State private var showingNewStructure = false
-    /// Which summary tab is showing (0 = overview · 1…N = `##` sections ·
-    /// 1000 = action items).
-    @State private var summaryTabSelection = 0
     /// After the user confirms a name (rename or chip), offer — never do —
     /// remembering that speaker's voice for future meetings.
     @State private var rememberOffer: Speaker?
@@ -227,9 +223,10 @@ extension MeetingDetailView {
         // never scroll the page to reach the player, and reading the
         // transcript never moves it. The health + chapters rail sits alongside.
         VStack(alignment: .leading, spacing: 12) {
-            header(detail)
-            speakersRow(detail)
-            refineStatus
+            headerSection(detail)
+            MeetingDetailOperationStatus(
+                progress: refining ?? applying,
+                error: refineError ?? actionError ?? model.state.lastActionError)
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 10) {
                     summaryOrGenerate(detail)
@@ -330,8 +327,24 @@ extension MeetingDetailView {
             || hasHealth || hasChapters || !companionCards.isEmpty {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    processingStatusSection(detail)
-                    privacyReceiptSection(detail.privacyReceipt)
+                    if hasProcessingState || detail.privacyReceipt != nil {
+                        MeetingDetailTrustSection(
+                            values: MeetingDetailTrustValues(
+                                lifecycleState: detail.meeting.lifecycleState,
+                                processingJobs: detail.processingJobs,
+                                hasSavedAudio: detail.meeting.audioDirectory != nil,
+                                lastProcessingError: detail.meeting.lastProcessingError,
+                                privacyReceipt: detail.privacyReceipt,
+                                presentation: presentation),
+                            actions: MeetingDetailTrustActions(
+                                retryProcessing: {
+                                    await model.send(.retryProcessing)
+                                },
+                                refineSavedAudio: { refine(detail) },
+                                openSupportDiagnostics: {
+                                    sceneActions.openSettings(.data)
+                                }))
+                    }
                     if hasHealth {
                         MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
                     }
@@ -345,311 +358,9 @@ extension MeetingDetailView {
     }
 
     @ViewBuilder
-    private func processingStatusSection(_ detail: MeetingReviewReadModel) -> some View {
-        let failed = detail.processingJobs.filter { $0.state == .failed }
-        let active = detail.processingJobs.filter {
-            $0.state == .pending || $0.state == .running
-        }
-        if !failed.isEmpty {
-            failedProcessingCard(failed)
-        } else if !active.isEmpty {
-            activeProcessingCard(active)
-        } else if detail.meeting.lifecycleState == .needsAttention {
-            recordingRecoveryCard(detail)
-        }
-    }
-
-    private func failedProcessingCard(_ jobs: [ProcessingJob]) -> some View {
-        processingCard(tint: .orange) {
-            Label(
-                "Processing needs attention",
-                systemImage: "exclamationmark.arrow.triangle.2.circlepath")
-                .font(.headline)
-                .foregroundStyle(.orange)
-                .accessibilityIdentifier("detail-processing-status")
-            Text(failedProcessingExplanation(jobs))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            retryProcessingButton
-        }
-    }
-
-    private var retryProcessingButton: some View {
-        Button {
-            retryingProcessing = true
-            Task {
-                await model.send(.retryProcessing)
-                retryingProcessing = false
-            }
-        } label: {
-            if retryingProcessing {
-                ProgressView().controlSize(.small)
-            } else {
-                Label("Retry processing", systemImage: "arrow.clockwise")
-            }
-        }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.small)
-        .disabled(retryingProcessing)
-        .accessibilityIdentifier("detail-retry-processing")
-    }
-
-    private func activeProcessingCard(_ jobs: [ProcessingJob]) -> some View {
-        processingCard(tint: PVDesign.accent) {
-            Label("Processing on this Mac", systemImage: "gearshape.2")
-                .font(.headline)
-                .foregroundStyle(PVDesign.accent)
-                .accessibilityIdentifier("detail-processing-status")
-            Text(activeProcessingExplanation(jobs))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Keep Portavoz open; recovery continues automatically.")
-                .font(.caption.weight(.semibold))
-        }
-    }
-
-    @ViewBuilder
-    private func recordingRecoveryCard(_ detail: MeetingReviewReadModel) -> some View {
-        processingCard(tint: .orange) {
-            Label(
-                "Recording needs recovery",
-                systemImage: "waveform.badge.exclamationmark")
-                .font(.headline)
-                .foregroundStyle(.orange)
-                .accessibilityIdentifier("detail-processing-status")
-            Text(recoveryExplanation(detail.meeting.lastProcessingError))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            processingRecoveryAction(detail)
-        }
-    }
-
-    @ViewBuilder
-    private func processingRecoveryAction(_ detail: MeetingReviewReadModel) -> some View {
-        if detail.meeting.audioDirectory != nil {
-            Button("Refine saved audio") { refine(detail) }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .accessibilityIdentifier("detail-recover-with-refine")
-                .help(L10n.text(
-                    "Re-transcribe the saved audio with Whisper, then review the result before applying it."))
-        } else {
-            Button("Open support diagnostics") {
-                sceneActions.openSettings(.data)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .accessibilityIdentifier("detail-open-support-diagnostics")
-        }
-    }
-
-    private func processingCard<Content: View>(
-        tint: Color,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8, content: content)
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(tint.opacity(0.2), lineWidth: 1))
-    }
-
-    private func failedProcessingExplanation(_ jobs: [ProcessingJob]) -> String {
-        let kinds = Set(jobs.map(\.kind))
-        if kinds.contains(.transcription) {
-            // swiftlint:disable:next line_length
-            return L10n.text("Transcript recovery stopped after repeated attempts. Your audio and current transcript are still saved.")
-        }
-        if kinds.contains(.diarization) {
-            return L10n.text(
-                "Speaker recovery stopped after repeated attempts. Your audio and transcript are still saved.")
-        }
-        return L10n.text(
-            "Background processing stopped after repeated attempts. Your meeting is still saved.")
-    }
-
-    private func activeProcessingExplanation(_ jobs: [ProcessingJob]) -> String {
-        if jobs.contains(where: { $0.kind == .transcription }) {
-            return L10n.text("Recovering the complete transcript from finalized audio.")
-        }
-        if jobs.contains(where: { $0.kind == .diarization }) {
-            return L10n.text("Recovering speaker attribution from finalized audio.")
-        }
-        return L10n.text("Finishing local background processing for this meeting.")
-    }
-
-    private func recoveryExplanation(_ code: String?) -> String {
-        switch code {
-        case "transcription.empty":
-            // swiftlint:disable:next line_length
-            L10n.text("Your audio is safe. The automatic pass found no reliable speech. Refine re-transcribes the saved audio with Whisper and lets you review the result before replacing anything.")
-        case "capture.publication.failed":
-            L10n.text("Portavoz preserved recovery evidence but could not finalize the recording.")
-        default:
-            L10n.text("Portavoz preserved the meeting, but automatic recovery could not finish.")
-        }
-    }
-
-    @ViewBuilder
-    private func privacyReceiptSection(_ receipt: PrivacyReceipt?) -> some View {
-        if let receipt {
-            let tint = privacyReceiptTint(receipt.status)
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Privacy receipt", systemImage: privacyReceiptIcon(receipt.status))
-                    .font(.headline)
-                    .foregroundStyle(tint)
-                    .accessibilityIdentifier("detail-privacy-receipt")
-                Text(privacyReceiptHeadline(receipt))
-                    .font(.callout.weight(.semibold))
-                Text(privacyReceiptExplanation(receipt))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                privacyReceiptSyncLine(receipt.syncDisclosure)
-
-                ForEach(Array(receipt.remoteEvents.enumerated()), id: \.element.id) { index, event in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(privacyReceiptOperation(event.operation))
-                            .font(.caption.weight(.semibold))
-                        Text(event.destinationHost)
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(.secondary)
-                        Text(presentation.shortDate(event.attemptedAt))
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("privacy-remote-event-\(index)")
-                }
-
-                if !receipt.generation.isEmpty || !receipt.localDeviceEvents.isEmpty {
-                    Text(L10n.format(
-                        "Model activity: %d · Local transfers: %d",
-                        receipt.generation.count,
-                        receipt.localDeviceEvents.count))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(tint.opacity(0.2), lineWidth: 1)
-            )
-        }
-    }
-
-    /// The on-device claim above stays scoped to tracked processing; this line
-    /// is what keeps the receipt honest once a private iCloud copy exists. It
-    /// stays silent while no cloud copy is recorded.
-    @ViewBuilder
-    private func privacyReceiptSyncLine(_ disclosure: PrivacyReceiptSyncDisclosure) -> some View {
-        if disclosure == .acknowledgedByPrivateCloud {
-            VStack(alignment: .leading, spacing: 2) {
-                Label(L10n.text("Synced to private iCloud"), systemImage: "icloud.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.blue)
-                Text(L10n.text(
-                    "This meeting's text was stored in encrypted fields in your private iCloud database."))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(L10n.text("Synced to private iCloud"))
-            .accessibilityValue(L10n.text(
-                "This meeting's text was stored in encrypted fields in your private iCloud database."))
-            .accessibilityIdentifier("detail-privacy-receipt-sync")
-        }
-    }
-
-    private func privacyReceiptTint(_ status: PrivacyReceiptStatus) -> Color {
-        switch status {
-        case .allContentStayedOnDevice: .green
-        case .noRemoteTransferRecorded: .orange
-        case .remoteTransferAttempted: .orange
-        }
-    }
-
-    private func privacyReceiptIcon(_ status: PrivacyReceiptStatus) -> String {
-        switch status {
-        case .allContentStayedOnDevice: "lock.shield.fill"
-        case .noRemoteTransferRecorded: "clock.badge.questionmark"
-        case .remoteTransferAttempted: "arrow.up.right.square.fill"
-        }
-    }
-
-    private func privacyReceiptHeadline(_ receipt: PrivacyReceipt) -> String {
-        switch receipt.status {
-        case .allContentStayedOnDevice:
-            // Once a private cloud copy exists, an unqualified all-local
-            // headline would contradict the iCloud line right below it.
-            if receipt.syncDisclosure == .acknowledgedByPrivateCloud {
-                L10n.text("No third-party service used")
-            } else {
-                L10n.text("No remote service used")
-            }
-        case .noRemoteTransferRecorded:
-            L10n.text("No remote transfer recorded")
-        case .remoteTransferAttempted:
-            L10n.text("Remote transfer attempted")
-        }
-    }
-
-    private func privacyReceiptExplanation(_ receipt: PrivacyReceipt) -> String {
-        switch receipt.status {
-        case .allContentStayedOnDevice:
-            return L10n.text("All tracked meeting processing stayed on this Mac.")
-        case .noRemoteTransferRecorded:
-            return L10n.format(
-                "Tracking began %@; earlier activity is not covered.",
-                presentation.shortDate(receipt.trackingStartedAt))
-        case .remoteTransferAttempted:
-            if receipt.remoteEvents.count == 1 {
-                return L10n.text(
-                    "1 remote transfer attempt was recorded. Content may have left this Mac.")
-            }
-            return L10n.format(
-                "%d remote transfer attempts were recorded. Content may have left this Mac.",
-                receipt.remoteEvents.count)
-        }
-    }
-
-    private func privacyReceiptOperation(_ operation: DataEgressOperation) -> String {
-        switch operation {
-        case .companionKnowledgeAnswer: L10n.text("Apuntador question only")
-        case .summaryGeneration: L10n.text("Summary material")
-        case .publishGitHubGist: L10n.text("Meeting export")
-        case .createGitHubIssue: L10n.text("GitHub action item")
-        case .createLinearIssue: L10n.text("Linear action item")
-        }
-    }
-
-    @ViewBuilder
-    private var refineStatus: some View {
-        if let progress = refining ?? applying {
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text(progress).foregroundStyle(.secondary)
-            }
-        }
-        if let message = refineError ?? actionError ?? model.state.lastActionError {
-            Text(message).font(.caption).foregroundStyle(.red)
-        }
-    }
-
-    @ViewBuilder
     private func summaryOrGenerate(_ detail: MeetingReviewReadModel) -> some View {
         if let summary {
-            summarySection(summary)
+            generatedDocumentSection(summary, detail: detail)
         } else if regenerating {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
@@ -863,49 +574,66 @@ extension MeetingDetailView {
 // MARK: - Header, speakers & name suggestions
 
 extension MeetingDetailView {
-    private func header(_ detail: MeetingReviewReadModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text(detail.meeting.title).font(.title2.bold())
-                Button {
+    private func headerSection(_ detail: MeetingReviewReadModel) -> some View {
+        MeetingDetailHeaderSection(
+            values: MeetingDetailHeaderValues(
+                title: detail.meeting.title,
+                date: presentation.meetingDate(detail.meeting.startedAt),
+                duration: presentation.meetingDuration(
+                    startedAt: detail.meeting.startedAt,
+                    endedAt: detail.meeting.endedAt),
+                segmentCount: presentation.segmentCount(detail.segments.count),
+                titleSuggestion: model.state.suggestedTitle,
+                speakers: detail.speakers,
+                isSuggestingNames: model.state.isSuggestingNames,
+                nameSuggestions: model.state.nameSuggestions,
+                voiceSuggestions: model.state.voiceSuggestions,
+                personOffer: personOffer.flatMap { offer in
+                    offer.speaker.displayName.map {
+                        MeetingDetailRememberOffer(name: $0, isBusy: findingPerson)
+                    }
+                },
+                voiceOffer: rememberOffer.flatMap { offer in
+                    offer.displayName.map {
+                        MeetingDetailRememberOffer(name: $0, isBusy: rememberingVoice)
+                    }
+                }),
+            actions: MeetingDetailHeaderActions(
+                renameMeeting: {
                     newTitle = detail.meeting.title
                     editingTitle = true
-                } label: {
-                    Image(systemName: "pencil").foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Rename the meeting")
-                if let suggestion = model.state.suggestedTitle {
-                    DismissibleSuggestionChip(
-                        kind: .ai,
-                        text: "“\(suggestion)”?",
-                        acceptAccessibilityIdentifier: "detail-title-suggestion",
-                        dismissAccessibilityIdentifier: "detail-title-suggestion-dismiss",
-                        accept: {
-                            Task {
-                                await model.send(
-                                    .renameMeeting(detail.meeting, title: suggestion))
-                            }
-                        },
-                        dismiss: model.dismissSuggestedTitle)
-                    .help("Suggested title from the summary — one click renames, nothing changes on its own")
-                }
-                Spacer(minLength: 0)
-            }
-            actionRow(detail)
-            HStack(spacing: 12) {
-                Text(presentation.meetingDate(detail.meeting.startedAt))
-                if let duration = presentation.meetingDuration(
-                    startedAt: detail.meeting.startedAt,
-                    endedAt: detail.meeting.endedAt
-                ) {
-                    Text(duration)
-                }
-                Text(presentation.segmentCount(detail.segments.count))
-            }
-            .font(.callout)
-            .foregroundStyle(.secondary)
-        }
+                },
+                acceptTitleSuggestion: { suggestion in
+                    Task {
+                        await model.send(
+                            .renameMeeting(detail.meeting, title: suggestion))
+                    }
+                },
+                dismissTitleSuggestion: model.dismissSuggestedTitle,
+                renameSpeaker: { speaker in
+                    renamingSpeaker = speaker
+                    newName = speaker.displayName ?? ""
+                },
+                suggestNames: { Task { await suggestNames() } },
+                acceptNameSuggestion: { suggestion in
+                    Task { await apply(suggestion, in: detail) }
+                },
+                dismissNameSuggestion: model.dismissNameSuggestion,
+                acceptVoiceSuggestion: { suggestion in
+                    Task { await apply(suggestion, in: detail) }
+                },
+                dismissVoiceSuggestion: model.dismissVoiceSuggestion,
+                acceptPersonOffer: {
+                    guard let offer = personOffer else { return }
+                    Task { await findOrCreatePerson(for: offer) }
+                },
+                dismissPersonOffer: { personOffer = nil },
+                acceptVoiceOffer: {
+                    guard let offer = rememberOffer else { return }
+                    Task { await rememberVoice(of: offer) }
+                },
+                dismissVoiceOffer: { rememberOffer = nil }),
+            actionContent: { actionRow(detail) })
     }
 
     /// The meeting's actions as a row of round buttons under the title
@@ -988,168 +716,6 @@ extension MeetingDetailView {
         .help(help)
     }
 
-    /// The meeting's cast, with the M6 "1-tap speaker→name" flow: ✦
-    /// proposes names the transcript proves; one click applies them.
-    @ViewBuilder
-    private func speakersRow(_ detail: MeetingReviewReadModel) -> some View {
-        let unnamed = detail.speakers.filter { !$0.isMe && $0.displayName == nil }
-        FlowLayout(spacing: 8, rowSpacing: 8) {
-            ForEach(detail.speakers) { speaker in
-                SpeakerPill(
-                    speaker: speaker,
-                    cast: detail.speakers,
-                    accessibilityIdentifier: "cast-speaker-\(speaker.label)"
-                ) { speaker in
-                    renamingSpeaker = speaker
-                    newName = speaker.displayName ?? ""
-                }
-            }
-            if !unnamed.isEmpty {
-                if model.state.isSuggestingNames {
-                    ProgressView().controlSize(.small)
-                } else if model.state.nameSuggestions.isEmpty {
-                    Button {
-                        Task { await suggestNames() }
-                    } label: {
-                        Label("Suggest names", systemImage: "sparkles")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(PVDesign.accent)
-                    .accessibilityIdentifier("detail-suggest-names")
-                }
-            }
-            nameSuggestionChips(in: detail)
-            voiceSuggestionChips(in: detail)
-            personOfferChip
-            rememberOfferChip
-        }
-    }
-
-    @ViewBuilder
-    private func nameSuggestionChips(in detail: MeetingReviewReadModel) -> some View {
-        ForEach(model.state.nameSuggestions, id: \.label) { suggestion in
-            DismissibleSuggestionChip(
-                kind: .ai,
-                text: "\(suggestion.label) → \(suggestion.name)?",
-                acceptAccessibilityIdentifier:
-                    "detail-name-suggestion-\(suggestion.label)",
-                dismissAccessibilityIdentifier:
-                    "detail-name-suggestion-dismiss-\(suggestion.label)",
-                accept: { Task { await apply(suggestion, in: detail) } },
-                dismiss: {
-                    model.dismissNameSuggestion(label: suggestion.label)
-                })
-            .fixedSize()
-            .help(nameSuggestionHelp(suggestion))
-        }
-    }
-
-    @ViewBuilder
-    private func voiceSuggestionChips(in detail: MeetingReviewReadModel) -> some View {
-        // Cross-meeting voice matches use a waveform icon because their
-        // evidence is the remembered voice, not transcript text.
-        ForEach(model.state.voiceSuggestions, id: \.speakerLabel) { match in
-            DismissibleSuggestionChip(
-                kind: .voice,
-                text: "\(match.speakerLabel) → \(match.name)?",
-                acceptAccessibilityIdentifier:
-                    "detail-voice-suggestion-\(match.speakerLabel)",
-                dismissAccessibilityIdentifier:
-                    "detail-voice-suggestion-dismiss-\(match.speakerLabel)",
-                accept: { Task { await apply(match, in: detail) } },
-                dismiss: {
-                    model.dismissVoiceSuggestion(speakerLabel: match.speakerLabel)
-                })
-            .fixedSize()
-            .help(L10n.format(
-                "Voice match: sounds like “%@” from your remembered voices.", match.name))
-        }
-    }
-
-    /// The explicit canonical-person boundary (D86). One press creates a
-    /// distinct person only when there are no exact alias candidates; any
-    /// candidate requires a second, visible choice.
-    @ViewBuilder
-    private var personOfferChip: some View {
-        if let offer = personOffer, let name = offer.speaker.displayName {
-            if findingPerson {
-                ProgressView().controlSize(.small)
-            } else {
-                HStack(spacing: 6) {
-                    Label(
-                        L10n.format("Remember %@ as a person?", name),
-                        systemImage: "person.crop.circle.badge.plus")
-                    .font(.caption)
-                    .foregroundStyle(PVDesign.chipOfferInk)
-                    Button(L10n.text("Remember")) {
-                        Task { await findOrCreatePerson(for: offer) }
-                    }
-                    .font(.caption.weight(.semibold))
-                    .buttonStyle(.plain)
-                    .foregroundStyle(PVDesign.accent)
-                    .accessibilityIdentifier("person-remember-offer")
-                    Button {
-                        personOffer = nil
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption2)
-                            .foregroundStyle(PVDesign.chipOfferInk)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(L10n.text("Dismiss person offer"))
-                    .accessibilityIdentifier("person-dismiss-offer")
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(PVDesign.chipOfferBg, in: Capsule())
-                .help(L10n.text(
-                    "Links this meeting speaker to local, user-confirmed person memory."))
-            }
-        }
-    }
-
-    /// The explicit-consent gesture (D8): after the user names a speaker,
-    /// offer to remember that voice — never remember it silently.
-    @ViewBuilder
-    private var rememberOfferChip: some View {
-        if let offer = rememberOffer, let name = offer.displayName {
-            if rememberingVoice {
-                ProgressView().controlSize(.small)
-            } else {
-                HStack(spacing: 6) {
-                    Label(
-                        L10n.format("Remember %@’s voice?", name),
-                        systemImage: "person.wave.2")
-                    .font(.caption)
-                    .foregroundStyle(PVDesign.chipOfferInk)
-                    Button(L10n.text("Remember")) {
-                        Task { await rememberVoice(of: offer) }
-                    }
-                    .font(.caption.weight(.semibold))
-                    .buttonStyle(.plain)
-                    .foregroundStyle(PVDesign.accent)
-                    Button {
-                        rememberOffer = nil
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption2)
-                            .foregroundStyle(PVDesign.chipOfferInk)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(L10n.text("Dismiss voice offer"))
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(PVDesign.chipOfferBg, in: Capsule())
-                .help(L10n.text(
-                    // One-line UI help text.
-                    // swiftlint:disable:next line_length
-                    "Stores only an encrypted numeric fingerprint of their voice on this Mac — never the audio, never synced — so future meetings can suggest their name. Removable in Settings."))
-            }
-        }
-    }
-
     private func suggestNames() async {
         if case .operationFailed(let message) = await model.send(.loadNameSuggestions) {
             gistError = message
@@ -1177,15 +743,6 @@ extension MeetingDetailView {
             gistError = message
         default:
             break
-        }
-    }
-
-    private func nameSuggestionHelp(_ suggestion: MeetingNameSuggestion) -> String {
-        switch suggestion.evidence {
-        case .transcript(let quote):
-            L10n.format("Transcript: “%@”", quote)
-        case .calendarCandidate(let candidate):
-            L10n.format("Calendar candidate: %@", candidate)
         }
     }
 
@@ -1295,271 +852,75 @@ extension MeetingDetailView {
 // MARK: - Summary, export & regenerate
 
 extension MeetingDetailView {
-    private func summarySection(_ summary: MeetingReviewSummary) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Summary")
-                    .font(.headline)
-                summaryBadgeText(summary)
-                Spacer()
-                recipeSuggestionChip(summary)
-                thinSummaryChip(summary)
-                Menu {
-                    Button("Copy as plain text") { copySummary(summary.draft, as: .plainText) }
-                    Button("Copy as Markdown") { copySummary(summary.draft, as: .markdown) }
-                    Button("Copy for Slack") { copySummary(summary.draft, as: .slack) }
-                } label: {
-                    Image(systemName: "doc.on.doc")
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .help("Copy the summary to the clipboard")
-                if regenerating {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Menu {
-                        Button("Regenerate in Spanish") { regenerate(language: .spanish) }
-                        Button("Regenerate in English") { regenerate(language: .english) }
-                        structureSubmenu(summary)
-                        if let alt = alternateEngine {
-                            Divider()
-                            Menu(alt.label) {
-                                Button("Español") {
-                                    regenerate(language: .spanish, engine: alt.engine)
-                                }
-                                Button("English") {
-                                    regenerate(language: .english, engine: alt.engine)
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-                    .accessibilityIdentifier("detail-regenerate-menu")
-                }
-            }
-            summaryTabs(summary)
-            summaryTabContent(summary)
-        }
-        .padding(14)
-        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    /// Every seeded and custom structure, with the sections each one
-    /// produces visible under its name BEFORE generating.
-    private func structureSubmenu(_ summary: MeetingReviewSummary) -> some View {
-        Menu("Structure") {
-            ForEach(CustomRecipeStore.all()) { recipe in
-                Button {
-                    regenerate(
-                        language: summaryLanguage(summary.draft.language),
-                        recipe: recipe)
-                } label: {
-                    Text(recipe.localizedDisplayName)
-                    Text(recipe.localizedSectionSummary)
-                }
-                .accessibilityIdentifier("detail-structure-\(recipe.id)")
-            }
-            Divider()
-            Button("New structure…") { showingNewStructure = true }
-        }
-        .accessibilityIdentifier("detail-structure-menu")
-    }
-
-    /// The tab strip (design system): Resumen · each `##` section (with its
-    /// bullet count) · Pendientes (done/total). Parsed from the Markdown so
-    /// it works in any language.
-    @ViewBuilder
-    private func summaryTabs(_ summary: MeetingReviewSummary) -> some View {
-        let parsed = SummarySections.parse(summary.draft.markdown)
-        let done = summary.draft.actionItems.filter(\.isDone).count
-        let total = summary.draft.actionItems.count
-        HStack(spacing: 6) {
-            summaryTab(L10n.text("Summary"), tag: 0)
-            ForEach(Array(parsed.sections.enumerated()), id: \.offset) { index, section in
-                summaryTab("\(section.heading) · \(section.bulletCount)", tag: index + 1)
-            }
-            if total > 0 {
-                summaryTab(L10n.format("To-dos · %d/%d", done, total), tag: 1000)
-            }
-        }
-    }
-
-    private func summaryTab(_ label: String, tag: Int) -> some View {
-        let on = summaryTabSelection == tag
-        return Button {
-            summaryTabSelection = tag
-        } label: {
-            Text(label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(on ? Color.white : .secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background {
-                    if on {
-                        Capsule().fill(PVDesign.accent)
-                    } else {
-                        Capsule().fill(.quaternary.opacity(0.6))
-                    }
-                }
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(tag == 1000 ? "summary-tab-todos" : "summary-tab-\(tag)")
-    }
-
-    @ViewBuilder
-    private func summaryTabContent(_ summary: MeetingReviewSummary) -> some View {
-        let parsed = SummarySections.parse(summary.draft.markdown)
-        if summaryTabSelection == 1000 {
-            let evidenceByItem = summary.draft.actionItemEvidence.reduce(
-                into: [UUID: SummaryActionItemEvidence]()
-            ) { result, evidence in
-                if result[evidence.actionItemID] == nil {
-                    result[evidence.actionItemID] = evidence
-                }
-            }
-            ForEach(summary.draft.actionItems) { item in
-                VStack(alignment: .leading, spacing: 6) {
-                    Toggle(isOn: actionBinding(item)) {
-                        Text(item.text).strikethrough(item.isDone)
-                    }
-                    .toggleStyle(.checkbox)
-                    .accessibilityIdentifier("action-item-\(item.id.uuidString)")
-                    if let evidence = evidenceByItem[item.id], let detail {
-                        let resolution = evidence.resolveEvidence(
-                            currentTranscriptRevision: detail.meeting.transcriptRevision,
-                            segments: detail.segments)
-                        summaryEvidenceSources(
-                            resolution,
-                            sourceIdentifier:
-                                "summary-action-item-\(item.id.uuidString)-evidence",
-                            staleIdentifier:
-                                "summary-action-item-\(item.id.uuidString)-stale",
-                            unavailableIdentifier:
-                                "summary-action-item-\(item.id.uuidString)-unavailable")
-                    }
-                }
-            }
-        } else if summaryTabSelection >= 1, summaryTabSelection - 1 < parsed.sections.count {
-            let sectionOrdinal = summaryTabSelection - 1
-            summaryDecisionSection(
-                parsed.sections[sectionOrdinal],
-                sectionOrdinal: sectionOrdinal,
-                draft: summary.draft)
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                MarkdownText(text: parsed.intro.isEmpty ? summary.draft.markdown : parsed.intro)
-                summaryEvidence(summary.draft)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func summaryDecisionSection(
-        _ section: SummarySections.Section,
-        sectionOrdinal: Int,
-        draft: SummaryDraft
+    private func generatedDocumentSection(
+        _ summary: MeetingReviewSummary,
+        detail: MeetingReviewReadModel
     ) -> some View {
-        let evidenceByBullet = draft.decisionEvidence
-            .filter { $0.sectionOrdinal == sectionOrdinal }
-            .reduce(into: [Int: SummaryDecisionEvidence]()) { result, evidence in
-                if result[evidence.bulletOrdinal] == nil {
-                    result[evidence.bulletOrdinal] = evidence
-                }
-            }
-        if evidenceByBullet.isEmpty {
-            MarkdownText(text: section.body)
-        } else {
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(Array(section.bulletLines.enumerated()), id: \.offset) { index, bullet in
-                    VStack(alignment: .leading, spacing: 6) {
-                        MarkdownText(text: bullet)
-                        if let evidence = evidenceByBullet[index], let detail {
-                            let resolution = evidence.resolveEvidence(
-                                currentTranscriptRevision: detail.meeting.transcriptRevision,
-                                segments: detail.segments)
-                            summaryEvidenceSources(
-                                resolution,
-                                sourceIdentifier: "summary-decision-\(sectionOrdinal)-\(index)-evidence",
-                                staleIdentifier: "summary-decision-\(sectionOrdinal)-\(index)-stale",
-                                unavailableIdentifier:
-                                    "summary-decision-\(sectionOrdinal)-\(index)-unavailable")
-                        }
+        MeetingGeneratedDocumentSection(
+            values: MeetingGeneratedDocumentValues(
+                summary: summary,
+                transcriptRevision: detail.meeting.transcriptRevision,
+                segments: detail.segments,
+                recipes: CustomRecipeStore.all(),
+                summaryLanguage: summaryLanguage(summary.draft.language),
+                suggestedRecipe: model.state.suggestedRecipe,
+                showThinSuggestion: shouldSuggestThinSummary(summary, detail: detail),
+                regenerating: regenerating,
+                alternateEngine: alternateEngine.map {
+                    MeetingGeneratedDocumentAlternateEngine(
+                        engine: $0.engine,
+                        label: $0.label)
+                },
+                presentation: presentation),
+            actions: MeetingGeneratedDocumentActions(
+                copy: { format in
+                    switch format {
+                    case .plainText:
+                        copySummary(summary.draft, as: .plainText)
+                    case .markdown:
+                        copySummary(summary.draft, as: .markdown)
+                    case .slack:
+                        copySummary(summary.draft, as: .slack)
                     }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func summaryEvidence(_ draft: SummaryDraft) -> some View {
-        if let detail,
-           let claim = draft.claims.first(where: { $0.kind == .overview }) {
-            let resolution = claim.resolveEvidence(
-                currentTranscriptRevision: detail.meeting.transcriptRevision,
-                segments: detail.segments)
-            VStack(alignment: .leading, spacing: 8) {
-                summaryEvidenceSources(
-                    resolution,
-                    sourceIdentifier: "summary-evidence",
-                    staleIdentifier: "summary-evidence-stale",
-                    unavailableIdentifier: "summary-evidence-unavailable")
-                SummaryClaimFeedbackView(claim: claim) { feedback in
+                },
+                regenerate: { language, engine, recipe in
+                    regenerate(language: language, engine: engine, recipe: recipe)
+                },
+                createStructure: { showingNewStructure = true },
+                dismissRecipeSuggestion: model.dismissSuggestedRecipe,
+                dismissThinSuggestion: {
+                    model.dismissThinSummarySuggestion(version: summary.version)
+                },
+                setActionItem: { item, done in
+                    Task {
+                        await model.send(.setActionItem(item.id, done: done))
+                    }
+                },
+                focusEvidence: focusEvidence,
+                setClaimFeedback: { claimID, feedback in
                     let effect = await model.send(
-                        .setSummaryClaimFeedback(claim.id, feedback))
+                        .setSummaryClaimFeedback(claimID, feedback))
                     guard case .summaryClaimFeedbackSaved(let savedID) = effect else {
                         return false
                     }
-                    return savedID == claim.id
-                }
-            }
-        }
+                    return savedID == claimID
+                }))
     }
 
-    @ViewBuilder
-    private func summaryEvidenceSources(
-        _ resolution: SummaryClaimEvidenceResolution,
-        sourceIdentifier: String,
-        staleIdentifier: String,
-        unavailableIdentifier: String
-    ) -> some View {
-        switch resolution.status {
-        case .current:
-            HStack(spacing: 6) {
-                Label("Sources", systemImage: "quote.bubble")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                ForEach(
-                    Array(resolution.segments.enumerated()),
-                    id: \.element.id
-                ) { index, segment in
-                    Button(evidenceClock(segment.startTime)) {
-                        focusEvidence(segment)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.mini)
-                    .help(segment.text)
-                    .accessibilityIdentifier("\(sourceIdentifier)-\(index)")
-                    .accessibilityValue(segment.text)
-                }
-            }
-        case .stale:
-            Label(
-                "Sources are out of date after transcript changes.",
-                systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier(staleIdentifier)
-        case .unavailable:
-            Label(
-                "Sources are no longer available.",
-                systemImage: "exclamationmark.triangle")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier(unavailableIdentifier)
-        }
+    private func shouldSuggestThinSummary(
+        _ summary: MeetingReviewSummary,
+        detail: MeetingReviewReadModel
+    ) -> Bool {
+        guard !regenerating,
+              sceneValues.summaryEngine != .mlx,
+              sceneValues.mlxDownloaded,
+              model.state.dismissedThinSummaryVersion != summary.version,
+              let ended = detail.meeting.endedAt
+        else { return false }
+        return ThinSummaryPolicy.isThin(
+            summaryCharacters: summary.draft.markdown.count,
+            actionItems: summary.draft.actionItems.count,
+            meetingSeconds: ended.timeIntervalSince(detail.meeting.startedAt))
     }
 
     private func focusEvidence(_ segment: TranscriptSegment) {
@@ -1572,10 +933,6 @@ extension MeetingDetailView {
         guard let seconds = pendingEvidenceSeek, let player else { return }
         player.seek(to: seconds)
         pendingEvidenceSeek = nil
-    }
-
-    private func evidenceClock(_ seconds: TimeInterval) -> String {
-        presentation.clock(seconds)
     }
 
     private enum ExportFormat { case markdown, pdf, srt, vtt }
@@ -2039,17 +1396,6 @@ extension MeetingDetailView {
         }
     }
 
-    private func actionBinding(_ item: ActionItem) -> Binding<Bool> {
-        Binding(
-            get: { item.isDone },
-            set: { done in
-                Task {
-                    await model.send(.setActionItem(item.id, done: done))
-                }
-            }
-        )
-    }
-
     // MARK: - Post-meeting mirror (6a-2)
 
     /// The meeting's duration, preferring wall-clock (start→end) and falling
@@ -2165,92 +1511,6 @@ extension MeetingDetailView {
                 try? await Task.sleep(for: .milliseconds(300))
             }
         }
-    }
-
-    /// "Summarize as Standup?" — the typed-recipe suggestion (M13b). One
-    /// click regenerates with that structure; dismissable by regenerating
-    /// any other way. Never applied on its own.
-    @ViewBuilder
-    private func recipeSuggestionChip(
-        _ summary: MeetingReviewSummary
-    ) -> some View {
-        if let suggested = model.state.suggestedRecipe, !regenerating {
-            DismissibleSuggestionChip(
-                kind: .ai,
-                text: L10n.format(
-                    "Summarize as %@?",
-                    suggested.localizedDisplayName),
-                acceptAccessibilityIdentifier: "detail-recipe-suggestion",
-                dismissAccessibilityIdentifier: "detail-recipe-suggestion-dismiss",
-                accept: {
-                    regenerate(
-                        language: summaryLanguage(summary.draft.language),
-                        recipe: suggested)
-                },
-                dismiss: model.dismissSuggestedRecipe)
-            .help("This meeting looks like a \(suggested.localizedDisplayName) — restructure the summary with one click. Nothing changes unless you accept.")
-        }
-    }
-
-    /// "Summary looks thin" — a long meeting whose summary collapsed
-    /// (field case: 56 min → 530 chars, 0 action items from the 3B). One
-    /// click regenerates with the embedded engine, which handled the same
-    /// meeting well. Deterministic gate; only offered when MLX is ready
-    /// and was NOT the engine that produced this summary.
-    @ViewBuilder
-    private func thinSummaryChip(
-        _ summary: MeetingReviewSummary
-    ) -> some View {
-        if !regenerating,
-            sceneValues.summaryEngine != .mlx,
-            sceneValues.mlxDownloaded,
-            model.state.dismissedThinSummaryVersion != summary.version,
-            let detail,
-            let ended = detail.meeting.endedAt,
-            ThinSummaryPolicy.isThin(
-                summaryCharacters: summary.draft.markdown.count,
-                actionItems: summary.draft.actionItems.count,
-                meetingSeconds: ended.timeIntervalSince(detail.meeting.startedAt)) {
-            DismissibleSuggestionChip(
-                kind: .ai,
-                text: L10n.text("Summary looks thin — retry with Built-in?"),
-                acceptAccessibilityIdentifier: "detail-thin-summary-suggestion",
-                dismissAccessibilityIdentifier: "detail-thin-summary-suggestion-dismiss",
-                accept: {
-                    regenerate(
-                        language: summaryLanguage(summary.draft.language),
-                        engine: .mlx)
-                },
-                dismiss: {
-                    model.dismissThinSummarySuggestion(version: summary.version)
-                })
-            .help(
-                // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "This meeting is long but its summary came out very small. Regenerate with the embedded model — nothing changes unless you click.")
-        }
-    }
-
-    /// "v3 · en" plus the structure when it is not the default one.
-    private func summaryBadgeText(
-        _ summary: MeetingReviewSummary
-    ) -> some View {
-        let badge = summaryBadge(summary)
-        return Text(badge)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .accessibilityLabel(badge)
-            .accessibilityValue(badge)
-            .accessibilityIdentifier("summary-badge")
-    }
-
-    private func summaryBadge(_ summary: MeetingReviewSummary) -> String {
-        var badge = "v\(summary.version) · \(summary.draft.language)"
-        if summary.draft.recipeID != Recipe.general.id,
-            let recipe = CustomRecipeStore.byID(summary.draft.recipeID) {
-            badge += " · \(recipe.displayName)"
-        }
-        return badge
     }
 
     /// True when there's lossless audio (CAF/WAV) still worth compressing.
@@ -2431,11 +1691,13 @@ extension MeetingDetailView {
             Text(label)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            summaryEvidenceSources(
-                resolution,
+            MeetingEvidenceSources(
+                resolution: resolution,
                 sourceIdentifier: "\(identifier)-evidence",
                 staleIdentifier: "\(identifier)-stale",
-                unavailableIdentifier: "\(identifier)-unavailable")
+                unavailableIdentifier: "\(identifier)-unavailable",
+                clock: { presentation.clock($0) },
+                focus: focusEvidence)
         }
     }
 

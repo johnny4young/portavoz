@@ -135,7 +135,11 @@ final class EnglishSourceTests: XCTestCase {
             // Native language name shown in the transcription-language pin.
             return true
         }
-        if relative == "Sources/portavoz-app/MeetingDetailView.swift", line.contains("Español") {
+        if [
+            "Sources/portavoz-app/MeetingDetailView.swift",
+            "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+        ].contains(relative), line.contains("Español") {
+            // Native language name shown in Meeting Detail generation menus.
             return true
         }
         if relative == "Sources/ApplicationKit/MeetingRecap.swift" {
