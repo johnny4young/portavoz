@@ -124,6 +124,72 @@ final class StorageUpgradeTests: XCTestCase {
         XCTAssertEqual(exactHits.map(\.segmentID), [segmentID])
     }
 
+    func testV17SemanticProfileMigratesIntoIndependentMaintenanceOwnership() async throws {
+        let root = try temporaryRoot(named: "v17-derived-maintenance-upgrade")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let databaseURL = root.appendingPathComponent("portavoz.sqlite")
+        var legacyDatabase: DatabaseQueue? = try DatabaseQueue(path: databaseURL.path)
+        let timestamp = Date(timeIntervalSince1970: 1_753_000_000)
+        let meeting = Meeting(
+            title: "Profiled semantic migration",
+            startedAt: timestamp)
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "Exact semantic migration evidence remains searchable.",
+            startTime: 0,
+            endTime: 4,
+            isFinal: true)
+        let profile = semanticTestProfile()
+        try StorageSchema.migrator().migrate(
+            try XCTUnwrap(legacyDatabase),
+            upTo: "v17")
+        try await legacyDatabase?.write { database in
+            try MeetingRecord(
+                meeting,
+                createdAt: timestamp,
+                updatedAt: timestamp
+            ).insert(database)
+            var record = SegmentRecord(
+                segment,
+                createdAt: timestamp,
+                updatedAt: timestamp)
+            record.embedding = MeetingStore.blob(from: [1, 0])
+            record.embeddingFingerprint = profile.fingerprint
+            try record.insert(database)
+        }
+        legacyDatabase = nil
+
+        let upgraded = try MeetingStore(databaseURL: databaseURL)
+
+        try await assertHealthyLatestSchema(upgraded)
+        try await upgraded.database.read { database in
+            let row = try XCTUnwrap(Row.fetchOne(
+                database,
+                sql: """
+                    SELECT embedding, embeddingFingerprint
+                    FROM segment WHERE id = ?
+                    """,
+                arguments: [segment.id.uuidString]))
+            XCTAssertNotNil(row["embedding"] as Data?)
+            XCTAssertEqual(row["embeddingFingerprint"] as String?, profile.fingerprint)
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: """
+                        SELECT sourceGeneration
+                        FROM derivedMaintenanceSource
+                        WHERE kind = 'semantic-corpus'
+                        """),
+                1)
+            XCTAssertEqual(
+                try Int.fetchOne(database, sql: "SELECT COUNT(*) FROM derivedMaintenanceJob"),
+                0)
+        }
+        let exactHits = try await upgraded.search("migration evidence")
+        XCTAssertEqual(exactHits.map(\.segmentID), [segment.id])
+    }
+
     private func temporaryRoot(named name: String) throws -> URL {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-\(name)-\(UUID().uuidString)")
@@ -169,6 +235,30 @@ final class StorageUpgradeTests: XCTestCase {
             XCTAssertTrue(
                 try Row.fetchAll(database, sql: "PRAGMA table_info(segment)")
                     .contains { ($0["name"] as String) == "embeddingFingerprint" },
+                file: file,
+                line: line)
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: """
+                        SELECT COUNT(*)
+                        FROM sqlite_master
+                        WHERE type = 'table'
+                          AND name IN ('derivedMaintenanceSource', 'derivedMaintenanceJob')
+                        """),
+                2,
+                file: file,
+                line: line)
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: """
+                        SELECT COUNT(*)
+                        FROM sqlite_master
+                        WHERE type = 'trigger'
+                          AND name LIKE 'semanticCorpusGeneration_%'
+                        """),
+                5,
                 file: file,
                 line: line)
         }

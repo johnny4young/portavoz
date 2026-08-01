@@ -10,7 +10,9 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
     func testBurstKicksSerializeOneDrainAndOneRerunWithoutPolling() async {
         let probe = SemanticDrainProbe()
         let supervisor = SemanticCorpusIndexingSupervisor(
-            drain: probe.drain)
+            drain: { _ in
+                SemanticCorpusMaintenanceRun(indexing: try await probe.drain())
+            })
 
         supervisor.kick()
         await probe.waitForStartedCount(1)
@@ -34,7 +36,9 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         let probe = SemanticDrainProbe()
         let supervisor = SemanticCorpusIndexingSupervisor(
             isEnabled: false,
-            drain: probe.drain)
+            drain: { _ in
+                SemanticCorpusMaintenanceRun(indexing: try await probe.drain())
+            })
 
         supervisor.kick()
         for _ in 0..<20 { await Task.yield() }
@@ -48,7 +52,9 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         let state = SemanticCorpusMaintenanceState()
         let supervisor = SemanticCorpusIndexingSupervisor(
             maintenanceState: state,
-            drain: probe.drain)
+            drain: { _ in
+                SemanticCorpusMaintenanceRun(indexing: try await probe.drain())
+            })
 
         supervisor.kick()
         await probe.waitForStartedCount(1)
@@ -66,7 +72,9 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         let state = SemanticCorpusMaintenanceState()
         let supervisor = SemanticCorpusIndexingSupervisor(
             maintenanceState: state,
-            drain: probe.drain)
+            drain: { _ in
+                SemanticCorpusMaintenanceRun(indexing: try await probe.drain())
+            })
 
         supervisor.kick()
         await waitUntil { state.current == .failed }
@@ -83,13 +91,28 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
     func testCancellationStillRunsQueuedRerun() async {
         let probe = CancelingSemanticDrainProbe()
         let supervisor = SemanticCorpusIndexingSupervisor(
-            drain: probe.drain)
+            drain: { _ in
+                SemanticCorpusMaintenanceRun(indexing: try await probe.drain())
+            })
 
         supervisor.kick()
         await waitUntil { await probe.startedCount == 1 }
         supervisor.kick()
         await probe.releaseFirst()
         await waitUntil { await probe.startedCount == 2 }
+
+        let startedCount = await probe.startedCount
+        XCTAssertEqual(startedCount, 2)
+    }
+
+    func testDurableRetrySchedulesOneFutureWakeWithoutPolling() async {
+        let probe = RetryingSemanticDrainProbe()
+        let supervisor = SemanticCorpusIndexingSupervisor(
+            drain: { _ in try await probe.drain() })
+
+        supervisor.kick()
+        await waitUntil { await probe.startedCount == 2 }
+        try? await Task.sleep(for: .milliseconds(40))
 
         let startedCount = await probe.startedCount
         XCTAssertEqual(startedCount, 2)
@@ -111,8 +134,8 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         let runtimeSnapshot = await runtime.snapshot
         let remaining = try await store.segmentsNeedingEmbeddings()
 
-        XCTAssertEqual(result.embeddedSegments, 2)
-        XCTAssertFalse(result.pausedByPolicy)
+        XCTAssertEqual(result.indexing.embeddedSegments, 2)
+        XCTAssertFalse(result.indexing.pausedByPolicy)
         XCTAssertEqual(runtimeSnapshot.assetChecks, 1)
         XCTAssertEqual(runtimeSnapshot.downloadRequests, [false])
         XCTAssertTrue(remaining.isEmpty)
@@ -135,7 +158,7 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         let runtimeSnapshot = await runtime.snapshot
         let remaining = try await store.segmentsNeedingEmbeddings()
 
-        XCTAssertEqual(result, .paused)
+        XCTAssertEqual(result.indexing, .paused)
         XCTAssertEqual(runtimeSnapshot.assetChecks, 0)
         XCTAssertTrue(runtimeSnapshot.downloadRequests.isEmpty)
         XCTAssertEqual(remaining.count, 2)
@@ -156,7 +179,7 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         let result = try await indexer.drain()
         let runtimeSnapshot = await runtime.snapshot
 
-        XCTAssertEqual(result, .empty)
+        XCTAssertEqual(result.indexing, .empty)
         XCTAssertEqual(runtimeSnapshot.assetChecks, 0)
         XCTAssertTrue(runtimeSnapshot.downloadRequests.isEmpty)
     }
@@ -177,7 +200,7 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         let runtimeSnapshot = await runtime.snapshot
         let remaining = try await store.segmentsNeedingEmbeddings()
 
-        XCTAssertEqual(result, .empty)
+        XCTAssertEqual(result.indexing, .empty)
         XCTAssertEqual(runtimeSnapshot.assetChecks, 1)
         XCTAssertTrue(runtimeSnapshot.downloadRequests.isEmpty)
         XCTAssertEqual(remaining.count, 2)
@@ -213,8 +236,8 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         let requiresMaintenance = try await store.semanticIndexRequiresMaintenance(
             for: secondProfile)
 
-        XCTAssertEqual(result.invalidatedSegments, 2)
-        XCTAssertEqual(result.embeddedSegments, 2)
+        XCTAssertEqual(result.indexing.invalidatedSegments, 2)
+        XCTAssertEqual(result.indexing.embeddedSegments, 2)
         XCTAssertEqual(runtimeSnapshot.downloadRequests, [false])
         XCTAssertTrue(staleHits.isEmpty)
         XCTAssertEqual(rebuiltHits.count, 2)
@@ -273,6 +296,19 @@ private actor FailingThenSuccessfulSemanticDrainProbe {
 
 private enum SemanticDrainError: Error {
     case failed
+}
+
+private actor RetryingSemanticDrainProbe {
+    private(set) var startedCount = 0
+
+    func drain() throws -> SemanticCorpusMaintenanceRun {
+        startedCount += 1
+        if startedCount == 1 {
+            return SemanticCorpusMaintenanceRun(
+                retryAt: Date().addingTimeInterval(0.02))
+        }
+        return .empty
+    }
 }
 
 private actor CancelingSemanticDrainProbe {

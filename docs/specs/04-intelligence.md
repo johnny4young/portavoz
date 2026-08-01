@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -491,8 +491,9 @@ The macOS process owns one `SemanticCorpusIndexingSupervisor` around the shared
 D176 coordinator. App launch, successful searchable mutations, and capture
 returning inactive are explicit wake signals. While one drain is active, every
 additional signal sets one rerun bit; after that rerun, the owner sleeps until
-another signal. There is no timer, polling loop, retry schedule, or request
-array.
+another signal or a D200 durable wake. There is no polling loop or request
+array; only one cancellable future wake may represent a persisted retry or
+predecessor lease expiration.
 
 The production adapter checks cancellation, protected capture, and one pending
 `NULL` embedding row before it inspects the semantic runtime. It proceeds only
@@ -501,10 +502,10 @@ always requests `allowAssetDownload: false`. The D177 gate still rechecks
 capture inside the indexing operation after each committed batch. Temporary
 and isolated benchmark stores disable this owner.
 
-Ordinary failure keeps the durable rows pending and relies on the next signal
-or process launch. Ask never repairs those rows in the request path; it keeps
-exact lexical evidence and any semantic rows already published. Library follows
-the same rule. The shared readiness resolver reports a pending failed corpus as
+Ordinary failure keeps the durable rows pending under D200's bounded retry
+envelope. Ask never repairs those rows in the request path; it keeps exact
+lexical evidence and any semantic rows already published. Library follows the
+same rule. The shared readiness resolver reports a pending failed corpus as
 `failed`, while published vectors remain queryable, so a background failure is
 partial semantic coverage rather than query failure or user-facing maintenance
 latency.
@@ -568,6 +569,24 @@ changes, maintenance resets only incompatible derived vectors to the existing
 transcript rows remain available throughout the rebuild. An invalid or
 unavailable profile disables semantic work rather than reading an unknown
 vector space.
+
+### Durable semantic maintenance ownership (D200)
+
+`ProcessSemanticCorpusMaintenance` owns one content-free scheduling operation
+for the active embedding profile and semantic source generation. StorageKit
+advances that generation only for authoritative transcript mutations; vector
+publication is excluded. Admission is idempotent, superseded pending work is
+cancelled, and a kind-wide lease prevents concurrent process owners. The lease
+has a bounded heartbeat, but semantic progress remains exclusively in missing
+or incompatible `NULL` vector rows.
+
+Expected capture suspension clears the lease, returns the operation to pending,
+and refunds its attempt. Ordinary failures receive two bounded retries and the
+macOS owner schedules one future wake rather than polling. A relaunch before a
+dead owner's lease expires wakes at that expiry; after expiration StorageKit
+recovers the same operation and resumes only remaining rows. Terminal derived
+failure does not change meeting lifecycle or exact FTS availability, and the
+meeting-processing `.index` kind remains dormant.
 
 ### Governed semantic embedding runtime (D165)
 

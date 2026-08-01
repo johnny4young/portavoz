@@ -5659,6 +5659,9 @@ run at a time. Any number of signals received while it runs collapse into one
 subsequent drain, represented by a scalar bit rather than a request queue. The
 supervisor has no timer, sleep, polling loop, or retry schedule.
 
+D200 later adds one cancellable future wake derived from persisted retry or
+lease-expiry evidence; it does not add polling or weaken this signal contract.
+
 The production background adapter first checks cancellation and protected
 capture, then queries at most one missing embedding row. It borrows the shared
 semantic runtime only when work exists and Apple's Latin contextual embedding
@@ -6495,8 +6498,9 @@ to the shared resolver. Explicit benchmark preparation may continue writing
 only to its disposable store outside the observed product request.
 
 This phase is deliberately not durable progress. Missing `NULL` embedding rows
-remain the authoritative cursor, and durable job leases, retries, user-facing
-preparation controls, or restart status belong to later work.
+remain the authoritative cursor. D200 later adds content-free scheduling
+ownership and restart recovery around that cursor without moving progress into
+the job ledger.
 
 **Rationale:** one typed read model gives every query surface identical,
 testable degradation while separating user latency and cancellation from
@@ -6529,9 +6533,10 @@ rows remain authoritative across pause, failure, and relaunch, Ask and Library
 remain read-only, FTS remains independent, and `.index` remains dormant until
 derived-maintenance scheduling can be separated from the meeting lifecycle.
 This decision itself does not add model/index-schema fingerprinting,
-invalidation, bounded retry ownership, or relaunch evidence; D199 subsequently
-adds the profile fingerprint and invalidation boundary, while durable retry
-ownership and relaunch evidence remain separate work.
+invalidation, bounded retry ownership, or relaunch evidence. D199 subsequently
+adds the profile fingerprint and invalidation boundary; D200 subsequently adds
+independent retry ownership and relaunch recovery without changing this source
+fence.
 
 **Rationale:** stale derived data must be impossible before retry scheduling is
 made more durable. Compare-and-swap at the storage boundary protects every
@@ -6577,3 +6582,40 @@ vector space are current. A single typed profile and fail-closed storage fence
 make that invariant enforceable at every read/write boundary, while reusing the
 existing crash-resumable `NULL` cursor avoids a second ledger and preserves
 exact local search throughout migration and rebuild.
+
+## D200 — Own semantic maintenance independently from meetings (Jul 2026)
+
+**Context:** source- and compatibility-fenced `NULL` vector rows made indexing
+replayable, but ordinary failures still depended on another app signal and a
+relaunch before a dead worker lease expired had no deterministic future wake.
+The existing `processingJob.index` contract is meeting-scoped and may move an
+otherwise searchable meeting into `processing` or `needsAttention`, so it is
+not a valid owner for degradable library-wide derived work.
+
+**Decision:** schema v18 adds a content-free derived-maintenance source and job
+ledger independent from meeting rows. Triggers advance one semantic source
+generation for authoritative transcript mutations but exclude embedding
+publication. The active compatibility profile plus generation produces one
+idempotent operation fingerprint. Superseded pending operations are cancelled;
+one kind-wide lease, heartbeat, bounded attempts, stable error code, and future
+retry timestamp own scheduling only. `NULL` or incompatible segment vectors
+remain the sole progress cursor.
+
+ApplicationKit recovers expired ownership, admits and claims the operation,
+borrows only already-installed semantic assets, and settles success, capture
+suspension, or failure. Capture suspension clears the lease and refunds the
+attempt. Ordinary failure retries after 5 and 30 seconds before becoming a
+terminal derived result. The macOS supervisor schedules one cancellable wake
+for the earliest retry or live predecessor lease expiration; mutation and
+capture-stop signals still coalesce into one immediate rerun. Relaunch recovery
+therefore resumes only remaining vector rows without polling or duplicate
+publication.
+
+Exact FTS and compatible published vectors remain available in every state.
+Derived failure never changes meeting lifecycle, stores meeting/transcript
+content, or activates `processingJob.index`.
+
+**Rationale:** retry ownership and indexing progress have different recovery
+boundaries. A small independent lease envelope makes process death and bounded
+retry deterministic, while the existing row cursor remains the exact,
+idempotent proof of completed derived work.

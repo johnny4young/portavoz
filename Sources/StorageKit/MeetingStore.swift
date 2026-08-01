@@ -9,6 +9,7 @@ public enum StorageError: Error, LocalizedError {
     case invalidImportedMeeting(String)
     case invalidRefinedMeeting(String)
     case invalidSemanticEmbedding(String)
+    case invalidDerivedMaintenanceJob(String)
     case staleRefineDraft(meetingID: MeetingID, expected: Int, actual: Int)
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
@@ -20,6 +21,8 @@ public enum StorageError: Error, LocalizedError {
     case processingJobNotFound(ProcessingJobID)
     case processingJobLeaseLost(ProcessingJobID)
     case processingJobInputChanged(ProcessingJobID)
+    case derivedMaintenanceJobNotFound(DerivedMaintenanceJobID)
+    case derivedMaintenanceJobLeaseLost(DerivedMaintenanceJobID)
     /// Persisted identity is immutable. Corrupt rows must fail loudly rather
     /// than being assigned a fresh UUID and silently becoming another entity.
     case invalidPersistedUUID(table: String, column: String, value: String)
@@ -37,6 +40,8 @@ public enum StorageError: Error, LocalizedError {
             return "invalid refined meeting: \(reason)"
         case .invalidSemanticEmbedding(let reason):
             return "invalid semantic embedding publication: \(reason)"
+        case .invalidDerivedMaintenanceJob(let reason):
+            return "invalid derived maintenance job: \(reason)"
         case .staleRefineDraft(let meetingID, let expected, let actual):
             return "refine draft for \(meetingID.rawValue.uuidString) expected transcript revision "
                 + "\(expected), current revision is \(actual)"
@@ -60,6 +65,10 @@ public enum StorageError: Error, LocalizedError {
             return "processing job lease is no longer owned: \(id.rawValue.uuidString)"
         case .processingJobInputChanged(let id):
             return "processing job input changed before completion: \(id.rawValue.uuidString)"
+        case .derivedMaintenanceJobNotFound(let id):
+            return "no such derived maintenance job: \(id.rawValue.uuidString)"
+        case .derivedMaintenanceJobLeaseLost(let id):
+            return "derived maintenance lease is no longer owned: \(id.rawValue.uuidString)"
         case .invalidPersistedUUID(let table, let column, let value):
             return "invalid persisted UUID in \(table).\(column): \(value)"
         case .invalidPersistedValue(let table, let column, let value):

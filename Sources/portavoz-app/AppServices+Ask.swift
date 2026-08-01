@@ -82,7 +82,7 @@ extension AppServices {
         let background = SemanticCorpusIndexingSupervisor(
             isEnabled: !usesTemporaryStore,
             maintenanceState: maintenanceState,
-            drain: backgroundIndexer.drain)
+            drain: backgroundIndexer.drain(owner:))
         return AppSemanticSearchComposition(
             coordinator: coordinator,
             ask: ask,

@@ -510,7 +510,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 17. It includes:
+The current schema version is 18. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -526,6 +526,8 @@ The current schema version is 17. It includes:
   untouched; provenance commits atomically with the artifact);
 - content-free meeting egress attempts and receipt coverage;
 - owner-leased durable processing jobs;
+- a content-free derived-maintenance source generation and independently
+  leased scheduling ledger;
 - a content-free per-meeting sync generation journal;
 - meeting preferences and the generic outbox schema retained for compatible
   persistence even where runtime delivery uses another mechanism.
@@ -564,10 +566,23 @@ means no query vector can be produced. A complete durable corpus resolves
 `ready` even after an older process failure.
 
 All product corpus backfill belongs to the signal-driven background owner. It
-delegates complete drains to `IndexSemanticCorpus` behind one process-shared semantic-indexing
-coordinator; explicit disposable benchmark preparation may use the same
-operation outside product requests. There is no pending-request array and
-never more than one embedding flight.
+delegates complete drains to `ProcessSemanticCorpusMaintenance`, which owns a
+content-free scheduling lease around `IndexSemanticCorpus` behind one
+process-shared semantic-indexing coordinator. Explicit disposable benchmark
+preparation may use the indexing operation outside product requests. There is
+no pending-request array and never more than one embedding flight.
+
+Schema v18 triggers advance one semantic source generation when authoritative
+segment text, identity, tombstones, or meeting transcript revision changes.
+Embedding publication does not advance it. The application idempotently admits
+one operation for the active compatibility profile and generation, cancels
+superseded pending operations, and claims at most one kind-wide lease. The
+lease receives a bounded heartbeat; expected capture suspension returns the
+operation to pending and refunds the claim attempt. Ordinary failures retry
+after 5 and 30 seconds, then become terminal. The supervisor schedules one
+future wake for the earliest retry or still-live predecessor lease expiration;
+it never polls. Launch recovery reclaims expired ownership and continues from
+the existing vector cursor.
 Cancelling the final waiter cancels the worker before persistence; another
 borrower keeps shared work alive. The writer obtains one valid compatibility
 profile from the prepared embedder, resets incompatible derived vectors to the
@@ -575,7 +590,10 @@ existing `NULL` cursor, marks micro-segments with an empty vector, validates
 the result count and every non-empty vector against that profile before
 persistence, and emits content-free maintenance/search-index intervals.
 Missing or invalidated embeddings remain durable `NULL` rows, so coalescing,
-profile changes, or policy suspension lose no authoritative corpus evidence.
+profile changes, policy suspension, bounded retry, or process death lose no
+authoritative corpus evidence. Source generation identifies an admitted
+mutation set but never counts progress; meeting lifecycle remains independent,
+and the dormant meeting-processing `.index` kind is not activated.
 
 Ask and Library are read-only with respect to that corpus. Every Ask request retrieves exact
 FTS evidence first, resolves the shared semantic state without preparing or
@@ -737,18 +755,20 @@ cannot reinterpret the destination URL as permission to start a fresh backup.
 None of these paths adds a timer, heartbeat, PID heuristic, or polling task.
 
 Durable ownership follows the smallest recovery boundary that can prove exact
-progress. Semantic corpus maintenance and the existing-library sync seed use
-idempotent database cursors, so an explicit paused result leaves replayable
-rows and needs no claimed-worker lease. Whole-library backup owns an immutable
-SQLite stage through a kernel lease and journals every safe source advance.
+progress. Semantic corpus maintenance uses an independent content-free lease
+only for admission, retry, and worker-death recovery; `NULL` vector rows remain
+its sole progress cursor. The existing-library sync seed uses an idempotent
+database cursor and needs no claimed-worker lease. Whole-library backup owns an
+immutable SQLite stage through a kernel lease and journals every safe source
+advance.
 Post-capture transcription, diarization, and summary are different: each is an
 exclusive claimed job whose generated publication must remain owner-fenced, so
 the worker renews a durable lease. Intentional suspension explicitly returns an
 owned job to pending, clears the lease, refunds that claim attempt, and ends the
 current drain invocation so it cannot immediately reclaim pending work; an
 expired running lease remains the distinct worker-death path consumed by launch
-recovery. Adding a timer or heartbeat to replay-safe checkpoint work is not a
-substitute for a durable cursor.
+recovery. A semantic heartbeat protects scheduling ownership but never replaces
+the replay-safe vector cursor.
 
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,
@@ -1531,18 +1551,19 @@ augmentation.
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and
 capture returning inactive are wake signals. Bursts collapse to at most one
-rerun behind the active drain; no timer, polling loop, or in-memory work queue
-exists. Before borrowing the semantic runtime, the background adapter checks
-capture state, whether the live corpus has any searchable row, installed Apple
-embedding assets, a valid active profile, and whether any row lacks that exact
-profile. It never downloads assets in the background. Temporary and isolated
-benchmark stores disable the supervisor.
+rerun behind the active drain; no polling loop or in-memory work queue exists.
+One cancellable future wake may represent a durable retry or predecessor lease
+expiration. Before borrowing the semantic runtime, the background adapter
+checks capture state, whether the live corpus has any searchable row, installed
+Apple embedding assets, a valid active profile, and whether any row lacks that
+exact profile. It never downloads assets in the background. Temporary and
+isolated benchmark stores disable the supervisor.
 
 The `NULL` embedding rows remain the durable cursor across suspension, failure,
-and process termination. A later signal or relaunch therefore resumes work
-without a second progress cursor. Ask and Library are corpus-read-only: both
-publish exact FTS first and may augment it only with vectors already committed
-by background maintenance.
+and process termination. A later signal, scheduled retry, or lease-expiry wake
+therefore resumes work without a second progress cursor. Ask and Library are
+corpus-read-only: both publish exact FTS first and may augment it only with
+vectors already committed by background maintenance.
 
 Every selected semantic row carries its segment ID, meeting ID, transcript
 revision, and exact source text through embedding. StorageKit accepts the

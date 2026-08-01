@@ -51,13 +51,13 @@ final class PrivacyReceiptTests: XCTestCase {
         XCTAssertEqual(receipt.status, .noRemoteTransferRecorded)
 
         try await store.database.read { db in
-            XCTAssertEqual(StorageSchema.version, 17)
+            XCTAssertEqual(StorageSchema.version, 18)
             XCTAssertEqual(
                 try String.fetchAll(
                     db, sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"),
                 [
                     "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8",
-                    "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17",
+                    "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18",
                 ])
             XCTAssertEqual(
                 try Set(db.columns(in: "dataEgressEvent").map(\.name)),

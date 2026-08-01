@@ -10,8 +10,8 @@ import StorageKit
 /// runs at a time, bursts collapse to one rerun, and no timer polls SQLite.
 @MainActor
 final class SemanticCorpusIndexingSupervisor {
-    typealias Drain = @Sendable () async throws
-        -> SemanticCorpusIndexingResult
+    typealias Drain = @Sendable (_ owner: String) async throws
+        -> SemanticCorpusMaintenanceRun
 
     private static let logger = Logger(
         subsystem: "app.portavoz.mac",
@@ -20,7 +20,9 @@ final class SemanticCorpusIndexingSupervisor {
     private let isEnabled: Bool
     private let maintenanceState: SemanticCorpusMaintenanceState
     private let drain: Drain
+    private let owner = "semantic-maintenance-\(UUID().uuidString.lowercased())"
     private var drainTask: Task<Void, Never>?
+    private var wakeTask: Task<Void, Never>?
     private var rerunRequested = false
 
     init(
@@ -35,6 +37,8 @@ final class SemanticCorpusIndexingSupervisor {
 
     func kick() {
         guard isEnabled else { return }
+        wakeTask?.cancel()
+        wakeTask = nil
         guard drainTask == nil else {
             rerunRequested = true
             return
@@ -43,32 +47,47 @@ final class SemanticCorpusIndexingSupervisor {
         rerunRequested = false
         maintenanceState.transition(to: .building)
         let drain = drain
+        let owner = owner
         drainTask = Task { @MainActor [weak self] in
-            let terminalPhase: SemanticCorpusMaintenancePhase
+            let run: SemanticCorpusMaintenanceRun
             do {
-                _ = try await drain()
-                terminalPhase = .idle
+                run = try await drain(owner)
             } catch is CancellationError {
-                terminalPhase = .idle
+                run = .empty
             } catch {
-                terminalPhase = .failed
+                run = SemanticCorpusMaintenanceRun(terminalFailure: true)
                 Self.logger.error(
-                    "Semantic indexing maintenance failed; durable rows remain pending")
+                    "Semantic maintenance coordination failed; durable work remains replayable")
             }
-            self?.finishedDrain(terminalPhase: terminalPhase)
+            self?.finishedDrain(run)
         }
     }
 
-    private func finishedDrain(
-        terminalPhase: SemanticCorpusMaintenancePhase
-    ) {
+    private func finishedDrain(_ run: SemanticCorpusMaintenanceRun) {
         drainTask = nil
-        guard rerunRequested else {
-            maintenanceState.transition(to: terminalPhase)
+        if rerunRequested || run.shouldRerun {
+            rerunRequested = false
+            kick()
             return
         }
-        rerunRequested = false
-        kick()
+        maintenanceState.transition(to: run.terminalFailure ? .failed : .idle)
+        if let retryAt = run.retryAt {
+            scheduleWake(at: retryAt)
+        }
+    }
+
+    private func scheduleWake(at date: Date) {
+        let delay = max(0, date.timeIntervalSinceNow)
+        wakeTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, let self else { return }
+            self.wakeTask = nil
+            self.kick()
+        }
     }
 }
 
@@ -80,24 +99,14 @@ struct AppSemanticCorpusBackgroundIndexer: Sendable {
     let coordinator: SemanticCorpusIndexingCoordinator
     let captureState: AppResourceCaptureState
 
-    func drain() async throws -> SemanticCorpusIndexingResult {
-        try Task.checkCancellation()
-        guard captureState.current == .inactive else { return .paused }
-        guard try await store.hasSemanticCorpusRows() else { return .empty }
-        guard await runtime.hasAvailableAssets else { return .empty }
-        guard let profile = await runtime.semanticEmbeddingProfile(),
-              profile.isValid,
-              try await store.semanticIndexRequiresMaintenance(for: profile)
-        else { return .empty }
-        try Task.checkCancellation()
-        guard captureState.current == .inactive else { return .paused }
-
-        return try await runtime.withPreparedEmbedding(
-            allowAssetDownload: false
-        ) { [coordinator] embedder in
-            try await coordinator.all(
-                using: embedder,
-                batchSize: 256)
-        }
+    func drain(
+        owner: String = "semantic-maintenance-test-owner"
+    ) async throws -> SemanticCorpusMaintenanceRun {
+        try await ProcessSemanticCorpusMaintenance(
+            store: store,
+            runtime: runtime,
+            coordinator: coordinator,
+            mayStart: { captureState.current == .inactive }
+        ).execute(owner: owner)
     }
 }

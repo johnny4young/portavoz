@@ -16,6 +16,8 @@ correction, replacement, or deletion.
 D199 requires one valid embedding compatibility profile before semantic
 maintenance or reads and rebuilds incompatible derived vectors through the
 existing `NULL` cursor.
+D200 adds independent durable semantic-maintenance scheduling, bounded retry,
+and lease-expiry relaunch recovery without changing meeting lifecycle.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -254,9 +256,10 @@ The migration surface is locked by an architecture test before adapter changes:
 The ratchet also proves there is one process ledger construction, five fully
 integrated runtime adapters, and no production semantic constructor outside
 the dedicated app adapter. This is not approval of the current idle constants;
-semantic embedding intentionally has no timer. The pressure adapter can release
-any idle family immediately, while delayed TTL replacement still requires
-accepted evidence.
+semantic embedding intentionally has no residency idle-release timer. Its
+separate persisted retry or lease-expiry wake owns maintenance scheduling only.
+The pressure adapter can release any idle family immediately, while delayed TTL
+replacement still requires accepted evidence.
 
 ### Whisper residency adapter (D160)
 
@@ -490,18 +493,19 @@ protected capture it still requests Spotlight reconciliation but defers the
 semantic wake until the capture-state transition publishes inactive.
 
 The supervisor serializes one complete drain and collapses every concurrent
-wake into one later rerun. It never schedules a timer. Its production adapter
-first uses a profile-free row-existence probe so an empty library never touches
-the model runtime. For a nonempty corpus it requires already-installed Apple
-assets, a valid active embedding profile, and one missing-or-incompatible row
-before borrowing the runtime; it cannot request an asset download. The D177
-gate remains the final admission/checkpoint authority if capture changes after
-wake admission.
+wake into one later rerun. It never polls; D200 permits one cancellable future
+wake for a persisted retry or predecessor lease expiration. Its production
+adapter first uses a profile-free row-existence probe so an empty library never
+touches the model runtime. For a nonempty corpus it requires already-installed
+Apple assets and a valid active embedding profile before durable admission and
+runtime borrowing; it cannot request an asset download. The D177 gate remains
+the final admission/checkpoint authority if capture changes after wake
+admission.
 
 Temporary/UI stores and isolated resource benchmarks disable the owner. A
 failed drain logs only an ordinary content-free operational message; durable
-`NULL` rows survive and the next mutation, capture completion, or launch
-retries them. Ask never joins the maintenance flight: exact FTS remains
+`NULL` rows survive and the next bounded retry, mutation, capture completion,
+or launch retries them. Ask never joins the maintenance flight: exact FTS remains
 authoritative, semantic lookup uses only already-published rows, and ordinary
 runtime failure degrades to lexical evidence. The supervisor publishes a
 payload-free process phase (`building`, `idle`, or `failed`) to the shared
@@ -519,8 +523,27 @@ next pass. Every accepted vector also publishes the D199 compatibility
 fingerprint for its concrete model, dimension, pooling pipeline, and vector
 schema. A profile change resets only incompatible derived rows to `NULL` before
 the drain rebuilds them; exact FTS remains available throughout. The dormant
-processing-job `.index` kind remains inactive until a derived-maintenance
-scheduler can avoid changing the meeting lifecycle.
+processing-job `.index` kind remains inactive because D200 owns derived
+scheduling independently from meeting lifecycle.
+
+### Durable semantic maintenance scheduling (D200)
+
+The production adapter delegates one pass to
+`ProcessSemanticCorpusMaintenance`. After the profile-free empty-library and
+installed-asset checks, the use case recovers expired ownership, idempotently
+admits the current profile/source operation, and claims one kind-wide lease.
+The prepared runtime still forbids asset download and the D177 checkpoint gate
+still protects capture between committed batches.
+
+The operation heartbeats only while it owns the runtime pass. Capture policy
+suspension returns it to pending and refunds the attempt. Ordinary failures
+retry after bounded delays; `SemanticCorpusIndexingSupervisor` owns one
+cancellable future wake for either that delay or a predecessor lease expiry,
+with no polling loop. A mutation or explicit app signal cancels the stale wake
+and drains immediately. After process death, launch either recovers an expired
+lease or waits once until it can do so, then resumes from remaining `NULL`
+vectors. Exact FTS, already-published compatible vectors, and meeting lifecycle
+remain available throughout; `.index` is not activated in `processingJob`.
 
 
 ### Capture-safe existing-library sync admission (D179)

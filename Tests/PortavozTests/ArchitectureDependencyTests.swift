@@ -638,7 +638,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let intelligenceSpec = try Self.contents(
             of: "docs/specs/04-intelligence.md")
         XCTAssertTrue(architecture.contains(
-            "one process-shared semantic-indexing"))
+            "process-shared semantic-indexing"))
         XCTAssertTrue(decisions.contains("## D176"))
         XCTAssertTrue(decisions.contains("## D196"))
         XCTAssertTrue(decisions.contains("## D197"))
@@ -653,6 +653,14 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testSemanticBackgroundOwnerUsesSignalsAndDurableCursor() throws {
         let supervisor = try Self.contents(
             of: "Sources/portavoz-app/SemanticCorpusIndexingSupervisor.swift")
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/ProcessSemanticCorpusMaintenance.swift")
+        let store = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+DerivedMaintenance.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+DerivedMaintenance.swift")
+        let job = try Self.contents(
+            of: "Sources/PortavozCore/DerivedMaintenanceJob.swift")
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices.swift")
         let app = try Self.contents(
@@ -669,20 +677,28 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(supervisor.contains(
             "final class SemanticCorpusIndexingSupervisor"))
         XCTAssertTrue(supervisor.contains("private var drainTask:"))
+        XCTAssertTrue(supervisor.contains("private var wakeTask:"))
         XCTAssertTrue(supervisor.contains("private var rerunRequested = false"))
         XCTAssertTrue(supervisor.contains(
             "maintenanceState.transition(to: .building)"))
         XCTAssertTrue(supervisor.contains(
-            "maintenanceState.transition(to: terminalPhase)"))
+            "run.terminalFailure ? .failed : .idle"))
+        XCTAssertTrue(supervisor.contains("scheduleWake(at: retryAt)"))
+        XCTAssertTrue(supervisor.contains("Task.sleep(for: .seconds(delay))"))
+        XCTAssertFalse(supervisor.contains("while"))
         XCTAssertTrue(supervisor.contains(
             "struct AppSemanticCorpusBackgroundIndexer"))
         XCTAssertTrue(supervisor.contains(
-            "allowAssetDownload: false"))
-        XCTAssertTrue(supervisor.contains(
-            "hasSemanticCorpusRows()"))
-        XCTAssertTrue(supervisor.contains(
-            "semanticIndexRequiresMaintenance(for: profile)"))
-        XCTAssertFalse(supervisor.contains("Task.sleep"))
+            "ProcessSemanticCorpusMaintenance("))
+        XCTAssertTrue(workflow.contains("allowAssetDownload: false"))
+        XCTAssertTrue(workflow.contains("recoverExpiredSemanticCorpusMaintenance"))
+        XCTAssertTrue(workflow.contains("suspendSemanticCorpusMaintenance"))
+        XCTAssertTrue(workflow.contains("retryDelays: [TimeInterval] = [5, 30]"))
+        XCTAssertTrue(store.contains("leaseExpiresAt AS wakeAt"))
+        XCTAssertTrue(store.contains("state = 'cancelled'"))
+        XCTAssertTrue(schema.contains("registerMigration(\"v18\")"))
+        XCTAssertTrue(schema.contains("semanticCorpusGeneration_after_segment_update"))
+        XCTAssertTrue(job.contains("semantic-corpus-maintenance-v1"))
         XCTAssertTrue(services.contains(
             "@ObservationIgnored let semanticIndexingSupervisor:"))
         XCTAssertTrue(services.contains(
@@ -708,10 +724,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             "one signal-driven semantic-maintenance supervisor"))
         XCTAssertTrue(decisions.contains(
             "## D178 — Resume semantic maintenance"))
+        XCTAssertTrue(decisions.contains(
+            "## D200 — Own semantic maintenance independently"))
         XCTAssertTrue(intelligenceSpec.contains(
             "### Signal-driven background semantic owner (D178)"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Durable semantic maintenance ownership (D200)"))
         XCTAssertTrue(appSpec.contains(
             "### Signal-driven semantic maintenance (D178)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Durable semantic maintenance scheduling (D200)"))
     }
 
     func testSemanticPublicationIsFencedByExactTranscriptSource() throws {
@@ -767,8 +789,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/IndexSemanticCorpus.swift")
         let readiness = try Self.contents(
             of: "Sources/ApplicationKit/SemanticCorpusReadiness.swift")
-        let supervisor = try Self.contents(
-            of: "Sources/portavoz-app/SemanticCorpusIndexingSupervisor.swift")
+        let maintenance = try Self.contents(
+            of: "Sources/ApplicationKit/ProcessSemanticCorpusMaintenance.swift")
         let ask = try Self.contents(
             of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
         let library = try Self.contents(
@@ -792,7 +814,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 17"))
+        XCTAssertTrue(schema.contains("public static let version = 18"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -821,9 +843,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "semanticEmbeddingProfile()"))
         XCTAssertTrue(readiness.contains(
             "semanticIndexRequiresMaintenance("))
-        XCTAssertTrue(supervisor.contains("hasSemanticCorpusRows()"))
-        XCTAssertTrue(supervisor.contains(
-            "semanticIndexRequiresMaintenance(for: profile)"))
+        XCTAssertTrue(maintenance.contains("hasSemanticCorpusRows()"))
+        XCTAssertTrue(maintenance.contains(
+            "semanticIndexRequiresMaintenance("))
+        XCTAssertTrue(maintenance.contains("for: profile)"))
         XCTAssertTrue(ask.contains("profile: profile"))
         XCTAssertTrue(library.contains("profile: profile"))
 
@@ -833,7 +856,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
-        XCTAssertTrue(architecture.contains("current schema version is 17"))
+        XCTAssertTrue(architecture.contains("current schema version is 18"))
         XCTAssertTrue(architecture.contains(
             "Every persisted semantic vector also carries one SHA-256"))
         XCTAssertTrue(decisions.contains("## D199"))
@@ -2696,6 +2719,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+ProcessingJobs.swift")
         let semantic = try Self.contents(
             of: "Sources/portavoz-app/SemanticCorpusIndexingSupervisor.swift")
+        let semanticWorkflow = try Self.contents(
+            of: "Sources/ApplicationKit/ProcessSemanticCorpusMaintenance.swift")
+        let semanticStore = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+DerivedMaintenance.swift")
         let sync = try Self.contents(
             of: "Sources/IntegrationsKit/CloudMeetingSyncCoordinator.swift")
         let backup = try Self.contents(
@@ -2713,12 +2740,15 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(jobs.contains("suspendProcessingJob"))
         XCTAssertTrue(jobs.contains("record.attempt -= 1"))
         XCTAssertTrue(jobs.contains("processing.lease.expired"))
-        XCTAssertTrue(semantic.contains("return .paused"))
+        XCTAssertTrue(semanticWorkflow.contains("return .paused"))
+        XCTAssertTrue(semanticWorkflow.contains("heartbeatTask"))
+        XCTAssertTrue(semanticStore.contains("suspendSemanticCorpusMaintenance"))
+        XCTAssertTrue(semantic.contains("Task.sleep"))
         XCTAssertTrue(sync.contains(".paused(processedCount:"))
         XCTAssertTrue(backup.contains("return .suspended"))
         XCTAssertTrue(backupStore.contains(".owner.lock"))
         XCTAssertTrue(backupStore.contains("portavoBSDFileLock"))
-        for replaySafeOwner in [semantic, sync, backup, backupStore] {
+        for replaySafeOwner in [sync, backup, backupStore] {
             XCTAssertFalse(replaySafeOwner.contains("heartbeat"))
             XCTAssertFalse(replaySafeOwner.contains("Timer"))
             XCTAssertFalse(replaySafeOwner.contains("Task.sleep"))

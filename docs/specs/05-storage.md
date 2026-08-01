@@ -7,12 +7,14 @@ D198 adds exact source identity and compare-and-swap publication for semantic
 embedding batches.
 D199 adds compatibility-fingerprinted semantic vectors and fail-closed rebuilds
 when the model or vector pipeline changes.
+D200 adds content-free, independently leased scheduling for semantic
+maintenance without changing meeting lifecycle or replacing the vector cursor.
 
 ## Database
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v17` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v18` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -46,6 +48,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `meetingSyncState` (v14) | meetingID (TEXT PK, deliberately no FK), localGeneration, acknowledgedGeneration, changedAt, isDeleted; content-free coalesced mutation state with pending index and purge-surviving deletion evidence |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
 | `enhancedNote` (v15) | id, meetingID (UNIQUE, FK cascade), markdown, language, inputFingerprint (all checked non-empty), generationRunID (FK `setNull`, device-local), createdAt/updatedAt/deletedAt; ONE regenerable enhanced-notes document per meeting (D135), replaced in place preserving createdAt, portable via v15-registered `enhancedNote_sync_ai/au/ad` triggers over [markdown, language, inputFingerprint, deletedAt] |
+| `derivedMaintenanceSource` (v18) | kind (TEXT PK), sourceGeneration, updatedAt; content-free mutation identity for derived work, never a progress cursor |
+| `derivedMaintenanceJob` (v18) | content-free kind/profile/source operation identity, bounded attempts and scheduling time, lease owner/expiry, stable error code and timestamps; independent from meeting lifecycle |
 
 Schema v16 adds the partial
 `meeting_on_live_startedAt_id(startedAt DESC, id ASC)` index for deterministic
@@ -58,6 +62,14 @@ derived embedding BLOB and fingerprint to the established `NULL` replay cursor.
 It does not rewrite transcript text, segment identity, meeting revisions, or
 FTS rows. Background maintenance may therefore rebuild a compatible vector
 space while exact search remains available.
+
+Schema v18 adds `derivedMaintenanceSource` and `derivedMaintenanceJob` for
+independent semantic-maintenance ownership. Five triggers advance the semantic
+source generation for segment insertion, source-relevant segment update,
+segment deletion, meeting transcript/tombstone update, and meeting deletion.
+Embedding and fingerprint publication do not advance it. Existing live
+libraries seed generation one; empty libraries seed zero. The migration does
+not rewrite transcript, FTS, vector, profile, meeting lifecycle, or user data.
 
 Schema v6 is an additive foundation (D36). Existing meetings migrate to
 `ready`, revision zero, and no processing error. The migration does not inspect
@@ -868,7 +880,7 @@ queries, and non-positive limits return no invalid hits. Comparable results:
 The 100k wall/CPU path is 72.3%/72.2% faster and passes both targets. D83
 retains exact schema-v7 Float32 BLOBs and rejects sqlite-vec, a new embedding
 table, and approximation at the measured scale.
-D176–D178 and D196–D199 retain `NULL` embedding rows as the durable retry
+D176–D178 and D196–D200 retain `NULL` embedding rows as the durable retry
 ledger while ApplicationKit coalesces redundant background-maintenance flights,
 pauses between committed batches, and resumes from explicit app
 lifecycle/mutation/capture-stop signals. D198 strengthens the write boundary:
@@ -885,5 +897,11 @@ vectors carrying the active fingerprint; their shared typed readiness probe
 checks at most one missing or incompatible row and never changes storage.
 Maintenance resets incompatible derived vectors and fingerprints to `NULL`
 before rebuilding; exact FTS and authoritative transcript state are unchanged.
-Process termination, policy suspension, or an ordinary background failure
-therefore needs no in-memory cursor repair, retry table, or vector rollback.
+D200 wraps that cursor in an independent content-free admission and retry
+ledger. Source generation plus the active profile creates one idempotent
+operation identity; a lease and heartbeat prove the current scheduling owner,
+not indexing progress. Capture suspension refunds the attempt. Ordinary
+failures use bounded future scheduling, and an expired owner is recovered on
+relaunch. The earliest pending retry or unexpired predecessor lease exposes
+one deterministic wake. There is no polling loop, second progress cursor, or
+second product indexing lane.
