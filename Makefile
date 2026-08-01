@@ -17,6 +17,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-exact-path-mutation-cross-host exact-path-mutation-cross-host \
 	test-exact-path-mutation-baseline exact-path-mutation-baseline \
 	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
+	test-meeting-detail-baseline meeting-detail-baseline \
 	test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
@@ -156,6 +157,20 @@ exact-path-baseline:
 		--output "$(PORTAVOZ_EXACT_PATH_BASELINE_OUTPUT)" \
 		--accept-scorecard-sha256 "$(PORTAVOZ_EXACT_PATH_ACCEPTED_SCORECARD_SHA256)" \
 		--accept-source-commit "$(PORTAVOZ_EXACT_PATH_ACCEPTED_SOURCE_COMMIT)"
+
+## Verify the reviewed Meeting Detail interaction inventory and the fail-closed
+## Instruments report parser without launching the app or reading user data.
+test-meeting-detail-baseline:
+	python3 -m unittest \
+		Tests.Tooling.test_meeting_detail_contract \
+		Tests.Tooling.test_meeting_detail_performance
+	python3 scripts/meeting_detail_contract.py verify
+
+## Capture the disposable 5k playback-seek and 20k transcript-scroll profiles.
+## The runner refuses the notarized app and never reads the user's library.
+PORTAVOZ_MEETING_DETAIL_BASELINE_OUTPUT ?= /private/tmp/portavoz-detail-ui-baseline.json
+meeting-detail-baseline:
+	scripts/run-detail-ui-baseline.sh "$(PORTAVOZ_MEETING_DETAIL_BASELINE_OUTPUT)"
 
 ## Build one Release CLI and compare segment control with speaker-turn retrieval
 ## from the same clean commit. Output is private, non-overwriting local evidence.

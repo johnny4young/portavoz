@@ -1,8 +1,25 @@
 import Foundation
 import PortavozCore
 
+struct MeetingDetailPerformanceProfile {
+    let shouldExerciseTranscriptScroll: Bool
+    let shouldExercisePlaybackSeek: Bool
+}
+
 extension AppServices {
-    /// Builds a deterministic 2-hour/5k-segment meeting only in a disposable
+    var meetingDetailPerformanceProfile: MeetingDetailPerformanceProfile {
+        let arguments = ProcessInfo.processInfo.arguments
+        let enabled = arguments.contains("-use-temp-store")
+            && arguments.contains("-seed-scale")
+            && arguments.contains("-detail-performance-profile")
+        return MeetingDetailPerformanceProfile(
+            shouldExerciseTranscriptScroll: enabled
+                && arguments.contains("-scale-profile-scroll"),
+            shouldExercisePlaybackSeek: enabled
+                && arguments.contains("-scale-profile-seek"))
+    }
+
+    /// Builds a deterministic 2-hour scale meeting only in a disposable
     /// store. It drives XCUITest and the SwiftUI Instruments baseline without
     /// reading or writing the user's library, audio, models, or preferences.
     func seedScaleBenchmarkIfRequested() async {
@@ -14,11 +31,15 @@ extension AppServices {
 
         let segmentCount = Self.scaleSegmentCount(arguments: arguments)
         let duration: TimeInterval = 2 * 60 * 60
+        let audioDirectory = arguments.contains("-scale-profile-audio")
+            ? Self.prepareSeedAudio()
+            : nil
         let meeting = Meeting(
             title: "Scale baseline · 2 h · \(segmentCount) segments",
             startedAt: Date(timeIntervalSince1970: 1_700_000_000),
             endedAt: Date(timeIntervalSince1970: 1_700_000_000 + duration),
-            language: "es")
+            language: "es",
+            audioDirectory: audioDirectory)
         let speakers = (0..<4).map {
             Speaker(
                 meetingID: meeting.id,

@@ -7411,3 +7411,46 @@ retained aggregate reproducible; private non-overwriting publication prevents
 later replacement from silently changing what was reviewed. Keeping the
 scorecard's original `review-required` outcome preserves the separation between
 evidence retention and any future performance or product decision.
+
+## D222 — Freeze Meeting Detail behavior before decomposition (Aug 2026)
+
+**Context:** Meeting Detail remains the largest presentation surface and the
+next roadmap band will split its scene, generated document, transcript,
+playback, and secondary flows. Existing feature tests cover released journeys,
+but no machine-readable boundary assigned every journey to one owner or
+detected unreviewed changes across controls, identifiers, routes, sheets, and
+keyboard behavior. The older 5,000-segment baseline measured first projection
+and health work but not playback seek or 20,000-segment transcript scrolling.
+
+**Decision:** generate and track a canonical Meeting Detail interaction
+contract before changing the composition. It snapshots source-derived state,
+control, presentation, keyboard, identifier, and navigation signals across the
+reviewed detail files; assigns every `MeetingDetailUITests` journey to exactly
+one of ten feature owners; derives screenshot ownership from each test body;
+and binds the performance evidence, parser, and runner by SHA-256. Any boundary,
+owner, test, screenshot, or evidence change requires an explicit snapshot.
+
+Extend the disposable scale fixture to 5,000 and 20,000 segments. Hidden
+performance journeys require `-use-temp-store`, `-seed-scale`, and
+`-detail-performance-profile` together, emit payload-free signposts, and never
+read the user library. The 5k profile uses generated two-channel audio for
+exactly five seeks; the 20k profile performs exactly five transcript scrolls.
+SwiftUI and Animation Hitches traces retain a deterministic delayed summary
+mutation, while the Logging trace excludes it so the view replacement cannot
+cancel the interaction loop. Missing, excess, malformed, or referenced-cycle
+samples fail closed. The runner refuses the notarized release bundle.
+
+The Aug 2026 Xcode 26.6 evidence records 5k/20k first content at
+111.25/197.35 ms, seek/scroll p95 at 0.52/331.94 ms, and zero app hitches or
+potential hangs. Time Profiler contains both detail and transcript symbols.
+The SwiftUI template emitted no update rows for either profile, so exact body
+invalidation counts remain `unavailable-toolchain`; they are not zero and do
+not become an acceptance claim. The evidence is a refactor-parity baseline,
+not production telemetry, a product schema, or a new performance budget.
+
+**Rationale:** a reviewed inventory makes Strangler decomposition auditable:
+each extracted section must preserve its owner, journey, screenshot, and
+measured behavior. Restricting automation to a disposable store prevents
+benchmark code from becoming a production back door. Recording unavailable
+tool output explicitly preserves trust while still providing actionable first-
+content, interaction, hitch, hang, and symbol evidence for later decomposition.

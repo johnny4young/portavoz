@@ -960,6 +960,20 @@ resource instrumentation, so capture callbacks never log, lock this telemetry,
 or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
+Meeting Detail decomposition is also preceded by a frozen presentation
+boundary. A generated contract inventories 248 source interaction signals,
+assigns all 23 detail XCUITest journeys to exactly one of ten feature owners,
+and digest-binds the reviewed performance harness and evidence. Hidden
+payload-free scroll and seek signposts activate only when a disposable temp
+store, the scale fixture, and the explicit detail-profile flag are present.
+The Aug 2026 Xcode 26.6 baseline measures first content at 111.25 ms for 5,000
+segments and 197.35 ms for 20,000; five playback seeks have p95 0.52 ms and
+five transcript scrolls have p95 331.94 ms. Both profiles record zero app
+hitches and zero potential hangs. Xcode emitted no SwiftUI update rows, so
+body invalidation counts remain unavailable rather than being reported as
+zero. This contract is a refactor-parity guard, not product telemetry or a
+performance budget.
+
 Core also owns one pure resource-admission policy, separate from both
 measurement and runtime scheduling. Its immutable snapshot contains the
 capture lifecycle and source health, categorical hardware memory tier, disk

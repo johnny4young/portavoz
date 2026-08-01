@@ -1784,14 +1784,33 @@ so D80 leaves those structures unchanged.
 
 The 25th XCUITest waits for the 5,000-segment title, transcript, chapter rail,
 and delayed summary revision 2, then retains the
-`band-4a-scale-detail-5000-segments` app-window screenshot. This proves that
+`meeting-detail-scale-5000-segments` app-window screenshot. This proves that
 the scoped summary stream remains functional at scale; it does not substitute
 for the unavailable SwiftUI update-cause lane.
+
+The characterization baseline freezes the complete surface before decomposition. The generated
+`meeting-detail-interaction-contract.json` snapshots 248 state/control/
+presentation/keyboard/identifier/navigation signals across the reviewed
+detail files and assigns all 23 `MeetingDetailUITests` journeys to exactly one
+of ten feature owners. Screenshot names are derived from their test bodies;
+changing a control, route, owner, screenshot, or reviewed evidence digest
+requires an explicit snapshot update.
+
+The scale fixture now accepts an explicit bounded segment count. Performance
+automation additionally requires `-detail-performance-profile` together with
+`-use-temp-store` and `-seed-scale`; playback uses a generated six-second
+two-channel clip, while the 20k scroll profile has no audio. Production
+launches cannot activate these journeys. The Aug 2026 Xcode 26.6 baseline
+records 5k/20k first content at 111.25/197.35 ms, exactly five playback seeks
+at p95 0.52 ms, exactly five transcript scrolls at p95 331.94 ms, and zero app
+hitches or potential hangs. Time Profiler contains both detail and transcript
+symbols. SwiftUI emitted no update rows for either profile, so exact body
+invalidation counts remain explicitly unavailable (D222).
 
 ## UI verification — XCUITest first (Jul 12)
 
 `make test-ui` (XcodeGen → `Portavoz.xcodeproj` → `xcodebuild test`)
-defines 55 XCUITest cases in `Tests/PortavozUITests`: Automation (the
+defines 57 XCUITest cases in `Tests/PortavozUITests`: Automation (the
 production `portavoz://record` route enters a visible disposable recording
 whose `app.portavoz.mac.uitest-host` identity cannot shadow either installed
 app),

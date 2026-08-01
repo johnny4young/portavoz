@@ -49,6 +49,7 @@ extension XCUIApplication {
         seedDemo: Bool = false,
         seedShowcase: Bool = false,
         seedScale: Bool = false,
+        scaleSegmentCount: Int? = nil,
         scaleAutoSummaryUpdate: Bool = false,
         seedLatestRecipe: Bool = false,
         seedBrief: Bool = false,
@@ -82,6 +83,9 @@ extension XCUIApplication {
                 NSTemporaryDirectory() + "portavoz-showcase-ready-\(UUID().uuidString)"
         }
         if seedScale { app.launchArguments.append("-seed-scale") }
+        if let scaleSegmentCount {
+            app.launchArguments += ["-scale-segments", String(scaleSegmentCount)]
+        }
         if scaleAutoSummaryUpdate { app.launchArguments.append("-scale-auto-summary-update") }
         if seedLatestRecipe { app.launchArguments.append("-seed-latest-recipe") }
         if seedBrief { app.launchArguments.append("-seed-brief") }

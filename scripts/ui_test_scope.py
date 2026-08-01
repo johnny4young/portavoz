@@ -65,6 +65,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "meeting-performance": (
         test_id("MeetingDetailUITests", "testFiveThousandSegmentDetailRendersFromDisposableScaleFixture"),
+        test_id(
+            "MeetingDetailUITests",
+            "testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture",
+        ),
     ),
     "meeting-export": (
         test_id("MeetingDetailUITests", "testExportMenuOffersSubtitleFormats"),
@@ -236,6 +240,12 @@ def app_features(filename: str) -> set[str]:
         # history on macOS 14. Keep a new focused bridge from silently
         # expanding one interaction fix to the complete bilingual suite.
         return {"recording-recovery"}
+    if any(token in lowered for token in (
+        "meetingdetailperformancetrace", "scalebenchmark"
+    )):
+        return {"meeting-performance"}
+    if "transcriptsegments" in lowered:
+        return {"meeting-audio", "meeting-evidence", "meeting-performance"}
     if "focusedtranscript" in lowered:
         return {"meeting-audio", "recording-recovery"}
     if any(token in lowered for token in ("meetingplayer", "audioworkflow", "meetingaudio")):

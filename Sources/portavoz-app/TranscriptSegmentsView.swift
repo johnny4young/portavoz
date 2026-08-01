@@ -10,11 +10,13 @@ struct TranscriptSegmentsView: View {
     let speakers: [Speaker]
     let player: MeetingPlaybackSession?
     let focusedSegmentID: UUID?
+    var performanceScrollEnabled = false
     let onSeek: (TimeInterval) -> Void
     let onRenameTap: (Speaker) -> Void
     /// Height of the lyrics carousel when there's audio — the detail sizes it
     /// to the available space so the docked player is never pushed off.
     var carouselHeight: CGFloat = 440
+    @State private var didStartPerformanceScroll = false
 
     /// The segment under the playhead: the one whose range contains the
     /// current time, or the last one that already started (so a gap between
@@ -50,8 +52,42 @@ struct TranscriptSegmentsView: View {
                 }
                 .onChange(of: focusedSegmentID) { _, id in
                     guard let id else { return }
-                    withAnimation(.easeInOut(duration: 0.25)) {
+                    let interval = MeetingDetailPerformanceTrace.beginTranscriptScroll()
+                    withAnimation(
+                        .easeInOut(duration: 0.25),
+                        completionCriteria: .logicallyComplete
+                    ) {
                         proxy.scrollTo(id, anchor: .center)
+                    } completion: {
+                        MeetingDetailPerformanceTrace.endTranscriptScroll(interval)
+                    }
+                }
+                .task(id: performanceScrollEnabled ? segments.count : 0) {
+                    guard MeetingDetailPerformanceTrace.isEnabled,
+                          performanceScrollEnabled,
+                          !didStartPerformanceScroll,
+                          segments.count >= 4
+                    else { return }
+                    didStartPerformanceScroll = true
+                    let targetOffsets = [3, 1, 2, 0, 3].map {
+                        min(segments.count - 1, segments.count * $0 / 4)
+                    }
+                    let targets = targetOffsets.map { segments[$0].id }
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(2))
+                        for target in targets {
+                            let interval = MeetingDetailPerformanceTrace
+                                .beginTranscriptScroll()
+                            withAnimation(
+                                .easeInOut(duration: 0.25),
+                                completionCriteria: .logicallyComplete
+                            ) {
+                                proxy.scrollTo(target, anchor: .center)
+                            } completion: {
+                                MeetingDetailPerformanceTrace.endTranscriptScroll(interval)
+                            }
+                            try? await Task.sleep(for: .milliseconds(500))
+                        }
                     }
                 }
             }

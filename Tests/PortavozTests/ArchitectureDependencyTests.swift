@@ -5148,6 +5148,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         let spotlightRunner = try Self.contents(
             of: "scripts/run-spotlight-scale-baseline.sh")
         let detailRunner = try Self.contents(of: "scripts/run-detail-ui-baseline.sh")
+        let detailParser = try Self.contents(of: "scripts/meeting_detail_performance.py")
+        let detailTrace = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailPerformanceTrace.swift")
+        let detailUITests = try Self.contents(
+            of: "Tests/PortavozUITests/MeetingDetailUITests.swift")
         let fixture = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
         let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
@@ -5198,7 +5203,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(model.contains(#""Meeting Detail First Content""#))
         XCTAssertTrue(detailRunner.contains(#"--template "$template""#))
         XCTAssertTrue(detailRunner.contains(#""$APP" == "/Applications/Portavoz.app""#))
-        XCTAssertTrue(detailRunner.contains("Trace file had no SwiftUI data"))
+        XCTAssertTrue(detailParser.contains("Trace file had no SwiftUI data"))
+        XCTAssertTrue(detailTrace.contains(#"arguments.contains("-use-temp-store")"#))
+        XCTAssertTrue(detailTrace.contains(#"arguments.contains("-seed-scale")"#))
+        XCTAssertTrue(detailTrace.contains(
+            #"arguments.contains("-detail-performance-profile")"#))
+        XCTAssertTrue(detailUITests.contains(
+            "testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture"))
         XCTAssertTrue(decisions.contains("## D79 — Scale changes follow measured bottlenecks"))
         XCTAssertTrue(decisions.contains("## D80 — Bound interruption scans with prefix evidence"))
         XCTAssertTrue(decisions.contains("## D81 — Bound broad retrieval before vector storage"))
@@ -5207,6 +5218,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D84 — Vectorize waveform envelopes before caching"))
         XCTAssertTrue(decisions.contains(
             "## D85 — Reconcile Spotlight through a protected measured snapshot"))
+        XCTAssertTrue(decisions.contains(
+            "## D222 — Freeze Meeting Detail behavior before decomposition"))
         XCTAssertTrue(health.contains("prefixMaximumEnd"))
         XCTAssertTrue(health.contains(
             "guard prefixMaximumEnd[previousIndex] > segment.startTime else { break }"))
@@ -5284,6 +5297,41 @@ final class ArchitectureDependencyTests: XCTestCase {
         let afterResponsiveness = try XCTUnwrap(
             afterDetail["responsiveness"] as? [String: Any])
         XCTAssertEqual(afterResponsiveness["potentialHangCount"] as? Int, 0)
+
+        let interactionContract = try Self.jsonObject(
+            at: "docs/evidence/meeting-detail-interaction-contract.json")
+        XCTAssertEqual(
+            interactionContract["kind"] as? String,
+            "meeting-detail-interaction-baseline")
+        XCTAssertEqual(
+            (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
+            248)
+        XCTAssertEqual(
+            (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
+            10)
+
+        let detailZero = try Self.jsonObject(
+            at: "docs/evidence/meeting-detail-performance-baseline-20260801.json")
+        let detailZeroReproduction = try XCTUnwrap(
+            detailZero["reproduction"] as? [String: Any])
+        XCTAssertEqual(detailZeroReproduction["releaseApplicationProtected"] as? Bool, true)
+        XCTAssertEqual(detailZeroReproduction["userLibraryAccess"] as? String, "none")
+        let detailZeroProfiles = try XCTUnwrap(
+            detailZero["profiles"] as? [[String: Any]])
+        XCTAssertEqual(
+            detailZeroProfiles.compactMap {
+                ($0["fixture"] as? [String: Any])?["segmentCount"] as? Int
+            },
+            [5_000, 20_000])
+        for profile in detailZeroProfiles {
+            let interaction = try XCTUnwrap(profile["interaction"] as? [String: Any])
+            XCTAssertEqual(interaction["sampleCount"] as? Int, 5)
+            let hitches = try XCTUnwrap(profile["animationHitches"] as? [String: Any])
+            XCTAssertEqual(hitches["count"] as? Int, 0)
+            let responsiveness = try XCTUnwrap(
+                profile["responsiveness"] as? [String: Any])
+            XCTAssertEqual(responsiveness["potentialHangCount"] as? Int, 0)
+        }
 
         let afterSearch = try Self.jsonObject(
             at: "docs/evidence/scale-baseline-20260716-after-search.json")

@@ -11,6 +11,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testFiveThousandSegmentDetailRendersFromDisposableScaleFixture() {
         let app = XCUIApplication.portavoz(
             seedScale: true,
+            scaleSegmentCount: 5_000,
             scaleAutoSummaryUpdate: true)
         defer { app.terminate() }
         app.launchPortavoz()
@@ -30,7 +31,34 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.staticTexts["Scale baseline summary revision 2."]
                 .waitForExistence(timeout: 15),
             "the scoped summary observation must update without replacing the detail route")
-        attachScreenshot(of: app, named: "band-4a-scale-detail-5000-segments")
+        attachScreenshot(of: app, named: "meeting-detail-scale-5000-segments")
+    }
+
+    @MainActor
+    func testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture() {
+        let app = XCUIApplication.portavoz(
+            seedScale: true,
+            scaleSegmentCount: 20_000,
+            scaleAutoSummaryUpdate: true)
+        defer { app.terminate() }
+        app.launchPortavoz()
+
+        XCTAssertTrue(
+            app.staticTexts["Scale baseline · 2 h · 20000 segments"]
+                .waitForExistence(timeout: 40),
+            "the disposable 20,000-segment fixture must navigate to Meeting Detail")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-transcript-title")
+                .waitForExistence(timeout: 15),
+            "Meeting Detail must render first content for 20,000 segments")
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-chapters").waitForExistence(timeout: 15),
+            "the 20,000-segment detail must complete its chapter projection")
+        XCTAssertTrue(
+            app.staticTexts["Scale baseline summary revision 2."]
+                .waitForExistence(timeout: 15),
+            "the 20,000-segment detail must stay subscribed to scoped summary updates")
+        attachScreenshot(of: app, named: "meeting-detail-scale-20000-segments")
     }
 
     /// Launches the app on the seeded meeting with isolated audio. Point
@@ -156,7 +184,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             retry.waitForExistence(timeout: 5),
             "a terminal durable failure must expose one explicit retry action")
-        attachScreenshot(of: app, named: "band-3i-actionable-processing")
+        attachScreenshot(of: app, named: "meeting-detail-processing-recovery")
         retry.click()
     }
 
@@ -310,7 +338,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             for: NSPredicate(format: "value == '0:03'"),
             evaluatedWith: currentTime)
         wait(for: [seeked], timeout: 5)
-        attachScreenshot(of: app, named: "band-5b-summary-evidence")
+        attachScreenshot(of: app, named: "meeting-detail-summary-evidence")
     }
 
     @MainActor
@@ -343,7 +371,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             for: NSPredicate(format: "value == '0:03'"),
             evaluatedWith: currentTime)
         wait(for: [seeked], timeout: 5)
-        attachScreenshot(of: app, named: "band-5d-decision-evidence")
+        attachScreenshot(of: app, named: "meeting-detail-decision-evidence")
     }
 
     @MainActor
@@ -377,7 +405,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             for: NSPredicate(format: "value == '0:03'"),
             evaluatedWith: currentTime)
         wait(for: [seeked], timeout: 5)
-        attachScreenshot(of: app, named: "band-5e-action-item-evidence")
+        attachScreenshot(of: app, named: "meeting-detail-action-item-evidence")
     }
 
     @MainActor
@@ -408,7 +436,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             for: NSPredicate(format: "value == '0:03'"),
             evaluatedWith: currentTime)
         wait(for: [seeked], timeout: 5)
-        attachScreenshot(of: app, named: "band-5f-apuntador-evidence")
+        attachScreenshot(of: app, named: "meeting-detail-apuntador-evidence")
     }
 
     @MainActor
@@ -452,7 +480,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.staticTexts["El equipo revisó el presupuesto y fijó el rollout."].exists,
             "feedback must not mutate the immutable generated summary")
-        attachScreenshot(of: app, named: "band-5c-local-summary-feedback")
+        attachScreenshot(of: app, named: "meeting-detail-summary-feedback")
 
         app.control(withIdentifier: "summary-feedback-clear").click()
         let cleared = expectation(
@@ -498,7 +526,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertFalse(
             app.buttons["person-remember-offer"].exists,
             "the explicit offer must clear after the atomic link succeeds")
-        attachScreenshot(of: app, named: "band-5a-confirmed-person-memory")
+        attachScreenshot(of: app, named: "meeting-detail-confirmed-person-memory")
     }
 
     @MainActor
@@ -571,7 +599,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "apuntador-card-6").waitForExistence(timeout: 5),
             "the answered Apuntador card must render for review")
 
-        attachScreenshot(of: app, named: "band-3h-privacy-receipt")
+        attachScreenshot(of: app, named: "meeting-detail-privacy-receipt")
     }
 
     @MainActor
@@ -582,7 +610,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "mirror-card").waitForExistence(timeout: 10),
             "an opted-in fresh qualifying meeting must show its factual mirror")
-        attachScreenshot(of: app, named: "band-2q-post-meeting-mirror")
+        attachScreenshot(of: app, named: "meeting-detail-post-meeting-mirror")
     }
 
     @MainActor
@@ -627,7 +655,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "raw seeded meeting audio must keep its compression action")
         play.click()  // smoke: play doesn't crash
         Thread.sleep(forTimeInterval: 0.5)
-        attachScreenshot(of: app, named: "band-4f-vectorized-waveform")
+        attachScreenshot(of: app, named: "meeting-detail-waveform")
     }
 
     /// The export menu is the only path to subtitle files, so both the SRT

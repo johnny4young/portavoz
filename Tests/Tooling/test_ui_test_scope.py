@@ -110,6 +110,28 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.tests, FEATURE_TESTS["recording-recovery"])
         self.assertEqual(selection.locales, ("en",))
 
+    def test_detail_performance_harness_selects_only_scale_journeys(self):
+        for path in (
+            "Sources/portavoz-app/MeetingDetailPerformanceTrace.swift",
+            "Sources/portavoz-app/AppServices+ScaleBenchmark.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, FEATURE_TESTS["meeting-performance"])
+            self.assertEqual(selection.locales, ("en",))
+
+    def test_transcript_view_selects_navigation_audio_and_scale_evidence(self):
+        selection = select_paths(
+            ["Sources/portavoz-app/TranscriptSegmentsView.swift"]
+        )
+        selected = set(
+            FEATURE_TESTS["meeting-audio"]
+            + FEATURE_TESTS["meeting-evidence"]
+            + FEATURE_TESTS["meeting-performance"]
+        )
+        expected = tuple(test for test in ALL_TESTS if test in selected)
+        self.assertEqual(selection.tests, expected)
+        self.assertEqual(selection.locales, ("en",))
+
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
         selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
         self.assertEqual(

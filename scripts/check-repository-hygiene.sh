@@ -98,6 +98,8 @@ python3 scripts/ask_quality.py verify-public \
   --fixture Fixtures/AskQuality/public-synthetic-v2.json
 python3 -m unittest Tests.Tooling.test_ui_test_scope
 python3 -m unittest Tests.Tooling.test_run_ui_tests
+python3 -m unittest Tests.Tooling.test_meeting_detail_contract
+python3 -m unittest Tests.Tooling.test_meeting_detail_performance
 
 if [[ "$failures" -ne 0 ]]; then
   exit 1

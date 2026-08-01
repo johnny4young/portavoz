@@ -95,6 +95,9 @@ struct MeetingDetailView: View {
     /// Evidence can be clicked before a long waveform finishes preparing.
     /// Keep the exact seek until the player exists instead of dropping it.
     @State private var pendingEvidenceSeek: TimeInterval?
+    /// Disposable Instruments automation runs once per detail instance. It is
+    /// inert unless both the temp-store and performance-profile flags exist.
+    @State private var didRunPerformanceSeek = false
 
     init(
         services: AppServices,
@@ -291,6 +294,8 @@ extension MeetingDetailView {
             speakers: detail.speakers,
             player: player,
             focusedSegmentID: evidenceFocusSegmentID,
+            performanceScrollEnabled: services.meetingDetailPerformanceProfile
+                .shouldExerciseTranscriptScroll,
             onSeek: { player?.seek(to: $0); player?.play() },
             onRenameTap: { speaker in
                 renamingSpeaker = speaker
@@ -2167,6 +2172,25 @@ extension MeetingDetailView {
         await model.send(.loadPlayback)
         guard !Task.isCancelled else { return }
         applyPendingEvidenceSeekIfPossible()
+        runPerformanceSeekIfRequested()
+    }
+
+    private func runPerformanceSeekIfRequested() {
+        guard MeetingDetailPerformanceTrace.isEnabled,
+              services.meetingDetailPerformanceProfile.shouldExercisePlaybackSeek,
+              !didRunPerformanceSeek,
+              let player
+        else { return }
+        didRunPerformanceSeek = true
+        Task { @MainActor [player] in
+            let fractions: [Double] = [0.2, 0.8, 0.4, 0.6, 0.25]
+            for fraction in fractions {
+                MeetingDetailPerformanceTrace.measurePlaybackSeek {
+                    player.seek(to: player.duration * fraction)
+                }
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+        }
     }
 
     /// "Summarize as Standup?" — the typed-recipe suggestion (M13b). One
