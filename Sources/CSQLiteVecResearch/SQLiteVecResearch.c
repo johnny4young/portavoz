@@ -215,16 +215,12 @@ int portavoz_sqlite_vec_index_rank(
   const int32_t requested =
       limit < index->vector_count ? limit : index->vector_count;
   sqlite3_stmt *statement = NULL;
-  double *distances = sqlite3_malloc64((sqlite3_uint64)requested * sizeof(double));
-  if (distances == NULL) {
-    return SQLITE_NOMEM;
-  }
   sqlite3_progress_handler(index->database, 1000,
                            portavoz_sqlite_vec_was_cancelled, cancellation);
   int result = sqlite3_prepare_v2(
       index->database,
-      "SELECT rowid, distance FROM research_vectors "
-      "WHERE embedding MATCH ?1 ORDER BY distance LIMIT ?2",
+      "SELECT rowid, vec_distance_cosine(embedding, ?1) AS distance "
+      "FROM research_vectors ORDER BY distance, rowid LIMIT ?2",
       -1, &statement, NULL);
   if (result != SQLITE_OK) {
     goto cleanup;
@@ -235,7 +231,7 @@ int portavoz_sqlite_vec_index_rank(
   if (result != SQLITE_OK) {
     goto cleanup;
   }
-  result = sqlite3_bind_int(statement, 2, index->vector_count);
+  result = sqlite3_bind_int(statement, 2, requested);
   if (result != SQLITE_OK) {
     goto cleanup;
   }
@@ -251,26 +247,12 @@ int portavoz_sqlite_vec_index_rank(
       result = SQLITE_MISMATCH;
       goto cleanup;
     }
-    const int32_t candidate = (int32_t)(rowid - 1);
-    int32_t insertion = 0;
-    while (insertion < *out_count &&
-           (distances[insertion] < distance ||
-            (distances[insertion] == distance &&
-             out_indices[insertion] < candidate))) {
-      insertion += 1;
+    if (*out_count >= requested) {
+      result = SQLITE_CORRUPT;
+      goto cleanup;
     }
-    if (insertion >= requested) {
-      continue;
-    }
-    const int32_t next_count =
-        *out_count < requested ? *out_count + 1 : requested;
-    for (int32_t position = next_count - 1; position > insertion; position--) {
-      distances[position] = distances[position - 1];
-      out_indices[position] = out_indices[position - 1];
-    }
-    distances[insertion] = distance;
-    out_indices[insertion] = candidate;
-    *out_count = next_count;
+    out_indices[*out_count] = (int32_t)(rowid - 1);
+    *out_count += 1;
   }
   if (result == SQLITE_DONE) {
     result = SQLITE_OK;
@@ -278,7 +260,6 @@ int portavoz_sqlite_vec_index_rank(
 
 cleanup:
   sqlite3_finalize(statement);
-  sqlite3_free(distances);
   sqlite3_progress_handler(index->database, 0, NULL, NULL);
   if (result != SQLITE_OK) {
     *out_count = 0;

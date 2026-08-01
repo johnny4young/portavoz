@@ -597,7 +597,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "#define SQLITE_VEC_OMIT_FS 1",
             #"#include "../../Vendor/sqlite-vec/sqlite-vec.c""#,
             "portavoz_sqlite_vec_run_exact_query_smoke",
-            "WHERE embedding MATCH ?1 ORDER BY distance LIMIT ?2",
+            "vec_distance_cosine(embedding, ?1) AS distance",
+            "ORDER BY distance, rowid LIMIT ?2",
         ] {
             XCTAssertTrue(wrapper.contains(required), "missing \(required)")
         }
@@ -646,9 +647,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
         for required in [
             "distance_metric=cosine",
-            "SELECT rowid, distance FROM research_vectors",
+            "vec_distance_cosine(embedding, ?1) AS distance",
+            "ORDER BY distance, rowid LIMIT ?2",
             "index->vector_count",
-            "distances[insertion] == distance",
+            "sqlite3_bind_int(statement, 2, requested)",
             "sqlite3_progress_handler",
         ] {
             XCTAssertTrue(native.contains(required), "missing \(required)")
@@ -656,10 +658,69 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(semanticTests.contains(
             "testSQLiteVecRankerRunsBehindProjectionAndAggregateShadowOnly"))
         XCTAssertTrue(semanticTests.contains(
+            "testSQLiteVecExactRankerSupportsCorporaBeyondKNNWindow"))
+        XCTAssertTrue(semanticTests.contains(
             "ProjectedSemanticIndexShadowCandidate"))
         XCTAssertTrue(semanticTests.contains("ShadowComparingSemanticIndex"))
         XCTAssertTrue(semanticTests.contains(
             "SQLiteVecShadowRankerAdapter: SemanticIndexShadowRanking"))
+    }
+
+    func testExactPathScaleHarnessRemainsIsolatedContentFreeAndReproducible() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let specification = try Self.contents(of: "docs/specs/04-intelligence.md")
+        let harness = try Self.contents(
+            of: "Tests/PortavozTests/ExactPathScaleBenchmarkTests.swift")
+        let runner = try Self.contents(
+            of: "scripts/run-exact-path-shadow-benchmark.sh")
+
+        XCTAssertTrue(decisions.contains("## D214"))
+        XCTAssertTrue(architecture.contains("synthetic-exact-path-v1"))
+        XCTAssertTrue(specification.contains("alternating-query-order-v1"))
+        for required in [
+            "static let canonicalCorpusSizes = [1_000, 10_000, 50_000, 100_000]",
+            "dimension: 512",
+            "queryCount: 8",
+            "resultLimit: 10",
+            "AccelerateExactSemanticIndex",
+            "SQLiteVecExactShadowRanker",
+            "fixturePreparationMilliseconds",
+            "buildMilliseconds",
+            "queryWallMilliseconds",
+            "topHitMatchCount",
+            "exactRankMatchCount",
+            "overlapAtKCount",
+        ] {
+            XCTAssertTrue(harness.contains(required), "missing \(required)")
+        }
+
+        let reportStart = try XCTUnwrap(harness.range(
+            of: "private struct ExactPathScaleBenchmarkReport"))
+        let reportEnd = try XCTUnwrap(harness.range(
+            of: "private struct MillisecondDistribution",
+            range: reportStart.upperBound..<harness.endIndex))
+        let reportSchema = String(
+            harness[reportStart.lowerBound..<reportEnd.lowerBound])
+        for forbidden in [
+            "segmentID", "meetingID", "transcript", "queryVector",
+            "modelIdentifier", "databasePath", "filePath", "rawError",
+        ] {
+            XCTAssertFalse(
+                reportSchema.contains(forbidden),
+                "report schema leaked \(forbidden)")
+        }
+
+        for required in [
+            "swift test -c release",
+            "1000 10000 50000 100000",
+            "PORTAVOZ_EXACT_PATH_REPORT",
+            "Each corpus size gets a fresh XCTest process.",
+            "does not persist benchmark results",
+        ] {
+            XCTAssertTrue(runner.contains(required), "missing \(required)")
+        }
+        XCTAssertFalse(runner.contains("--output"))
     }
 
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {

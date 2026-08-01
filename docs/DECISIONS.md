@@ -7070,3 +7070,44 @@ disposable index keeps authoritative data untouched and deletion/correction
 fencing in StorageKit. Deterministic tie normalization prevents false rank
 drift; its complete-result overhead is deliberately visible and must be
 measured before any adoption decision.
+
+## D214 — Measure exact engines through a content-free test root (Aug 2026)
+
+**Context:** D213 exercises sqlite-vec behind the complete projection and
+aggregate-shadow path, but a tiny characterization cannot establish scale cost
+or parity. Reusing a product writer, persisting observations, or emitting
+fixture identities would expand authority and privacy surface before the first
+measurement contract is understood. Comparing build numbers without naming
+their lifecycle boundaries would also be misleading because Accelerate reads
+authoritative StorageKit rows while the disposable candidate starts from
+prepared vectors.
+
+**Decision:** add a test-only schema-1 exact-path harness over one deterministic
+`synthetic-exact-path-v1` vector corpus. It runs the real scratch-`MeetingStore`
+`AccelerateExactSemanticIndex` and `SQLiteVecExactShadowRanker` with the same
+512-dimensional vectors, eight queries, top 10, and canonical 1k/10k/50k/100k
+scales. Record fixture preparation, control-store build, candidate-index build,
+and query wall distributions separately; alternate query execution order under
+`alternating-query-order-v1`. Treat control build as source/FTS/embedding
+publication cost and candidate build as prepared-vector index cost, not as a
+direct build-speed contest.
+
+The first 10k execution exposed sqlite-vec's hard 4,096 KNN result window in
+the D213 complete-result query. Keep the candidate exact and deterministic by
+using sqlite-vec's scalar `vec_distance_cosine` over the full virtual table,
+ordering by distance then source row, and returning only requested top-k. Add a
+4,097-row regression so canonical scales cannot silently fall back to an
+unsupported KNN limit.
+
+Run each selected scale in a fresh Release XCTest process. Emit one content-free
+JSON object to stdout containing only host/configuration, byte/count, timing,
+and aggregate agreement fields. Do not expose queries, vectors, citation
+identity, transcript content, model identity, paths, or raw errors; do not
+accept a durable output destination. The harness adds no product dependency,
+schema, writer, app/CLI command, scheduler, accepted receipt, or selection.
+
+**Rationale:** a closed synthetic root makes exact-path query cost and aggregate
+agreement reproducible without borrowing user data or candidate authority.
+Process isolation bounds cross-scale residency, separated phases prevent an
+invalid lifecycle comparison, and stdout-only observations force a later
+explicit validation/acceptance boundary before any engine decision.

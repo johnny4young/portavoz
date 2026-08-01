@@ -323,6 +323,34 @@ final class SemanticIndexTests: XCTestCase {
         XCTAssertEqual(event.topHitAgreement, true)
     }
 
+    func testSQLiteVecExactRankerSupportsCorporaBeyondKNNWindow() async throws {
+        let profile = SemanticEmbeddingProfile(
+            modelIdentifier: "portavoz.tests.sqlite-vec-scale",
+            modelRevision: 1,
+            vectorDimension: 4,
+            pipelineIdentifier: "fixed-cosine-v1",
+            pipelineRevision: 1,
+            vectorSchemaVersion: 1)
+        let entries = (0..<4_097).map { position in
+            let offset = Float(position) / 4_097
+            return SQLiteVecShadowEntry(
+                identity: SemanticSearchCandidateIdentity(
+                    segmentID: UUID(),
+                    transcriptRevision: 0),
+                vector: [1, offset, 0, 0])
+        }
+        let ranker = try SQLiteVecExactShadowRanker(
+            profile: profile,
+            entries: entries)
+
+        let ranked = try await ranker.rankedCandidates(
+            for: [1, 0, 0, 0],
+            profile: profile,
+            limit: 10)
+
+        XCTAssertEqual(ranked, entries.prefix(10).map(\.identity))
+    }
+
     func testShadowCoordinatorUsesMaintenanceAdmissionAndSkipsDeniedWork() async throws {
         let fixture = try await Self.fixture()
         let storedHits = try await fixture.store.search("launch")

@@ -659,7 +659,7 @@ selected. Later SEARCH-5 slices must put candidates behind this seam and retain
 exact control as the only user-visible authority until accepted quality and
 resource evidence exists.
 
-### Non-serving semantic shadow comparison (D207-D213)
+### Non-serving semantic shadow comparison (D207-D214)
 
 `ShadowComparingSemanticIndex` is a benchmark-only decorator over the D206
 port. It waits only for the exact control, projects its citation identity to a
@@ -731,22 +731,44 @@ loading is not permitted.
 fixed-profile vectors and source identities. It validates nonnegative
 revisions, unique segment identity, finite vectors, exact dimensions, and
 query-profile compatibility before calling C. The native table uses cosine
-distance. Because sqlite-vec KNN accepts only `ORDER BY distance`, the wrapper
-reads the complete exact result and retains bounded top-k by distance then
-corpus position to match the control's deterministic tie policy. Task
-cancellation is checked on both sides of the native call and a cancellation
-token drives the SQLite progress handler.
+distance. Its exact scalar `vec_distance_cosine` scan orders by distance then
+source row and returns the bounded top-k. This preserves deterministic ties at
+corpora beyond sqlite-vec's 4,096-result KNN window without changing exact
+full-scan semantics. Task cancellation is checked on both sides of the native
+call and a cancellation token drives the SQLite progress handler.
 
 The ranker emits only `SemanticSearchCandidateIdentity` and does not depend
 back on `ApplicationKit`. A test-owned `SemanticIndexShadowRanking` adapter
 flows it through the D210 authoritative projection and D207 aggregate
 comparator while exact Accelerate results remain the returned value.
 No app, CLI, `ApplicationKit`, meeting schema, writer, durable output, or
-user-visible query path depends on either research target. The complete-result
-tie normalization is not accepted performance evidence; scale/resource
-measurement remains the next gate. sqlite-vec ANN alphas and USearch HNSW
+user-visible query path depends on either research target. The scalar exact
+path is not accepted performance evidence; scale/resource measurement remains
+the next gate. sqlite-vec ANN alphas and USearch HNSW
 remain deferred until exact parity has isolated runtime, disk, packaging, and
 correction costs without approximate-recall tradeoffs.
+
+`ExactPathScaleBenchmarkTests` provides the first versioned exact-path scale
+harness without adding a shipping benchmark surface. One
+`synthetic-exact-path-v1` fixture feeds identical normalized vectors to the
+real scratch-store `AccelerateExactSemanticIndex` and the disposable
+`SQLiteVecExactShadowRanker`. Canonical runs use 512 dimensions, eight queries,
+top 10, five runs by default, and corpus sizes 1k, 10k, 50k, and 100k. The
+harness times fixture preparation, control-store construction, candidate-index
+construction, and query execution separately, and alternates query order under
+`alternating-query-order-v1`.
+
+The two build observations are intentionally different lifecycle costs: the
+control includes authoritative source/FTS/embedding publication into a scratch
+store, while the candidate receives prepared vectors. Only same-corpus query
+observations are direct engine comparisons. The schema-1 report carries host,
+configuration, byte/count, timing-distribution, and aggregate top-hit/rank/
+overlap fields only. It has no query, vector, citation identity, transcript,
+model, path, or raw-error field. The runner starts one fresh Release XCTest
+process per scale, emits JSON only to stdout, and accepts no output destination.
+These observations are unaccepted development evidence until a later boundary
+validates a complete stable matrix; they do not authorize product composition,
+persistence, or engine selection.
 
 ### Governed semantic embedding runtime (D165)
 

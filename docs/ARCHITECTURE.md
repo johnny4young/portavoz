@@ -1650,10 +1650,11 @@ deterministically rendered tagged header, license, and provenance.
 over one in-memory `vec0` index. Construction accepts one valid embedding
 profile, unique current-source identities, finite fixed-dimension vectors, and
 no text. Queries require that same profile and dimension, use cosine distance,
-and normalize equal distances by original corpus order because sqlite-vec
-permits only one `ORDER BY distance` term. Cancellation is checked before and
-after the native call and signalled through a native token plus SQLite progress
-handler.
+and run an exact scalar `vec_distance_cosine` scan ordered by distance then
+source row. The deterministic secondary order avoids sqlite-vec's 4,096-result
+KNN window while preserving bounded top-k output at larger corpus sizes.
+Cancellation is checked before and after the native call and signalled through
+a native token plus SQLite progress handler.
 
 The ranker depends only on the native research target, `PortavozCore`, and
 `StorageKit`; it does not depend back on `ApplicationKit`. A test-owned
@@ -1663,12 +1664,35 @@ identities to the research seam. A characterization composes that adapter throug
 proving that current StorageKit evidence remains citation authority and only
 aggregate agreement crosses the shadow boundary. Both research targets are
 reachable only from `PortavozTests`; neither app, CLI, nor `ApplicationKit`
-depends on them. The native query currently reads the complete exact result set
-to impose deterministic tie order before retaining bounded top-k, so no
-resource result is accepted yet. There is still no product schema, writer, app
-composition, durable receipt, or user-visible authority. ANN sqlite-vec
+depends on them. The native query remains an exact full scan and returns only
+the bounded deterministic top-k, so no resource result is accepted yet. There
+is still no product schema, writer, app composition, durable receipt, or
+user-visible authority. ANN sqlite-vec
 prereleases and USearch remain later comparison candidates rather than hidden
 variables in the first exact-parity experiment.
+
+The first exact-path scale harness is likewise test-owned. It creates one
+`synthetic-exact-path-v1` corpus and sends the same normalized vectors and
+top-k queries through the real scratch-`MeetingStore`
+`AccelerateExactSemanticIndex` control and the disposable sqlite-vec ranker.
+The fixed canonical profile is 512 dimensions, eight queries, top 10, and
+1k/10k/50k/100k corpus sizes. Fixture preparation, authoritative control-store
+construction, candidate-index construction, and query wall time are measured
+separately. Control-store build cost includes source-row, FTS, and embedding
+publication work, whereas candidate build cost begins from already available
+vectors; those build figures describe different lifecycle boundaries and are
+not a direct engine-speed comparison. Query order alternates under
+`alternating-query-order-v1` to reduce cache-order bias.
+
+`scripts/run-exact-path-shadow-benchmark.sh` launches one fresh Release XCTest
+process per selected scale. Its schema-1 stdout observation contains only
+host/configuration, byte/count, timing-distribution, and aggregate agreement
+fields. The schema cannot carry query vectors, source identities, transcript
+text, model identity, database paths, or raw errors, and the runner has no
+durable-output option. The harness therefore establishes reproducible
+development measurement only: it accepts no baseline, selects no engine, adds
+no product schema or composition, and leaves Accelerate exact as the sole
+product authority.
 
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and
