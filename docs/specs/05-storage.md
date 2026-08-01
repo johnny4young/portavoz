@@ -917,3 +917,10 @@ materialize citations from those rows rather than treating chunk text as new
 authoritative evidence. Until that adapter passes the canonical quality and
 resource gates, no chunk table, migration, maintenance cursor, or alternate
 product search lane exists.
+
+D203 adds only a disposable CLI benchmark projection. It may save one derived
+speaker-turn candidate as one temporary segment so the existing production
+retrieval implementation can rank it, but the owner-only observation maps the
+candidate back to every ordered canonical fixture segment. This is not a
+StorageKit schema, migration, product write path, or authorization to persist
+chunk text in the user library.

@@ -6701,3 +6701,43 @@ segment retrieval before selection.
 A pure deterministic boundary lets competing chunk policies share one exact
 provenance model, makes selective correction invalidation testable, and keeps
 the current local-first search fully available while evidence is collected.
+
+## D203 — Score retrieval units through exact source membership (Jul 2026)
+
+**Context:** D202 defines speaker-safe candidate chunks, but the D195 quality
+observation represented every ranked result as one `segmentID`. Reusing that
+shape for a chunk would either hide additional sources, flatten them into
+independent ranks, or conceal a hard negative that shares the selected turn.
+None is a truthful comparison with the segment control. Building a second
+retrieval algorithm only for the benchmark would also stop testing the shipped
+ranking path.
+
+**Decision:** `portavoz-cli bench-ask-quality` accepts an explicit
+`segment|speaker-turn` retrieval unit. It projects the selected units into its
+disposable owner-only database, prepares the same semantic corpus, and runs the
+same `LocalAskMeetingRetrieval` implementation. The speaker-turn candidate uses
+the D202 chunk identity and spoken text; it creates no product table, migration,
+maintenance job, or query lane.
+
+New observations use schema 2. Every ranked hit contains one stable `unitID`
+and its complete ordered `sourceSegmentIDs`, plus meeting, first-source
+timestamp, and transcript revision. The evaluator normalizes historical
+schema-1 segment hits into one-source units. It scores rank by retrieval unit,
+recall by covered canonical sources, and rejects repeated units or sources.
+Unknown sources, incorrect order, a wrong meeting or first timestamp, and a
+stale revision fail citation integrity. A hard-negative source counts even
+when the same chunk also contains relevant evidence. Observation and scorecard
+artifacts remain content-free outside the private fixture and retain build,
+commit, adapter, and observation-schema identity.
+
+This slice enables comparison but does not declare a winner. The current
+canonical public fixture rarely contains adjacent rows from the same actor, so
+a later versioned corpus topology and paired comparison receipt must exercise
+real multi-segment turns before speaker-turn retrieval can claim parity. Product
+Ask, Library, schema v18, and segment-level vectors remain unchanged.
+
+**Rationale:** a richer retrieval unit is acceptable only if every piece of
+evidence remains inspectable at its original transcript identity. Reusing the
+production retrieval path isolates chunk topology as the variable under test,
+while source-aware scoring prevents apparent recall gains from hiding wrong or
+stale evidence.

@@ -125,6 +125,7 @@ class AskQualityTests(unittest.TestCase):
         self.assertEqual(
             scorecard["subject"]["adapter"], "accelerate-exact-control"
         )
+        self.assertEqual(scorecard["subject"]["observationSchemaVersion"], 2)
         self.assertNotIn('"text"', encoded)
         self.assertNotIn('"queryID"', encoded)
         self.assertNotIn("Mara", encoded)
@@ -180,7 +181,9 @@ class AskQualityTests(unittest.TestCase):
         fixture_document = quality.public_fixture()
         fixture = quality.validate_fixture(fixture_document)
         observations = self.perfect_observations(fixture_document)
-        observations["queries"][0]["hits"][0]["segmentID"] = "unknown-segment"
+        observations["queries"][0]["hits"][0]["sourceSegmentIDs"] = [
+            "unknown-segment"
+        ]
         observations["queries"][1]["hits"][0]["transcriptRevision"] = 2
 
         scorecard = quality.evaluate(
@@ -213,6 +216,57 @@ class AskQualityTests(unittest.TestCase):
         self.assertEqual(scorecard["outcome"], "blocked")
         self.assertEqual(scorecard["overall"]["hardNegativeHits"], 1)
         self.assertFalse(scorecard["gates"]["hardNegativesExcluded"])
+
+    def test_hard_negative_inside_relevant_chunk_blocks(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        observations = self.perfect_observations(fixture_document)
+        hard_negative = fixture_document["queries"][0][
+            "hardNegativeSegmentIDs"
+        ][0]
+        observations["queries"][0]["hits"][0]["sourceSegmentIDs"].append(
+            hard_negative
+        )
+
+        scorecard = quality.evaluate(
+            fixture, quality.validate_observations(observations, fixture)
+        )
+
+        self.assertEqual(scorecard["overall"]["hardNegativeHits"], 1)
+        self.assertFalse(scorecard["gates"]["hardNegativesExcluded"])
+
+    def test_unordered_chunk_sources_are_stale_evidence(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        observations = self.perfect_observations(fixture_document)
+        first = fixture_document["segments"][0]
+        second = fixture_document["segments"][1]
+        hit = observations["queries"][0]["hits"][0]
+        hit["sourceSegmentIDs"] = [second["id"], first["id"]]
+        hit["timestampMilliseconds"] = second["timestampMilliseconds"]
+
+        scorecard = quality.evaluate(
+            fixture, quality.validate_observations(observations, fixture)
+        )
+
+        self.assertEqual(scorecard["overall"]["staleCitationHits"], 1)
+        self.assertFalse(scorecard["gates"]["citationsCanonical"])
+
+    def test_cross_meeting_chunk_sources_are_stale_evidence(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        observations = self.perfect_observations(fixture_document)
+        other_meeting_source = fixture_document["segments"][4]
+        observations["queries"][0]["hits"][0]["sourceSegmentIDs"].append(
+            other_meeting_source["id"]
+        )
+
+        scorecard = quality.evaluate(
+            fixture, quality.validate_observations(observations, fixture)
+        )
+
+        self.assertEqual(scorecard["overall"]["staleCitationHits"], 1)
+        self.assertFalse(scorecard["gates"]["citationsCanonical"])
 
     def test_wrong_abstention_and_unsupported_claims_block(self):
         fixture_document = quality.public_fixture()
@@ -252,10 +306,17 @@ class AskQualityTests(unittest.TestCase):
         duplicate["queries"][0]["hits"].append(
             copy.deepcopy(duplicate["queries"][0]["hits"][0])
         )
-        with self.assertRaisesRegex(
-            quality.AskQualityError, "hits repeat segment"
-        ):
+        with self.assertRaisesRegex(quality.AskQualityError, "hits repeat unit"):
             quality.validate_observations(duplicate, fixture)
+
+        repeated_source = self.perfect_observations(fixture_document)
+        second_unit = copy.deepcopy(repeated_source["queries"][0]["hits"][0])
+        second_unit["unitID"] = "different-unit"
+        repeated_source["queries"][0]["hits"].append(second_unit)
+        with self.assertRaisesRegex(
+            quality.AskQualityError, "hits repeat source segment"
+        ):
+            quality.validate_observations(repeated_source, fixture)
 
         payload = self.perfect_observations(fixture_document)
         payload["queries"][0]["answer"]["generatedText"] = "private"
@@ -284,6 +345,28 @@ class AskQualityTests(unittest.TestCase):
         self.assertTrue(scorecard["gates"]["retrievalQualityFloor"])
         self.assertFalse(scorecard["gates"]["answerQualityFloor"])
         self.assertFalse(scorecard["gates"]["answerPolicyHonored"])
+
+    def test_legacy_segment_observations_normalize_to_one_source_units(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        observations = self.perfect_observations(fixture_document)
+        observations["schemaVersion"] = 1
+        for observation in observations["queries"]:
+            observation["hits"] = [
+                {
+                    "segmentID": hit["sourceSegmentIDs"][0],
+                    "meetingID": hit["meetingID"],
+                    "timestampMilliseconds": hit["timestampMilliseconds"],
+                    "transcriptRevision": hit["transcriptRevision"],
+                }
+                for hit in observation["hits"]
+            ]
+
+        validated = quality.validate_observations(observations, fixture)
+        scorecard = quality.evaluate(fixture, validated)
+
+        self.assertEqual(validated["subject"]["observationSchemaVersion"], 1)
+        self.assertEqual(scorecard["outcome"], "pass")
 
     def test_unevaluated_answers_reject_fabricated_scores(self):
         fixture_document = quality.public_fixture()
@@ -388,7 +471,8 @@ class AskQualityTests(unittest.TestCase):
     @staticmethod
     def hit(segment):
         return {
-            "segmentID": segment["id"],
+            "unitID": segment["id"],
+            "sourceSegmentIDs": [segment["id"]],
             "meetingID": segment["meetingID"],
             "timestampMilliseconds": segment["timestampMilliseconds"],
             "transcriptRevision": segment["transcriptRevision"],
@@ -417,7 +501,7 @@ class AskQualityTests(unittest.TestCase):
                 }
             )
         return {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "kind": "ask-quality-observations",
             "fixtureGeneration": fixture["generation"],
             "adapter": "accelerate-exact-control",

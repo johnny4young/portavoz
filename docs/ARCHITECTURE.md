@@ -1347,13 +1347,18 @@ engine.
 The CLI production-observation adapter loads that fixture into a disposable,
 owner-only database and executes the real `LocalAskMeetingRetrieval` hybrid
 path with deterministic no-expansion control. It never opens the user library.
-Search hits and Ask citations carry the meeting transcript revision through to
-the observation, so the evaluator can reject stale evidence. The adapter does
-not run or judge a generative answer: it emits explicit `notEvaluated` answer
-fields, preserving retrieval metrics while forcing the complete quality gate
-to remain blocked until a separately versioned answer judge supplies evidence.
-Observation publication is owner-only, atomic, non-overwriting, and remains
-outside the application dependency graph.
+The current observation schema records one ranked retrieval-unit ID plus every
+ordered canonical source segment ID, meeting, first-source timestamp, and
+transcript revision. Historical schema-1 single-segment observations remain
+readable, while schema 2 lets the same evaluator score segment and
+speaker-turn candidates without disguising a chunk as one segment. Invalid,
+repeated, unordered, cross-meeting, stale-revision, and hard-negative sources
+fail the canonical citation gate. The adapter does not run or judge a
+generative answer: it emits explicit `notEvaluated` answer fields, preserving
+retrieval metrics while forcing the complete quality gate to remain blocked
+until a separately versioned answer judge supplies evidence. Observation
+publication is owner-only, atomic, non-overwriting, and remains outside the
+application dependency graph.
 
 Indexing prepares
 the already-installed embedding runtime before sampling, drains 1,024 fixed
@@ -1614,6 +1619,12 @@ The meeting transcript revision remains a publication fence but does not force
 unrelated chunks to rebuild. This is a pure candidate boundary only: schema
 v18, segment-level embeddings, FTS, Library, and Ask remain unchanged until a
 versioned quality and resource comparison proves a replacement.
+The CLI quality adapter may project either canonical segments or these
+speaker-turn chunks into its disposable database. Both candidates run through
+the same production retrieval implementation, but every ranked unit is mapped
+back to its complete ordered source membership in observation schema 2. The
+benchmark projection does not create product storage, maintenance, or query
+lanes and cannot select the product default by itself.
 
 Semantic maintenance does not publish `.index` work into the owner-leased
 processing ledger. That ledger continues to control the visible meeting

@@ -326,8 +326,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-cli/CLIBenchAskQuality.swift")
         for required in [
             "LocalAskMeetingRetrieval", "MeetingStore(",
-            "local-hybrid-preindexed-no-expansion-evidence-v2", "notEvaluated",
-            "transcriptRevision", "outputAlreadyExists",
+            "local-hybrid-preindexed-segment-no-expansion-evidence-v3",
+            "local-hybrid-preindexed-speaker-turn-v1-no-expansion-evidence-v1",
+            "sourceSegmentIDs", "notEvaluated", "transcriptRevision",
+            "outputAlreadyExists",
         ] {
             XCTAssertTrue(
                 productionAdapter.contains(required),
@@ -339,6 +341,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let quality = try Self.contents(of: "docs/specs/08-quality.md")
         XCTAssertTrue(decisions.contains("## D194"))
         XCTAssertTrue(decisions.contains("## D195"))
+        XCTAssertTrue(decisions.contains("## D203"))
         XCTAssertTrue(quality.contains(
             "The same run must emit a content-free pipeline sidecar"))
         XCTAssertTrue(quality.contains("exactly 240 judged queries"))

@@ -14,6 +14,7 @@ from pathlib import Path
 
 
 SCHEMA_VERSION = 1
+OBSERVATION_SCHEMA_VERSIONS = {1, 2}
 FIXTURE_KIND = "ask-quality-fixture"
 OBSERVATION_KIND = "ask-quality-observations"
 SCORECARD_KIND = "ask-quality-scorecard"
@@ -369,8 +370,11 @@ def validate_observations(document, fixture):
             "queries",
         ),
     )
-    if integer(root["schemaVersion"], "observations.schemaVersion") != SCHEMA_VERSION:
-        raise AskQualityError("observations.schemaVersion must be 1")
+    schema_version = integer(
+        root["schemaVersion"], "observations.schemaVersion"
+    )
+    if schema_version not in OBSERVATION_SCHEMA_VERSIONS:
+        raise AskQualityError("observations.schemaVersion must be 1 or 2")
     if root["kind"] != OBSERVATION_KIND:
         raise AskQualityError(f"observations.kind must be {OBSERVATION_KIND}")
     if root["fixtureGeneration"] != fixture["generation"]:
@@ -379,6 +383,7 @@ def validate_observations(document, fixture):
         "adapter": safe_string(root["adapter"], "observations.adapter"),
         "build": safe_string(root["build"], "observations.build", SAFE_BUILD),
         "commit": safe_string(root["commit"], "observations.commit", COMMIT),
+        "observationSchemaVersion": schema_version,
     }
     if not isinstance(root["queries"], list):
         raise AskQualityError("observations.queries must be an array")
@@ -398,26 +403,62 @@ def validate_observations(document, fixture):
         if not isinstance(observation["hits"], list) or len(observation["hits"]) > 10:
             raise AskQualityError(f"{path}.hits must contain at most ten results")
         hits = []
-        seen_hits = set()
+        seen_units = set()
+        seen_sources = set()
         for hit_index, raw_hit in enumerate(observation["hits"]):
             hit_path = f"{path}.hits[{hit_index}]"
-            hit = object_shape(
-                raw_hit,
-                hit_path,
-                (
-                    "segmentID",
-                    "meetingID",
-                    "timestampMilliseconds",
-                    "transcriptRevision",
-                ),
-            )
-            segment_id = safe_string(hit["segmentID"], f"{hit_path}.segmentID")
-            if segment_id in seen_hits:
-                raise AskQualityError(f"{path}.hits repeat segment: {segment_id}")
-            seen_hits.add(segment_id)
+            if schema_version == 1:
+                hit = object_shape(
+                    raw_hit,
+                    hit_path,
+                    (
+                        "segmentID",
+                        "meetingID",
+                        "timestampMilliseconds",
+                        "transcriptRevision",
+                    ),
+                )
+                segment_id = safe_string(
+                    hit["segmentID"], f"{hit_path}.segmentID"
+                )
+                unit_id = segment_id
+                source_segment_ids = [segment_id]
+            else:
+                hit = object_shape(
+                    raw_hit,
+                    hit_path,
+                    (
+                        "unitID",
+                        "sourceSegmentIDs",
+                        "meetingID",
+                        "timestampMilliseconds",
+                        "transcriptRevision",
+                    ),
+                )
+                unit_id = safe_string(hit["unitID"], f"{hit_path}.unitID")
+                source_segment_ids = string_array(
+                    hit["sourceSegmentIDs"],
+                    f"{hit_path}.sourceSegmentIDs",
+                    maximum_count=512,
+                )
+                if not source_segment_ids:
+                    raise AskQualityError(
+                        f"{hit_path}.sourceSegmentIDs must not be empty"
+                    )
+            if unit_id in seen_units:
+                raise AskQualityError(f"{path}.hits repeat unit: {unit_id}")
+            repeated_sources = seen_sources.intersection(source_segment_ids)
+            if repeated_sources:
+                raise AskQualityError(
+                    f"{path}.hits repeat source segment: "
+                    + sorted(repeated_sources)[0]
+                )
+            seen_units.add(unit_id)
+            seen_sources.update(source_segment_ids)
             hits.append(
                 {
-                    "segmentID": segment_id,
+                    "unitID": unit_id,
+                    "sourceSegmentIDs": source_segment_ids,
                     "meetingID": safe_string(
                         hit["meetingID"], f"{hit_path}.meetingID"
                     ),
@@ -512,24 +553,45 @@ def ndcg(grades, ideal_grades):
 
 
 def query_score(query, observation, segments):
-    valid_hits = []
+    valid_units = []
     invalid_hits = 0
     stale_hits = 0
     for hit in observation["hits"]:
-        canonical = segments.get(hit["segmentID"])
-        if canonical is None:
+        canonical_sources = [
+            segments.get(segment_id)
+            for segment_id in hit["sourceSegmentIDs"]
+        ]
+        if any(source is None for source in canonical_sources):
             invalid_hits += 1
             continue
+        ordered_source_ids = sorted(
+            hit["sourceSegmentIDs"],
+            key=lambda segment_id: (
+                segments[segment_id]["timestampMilliseconds"],
+                segment_id,
+            ),
+        )
+        first = canonical_sources[0]
         if (
-            hit["meetingID"] != canonical["meetingID"]
-            or hit["timestampMilliseconds"] != canonical["timestampMilliseconds"]
-            or hit["transcriptRevision"] != canonical["transcriptRevision"]
+            hit["sourceSegmentIDs"] != ordered_source_ids
+            or any(
+                source["meetingID"] != hit["meetingID"]
+                or source["transcriptRevision"] != hit["transcriptRevision"]
+                for source in canonical_sources
+            )
+            or hit["timestampMilliseconds"] != first["timestampMilliseconds"]
         ):
             stale_hits += 1
             continue
-        valid_hits.append(hit["segmentID"])
-    grades = [query["relevant"].get(segment_id, 0) for segment_id in valid_hits]
+        valid_units.append(hit["sourceSegmentIDs"])
+    grades = [
+        max((query["relevant"].get(segment_id, 0) for segment_id in unit), default=0)
+        for unit in valid_units
+    ]
     relevant_ranks = [index + 1 for index, grade in enumerate(grades) if grade > 0]
+    covered_sources = {
+        segment_id for unit in valid_units for segment_id in unit
+    }
     answerable = query["answerPolicy"] == "answer"
     expected_outcome = "answered" if answerable else "abstained"
     answer = observation["answer"]
@@ -539,7 +601,7 @@ def query_score(query, observation, segments):
         "answerable": answerable,
         "hitAt1": bool(grades and grades[0] > 0) if answerable else None,
         "recallAt10": (
-            len(set(valid_hits).intersection(query["relevant"]))
+            len(covered_sources.intersection(query["relevant"]))
             / len(query["relevant"])
             if answerable
             else None
@@ -550,7 +612,9 @@ def query_score(query, observation, segments):
             if answerable
             else None
         ),
-        "hardNegativeHits": len(set(valid_hits).intersection(query["hardNegatives"])),
+        "hardNegativeHits": len(
+            covered_sources.intersection(query["hardNegatives"])
+        ),
         "invalidHits": invalid_hits,
         "staleHits": stale_hits,
         "answerOutcomeCorrect": answer["outcome"] == expected_outcome,

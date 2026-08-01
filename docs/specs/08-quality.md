@@ -1335,7 +1335,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 ## Measurement harnesses
 
 - `make test-ask-quality`: verifies the canonical public-synthetic Ask fixture
-  and runs 21 deterministic evaluator cases without loading models or user
+  and runs 25 deterministic evaluator cases without loading models or user
   data. The fixture has exactly 240 judged queries: 60 Spanish-to-Spanish, 60
   English-to-English, 40 English-to-Spanish, 40 Spanish-to-English, 20
   code-switched, and 20 isolated robustness cases. Evaluation reports Hit@1,
@@ -1346,15 +1346,20 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   claims fail closed. The owner-only scorecard retains aggregate metrics plus
   fixture, adapter, build, and commit identity, never source payloads. This
   adapter-neutral harness is the fail-closed quality boundary.
-- `portavoz-cli bench-ask-quality` accepts fixture, output, build, and commit
-  arguments, seeds and explicitly indexes a disposable database outside query
-  observation, and runs the real corpus-read-only `LocalAskMeetingRetrieval`
-  path without opening the user library. Four Swift tests cover product
-  retrieval provenance plus owner-only, atomic, non-overwriting publication.
-  The version-2 preindexed adapter records transcript revisions and
-  intentionally emits `notEvaluated` answer fields, so retrieval can be scored
-  while answer-quality and answer-policy gates remain blocked until a separate
-  versioned judge exists.
+- `portavoz-cli bench-ask-quality` accepts fixture, output, build, commit, and
+  an optional `segment|speaker-turn` retrieval-unit argument. It seeds and
+  explicitly indexes a disposable database outside query observation and runs
+  the real corpus-read-only `LocalAskMeetingRetrieval` path without opening the
+  user library. Five Swift tests cover product retrieval provenance,
+  multilingual same-actor turn projection, exact source membership, and
+  owner-only atomic non-overwriting publication. Observation schema 2 records
+  one ranked unit ID and every ordered source segment ID. The evaluator still
+  admits historical schema 1 as a one-source unit, rejects repeated, unknown,
+  unordered, cross-meeting, or stale source evidence, and counts a hard
+  negative even when it shares a chunk with relevant evidence. Both current
+  adapters intentionally emit `notEvaluated` answer fields, so retrieval can
+  be scored while answer-quality and answer-policy gates remain blocked until
+  a separate versioned judge exists.
 - Six semantic-readiness package tests cover the shared `ready`, `partial`,
   `building`, `unsupported`, and `failed` contract, complete-corpus precedence
   over stale process failure, Library reads that cannot advance the durable

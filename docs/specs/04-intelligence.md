@@ -619,11 +619,15 @@ therefore retains unaffected chunks across a meeting revision while upserting
 only membership, source text, attribution, language, or timing changes. The
 revision still travels with the derived value as a future publication fence.
 
-This contract is not used by Library, Ask, the semantic maintenance owner, or
-StorageKit yet. Segment-level embeddings remain authoritative until a
-separately versioned adapter proves citation integrity, multilingual quality,
-latency, memory, disk, and incremental correction behavior against the current
-segment baseline.
+This contract is not used by product Library, Ask, the semantic maintenance
+owner, or StorageKit. The CLI quality harness may project it into a disposable
+database and run the same production retrieval implementation used by the
+segment control. Observation schema 2 keeps one ranked chunk identity plus all
+ordered canonical source segment identities, so source order, revision,
+hard-negative inclusion, and exact citation timestamps remain fail-closed.
+Segment-level embeddings remain authoritative until the candidate proves
+multilingual quality, latency, memory, disk, and incremental correction
+behavior against the current segment baseline.
 
 ### Governed semantic embedding runtime (D165)
 

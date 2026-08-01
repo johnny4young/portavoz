@@ -5,7 +5,7 @@ import PortavozCore
 import StorageKit
 
 /// Runs the production hybrid retrieval adapter over an isolated judged
-/// corpus and emits D194 observations. It never opens the user's library and
+/// corpus and emits D203 observations. It never opens the user's library and
 /// does not run a generative answer model; answer quality stays explicitly
 /// unevaluated until a separate, versioned judge supplies that evidence.
 enum BenchAskQualityCommand {
@@ -16,7 +16,8 @@ enum BenchAskQualityCommand {
             let observations = try await AskQualityProductionBenchmark.run(
                 fixture: fixture,
                 build: options.build,
-                commit: options.commit)
+                commit: options.commit,
+                retrievalUnit: options.retrievalUnit)
             try AskQualityPrivateJSONWriter.write(
                 observations,
                 to: options.output)
@@ -34,6 +35,7 @@ struct AskQualityBenchmarkOptions: Equatable {
     let output: URL
     let build: String
     let commit: String
+    let retrievalUnit: AskQualityRetrievalUnit
 
     init(arguments: [String]) throws {
         let values = try Self.parse(arguments)
@@ -49,17 +51,22 @@ struct AskQualityBenchmarkOptions: Equatable {
         guard let commit = values["--commit"], AskQualityIdentity.isCommit(commit) else {
             throw AskQualityBenchmarkError.invalidCommit
         }
+        let retrievalUnit = try AskQualityRetrievalUnit(
+            argument: values["--retrieval-unit"] ?? AskQualityRetrievalUnit.segment.rawValue)
         self.fixture = URL(fileURLWithPath: fixture).standardizedFileURL
         self.output = URL(fileURLWithPath: output).standardizedFileURL
         self.build = build
         self.commit = commit
+        self.retrievalUnit = retrievalUnit
         guard self.fixture != self.output else {
             throw AskQualityBenchmarkError.outputMatchesFixture
         }
     }
 
     private static func parse(_ arguments: [String]) throws -> [String: String] {
-        let allowed = Set(["--fixture", "--output", "--build", "--commit"])
+        let allowed = Set([
+            "--fixture", "--output", "--build", "--commit", "--retrieval-unit"
+        ])
         var values: [String: String] = [:]
         var index = 0
         while index < arguments.count {
@@ -84,6 +91,7 @@ enum AskQualityBenchmarkError: Error, Equatable {
     case missingOption(String)
     case invalidBuild
     case invalidCommit
+    case invalidRetrievalUnit(String)
     case outputMatchesFixture
     case invalidFixture(String)
     case invalidTimestamp
@@ -102,6 +110,27 @@ private enum AskQualityIdentity {
     static func isCommit(_ value: String) -> Bool {
         value.utf8.count == 40 && value.utf8.allSatisfy {
             (48...57).contains($0) || (97...102).contains($0)
+        }
+    }
+}
+
+enum AskQualityRetrievalUnit: String, Equatable, Sendable {
+    case segment
+    case speakerTurn = "speaker-turn"
+
+    init(argument: String) throws {
+        guard let value = Self(rawValue: argument) else {
+            throw AskQualityBenchmarkError.invalidRetrievalUnit(argument)
+        }
+        self = value
+    }
+
+    var adapter: String {
+        switch self {
+        case .segment:
+            "local-hybrid-preindexed-segment-no-expansion-evidence-v3"
+        case .speakerTurn:
+            "local-hybrid-preindexed-speaker-turn-v1-no-expansion-evidence-v1"
         }
     }
 }
@@ -225,7 +254,7 @@ struct AskQualityFixtureRelevant: Decodable, Sendable {
 }
 
 struct AskQualityObservationDocument: Encodable, Sendable {
-    let schemaVersion = 1
+    let schemaVersion = 2
     let kind = "ask-quality-observations"
     let fixtureGeneration: String
     let adapter: String
@@ -241,7 +270,8 @@ struct AskQualityQueryObservation: Encodable, Sendable {
 }
 
 struct AskQualityHitObservation: Encodable, Sendable {
-    let segmentID: String
+    let unitID: String
+    let sourceSegmentIDs: [String]
     let meetingID: String
     let timestampMilliseconds: Int
     let transcriptRevision: Int
@@ -267,12 +297,11 @@ struct AskQualityAnswerObservation: Encodable, Sendable {
 }
 
 enum AskQualityProductionBenchmark {
-    static let adapter = "local-hybrid-preindexed-no-expansion-evidence-v2"
-
     static func run(
         fixture: AskQualityFixture,
         build: String,
-        commit: String
+        commit: String,
+        retrievalUnit: AskQualityRetrievalUnit = .segment
     ) async throws -> AskQualityObservationDocument {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(
@@ -287,7 +316,8 @@ enum AskQualityProductionBenchmark {
             databaseURL: root.appendingPathComponent("quality.sqlite"))
         let mapping = try await AskQualityCorpusMapping.seed(
             fixture: fixture,
-            store: store)
+            store: store,
+            retrievalUnit: retrievalUnit)
         let runtime = CLISemanticEmbeddingRuntime()
         _ = try await prepareCorpus(
             store: store,
@@ -301,7 +331,8 @@ enum AskQualityProductionBenchmark {
             mapping: mapping,
             retrieval: retrieval,
             build: build,
-            commit: commit)
+            commit: commit,
+            retrievalUnit: retrievalUnit)
     }
 
     static func prepareCorpus(
@@ -322,7 +353,8 @@ enum AskQualityProductionBenchmark {
         mapping: AskQualityCorpusMapping,
         retrieval: any AskMeetingRetrieving,
         build: String,
-        commit: String
+        commit: String,
+        retrievalUnit: AskQualityRetrievalUnit = .segment
     ) async throws -> AskQualityObservationDocument {
         var observations: [AskQualityQueryObservation] = []
         observations.reserveCapacity(fixture.queries.count)
@@ -341,157 +373,10 @@ enum AskQualityProductionBenchmark {
         }
         return AskQualityObservationDocument(
             fixtureGeneration: fixture.generation,
-            adapter: adapter,
+            adapter: retrievalUnit.adapter,
             build: build,
             commit: commit,
             queries: observations)
-    }
-}
-
-struct AskQualityCorpusMapping: Sendable {
-    private let externalSegmentIDByUUID: [UUID: String]
-    private let externalMeetingIDByDomainID: [MeetingID: String]
-
-    static func seed(
-        fixture: AskQualityFixture,
-        store: MeetingStore
-    ) async throws -> Self {
-        let grouped = Dictionary(grouping: fixture.segments, by: \.meetingID)
-        var externalSegmentIDByUUID: [UUID: String] = [:]
-        var externalMeetingIDByDomainID: [MeetingID: String] = [:]
-        for (meetingIndex, externalMeetingID) in grouped.keys.sorted().enumerated() {
-            guard let fixtureSegments = grouped[externalMeetingID],
-                  !fixtureSegments.isEmpty
-            else { continue }
-            let result = try await seedMeeting(
-                externalMeetingID: externalMeetingID,
-                meetingIndex: meetingIndex,
-                segments: fixtureSegments,
-                store: store)
-            externalMeetingIDByDomainID[result.meetingID] = externalMeetingID
-            externalSegmentIDByUUID.merge(result.segmentIDs) { _, latest in latest }
-        }
-        return Self(
-            externalSegmentIDByUUID: externalSegmentIDByUUID,
-            externalMeetingIDByDomainID: externalMeetingIDByDomainID)
-    }
-
-    private static func seedMeeting(
-        externalMeetingID: String,
-        meetingIndex: Int,
-        segments fixtureSegments: [AskQualityFixtureSegment],
-        store: MeetingStore
-    ) async throws -> (meetingID: MeetingID, segmentIDs: [UUID: String]) {
-        let meetingID = MeetingID(rawValue: try deterministicUUID(
-            namespace: "ask-quality-meeting",
-            identifier: externalMeetingID))
-        let speakerByOwner = try speakers(
-            for: fixtureSegments,
-            externalMeetingID: externalMeetingID)
-        let speakers = speakerByOwner.keys.sorted().compactMap { owner in
-            speakerByOwner[owner].map {
-                Speaker(
-                    id: $0,
-                    meetingID: meetingID,
-                    label: owner,
-                    displayName: owner,
-                    isMe: false)
-            }
-        }
-        var externalIDs: [UUID: String] = [:]
-        let transcriptSegments = try fixtureSegments.sorted {
-            ($0.timestampMilliseconds, $0.id) < ($1.timestampMilliseconds, $1.id)
-        }.map { segment in
-            let identifier = try deterministicUUID(
-                namespace: "ask-quality-segment",
-                identifier: segment.id)
-            externalIDs[identifier] = segment.id
-            let start = TimeInterval(segment.timestampMilliseconds) / 1_000
-            return TranscriptSegment(
-                id: identifier,
-                meetingID: meetingID,
-                speakerID: speakerByOwner[segment.owner],
-                channel: .system,
-                text: segment.text,
-                language: segment.language,
-                startTime: start,
-                endTime: start + 0.8,
-                confidence: 1,
-                isFinal: true)
-        }
-        let first = fixtureSegments[0]
-        let startedAt = Date(
-            timeIntervalSince1970: 1_700_000_000 + TimeInterval(meetingIndex * 3_600))
-        let meeting = Meeting(
-            id: meetingID,
-            title: first.meetingTitle,
-            startedAt: startedAt,
-            endedAt: startedAt.addingTimeInterval(
-                (transcriptSegments.last?.endTime ?? 0) + 1),
-            language: Set(fixtureSegments.map(\.language)).count == 1
-                ? first.language
-                : nil,
-            transcriptRevision: first.transcriptRevision)
-        try await store.saveImportedMeeting(
-            meeting,
-            speakers: speakers,
-            segments: transcriptSegments)
-        return (meetingID, externalIDs)
-    }
-
-    private static func speakers(
-        for segments: [AskQualityFixtureSegment],
-        externalMeetingID: String
-    ) throws -> [String: SpeakerID] {
-        try Dictionary(uniqueKeysWithValues: Set(segments.map(\.owner)).map { owner in
-            (
-                owner,
-                SpeakerID(rawValue: try deterministicUUID(
-                    namespace: "ask-quality-speaker-\(externalMeetingID)",
-                    identifier: owner))
-            )
-        })
-    }
-
-    func observation(
-        for citation: AskCitation
-    ) throws -> AskQualityHitObservation {
-        let segmentID = citation.segmentID.flatMap {
-            externalSegmentIDByUUID[$0]
-        } ?? "unknown-segment"
-        let meetingID = externalMeetingIDByDomainID[citation.meetingID]
-            ?? "unknown-meeting"
-        let milliseconds = citation.timestamp * 1_000
-        guard milliseconds.isFinite,
-              milliseconds >= 0,
-              milliseconds <= Double(Int.max)
-        else { throw AskQualityBenchmarkError.invalidTimestamp }
-        return AskQualityHitObservation(
-            segmentID: segmentID,
-            meetingID: meetingID,
-            timestampMilliseconds: Int(milliseconds.rounded()),
-            transcriptRevision: citation.transcriptRevision)
-    }
-
-    private static func deterministicUUID(
-        namespace: String,
-        identifier: String
-    ) throws -> UUID {
-        let digest = OperationFingerprint.make(
-            version: namespace,
-            components: [identifier])
-        let compact = String(digest.prefix(32))
-        let value = [
-            compact.prefix(8),
-            compact.dropFirst(8).prefix(4),
-            compact.dropFirst(12).prefix(4),
-            compact.dropFirst(16).prefix(4),
-            compact.dropFirst(20).prefix(12)
-        ].map(String.init).joined(separator: "-")
-        guard let result = UUID(uuidString: value) else {
-            throw AskQualityBenchmarkError.invalidFixture("invalid identity digest")
-        }
-        return result
     }
 }
 
