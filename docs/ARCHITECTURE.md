@@ -546,31 +546,35 @@ locally, then groups each complete language variant under FTS5 `OR` rather
 than weakening every token into a broad union. FTS5 `unicode61` provides
 case- and Latin-diacritic-insensitive exact matching without changing stored
 transcript text. Exact hits publish immediately. When Apple's Latin contextual
-embedding assets are already installed and capture is inactive, one
-process-shared ApplicationKit actor incrementally embeds at most 512 missing
-non-micro rows and appends bounded cross-language semantic results by exact
-cosine. Typing never requests an asset download, semantic failure never
-invalidates exact results, and no additional vector dependency is loaded. A
-selected hit emits the same one-shot meeting/timestamp seek request used by Ask
-evidence before routing.
+embedding assets are already installed and capture is inactive, Library
+appends bounded cross-language semantic results from vectors already published
+by maintenance. Typing never requests an asset download or writes the corpus,
+semantic failure never invalidates exact results, and no additional vector
+dependency is loaded. A selected hit emits the same one-shot
+meeting/timestamp seek request used by Ask evidence before routing.
 
-Library and background maintenance delegate corpus backfill to one
-`IndexSemanticCorpus` ApplicationKit operation behind one process-shared semantic-indexing
-coordinator. Library requests one bounded batch; redundant
-Library requests coalesce while any flight is active. The signal-driven
-background owner requests complete drains: a complete demand joins an active
-bounded flight, then drains the durable remainder while new bounded requests
-coalesce. There is no pending-request array and never more than one embedding
-flight.
+Ask and Library share one typed ApplicationKit readiness resolver. It combines
+installed query-vector capability, one durable pending-row probe, and the
+process maintenance status into `ready`, `partial`, `building`, `unsupported`,
+or `failed`. Exact search remains available in every state. `partial`,
+`building`, and `failed` may still query published vectors; `unsupported`
+means no query vector can be produced. A complete durable corpus resolves
+`ready` even after an older process failure.
+
+All product corpus backfill belongs to the signal-driven background owner. It
+delegates complete drains to `IndexSemanticCorpus` behind one process-shared semantic-indexing
+coordinator; explicit disposable benchmark preparation may use the same
+operation outside product requests. There is no pending-request array and
+never more than one embedding flight.
 Cancelling the final waiter cancels the worker before persistence; another
-borrower keeps shared work alive. Both paths mark micro-segments with an empty
-vector, validate the embedder's result count before persistence, and emit
+borrower keeps shared work alive. The writer marks micro-segments with an empty
+vector, validates the embedder's result count before persistence, and emits
 content-free maintenance/search-index intervals. Missing embeddings remain
 durable `NULL` rows, so coalescing or policy suspension loses no corpus
 evidence.
 
-Ask is read-only with respect to that corpus. Every request retrieves exact
-FTS evidence first, checks semantic asset readiness without preparing or
+Ask and Library are read-only with respect to that corpus. Every Ask request retrieves exact
+FTS evidence first, resolves the shared semantic state without preparing or
 downloading assets, and searches only embeddings already published by the
 maintenance owner. It never invokes `IndexSemanticCorpus` or persists an
 embedding. Missing assets and ordinary semantic preparation/query failures

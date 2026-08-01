@@ -591,6 +591,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
         let library = try Self.contents(
             of: "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift")
+        let readiness = try Self.contents(
+            of: "Sources/ApplicationKit/SemanticCorpusReadiness.swift")
         let stressGate = try Self.contents(
             of: "scripts/run-recording-reliability-stress.sh")
         let releaseGate = try Self.contents(
@@ -610,10 +612,22 @@ final class ArchitectureDependencyTests: XCTestCase {
             "semanticIndexingCoordinator = semanticSearch.coordinator"))
         XCTAssertTrue(appAsk.contains(
             "coordinator: SemanticCorpusIndexingCoordinator"))
+        XCTAssertTrue(appAsk.contains(
+            "let readiness = ResolveSemanticCorpusReadiness"))
+        XCTAssertEqual(
+            appAsk.components(separatedBy: "semanticReadiness: readiness").count - 1,
+            2)
         XCTAssertFalse(ask.contains("indexingCoordinator"))
         XCTAssertFalse(ask.contains("IndexSemanticCorpus"))
         XCTAssertTrue(ask.contains("allowAssetDownload: false"))
-        XCTAssertTrue(library.contains("indexingCoordinator.nextBatch("))
+        XCTAssertFalse(library.contains("indexingCoordinator"))
+        XCTAssertFalse(library.contains("IndexSemanticCorpus"))
+        XCTAssertTrue(library.contains("allowAssetDownload: false"))
+        XCTAssertTrue(readiness.contains(
+            "public enum SemanticCorpusReadiness"))
+        for state in ["ready", "partial", "building", "unsupported", "failed"] {
+            XCTAssertTrue(readiness.contains("case \(state)"))
+        }
         for gate in [stressGate, releaseGate] {
             XCTAssertTrue(gate.contains(
                 "SemanticCorpusIndexingCoordinatorTests"))
@@ -627,10 +641,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             "one process-shared semantic-indexing"))
         XCTAssertTrue(decisions.contains("## D176"))
         XCTAssertTrue(decisions.contains("## D196"))
+        XCTAssertTrue(decisions.contains("## D197"))
         XCTAssertTrue(intelligenceSpec.contains(
             "### Shared semantic-indexing flight (D176)"))
         XCTAssertTrue(intelligenceSpec.contains(
             "### Corpus-read-only Ask retrieval (D196)"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Typed semantic readiness and background-only writes (D197)"))
     }
 
     func testSemanticBackgroundOwnerUsesSignalsAndDurableCursor() throws {
@@ -653,6 +670,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "final class SemanticCorpusIndexingSupervisor"))
         XCTAssertTrue(supervisor.contains("private var drainTask:"))
         XCTAssertTrue(supervisor.contains("private var rerunRequested = false"))
+        XCTAssertTrue(supervisor.contains(
+            "maintenanceState.transition(to: .building)"))
+        XCTAssertTrue(supervisor.contains(
+            "maintenanceState.transition(to: terminalPhase)"))
         XCTAssertTrue(supervisor.contains(
             "struct AppSemanticCorpusBackgroundIndexer"))
         XCTAssertTrue(supervisor.contains(
@@ -3106,7 +3127,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(retrieval.contains("indexingCoordinator"))
         XCTAssertFalse(retrieval.contains("IndexSemanticCorpus"))
         XCTAssertTrue(retrieval.contains("allowAssetDownload: false"))
-        XCTAssertTrue(librarySearch.contains("indexingCoordinator.nextBatch("))
+        XCTAssertFalse(librarySearch.contains("indexingCoordinator"))
+        XCTAssertFalse(librarySearch.contains("IndexSemanticCorpus"))
+        XCTAssertTrue(librarySearch.contains("allowAssetDownload: false"))
         XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot
             .appendingPathComponent("Sources/IntegrationsKit/AskPipeline.swift").path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot

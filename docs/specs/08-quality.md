@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,481 package tests passing (13 model-gated) + 56 XCUITest UI cases. CI
+Status: 1,487 package tests passing (13 model-gated) + 56 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -23,7 +23,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 426 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 433 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1319,8 +1319,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability gate is 1,481 XCTest package cases (13 gated),
-zero strict-lint violations across 432 Swift files, a 108-case
+The current field-reliability gate is 1,487 XCTest package cases (13 gated),
+zero strict-lint violations across 433 Swift files, a 108-case
 recording/recovery corpus passing 25 consecutive iterations, and 56 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
 explicit Whisper language detection, split-lineage identity, full-pair
@@ -1354,6 +1354,10 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   intentionally emits `notEvaluated` answer fields, so retrieval can be scored
   while answer-quality and answer-policy gates remain blocked until a separate
   versioned judge exists.
+- Six semantic-readiness package tests cover the shared `ready`, `partial`,
+  `building`, `unsupported`, and `failed` contract, complete-corpus precedence
+  over stale process failure, Library reads that cannot advance the durable
+  cursor or download assets, and background-supervisor failure recovery.
 - `bench-m2`: live transcript lag (p50/p95/max) with concurrent batch processing.
 - `portavoz-cli der`: DER against reference RTTM (public fixture: pyannote sample.wav/rttm).
 - `scripts/verify_drift.py`: drift through envelope correlation (±5 s, edge warning, multi-point).

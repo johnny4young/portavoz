@@ -102,9 +102,9 @@ public enum SemanticCorpusIndexingError: Error, Equatable, LocalizedError {
 
 /// One application-owned semantic corpus maintenance operation.
 ///
-/// Background maintenance and explicit benchmark preparation may drain all
-/// missing rows; Library search may advance one bounded batch. Process
-/// composition coordinates those calls through one shared flight owner.
+/// Background maintenance and explicit disposable benchmark preparation may
+/// drain missing rows. Product query paths only consume published vectors.
+/// Process composition coordinates writes through one shared flight owner.
 public struct IndexSemanticCorpus: Sendable {
     private static let minimumTextLength = 20
     private static let workload = ResourceWorkloadDescriptor(

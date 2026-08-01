@@ -857,10 +857,12 @@ queries, and non-positive limits return no invalid hits. Comparable results:
 The 100k wall/CPU path is 72.3%/72.2% faster and passes both targets. D83
 retains exact schema-v7 Float32 BLOBs and rejects sqlite-vec, a new embedding
 table, approximation, and vector-cache invalidation at the measured scale.
-D176–D178 and D196 change no StorageKit contract: `NULL` embedding rows remain
+D176–D178 and D196–D197 change no StorageKit contract: `NULL` embedding rows remain
 the durable retry ledger while ApplicationKit coalesces redundant
-Library/background-maintenance flights, pauses between committed batches, and
-resumes from explicit app lifecycle/mutation/capture-stop signals before they
-reach these exact read/write methods. Ask only reads published vectors.
+background-maintenance flights, pauses between committed batches, and resumes
+from explicit app lifecycle/mutation/capture-stop signals before they reach
+these exact read/write methods. Ask and Library only read published vectors;
+their shared typed readiness probe reads at most one pending row and never
+changes storage.
 Process termination, policy suspension, or an ordinary background failure
 therefore needs no in-memory cursor repair, retry table, or vector rollback.

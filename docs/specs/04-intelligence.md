@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -347,7 +347,7 @@ meeting-content HTTP receipt boundary.
 ## Local RAG (D22/D100) — `AskMeetings` + retrieval and answer primitives
 
 - **Embeddings**: `NLContextualEmbedding(script: .latin)` — shared es/en space (genuinely cross-lingual). Mean-pool + L2-normalize. `prepare()` requests assets from the OS.
-- **Index**: BLOB in the `embedding` column of `segment` + brute-force cosine (sqlite-vec intentionally deferred). `ApplicationKit.IndexSemanticCorpus` owns both complete and bounded backfill. It validates one returned vector per eligible segment before persistence and writes an empty marker for micro-segments (< 20 chars), which are excluded because they drowned out cross-lingual hits. The signal-driven background owner requests complete drains; Library may request one bounded batch. Ask performs no backfill and reads only already-published vectors. One process-shared coordinator admits only one maintenance flight.
+- **Index**: BLOB in the `embedding` column of `segment` + brute-force cosine (sqlite-vec intentionally deferred). `ApplicationKit.IndexSemanticCorpus` owns corpus writes. It validates one returned vector per eligible segment before persistence and writes an empty marker for micro-segments (< 20 chars), which are excluded because they drowned out cross-lingual hits. The signal-driven background owner requests product drains; explicit disposable benchmarks may prepare their isolated stores. Ask and Library perform no backfill and read only already-published vectors. One process-shared coordinator admits only one maintenance flight.
 - **Application boundary (D100)**: `ApplicationKit.AskMeetings` is the only public workflow used by the macOS Ask route, resident command palette, CLI `ask`, local MCP `ask`, and meeting-brief evidence lookup. Instant results and citations are storage-independent values; generated text is optional, so unavailable or failed local generation preserves evidence instead of converting retrieval success into failure; cancellation still propagates as cancellation.
 - **Meeting preparation (D101)**: `ApplicationKit.PrepareMeetingBrief` ranks the shared Ask citations, joins them to one batched latest-live-General-summary projection and independently loaded open commitments, and exposes only storage-independent related meetings, commitments, and knowledge points. Foundation Models synthesis is optional and every returned source index is validated before it becomes a navigable knowledge point; invalid indexes and ordinary model failure produce no invented source, while cancellation remains cancellation.
 - **Lexical candidates (D81)**: `ApplicationKit.LocalAskMeetingRetrieval` owns the policy. It normalizes and deduplicates content words ≥ 4 characters, retrieves a bounded FTS top-k list per term for normal questions of up to eight unique terms, and fuses those lists with RRF (`k=60`). Multi-term passages climb without scoring one complete OR union. Longer pasted questions retain the released broad-OR fallback, and every selected hit carries complete segment text in addition to its UI snippet.
@@ -437,34 +437,28 @@ English/Spanish results first. `LocalLibrarySemanticSearch` then borrows the
 process semantic runtime and the existing StorageKit exact-cosine adapter only
 when the OS-managed Latin assets are already present. It never calls
 `requestAssets()` from the search field, skips work during active capture, and
-indexes at most 512 missing segments per query so a large archive becomes
-semantic incrementally. Segments under 20 characters are marked intentionally
-unindexed. Cancellation is checked between preparation, embedding, and storage;
-any semantic failure degrades to no appended hits rather than failing lexical
-search. Exact hits keep their order and duplicate semantic IDs are discarded.
-The bounded path and the background owner's complete drain share
-`IndexSemanticCorpus`, one app runtime, and one process coordinator. Ask stays
-outside this write path.
+never writes a corpus row. Cancellation is checked between preparation, query
+embedding, and semantic lookup; any semantic failure degrades to no appended
+hits rather than failing lexical search. Exact hits keep their order and
+duplicate semantic IDs are discarded. Library and Ask share one app runtime
+and one readiness resolver, while the background owner remains independent of
+their request lifetimes.
 
 ### Shared semantic-indexing flight (D176)
 
 `SemanticCorpusIndexingCoordinator` is the process-owned ApplicationKit actor
-between Library/background maintenance and `IndexSemanticCorpus`. It admits
-one active flight. Library's bounded maintenance returns immediately when
-another bounded or complete flight already represents that durable work. A
-background or explicit benchmark complete caller joins an active bounded
-flight, then drains every still-missing row; while any complete caller exists,
-another Library request cannot cut in between those stages. Concurrent
-complete callers join the same drain.
+between background maintenance and `IndexSemanticCorpus`. It admits one active
+flight. Product queries never join it. Concurrent complete maintenance callers
+join the same drain; explicit disposable benchmarks may also use a coordinator
+owned by their isolated process or fixture.
 
 The coordinator owns one active task plus waiter identities and a scalar
 complete-demand count, not an unbounded request queue. Cancelling one borrower
 does not cancel work still awaited elsewhere; cancelling the final waiter
 cancels the worker and the operation's cancellation fence prevents embedding
 persistence. Missing rows stay `NULL`, so a coalesced bounded request is
-rediscovered by the next Library or Ask pass. Exact FTS remains independent and
-publishes first. Background maintenance uses this same coordinator rather than
-starting a second indexing lane.
+rediscovered by the next background signal. Exact FTS remains independent and
+publishes first. There is no second product indexing lane.
 
 ### Capture-prioritized semantic checkpoints (D177)
 
@@ -486,7 +480,8 @@ without a timer or in-memory queue.
 
 Ask cannot be paused by corpus maintenance because it does not join that
 flight. It proceeds with exact lexical evidence and every semantic row already
-indexed; Library exact results remain independently observable and first.
+indexed; Library has the same read-only relationship, and its exact results
+remain independently observable and first.
 D178 supplies wake-on-capture-stop ownership. Host-pressure, power, and
 storage adapters remain later durable-maintenance work.
 
@@ -508,9 +503,32 @@ and isolated benchmark stores disable this owner.
 
 Ordinary failure keeps the durable rows pending and relies on the next signal
 or process launch. Ask never repairs those rows in the request path; it keeps
-exact lexical evidence and any semantic rows already published. This makes a
-background failure visible as partial semantic coverage rather than query
-failure or user-facing maintenance latency.
+exact lexical evidence and any semantic rows already published. Library follows
+the same rule. The shared readiness resolver reports a pending failed corpus as
+`failed`, while published vectors remain queryable, so a background failure is
+partial semantic coverage rather than query failure or user-facing maintenance
+latency.
+
+### Typed semantic readiness and background-only writes (D197)
+
+`ResolveSemanticCorpusReadiness` is the shared ApplicationKit query contract.
+It performs no preparation or persistence. It combines the injected runtime's
+installed-asset capability, a bounded durable pending-row probe, and one
+process-shared `SemanticCorpusMaintenanceState` into five closed states:
+`ready` when no live row is pending, `partial` when rows are pending and the
+owner is idle, `building` while a drain is active, `failed` after an ordinary
+drain failure with pending rows, and `unsupported` when this process cannot
+produce a query vector. A complete corpus wins over stale process failure and
+resolves `ready`.
+
+Exact FTS is independent of every state. Ask and Library may search already-
+published vectors in `ready`, `partial`, `building`, or `failed`; only
+`unsupported` skips semantic work. Neither query path owns a coordinator,
+invokes `IndexSemanticCorpus`, persists a vector, or downloads an asset. The
+supervisor transitions the shared process state synchronously to `building`
+before starting a drain and to `idle` or `failed` when the final coalesced pass
+finishes. Durable `NULL` rows remain the real progress cursor; the phase stores
+no corpus identity or payload and is not a durable job system.
 
 ### Governed semantic embedding runtime (D165)
 
@@ -519,8 +537,9 @@ NaturalLanguage model. Its generic operation closure receives only a prepared
 `SemanticTextEmbedding` and keeps the app's exact residency lease alive for the
 entire callback. Ask performs lexical retrieval before borrowing the runtime,
 then performs only query-vector creation and semantic lookup inside that
-callback. Library performs its bounded backfill, query-vector creation, and
-semantic lookup inside the same boundary.
+callback. Library performs only query-vector creation and semantic lookup
+inside the same boundary. Background maintenance separately holds its lease
+around corpus indexing.
 
 The macOS adapter owns one actor-backed `SentenceEmbedder` per process and
 coalesces preparation. Library and Ask call it only after

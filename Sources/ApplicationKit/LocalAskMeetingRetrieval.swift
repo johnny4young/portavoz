@@ -10,15 +10,21 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private let store: MeetingStore
     private let queryExpander: any AskQueryExpanding
     private let runtime: any SemanticEmbeddingRuntimeClient
+    private let semanticReadiness: ResolveSemanticCorpusReadiness
 
     public init(
         store: MeetingStore,
         queryExpander: any AskQueryExpanding = OnDeviceAskMeetingIntelligence(),
-        runtime: any SemanticEmbeddingRuntimeClient
+        runtime: any SemanticEmbeddingRuntimeClient,
+        semanticReadiness: ResolveSemanticCorpusReadiness? = nil
     ) {
         self.store = store
         self.queryExpander = queryExpander
         self.runtime = runtime
+        self.semanticReadiness = semanticReadiness
+            ?? ResolveSemanticCorpusReadiness(
+                store: store,
+                runtime: runtime)
     }
 
     public func search(
@@ -69,12 +75,12 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
                 store: store,
                 limit: 12 * queries.count)
         }
-        let semanticAvailable = await trace.measure(.corpusReadiness) {
-            await runtime.hasAvailableAssets
+        let readiness = try await trace.measure(.corpusReadiness) {
+            try await semanticReadiness.current()
         }
         let semanticResult = try await semanticCandidates(
             queries: queries,
-            isAvailable: semanticAvailable,
+            readiness: readiness,
             trace: trace)
         let semantic = semanticResult.bestRank.sorted {
             $0.value < $1.value
@@ -97,10 +103,10 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
 
     private func semanticCandidates(
         queries: [String],
-        isAvailable: Bool,
+        readiness: SemanticCorpusReadiness,
         trace: AskPipelineTrace
     ) async throws -> SemanticCandidates {
-        guard isAvailable else { return .empty }
+        guard readiness.canSearchPublishedVectors else { return .empty }
         do {
             return try await runtime.withPreparedEmbedding(
                 allowAssetDownload: false

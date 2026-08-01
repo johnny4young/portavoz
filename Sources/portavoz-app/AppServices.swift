@@ -102,8 +102,8 @@ final class AppServices {
     /// Ask and Library share one governed Apple contextual-embedding runtime.
     @ObservationIgnored let semanticEmbeddingRuntime:
         AppSemanticEmbeddingRuntime
-    /// Library and Ask share one backfill owner in addition to one model.
-    /// It admits one semantic-index flight and coalesces redundant maintenance.
+    /// Background maintenance owns product corpus writes and coalesces them
+    /// through one semantic-index flight.
     @ObservationIgnored let semanticIndexingCoordinator:
         SemanticCorpusIndexingCoordinator
     /// Signal-driven process owner resumes durable semantic backfill without

@@ -18,15 +18,18 @@ final class SemanticCorpusIndexingSupervisor {
         category: "semantic-indexing")
 
     private let isEnabled: Bool
+    private let maintenanceState: SemanticCorpusMaintenanceState
     private let drain: Drain
     private var drainTask: Task<Void, Never>?
     private var rerunRequested = false
 
     init(
         isEnabled: Bool = true,
+        maintenanceState: SemanticCorpusMaintenanceState = .init(),
         drain: @escaping Drain
     ) {
         self.isEnabled = isEnabled
+        self.maintenanceState = maintenanceState
         self.drain = drain
     }
 
@@ -38,22 +41,32 @@ final class SemanticCorpusIndexingSupervisor {
         }
 
         rerunRequested = false
+        maintenanceState.transition(to: .building)
         let drain = drain
         drainTask = Task { @MainActor [weak self] in
-            defer { self?.finishedDrain() }
+            let terminalPhase: SemanticCorpusMaintenancePhase
             do {
                 _ = try await drain()
+                terminalPhase = .idle
             } catch is CancellationError {
+                terminalPhase = .idle
             } catch {
+                terminalPhase = .failed
                 Self.logger.error(
                     "Semantic indexing maintenance failed; durable rows remain pending")
             }
+            self?.finishedDrain(terminalPhase: terminalPhase)
         }
     }
 
-    private func finishedDrain() {
+    private func finishedDrain(
+        terminalPhase: SemanticCorpusMaintenancePhase
+    ) {
         drainTask = nil
-        guard rerunRequested else { return }
+        guard rerunRequested else {
+            maintenanceState.transition(to: terminalPhase)
+            return
+        }
         rerunRequested = false
         kick()
     }

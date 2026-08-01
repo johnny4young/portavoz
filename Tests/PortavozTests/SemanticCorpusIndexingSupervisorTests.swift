@@ -43,6 +43,43 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         XCTAssertEqual(snapshot.started, 0)
     }
 
+    func testSupervisorPublishesBuildingThenIdleMaintenancePhase() async {
+        let probe = SemanticDrainProbe()
+        let state = SemanticCorpusMaintenanceState()
+        let supervisor = SemanticCorpusIndexingSupervisor(
+            maintenanceState: state,
+            drain: probe.drain)
+
+        supervisor.kick()
+        await probe.waitForStartedCount(1)
+        XCTAssertEqual(state.current, .building)
+
+        await probe.release(1)
+        await probe.waitForFinishedCount(1)
+        await waitUntil { state.current == .idle }
+
+        XCTAssertEqual(state.current, .idle)
+    }
+
+    func testSupervisorPublishesFailureUntilTheNextKickRecovers() async {
+        let probe = FailingThenSuccessfulSemanticDrainProbe()
+        let state = SemanticCorpusMaintenanceState()
+        let supervisor = SemanticCorpusIndexingSupervisor(
+            maintenanceState: state,
+            drain: probe.drain)
+
+        supervisor.kick()
+        await waitUntil { state.current == .failed }
+        let failedStartedCount = await probe.startedCount
+        XCTAssertEqual(failedStartedCount, 1)
+
+        supervisor.kick()
+        await waitUntil { await probe.startedCount == 2 }
+        await waitUntil { state.current == .idle }
+
+        XCTAssertEqual(state.current, .idle)
+    }
+
     func testCancellationStillRunsQueuedRerun() async {
         let probe = CancelingSemanticDrainProbe()
         let supervisor = SemanticCorpusIndexingSupervisor(
@@ -182,6 +219,22 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         }
         XCTFail("Timed out waiting for semantic maintenance state")
     }
+}
+
+private actor FailingThenSuccessfulSemanticDrainProbe {
+    private(set) var startedCount = 0
+
+    func drain() async throws -> SemanticCorpusIndexingResult {
+        startedCount += 1
+        if startedCount == 1 {
+            throw SemanticDrainError.failed
+        }
+        return .empty
+    }
+}
+
+private enum SemanticDrainError: Error {
+    case failed
 }
 
 private actor CancelingSemanticDrainProbe {

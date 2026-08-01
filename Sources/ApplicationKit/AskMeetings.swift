@@ -147,6 +147,7 @@ public struct AskMeetings: ApplicationUseCase {
     public static func local(
         store: MeetingStore,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
+        semanticReadiness: ResolveSemanticCorpusReadiness? = nil,
         pipelineTelemetry: AskPipelineTelemetry = .disabled
     ) -> Self {
         let intelligence = OnDeviceAskMeetingIntelligence()
@@ -154,7 +155,8 @@ public struct AskMeetings: ApplicationUseCase {
             retrieval: LocalAskMeetingRetrieval(
                 store: store,
                 queryExpander: intelligence,
-                runtime: semanticRuntime),
+                runtime: semanticRuntime,
+                semanticReadiness: semanticReadiness),
             answering: intelligence,
             telemetry: pipelineTelemetry)
     }

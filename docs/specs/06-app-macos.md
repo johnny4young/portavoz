@@ -9,6 +9,8 @@ D193 lets only the resource-benchmark process observe that same closed stream
 and publish a strict content-free Ask pipeline sidecar per measured run.
 D196 keeps product Ask corpus-read-only and moves disposable benchmark corpus
 preparation outside the measured request.
+D197 gives Ask and Library one typed semantic-readiness view and makes the
+signal-driven supervisor the sole product corpus writer.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -242,7 +244,7 @@ The migration surface is locked by an architecture test before adapter changes:
 | Speaker diarization | `AppServices+DiarizationModels` coalesces one verified reusable Core ML model pair; every live/batch meeting and voice extraction creates a fresh stateful `PyannoteDiarizer` under an exact active-use lease | The ledger rejects release while any session is leased; AppServices confirms concrete model-pair release after the existing 600-second generation fence |
 | Quality speech | `AppServices+WhisperModels` coalesces one runtime load and returns exact-engine active-use leases to Refine/Import | The ledger rejects release and deletion while leased; AppServices confirms concrete release after the existing 120-second generation fence |
 | Language intelligence | `AppServices+MLXModels` injects one process-owned `IntelligenceKit.MLXSummaryRuntime` into every production MLX provider and returns active-use leases around exact-directory generation | The ledger rejects release and verified-file deletion while active; AppServices confirms concrete release after the existing 120-second generation fence |
-| Semantic embedding | `AppSemanticEmbeddingRuntime` coalesces one Apple Latin contextual-model load; one `SemanticCorpusIndexingCoordinator` admits Library/background-maintenance flights; Library and background indexing retain exact active-use leases around their work, while Ask borrows only for query embedding and reads published vectors | One app backfill task runs at a time; Ask never downloads assets or writes the corpus; release is explicit and rejected while leased; no evidence-free idle timer is introduced; CLI and standalone benchmark processes own isolated runtimes |
+| Semantic embedding | `AppSemanticEmbeddingRuntime` coalesces one Apple Latin contextual-model load; Ask and Library borrow it only for query embedding and published-vector reads; one `SemanticCorpusIndexingCoordinator` admits background-maintenance writes; one shared resolver combines installed capability, durable pending rows, and supervisor phase | One app backfill task runs at a time; product queries never download assets or write the corpus; release is explicit and rejected while leased; no evidence-free idle timer is introduced; CLI and standalone benchmark processes own isolated runtimes |
 
 The ratchet also proves there is one process ledger construction, five fully
 integrated runtime adapters, and no production semantic constructor outside
@@ -369,12 +371,10 @@ and the first active-use acquisition are one atomic ledger operation; failure
 clears the current load generation and permits a later retry.
 
 Library, Ask, and background maintenance receive the runtime by dependency
-injection; only Library and maintenance receive the semantic-indexing
-coordinator. Library first checks already-installed assets and never requests a
-download while typing. Its bounded backfill coalesces when another maintenance
-flight is active. Ask checks the same asset state, never requests a download or
-joins an indexing flight, and holds one active-use token only while embedding
-query variants and reading already-published vectors. The standalone indexing
+injection; only maintenance receives the semantic-indexing coordinator.
+Library and Ask share one `ResolveSemanticCorpusReadiness`, never request a
+download, never join an indexing flight, and hold an active-use token only
+while embedding queries and reading already-published vectors. The standalone indexing
 and recording-plus-indexing resource workloads use the same app runtime but
 remain isolated benchmark owners of their operation; the CLI owns one
 equivalent process-local runtime and the scale-only CLI benchmark remains
@@ -466,7 +466,7 @@ Starting, active, and stopping capture prevent a new semantic pass. Work
 admitted before capture finishes its current bounded database batch and pauses
 before fetching another. The operation reports policy suspension separately
 from cancellation/failure and leaves every remaining embedding row `NULL`, so
-the next Library or Ask demand resumes from storage with no polling loop or
+the next background signal resumes from storage with no polling loop or
 ephemeral retry owner. Exact Library search continues independently. Ask may
 continue with lexical and already-indexed semantic evidence.
 
@@ -496,7 +496,11 @@ failed drain logs only an ordinary content-free operational message; durable
 `NULL` rows survive and the next mutation, capture completion, or launch
 retries them. Ask never joins the maintenance flight: exact FTS remains
 authoritative, semantic lookup uses only already-published rows, and ordinary
-runtime failure degrades to lexical evidence.
+runtime failure degrades to lexical evidence. The supervisor publishes a
+payload-free process phase (`building`, `idle`, or `failed`) to the shared
+ApplicationKit readiness resolver. Combined with installed assets and one
+durable pending-row probe, Ask and Library observe `ready`, `partial`,
+`building`, `unsupported`, or `failed` without preparing or writing anything.
 
 
 ### Capture-safe existing-library sync admission (D179)
@@ -1466,7 +1470,7 @@ Capture timing starts when the microphone stream actually opens, not when model 
 
 ## Views and flows
 
-**LibraryView + LibraryModel**: `New recording` (⌘N), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings; click navigates to the meeting), recency-grouped meetings with `Rename`/`Delete`, Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, AppStorage disclosure state, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, and degradable filesystem behavior remain while scoped observations update only their owning sections. `library-search-field` provides a stable automation boundary for the real FTS/model wiring. The query adapter expands a deterministic local English/Spanish meeting lexicon and StorageKit ORs complete language variants while keeping terms inside each variant conjunctive; `unicode61` folds Latin accents. Exact rows publish first. When Apple Latin embedding assets are already installed and capture is inactive, a shared ApplicationKit search actor appends bounded semantic paraphrase/cross-language hits without downloading assets or replacing exact rank (D145). Its backfill enters the same process coordinator as Ask, so repeated typing cannot start duplicate embedding work (D176). Launch, searchable mutations, and capture completion also wake one no-poll background owner that uses the same coordinator and installed assets (D178). Search rows publish their exact timestamp through the shared one-shot seek channel before routing. While capture is preparing, recording, or processing, the main action becomes identified `Return to recording`; browsing history cannot hide the live timer and Stop control or create a second session. UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.
+**LibraryView + LibraryModel**: `New recording` (⌘N), FTS search with snippets, **"To-dos" section** (open action items from ALL meetings; click navigates to the meeting), recency-grouped meetings with `Rename`/`Delete`, Recently Deleted restore/permanent purge, import progress/errors, and calendar briefs. The per-window model owns data, debounce, mutations, and effects through its narrow client; the SwiftUI views own rendering, native presentation, AppStorage disclosure state, file picking/drop acceptance, and route binding. Library and Meeting Detail deletion plus Recently Deleted restore/permanent purge still enter through ApplicationKit use cases; launch cleanup uses the same purge boundary for tombstones strictly older than 30 days. Existing controls, navigation, and degradable filesystem behavior remain while scoped observations update only their owning sections. `library-search-field` provides a stable automation boundary for the real FTS/model wiring. The query adapter expands a deterministic local English/Spanish meeting lexicon and StorageKit ORs complete language variants while keeping terms inside each variant conjunctive; `unicode61` folds Latin accents. Exact rows publish first. When Apple Latin embedding assets are already installed and capture is inactive, a shared ApplicationKit search actor appends bounded semantic paraphrase/cross-language hits from already-published vectors without downloading assets, writing the corpus, or replacing exact rank (D145/D197). Ask and Library share one typed readiness resolver; launch, searchable mutations, and capture completion wake the sole no-poll product writer, which uses the process coordinator and installed assets (D176/D178/D197). Search rows publish their exact timestamp through the shared one-shot seek channel before routing. While capture is preparing, recording, or processing, the main action becomes identified `Return to recording`; browsing history cannot hide the live timer and Stop control or create a second session. UITests use `firstMatch` for to-dos because a meeting title also appears as the row caption.
 
 **RecordingView + RecordingController** (full live pipeline):
 1. `start`: `RecordingController` resets live visual state and sends callbacks

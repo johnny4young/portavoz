@@ -53,6 +53,11 @@ extension AppServices {
                 store: store,
                 telemetry: telemetry,
                 maintenanceGate: maintenanceGate))
+        let maintenanceState = SemanticCorpusMaintenanceState()
+        let readiness = ResolveSemanticCorpusReadiness(
+            store: store,
+            runtime: semanticRuntime,
+            maintenanceState: maintenanceState)
         let ask: AskMeetings
         if usesTemporaryStore {
             ask = AskMeetings(
@@ -62,13 +67,13 @@ extension AppServices {
             ask = .local(
                 store: store,
                 semanticRuntime: semanticRuntime,
+                semanticReadiness: readiness,
                 pipelineTelemetry: pipelineTelemetry)
         }
         let library = LocalLibrarySemanticSearch(
             store: store,
             runtime: semanticRuntime,
-            telemetry: telemetry,
-            indexingCoordinator: coordinator)
+            semanticReadiness: readiness)
         let backgroundIndexer = AppSemanticCorpusBackgroundIndexer(
             store: store,
             runtime: semanticRuntime,
@@ -76,6 +81,7 @@ extension AppServices {
             captureState: captureState)
         let background = SemanticCorpusIndexingSupervisor(
             isEnabled: !usesTemporaryStore,
+            maintenanceState: maintenanceState,
             drain: backgroundIndexer.drain)
         return AppSemanticSearchComposition(
             coordinator: coordinator,

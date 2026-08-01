@@ -6464,3 +6464,42 @@ control durable corpus progress, and a cold or failed model must never block
 exact local evidence. Separating benchmark preparation from query measurement
 keeps comparisons honest while making the architecture's ownership boundary
 enforceable in source and tests.
+
+## D197 — Centralize semantic readiness and product write ownership (Jul 2026)
+
+**Context:** D196 removed request-time corpus writes from Ask, but Library still
+advanced a bounded embedding batch while a user typed. Ask and Library also
+inspected runtime assets independently, so neither had one typed explanation
+for a complete, partially published, actively building, unsupported, or failed
+semantic corpus. Query cancellation could still own Library persistence, and
+the background supervisor's active/failure phase was not available to either
+consumer.
+
+**Decision:** ApplicationKit owns a closed `SemanticCorpusReadiness` contract
+with `ready`, `partial`, `building`, `unsupported`, and `failed` states.
+`ResolveSemanticCorpusReadiness` derives that state without preparation or
+writes from three inputs: installed query-vector capability, a one-row durable
+pending-embedding probe, and one lock-protected process maintenance phase. A
+complete corpus reports `ready` even if the last process pass failed. Pending
+rows report `partial` while idle, `building` during an active drain, and
+`failed` after an ordinary drain error. Missing query-vector capability reports
+`unsupported`.
+
+Exact FTS remains available in every state. Ask and Library may read already-
+published vectors in `ready`, `partial`, `building`, and `failed`; only
+`unsupported` skips semantic work. Both product query paths are corpus-read-
+only: they cannot own an indexing coordinator, invoke `IndexSemanticCorpus`,
+persist vectors, or request asset download. The signal-driven macOS supervisor
+is the sole product corpus writer and publishes its payload-free process phase
+to the shared resolver. Explicit benchmark preparation may continue writing
+only to its disposable store outside the observed product request.
+
+This phase is deliberately not durable progress. Missing `NULL` embedding rows
+remain the authoritative cursor, and durable job leases, retries, user-facing
+preparation controls, or restart status belong to later work.
+
+**Rationale:** one typed read model gives every query surface identical,
+testable degradation while separating user latency and cancellation from
+durable corpus progress. Keeping persistence behind the background owner makes
+write scheduling independently governable without sacrificing exact search or
+the value of semantic rows that are already published.

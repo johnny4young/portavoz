@@ -9,21 +9,19 @@ import StorageKit
 public actor LocalLibrarySemanticSearch {
     private let store: MeetingStore
     private let runtime: any SemanticEmbeddingRuntimeClient
-    private let indexingCoordinator: SemanticCorpusIndexingCoordinator
+    private let semanticReadiness: ResolveSemanticCorpusReadiness
 
     public init(
         store: MeetingStore,
         runtime: any SemanticEmbeddingRuntimeClient,
-        telemetry: ResourceWorkloadTelemetry = .disabled,
-        indexingCoordinator: SemanticCorpusIndexingCoordinator? = nil
+        semanticReadiness: ResolveSemanticCorpusReadiness? = nil
     ) {
         self.store = store
         self.runtime = runtime
-        self.indexingCoordinator = indexingCoordinator
-            ?? SemanticCorpusIndexingCoordinator(
-                operation: IndexSemanticCorpus(
-                    store: store,
-                    telemetry: telemetry))
+        self.semanticReadiness = semanticReadiness
+            ?? ResolveSemanticCorpusReadiness(
+                store: store,
+                runtime: runtime)
     }
 
     public func search(
@@ -31,17 +29,14 @@ public actor LocalLibrarySemanticSearch {
         limit: Int = 20
     ) async throws -> [SearchHit] {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard query.count >= 3, limit > 0,
-            await runtime.hasAvailableAssets
-        else { return [] }
+        guard query.count >= 3, limit > 0 else { return [] }
+        let readiness = try await semanticReadiness.current()
+        guard readiness.canSearchPublishedVectors else { return [] }
 
         try Task.checkCancellation()
         return try await runtime.withPreparedEmbedding(
             allowAssetDownload: false
-        ) { [indexingCoordinator, store] embedder in
-            _ = try await indexingCoordinator.nextBatch(
-                using: embedder,
-                limit: 512)
+        ) { [store] embedder in
             try Task.checkCancellation()
             guard let vector = try await embedder.vectors(
                 for: [query]
