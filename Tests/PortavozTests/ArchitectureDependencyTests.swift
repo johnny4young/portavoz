@@ -723,6 +723,59 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(runner.contains("--output"))
     }
 
+    func testExactPathHostReceiptRequiresACompleteStableContentFreeMatrix() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let specification = try Self.contents(of: "docs/specs/04-intelligence.md")
+        let contract = try Self.contents(
+            of: "docs/evidence/exact-path-shadow-matrix.json")
+        let evaluator = try Self.contents(of: "scripts/exact_path_matrix.py")
+        let runner = try Self.contents(
+            of: "scripts/run-exact-path-shadow-matrix.sh")
+
+        XCTAssertTrue(decisions.contains("## D215"))
+        XCTAssertTrue(architecture.contains("exact-path-shadow-host-receipt"))
+        XCTAssertTrue(specification.contains("nearest-rank-p95-p50-v1"))
+        for required in [
+            #""canonicalScales": ["#,
+            #""minimumStableObservations": 3"#,
+            #""maximumTimingP95ToP50Ratio": 1.25"#,
+            #""supportedOperatingSystemMajors": ["#,
+        ] {
+            XCTAssertTrue(contract.contains(required), "missing \(required)")
+        }
+        for required in [
+            "reject_duplicate_keys",
+            "exact_object",
+            "observations came from different hosts",
+            "scale {corpus_size} has excess or duplicate observations",
+            "agreement-failed",
+            "exact-path-shadow-host-receipt",
+            "return 0 if receipt[\"outcome\"] == \"pass\" else 1",
+        ] {
+            XCTAssertTrue(evaluator.contains(required), "missing \(required)")
+        }
+        for required in [
+            "git status --porcelain --untracked-files=all",
+            "git rev-parse HEAD",
+            "for _ in 1 2 3",
+            "--matrix --runs 5",
+            "source checkout changed during exact-path collection",
+            "No raw observation or aggregate output path is accepted.",
+        ] {
+            XCTAssertTrue(runner.contains(required), "missing \(required)")
+        }
+        XCTAssertFalse(evaluator.contains("--output"))
+        XCTAssertFalse(runner.contains("--output"))
+
+        let productReferences = try Self.sourceMatches(
+            under: "Sources",
+            pattern: #"exact[_-]path[_-](?:matrix|shadow-host-receipt)"#)
+        XCTAssertTrue(
+            productReferences.isEmpty,
+            "Exact-path acceptance tooling entered product code: \(productReferences)")
+    }
+
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {
         let policy = try Self.contents(
             of: "Sources/PortavozCore/ResourceGovernorPolicy.swift")

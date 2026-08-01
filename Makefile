@@ -12,7 +12,8 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
-.PHONY: build test test-ask-quality ask-quality-pair test-recording-stress test-ui test-ui-en test-ui-es \
+.PHONY: build test test-ask-quality ask-quality-pair test-exact-path-matrix exact-path-matrix \
+	test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
 	release-reliability long-capture-baseline
@@ -30,6 +31,20 @@ test-ask-quality:
 		--fixture Fixtures/AskQuality/public-synthetic-v1.json
 	python3 scripts/ask_quality.py verify-public \
 		--fixture Fixtures/AskQuality/public-synthetic-v2.json
+
+## Validate the exact-shaped, content-free host receipt boundary without
+## running the expensive Release scale harness.
+test-exact-path-matrix:
+	python3 -m unittest Tests.Tooling.test_exact_path_matrix
+
+## Collect three clean Release observations at every canonical exact-path
+## scale and emit one aggregate host receipt to stdout.
+PORTAVOZ_EXACT_PATH_PROFILE ?=
+exact-path-matrix:
+	@test -n "$(PORTAVOZ_EXACT_PATH_PROFILE)" || \
+		(echo "PORTAVOZ_EXACT_PATH_PROFILE is required" >&2; exit 64)
+	scripts/run-exact-path-shadow-matrix.sh \
+		--profile "$(PORTAVOZ_EXACT_PATH_PROFILE)"
 
 ## Build one Release CLI and compare segment control with speaker-turn retrieval
 ## from the same clean commit. Output is private, non-overwriting local evidence.

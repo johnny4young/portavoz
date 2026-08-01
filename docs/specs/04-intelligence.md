@@ -659,7 +659,7 @@ selected. Later SEARCH-5 slices must put candidates behind this seam and retain
 exact control as the only user-visible authority until accepted quality and
 resource evidence exists.
 
-### Non-serving semantic shadow comparison (D207-D214)
+### Non-serving semantic shadow comparison (D207-D215)
 
 `ShadowComparingSemanticIndex` is a benchmark-only decorator over the D206
 port. It waits only for the exact control, projects its citation identity to a
@@ -766,9 +766,34 @@ configuration, byte/count, timing-distribution, and aggregate top-hit/rank/
 overlap fields only. It has no query, vector, citation identity, transcript,
 model, path, or raw-error field. The runner starts one fresh Release XCTest
 process per scale, emits JSON only to stdout, and accepts no output destination.
-These observations are unaccepted development evidence until a later boundary
-validates a complete stable matrix; they do not authorize product composition,
-persistence, or engine selection.
+These observations remain development evidence until the host-matrix boundary
+validates them. `docs/evidence/exact-path-shadow-matrix.json` fixes the Release
+build, fixture, alternating query policy, 512 dimensions, eight queries, five
+runs per query, top 10, 1k/10k/50k/100k scales, three observations per scale,
+the 1.25 timing-stability rule, and supported Sequoia/Tahoe majors. Hardware
+tiers reuse the existing 8 GB, 16 GB, and reference-memory resource contract.
+
+`scripts/exact_path_matrix.py` accepts a JSONL observation stream and one closed
+host profile. Exact-shape validation rejects duplicate keys, unknown fields,
+non-finite or inconsistent counts/timings, wrong configuration or engine order,
+mixed hosts, and identical copied observations. Each query observation and the
+repeated fixture/build/query distributions must satisfy
+`nearest-rank-p95-p50-v1`. Full expected-top-hit, engine-top-hit, and top-k-set
+overlap are the synthetic acceptance gates. Exact ordered-rank agreement remains
+in the aggregate but lower-rank floating-point order drift does not invalidate
+an otherwise identical result set; the multilingual MRR/nDCG corpus owns that
+quality judgment. Top-hit/set divergence produces a valid blocked receipt.
+Missing scales and unstable timing also remain visible as blocked rows;
+structurally invalid evidence produces no receipt.
+
+The clean-run orchestrator executes three complete matrices, uses only
+ephemeral owner-only files, verifies that commit and worktree remain unchanged,
+and emits one aggregate `exact-path-shadow-host-receipt` to stdout. The receipt
+is bound to source commit, Swift toolchain, exact host, and host profile, but
+contains no raw observation, payload, path, identifier, model, or error. It
+validates only one concrete host. It does not compare host receipts, persist a
+baseline, compare unlike build lifecycles, authorize product composition, or
+select an engine.
 
 ### Governed semantic embedding runtime (D165)
 

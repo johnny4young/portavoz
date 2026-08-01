@@ -7111,3 +7111,48 @@ agreement reproducible without borrowing user data or candidate authority.
 Process isolation bounds cross-scale residency, separated phases prevent an
 invalid lifecycle comparison, and stdout-only observations force a later
 explicit validation/acceptance boundary before any engine decision.
+
+## D215 — Accept exact-path evidence through one closed host receipt (Aug 2026)
+
+**Context:** D214 emits useful content-free observations, but a copied line, a
+partial scale run, mixed hardware, unstable timing, or a dirty source checkout
+could still look like comparable evidence. Persisting raw observations first
+would also bypass the explicit acceptance boundary. Cross-host selection cannot
+be honest until every concrete host provides the same complete, source-bound
+shape.
+
+**Decision:** track one exact-path host-matrix contract. It requires the D214
+schema-1 fixture and alternating query policy, Release configuration, 512
+dimensions, eight queries, five runs per query, top 10, 1k/10k/50k/100k scales,
+three observations per scale, Apple Silicon, Sequoia or Tahoe, and an existing
+8 GB, 16 GB, or reference-memory profile. Reuse the established nearest-rank
+stability rule: p95/p50 above 1.25 blocks each individual query observation or
+repeated fixture, build, query-p50, or query-p95 distribution. Aggregate build
+figures only within the same engine and scale; never use them to compare the
+control's source/FTS/embedding publication lifecycle against the candidate's
+prepared-vector lifecycle.
+
+The evaluator consumes JSONL, rejects duplicate keys, unknown fields,
+non-finite or inconsistent values, mixed hosts, noncanonical configuration or
+engine order, incomplete result counts, excess observations, and byte-identical
+copied observations. Missing scales, unstable timing, or less than full
+expected-top-hit, engine-top-hit, or top-k-set overlap produce an exact-shaped
+blocked receipt; malformed evidence produces no receipt. Exact ordered-rank
+agreement remains visible but is not a host-receipt gate because equivalent
+floating cosine implementations may order lower same-set results differently;
+the separate multilingual MRR/nDCG scorecard owns that quality judgment. The
+aggregate contains only source commit,
+toolchain, closed host/configuration, byte/count/timing distributions,
+agreement, and per-scale state.
+
+The accepted runner starts from one clean commit, executes three complete D214
+matrices through ephemeral owner-only files, then verifies that commit and
+worktree are unchanged before exposing the aggregate on stdout. It accepts no
+raw or aggregate output path. One passing receipt proves one concrete host
+matrix only. It creates no product dependency, schema, writer, app command,
+durable baseline, cross-host verdict, engine comparison, or selection authority.
+
+**Rationale:** separating raw measurement, one-host acceptance, cross-host
+comparison, and product selection makes every trust transition explicit.
+Fail-closed exact shapes preserve privacy and expose missing or unstable work
+without allowing one convenient developer run to become architecture policy.

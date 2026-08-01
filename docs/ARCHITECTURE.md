@@ -1694,6 +1694,30 @@ development measurement only: it accepts no baseline, selects no engine, adds
 no product schema or composition, and leaves Accelerate exact as the sole
 product authority.
 
+Host acceptance is a separate tooling-only boundary. The tracked
+`exact-path-shadow-matrix.json` contract requires one Release build, the fixed
+fixture and measurement policies, five runs per query, three observations at
+each canonical scale, Apple Silicon, supported Sequoia/Tahoe majors, and one
+of the existing 8 GB, 16 GB, or reference-memory profiles.
+`exact_path_matrix.py` rejects duplicate JSON keys, extra fields, non-finite or
+inconsistent measurements, mixed hosts, noncanonical engine order, incomplete
+result counts, and copied observations. Valid but missing, unstable, or
+top-hit/top-k-set-divergent evidence produces a complete blocked scorecard
+rather than a passing receipt. Lower-rank ordering agreement remains visible
+but does not invalidate an otherwise identical top-k set; graded MRR/nDCG
+quality remains a separate corpus gate. Timing stability reuses nearest-rank
+p95/p50 no greater than 1.25 both inside each query observation and across
+repeated fixture, build, and query measurements.
+
+`scripts/run-exact-path-shadow-matrix.sh` admits only a clean committed
+checkout, runs three complete matrices through ephemeral owner-only files,
+binds the aggregate to the unchanged commit and Swift toolchain, and emits one
+`exact-path-shadow-host-receipt` to stdout. The receipt contains host identity,
+closed configuration, aggregate byte/count/timing distributions, agreement,
+and per-scale pass/block state only. It neither stores raw observations nor
+compares the unlike control/candidate build lifecycles. One receipt proves one
+host matrix; cross-host acceptance and engine authority remain separate.
+
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and
 capture returning inactive are wake signals. Bursts collapse to at most one
