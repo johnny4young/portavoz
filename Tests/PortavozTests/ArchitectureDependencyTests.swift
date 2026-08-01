@@ -304,6 +304,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "Ask benchmark receipts must not admit content field \(forbidden)")
         }
         XCTAssertTrue(benchmarkProbe.contains("AskPipelineStage.allCases"))
+        XCTAssertTrue(benchmarkProbe.contains("pendingAtSeed"))
         XCTAssertTrue(benchmarkProbe.contains("pendingBefore"))
         XCTAssertTrue(benchmarkProbe.contains("readyAfter"))
         XCTAssertTrue(benchmarkProbe.contains("outputAlreadyExists"))
@@ -325,7 +326,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-cli/CLIBenchAskQuality.swift")
         for required in [
             "LocalAskMeetingRetrieval", "MeetingStore(",
-            "local-hybrid-no-expansion-evidence-v1", "notEvaluated",
+            "local-hybrid-preindexed-no-expansion-evidence-v2", "notEvaluated",
             "transcriptRevision", "outputAlreadyExists",
         ] {
             XCTAssertTrue(
@@ -579,7 +580,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Semantic embedding residency adapter (D165)"))
     }
 
-    func testAskAndLibraryShareOneBoundedSemanticIndexFlight() throws {
+    func testSemanticMaintenanceHasOneSharedFlightOutsideAskRequests() throws {
         let coordinator = try Self.contents(
             of: "Sources/ApplicationKit/SemanticCorpusIndexingCoordinator.swift")
         let services = try Self.contents(
@@ -609,9 +610,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             "semanticIndexingCoordinator = semanticSearch.coordinator"))
         XCTAssertTrue(appAsk.contains(
             "coordinator: SemanticCorpusIndexingCoordinator"))
-        XCTAssertTrue(appAsk.contains(
-            "indexingCoordinator: coordinator"))
-        XCTAssertTrue(ask.contains("indexingCoordinator.all("))
+        XCTAssertFalse(ask.contains("indexingCoordinator"))
+        XCTAssertFalse(ask.contains("IndexSemanticCorpus"))
+        XCTAssertTrue(ask.contains("allowAssetDownload: false"))
         XCTAssertTrue(library.contains("indexingCoordinator.nextBatch("))
         for gate in [stressGate, releaseGate] {
             XCTAssertTrue(gate.contains(
@@ -625,8 +626,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(architecture.contains(
             "one process-shared semantic-indexing"))
         XCTAssertTrue(decisions.contains("## D176"))
+        XCTAssertTrue(decisions.contains("## D196"))
         XCTAssertTrue(intelligenceSpec.contains(
             "### Shared semantic-indexing flight (D176)"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Corpus-read-only Ask retrieval (D196)"))
     }
 
     func testSemanticBackgroundOwnerUsesSignalsAndDurableCursor() throws {
@@ -1482,7 +1486,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(benchMode.contains(
             "runAskResourceBenchIfRequested"))
         XCTAssertTrue(benchMode.contains(
-            "telemetry: services.workloadTelemetry"))
+            "services.semanticIndexingCoordinator.all"))
+        XCTAssertTrue(benchMode.contains(
+            "allowAssetDownload: false"))
+        XCTAssertTrue(benchMode.contains("pendingAtSeed"))
         XCTAssertTrue(benchMode.contains(
             "try await useCase.answer(question, limit: 6)"))
         XCTAssertTrue(indexingBench.contains(
@@ -3096,7 +3103,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             "captureState: AppResourceCaptureState"))
         XCTAssertTrue(appAdapter.contains(
             "maintenanceGate: maintenanceGate"))
-        XCTAssertTrue(retrieval.contains("indexingCoordinator.all("))
+        XCTAssertFalse(retrieval.contains("indexingCoordinator"))
+        XCTAssertFalse(retrieval.contains("IndexSemanticCorpus"))
+        XCTAssertTrue(retrieval.contains("allowAssetDownload: false"))
         XCTAssertTrue(librarySearch.contains("indexingCoordinator.nextBatch("))
         XCTAssertFalse(FileManager.default.fileExists(atPath: Self.repoRoot
             .appendingPathComponent("Sources/IntegrationsKit/AskPipeline.swift").path))

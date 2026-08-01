@@ -49,10 +49,17 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
         let mapping = try await AskQualityCorpusMapping.seed(
             fixture: fixture,
             store: store)
+        let runtime = FixedRuntime()
+        let indexing = try await AskQualityProductionBenchmark.prepareCorpus(
+            store: store,
+            runtime: runtime)
+        XCTAssertEqual(indexing.embeddedSegments, 1)
+        let pending = try await store.segmentsNeedingEmbeddings()
+        XCTAssertTrue(pending.isEmpty)
         let retrieval = LocalAskMeetingRetrieval(
             store: store,
             queryExpander: NoExpansion(),
-            runtime: FixedRuntime())
+            runtime: runtime)
 
         let document = try await AskQualityProductionBenchmark.observe(
             fixture: fixture,
@@ -61,7 +68,9 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
             build: "test",
             commit: String(repeating: "0", count: 40))
 
-        XCTAssertEqual(document.adapter, "local-hybrid-no-expansion-evidence-v1")
+        XCTAssertEqual(
+            document.adapter,
+            "local-hybrid-preindexed-no-expansion-evidence-v2")
         XCTAssertEqual(document.queries.count, 1)
         let query = try XCTUnwrap(document.queries.first)
         XCTAssertEqual(query.queryID, "query-001")
@@ -96,7 +105,7 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
         let output = root.appendingPathComponent("observations.json")
         let document = AskQualityObservationDocument(
             fixtureGeneration: "test-v1",
-            adapter: "local-hybrid-no-expansion-evidence-v1",
+            adapter: "local-hybrid-preindexed-no-expansion-evidence-v2",
             build: "test",
             commit: String(repeating: "0", count: 40),
             queries: [])

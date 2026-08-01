@@ -62,9 +62,7 @@ extension AppServices {
             ask = .local(
                 store: store,
                 semanticRuntime: semanticRuntime,
-                telemetry: telemetry,
-                pipelineTelemetry: pipelineTelemetry,
-                indexingCoordinator: coordinator)
+                pipelineTelemetry: pipelineTelemetry)
         }
         let library = LocalLibrarySemanticSearch(
             store: store,

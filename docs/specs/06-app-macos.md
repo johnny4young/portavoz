@@ -7,6 +7,8 @@ D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
 D193 lets only the resource-benchmark process observe that same closed stream
 and publish a strict content-free Ask pipeline sidecar per measured run.
+D196 keeps product Ask corpus-read-only and moves disposable benchmark corpus
+preparation outside the measured request.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -240,7 +242,7 @@ The migration surface is locked by an architecture test before adapter changes:
 | Speaker diarization | `AppServices+DiarizationModels` coalesces one verified reusable Core ML model pair; every live/batch meeting and voice extraction creates a fresh stateful `PyannoteDiarizer` under an exact active-use lease | The ledger rejects release while any session is leased; AppServices confirms concrete model-pair release after the existing 600-second generation fence |
 | Quality speech | `AppServices+WhisperModels` coalesces one runtime load and returns exact-engine active-use leases to Refine/Import | The ledger rejects release and deletion while leased; AppServices confirms concrete release after the existing 120-second generation fence |
 | Language intelligence | `AppServices+MLXModels` injects one process-owned `IntelligenceKit.MLXSummaryRuntime` into every production MLX provider and returns active-use leases around exact-directory generation | The ledger rejects release and verified-file deletion while active; AppServices confirms concrete release after the existing 120-second generation fence |
-| Semantic embedding | `AppSemanticEmbeddingRuntime` coalesces one Apple Latin contextual-model load; one `SemanticCorpusIndexingCoordinator` admits Library/Ask backfill flights; Library, Ask, and app resource benchmarks retain an exact active-use lease around their full indexing-and-query operation | One app backfill task runs at a time; release is explicit and rejected while leased; no evidence-free idle timer is introduced; CLI and standalone benchmark processes own isolated runtimes |
+| Semantic embedding | `AppSemanticEmbeddingRuntime` coalesces one Apple Latin contextual-model load; one `SemanticCorpusIndexingCoordinator` admits Library/background-maintenance flights; Library and background indexing retain exact active-use leases around their work, while Ask borrows only for query embedding and reads published vectors | One app backfill task runs at a time; Ask never downloads assets or writes the corpus; release is explicit and rejected while leased; no evidence-free idle timer is introduced; CLI and standalone benchmark processes own isolated runtimes |
 
 The ratchet also proves there is one process ledger construction, five fully
 integrated runtime adapters, and no production semantic constructor outside
@@ -366,16 +368,17 @@ ApplicationKit's `SemanticEmbeddingRuntimeClient`. It constructs at most one
 and the first active-use acquisition are one atomic ledger operation; failure
 clears the current load generation and permits a later retry.
 
-Library and Ask receive the runtime and one semantic-indexing coordinator by
-dependency injection. Library first checks already-installed assets and never
-requests a download while typing. Its bounded backfill coalesces when another
-flight is active. Ask may request Apple's OS-managed assets, joins any active
-bounded flight, then keeps one active-use token while it drains the durable
-remainder, expands the query, generates vectors, and performs hybrid retrieval.
-The standalone indexing and recording-plus-indexing resource workloads use the
-same app runtime but remain isolated benchmark owners of their operation; the
-CLI owns one equivalent process-local runtime and the scale-only CLI benchmark
-remains isolated.
+Library, Ask, and background maintenance receive the runtime by dependency
+injection; only Library and maintenance receive the semantic-indexing
+coordinator. Library first checks already-installed assets and never requests a
+download while typing. Its bounded backfill coalesces when another maintenance
+flight is active. Ask checks the same asset state, never requests a download or
+joins an indexing flight, and holds one active-use token only while embedding
+query variants and reading already-published vectors. The standalone indexing
+and recording-plus-indexing resource workloads use the same app runtime but
+remain isolated benchmark owners of their operation; the CLI owns one
+equivalent process-local runtime and the scale-only CLI benchmark remains
+isolated.
 
 Explicit release begins only for an idle resident family, drops the retained
 model, and confirms the exact release generation. It never deletes macOS
@@ -491,8 +494,9 @@ capture changes after wake admission.
 Temporary/UI stores and isolated resource benchmarks disable the owner. A
 failed drain logs only an ordinary content-free operational message; durable
 `NULL` rows survive and the next mutation, capture completion, or launch
-retries them. Ask keeps the released synchronous complete-drain path until a
-separate measured migration proves lower request latency without recall loss.
+retries them. Ask never joins the maintenance flight: exact FTS remains
+authoritative, semantic lookup uses only already-published rows, and ordinary
+runtime failure degrades to lexical evidence.
 
 
 ### Capture-safe existing-library sync admission (D179)
@@ -777,9 +781,10 @@ real `RegenerateSummary` ApplicationKit workflow through successful
 transactional persistence. Ask runs in a third cold process, requires
 already-installed Apple Latin embedding assets and available Foundation Models,
 and measures the real `AskMeetings.local` workflow over the same fixed corpus,
-including its current synchronous embedding backfill, bilingual query
-expansion, hybrid retrieval, and generated answer. It emits no sample without
-citations and nonempty generated text. Indexing runs in a fourth cold process,
+after explicitly indexing that disposable corpus outside measurement. The
+measured request includes bilingual query expansion, corpus-read-only hybrid
+retrieval, and generated answer. It emits no sample without citations and
+nonempty generated text. Indexing runs in a fourth cold process,
 prepares already-installed Apple Latin assets before sampling, inserts 1,024
 fixed public English segments into the disposable database, and measures
 `IndexSemanticCorpus` until every row is embedded or deliberately excluded.
@@ -932,8 +937,11 @@ observable token, and successful terminal completion. It samples process CPU
 and monotonic wall time at event boundaries, rejects invalid lifecycle or
 digest evidence, and atomically writes an owner-only, non-overwriting sidecar
 beside the broad resource sample. Fixed-corpus identity and citation validity
-are resolved locally after the operation; no product window, normal Ask model,
-or persisted meeting ever reads benchmark state.
+are resolved locally after the operation. D196 explicitly indexes the
+disposable fixture through the shared coordinator before the observer and
+measured Ask window begin; schema-2 evidence proves pending-at-seed, ready-
+before, and ready-after counts. No product window, normal Ask model, or
+persisted meeting ever reads benchmark state.
 
 `AppServices` owns one process-scoped `FirstRunModel` and one process-scoped
 `LocalDataLedgerModel` (D101). `ResolveFirstRunExperience` decides whether one

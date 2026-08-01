@@ -12,7 +12,7 @@ final class AskPipelineRunProbeTests: XCTestCase {
             corpus: Self.corpus,
             citations: Self.citations)
 
-        XCTAssertEqual(sample.schemaVersion, 1)
+        XCTAssertEqual(sample.schemaVersion, 2)
         XCTAssertEqual(sample.run, 3)
         XCTAssertEqual(sample.operation, "answer")
         XCTAssertEqual(sample.outcome, "completed")
@@ -137,6 +137,29 @@ final class AskPipelineRunProbeTests: XCTestCase {
         }
     }
 
+    func testProbeRejectsCorpusThatWasNotReadyBeforeAsk() throws {
+        let probe = try makeCompletedProbe(run: 1)
+        let requestBackfilledCorpus = AskPipelineCorpusEvidence(
+            generation: "ask-resource-v2",
+            checksum: String(repeating: "c", count: 64),
+            fixtureSegmentCount: 10,
+            pendingAtSeed: 10,
+            pendingBefore: 1,
+            pendingAfter: 0,
+            readyBefore: false,
+            readyAfter: true,
+            warmup: "preindexed")
+
+        XCTAssertThrowsError(try probe.makeSample(
+            corpus: requestBackfilledCorpus,
+            citations: Self.citations)
+        ) {
+            XCTAssertEqual(
+                $0 as? AskPipelineRunProbeError,
+                .invalidCorpusReadiness)
+        }
+    }
+
     func testProbeWritesOwnerOnlyAndNeverOverwrites() throws {
         let output = FileManager.default.temporaryDirectory.appendingPathComponent(
             "AskPipelineRunProbe-\(UUID().uuidString)/ask-pipeline-2.json")
@@ -192,14 +215,15 @@ final class AskPipelineRunProbeTests: XCTestCase {
     }
 
     private static let corpus = AskPipelineCorpusEvidence(
-        generation: "ask-resource-v1",
+        generation: "ask-resource-v2",
         checksum: String(repeating: "c", count: 64),
         fixtureSegmentCount: 10,
-        pendingBefore: 10,
+        pendingAtSeed: 10,
+        pendingBefore: 0,
         pendingAfter: 0,
-        readyBefore: false,
+        readyBefore: true,
         readyAfter: true,
-        warmup: "cold")
+        warmup: "preindexed")
 
     private static let citations = AskPipelineCitationEvidence(
         count: 3,

@@ -19,6 +19,7 @@ struct AskPipelineCorpusEvidence: Codable, Equatable, Sendable {
     let generation: String
     let checksum: String
     let fixtureSegmentCount: Int
+    let pendingAtSeed: Int
     let pendingBefore: Int
     let pendingAfter: Int
     let readyBefore: Bool
@@ -310,7 +311,7 @@ final class AskPipelineRunProbe: @unchecked Sendable {
         try validate(corpus)
         try validate(citations)
         return AskPipelineBenchmarkSample(
-            schemaVersion: 1,
+            schemaVersion: 2,
             run: run,
             operation: identity.operation.rawValue,
             outcome: finishedTrace.outcome.rawValue,
@@ -356,11 +357,12 @@ final class AskPipelineRunProbe: @unchecked Sendable {
 
     private func validate(_ corpus: AskPipelineCorpusEvidence) throws {
         guard corpus.fixtureSegmentCount > 0,
-              corpus.pendingBefore == corpus.fixtureSegmentCount,
+              corpus.pendingAtSeed == corpus.fixtureSegmentCount,
+              corpus.pendingBefore == 0,
               corpus.pendingAfter == 0,
-              !corpus.readyBefore,
+              corpus.readyBefore,
               corpus.readyAfter,
-              corpus.warmup == "cold"
+              corpus.warmup == "preindexed"
         else {
             throw AskPipelineRunProbeError.invalidCorpusReadiness
         }

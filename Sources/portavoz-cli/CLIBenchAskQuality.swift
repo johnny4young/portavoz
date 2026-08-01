@@ -267,7 +267,7 @@ struct AskQualityAnswerObservation: Encodable, Sendable {
 }
 
 enum AskQualityProductionBenchmark {
-    static let adapter = "local-hybrid-no-expansion-evidence-v1"
+    static let adapter = "local-hybrid-preindexed-no-expansion-evidence-v2"
 
     static func run(
         fixture: AskQualityFixture,
@@ -288,16 +288,33 @@ enum AskQualityProductionBenchmark {
         let mapping = try await AskQualityCorpusMapping.seed(
             fixture: fixture,
             store: store)
+        let runtime = CLISemanticEmbeddingRuntime()
+        _ = try await prepareCorpus(
+            store: store,
+            runtime: runtime)
         let retrieval = LocalAskMeetingRetrieval(
             store: store,
             queryExpander: AskQualityNoExpansion(),
-            runtime: CLISemanticEmbeddingRuntime())
+            runtime: runtime)
         return try await observe(
             fixture: fixture,
             mapping: mapping,
             retrieval: retrieval,
             build: build,
             commit: commit)
+    }
+
+    static func prepareCorpus(
+        store: MeetingStore,
+        runtime: any SemanticEmbeddingRuntimeClient
+    ) async throws -> SemanticCorpusIndexingResult {
+        try await runtime.withPreparedEmbedding(
+            allowAssetDownload: true
+        ) { embedder in
+            try await IndexSemanticCorpus(store: store).all(
+                using: embedder,
+                batchSize: 256)
+        }
     }
 
     static func observe(

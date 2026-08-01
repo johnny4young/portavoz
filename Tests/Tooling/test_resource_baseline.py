@@ -303,6 +303,26 @@ class ResourceBaselineTests(unittest.TestCase):
                     )
                 )
 
+    def test_ask_pipeline_rejects_request_time_corpus_backfill(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_receipt(root, "memory-8gb")
+            document = json.loads(receipt.read_text())
+            corpus = document["askPipeline"]["samples"][0]["corpus"]
+            corpus["pendingBefore"] = 1
+            corpus["readyBefore"] = False
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "setup-only indexing and query-time readiness",
+            ):
+                baseline.evaluate_namespace(
+                    baseline.build_parser().parse_args(
+                        self.evaluate_args([receipt], root / "scorecard")
+                    )
+                )
+
     def test_duplicate_run_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -491,7 +511,7 @@ class ResourceBaselineTests(unittest.TestCase):
             encoded = (output / "resource-baseline.json").read_text()
             self.assertIn("## Ask pipeline", rendered)
             self.assertIn("| Profile | Stage |", rendered)
-            self.assertIn("`ask-resource-v1`", rendered)
+            self.assertIn("`ask-resource-v2`", rendered)
             self.assertNotIn(str(receipt), rendered)
             self.assertNotIn(str(receipt), encoded)
             self.assertNotIn("meeting", encoded.lower())
@@ -932,7 +952,7 @@ class ResourceBaselineTests(unittest.TestCase):
     @staticmethod
     def ask_pipeline_sample(run):
         return {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "run": run,
             "operation": "answer",
             "outcome": "completed",
@@ -958,14 +978,15 @@ class ResourceBaselineTests(unittest.TestCase):
                 for stage in sorted(baseline.ASK_PIPELINE_STAGES)
             ],
             "corpus": {
-                "generation": "ask-resource-v1",
+                "generation": "ask-resource-v2",
                 "checksum": "c" * 64,
                 "fixtureSegmentCount": 10,
-                "pendingBefore": 10,
+                "pendingAtSeed": 10,
+                "pendingBefore": 0,
                 "pendingAfter": 0,
-                "readyBefore": False,
+                "readyBefore": True,
                 "readyAfter": True,
-                "warmup": "cold",
+                "warmup": "preindexed",
             },
             "citations": {
                 "count": 3,

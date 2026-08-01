@@ -456,8 +456,8 @@ def validate_ask_pipeline_sample(raw, path):
             "citations",
         ),
     )
-    if integer(sample["schemaVersion"], f"{path}.schemaVersion") != 1:
-        raise ResourceBaselineError(f"{path}.schemaVersion must be 1")
+    if integer(sample["schemaVersion"], f"{path}.schemaVersion") != 2:
+        raise ResourceBaselineError(f"{path}.schemaVersion must be 2")
     run = integer(sample["run"], f"{path}.run", 1)
     if sample["operation"] != "answer":
         raise ResourceBaselineError(f"{path}.operation must be answer")
@@ -539,6 +539,7 @@ def validate_ask_pipeline_sample(raw, path):
             "generation",
             "checksum",
             "fixtureSegmentCount",
+            "pendingAtSeed",
             "pendingBefore",
             "pendingAfter",
             "readyBefore",
@@ -560,6 +561,9 @@ def validate_ask_pipeline_sample(raw, path):
     pending_before = integer(
         corpus["pendingBefore"], f"{path}.corpus.pendingBefore"
     )
+    pending_at_seed = integer(
+        corpus["pendingAtSeed"], f"{path}.corpus.pendingAtSeed"
+    )
     pending_after = integer(
         corpus["pendingAfter"], f"{path}.corpus.pendingAfter"
     )
@@ -570,14 +574,15 @@ def validate_ask_pipeline_sample(raw, path):
             f"{path}.corpus readiness fields must be booleans"
         )
     if (
-        pending_before != fixture_count
+        pending_at_seed != fixture_count
+        or pending_before != 0
         or pending_after != 0
-        or corpus["readyBefore"]
+        or not corpus["readyBefore"]
         or not corpus["readyAfter"]
-        or corpus["warmup"] != "cold"
+        or corpus["warmup"] != "preindexed"
     ):
         raise ResourceBaselineError(
-            f"{path}.corpus must prove one cold complete backfill"
+            f"{path}.corpus must prove setup-only indexing and query-time readiness"
         )
 
     citations = object_shape(
@@ -602,7 +607,7 @@ def validate_ask_pipeline_sample(raw, path):
             "generation": generation,
             "checksum": checksum,
             "fixtureSegmentCount": fixture_count,
-            "warmup": "cold",
+            "warmup": "preindexed",
         },
         "citations": {
             "count": citation_count,

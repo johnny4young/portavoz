@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,473 package tests passing (13 model-gated) + 56 XCUITest UI cases. CI
+Status: 1,481 package tests passing (13 model-gated) + 56 XCUITest UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -47,7 +47,7 @@ documented below.
 | AnalyzeAudioFileUseCaseTests / ManageLocalVoiceAndModelsUseCaseTests / PublishMeetingContentUseCaseTests | File admission and policy forwarding; deterministic transcription metrics; diarization threshold/timing/optional attribution; meeting-before-provider summary persistence; file, supplied-sample, and recorded local-voice enrollment with duration/sample validation, ordered progress, status/delete isolation, and capture-mode forwarding; catalog-order verification and sequential model installation; coherent Markdown/PDF/SRT/WebVTT/Gist export, canonical format/extension parsing, subtitle rendering without a Markdown prerequisite, pending-only owner-resolved action publication, typed missing/empty states, and zero concrete model, Keychain, filesystem, or network dependency |
 | MenuBarModelTests / MenuBarObservationTests | Storage-independent recent/pending composition, empty/degraded/failed phases, last-healthy-section preservation, and bounded newest-first live meeting roots through delete/restore |
 | ExportLibraryMarkdownBackupUseCaseTests / BackupPublicationReconcileTests / RecoverLibraryMarkdownBackupTests / LibraryMarkdownBackupRecoveryStoreTests / LibraryMarkdownBackupStoreTests / LibraryMarkdownBackupFilesTests / LibraryMarkdownBackupModelTests | Portable canonical filename allocation, existing/concurrent collision retries, typed partial and fatal outcomes, bounded page-copy suspension with partial-stage cleanup, one immutable newest-first SQLite stage with corrupt-aggregate isolation and General-summary parity, one-at-a-time aggregate delivery, process-local suspension/resume without rerender or republish, atomic non-replacing file publication, cursor-bound reservations, no-follow exact-byte destination evidence, missing/matching/conflicting and cursor-less reconciliation, cancellation and destination-failure lease closure, publication-before-source-checkpoint ordering, idempotent and monotonic cursor persistence, checkpoint-only retry without destination inspection or republish, failure-frozen cursor advancement, catalog-before-cleanup stage preservation, ambiguous/conflicting launch fail-closed behavior, exact active continuation and completed-result reconstruction, retryable adopted-stage abandon after destination setup failure, terminal recovered-source cleanup without an implicit fresh export, and process-scoped progress/terminal state |
-| AskMeetingsUseCaseTests / AskPipelineTelemetryTests | Shared trimming/search/evidence/answer behavior, no-evidence generation skip, evidence-preserving ordinary generation failure, honest cancellation propagation, capability bypass for empty/invalid requests without trace creation, closed content-free Ask telemetry taxonomy, matched success/failure/cancellation intervals, first-evidence/first-observable-token milestones, and exact production retrieval-stage order |
+| AskMeetingsUseCaseTests / AskPipelineTelemetryTests | Shared trimming/search/evidence/answer behavior, no-evidence generation skip, evidence-preserving ordinary generation failure, corpus-read-only product retrieval, cold/unavailable semantic fallback to lexical evidence, honest semantic and pipeline cancellation propagation, capability bypass for empty/invalid requests without trace creation, closed content-free Ask telemetry taxonomy, matched success/failure/cancellation intervals, first-evidence/first-observable-token milestones, and exact production retrieval-stage order |
 | AskPresentationModelTests | Full Ask evidence fallback, process-scoped palette search/answer ownership, stale completion rejection across reset/reopen, and Markdown answer receipts |
 | SuggestMeetingReviewMetadataTests / MeetingDetailModelTests | Title/structure/chapter eligibility, known-recipe and bounded-label admission, independent failure degradation, cancellation propagation, route-owned one-shot state, revision/request fencing, and suggestion preservation after failed title persistence |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
@@ -102,7 +102,7 @@ documented below.
 | CoreTypesTests | Types + **TitleTemplate** + canonical `LanguageCode`, canonical person/alias normalization, independent transcript/summary policies, and backward-compatible role-separated Apuntador evidence resolution |
 | ResourceGovernorPolicyTests / ResourceGovernorCaptureExclusionTests / ResourceModelResidencyTests / AppResourceGovernorReleaseTests / ResourceWorkloadTests / IntelligenceSchedulerTests / TranscriptionSchedulerTests / SpotlightIndexerTests | Pure categorical admission/deferral/checkpoint/recovery and idle-model-eviction matrix; generation-fenced model load/use/release lifecycle, active-use exclusion, stable governor projection, and uninterpreted measured footprints; deterministic macOS memory/thermal mapping, stable idle-family dispatch, and last-use reconciliation outside the ledger lock; protected-capture state mirroring plus unknown-host idle-peer eviction, busy-peer deferral, standard-host parity, and post-release readmission for the Whisper/MLX pair; closed and stable workload taxonomy; matched success, cancellation, and relay behavior; payload-free intelligence queue versus inference; separate live/batch transcription classes; and maintenance-only index reconciliation |
 | SupportDiagnosticsTests / LocalizationTests / EnglishSourceTests | Path/checksum/content-free support format v2 audio-channel health and transcript-count evidence plus one matched support-export workload; EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
-| SemanticCorpusIndexingTests / SemanticCorpusIndexingCoordinatorTests / SemanticCorpusIndexingSupervisorTests / AppResourceGovernorReleaseTests / RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Validated bounded/complete corpus persistence; admission pause without embedding; one-batch checkpoint commit, explicit policy suspension, durable missing-row resume, and protected-capture mapping across starting/active/stopping; one concurrent Library/Ask/background backfill flight, bounded coalescing, complete-demand precedence, last-waiter cancellation before persistence; serialized signal bursts with one rerun and no polling; disabled temporary-store ownership; capture-first runtime exclusion; installed-assets-only background preparation with no download; term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, production-width semantic top-k, scalar-oracle equivalence, stable ties, safe limits, malformed/non-finite-vector exclusion, hybrid RAG fusion, MCP protocol, encrypted voiceprint, and offline exporters |
+| SemanticCorpusIndexingTests / SemanticCorpusIndexingCoordinatorTests / SemanticCorpusIndexingSupervisorTests / AppResourceGovernorReleaseTests / RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Validated bounded/complete corpus persistence; admission pause without embedding; one-batch checkpoint commit, explicit policy suspension, durable missing-row resume, and protected-capture mapping across starting/active/stopping; one concurrent Library/background-maintenance flight, bounded coalescing, complete-demand precedence, last-waiter cancellation before persistence; serialized signal bursts with one rerun and no polling; disabled temporary-store ownership; capture-first runtime exclusion; installed-assets-only background preparation with no download; term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, production-width semantic top-k, scalar-oracle equivalence, stable ties, safe limits, malformed/non-finite-vector exclusion, hybrid RAG fusion, MCP protocol, encrypted voiceprint, and offline exporters |
 | ParakeetIntegrationTests + gated | Real models — require `PORTAVOZ_MODEL_TESTS=1` + `PORTAVOZ_TEST_WAV` / `PORTAVOZ_TEST_CONVERSATION_WAV` / `PORTAVOZ_TEST_ENROLL_WAV` |
 
 The five concrete residency adapters add architecture coverage on top of the
@@ -1319,8 +1319,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability gate is 1,473 XCTest package cases (13 gated),
-zero strict-lint violations across 431 Swift files, a 108-case
+The current field-reliability gate is 1,481 XCTest package cases (13 gated),
+zero strict-lint violations across 432 Swift files, a 108-case
 recording/recovery corpus passing 25 consecutive iterations, and 56 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
 explicit Whisper language detection, split-lineage identity, full-pair
@@ -1346,10 +1346,11 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   fixture, adapter, build, and commit identity, never source payloads. This
   adapter-neutral harness is the fail-closed quality boundary.
 - `portavoz-cli bench-ask-quality` accepts fixture, output, build, and commit
-  arguments, seeds a disposable database, and runs the real
-  `LocalAskMeetingRetrieval` path without opening the user library. Four Swift
-  tests cover product retrieval provenance plus owner-only, atomic,
-  non-overwriting publication. The adapter records transcript revisions and
+  arguments, seeds and explicitly indexes a disposable database outside query
+  observation, and runs the real corpus-read-only `LocalAskMeetingRetrieval`
+  path without opening the user library. Four Swift tests cover product
+  retrieval provenance plus owner-only, atomic, non-overwriting publication.
+  The version-2 preindexed adapter records transcript revisions and
   intentionally emits `notEvaluated` answer fields, so retrieval can be scored
   while answer-quality and answer-policy gates remain blocked until a separate
   versioned judge exists.
@@ -1385,12 +1386,15 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   real ApplicationKit regeneration transaction. Ask runs in another cold
   process, requires already-installed Apple Latin embedding assets plus
   available Foundation Models, and measures the real `AskMeetings.local`
-  workflow over the same fixed transcript. Its measured window includes
-  current synchronous embedding backfill, bilingual expansion, hybrid
-  retrieval, and generated answer, and requires citations plus nonempty text.
+  workflow over the same fixed transcript. Before measurement, the disposable
+  fixture is explicitly indexed through the shared maintenance coordinator
+  without downloading assets. Its measured window includes bilingual
+  expansion, corpus-read-only hybrid retrieval, and generated answer, and
+  requires citations plus nonempty text.
   The same run must emit a content-free pipeline sidecar with exact operation,
-  first-evidence, first-observable-token, seven stage, cold-corpus readiness,
-  and validated citation-digest evidence. The native probe refuses malformed
+  first-evidence, first-observable-token, seven stage, schema-2
+  pending-at-seed/ready-before/ready-after corpus evidence, and validated
+  citation-digest evidence. The native probe refuses malformed
   lifecycle, digest, milestone order, duplicate output, or incomplete success.
   Standalone indexing prepares already-installed Apple embedding assets and a
   fixed 1,024-segment corpus before measurement, then drains it through the
@@ -1443,7 +1447,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   thermal, and power summaries. Wall or CPU p95/p50 above 1.25 marks the row
   unstable. Missing, failed, not-observed, under-sampled, or unstable rows
   block without disappearing; malformed or payload-bearing evidence is an
-  error. Twenty-seven deterministic tooling tests cover completeness,
+  error. Twenty-eight deterministic tooling tests cover completeness,
   blocking states, assembly, native host metadata, runner isolation,
   identity/memory-tier mismatches, exact privacy shape, non-finite metrics,
   duplicate keys/runs/profiles, required workloads, contract weakening, output

@@ -3,29 +3,22 @@ import IntelligenceKit
 import PortavozCore
 import StorageKit
 
-/// Local hybrid retrieval adapter owned by the Ask application workflow:
-/// index what's new, query both ways, then fuse by reciprocal rank.
+/// Local hybrid retrieval adapter owned by the Ask application workflow.
+/// Exact FTS is always authoritative; semantic evidence is opportunistic and
+/// reads only embeddings already published by the maintenance owner.
 public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private let store: MeetingStore
     private let queryExpander: any AskQueryExpanding
     private let runtime: any SemanticEmbeddingRuntimeClient
-    private let indexingCoordinator: SemanticCorpusIndexingCoordinator
 
     public init(
         store: MeetingStore,
         queryExpander: any AskQueryExpanding = OnDeviceAskMeetingIntelligence(),
-        runtime: any SemanticEmbeddingRuntimeClient,
-        telemetry: ResourceWorkloadTelemetry = .disabled,
-        indexingCoordinator: SemanticCorpusIndexingCoordinator? = nil
+        runtime: any SemanticEmbeddingRuntimeClient
     ) {
         self.store = store
         self.queryExpander = queryExpander
         self.runtime = runtime
-        self.indexingCoordinator = indexingCoordinator
-            ?? SemanticCorpusIndexingCoordinator(
-                operation: IndexSemanticCorpus(
-                    store: store,
-                    telemetry: telemetry))
     }
 
     public func search(
@@ -67,71 +60,84 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         limit: Int,
         trace: AskPipelineTrace
     ) async throws -> [AskCitation] {
-        try await runtime.withPreparedEmbedding(
-            allowAssetDownload: true
-        ) { [indexingCoordinator, queryExpander, store, trace] embedder in
-            // Index what's new, query lexically and semantically
-            // (multi-query, cross-lingual when FM is around), then fuse by
-            // reciprocal rank.
-            _ = try await trace.measure(.corpusReadiness) {
-                try await indexingCoordinator.all(
-                    using: embedder,
-                    batchSize: 256)
-            }
+        let queries = await trace.measure(.expansion) {
+            await queryExpander.expand(question)
+        }
+        let lexical = try await trace.measure(.lexicalQuery) {
+            try await Self.retrieveLexical(
+                queries: queries,
+                store: store,
+                limit: 12 * queries.count)
+        }
+        let semanticAvailable = await trace.measure(.corpusReadiness) {
+            await runtime.hasAvailableAssets
+        }
+        let semanticResult = try await semanticCandidates(
+            queries: queries,
+            isAvailable: semanticAvailable,
+            trace: trace)
+        let semantic = semanticResult.bestRank.sorted {
+            $0.value < $1.value
+        }.map(\.key)
+        var hitsByID = semanticResult.hitsByID
+        for hit in lexical where hitsByID[hit.segmentID] == nil {
+            hitsByID[hit.segmentID] = hit
+        }
+        let finalHitsByID = hitsByID
+        let fused = await trace.measure(.fusion) {
+            RAGFusion.fuse(
+                lexical: lexical.map(\.segmentID),
+                semantic: semantic,
+                limit: limit)
+        }
+        return await trace.measure(.citationFetch) {
+            fused.compactMap { finalHitsByID[$0] }.map(Self.citation)
+        }
+    }
 
-            let queries = await trace.measure(.expansion) {
-                await queryExpander.expand(question)
-            }
-
-            // Lexical: term-level top-k candidates over CONTENT words only.
-            // Multi-term evidence climbs through reciprocal-rank fusion
-            // without forcing FTS5 to score the broad OR union before LIMIT.
-            let lexical = try await trace.measure(.lexicalQuery) {
-                try await Self.retrieveLexical(
-                    queries: queries,
-                    store: store,
-                    limit: 12 * queries.count)
-            }
-
-            // Semantic: best rank per segment across every query variant.
-            let vectors = try await trace.measure(.queryEmbedding) {
-                try await embedder.vectors(for: queries)
-            }
-            let semanticResult = try await trace.measure(.semanticScan) {
-                var bestRank: [UUID: Int] = [:]
-                var hitsByID: [UUID: SearchHit] = [:]
-                for vector in vectors {
-                    for (rank, hit) in try await store.searchSemantic(
-                        vector,
-                        limit: 12
-                    ).enumerated()
-                    where bestRank[hit.segmentID].map({ rank < $0 }) ?? true {
-                        bestRank[hit.segmentID] = rank
-                        hitsByID[hit.segmentID] = hit
-                    }
+    private func semanticCandidates(
+        queries: [String],
+        isAvailable: Bool,
+        trace: AskPipelineTrace
+    ) async throws -> SemanticCandidates {
+        guard isAvailable else { return .empty }
+        do {
+            return try await runtime.withPreparedEmbedding(
+                allowAssetDownload: false
+            ) { [store, trace] embedder in
+                let vectors = try await trace.measure(.queryEmbedding) {
+                    try await embedder.vectors(for: queries)
                 }
-                return (bestRank: bestRank, hitsByID: hitsByID)
+                return try await trace.measure(.semanticScan) {
+                    try await Self.searchSemantic(
+                        vectors: vectors,
+                        store: store)
+                }
             }
-            let semantic = semanticResult.bestRank.sorted {
-                $0.value < $1.value
-            }.map(\.key)
-            var hitsByID = semanticResult.hitsByID
-            for hit in lexical where hitsByID[hit.segmentID] == nil {
-                hitsByID[hit.segmentID] = hit
-            }
-            let finalHitsByID = hitsByID
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            return .empty
+        }
+    }
 
-            let fused = await trace.measure(.fusion) {
-                RAGFusion.fuse(
-                    lexical: lexical.map(\.segmentID),
-                    semantic: semantic,
-                    limit: limit)
-            }
-
-            return await trace.measure(.citationFetch) {
-                fused.compactMap { finalHitsByID[$0] }.map(Self.citation)
+    private static func searchSemantic(
+        vectors: [[Float]],
+        store: MeetingStore
+    ) async throws -> SemanticCandidates {
+        var result = SemanticCandidates.empty
+        for vector in vectors {
+            for (rank, hit) in try await store.searchSemantic(
+                vector,
+                limit: 12
+            ).enumerated()
+            where result.bestRank[hit.segmentID].map({ rank < $0 }) ?? true {
+                result.bestRank[hit.segmentID] = rank
+                result.hitsByID[hit.segmentID] = hit
             }
         }
+        return result
     }
 
     private static func citation(_ hit: SearchHit) -> AskCitation {
@@ -232,6 +238,13 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             return seen.insert(key).inserted
         }
     }
+}
+
+private struct SemanticCandidates: Sendable {
+    var bestRank: [UUID: Int]
+    var hitsByID: [UUID: SearchHit]
+
+    static let empty = Self(bestRank: [:], hitsByID: [:])
 }
 
 private extension AskPipelineTelemetry {

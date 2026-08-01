@@ -85,6 +85,7 @@ extension BenchMode {
         let segments: [TranscriptSegment]
         let ordinalBySegmentID: [UUID: Int]
         let corpusChecksum: String
+        let pendingAtSeed: Int
         let pendingBefore: Int
     }
 
@@ -455,10 +456,9 @@ extension BenchMode {
     }
 
     /// `portavoz-app --bench-resource-ask` measures the released deep Ask
-    /// workflow over a disposable fixed transcript. It intentionally includes
-    /// current synchronous embedding backfill, query expansion, retrieval,
-    /// and generated answer so later progressive-Ask work has an honest
-    /// before baseline.
+    /// workflow over a disposable fixed transcript. Corpus preparation occurs
+    /// before measurement; the sample includes query expansion, read-only
+    /// hybrid retrieval, and generated answer.
     @MainActor
     static func runAskResourceBenchIfRequested(services: AppServices) {
         let arguments = ProcessInfo.processInfo.arguments
@@ -535,14 +535,15 @@ extension BenchMode {
         try pipelineProbe.writeSample(
             to: probe.outputURL(named: "ask-pipeline"),
             corpus: AskPipelineCorpusEvidence(
-                generation: "ask-resource-v1",
+                generation: "ask-resource-v2",
                 checksum: benchmark.corpusChecksum,
                 fixtureSegmentCount: benchmark.segments.count,
+                pendingAtSeed: benchmark.pendingAtSeed,
                 pendingBefore: benchmark.pendingBefore,
                 pendingAfter: pendingAfter,
                 readyBefore: benchmark.pendingBefore == 0,
                 readyAfter: pendingAfter == 0,
-                warmup: "cold"),
+                warmup: "preindexed"),
             citations: citations)
     }
 
@@ -563,13 +564,21 @@ extension BenchMode {
             fixture.meeting,
             speakers: fixture.speakers,
             segments: fixture.segments)
+        let pendingAtSeed = try await services.store
+            .segmentsNeedingEmbeddings(limit: fixture.segments.count + 1).count
+        _ = try await services.semanticEmbeddingRuntime.withPreparedEmbedding(
+            allowAssetDownload: false
+        ) { embedder in
+            try await services.semanticIndexingCoordinator.all(
+                using: embedder,
+                batchSize: 256)
+        }
         let pendingBefore = try await services.store
             .segmentsNeedingEmbeddings(limit: fixture.segments.count + 1).count
         return AskResourceBenchmark(
             useCase: AskMeetings.local(
                 store: services.store,
                 semanticRuntime: services.semanticEmbeddingRuntime,
-                telemetry: services.workloadTelemetry,
                 pipelineTelemetry: AppAskPipelineTelemetry.shared.telemetry),
             question: "What did we decide about background indexing during active calls?",
             meeting: fixture.meeting,
@@ -577,6 +586,7 @@ extension BenchMode {
             ordinalBySegmentID: Dictionary(uniqueKeysWithValues:
                 fixture.segments.enumerated().map { ($1.id, $0) }),
             corpusChecksum: askCorpusChecksum(fixture),
+            pendingAtSeed: pendingAtSeed,
             pendingBefore: pendingBefore)
     }
 

@@ -142,6 +142,7 @@ final class AskPipelineTelemetryTests: XCTestCase {
             isFinal: true)
         try await store.save(meeting)
         try await store.save([segment])
+        let pendingBefore = try await store.segmentsNeedingEmbeddings()
 
         let recorder = AskPipelineEventRecorder()
         let telemetry = AskPipelineTelemetry(receiver: recorder.receive)
@@ -157,11 +158,24 @@ final class AskPipelineTelemetryTests: XCTestCase {
 
         XCTAssertEqual(answer.citations.map(\.segmentID), [segment.id])
         XCTAssertEqual(answer.generatedText, "Friday.")
+        let pendingAfter = try await store.segmentsNeedingEmbeddings()
+        XCTAssertEqual(
+            pendingAfter.map(\.id),
+            pendingBefore.map(\.id),
+            "Ask must not publish corpus embeddings during a request")
         let startedStages = recorder.events.compactMap { event -> AskPipelineStage? in
             guard case .stageStarted(let span) = event else { return nil }
             return span.stage
         }
-        XCTAssertEqual(startedStages, AskPipelineStage.allCases)
+        XCTAssertEqual(startedStages, [
+            .expansion,
+            .lexicalQuery,
+            .corpusReadiness,
+            .queryEmbedding,
+            .semanticScan,
+            .fusion,
+            .citationFetch,
+        ])
         XCTAssertEqual(
             recorder.events.compactMap { event -> AskPipelineMilestone? in
                 guard case .reached(_, let milestone) = event else { return nil }
@@ -172,6 +186,85 @@ final class AskPipelineTelemetryTests: XCTestCase {
             return XCTFail("Expected a completed Ask trace")
         }
         XCTAssertEqual(outcome, .completed)
+    }
+
+    func testColdSemanticAssetsPreserveLexicalEvidenceWithoutPreparingRuntime() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "budget rollout remains scheduled for Friday",
+            startTime: 4,
+            endTime: 8,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([segment])
+        let retrieval = LocalAskMeetingRetrieval(
+            store: store,
+            queryExpander: FixedAskQueryExpander(),
+            runtime: UnavailableSemanticRuntime())
+
+        let citations = try await retrieval.retrieve(
+            question: "When is the budget rollout?",
+            limit: 6)
+
+        XCTAssertEqual(citations.map(\.segmentID), [segment.id])
+        let pendingAfter = try await store.segmentsNeedingEmbeddings()
+        XCTAssertEqual(
+            pendingAfter.map(\.id),
+            [segment.id])
+    }
+
+    func testSemanticPreparationFailurePreservesLexicalEvidence() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "budget rollout remains scheduled for Friday",
+            startTime: 4,
+            endTime: 8,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([segment])
+        let retrieval = LocalAskMeetingRetrieval(
+            store: store,
+            queryExpander: FixedAskQueryExpander(),
+            runtime: FailingSemanticRuntime())
+
+        let citations = try await retrieval.retrieve(
+            question: "When is the budget rollout?",
+            limit: 6)
+
+        XCTAssertEqual(citations.map(\.segmentID), [segment.id])
+    }
+
+    func testSemanticCancellationStillCancelsRetrieval() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "budget rollout remains scheduled for Friday",
+            startTime: 4,
+            endTime: 8,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([segment])
+        let retrieval = LocalAskMeetingRetrieval(
+            store: store,
+            queryExpander: FixedAskQueryExpander(),
+            runtime: CancelledSemanticRuntime())
+
+        do {
+            _ = try await retrieval.retrieve(
+                question: "When is the budget rollout?",
+                limit: 6)
+            XCTFail("Semantic cancellation must cancel Ask retrieval")
+        } catch is CancellationError {
+            // Expected: cancellation is never degraded to lexical success.
+        }
     }
 
     func testAppAdapterObserverHasExplicitLifetime() async {
@@ -296,6 +389,60 @@ private struct FixedSemanticRuntime: SemanticEmbeddingRuntimeClient {
         ) async throws -> Result
     ) async throws -> Result {
         try await operation(FixedSemanticEmbedding())
+    }
+}
+
+private struct UnavailableSemanticRuntime: SemanticEmbeddingRuntimeClient {
+    var hasAvailableAssets: Bool { get async { false } }
+
+    func prepare(allowAssetDownload _: Bool) async throws {
+        throw AskPipelineTestError.unavailable
+    }
+
+    func withPreparedEmbedding<Result: Sendable>(
+        allowAssetDownload _: Bool,
+        operation _: @Sendable (
+            _ embedder: any SemanticTextEmbedding
+        ) async throws -> Result
+    ) async throws -> Result {
+        // Retrieval must not call this when `hasAvailableAssets` is false.
+        // Cancellation would escape the lexical fallback and fail the test.
+        throw CancellationError()
+    }
+}
+
+private struct FailingSemanticRuntime: SemanticEmbeddingRuntimeClient {
+    var hasAvailableAssets: Bool { get async { true } }
+
+    func prepare(allowAssetDownload _: Bool) async throws {
+        throw AskPipelineTestError.unavailable
+    }
+
+    func withPreparedEmbedding<Result: Sendable>(
+        allowAssetDownload: Bool,
+        operation _: @Sendable (
+            _ embedder: any SemanticTextEmbedding
+        ) async throws -> Result
+    ) async throws -> Result {
+        guard !allowAssetDownload else { throw CancellationError() }
+        throw AskPipelineTestError.unavailable
+    }
+}
+
+private struct CancelledSemanticRuntime: SemanticEmbeddingRuntimeClient {
+    var hasAvailableAssets: Bool { get async { true } }
+
+    func prepare(allowAssetDownload _: Bool) async throws {
+        throw CancellationError()
+    }
+
+    func withPreparedEmbedding<Result: Sendable>(
+        allowAssetDownload _: Bool,
+        operation _: @Sendable (
+            _ embedder: any SemanticTextEmbedding
+        ) async throws -> Result
+    ) async throws -> Result {
+        throw CancellationError()
     }
 }
 

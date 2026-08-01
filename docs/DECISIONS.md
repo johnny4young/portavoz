@@ -6422,3 +6422,45 @@ between a synthetic contract and product code while preserving privacy and
 dependency direction. Explicitly incomplete answer evidence keeps the release
 gate honest and lets retrieval architecture evolve without hiding the remaining
 generative-quality work.
+
+## D196 — Keep product Ask corpus-read-only (Jul 2026)
+
+**Context:** the signal-driven semantic maintenance owner already wakes at app
+launch, searchable mutations, capture completion, and explicit reconciliation,
+but `LocalAskMeetingRetrieval` still downloaded/prepared assets and drained
+every missing embedding before returning evidence. A user query therefore
+owned model setup, maintenance admission, database writes, and retrieval in one
+latency/cancellation scope. D192–D195 provide stage, corpus, citation, and
+multilingual quality evidence that can distinguish that historical path from a
+read-only request.
+
+**Decision:** product Ask retrieves exact FTS evidence first and never invokes
+`IndexSemanticCorpus`, persists an embedding, or requests semantic asset
+download. It inspects `hasAvailableAssets`; only when assets are already
+available does it borrow the process runtime with `allowAssetDownload: false`,
+embed query variants, and search vectors already published by maintenance.
+Missing assets and ordinary preparation/query failures produce no semantic
+candidates and preserve lexical evidence. `CancellationError` and task
+cancellation still terminate the request.
+
+Complete corpus drains remain owned by signal-driven background maintenance;
+Library may retain its existing bounded opportunistic batch in this slice.
+Explicit benchmark setup may index only its disposable store before observing
+a query. The native Ask resource sidecar advances to schema 2 and generation
+`ask-resource-v2`: it proves every fixture row was pending at seed time, zero
+rows were pending before and after the measured query, and both readiness
+states were true. The production quality observation adapter advances to
+`local-hybrid-preindexed-no-expansion-evidence-v2` and likewise prepares its
+disposable corpus outside query observation. Schema-1 cold-backfill receipts
+and adapter-v1 observations remain historical before-state evidence and are
+not silently mixed with version 2.
+
+This decision does not yet expose user-facing `ready`/`partial`/`building`/
+`unsupported`/`failed` state, move Library's bounded batch, activate durable
+index jobs, or claim accepted answer quality.
+
+**Rationale:** query cancellation and optional semantic capability should not
+control durable corpus progress, and a cold or failed model must never block
+exact local evidence. Separating benchmark preparation from query measurement
+keeps comparisons honest while making the architecture's ownership boundary
+enforceable in source and tests.

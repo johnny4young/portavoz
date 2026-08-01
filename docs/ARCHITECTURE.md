@@ -554,20 +554,29 @@ invalidates exact results, and no additional vector dependency is loaded. A
 selected hit emits the same one-shot meeting/timestamp seek request used by Ask
 evidence before routing.
 
-Ask and Library delegate corpus backfill to one `IndexSemanticCorpus`
-ApplicationKit operation behind one process-shared semantic-indexing
-coordinator. Library requests one bounded batch; redundant Library requests
-coalesce while any flight is active. The released Ask path still drains all
-missing rows before hybrid retrieval while maintenance is admitted: a complete
-demand joins an active bounded flight, then drains the durable remainder while
-new bounded requests coalesce. There is no pending-request array and never more
-than one embedding flight.
+Library and background maintenance delegate corpus backfill to one
+`IndexSemanticCorpus` ApplicationKit operation behind one process-shared semantic-indexing
+coordinator. Library requests one bounded batch; redundant
+Library requests coalesce while any flight is active. The signal-driven
+background owner requests complete drains: a complete demand joins an active
+bounded flight, then drains the durable remainder while new bounded requests
+coalesce. There is no pending-request array and never more than one embedding
+flight.
 Cancelling the final waiter cancels the worker before persistence; another
 borrower keeps shared work alive. Both paths mark micro-segments with an empty
 vector, validate the embedder's result count before persistence, and emit
 content-free maintenance/search-index intervals. Missing embeddings remain
 durable `NULL` rows, so coalescing or policy suspension loses no corpus
 evidence.
+
+Ask is read-only with respect to that corpus. Every request retrieves exact
+FTS evidence first, checks semantic asset readiness without preparing or
+downloading assets, and searches only embeddings already published by the
+maintenance owner. It never invokes `IndexSemanticCorpus` or persists an
+embedding. Missing assets and ordinary semantic preparation/query failures
+degrade to lexical evidence; cancellation still cancels the request. The
+resource and quality harnesses prepare their disposable corpus before the
+measured query, so benchmark setup does not weaken this product invariant.
 
 PortavozCore owns one reusable `DurableMaintenanceGate`. The macOS composition
 root maps its lock-protected capture mirror through the pure resource policy
@@ -1030,10 +1039,10 @@ Semantic embedding is the fifth fully integrated residency family.
 Ask, and the app resource benchmarks through an injected ApplicationKit
 contract. It coalesces Apple's Latin contextual-model preparation, publishes a
 successful load and claims its first borrower atomically, and retains one exact
-use token across the complete indexing-and-query operation. Library preserves
-its no-download-on-typing rule; Ask may request the OS-managed assets as before.
-The CLI owns a separate process runtime, while standalone benchmark
-constructors remain explicitly isolated.
+use token across each indexing or query operation. Library preserves its
+no-download-on-typing rule; Ask borrows the runtime only when assets are already
+available and never requests a download. The CLI owns a separate process
+runtime, while standalone benchmark constructors remain explicitly isolated.
 
 Semantic runtime release is an explicit begin/confirm operation. It is rejected
 while a borrower is active, drops only loaded model state, and never removes
@@ -1252,8 +1261,10 @@ sampling and executes the real ApplicationKit regeneration workflow over a
 fixed public English transcript stored only in the disposable database. Ask
 requires already-installed Apple Latin embedding assets and available
 Foundation Models, then measures the real `AskMeetings.local` workflow over the
-same fixed corpus, including current synchronous embedding backfill, bilingual
-query expansion, hybrid retrieval, and generated answer. It admits a sample
+same fixed corpus. Before measurement, the benchmark explicitly indexes its
+disposable fixture through the shared maintenance coordinator without
+downloading assets. The measured window includes bilingual query expansion,
+corpus-read-only hybrid retrieval, and generated answer. It admits a sample
 only when both citations and nonempty generated text exist.
 
 Each passing Ask resource run also publishes one separate, exact-shaped
@@ -1263,19 +1274,21 @@ wall plus process-CPU time for the complete operation, first evidence, first
 observable answer token, and every declared Ask stage. The receipt contains no
 question, transcript, generated answer, durable identity, path, model name, or
 runtime correlation token. It binds measurements to a fixed corpus generation,
-SHA-256 corpus checksum, cold readiness transition, and validated citation
-ordinal digest. Native collection rejects duplicate, foreign, incomplete,
-failed, post-completion, malformed-digest, or misordered milestone evidence.
+SHA-256 corpus checksum, pending-at-seed plus ready-before/ready-after counts,
+and validated citation ordinal digest. Native collection rejects duplicate,
+foreign, incomplete, failed, post-completion, malformed-digest, or misordered
+milestone evidence.
 
 The assembler pairs these sidecars with the exact Ask resource run numbers and
 the evaluator reports p50/p95 wall and CPU distributions per milestone and
 stage. A passing matrix requires the same corpus and citations within and
 across memory profiles; invalid citations, changed result identity, insufficient
-samples, or unstable timings block the scorecard. The current before-state
-contract intentionally proves a cold ten-segment corpus drains from ten pending
-embeddings to zero. Removing request-time corpus writes in SEARCH-1 must replace
-that readiness contract rather than silently reusing it. These reports remain
-benchmark evidence only; product scheduling and storage never read them.
+samples, or unstable timings block the scorecard. The current contract uses
+schema 2 and proves the ten-segment corpus was entirely pending when seeded,
+entirely ready before the measured request, and unchanged afterward. Schema-1
+cold-backfill receipts remain historical and are not comparable with schema 2.
+These reports remain benchmark evidence only; product scheduling and storage
+never read them.
 
 A separate adapter-neutral Ask quality boundary owns one canonical tracked
 public-synthetic corpus with exactly 240 judged queries: 60 Spanish-to-Spanish,

@@ -2,10 +2,11 @@ import Foundation
 
 /// Process-shared ownership for semantic corpus backfill.
 ///
-/// Library search may request one opportunistic batch while Ask requires a
-/// complete drain. Only one backfill flight can execute at a time: redundant
-/// Library requests are coalesced, while a complete drain waits behind an
-/// already-running bounded batch and then continues from durable missing rows.
+/// Library search may request one opportunistic batch while background
+/// maintenance or explicit benchmark preparation requests a complete drain.
+/// Only one backfill flight can execute at a time: redundant Library requests
+/// are coalesced, while a complete drain waits behind an already-running
+/// bounded batch and then continues from durable missing rows.
 public actor SemanticCorpusIndexingCoordinator {
     private enum Demand: Sendable {
         case bounded(limit: Int)
