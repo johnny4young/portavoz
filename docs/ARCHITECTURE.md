@@ -1844,6 +1844,28 @@ emits only the recomputable scorecard to stdout. No real cross-host mutation
 scorecard has been collected or retained, and this boundary grants no product
 schema, adapter selection, migration, or rollback authority.
 
+Private retention adds an explicit maintainer-review boundary without changing
+that scorecard outcome. The
+`explicit-human-review-digest-and-source-v1` contract in
+`exact-path-mutation-baseline-admission.json` requires
+the exact canonical scorecard file, its three revalidated receipts, the file's
+lowercase SHA-256, the sole source commit, and the fixed human acknowledgement
+`timings-reviewed-no-engine-decision-v1`. A blocked scorecard cannot be
+retained, while complete evidence must still say `review-required`; admission
+does not rewrite it as a performance pass.
+
+`exact_path_mutation_baseline.py` recomputes the scorecard from receipts in
+canonical profile order, binds both evidence digests, and publishes one
+`exact-path-mutation-cross-host-research-baseline` through the shared
+`private_research_baseline.py` boundary. The checkout must be clean at the
+accepted commit before reading, before publication, and after publication.
+Publication is owner-only, atomic, non-overwriting, bounded, and allowed inside
+the repository only at an already ignored destination; a final checkout change
+withdraws the new file. Its permanent authority is
+`research-correction-cost-only`; engine and performance decisions both remain
+`not-evaluated`. It stores no reviewer identity or free-form note, and no real
+mutation baseline is tracked or accepted yet.
+
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and
 capture returning inactive are wake signals. Bursts collapse to at most one

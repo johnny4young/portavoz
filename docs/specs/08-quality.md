@@ -1427,6 +1427,16 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   emits nothing. No timing ratio, threshold, automatic pass, retention, or
   engine decision is derived. Use `make test-exact-path-mutation-cross-host`
   for the synthetic contract suite.
+- `make exact-path-mutation-baseline`: retain one canonical mutation review
+  scorecard only after supplying its three receipts, exact scorecard SHA-256,
+  sole source commit, explicit
+  `timings-reviewed-no-engine-decision-v1` acknowledgement, and a private
+  output path. The matching checkout must stay clean before and after
+  owner-only atomic publication; repository-local output must already be
+  ignored and existing output is never replaced. The retained scorecard stays
+  `review-required`, with research-only correction-cost authority and no engine
+  or performance decision. Use `make test-exact-path-mutation-baseline` for the
+  synthetic fail-closed suite; no real baseline is committed.
 - `make long-capture-baseline`: clean-commit Release proof that accelerates
   three hours of bounded synthetic microphone/system PCM through the production
   session and requires exact frames, healthy publication, zero drift, and no

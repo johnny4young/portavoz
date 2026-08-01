@@ -15,6 +15,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 .PHONY: build test test-ask-quality ask-quality-pair test-exact-path-matrix exact-path-matrix \
 	exact-path-mutation-matrix test-exact-path-mutation-host exact-path-mutation-host \
 	test-exact-path-mutation-cross-host exact-path-mutation-cross-host \
+	test-exact-path-mutation-baseline exact-path-mutation-baseline \
 	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
 	test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
@@ -78,6 +79,40 @@ exact-path-mutation-cross-host:
 		(echo "PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS is required" >&2; exit 64)
 	python3 scripts/exact_path_mutation_cross_host.py \
 		--input "$(PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS)"
+
+## Validate private mutation-baseline admission with synthetic aggregate-only
+## evidence. This never runs the expensive Release benchmark.
+test-exact-path-mutation-baseline:
+	python3 -m unittest Tests.Tooling.test_exact_path_mutation_baseline
+
+## Retain one explicitly reviewed mutation scorecard and its three validated
+## aggregate receipts. Review acknowledgement is intentionally required rather
+## than defaulted, and grants no engine or performance decision authority.
+PORTAVOZ_EXACT_PATH_MUTATION_SCORECARD ?=
+PORTAVOZ_EXACT_PATH_MUTATION_BASELINE_OUTPUT ?=
+PORTAVOZ_EXACT_PATH_MUTATION_ACCEPTED_SCORECARD_SHA256 ?=
+PORTAVOZ_EXACT_PATH_MUTATION_ACCEPTED_SOURCE_COMMIT ?=
+PORTAVOZ_EXACT_PATH_MUTATION_REVIEW_ACKNOWLEDGEMENT ?=
+exact-path-mutation-baseline:
+	@test -n "$(PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS)" || \
+		(echo "PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_EXACT_PATH_MUTATION_SCORECARD)" || \
+		(echo "PORTAVOZ_EXACT_PATH_MUTATION_SCORECARD is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_EXACT_PATH_MUTATION_BASELINE_OUTPUT)" || \
+		(echo "PORTAVOZ_EXACT_PATH_MUTATION_BASELINE_OUTPUT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_EXACT_PATH_MUTATION_ACCEPTED_SCORECARD_SHA256)" || \
+		(echo "PORTAVOZ_EXACT_PATH_MUTATION_ACCEPTED_SCORECARD_SHA256 is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_EXACT_PATH_MUTATION_ACCEPTED_SOURCE_COMMIT)" || \
+		(echo "PORTAVOZ_EXACT_PATH_MUTATION_ACCEPTED_SOURCE_COMMIT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_EXACT_PATH_MUTATION_REVIEW_ACKNOWLEDGEMENT)" || \
+		(echo "PORTAVOZ_EXACT_PATH_MUTATION_REVIEW_ACKNOWLEDGEMENT is required" >&2; exit 64)
+	python3 scripts/exact_path_mutation_baseline.py \
+		--receipts "$(PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS)" \
+		--scorecard "$(PORTAVOZ_EXACT_PATH_MUTATION_SCORECARD)" \
+		--output "$(PORTAVOZ_EXACT_PATH_MUTATION_BASELINE_OUTPUT)" \
+		--accept-scorecard-sha256 "$(PORTAVOZ_EXACT_PATH_MUTATION_ACCEPTED_SCORECARD_SHA256)" \
+		--accept-source-commit "$(PORTAVOZ_EXACT_PATH_MUTATION_ACCEPTED_SOURCE_COMMIT)" \
+		--accept-review-acknowledgement "$(PORTAVOZ_EXACT_PATH_MUTATION_REVIEW_ACKNOWLEDGEMENT)"
 
 ## Validate the cross-host scorecard boundary with synthetic host receipts.
 test-exact-path-cross-host:

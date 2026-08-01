@@ -7366,3 +7366,48 @@ identity are objective gates; unlike lifecycle performance is a review input.
 Keeping the outcome explicit prevents a complete evidence bundle from being
 mistaken for a product decision while making later maintainer review fully
 recomputable.
+
+## D221 — Retain mutation evidence only after explicit human acknowledgement (Aug 2026)
+
+**Context:** D220 produces one exactly recomputable cross-host mutation
+scorecard, but complete evidence deliberately remains `review-required` because
+control and candidate mutation timings describe unlike lifecycle boundaries.
+Redirecting that scorecard to a file neither records that a maintainer reviewed
+the distributions nor binds the review to immutable source evidence. Reusing
+the passing-query baseline contract would also imply performance authority that
+the correction-cost evidence does not have.
+
+**Decision:** define a separate schema-1 mutation-baseline admission contract.
+Admission requires one canonical D220 scorecard file, its lowercase SHA-256,
+its sole source commit, the exact three-receipt JSONL source, and the literal
+human acknowledgement `timings-reviewed-no-engine-decision-v1`. Revalidate the
+scorecard from independently validated receipts and preserve their canonical
+8 GB, 16 GB, and reference order. Only a complete `review-required` scorecard
+is admissible; blocked or malformed evidence produces no baseline and admission
+does not convert the outcome into `pass`.
+
+The active checkout must be clean at the accepted commit before evidence is
+read, immediately before publication, and immediately after publication. A
+post-publication mismatch withdraws the artifact. Publish one bounded,
+owner-only file atomically without replacing an existing path. Repository-local
+destinations must already be ignored. The retained envelope includes the exact
+scorecard, its three aggregate receipts, source commit, scorecard-file and
+canonical receipt-set digests, review policy, and fixed acknowledgement. Shared
+private-publication primitives enforce this policy for both query and mutation
+research baselines.
+
+The envelope permanently fixes authority to
+`research-correction-cost-only`, with `engineDecision` and
+`performanceDecision` both `not-evaluated`. It accepts no reviewer identity or
+free-form notes. No real mutation baseline is added to source control, and this
+boundary creates no threshold, engine verdict, product schema, writer, app
+composition, migration, or rollback authority. Accelerate exact remains the
+sole serving adapter.
+
+**Rationale:** an explicit, fixed acknowledgement makes the required human
+timing review machine-checkable without pretending to authenticate a reviewer
+or to prove one engine faster. Digest, receipt, and source binding make the
+retained aggregate reproducible; private non-overwriting publication prevents
+later replacement from silently changing what was reviewed. Keeping the
+scorecard's original `review-required` outcome preserves the separation between
+evidence retention and any future performance or product decision.

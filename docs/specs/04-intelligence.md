@@ -906,6 +906,23 @@ is structurally detached from its receipts and must recompute exactly before
 later review. It is ephemeral stdout evidence only: there is no retained
 mutation baseline, selected adapter, product writer, migration, or rollback.
 
+Mutation evidence may cross a private durable boundary only after an explicit
+human review. The admission contract requires the canonical scorecard bytes,
+their SHA-256, the scorecard's sole source commit, all three receipts, and the
+literal acknowledgement `timings-reviewed-no-engine-decision-v1`. The
+publisher revalidates every nested scorecard value from those receipts and
+retains them in 8 GB, 16 GB, and reference order. The accepted scorecard still
+has outcome `review-required`; a blocked scorecard is not admissible.
+
+The retained `exact-path-mutation-cross-host-research-baseline` envelope has
+only `research-correction-cost-only` authority and records both engine and
+performance decisions as `not-evaluated`. It is written
+through the shared private-baseline primitive from a clean matching checkout as
+one owner-only, atomic, non-overwriting file. Repository-local destinations
+must already be ignored, and a checkout change after publication withdraws the
+artifact. This contract stores no reviewer identity or notes, creates no
+product schema or writer, and has not yet accepted any real field evidence.
+
 ### Governed semantic embedding runtime (D165)
 
 ApplicationKit exposes `SemanticEmbeddingRuntimeClient` rather than a concrete

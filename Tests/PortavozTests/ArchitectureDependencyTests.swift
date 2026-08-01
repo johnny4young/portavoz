@@ -923,6 +923,49 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_exact_path_mutation_cross_host"))
     }
 
+    func testMutationBaselineNeedsExplicitReviewWithoutDecisionAuthority() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let specification = try Self.contents(of: "docs/specs/04-intelligence.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let contract = try Self.contents(
+            of: "docs/evidence/exact-path-mutation-baseline-admission.json")
+        let publisher = try Self.contents(
+            of: "scripts/exact_path_mutation_baseline.py")
+        let makefile = try Self.contents(of: "Makefile")
+        let hygiene = try Self.contents(of: "scripts/check-repository-hygiene.sh")
+
+        XCTAssertTrue(decisions.contains("## D221"))
+        XCTAssertTrue(architecture.contains(
+            "explicit-human-review-digest-and-source-v1"))
+        XCTAssertTrue(specification.contains(
+            "exact-path-mutation-cross-host-research-baseline"))
+        XCTAssertTrue(quality.contains("make exact-path-mutation-baseline"))
+        for required in [
+            #""authority": "research-correction-cost-only""#,
+            #""engineDecision": "not-evaluated""#,
+            #""performanceDecision": "not-evaluated""#,
+            #""requiredScorecardOutcome": "review-required""#,
+            #""requiredReviewAcknowledgement": "timings-reviewed-no-engine-decision-v1""#
+        ] {
+            XCTAssertTrue(contract.contains(required), "missing \(required)")
+        }
+        for required in [
+            "validate_baseline", "require_source_checkout",
+            "validate_output_destination", "write_owner_only", "withdraw_output"
+        ] {
+            XCTAssertTrue(publisher.contains(required), "missing \(required)")
+        }
+        XCTAssertTrue(makefile.contains("test-exact-path-mutation-baseline:"))
+        XCTAssertTrue(makefile.contains("exact-path-mutation-baseline:"))
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_exact_path_mutation_baseline"))
+        XCTAssertTrue(try Self.sourceMatches(
+            under: "Sources",
+            pattern: "exact-path-mutation-cross-host-research-baseline"
+        ).isEmpty)
+    }
+
     func testExactPathHostReceiptRequiresACompleteStableContentFreeMatrix() throws {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
@@ -1031,6 +1074,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let contract = try Self.contents(
             of: "docs/evidence/exact-path-baseline-admission.json")
         let admission = try Self.contents(of: "scripts/exact_path_baseline.py")
+        let publication = try Self.contents(
+            of: "scripts/private_research_baseline.py")
 
         XCTAssertTrue(decisions.contains("## D217"))
         XCTAssertTrue(architecture.contains(
@@ -1050,15 +1095,19 @@ final class ArchitectureDependencyTests: XCTestCase {
             "canonical_scorecard_file_bytes",
             "--accept-scorecard-sha256",
             "--accept-source-commit",
-            "source worktree must be clean for baseline retention",
-            "repository-local baseline output must be ignored",
-            "os.fchmod(descriptor, 0o600)",
-            "os.link(temporary, path)",
             "withdraw_output(output)",
             "research-comparison-only",
             "not-evaluated",
         ] {
             XCTAssertTrue(admission.contains(required), "missing \(required)")
+        }
+        for required in [
+            "source worktree must be clean for baseline retention",
+            "repository-local baseline output must be ignored",
+            "os.fchmod(descriptor, 0o600)",
+            "os.link(temporary, path)",
+        ] {
+            XCTAssertTrue(publication.contains(required), "missing \(required)")
         }
 
         let productReferences = try Self.sourceMatches(
