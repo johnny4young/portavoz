@@ -2823,7 +2823,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/IntegrationsKit/URLSessionDataEgressGateway.swift")
         let gist = try Self.contents(of: "Sources/IntegrationsKit/GistPublisher.swift")
         let issues = try Self.contents(of: "Sources/IntegrationsKit/IssueExporters.swift")
-        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let detail = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift")
         let appDocuments = try Self.contents(
             of: "Sources/portavoz-app/AppServices+MeetingDocuments.swift")
         let applicationDocuments = try Self.contents(
@@ -3549,12 +3550,14 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testAppMeetingBundleExportEntersThroughApplicationKit() throws {
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift")
         let scene = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailScene.swift")
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+Bundle.swift")
 
-        XCTAssertTrue(view.contains("sceneActions.exportBundle"))
+        XCTAssertTrue(coordinator.contains("sceneActions.exportBundle"))
         XCTAssertFalse(view.contains("services.exportMeetingBundle"))
         XCTAssertTrue(scene.contains("services.exportMeetingBundle"))
         XCTAssertFalse(view.contains("let bundle = MeetingBundle("))
@@ -3574,6 +3577,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+MeetingVoiceMemory.swift")
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator.swift")
+            + Self.contents(
+                of: "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift")
 
         XCTAssertTrue(workflow.contains("struct ManageMeetingVoiceMemory"))
         XCTAssertTrue(workflow.contains("VoiceMatcher.matches("))
@@ -3584,8 +3591,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("services.makeDiarizer("))
         XCTAssertTrue(adapter.contains("RecordingsLocation.shared.resolve"))
         XCTAssertTrue(adapter.contains("gallery.remember(voice)"))
-        XCTAssertTrue(view.contains("model.send(.loadVoiceSuggestions)"))
-        XCTAssertTrue(view.contains("model.send(.rememberVoice("))
+        XCTAssertTrue(coordinator.contains("model.send(.loadVoiceSuggestions)"))
+        XCTAssertTrue(coordinator.contains("model.send(.rememberVoice("))
         XCTAssertFalse(view.contains("suggestFromVoicesIfUseful"))
         XCTAssertFalse(view.contains("services.meetingDetailVoiceSuggestions("))
         XCTAssertFalse(view.contains("services.rememberMeetingDetailVoice("))
@@ -3609,6 +3616,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/MeetingDetailModel.swift")
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift")
 
         XCTAssertTrue(workflow.contains("struct SuggestMeetingSpeakerNames"))
         XCTAssertTrue(workflow.contains("func proposeNames("))
@@ -3622,7 +3631,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("MeetingNameProposal(label:"))
         XCTAssertTrue(model.contains("case loadNameSuggestions"))
         XCTAssertTrue(model.contains("state.nameSuggestions"))
-        XCTAssertTrue(view.contains("model.send(.loadNameSuggestions)"))
+        XCTAssertTrue(coordinator.contains("model.send(.loadNameSuggestions)"))
         XCTAssertTrue(view.contains("model.state.nameSuggestions"))
         for bypass in [
             "CalendarAttendeeSource", "SpeakerNamer", "NameSuggestionFilter",
@@ -3641,6 +3650,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/MeetingDetailModel.swift")
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator.swift")
 
         XCTAssertTrue(workflow.contains("struct SuggestMeetingReviewMetadata"))
         XCTAssertTrue(workflow.contains("MeetingReviewMetadataGenerating"))
@@ -3662,7 +3673,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(model.contains("metadataRequestID"))
         XCTAssertTrue(model.contains("didCompleteTitleSuggestion"))
         XCTAssertTrue(model.contains("didCompleteRecipeSuggestion"))
-        XCTAssertTrue(view.contains("model.send(.loadMetadataSuggestions)"))
+        XCTAssertTrue(coordinator.contains("model.send(.loadMetadataSuggestions)"))
         XCTAssertTrue(view.contains("model.state.chapterTitles"))
         XCTAssertTrue(view.contains("model.state.suggestedTitle"))
         XCTAssertTrue(view.contains("model.state.suggestedRecipe"))
@@ -3686,6 +3697,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/MeetingPlayerBar.swift")
         let playerSection = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailPlayerSection.swift")
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator.swift")
         let transcript = try Self.contents(
             of: "Sources/portavoz-app/TranscriptSegmentsView.swift")
 
@@ -3705,8 +3718,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(model.contains("case compressAudio"))
         XCTAssertTrue(model.contains("case exportAudioClip"))
         XCTAssertTrue(view.contains(".task(id: playbackTaskID)"))
-        XCTAssertTrue(view.contains("model.send(.loadPlayback)"))
-        XCTAssertTrue(view.contains("model.send(.compressAudio)"))
+        XCTAssertTrue(coordinator.contains("model.send(.loadPlayback)"))
+        XCTAssertTrue(coordinator.contains("model.send(.compressAudio)"))
         XCTAssertTrue(view.contains("MeetingDetailPlayerSection("))
         XCTAssertTrue(playerBar.contains("await exportClip(range, url)"))
 
@@ -4441,6 +4454,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/MeetingTranscriptSection.swift")
         let player = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailPlayerSection.swift")
+        let notes = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailNotesSection.swift")
+        let refineReview = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift")
         let rail = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailRailSection.swift")
         let focusedTranscript = try Self.contents(
@@ -4456,6 +4473,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(view.contains("MeetingDetailRailSection("))
         XCTAssertTrue(view.contains("MeetingTranscriptSection("))
         XCTAssertTrue(view.contains("MeetingDetailPlayerSection("))
+        XCTAssertTrue(view.contains("MeetingDetailNotesSection("))
         XCTAssertTrue(rail.contains("MeetingDetailTrustSection("))
         XCTAssertTrue(rail.contains("MeetingTranscriptChaptersSection("))
         XCTAssertFalse(view.contains("private func header("))
@@ -4468,10 +4486,6 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("private var playerDock"))
         XCTAssertFalse(view.contains("private var compressRow"))
         XCTAssertFalse(view.contains("private var companionCardsSection"))
-        XCTAssertLessThanOrEqual(
-            view.components(separatedBy: .newlines).count,
-            1_400,
-            "Meeting Detail must not absorb extracted section presentation again")
 
         for (name, source) in [
             ("actions", actions),
@@ -4480,7 +4494,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             ("trust", trust),
             ("transcript", transcript),
             ("player", player),
-            ("rail", rail)
+            ("rail", rail),
+            ("notes", notes),
+            ("refine review", refineReview)
         ] {
             XCTAssertTrue(source.contains("Values"), name)
             XCTAssertTrue(source.contains("Actions"), name)
@@ -4489,7 +4505,8 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "\(name) must preserve nested interaction identifiers")
             for forbidden in [
                 "AppServices", "MeetingDetailModel", "MeetingStore",
-                "UserDefaults.standard", "@Environment", "services.", "model."
+                "MeetingDetailCoordinator", "UserDefaults.standard", "@Environment",
+                "services.", "model."
             ] {
                 XCTAssertFalse(source.contains(forbidden), "\(name): \(forbidden)")
             }
@@ -4508,6 +4525,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(player.contains("struct MeetingDetailPlayerActions"))
         XCTAssertTrue(player.contains("MeetingPlayerBar("))
         XCTAssertFalse(player.contains("@State"))
+        XCTAssertTrue(notes.contains("struct MeetingDetailNotesValues"))
+        XCTAssertTrue(notes.contains("struct MeetingDetailNotesActions"))
+        XCTAssertTrue(refineReview.contains("struct MeetingDetailRefineReviewActions"))
         XCTAssertTrue(actions.contains("struct MeetingDetailActionValues"))
         XCTAssertTrue(actions.contains("struct MeetingDetailActionActions"))
         XCTAssertFalse(actions.contains("@State"))
@@ -4519,7 +4539,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(rail.contains("@State"))
 
         XCTAssertTrue(scene.contains("@State private var flow = MeetingDetailFlowState()"))
+        XCTAssertTrue(scene.contains("@AppStorage(\"mirrorAfterMeeting\")"))
         XCTAssertTrue(scene.contains("flow: flow"))
+        XCTAssertTrue(scene.contains("closeDetail: {"))
+        XCTAssertTrue(scene.contains("showInsights: {"))
+        XCTAssertTrue(scene.contains("disableMirrorAfterMeeting: {"))
         XCTAssertTrue(flow.contains("@Observable"))
         XCTAssertTrue(flow.contains("enum SheetRoute"))
         XCTAssertTrue(flow.contains("enum DialogRoute"))
@@ -4571,6 +4595,70 @@ final class ArchitectureDependencyTests: XCTestCase {
             "SwiftUI", "L10n", "AppServices", "MeetingStore", "@State", "@Environment",
         ] {
             XCTAssertFalse(documentPresentation.contains(forbidden), forbidden)
+        }
+    }
+
+    func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {
+        let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let flowHost = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailFlowHost.swift")
+        let playbackNavigation = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift")
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator.swift")
+        let identityCoordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift")
+        let documentCoordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift")
+
+        XCTAssertTrue(view.contains("MeetingDetailFlowHost("))
+        XCTAssertTrue(view.contains("MeetingDetailPlaybackNavigation()"))
+        XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))
+        for obsoletePresentation in [
+            "private func notesHeader(", "private func notesContent(",
+            "private func refineReviewSheet(", "private func sheetContent(",
+            "private var dialogButtons", "private var alertButtons"
+        ] {
+            XCTAssertFalse(view.contains(obsoletePresentation), obsoletePresentation)
+        }
+        XCTAssertFalse(view.contains("model.send("))
+        XCTAssertFalse(view.contains("@Binding"))
+        XCTAssertFalse(view.contains("@AppStorage"))
+        XCTAssertFalse(view.contains("CustomRecipeStore"))
+        XCTAssertFalse(view.contains("route ="))
+        XCTAssertLessThanOrEqual(
+            view.components(separatedBy: .newlines).count,
+            500,
+            "Meeting Detail must remain a compact composition surface")
+
+        XCTAssertTrue(flowHost.contains("struct MeetingDetailFlowValues"))
+        XCTAssertTrue(flowHost.contains("struct MeetingDetailFlowActions"))
+        XCTAssertTrue(flowHost.contains("MeetingDetailFlowState"))
+        XCTAssertTrue(flowHost.contains("let copyText:"))
+        XCTAssertTrue(flowHost.contains("let openURL:"))
+        XCTAssertFalse(flowHost.contains("import AppKit"))
+        XCTAssertFalse(flowHost.contains("NSPasteboard"))
+        XCTAssertFalse(flowHost.contains("NSWorkspace"))
+        XCTAssertTrue(playbackNavigation.contains("@Observable"))
+        XCTAssertTrue(playbackNavigation.contains("MeetingTranscriptNavigationState"))
+        for source in [flowHost, playbackNavigation] {
+            for forbidden in [
+                "AppServices", "MeetingDetailModel", "MeetingStore",
+                "MeetingDetailCoordinator", "model.", "services.", "store."
+            ] {
+                XCTAssertFalse(source.contains(forbidden), forbidden)
+            }
+        }
+
+        let coordinatorSources = coordinator + identityCoordinator + documentCoordinator
+        XCTAssertTrue(coordinatorSources.contains("model.send("))
+        XCTAssertTrue(coordinatorSources.contains("MeetingDetailModel"))
+        XCTAssertFalse(coordinatorSources.contains("import SwiftUI"))
+        for forbidden in [
+            "AppServices", "MeetingStore", "StorageKit", "DiarizationKit",
+            "AudioCaptureKit", "services.", "store."
+        ] {
+            XCTAssertFalse(coordinatorSources.contains(forbidden), forbidden)
         }
     }
 
@@ -4766,7 +4854,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let composer = try Self.contents(of: "Sources/ApplicationKit/MeetingRecap.swift")
         let sheet = try Self.contents(of: "Sources/portavoz-app/MeetingRecapSheet.swift")
         let exporter = try Self.contents(of: "Sources/IntegrationsKit/MeetingExporter.swift")
-        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailFlowHost.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         // The transcript cannot reach a recap: the composer never receives
@@ -4857,6 +4945,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let observation = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+MeetingDetailObservation.swift")
         let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift")
         let scene = try Self.contents(of: "Sources/portavoz-app/MeetingDetailScene.swift")
 
         // v15 owns its own triggers — the registered v14 list is never edited.
@@ -4884,7 +4974,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(observation.contains(
             "regions: [\n                Table(\"meeting\"), Table(\"contextItem\"), Table(\"enhancedNote\")\n            ]"))
         // The view reaches enhancement through the use case, never the store.
-        XCTAssertTrue(detail.contains("sceneActions.enhanceNotes"))
+        XCTAssertTrue(coordinator.contains("sceneActions.enhanceNotes"))
         XCTAssertFalse(detail.contains("services.enhanceMeetingNotes.execute"))
         XCTAssertTrue(scene.contains("services.enhanceMeetingNotes.execute"))
         XCTAssertFalse(detail.contains("saveEnhancedNote"))
@@ -5496,7 +5586,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            262)
+            263)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             10)

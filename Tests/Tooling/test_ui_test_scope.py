@@ -78,6 +78,53 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(set(selection.tests), owned_tests, path)
 
+    def test_detail_composition_files_select_only_their_owned_journeys(self):
+        expected = {
+            "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift": (
+                "meeting-naming",
+            ),
+            "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift": (
+                "meeting-evidence",
+                "meeting-export",
+                "meeting-processing",
+                "meeting-recap",
+                "meeting-summary",
+            ),
+            "Sources/portavoz-app/MeetingDetailCoordinator.swift": (
+                "meeting-audio",
+                "meeting-evidence",
+                "meeting-processing",
+            ),
+            "Sources/portavoz-app/MeetingDetailFlowHost.swift": (
+                "meeting-export",
+                "meeting-health",
+                "meeting-naming",
+                "meeting-processing",
+                "meeting-recap",
+                "meeting-summary",
+            ),
+            "Sources/portavoz-app/MeetingDetailNotesSection.swift": (
+                "meeting-summary",
+            ),
+            "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift": (
+                "meeting-processing",
+            ),
+            "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift": (
+                "meeting-audio",
+                "meeting-evidence",
+                "meeting-performance",
+            ),
+        }
+        for path, features in expected.items():
+            selection = select_paths([path])
+            owned_tests = {
+                test
+                for feature in features
+                for test in FEATURE_TESTS[feature]
+            }
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertEqual(set(selection.tests), owned_tests, path)
+
     def test_localization_selects_bilingual_canaries_at_the_real_catalog_path(self):
         selection = select_paths(["Resources/Localization/Portavoz/Localizable.xcstrings"])
         self.assertEqual(selection.tests, HARNESS_TESTS)

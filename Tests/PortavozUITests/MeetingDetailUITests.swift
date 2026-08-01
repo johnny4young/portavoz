@@ -305,6 +305,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         // provider, which is not deterministic on a runner. The seeded raw
         // note and the section's stable controls are.
         XCTAssertTrue(
+            app.control(withIdentifier: "detail-notes-section")
+                .waitForExistence(timeout: 10),
+            "notes must retain one explicit presentation boundary")
+        XCTAssertTrue(
             app.control(withIdentifier: "detail-notes-title")
                 .waitForExistence(timeout: 10),
             "a meeting with notes must surface the My notes section")

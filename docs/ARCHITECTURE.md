@@ -237,7 +237,7 @@ presentation type that receives `AppServices`. It constructs one
 `MeetingDetailModel` in `@State`; the route keys the scene by `MeetingID`, so a
 different destination cannot retain the prior model. The scene projects process
 observations into immutable values and exposes explicit meeting-scoped actions. The child
-`MeetingDetailView` receives the model, values, actions, route binding, and one
+`MeetingDetailView` receives the model, values, actions, and one
 pure `MeetingDetailPresentation`; it neither observes `AppServices` nor creates
 the model. Presentation formatting receives its locale and time zone explicitly
 and imports Foundation only. The composition root is not an allowed dependency
@@ -988,8 +988,8 @@ or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
 Meeting Detail decomposition is also preceded by a frozen presentation
-boundary. A generated contract inventories 262 interaction signals across
-twenty source files,
+boundary. A generated contract inventories 263 interaction signals across
+27 source files,
 assigns all 23 detail XCUITest journeys to exactly one of ten feature owners,
 and digest-binds the reviewed performance harness and evidence. Hidden
 payload-free scroll and seek signposts activate only when a disposable temp
@@ -1045,6 +1045,23 @@ dialog, alert, and file-export routes; route payloads replace the previous
 collection of unrelated booleans. Refine drafts and the post-meeting mirror
 remain source-derived presentations because their lifetimes are owned by their
 dedicated service and recording state rather than by a UI toggle.
+
+The resulting composition keeps `MeetingDetailView` as a compact route
+projection and observation-lifecycle surface. A short-lived
+`MeetingDetailCoordinator` value translates explicit feature intents into the
+route model and scene actions; identity and document workflows live in focused
+extensions. The coordinator owns no observable state and is never passed to a
+presentation child. The scene retains route mutation and the mirror preference;
+the child receives only the corresponding explicit actions and immutable
+value. `MeetingDetailFlowHost` presents sheets, dialogs, alerts,
+and file export from scene-owned flow routes while receiving platform actions
+explicitly. Notes and Refine review have their own immutable values/actions
+sections. `MeetingDetailPlaybackNavigation` is the sole view-lifetime owner of
+cross-section transcript focus, pending seeks, and disposable seek profiling;
+it receives an already prepared playback session and cannot construct audio,
+storage, model, or provider capabilities. Architecture tests cap the root at
+500 lines and reject model effects or broad composition dependencies in these
+presentation children.
 
 Core also owns one pure resource-admission policy, separate from both
 measurement and runtime scheduling. Its immutable snapshot contains the

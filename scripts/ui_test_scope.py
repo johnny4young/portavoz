@@ -262,6 +262,33 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-health", "meeting-processing"}
     if "meetingdetailactionsection" in lowered:
         return {"meeting-export", "meeting-processing", "meeting-recap"}
+    if "meetingdetailcoordinator+identity" in lowered:
+        return {"meeting-naming"}
+    if "meetingdetailcoordinator+documents" in lowered:
+        return {
+            "meeting-evidence",
+            "meeting-export",
+            "meeting-processing",
+            "meeting-recap",
+            "meeting-summary",
+        }
+    if lowered == "meetingdetailcoordinator.swift":
+        return {"meeting-audio", "meeting-evidence", "meeting-processing"}
+    if "meetingdetailflowhost" in lowered:
+        return {
+            "meeting-export",
+            "meeting-health",
+            "meeting-naming",
+            "meeting-processing",
+            "meeting-recap",
+            "meeting-summary",
+        }
+    if "meetingdetailnotessection" in lowered:
+        return {"meeting-summary"}
+    if "meetingdetailrefinereviewsheet" in lowered:
+        return {"meeting-processing"}
+    if "meetingdetailplaybacknavigation" in lowered:
+        return {"meeting-audio", "meeting-evidence", "meeting-performance"}
     if "meetingdetailrailsection" in lowered:
         return {"meeting-evidence", "meeting-health", "meeting-processing"}
     if "meetingdetailplayersection" in lowered:

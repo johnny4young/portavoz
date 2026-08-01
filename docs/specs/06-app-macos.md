@@ -29,7 +29,11 @@ and chapter presentation without moving correction policy into SwiftUI. D226
 extracts playback behind immutable values and explicit audio intents. D227
 extracts secondary actions, the review rail, and Companion behind the same
 boundary, then replaces unrelated modal booleans with scene-owned typed
-presentation routes.
+presentation routes. D228 completes the decomposition with a short-lived
+route-level effect coordinator, a modal host, focused notes and Refine review
+sections, and one cross-section playback-navigation owner; the compact root
+retains only route projection and observation lifecycle while the scene keeps
+route and preference mutation.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -235,6 +239,24 @@ column. Neither section can reach the model, services, store, or preferences.
 `MeetingDetailScene` owns one observable `MeetingDetailFlowState`; its typed
 sheet, dialog, alert, and export routes replace independent modal flags while
 preserving Refine and mirror presentations owned by their source services.
+
+D228 removes the remaining presentation monolith without introducing another
+observable feature owner. `MeetingDetailView` projects one short-lived
+`MeetingDetailCoordinator` from the route model, scene actions, and typed flow
+state. Focused coordinator extensions translate identity and document intents
+into existing model/application effects; they own no state and are never
+passed to child views. The scene owns route mutation and the
+`mirrorAfterMeeting` preference, exposing only explicit actions and an
+immutable preference value to the child. `MeetingDetailFlowHost` owns native modal and exporter
+presentation through explicit values/actions, while
+`MeetingDetailNotesSection` and `MeetingDetailRefineReviewSheet` own their
+focused rendering only. `MeetingDetailPlaybackNavigation` retains evidence
+focus and pending seeks across transcript and player sections but receives an
+already prepared session and cannot resolve audio or storage. Architecture
+tests keep the root at 500 lines or fewer and reject model effects or broad
+composition dependencies in presentation children. The reviewed boundary now
+covers 263 signals across 27 source files, ten owners, and the same 23 UI
+journeys.
 
 ### Resource workload measurement (D148)
 

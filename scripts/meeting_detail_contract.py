@@ -24,10 +24,17 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
     "Sources/portavoz-app/MeetingDetailActionSection.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator.swift",
+    "Sources/portavoz-app/MeetingDetailFlowHost.swift",
     "Sources/portavoz-app/MeetingDetailFlowState.swift",
     "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+    "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+    "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift",
     "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
     "Sources/portavoz-app/MeetingDetailRailSection.swift",
+    "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
     "Sources/portavoz-app/MeetingDetailScene.swift",
     "Sources/portavoz-app/MeetingDetailTrustSection.swift",
     "Sources/portavoz-app/MeetingDetailView.swift",
@@ -140,8 +147,8 @@ DEFAULT_FEATURE_OWNERSHIP = (
         ],
         "sourceAnchors": [
             {
-                "path": "Sources/portavoz-app/MeetingDetailView.swift",
-                "anchor": "transcriptNavigation.reveal(",
+                "path": "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift",
+                "anchor": "transcript.reveal(",
             },
             {
                 "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
@@ -157,6 +164,10 @@ DEFAULT_FEATURE_OWNERSHIP = (
                 "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
                 "anchor": '"detail-export-menu"',
             },
+            {
+                "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+                "anchor": "func handleExportAction(",
+            },
         ],
     },
     {
@@ -167,7 +178,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         ],
         "sourceAnchors": [
             {
-                "path": "Sources/portavoz-app/MeetingDetailView.swift",
+                "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
                 "anchor": '"detail-enhance-notes"',
             },
             {
@@ -212,6 +223,10 @@ DEFAULT_FEATURE_OWNERSHIP = (
                 "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
                 "anchor": '"detail-refine"',
             },
+            {
+                "path": "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
+                "anchor": '"detail-refine-review"',
+            },
         ],
     },
     {
@@ -253,6 +268,10 @@ DEFAULT_FEATURE_OWNERSHIP = (
             {
                 "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
                 "anchor": '"person-remember-offer"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
+                "anchor": "func acceptNameSuggestion(",
             },
         ],
     },

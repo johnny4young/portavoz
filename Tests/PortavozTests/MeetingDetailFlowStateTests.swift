@@ -1,5 +1,6 @@
-import XCTest
+import ApplicationKit
 import PortavozCore
+import XCTest
 
 @testable import portavoz_app
 
@@ -53,5 +54,122 @@ final class MeetingDetailFlowStateTests: XCTestCase {
 
         XCTAssertEqual(flow.renamingSpeaker?.id, second.id)
         XCTAssertEqual(flow.renameSpeakerName, "")
+    }
+
+    func testMirrorProjectionRequiresOptInCurrentMeetingAndConversationSignal() {
+        let detail = makeMirrorDetail(duration: 600, includeRemoteSpeaker: true)
+
+        XCTAssertNil(MeetingDetailMirrorValues.qualifying(
+            detail: detail,
+            enabled: false,
+            justRecorded: detail.meeting.id,
+            language: "en",
+            averageShare: nil))
+        XCTAssertNil(MeetingDetailMirrorValues.qualifying(
+            detail: detail,
+            enabled: true,
+            justRecorded: MeetingID(),
+            language: "en",
+            averageShare: nil))
+
+        let values = MeetingDetailMirrorValues.qualifying(
+            detail: detail,
+            enabled: true,
+            justRecorded: detail.meeting.id,
+            language: "es",
+            averageShare: 0.42)
+
+        XCTAssertNotNil(values)
+        XCTAssertEqual(values?.language, "es")
+        XCTAssertEqual(values?.averageShare, 0.42)
+    }
+
+    func testMirrorProjectionRejectsShortOrSingleSpeakerRecordings() {
+        let short = makeMirrorDetail(duration: 120, includeRemoteSpeaker: true)
+        let solo = makeMirrorDetail(duration: 600, includeRemoteSpeaker: false)
+
+        for detail in [short, solo] {
+            XCTAssertNil(MeetingDetailMirrorValues.qualifying(
+                detail: detail,
+                enabled: true,
+                justRecorded: detail.meeting.id,
+                language: "en",
+                averageShare: nil))
+        }
+    }
+
+    func testPlaybackNavigationFocusesComposedEvidenceBeforePlaybackExists() {
+        let meetingID = MeetingID()
+        let sourceID = UUID()
+        let rowID = UUID()
+        let segment = TranscriptSegment(
+            id: sourceID,
+            meetingID: meetingID,
+            channel: .system,
+            text: "Evidence",
+            startTime: 12,
+            endTime: 14,
+            isFinal: true)
+        let content = MeetingTranscriptContent(
+            baseTranscriptRevision: 4,
+            rows: [MeetingTranscriptContent.Row(
+                id: rowID,
+                sourceSegmentIDs: [sourceID],
+                speakerID: nil,
+                channel: .system,
+                text: segment.text,
+                language: "en",
+                startTime: segment.startTime,
+                endTime: segment.endTime,
+                confidence: nil,
+                isFinal: true)],
+            chapters: [])
+        let navigation = MeetingDetailPlaybackNavigation()
+
+        navigation.focusEvidence(segment, content: content, player: nil)
+
+        XCTAssertEqual(navigation.focusedRowID, rowID)
+    }
+
+    private func makeMirrorDetail(
+        duration: TimeInterval,
+        includeRemoteSpeaker: Bool
+    ) -> MeetingReviewReadModel {
+        let startedAt = Date(timeIntervalSince1970: 1_000)
+        let meeting = Meeting(
+            title: "Weekly review",
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(duration))
+        let me = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        let remote = Speaker(meetingID: meeting.id, label: "S1")
+        var speakers = [me]
+        var segments = [TranscriptSegment(
+            meetingID: meeting.id,
+            speakerID: me.id,
+            channel: .microphone,
+            text: "I will review the current state.",
+            startTime: 0,
+            endTime: 30,
+            isFinal: true)]
+        if includeRemoteSpeaker {
+            speakers.append(remote)
+            segments.append(TranscriptSegment(
+                meetingID: meeting.id,
+                speakerID: remote.id,
+                channel: .system,
+                text: "Here is the external perspective.",
+                startTime: 40,
+                endTime: 80,
+                isFinal: true))
+        }
+        return MeetingReviewReadModel(
+            core: MeetingReviewCore(
+                meeting: meeting,
+                speakers: speakers,
+                segments: segments),
+            summary: nil,
+            companionCards: [],
+            privacyReceipt: nil,
+            processingJobs: [])
     }
 }

@@ -1,0 +1,70 @@
+import AppKit
+import ApplicationKit
+import PortavozCore
+
+/// Route-level effects for one Meeting Detail destination.
+///
+/// The coordinator is a short-lived value projected by `MeetingDetailView`.
+/// It owns no observation or presentation state: `MeetingDetailModel` remains
+/// the read/effect owner, while `MeetingDetailFlowState` remains scene-owned.
+/// Feature-specific operations live in focused extensions; presentation
+/// sections never receive this coordinator or its model dependency.
+@MainActor
+struct MeetingDetailCoordinator {
+    let meetingID: MeetingID
+    let model: MeetingDetailModel
+    let flow: MeetingDetailFlowState
+    let sceneValues: MeetingDetailSceneValues
+    let sceneActions: MeetingDetailSceneActions
+
+    func deleteMeeting() async -> Bool {
+        if case .meetingDeleted = await model.send(.deleteMeeting) {
+            return true
+        }
+        return false
+    }
+
+    func retryProcessing() async {
+        await model.send(.retryProcessing)
+    }
+
+    func loadPresentationSuggestions() async {
+        await model.send(.loadMetadataSuggestions)
+        guard !Task.isCancelled else { return }
+        await model.send(.loadVoiceSuggestions)
+    }
+
+    func loadPlayback() async {
+        await model.send(.loadPlayback)
+    }
+
+    func exportClip(
+        _ range: ClosedRange<TimeInterval>,
+        to destination: URL
+    ) async -> String? {
+        let effect = await model.send(.exportAudioClip(range, to: destination))
+        guard case .operationFailed(let message) = effect else { return nil }
+        return message
+    }
+
+    func compressAudio() async {
+        await model.send(.compressAudio)
+    }
+
+    func removeCompanionCard(_ id: UUID) async {
+        await model.send(.removeCompanionCard(id))
+    }
+
+    func copyAnswer(_ answer: String) {
+        copyText(answer)
+    }
+
+    func copyText(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    func openURL(_ url: URL) {
+        NSWorkspace.shared.open(url)
+    }
+}

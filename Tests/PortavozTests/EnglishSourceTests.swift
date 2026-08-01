@@ -137,6 +137,7 @@ final class EnglishSourceTests: XCTestCase {
         }
         if [
             "Sources/portavoz-app/MeetingDetailView.swift",
+            "Sources/portavoz-app/MeetingDetailNotesSection.swift",
             "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
         ].contains(relative), line.contains("Español") {
             // Native language name shown in Meeting Detail generation menus.

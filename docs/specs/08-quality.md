@@ -1450,8 +1450,13 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   not substitute for the real-time physical-footprint or route matrix.
 - `make test-meeting-detail-baseline`: verifies the canonical source-derived
   interaction/feature-owner contract and the fail-closed Instruments parser.
-  The contract currently covers 262 interaction signals, ten owners, and all
-  23 Meeting Detail UI journeys; both missing and duplicate ownership fail.
+  The contract currently covers 263 interaction signals across 27 source
+  files, ten owners, and all 23 Meeting Detail UI journeys; both missing and
+  duplicate ownership fail. Architecture ratchets also cap the route
+  composition view at 500 lines; reject direct model sends, route bindings,
+  app preferences, and global recipe access there; keep AppKit copy/open
+  effects outside the modal host; and require every extracted source to map to
+  a feature-scoped UI selector.
 - `make meeting-detail-baseline`: Portavoz Dev-only, disposable 5k playback-
   seek and 20k transcript-scroll profiles. Each interaction must produce
   exactly five positive payload-free intervals. The Aug 2026 Xcode 26.6

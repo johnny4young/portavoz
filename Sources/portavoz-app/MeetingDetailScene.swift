@@ -20,6 +20,7 @@ struct MeetingDetailScene: View {
     @Environment(\.timeZone) private var timeZone
     @State private var model: MeetingDetailModel
     @State private var flow = MeetingDetailFlowState()
+    @AppStorage("mirrorAfterMeeting") private var mirrorAfterMeeting = false
 
     init(
         services: AppServices,
@@ -35,7 +36,6 @@ struct MeetingDetailScene: View {
     var body: some View {
         MeetingDetailView(
             meetingID: meetingID,
-            route: $route,
             model: model,
             flow: flow,
             presentation: MeetingDetailPresentation(
@@ -50,6 +50,7 @@ struct MeetingDetailScene: View {
             refinePhase: services.refines.phase(for: meetingID),
             pendingSeek: services.pendingMeetingSeek,
             justRecorded: services.justRecorded,
+            mirrorAfterMeeting: mirrorAfterMeeting,
             summaryEngine: services.summaryEngine,
             ollamaModel: services.ollamaModel,
             appleSummaryAvailable: services.appleSummaryAvailable,
@@ -104,6 +105,15 @@ struct MeetingDetailScene: View {
             },
             clearJustRecorded: {
                 services.justRecorded = nil
+            },
+            closeDetail: {
+                route = nil
+            },
+            showInsights: {
+                route = .insights
+            },
+            disableMirrorAfterMeeting: {
+                mirrorAfterMeeting = false
             })
     }
 }
@@ -114,6 +124,7 @@ struct MeetingDetailSceneValues {
     let refinePhase: RefineService.Phase?
     let pendingSeek: MeetingSeekRequest?
     let justRecorded: MeetingID?
+    let mirrorAfterMeeting: Bool
     let summaryEngine: SummaryEngine
     let ollamaModel: String?
     let appleSummaryAvailable: Bool
@@ -139,4 +150,7 @@ struct MeetingDetailSceneActions {
     let averageMyShare: @MainActor () async -> Double?
     let consumePendingSeek: @MainActor () -> MeetingSeekRequest?
     let clearJustRecorded: @MainActor () -> Void
+    let closeDetail: @MainActor () -> Void
+    let showInsights: @MainActor () -> Void
+    let disableMirrorAfterMeeting: @MainActor () -> Void
 }

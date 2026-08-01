@@ -7631,3 +7631,48 @@ moving audio, persistence, identity, or processing policy into SwiftUI. Typed
 routes eliminate contradictory modal state. Immutable values, narrow intents,
 and feature-scoped tests preserve the scene/model/application ownership chain
 while protecting released behavior without running unrelated journeys.
+
+## D228 — Complete Meeting Detail through route-level composition (Aug 2026)
+
+**Context:** D224–D227 extracted the stable visual sections and replaced
+independent modal flags, but `MeetingDetailView` still implemented document,
+identity, Refine, notes, and platform effects in a collection of private
+extensions. It also retained cross-section transcript/playback navigation and
+modal rendering alongside the route observation lifecycle. The visible
+sections were narrow, but effect and presentation ownership remained harder to
+audit than the intended final architecture.
+
+**Decision:** keep `MeetingDetailView` as a compact route projection and
+observation-lifecycle surface, capped by architecture tests at 500 physical
+lines. Project a short-lived `MeetingDetailCoordinator` value from the route's
+model, scene values/actions, and scene-owned flow state. The coordinator owns
+no observation state and translates only explicit feature intents into route
+model or scene effects; identity and document operations live in focused
+extensions. Presentation children never receive the coordinator, model,
+services, storage, or provider adapters.
+
+Move sheets, dialogs, alerts, and file export into `MeetingDetailFlowHost`,
+which receives typed flow values and platform actions explicitly. Extract raw
+and enhanced notes into `MeetingDetailNotesSection`, Refine comparison into
+`MeetingDetailRefineReviewSheet`, and cross-section evidence/player navigation
+into one view-lifetime `MeetingDetailPlaybackNavigation`. The navigation owner
+may operate an already prepared playback session but cannot construct audio,
+storage, model, or provider capabilities. Keep summary regeneration and its
+search invalidation in one structured task so the extraction does not change
+operation ordering. Keep route mutation and the `mirrorAfterMeeting`
+preference in `MeetingDetailScene`; the child receives only explicit route and
+preference actions plus the projected preference value.
+
+Expand the reviewed interaction boundary to 263 signals across 27 source
+files while retaining ten feature owners and all 23 UI journeys. Add explicit
+UI-scope mappings for every new file and architecture tests that reject direct
+model effects in the root, broad dependencies in presentation children, and
+unbounded root growth.
+
+**Rationale:** route-level composition makes state and effect ownership
+legible without introducing a second observable owner or a feature-parity
+rewrite. Focused values/actions surfaces can be tested and changed
+independently, while the route model remains the application effect owner and
+scene flow remains the presentation-state owner. Preserving structured
+concurrency, interaction contracts, and scoped UI selection makes removal of
+the monolith a mechanical refactor rather than a behavioral migration.
