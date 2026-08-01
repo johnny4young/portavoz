@@ -1824,6 +1824,26 @@ deletes raw observations. No real receipt has been collected, reviewed, or
 retained; `review-required` is evidence completeness, not a performance
 threshold, accepted baseline, engine verdict, or product authority.
 
+The cross-host mutation boundary is also a review protocol, not a benchmark
+verdict. `exact-path-mutation-cross-host-matrix.json` requires exactly one
+revalidated one-host mutation receipt for the 8 GB, 16 GB, and reference
+profiles, coverage of both supported OS majors, and one source commit plus
+Apple Swift toolchain.
+`exact_path_mutation_cross_host.py` rejects duplicate keys, repeated receipts
+or profiles, tampered nested host evidence, unsupported contract identity, and
+non-canonical scorecards. It detaches the derived document from its inputs and
+can recompute every nested value from the three receipts. Missing coverage,
+blocked host evidence, or source/toolchain divergence produces a complete
+`blocked` scorecard; a complete comparable matrix remains `review-required`
+under `human-threshold-free-mutation-cross-host-review-v1`.
+
+The scorecard preserves per-host aggregate rebuild and mutation timing
+distributions for human review but derives no candidate/control ratio,
+performance threshold, or automatic pass. The CLI reads aggregate JSONL and
+emits only the recomputable scorecard to stdout. No real cross-host mutation
+scorecard has been collected or retained, and this boundary grants no product
+schema, adapter selection, migration, or rollback authority.
+
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and
 capture returning inactive are wake signals. Bursts collapse to at most one

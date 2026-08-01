@@ -894,6 +894,18 @@ observations in owner-only temporary files, deletes them at exit, verifies the
 source commit and checkout before and after collection, and exposes no output
 path. No real mutation receipt or accepted correction-cost baseline exists.
 
+Cross-host review consumes these receipts without changing their authority.
+The `exact-path-mutation-cross-host-review` scorecard requires exactly one
+valid 8 GB, 16 GB, and reference receipt, both supported OS majors, and common
+source-commit/toolchain identity. It preserves each host's content-free timing
+distributions and agreement counts, but computes no cross-engine performance
+ratio or threshold. Complete comparable evidence remains `review-required`;
+missing coverage, blocked host evidence, or identity divergence is `blocked`,
+while malformed, repeated, or tampered input yields no scorecard. The document
+is structurally detached from its receipts and must recompute exactly before
+later review. It is ephemeral stdout evidence only: there is no retained
+mutation baseline, selected adapter, product writer, migration, or rollback.
+
 ### Governed semantic embedding runtime (D165)
 
 ApplicationKit exposes `SemanticEmbeddingRuntimeClient` rather than a concrete

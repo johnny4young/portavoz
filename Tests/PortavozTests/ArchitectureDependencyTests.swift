@@ -869,6 +869,60 @@ final class ArchitectureDependencyTests: XCTestCase {
             "bash -n scripts/run-exact-path-mutation-host-matrix.sh"))
     }
 
+    func testExactPathMutationCrossHostReviewIsThresholdFreeAndRecomputable() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let specification = try Self.contents(of: "docs/specs/04-intelligence.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let contract = try Self.contents(
+            of: "docs/evidence/exact-path-mutation-cross-host-matrix.json")
+        let validator = try Self.contents(
+            of: "scripts/exact_path_mutation_cross_host.py")
+        let makefile = try Self.contents(of: "Makefile")
+        let hygiene = try Self.contents(
+            of: "scripts/check-repository-hygiene.sh")
+
+        XCTAssertTrue(decisions.contains("## D220"))
+        XCTAssertTrue(architecture.contains(
+            "human-threshold-free-mutation-cross-host-review-v1"))
+        XCTAssertTrue(specification.contains(
+            "exact-path-mutation-cross-host-review"))
+        XCTAssertTrue(quality.contains("make exact-path-mutation-cross-host"))
+        for required in [
+            "\"hostReceiptSchemaVersion\": 1",
+            "\"hostReviewPolicyVersion\": \"human-threshold-free-mutation-review-v1\"",
+            "\"requiredHostProfiles\"",
+            "\"requiredOperatingSystemMajors\"",
+        ] {
+            XCTAssertTrue(contract.contains(required), "missing \(required)")
+        }
+        XCTAssertFalse(contract.contains("minimumPerformanceImprovement"))
+        XCTAssertFalse(contract.contains("maximumTimingP95ToP50Ratio"))
+
+        for required in [
+            "exact-path-mutation-cross-host-review",
+            "review-required",
+            "validate_scorecard_against_receipts",
+            "host_matrix.validate_host_receipt",
+            "copy.deepcopy",
+            "sameSourceCommit",
+            "sameToolchain",
+            "return 0 if scorecard[\"outcome\"] == \"review-required\" else 1",
+        ] {
+            XCTAssertTrue(validator.contains(required), "missing \(required)")
+        }
+        for forbidden in [
+            "candidateToControl", "performanceRatio", "speedup",
+            "minimumPerformanceImprovement", "maximumTimingP95ToP50Ratio",
+        ] {
+            XCTAssertFalse(validator.contains(forbidden), "forbidden \(forbidden)")
+        }
+        XCTAssertTrue(makefile.contains("test-exact-path-mutation-cross-host:"))
+        XCTAssertTrue(makefile.contains("exact-path-mutation-cross-host:"))
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_exact_path_mutation_cross_host"))
+    }
+
     func testExactPathHostReceiptRequiresACompleteStableContentFreeMatrix() throws {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")

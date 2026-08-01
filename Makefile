@@ -14,6 +14,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-ask-quality ask-quality-pair test-exact-path-matrix exact-path-matrix \
 	exact-path-mutation-matrix test-exact-path-mutation-host exact-path-mutation-host \
+	test-exact-path-mutation-cross-host exact-path-mutation-cross-host \
 	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
 	test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
@@ -63,6 +64,20 @@ test-exact-path-mutation-host:
 exact-path-mutation-host:
 	scripts/run-exact-path-mutation-host-matrix.sh \
 		--profile "$(PORTAVOZ_EXACT_PATH_PROFILE)"
+
+## Validate the threshold-free cross-host mutation review with synthetic
+## aggregate receipts.
+test-exact-path-mutation-cross-host:
+	python3 -m unittest Tests.Tooling.test_exact_path_mutation_cross_host
+
+## Compare one mutation receipt per required host profile without retaining a
+## baseline, deriving timing ratios, or selecting an engine.
+PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS ?=
+exact-path-mutation-cross-host:
+	@test -n "$(PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS)" || \
+		(echo "PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS is required" >&2; exit 64)
+	python3 scripts/exact_path_mutation_cross_host.py \
+		--input "$(PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS)"
 
 ## Validate the cross-host scorecard boundary with synthetic host receipts.
 test-exact-path-cross-host:

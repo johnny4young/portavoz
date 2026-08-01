@@ -1417,6 +1417,16 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   no output destination and removes raw observations. Use
   `make test-exact-path-mutation-host` for the synthetic fail-closed contract
   suite without running the expensive Release matrix.
+- `make exact-path-mutation-cross-host
+  PORTAVOZ_EXACT_PATH_MUTATION_RECEIPTS=/private/path/receipts.jsonl`:
+  revalidate exactly one mutation host receipt per 8 GB, 16 GB, and reference
+  profile, require Sequoia/Tahoe coverage plus one source commit/toolchain, and
+  emit a detached, exactly recomputable schema-1 review scorecard. Complete
+  comparable evidence remains `review-required`; missing, blocked, or
+  identity-divergent evidence is blocked, while malformed/repeated evidence
+  emits nothing. No timing ratio, threshold, automatic pass, retention, or
+  engine decision is derived. Use `make test-exact-path-mutation-cross-host`
+  for the synthetic contract suite.
 - `make long-capture-baseline`: clean-commit Release proof that accelerates
   three hours of bounded synthetic microphone/system PCM through the production
   session and requires exact frames, healthy publication, zero drift, and no

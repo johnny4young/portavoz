@@ -86,6 +86,7 @@ bash -n scripts/run-exact-path-mutation-host-matrix.sh
 python3 -m unittest Tests.Tooling.test_resource_baseline
 python3 -m unittest Tests.Tooling.test_exact_path_matrix
 python3 -m unittest Tests.Tooling.test_exact_path_mutation_matrix
+python3 -m unittest Tests.Tooling.test_exact_path_mutation_cross_host
 python3 -m unittest Tests.Tooling.test_exact_path_cross_host
 python3 -m unittest Tests.Tooling.test_exact_path_baseline
 python3 -m unittest Tests.Tooling.test_ask_quality

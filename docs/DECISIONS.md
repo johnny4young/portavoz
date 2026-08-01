@@ -7329,3 +7329,40 @@ real resource distributions exist, while timing policy cannot. An explicit
 human-review outcome makes that distinction machine-readable and prevents
 premature engine selection without sacrificing aggregate evidence needed for
 the later cross-host decision.
+
+## D220 — Keep cross-host mutation evidence in explicit review (Aug 2026)
+
+**Context:** D219 can prove that one host produced complete, content-free
+mutation observations with top-hit and top-k-set parity, but its
+`review-required` outcome is deliberately not a performance pass. Reviewing
+the required hardware matrix needs one portable document without silently
+introducing the query benchmark's candidate/control ratios or accepting a
+threshold before real correction-cost evidence exists.
+
+**Decision:** define a separate schema-1 cross-host review contract over
+exactly one revalidated D219 receipt for each 8 GB, 16 GB, and reference
+profile. The three receipts must collectively cover Sequoia and Tahoe and use
+one source commit, Apple Swift toolchain, fixture, measurement policy, host
+review policy, and Release configuration. Duplicate JSON keys, repeated
+receipts or profiles, tampered nested evidence, unsupported identity, and
+non-canonical scorecards produce no document. Missing coverage, a blocked host
+receipt, or source/toolchain divergence produces a complete `blocked`
+scorecard.
+
+Complete comparable evidence remains `review-required` under
+`human-threshold-free-mutation-cross-host-review-v1`. Preserve per-host
+aggregate rebuild and operation/batch distributions plus agreement counts for
+human review, but derive no candidate/control speed ratio, numeric threshold,
+or automatic pass. Build the scorecard as a detached value and require exact
+recomputation from its receipts. The CLI reads aggregate JSONL and writes only
+stdout; it does not retain a baseline.
+
+This slice creates no real field scorecard, accepted baseline, product schema,
+writer, adapter choice, app/CLI product composition, migration, or rollback
+authority. Accelerate exact remains the only product adapter.
+
+**Rationale:** hardware and OS coverage, input integrity, and common build
+identity are objective gates; unlike lifecycle performance is a review input.
+Keeping the outcome explicit prevents a complete evidence bundle from being
+mistaken for a product decision while making later maintainer review fully
+recomputable.
