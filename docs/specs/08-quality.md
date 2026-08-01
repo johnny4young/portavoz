@@ -1407,6 +1407,16 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   and top-k-set source identity, while schema-1 stdout retains only host/
   configuration, counts, bytes, timings, and aggregate agreement. No
   observation is retained or accepted automatically.
+- `make exact-path-mutation-host PORTAVOZ_EXACT_PATH_PROFILE=memory-16gb`:
+  collect three complete mutation matrices from one unchanged clean Release
+  checkout and emit one threshold-free, content-free schema-1 host receipt.
+  Exact shape, supported host/OS, lifecycle labels, finite distributions,
+  coverage, top-hit parity, and top-k-set parity are mandatory. Complete
+  evidence is `review-required`, never an automatic performance pass; timing
+  variability remains visible for explicit human review. The collector accepts
+  no output destination and removes raw observations. Use
+  `make test-exact-path-mutation-host` for the synthetic fail-closed contract
+  suite without running the expensive Release matrix.
 - `make long-capture-baseline`: clean-commit Release proof that accelerates
   three hours of bounded synthetic microphone/system PCM through the production
   session and requires exact frames, healthy publication, zero drift, and no

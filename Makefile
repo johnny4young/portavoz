@@ -13,7 +13,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-ask-quality ask-quality-pair test-exact-path-matrix exact-path-matrix \
-	exact-path-mutation-matrix \
+	exact-path-mutation-matrix test-exact-path-mutation-host exact-path-mutation-host \
 	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
 	test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
@@ -52,6 +52,17 @@ exact-path-matrix:
 ## corpus scale. Results remain stdout-only research evidence.
 exact-path-mutation-matrix:
 	scripts/run-exact-path-mutation-benchmark.sh --matrix --runs 5
+
+## Validate the threshold-free mutation host-receipt contract with synthetic
+## observations.
+test-exact-path-mutation-host:
+	python3 -m unittest Tests.Tooling.test_exact_path_mutation_matrix
+
+## Collect three clean mutation observations per canonical scale and emit one
+## content-free receipt for explicit human review.
+exact-path-mutation-host:
+	scripts/run-exact-path-mutation-host-matrix.sh \
+		--profile "$(PORTAVOZ_EXACT_PATH_PROFILE)"
 
 ## Validate the cross-host scorecard boundary with synthetic host receipts.
 test-exact-path-cross-host:

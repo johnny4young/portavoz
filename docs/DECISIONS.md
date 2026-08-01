@@ -7289,3 +7289,43 @@ incremental cost without risking authoritative user data. Stable monotonic slots
 preserve deterministic ties across corrections, and post-operation rank checks
 make deletion or update drift visible. Keeping raw measurements stdout-only
 preserves separate resource acceptance and engine-decision gates.
+
+## D219 — Require human review for complete mutation host evidence (Aug 2026)
+
+**Context:** D218 emits deterministic correction-cost observations, but one
+development smoke or one timing sample cannot support an engine decision.
+Reusing D215's 1.25 timing-stability threshold would silently declare a
+performance policy before mutation evidence exists on the required hardware.
+Retaining raw observations would also widen the research-data surface, while a
+receipt named `pass` could be confused with resource acceptance.
+
+**Decision:** define a separate schema-1 mutation-host contract over exactly
+three D218 observations per canonical 1k/10k/50k/100k scale. Every observation
+must come from one supported declared memory profile and OS, a Release build,
+the exact fixture/measurement/lifecycle versions, canonical engine and
+operation order, 1/10/100 batches, five samples per batch, finite monotonic
+timings, and bounded agreement counts. Duplicate JSON keys, copied
+observations, mixed hosts, excess evidence, unknown fields, and malformed
+configuration produce no receipt. Missing coverage or top-hit/top-k-set drift
+produces a complete `blocked` receipt.
+
+When coverage and agreement are complete, emit `review-required` under
+`human-threshold-free-mutation-review-v1`, not `pass`. Retain aggregate
+nearest-rank distributions for fixture preparation, full reconstruction, and
+each operation/batch, including within-observation p95/p50 ratio diagnostics.
+Do not compare the unlike control/candidate lifecycle values and do not apply a
+numeric timing threshold. The clean-source runner binds the receipt to source
+commit, Apple Swift toolchain, host profile, OS, and contract versions, checks
+the checkout before and after collection, accepts no output path, and deletes
+the temporary raw observations.
+
+This slice creates no real receipt, accepted baseline, cross-host verdict,
+performance threshold, product schema/writer, app/CLI composition, serving
+change, or migration authority. Accelerate exact remains the only product
+adapter.
+
+**Rationale:** structural completeness and rank parity can be enforced before
+real resource distributions exist, while timing policy cannot. An explicit
+human-review outcome makes that distinction machine-readable and prevents
+premature engine selection without sacrificing aggregate evidence needed for
+the later cross-host decision.

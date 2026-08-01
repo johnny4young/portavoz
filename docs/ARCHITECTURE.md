@@ -1801,6 +1801,29 @@ output destination. This is development evidence only: resource acceptance,
 interruption/recovery, a cross-host mutation receipt, and engine selection
 remain later SEARCH-5 boundaries.
 
+The next evidence boundary is deliberately threshold-free. The versioned
+`exact-path-mutation-matrix.json` contract requires three complete mutation
+benchmark observations at every canonical scale from one clean Release checkout
+and one declared 8 GB, 16 GB, or reference host on supported Sequoia/Tahoe. The
+`exact_path_mutation_matrix.py` validator rejects unknown fields, duplicate
+JSON keys or observations, mixed hosts, invalid lifecycle labels, incomplete
+batch/engine order, non-finite or non-monotonic distributions, and malformed
+agreement counts. Complete top-hit and top-k-set parity produces the explicit
+`review-required` outcome under
+`human-threshold-free-mutation-review-v1`; missing coverage or rank-set drift
+produces a complete `blocked` receipt. Timing variability never becomes an
+automatic pass or block in this contract. Instead, rebuild and each operation/
+batch retain nearest-rank observation distributions plus within-observation
+p95/p50 diagnostics for later human resource review.
+
+`scripts/run-exact-path-mutation-host-matrix.sh` collects the three matrices,
+binds the receipt to the unchanged source commit, Apple Swift toolchain, host
+profile, OS, and unlike control/candidate lifecycle labels, then emits only the
+schema-1 aggregate receipt to stdout. It accepts no output destination and
+deletes raw observations. No real receipt has been collected, reviewed, or
+retained; `review-required` is evidence completeness, not a performance
+threshold, accepted baseline, engine verdict, or product authority.
+
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and
 capture returning inactive are wake signals. Bursts collapse to at most one

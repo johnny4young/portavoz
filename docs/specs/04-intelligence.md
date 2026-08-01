@@ -880,6 +880,20 @@ output option. This proves deterministic mutation semantics and creates raw
 development measurements, not accepted resource/correction evidence, recovery
 proof, a product writer, or engine authority.
 
+The one-host mutation receipt remains a separate review boundary. The
+`exact-path-mutation-host-receipt` contract requires three valid observations
+at each canonical scale from one unchanged clean Release checkout, supported
+host profile and OS, and exact D218 engine, batch, operation, lifecycle, and
+agreement shapes. Unknown or payload-bearing fields, duplicate keys or copied
+observations, mixed hosts, missing scales, malformed distributions, and top-hit
+or top-k-set drift fail closed. Complete evidence emits `review-required` under
+`human-threshold-free-mutation-review-v1`; it does not emit `pass`. Timing
+distributions and within-observation p95/p50 ratios remain aggregate review
+inputs without a numeric acceptance threshold. The clean collector keeps raw
+observations in owner-only temporary files, deletes them at exit, verifies the
+source commit and checkout before and after collection, and exposes no output
+path. No real mutation receipt or accepted correction-cost baseline exists.
+
 ### Governed semantic embedding runtime (D165)
 
 ApplicationKit exposes `SemanticEmbeddingRuntimeClient` rather than a concrete
