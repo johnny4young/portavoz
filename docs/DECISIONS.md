@@ -7202,3 +7202,42 @@ trust shortcut, while a three-profile/two-OS matrix captures the supported
 resource and compatibility surfaces without multiplying machines that add no
 new acceptance dimension. Keeping the scorecard ephemeral preserves a final,
 explicit baseline-review and engine-decision boundary.
+
+## D217 — Retain one exact-path research baseline only after digest-bound review (Aug 2026)
+
+**Context:** D216 can prove that three independently accepted host receipts form
+one comparable cross-host scorecard, but deliberately emits that scorecard only
+to stdout. Redirecting stdout to a file is not an acceptance act: the file could
+change after review, come from a different source checkout, omit its receipts,
+or be mistaken for an engine-selection decision. A boolean `--accept` would
+record intent without binding that intent to the exact artifact reviewed.
+
+**Decision:** track one schema-1 baseline-admission contract and a tooling-only
+publisher. Admission requires the canonical D216 scorecard stdout file, its
+complete three-receipt JSONL source, the lowercase SHA-256 of the exact scorecard
+file, and its sole source commit. The active checkout must be clean at that
+commit before validation, immediately before publication, and immediately after
+publication. A final source mismatch withdraws the new artifact.
+
+Recompute the scorecard exactly from independently validated schema-2 receipts
+and the active contracts. Require a passing scorecard, canonical profile order,
+canonical stdout bytes, bounded UTF-8 JSON/JSONL inputs, exact scalar types, and
+no duplicate or unknown fields. Publish one owner-only file atomically without
+replacement. A destination inside the repository must already be ignored. The
+retained envelope includes the scorecard, its three aggregate receipts, source
+commit, scorecard-file and canonical receipt-set digests, and the review-policy
+version. It permanently fixes `authority` to `research-comparison-only` and
+`engineDecision` to `not-evaluated`; it accepts no reviewer identity or free-form
+notes.
+
+No real baseline is added to source control and this boundary defines no timing
+budget, quality verdict, candidate winner, product schema, writer, app
+composition, or user-visible authority. Accelerate exact remains the sole
+serving adapter.
+
+**Rationale:** explicit digest and source acknowledgement binds maintainer intent
+to one immutable aggregate evidence set instead of a mutable pathname or a
+click-through flag. Revalidation keeps the source receipts auditable, while
+private non-overwriting publication prevents an accepted run from being silently
+replaced. The acknowledgement does not authenticate the reviewer or prove
+engine superiority; those remain separate human and later selection gates.

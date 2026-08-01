@@ -13,7 +13,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-ask-quality ask-quality-pair test-exact-path-matrix exact-path-matrix \
-	test-exact-path-cross-host exact-path-cross-host \
+	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
 	test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
@@ -59,6 +59,36 @@ exact-path-cross-host:
 		(echo "PORTAVOZ_EXACT_PATH_RECEIPTS is required" >&2; exit 64)
 	python3 scripts/exact_path_cross_host.py \
 		--input "$(PORTAVOZ_EXACT_PATH_RECEIPTS)"
+
+## Validate the explicit private research-baseline admission boundary with
+## synthetic aggregate-only evidence.
+test-exact-path-baseline:
+	python3 -m unittest Tests.Tooling.test_exact_path_baseline
+
+## Retain one reviewed passing scorecard and its validated aggregate receipts.
+## The digest must be the lowercase `shasum -a 256` value of the canonical
+## scorecard file; the source checkout must be clean at the accepted commit.
+PORTAVOZ_EXACT_PATH_SCORECARD ?=
+PORTAVOZ_EXACT_PATH_BASELINE_OUTPUT ?=
+PORTAVOZ_EXACT_PATH_ACCEPTED_SCORECARD_SHA256 ?=
+PORTAVOZ_EXACT_PATH_ACCEPTED_SOURCE_COMMIT ?=
+exact-path-baseline:
+	@test -n "$(PORTAVOZ_EXACT_PATH_RECEIPTS)" || \
+		(echo "PORTAVOZ_EXACT_PATH_RECEIPTS is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_EXACT_PATH_SCORECARD)" || \
+		(echo "PORTAVOZ_EXACT_PATH_SCORECARD is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_EXACT_PATH_BASELINE_OUTPUT)" || \
+		(echo "PORTAVOZ_EXACT_PATH_BASELINE_OUTPUT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_EXACT_PATH_ACCEPTED_SCORECARD_SHA256)" || \
+		(echo "PORTAVOZ_EXACT_PATH_ACCEPTED_SCORECARD_SHA256 is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_EXACT_PATH_ACCEPTED_SOURCE_COMMIT)" || \
+		(echo "PORTAVOZ_EXACT_PATH_ACCEPTED_SOURCE_COMMIT is required" >&2; exit 64)
+	python3 scripts/exact_path_baseline.py \
+		--receipts "$(PORTAVOZ_EXACT_PATH_RECEIPTS)" \
+		--scorecard "$(PORTAVOZ_EXACT_PATH_SCORECARD)" \
+		--output "$(PORTAVOZ_EXACT_PATH_BASELINE_OUTPUT)" \
+		--accept-scorecard-sha256 "$(PORTAVOZ_EXACT_PATH_ACCEPTED_SCORECARD_SHA256)" \
+		--accept-source-commit "$(PORTAVOZ_EXACT_PATH_ACCEPTED_SOURCE_COMMIT)"
 
 ## Build one Release CLI and compare segment control with speaker-turn retrieval
 ## from the same clean commit. Output is private, non-overwriting local evidence.

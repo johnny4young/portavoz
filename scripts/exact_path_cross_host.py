@@ -27,17 +27,23 @@ CROSS_HOST_CONTRACT_KEYS = {
     "requiredHostProfiles",
     "requiredOperatingSystemMajors",
 }
+SCORECARD_KEYS = {
+    "schemaVersion",
+    "kind",
+    "generatedAt",
+    "comparisonPolicyVersion",
+    "outcome",
+    "coverage",
+    "comparability",
+    "profiles",
+}
 
 
 class CrossHostError(ValueError):
     """The supplied receipts cannot form a trustworthy cross-host scorecard."""
 
 
-def read_receipts(path: Path) -> list[Any]:
-    try:
-        text = sys.stdin.read() if str(path) == "-" else path.read_text(encoding="utf-8")
-    except OSError as error:
-        raise CrossHostError("cannot read host receipt stream") from error
+def parse_receipts(text: str) -> list[Any]:
     receipts = []
     for line_number, raw_line in enumerate(text.splitlines(), start=1):
         if not raw_line.strip():
@@ -61,6 +67,14 @@ def read_receipts(path: Path) -> list[Any]:
         except host_matrix.MatrixError as error:
             raise CrossHostError(str(error)) from error
     return receipts
+
+
+def read_receipts(path: Path) -> list[Any]:
+    try:
+        text = sys.stdin.read() if str(path) == "-" else path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise CrossHostError("cannot read host receipt stream") from error
+    return parse_receipts(text)
 
 
 def load_contract(path: Path, host_contract: dict[str, Any]) -> dict[str, Any]:
@@ -285,6 +299,52 @@ def build_scorecard(
         },
         "profiles": rows,
     }
+
+
+def canonical_document(value: Any, label: str) -> str:
+    try:
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except (TypeError, ValueError) as error:
+        raise CrossHostError(f"{label} is not canonical JSON") from error
+
+
+def validate_scorecard_against_receipts(
+    raw: Any,
+    raw_receipts: list[Any],
+    cross_contract: dict[str, Any],
+    host_contract: dict[str, Any],
+    profiles: dict[str, tuple[int, int | None]],
+    label: str = "cross-host scorecard",
+) -> dict[str, Any]:
+    try:
+        scorecard = host_matrix.exact_object(raw, SCORECARD_KEYS, label)
+        generated_at = host_matrix.utc_timestamp(
+            scorecard["generatedAt"],
+            f"{label}.generatedAt",
+        )
+    except host_matrix.MatrixError as error:
+        raise CrossHostError(str(error)) from error
+    expected = build_scorecard(
+        raw_receipts,
+        cross_contract,
+        host_contract,
+        profiles,
+        generated_at=generated_at,
+    )
+    if canonical_document(scorecard, label) != canonical_document(
+        expected,
+        "recomputed cross-host scorecard",
+    ):
+        raise CrossHostError(
+            f"{label} does not exactly match its receipts and active contracts"
+        )
+    return scorecard
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -1745,9 +1745,29 @@ separate lifecycle observations, byte counts, and exact-rank agreement. The
 versioned comparison policy normalizes candidate query timing against the
 control on the same host; a zero control denominator is `not-comparable`, never
 invented as equal performance. The scorecard accepts no output destination and
-sets no cross-host performance threshold, retained baseline, engine verdict,
-product schema, writer, app composition, or user-visible authority. Accelerate
-exact remains the only serving adapter.
+sets no cross-host performance threshold, engine verdict, product schema,
+writer, app composition, or user-visible authority.
+
+Durable research evidence crosses a separate maintainer-only admission
+boundary. The tracked `exact-path-baseline-admission.json` contract accepts
+only the canonical stdout file for one passing cross-host scorecard and the
+three aggregate host receipts from which that scorecard recomputes exactly.
+The maintainer must supply both the scorecard file's lowercase SHA-256 and its
+single source commit. The active checkout must be clean at that commit before
+validation, immediately before publication, and immediately after publication;
+a final mismatch withdraws the new file.
+
+`exact_path_baseline.py` revalidates every receipt and scorecard predicate,
+canonicalizes receipts into profile order, and publishes one owner-only file
+of kind `exact-path-shadow-cross-host-research-baseline` atomically without
+replacing an existing path. Repository-local destinations must already be
+ignored. The retained envelope binds the scorecard file digest,
+canonical receipt-set digest, source commit, active review policy, and complete
+aggregate evidence. Its fixed authority is `research-comparison-only` and its
+engine decision is `not-evaluated`. Digest/source acknowledgement identifies
+the exact artifact the maintainer accepted; it is not reviewer authentication,
+a quality verdict, a numeric budget, or permission to change serving behavior.
+Accelerate exact remains the only serving adapter.
 
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and

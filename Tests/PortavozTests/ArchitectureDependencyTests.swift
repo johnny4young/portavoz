@@ -824,6 +824,51 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Cross-host exact-path tooling entered product code: \(productReferences)")
     }
 
+    func testExactPathResearchBaselineRequiresDigestBoundPrivateAdmission() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let specification = try Self.contents(of: "docs/specs/04-intelligence.md")
+        let contract = try Self.contents(
+            of: "docs/evidence/exact-path-baseline-admission.json")
+        let admission = try Self.contents(of: "scripts/exact_path_baseline.py")
+
+        XCTAssertTrue(decisions.contains("## D217"))
+        XCTAssertTrue(architecture.contains(
+            "exact-path-shadow-cross-host-research-baseline"))
+        XCTAssertTrue(specification.contains(
+            "explicit-scorecard-digest-and-source-v1"))
+        for required in [
+            #""authority": "research-comparison-only""#,
+            #""engineDecision": "not-evaluated""#,
+            #""maximumBaselineBytes": 2097152"#,
+            #""reviewPolicyVersion": "explicit-scorecard-digest-and-source-v1""#,
+        ] {
+            XCTAssertTrue(contract.contains(required), "missing \(required)")
+        }
+        for required in [
+            "cross_host.validate_scorecard_against_receipts",
+            "canonical_scorecard_file_bytes",
+            "--accept-scorecard-sha256",
+            "--accept-source-commit",
+            "source worktree must be clean for baseline retention",
+            "repository-local baseline output must be ignored",
+            "os.fchmod(descriptor, 0o600)",
+            "os.link(temporary, path)",
+            "withdraw_output(output)",
+            "research-comparison-only",
+            "not-evaluated",
+        ] {
+            XCTAssertTrue(admission.contains(required), "missing \(required)")
+        }
+
+        let productReferences = try Self.sourceMatches(
+            under: "Sources",
+            pattern: #"exact[_-]path[_-](?:baseline|research-baseline)"#)
+        XCTAssertTrue(
+            productReferences.isEmpty,
+            "Exact-path baseline admission entered product code: \(productReferences)")
+    }
+
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {
         let policy = try Self.contents(
             of: "Sources/PortavozCore/ResourceGovernorPolicy.swift")

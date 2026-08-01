@@ -206,6 +206,42 @@ class ExactPathCrossHostTests(unittest.TestCase):
                 generated_at="2026-99-01T00:00:00Z",
             )
 
+    def test_scorecard_can_be_recomputed_exactly_from_its_receipts(self):
+        receipts = self.receipts()
+        scorecard = self.scorecard(receipts)
+
+        self.assertEqual(
+            cross_host.validate_scorecard_against_receipts(
+                scorecard,
+                receipts,
+                self.contract,
+                self.host_contract,
+                self.profiles,
+            ),
+            scorecard,
+        )
+
+        scorecard["coverage"]["presentOperatingSystemMajors"][0] = 15.0
+        with self.assertRaisesRegex(cross_host.CrossHostError, "does not exactly match"):
+            cross_host.validate_scorecard_against_receipts(
+                scorecard,
+                receipts,
+                self.contract,
+                self.host_contract,
+                self.profiles,
+            )
+
+        scorecard = self.scorecard(receipts)
+        scorecard["meetingTitle"] = "private meeting"
+        with self.assertRaisesRegex(cross_host.CrossHostError, "forbidden meetingTitle"):
+            cross_host.validate_scorecard_against_receipts(
+                scorecard,
+                receipts,
+                self.contract,
+                self.host_contract,
+                self.profiles,
+            )
+
     def test_duplicate_json_keys_are_rejected_before_receipt_validation(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "receipts.jsonl"
