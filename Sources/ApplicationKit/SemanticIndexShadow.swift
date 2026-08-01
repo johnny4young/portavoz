@@ -11,6 +11,33 @@ public enum SemanticIndexShadowAdapter: String, CaseIterable, Sendable {
     case sqliteVecANNResearch
 }
 
+public enum SemanticIndexShadowOutcome: String, CaseIterable, Sendable {
+    case completed
+    case cancelled
+    case failed
+    case skippedPolicy
+    case skippedBusy
+    case skippedCapture
+
+    init(error: any Error) {
+        self = error is CancellationError ? .cancelled : .failed
+    }
+}
+
+public enum SemanticIndexShadowSkipReason: String, CaseIterable, Sendable {
+    case policy
+    case busy
+    case capture
+
+    var outcome: SemanticIndexShadowOutcome {
+        switch self {
+        case .policy: .skippedPolicy
+        case .busy: .skippedBusy
+        case .capture: .skippedCapture
+        }
+    }
+}
+
 /// One payload-free comparison emitted after a shadow candidate finishes.
 ///
 /// Result identity is reduced to aggregate agreement before this value is
@@ -18,7 +45,7 @@ public enum SemanticIndexShadowAdapter: String, CaseIterable, Sendable {
 /// error message, or filesystem location can cross the telemetry boundary.
 public struct SemanticIndexShadowEvent: Equatable, Sendable {
     public let candidate: SemanticIndexShadowAdapter
-    public let outcome: ResourceWorkloadOutcome
+    public let outcome: SemanticIndexShadowOutcome
     public let queryDimension: Int
     public let requestedLimit: Int
     public let controlResultCount: Int
@@ -51,27 +78,30 @@ public struct SemanticIndexShadowTelemetry: Sendable {
 /// can inject a manual queue. Product composition does not install this path.
 public struct SemanticIndexShadowExecutor: Sendable {
     private let submit: @Sendable (
-        @escaping @Sendable () async -> Void
+        _ operation: @escaping @Sendable () async -> Void,
+        _ skipped: @escaping @Sendable (SemanticIndexShadowSkipReason) -> Void
     ) -> Void
 
     public init(
         submit: @escaping @Sendable (
-            @escaping @Sendable () async -> Void
+            _ operation: @escaping @Sendable () async -> Void,
+            _ skipped: @escaping @Sendable (SemanticIndexShadowSkipReason) -> Void
         ) -> Void
     ) {
         self.submit = submit
     }
 
-    public static let utilityDetached = Self { operation in
+    public static let utilityDetached = Self { operation, _ in
         _ = Task.detached(priority: .utility) {
             await operation()
         }
     }
 
     func execute(
-        _ operation: @escaping @Sendable () async -> Void
+        _ operation: @escaping @Sendable () async -> Void,
+        skipped: @escaping @Sendable (SemanticIndexShadowSkipReason) -> Void
     ) {
-        submit(operation)
+        submit(operation, skipped)
     }
 }
 
@@ -127,7 +157,7 @@ public struct ShadowComparingSemanticIndex: SemanticIndexSearching {
             } catch {
                 telemetry.record(SemanticIndexShadowEvent(
                     candidate: adapter,
-                    outcome: ResourceWorkloadOutcome(error: error),
+                    outcome: SemanticIndexShadowOutcome(error: error),
                     queryDimension: query.count,
                     requestedLimit: limit,
                     controlResultCount: controlKeys.count,
@@ -138,6 +168,21 @@ public struct ShadowComparingSemanticIndex: SemanticIndexSearching {
                     controlDuration: controlDuration,
                     candidateDuration: startedAt.duration(to: .now)))
             }
+        }
+
+        func skip(_ reason: SemanticIndexShadowSkipReason) {
+            telemetry.record(SemanticIndexShadowEvent(
+                candidate: adapter,
+                outcome: reason.outcome,
+                queryDimension: query.count,
+                requestedLimit: limit,
+                controlResultCount: controlKeys.count,
+                candidateResultCount: nil,
+                overlapCount: nil,
+                sameRankCount: nil,
+                topHitAgreement: nil,
+                controlDuration: controlDuration,
+                candidateDuration: .zero))
         }
     }
 
@@ -185,6 +230,8 @@ public struct ShadowComparingSemanticIndex: SemanticIndexSearching {
 
         executor.execute {
             await work.run()
+        } skipped: { reason in
+            work.skip(reason)
         }
 
         return controlHits

@@ -6877,3 +6877,33 @@ is no evidence-disabled default that can silently spend candidate resources.
 are invariant by construction. Separating candidate scheduling and allowlisting
 event fields keeps the Strangler reversible, makes failures observational, and
 lets later adapters be measured without granting them product authority.
+
+## D208 — Admit semantic shadows as capture-safe, no-backlog maintenance (Aug 2026)
+
+**Context:** D207 makes candidate results non-serving and payload-free, but its
+explicit detached executor can still start multiple candidates, compete with a
+recording, or accumulate work outside the resource-governor boundary. Adding a
+candidate adapter before constraining admission would make resource interference
+part of the engine experiment and could harm the call-safe recording invariant.
+
+**Decision:** benchmark composition may provide
+`SemanticIndexShadowCoordinator` as the D207 executor. Every submitted candidate
+is evaluated through the existing `DurableMaintenanceGate` at `.admission` with
+the closed `.maintenance` / `.searchIndex` / `.execute` descriptor. The actor
+owns at most one active cooperative task and no backlog. Policy denial, an
+occupied flight, and capture suspension emit distinct closed skip outcomes;
+they never queue or run the candidate. Capture suspension cancels the active
+task, and resume waits for that task to settle before admitting later work.
+
+Exact control still returns immediately and remains the sole result authority.
+The coordinator carries no query, vector, citation, meeting, model, path, or raw
+error into telemetry. It has no app composition, durable receipt, package,
+schema, writer, or concrete candidate adapter. The unrestricted detached
+executor remains available only for explicit deterministic or benchmark use;
+shipping composition must not bypass governed admission if a shadow lane is
+ever enabled.
+
+**Rationale:** candidate cost must be bounded before candidate technology is
+introduced. Reusing one capture-aware maintenance gate prevents research work
+from competing with live audio, while single-flight/no-backlog behavior makes
+load deterministic and preserves the reversible exact-first Strangler seam.

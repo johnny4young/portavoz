@@ -659,7 +659,7 @@ selected. Later SEARCH-5 slices must put candidates behind this seam and retain
 exact control as the only user-visible authority until accepted quality and
 resource evidence exists.
 
-### Non-serving semantic shadow comparison (D207)
+### Non-serving semantic shadow comparison (D207-D208)
 
 `ShadowComparingSemanticIndex` is a benchmark-only decorator over the D206
 port. It waits only for the exact control, projects its citation identity to a
@@ -680,10 +680,19 @@ before candidate execution and that divergent or failed candidates remain
 non-serving. Construction requires both telemetry and executor explicitly, so a
 candidate cannot run through an accidental evidence-disabled default.
 
+`SemanticIndexShadowCoordinator` is the optional benchmark executor for the
+decorator. It evaluates every candidate at the existing durable-maintenance
+`.admission` boundary as a `.maintenance` / `.searchIndex` / `.execute`
+workload. It retains at most one active flight and no queue: policy denial,
+another active candidate, or capture suspension produces a closed payload-free
+skip outcome. Capture suspension cooperatively cancels the active candidate;
+resume waits for that flight to settle before accepting later work. Candidate
+implementations therefore remain responsible for cancellation cooperation.
+
 The default product composition still injects `AccelerateExactSemanticIndex`
-directly. The shadow wrapper has no app wiring, durable output, candidate
-package, derived schema, index writer, or resource-governor admission yet; those
-remain later SEARCH-5 research slices.
+directly. The shadow wrapper and coordinator have no app wiring, durable output,
+candidate package, derived schema, or index writer. D208 governs research work;
+it does not enable a shipping shadow lane or select an engine.
 
 ### Governed semantic embedding runtime (D165)
 

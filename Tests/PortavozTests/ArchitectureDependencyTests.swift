@@ -402,7 +402,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "struct SemanticIndexShadowEvent",
             "struct ShadowComparingSemanticIndex",
             "return controlHits",
-            "ResourceWorkloadOutcome(error: error)"
+            "SemanticIndexShadowOutcome(error: error)"
         ] {
             XCTAssertTrue(shadow.contains(required), "missing \(required)")
         }
@@ -420,6 +420,43 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift"
         ] {
             let source = try Self.contents(of: consumer)
+            XCTAssertFalse(source.contains("ShadowComparingSemanticIndex"))
+            XCTAssertTrue(source.contains("AccelerateExactSemanticIndex"))
+        }
+    }
+
+    func testSemanticShadowAdmissionIsSingleFlightCaptureSafeAndNotComposed() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains("## D208"))
+
+        let coordinator = try Self.contents(
+            of: "Sources/ApplicationKit/SemanticIndexShadowCoordinator.swift")
+        for required in [
+            "actor SemanticIndexShadowCoordinator",
+            "workloadClass: .maintenance",
+            "kind: .searchIndex",
+            "operation: .execute",
+            "phase: .admission",
+            "guard active == nil",
+            "skipped(.policy)",
+            "skipped(.busy)",
+            "skipped(.capture)",
+            "active?.task.cancel()"
+        ] {
+            XCTAssertTrue(coordinator.contains(required), "missing \(required)")
+        }
+
+        let appMatches = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"SemanticIndexShadowCoordinator|ShadowComparingSemanticIndex"#)
+        XCTAssertEqual(appMatches, [])
+
+        for consumer in [
+            "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift",
+            "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift"
+        ] {
+            let source = try Self.contents(of: consumer)
+            XCTAssertFalse(source.contains("SemanticIndexShadowCoordinator"))
             XCTAssertFalse(source.contains("ShadowComparingSemanticIndex"))
             XCTAssertTrue(source.contains("AccelerateExactSemanticIndex"))
         }

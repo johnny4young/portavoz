@@ -168,6 +168,130 @@ final class SemanticIndexTests: XCTestCase {
         XCTAssertEqual(events.values.count, 0)
     }
 
+    func testShadowCoordinatorUsesMaintenanceAdmissionAndSkipsDeniedWork() async throws {
+        let fixture = try await Self.fixture()
+        let storedHits = try await fixture.store.search("launch")
+        let controlHit = try XCTUnwrap(storedHits.first)
+        let gate = RecordingShadowMaintenanceGate(disposition: .pause)
+        let coordinator = SemanticIndexShadowCoordinator(gate: gate.gate)
+        let candidate = RecordingSemanticIndex(hits: [controlHit])
+        let events = SemanticIndexShadowEventRecorder()
+        let index = ShadowComparingSemanticIndex(
+            control: RecordingSemanticIndex(hits: [controlHit]),
+            candidate: candidate,
+            candidateAdapter: .sqliteVecExact,
+            telemetry: events.telemetry,
+            executor: coordinator.executor)
+
+        let hits = try await index.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 5)
+        await events.waitForCount(1)
+
+        XCTAssertEqual(hits.map(\.segmentID), [controlHit.segmentID])
+        let candidateRequests = await candidate.requests
+        XCTAssertEqual(candidateRequests.count, 0)
+        XCTAssertEqual(events.values.first?.outcome, .skippedPolicy)
+        XCTAssertEqual(
+            gate.requests,
+            [ShadowMaintenanceRequest(
+                descriptor: ResourceWorkloadDescriptor(
+                    workloadClass: .maintenance,
+                    kind: .searchIndex,
+                    operation: .execute),
+                phase: .admission)])
+    }
+
+    func testShadowCoordinatorKeepsOneFlightAndDropsBusyWithoutBacklog() async throws {
+        let fixture = try await Self.fixture()
+        let storedHits = try await fixture.store.search("launch")
+        let controlHit = try XCTUnwrap(storedHits.first)
+        let coordinator = SemanticIndexShadowCoordinator(
+            gate: DurableMaintenanceGate { _, _ in .proceed })
+        let candidate = ControllableShadowSemanticIndex(
+            hits: [controlHit],
+            blocksFirstCall: true)
+        let events = SemanticIndexShadowEventRecorder()
+        let index = ShadowComparingSemanticIndex(
+            control: RecordingSemanticIndex(hits: [controlHit]),
+            candidate: candidate,
+            candidateAdapter: .usearchHNSW,
+            telemetry: events.telemetry,
+            executor: coordinator.executor)
+
+        _ = try await index.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 5)
+        await candidate.waitForCallCount(1)
+        _ = try await index.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 5)
+        await events.waitForCount(1)
+
+        XCTAssertEqual(events.values.first?.outcome, .skippedBusy)
+        let callsWhileBusy = await candidate.callCount
+        XCTAssertEqual(callsWhileBusy, 1)
+
+        await candidate.releaseFirstCall()
+        await events.waitForCount(2)
+
+        let completedCalls = await candidate.callCount
+        XCTAssertEqual(completedCalls, 1)
+        XCTAssertEqual(
+            Set(events.values.map(\.outcome)),
+            [.completed, .skippedBusy])
+    }
+
+    func testShadowCoordinatorCancelsForCaptureAndRequiresResume() async throws {
+        let fixture = try await Self.fixture()
+        let storedHits = try await fixture.store.search("launch")
+        let controlHit = try XCTUnwrap(storedHits.first)
+        let coordinator = SemanticIndexShadowCoordinator(
+            gate: DurableMaintenanceGate { _, _ in .proceed })
+        let candidate = ControllableShadowSemanticIndex(
+            hits: [controlHit],
+            blocksFirstCall: true)
+        let events = SemanticIndexShadowEventRecorder()
+        let index = ShadowComparingSemanticIndex(
+            control: RecordingSemanticIndex(hits: [controlHit]),
+            candidate: candidate,
+            candidateAdapter: .coreSpotlightSemantic,
+            telemetry: events.telemetry,
+            executor: coordinator.executor)
+
+        _ = try await index.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 5)
+        await candidate.waitForCallCount(1)
+        await coordinator.suspendForCapture()
+        await events.waitForCount(1)
+        XCTAssertEqual(events.values.first?.outcome, .cancelled)
+
+        _ = try await index.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 5)
+        await events.waitForCount(2)
+        XCTAssertEqual(events.values.last?.outcome, .skippedCapture)
+        let suspendedCalls = await candidate.callCount
+        XCTAssertEqual(suspendedCalls, 1)
+
+        await coordinator.resumeAfterCapture()
+        _ = try await index.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 5)
+        await events.waitForCount(3)
+
+        let resumedCalls = await candidate.callCount
+        XCTAssertEqual(resumedCalls, 2)
+        XCTAssertEqual(events.values.last?.outcome, .completed)
+    }
+
     private static func fixture() async throws -> (
         store: MeetingStore,
         profile: SemanticEmbeddingProfile
@@ -294,7 +418,7 @@ private final class SemanticIndexShadowOperationQueue: @unchecked Sendable {
     private var operations: [Operation] = []
 
     var executor: SemanticIndexShadowExecutor {
-        SemanticIndexShadowExecutor { [weak self] operation in
+        SemanticIndexShadowExecutor { [weak self] operation, _ in
             self?.append(operation)
         }
     }
@@ -342,6 +466,104 @@ private final class SemanticIndexShadowEventRecorder: @unchecked Sendable {
     private func record(_ event: SemanticIndexShadowEvent) {
         lock.lock()
         recorded.append(event)
+        lock.unlock()
+    }
+
+    func waitForCount(_ expected: Int) async {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while values.count < expected, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+    }
+}
+
+private actor ControllableShadowSemanticIndex: SemanticIndexSearching {
+    private let hits: [SearchHit]
+    private let blocksFirstCall: Bool
+    private(set) var callCount = 0
+    private var firstContinuation: CheckedContinuation<Void, Error>?
+
+    init(hits: [SearchHit], blocksFirstCall: Bool) {
+        self.hits = hits
+        self.blocksFirstCall = blocksFirstCall
+    }
+
+    func search(
+        _ query: [Float],
+        profile: SemanticEmbeddingProfile,
+        limit: Int
+    ) async throws -> [SearchHit] {
+        callCount += 1
+        if blocksFirstCall, callCount == 1 {
+            try Task.checkCancellation()
+            try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { continuation in
+                    firstContinuation = continuation
+                    if Task.isCancelled {
+                        firstContinuation = nil
+                        continuation.resume(throwing: CancellationError())
+                    }
+                }
+            } onCancel: {
+                Task { await self.cancelFirstCall() }
+            }
+        }
+        try Task.checkCancellation()
+        return Array(hits.prefix(limit))
+    }
+
+    func waitForCallCount(_ expected: Int) async {
+        while callCount < expected {
+            await Task.yield()
+        }
+    }
+
+    func releaseFirstCall() {
+        firstContinuation?.resume()
+        firstContinuation = nil
+    }
+
+    private func cancelFirstCall() {
+        firstContinuation?.resume(throwing: CancellationError())
+        firstContinuation = nil
+    }
+}
+
+private struct ShadowMaintenanceRequest: Equatable {
+    let descriptor: ResourceWorkloadDescriptor
+    let phase: ResourceGovernorEvaluationPhase
+}
+
+private final class RecordingShadowMaintenanceGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private let disposition: DurableMaintenanceDisposition
+    private var recorded: [ShadowMaintenanceRequest] = []
+
+    init(disposition: DurableMaintenanceDisposition) {
+        self.disposition = disposition
+    }
+
+    var gate: DurableMaintenanceGate {
+        DurableMaintenanceGate { [weak self] descriptor, phase in
+            self?.record(descriptor: descriptor, phase: phase)
+            return self?.disposition ?? .pause
+        }
+    }
+
+    var requests: [ShadowMaintenanceRequest] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recorded
+    }
+
+    private func record(
+        descriptor: ResourceWorkloadDescriptor,
+        phase: ResourceGovernorEvaluationPhase
+    ) {
+        lock.lock()
+        recorded.append(ShadowMaintenanceRequest(
+            descriptor: descriptor,
+            phase: phase))
         lock.unlock()
     }
 }
