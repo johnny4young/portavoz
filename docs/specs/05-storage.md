@@ -905,3 +905,15 @@ failures use bounded future scheduling, and an expired owner is recovered on
 relaunch. The earliest pending retry or unexpired predecessor lease exposes
 one deterministic wake. There is no polling loop, second progress cursor, or
 second product indexing lane.
+
+D202 deliberately changes no StorageKit schema or query. ApplicationKit's
+candidate `RetrievalChunk` model retains ordered current segment identities,
+source metadata, a stable membership ID, and a content-sensitive fingerprint
+so turn-level retrieval policies can be benchmarked without making them
+durable. Production remains one embedding per segment in schema v18. A future
+chunk adapter must persist only rebuildable derived state, validate its
+meeting/revision/source membership atomically against current rows, and
+materialize citations from those rows rather than treating chunk text as new
+authoritative evidence. Until that adapter passes the canonical quality and
+resource gates, no chunk table, migration, maintenance cursor, or alternate
+product search lane exists.

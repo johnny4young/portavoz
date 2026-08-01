@@ -599,6 +599,32 @@ recovers the same operation and resumes only remaining rows. Terminal derived
 failure does not change meeting lifecycle or exact FTS availability, and the
 meeting-processing `.index` kind remains dormant.
 
+### Speaker-safe retrieval chunk candidate (D202)
+
+`RetrievalTurnChunker` is a pure ApplicationKit policy used to evaluate richer
+semantic context before any production-index migration. It sorts and validates
+authoritative transcript rows, rejects mixed meetings, duplicate identities,
+unknown speaker references, and invalid timelines, and emits deterministic
+`RetrievalChunk` values. Adjacent sources may coalesce only when they resolve
+to one confirmed person, one meeting-local speaker, or the local microphone.
+Unattributed remote/room rows remain separate, and no length target can merge
+different actors.
+
+Every chunk keeps ordered segment identities and exact temporal, channel,
+speaker, person, and per-source spoken-language evidence. Text receives only
+canonical Unicode and whitespace normalization; chunking never translates or
+corrects vocabulary. Stable membership identity is separate from a source
+fingerprint that covers each source's normalized text. `RetrievalChunkDelta`
+therefore retains unaffected chunks across a meeting revision while upserting
+only membership, source text, attribution, language, or timing changes. The
+revision still travels with the derived value as a future publication fence.
+
+This contract is not used by Library, Ask, the semantic maintenance owner, or
+StorageKit yet. Segment-level embeddings remain authoritative until a
+separately versioned adapter proves citation integrity, multilingual quality,
+latency, memory, disk, and incremental correction behavior against the current
+segment baseline.
+
 ### Governed semantic embedding runtime (D165)
 
 ApplicationKit exposes `SemanticEmbeddingRuntimeClient` rather than a concrete

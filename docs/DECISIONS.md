@@ -6657,3 +6657,47 @@ behavior.
 optional generation. A two-phase application contract makes progressive UX a
 presentation choice without exposing storage or model details, while one final
 evidence fence keeps generated answers and citations coherent.
+
+## D202 — Define speaker-safe retrieval chunks before changing the index (Jul 2026)
+
+**Context:** production semantic retrieval still embeds one transcript segment
+per row. That preserves exact citations and correction invalidation, but very
+short fragments can lack enough context for useful ranking. Replacing the
+storage layout first would make attribution, mixed-language fidelity,
+incremental rebuild cost, and quality regressions inseparable from a schema
+migration. A meeting-wide transcript revision alone is also too broad an
+invalidation key: correcting one word must not require re-embedding unrelated
+turns.
+
+**Decision:** ApplicationKit defines a pure, storage-independent
+`RetrievalChunk` and deterministic `speaker-turn-v1` chunker. A chunk may join
+only adjacent nonempty segments that resolve to the same confirmed person, the
+same meeting-local speaker, or the local microphone. Unattributed system and
+room segments stay isolated. A different actor always starts another chunk,
+even when joining would improve length. Append admission is bounded to 900
+normalized characters, 45 seconds, and a 2.5-second gap; an oversized
+authoritative source remains indivisible rather than fabricating subsegment
+citations.
+
+Each chunk carries ordered source segment IDs, timestamps, channel,
+meeting-local speaker IDs, confirmed person IDs, and normalized per-source
+spoken-language tags. Spoken text is Unicode/whitespace normalized only; it is
+never translated or vocabulary-corrected by chunking. Chunk identity depends
+on meeting, chunker version, and ordered source membership. A separate source
+fingerprint includes each source's normalized text plus attribution, language,
+and timing, so moving words between unchanged source IDs is still a change.
+The transcript revision is retained as a publication fence but excluded from
+identity and rebuild admission, so a revision increment retains unaffected
+chunks while a correction republishes only overlapping evidence.
+
+This slice adds no table, vector, query adapter, product write, or UI behavior.
+The schema-v18 segment vectors remain the production default. Any persistence
+or retrieval adapter for chunks must resolve every selected chunk back to its
+current ordered source rows, run through the canonical multilingual quality
+pack and resource matrix under a distinct adapter identity, and match or beat
+segment retrieval before selection.
+
+**Rationale:** source-safe context must be proven before it becomes durable.
+A pure deterministic boundary lets competing chunk policies share one exact
+provenance model, makes selective correction invalidation testable, and keeps
+the current local-first search fully available while evidence is collected.
