@@ -36,10 +36,17 @@ class UITestScopeTests(unittest.TestCase):
         self.assertFalse(selection.required)
 
     def test_audio_view_selects_only_audio_detail_evidence(self):
-        selection = select_paths(["Sources/portavoz-app/MeetingPlayerBar.swift"])
-        self.assertEqual(selection.locales, ("en",))
-        self.assertEqual(selection.tests, FEATURE_TESTS["meeting-audio"])
-        self.assertTrue(all("MeetingDetailUITests" in test for test in selection.tests))
+        for path in (
+            "Sources/portavoz-app/MeetingPlayerBar.swift",
+            "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertEqual(selection.tests, FEATURE_TESTS["meeting-audio"], path)
+            self.assertTrue(
+                all("MeetingDetailUITests" in test for test in selection.tests),
+                path,
+            )
 
     def test_localization_selects_bilingual_canaries_at_the_real_catalog_path(self):
         selection = select_paths(["Resources/Localization/Portavoz/Localizable.xcstrings"])

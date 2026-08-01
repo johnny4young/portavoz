@@ -684,6 +684,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             play.waitForExistence(timeout: 10),
             "the player transport must render for a meeting that has audio")
         XCTAssertTrue(
+            app.control(withIdentifier: "detail-player-section").exists,
+            "the complete playback dock must retain one accessible section boundary")
+        XCTAssertTrue(
             app.control(withIdentifier: "player-only-my-voice").exists,
             "the player must offer the 'only my voice' filter")
         XCTAssertTrue(

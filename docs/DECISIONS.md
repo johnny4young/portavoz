@@ -7563,3 +7563,34 @@ from disagreeing, while indexed playback work keeps synchronization cost
 bounded for long meetings. Explicit values/actions preserve the D223 scene as
 the route owner and make correction policy independently testable before any
 editable overlay is introduced.
+
+## D226 — Compose Meeting Detail playback through one explicit section (Aug 2026)
+
+**Context:** D225 extracted transcript reading and navigation, but the Meeting
+Detail coordinator still rendered the complete docked player and audio-
+compression status inline. That left transport, waveform, clip export, clear
+playback, voice-only playback, and compression presentation split across the
+route coordinator and `MeetingPlayerBar`, making the playback boundary harder
+to review and narrowly test.
+
+**Decision:** extract `MeetingDetailPlayerSection` as the complete docked
+playback presentation boundary. It receives only the current playback session,
+immutable waveform buckets, compression capability/progress/message values,
+and explicit clip-export and compression actions. Playback preparation,
+compression, file re-resolution, pending seeks, and route lifetime remain in
+the model and application workflow; the section imports neither
+`AudioPlaybackKit` nor storage and owns no local state. `MeetingPlayerBar`
+continues to own only focused player interaction state and the native save
+panel needed for clip export.
+
+Give the section one accessibility-contained root without masking its existing
+nested controls. Map changes to this boundary only to the four playback and
+clip journeys. Expand the reviewed interaction boundary to 268 signals across
+seventeen source files while retaining the same 23 UI journeys and ten feature
+owners.
+
+**Rationale:** one explicit playback section makes the visual and interaction
+boundary auditable without moving audio policy into SwiftUI. Immutable values
+and narrow intents preserve the scene/model/application ownership chain, while
+focused UI-test selection protects released playback behavior without running
+unrelated Meeting Detail journeys.

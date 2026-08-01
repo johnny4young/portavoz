@@ -24,6 +24,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
     "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+    "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
     "Sources/portavoz-app/MeetingDetailScene.swift",
     "Sources/portavoz-app/MeetingDetailTrustSection.swift",
     "Sources/portavoz-app/MeetingDetailView.swift",
@@ -175,6 +176,10 @@ DEFAULT_FEATURE_OWNERSHIP = (
             "testPlayerExposesSkipAndOnlyMyVoice",
         ],
         "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
+                "anchor": '"detail-player-section"',
+            },
             {
                 "path": "Sources/portavoz-app/MeetingPlayerBar.swift",
                 "anchor": '"player-play-pause"',

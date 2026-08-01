@@ -244,7 +244,23 @@ extension MeetingDetailView {
                                 newName = speaker.displayName ?? ""
                             }))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    playerDock
+                    MeetingDetailPlayerSection(
+                        values: MeetingDetailPlayerValues(
+                            player: player,
+                            waveform: waveform,
+                            canCompressAudio: canCompressAudio,
+                            isCompressingAudio: model.state.isCompressingAudio,
+                            compressionMessage: model.state.audioCompressionMessage),
+                        actions: MeetingDetailPlayerActions(
+                            exportClip: { range, destination in
+                                let effect = await model.send(
+                                    .exportAudioClip(range, to: destination))
+                                guard case .operationFailed(let message) = effect else {
+                                    return nil
+                                }
+                                return message
+                            },
+                            compressAudio: compressAudio))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 detailRail(detail, transcript: transcript)
@@ -262,24 +278,6 @@ extension MeetingDetailView {
             baseTranscriptRevision: detail.meeting.transcriptRevision,
             segments: detail.segments,
             chapterTitles: model.state.chapterTitles)
-    }
-
-    /// The audio player, docked at the bottom of the transcript column so it
-    /// stays put while you read.
-    @ViewBuilder
-    private var playerDock: some View {
-        if let player {
-            Divider()
-            MeetingPlayerBar(
-                player: player,
-                waveform: waveform,
-                exportClip: { range, destination in
-                    let effect = await model.send(.exportAudioClip(range, to: destination))
-                    guard case .operationFailed(let message) = effect else { return nil }
-                    return message
-                })
-            compressRow
-        }
     }
 
     /// The right rail: processing recovery + privacy receipt + meeting health + ✦ chapters +
@@ -353,36 +351,6 @@ extension MeetingDetailView {
                 Label("Generate summary", systemImage: "sparkles")
             }
             .accessibilityIdentifier("detail-generate-summary")
-        }
-    }
-
-    @ViewBuilder
-    private var compressRow: some View {
-        if canCompressAudio
-            || model.state.isCompressingAudio
-            || model.state.audioCompressionMessage != nil {
-            HStack(spacing: 8) {
-                Button(action: compressAudio) {
-                    if model.state.isCompressingAudio {
-                        HStack(spacing: 6) {
-                            ProgressView().controlSize(.small)
-                            Text("Compressing…")
-                        }
-                    } else {
-                        Label("Compress audio (AAC)", systemImage: "arrow.down.circle")
-                    }
-                }
-                .controlSize(.small)
-                .accessibilityIdentifier("detail-compress-audio")
-                .disabled(!canCompressAudio)
-                .help("Converts audio to AAC to save disk space, with no audible loss for speech")
-                if let compressMessage = model.state.audioCompressionMessage {
-                    Text(compressMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
         }
     }
 

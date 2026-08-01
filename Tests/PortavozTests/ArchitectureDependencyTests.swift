@@ -3684,6 +3684,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/MeetingDetailView.swift")
         let playerBar = try Self.contents(
             of: "Sources/portavoz-app/MeetingPlayerBar.swift")
+        let playerSection = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailPlayerSection.swift")
         let transcript = try Self.contents(
             of: "Sources/portavoz-app/TranscriptSegmentsView.swift")
 
@@ -3705,9 +3707,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(view.contains(".task(id: playbackTaskID)"))
         XCTAssertTrue(view.contains("model.send(.loadPlayback)"))
         XCTAssertTrue(view.contains("model.send(.compressAudio)"))
+        XCTAssertTrue(view.contains("MeetingDetailPlayerSection("))
         XCTAssertTrue(playerBar.contains("await exportClip(range, url)"))
 
-        let presentationSources = [view, playerBar, transcript]
+        let presentationSources = [view, playerSection, playerBar, transcript]
         for source in presentationSources {
             XCTAssertFalse(source.contains("import AudioPlaybackKit"))
         }
@@ -4431,6 +4434,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/MeetingDetailTrustSection.swift")
         let transcript = try Self.contents(
             of: "Sources/portavoz-app/MeetingTranscriptSection.swift")
+        let player = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailPlayerSection.swift")
         let focusedTranscript = try Self.contents(
             of: "Sources/portavoz-app/FocusedTranscriptView.swift")
         let documentPresentation = try Self.contents(
@@ -4443,6 +4448,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(view.contains("MeetingDetailTrustSection("))
         XCTAssertTrue(view.contains("MeetingTranscriptSection("))
         XCTAssertTrue(view.contains("MeetingTranscriptChaptersSection("))
+        XCTAssertTrue(view.contains("MeetingDetailPlayerSection("))
         XCTAssertFalse(view.contains("private func header("))
         XCTAssertFalse(view.contains("private func speakersRow("))
         XCTAssertFalse(view.contains("private func summarySection("))
@@ -4450,6 +4456,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("private func transcriptArea("))
         XCTAssertFalse(view.contains("private func transcriptLines("))
         XCTAssertFalse(view.contains("private func chaptersSection("))
+        XCTAssertFalse(view.contains("private var playerDock"))
+        XCTAssertFalse(view.contains("private var compressRow"))
         XCTAssertLessThanOrEqual(
             view.components(separatedBy: .newlines).count,
             1_680,
@@ -4459,7 +4467,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             ("header", header),
             ("generated document", generatedDocument),
             ("trust", trust),
-            ("transcript", transcript)
+            ("transcript", transcript),
+            ("player", player)
         ] {
             XCTAssertTrue(source.contains("Values"), name)
             XCTAssertTrue(source.contains("Actions"), name)
@@ -4483,6 +4492,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(transcript.contains("struct MeetingTranscriptActions"))
         XCTAssertTrue(transcript.contains("MeetingTranscriptContent"))
         XCTAssertFalse(transcript.contains("ChapterExtractor"))
+        XCTAssertTrue(player.contains("struct MeetingDetailPlayerValues"))
+        XCTAssertTrue(player.contains("struct MeetingDetailPlayerActions"))
+        XCTAssertTrue(player.contains("MeetingPlayerBar("))
+        XCTAssertFalse(player.contains("@State"))
 
         XCTAssertEqual(
             transcriptContent.components(separatedBy: .newlines)
@@ -5436,7 +5449,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            267)
+            268)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             10)
