@@ -391,6 +391,40 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testSemanticShadowCannotServeCandidateOrEmitPayloadFields() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains("## D207"))
+
+        let shadow = try Self.contents(
+            of: "Sources/ApplicationKit/SemanticIndexShadow.swift")
+        for required in [
+            "enum SemanticIndexShadowAdapter",
+            "struct SemanticIndexShadowEvent",
+            "struct ShadowComparingSemanticIndex",
+            "return controlHits",
+            "ResourceWorkloadOutcome(error: error)"
+        ] {
+            XCTAssertTrue(shadow.contains(required), "missing \(required)")
+        }
+        XCTAssertFalse(shadow.contains("return candidateHits"))
+        for forbidden in [
+            "public let meetingID", "public let segmentID", "public let text",
+            "public let query:", "public let queryVector", "public let errorMessage",
+            "public let modelIdentifier"
+        ] {
+            XCTAssertFalse(shadow.contains(forbidden), "payload field leaked: \(forbidden)")
+        }
+
+        for consumer in [
+            "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift",
+            "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift"
+        ] {
+            let source = try Self.contents(of: consumer)
+            XCTAssertFalse(source.contains("ShadowComparingSemanticIndex"))
+            XCTAssertTrue(source.contains("AccelerateExactSemanticIndex"))
+        }
+    }
+
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {
         let policy = try Self.contents(
             of: "Sources/PortavozCore/ResourceGovernorPolicy.swift")

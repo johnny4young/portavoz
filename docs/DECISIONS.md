@@ -6847,3 +6847,33 @@ to compare without changing the safe exact-first product. Retaining the current
 adapter as the default creates a reversible Strangler seam and prevents a
 research engine from spreading into retrieval consumers or the durable writer
 before quality, resource, lifecycle, licensing, and packaging gates pass.
+
+## D207 — Shadow candidates never serve results or carry payload telemetry (Aug 2026)
+
+**Context:** D206 isolates semantic queries, but an adapter seam alone does not
+make a safe bake-off. Awaiting a candidate would add its latency to Ask;
+returning candidate hits would silently change product quality; logging queries,
+citations, model errors, or identifiers would violate the local-first evidence
+contract. A control failure also leaves no valid baseline for comparison.
+
+**Decision:** ApplicationKit provides a benchmark-only
+`ShadowComparingSemanticIndex`. It executes the exact control first and returns
+those hits without awaiting an explicitly injected candidate task. Candidate
+success, failure, or cancellation cannot change the returned value or throw into
+the control path. A control failure is propagated and schedules no candidate.
+Ask and Library continue to compose `AccelerateExactSemanticIndex` directly.
+
+Before telemetry emission, the wrapper reduces control and candidate hits to
+private segment/revision keys and emits only aggregate count, overlap,
+same-rank, optional top-hit agreement, closed outcome, vector dimension, limit,
+and duration fields. Candidate identity is a closed research-family enum. The
+event has no query, vector, meeting/citation identifier, title, transcript text,
+model identifier, path, or raw error field. No durable receipt, candidate
+dependency, index schema/writer, or app composition is introduced by this
+slice. Both telemetry and executor are mandatory constructor arguments; there
+is no evidence-disabled default that can silently spend candidate resources.
+
+**Rationale:** shadow evidence is useful only when control behavior and privacy
+are invariant by construction. Separating candidate scheduling and allowlisting
+event fields keeps the Strangler reversible, makes failures observational, and
+lets later adapters be measured without granting them product authority.

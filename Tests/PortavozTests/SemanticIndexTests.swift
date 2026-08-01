@@ -66,6 +66,108 @@ final class SemanticIndexTests: XCTestCase {
         XCTAssertEqual(requests.first?.limit, 7)
     }
 
+    func testShadowReturnsControlBeforeCandidateAndEmitsAggregateAgreement() async throws {
+        let fixture = try await Self.fixture()
+        let storedControlHits = try await fixture.store.search("launch")
+        let storedCandidateHits = try await fixture.store.search("archive")
+        let controlHit = try XCTUnwrap(storedControlHits.first)
+        let candidateHit = try XCTUnwrap(storedCandidateHits.first)
+        let control = RecordingSemanticIndex(hits: [controlHit])
+        let candidate = RecordingSemanticIndex(hits: [candidateHit])
+        let operations = SemanticIndexShadowOperationQueue()
+        let events = SemanticIndexShadowEventRecorder()
+        let index = ShadowComparingSemanticIndex(
+            control: control,
+            candidate: candidate,
+            candidateAdapter: .sqliteVecExact,
+            telemetry: events.telemetry,
+            executor: operations.executor)
+
+        let hits = try await index.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 4)
+
+        XCTAssertEqual(hits.map(\.segmentID), [controlHit.segmentID])
+        let requestsBeforeShadow = await candidate.requests
+        XCTAssertEqual(requestsBeforeShadow.count, 0)
+        XCTAssertEqual(events.values.count, 0)
+        XCTAssertEqual(operations.count, 1)
+
+        await operations.runNext()
+
+        let requestsAfterShadow = await candidate.requests
+        XCTAssertEqual(requestsAfterShadow.first?.query, [1, 0])
+        XCTAssertEqual(events.values.count, 1)
+        let event = try XCTUnwrap(events.values.first)
+        XCTAssertEqual(event.candidate, .sqliteVecExact)
+        XCTAssertEqual(event.outcome, .completed)
+        XCTAssertEqual(event.queryDimension, 2)
+        XCTAssertEqual(event.requestedLimit, 4)
+        XCTAssertEqual(event.controlResultCount, 1)
+        XCTAssertEqual(event.candidateResultCount, 1)
+        XCTAssertEqual(event.overlapCount, 0)
+        XCTAssertEqual(event.sameRankCount, 0)
+        XCTAssertEqual(event.topHitAgreement, false)
+    }
+
+    func testShadowCandidateFailureCannotReplaceOrFailControl() async throws {
+        let fixture = try await Self.fixture()
+        let storedControlHits = try await fixture.store.search("launch")
+        let controlHit = try XCTUnwrap(storedControlHits.first)
+        let operations = SemanticIndexShadowOperationQueue()
+        let events = SemanticIndexShadowEventRecorder()
+        let index = ShadowComparingSemanticIndex(
+            control: RecordingSemanticIndex(hits: [controlHit]),
+            candidate: FailingSemanticIndex(),
+            candidateAdapter: .coreSpotlightSemantic,
+            telemetry: events.telemetry,
+            executor: operations.executor)
+
+        let hits = try await index.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 3)
+        await operations.runNext()
+
+        XCTAssertEqual(hits.map(\.segmentID), [controlHit.segmentID])
+        let event = try XCTUnwrap(events.values.first)
+        XCTAssertEqual(event.outcome, .failed)
+        XCTAssertEqual(event.controlResultCount, 1)
+        XCTAssertNil(event.candidateResultCount)
+        XCTAssertNil(event.overlapCount)
+        XCTAssertNil(event.sameRankCount)
+        XCTAssertNil(event.topHitAgreement)
+    }
+
+    func testShadowDoesNotScheduleCandidateWhenControlFails() async throws {
+        let fixture = try await Self.fixture()
+        let operations = SemanticIndexShadowOperationQueue()
+        let events = SemanticIndexShadowEventRecorder()
+        let candidate = RecordingSemanticIndex(hits: [])
+        let index = ShadowComparingSemanticIndex(
+            control: FailingSemanticIndex(),
+            candidate: candidate,
+            candidateAdapter: .usearchHNSW,
+            telemetry: events.telemetry,
+            executor: operations.executor)
+
+        do {
+            _ = try await index.search(
+                [1, 0],
+                profile: fixture.profile,
+                limit: 3)
+            XCTFail("a failed exact control must remain authoritative")
+        } catch SemanticIndexShadowTestError.unavailable {
+            // Expected: there is no control result against which to compare.
+        }
+
+        let candidateRequests = await candidate.requests
+        XCTAssertEqual(candidateRequests.count, 0)
+        XCTAssertEqual(operations.count, 0)
+        XCTAssertEqual(events.values.count, 0)
+    }
+
     private static func fixture() async throws -> (
         store: MeetingStore,
         profile: SemanticEmbeddingProfile
@@ -169,4 +271,77 @@ private struct SemanticIndexEmbedder: SemanticTextEmbedding {
 
 private struct NoAskQueryExpansion: AskQueryExpanding {
     func expand(_ question: String) -> [String] { [] }
+}
+
+private struct FailingSemanticIndex: SemanticIndexSearching {
+    func search(
+        _ query: [Float],
+        profile: SemanticEmbeddingProfile,
+        limit: Int
+    ) async throws -> [SearchHit] {
+        throw SemanticIndexShadowTestError.unavailable
+    }
+}
+
+private enum SemanticIndexShadowTestError: Error {
+    case unavailable
+}
+
+private final class SemanticIndexShadowOperationQueue: @unchecked Sendable {
+    private typealias Operation = @Sendable () async -> Void
+
+    private let lock = NSLock()
+    private var operations: [Operation] = []
+
+    var executor: SemanticIndexShadowExecutor {
+        SemanticIndexShadowExecutor { [weak self] operation in
+            self?.append(operation)
+        }
+    }
+
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return operations.count
+    }
+
+    func runNext() async {
+        let operation = takeNext()
+        await operation?()
+    }
+
+    private func takeNext() -> Operation? {
+        lock.lock()
+        defer { lock.unlock() }
+        return operations.isEmpty ? nil : operations.removeFirst()
+    }
+
+    private func append(_ operation: @escaping Operation) {
+        lock.lock()
+        operations.append(operation)
+        lock.unlock()
+    }
+}
+
+private final class SemanticIndexShadowEventRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [SemanticIndexShadowEvent] = []
+
+    var telemetry: SemanticIndexShadowTelemetry {
+        SemanticIndexShadowTelemetry { [weak self] event in
+            self?.record(event)
+        }
+    }
+
+    var values: [SemanticIndexShadowEvent] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recorded
+    }
+
+    private func record(_ event: SemanticIndexShadowEvent) {
+        lock.lock()
+        recorded.append(event)
+        lock.unlock()
+    }
 }

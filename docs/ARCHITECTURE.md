@@ -1609,6 +1609,20 @@ maintenance, storage schema, asset policy, and UI behavior are unchanged. This
 is the Strangler seam for later shadow candidates; it does not authorize a
 second product writer, serve candidate results, or select another engine.
 
+The first shadow boundary is also implemented without changing composition.
+`ShadowComparingSemanticIndex` obtains the authoritative exact result first,
+launches one explicitly injected research candidate without awaiting it, and
+always returns the control result. Its telemetry reduces current citation
+identity to aggregate count, overlap, same-rank, top-hit, outcome, dimension,
+limit, and duration fields before emission. The closed adapter vocabulary and
+event schema cannot carry queries, vectors, meeting or segment identifiers,
+titles, transcript text, model names, paths, or raw errors. Construction
+requires an explicit telemetry receiver and executor; there is no inert
+accidental mode. Candidate failures
+and cancellation are observations only; a control failure schedules no shadow
+work. Neither Ask nor Library composes this wrapper, and no candidate package,
+schema, index writer, or production scheduler exists yet.
+
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and
 capture returning inactive are wake signals. Bursts collapse to at most one
