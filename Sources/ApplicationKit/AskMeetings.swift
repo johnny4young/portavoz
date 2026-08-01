@@ -72,6 +72,29 @@ public struct AskMeetingAnswer: Equatable, Sendable {
     }
 }
 
+/// Progressive evidence ownership for presentation surfaces. Lexical evidence
+/// may render immediately; fused evidence is the immutable set used by answer
+/// generation.
+public enum AskEvidencePhase: String, Equatable, Sendable {
+    case lexical
+    case fused
+}
+
+public struct AskEvidenceUpdate: Equatable, Sendable {
+    public let phase: AskEvidencePhase
+    public let citations: [AskCitation]
+
+    public init(
+        phase: AskEvidencePhase,
+        citations: [AskCitation]
+    ) {
+        self.phase = phase
+        self.citations = citations
+    }
+}
+
+public typealias AskEvidenceReceiver = @Sendable (AskEvidenceUpdate) async -> Void
+
 /// Retrieval is an internal capability of the application workflow. Real
 /// composition uses the hybrid local adapter; tests can inject deterministic
 /// evidence without downloading model assets.
@@ -88,6 +111,12 @@ public protocol AskMeetingRetrieving: Sendable {
         question: String,
         limit: Int,
         trace: AskPipelineTrace
+    ) async throws -> [AskCitation]
+    func retrieve(
+        question: String,
+        limit: Int,
+        trace: AskPipelineTrace,
+        onEvidence: @escaping AskEvidenceReceiver
     ) async throws -> [AskCitation]
 }
 
@@ -106,6 +135,22 @@ public extension AskMeetingRetrieving {
         trace _: AskPipelineTrace
     ) async throws -> [AskCitation] {
         try await retrieve(question: question, limit: limit)
+    }
+
+    func retrieve(
+        question: String,
+        limit: Int,
+        trace: AskPipelineTrace,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> [AskCitation] {
+        let citations = try await retrieve(
+            question: question,
+            limit: limit,
+            trace: trace)
+        await onEvidence(AskEvidenceUpdate(
+            phase: .fused,
+            citations: citations))
+        return citations
     }
 }
 
@@ -214,6 +259,17 @@ public struct AskMeetings: ApplicationUseCase {
         _ question: String,
         limit: Int = 6
     ) async throws -> AskMeetingAnswer {
+        try await answer(
+            question,
+            limit: limit,
+            onEvidence: { _ in })
+    }
+
+    public func answer(
+        _ question: String,
+        limit: Int = 6,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> AskMeetingAnswer {
         let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, limit > 0 else {
             return AskMeetingAnswer(
@@ -222,10 +278,17 @@ public struct AskMeetings: ApplicationUseCase {
                 citations: [])
         }
         return try await telemetry.measure(.answer) { trace in
+            let milestone = AskFirstEvidenceMilestone()
             let citations = try await retrieval.retrieve(
                 question: question,
                 limit: limit,
-                trace: trace)
+                trace: trace,
+                onEvidence: { update in
+                    await milestone.reachIfNeeded(
+                        for: update.citations,
+                        trace: trace)
+                    await onEvidence(update)
+                })
             try Task.checkCancellation()
             guard !citations.isEmpty else {
                 return AskMeetingAnswer(
@@ -233,7 +296,7 @@ public struct AskMeetings: ApplicationUseCase {
                     generatedText: nil,
                     citations: [])
             }
-            trace.reach(.firstEvidence)
+            await milestone.reachIfNeeded(for: citations, trace: trace)
             let generatedText: String?
             do {
                 generatedText = try await answering.answer(
@@ -255,6 +318,19 @@ public struct AskMeetings: ApplicationUseCase {
                 generatedText: generatedText,
                 citations: citations)
         }
+    }
+}
+
+private actor AskFirstEvidenceMilestone {
+    private var didReach = false
+
+    func reachIfNeeded(
+        for citations: [AskCitation],
+        trace: AskPipelineTrace
+    ) {
+        guard !didReach, !citations.isEmpty else { return }
+        didReach = true
+        trace.reach(.firstEvidence)
     }
 }
 

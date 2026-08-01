@@ -130,7 +130,7 @@ final class AskPipelineTelemetryTests: XCTestCase {
         XCTAssertEqual(recorder.events, [])
     }
 
-    func testLocalAnswerEmitsEveryImplementedStageInExecutionOrder() async throws {
+    func testLocalAnswerEmitsEveryImplementedStageWithProgressiveOrdering() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Planning", startedAt: Date())
         let segment = TranscriptSegment(
@@ -167,15 +167,24 @@ final class AskPipelineTelemetryTests: XCTestCase {
             guard case .stageStarted(let span) = event else { return nil }
             return span.stage
         }
-        XCTAssertEqual(startedStages, [
-            .expansion,
-            .lexicalQuery,
-            .corpusReadiness,
-            .queryEmbedding,
-            .semanticScan,
-            .fusion,
-            .citationFetch,
-        ])
+        XCTAssertEqual(startedStages.first, .expansion)
+        XCTAssertEqual(startedStages.count, AskPipelineStage.allCases.count)
+        XCTAssertEqual(Set(startedStages), Set(AskPipelineStage.allCases))
+        let events = recorder.events
+        let evidenceIndex = try XCTUnwrap(events.firstIndex { event in
+            guard case .reached(_, .firstEvidence) = event else { return false }
+            return true
+        })
+        let lexicalFinishedIndex = try XCTUnwrap(events.firstIndex { event in
+            guard case .stageFinished(let span, .completed) = event else { return false }
+            return span.stage == .lexicalQuery
+        })
+        let fusionStartedIndex = try XCTUnwrap(events.firstIndex { event in
+            guard case .stageStarted(let span) = event else { return false }
+            return span.stage == .fusion
+        })
+        XCTAssertGreaterThan(evidenceIndex, lexicalFinishedIndex)
+        XCTAssertLessThan(evidenceIndex, fusionStartedIndex)
         XCTAssertEqual(
             recorder.events.compactMap { event -> AskPipelineMilestone? in
                 guard case .reached(_, let milestone) = event else { return nil }
@@ -186,6 +195,105 @@ final class AskPipelineTelemetryTests: XCTestCase {
             return XCTFail("Expected a completed Ask trace")
         }
         XCTAssertEqual(outcome, .completed)
+    }
+
+    func testExactBilingualEvidenceSkipsGenerativeExpansion() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "El presupuesto se revisa el viernes",
+            startTime: 4,
+            endTime: 8,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([segment])
+        let expander = CountingAskQueryExpander(expansion: ["budget", "apollo"])
+        let retrieval = LocalAskMeetingRetrieval(
+            store: store,
+            queryExpander: expander,
+            runtime: UnavailableSemanticRuntime())
+
+        let citations = try await retrieval.retrieve(
+            question: "budget",
+            limit: 6)
+        let expansionCalls = await expander.callCount
+
+        XCTAssertEqual(citations.map(\.segmentID), [segment.id])
+        XCTAssertEqual(expansionCalls, 0)
+    }
+
+    func testGenerativeExpansionRunsOnlyAfterDeterministicEvidenceIsEmpty() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "The Apollo launch remains scheduled for Friday",
+            startTime: 4,
+            endTime: 8,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([segment])
+        let expander = CountingAskQueryExpander(
+            expansion: ["frobnicate", "apollo"])
+        let retrieval = LocalAskMeetingRetrieval(
+            store: store,
+            queryExpander: expander,
+            runtime: UnavailableSemanticRuntime())
+
+        let citations = try await retrieval.retrieve(
+            question: "frobnicate",
+            limit: 6)
+        let expansionCalls = await expander.callCount
+
+        XCTAssertEqual(citations.map(\.segmentID), [segment.id])
+        XCTAssertEqual(expansionCalls, 1)
+    }
+
+    func testLexicalEvidencePublishesWhileSemanticAugmentationIsStillRunning() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Planning", startedAt: Date())
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "budget rollout remains scheduled for Friday",
+            startTime: 4,
+            endTime: 8,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([segment])
+        let gate = SemanticRuntimeGate()
+        let updates = AskEvidenceUpdateRecorder()
+        let retrieval = LocalAskMeetingRetrieval(
+            store: store,
+            queryExpander: FixedAskQueryExpander(),
+            runtime: BlockingSemanticRuntime(gate: gate))
+
+        let task = Task {
+            try await AskPipelineTelemetry.disabled.measure(.answer) { trace in
+                try await retrieval.retrieve(
+                    question: "budget rollout",
+                    limit: 6,
+                    trace: trace,
+                    onEvidence: { update in
+                        await updates.receive(update)
+                    })
+            }
+        }
+        await gate.waitUntilEntered()
+        await updates.waitForCount(1)
+        let lexicalUpdates = await updates.values
+
+        XCTAssertEqual(lexicalUpdates.first?.phase, .lexical)
+        XCTAssertEqual(lexicalUpdates.first?.citations.map(\.segmentID), [segment.id])
+
+        await gate.release()
+        let citations = try await task.value
+        let finalUpdates = await updates.values
+        XCTAssertEqual(citations.map(\.segmentID), [segment.id])
+        XCTAssertEqual(finalUpdates.last?.phase, .fused)
     }
 
     func testColdSemanticAssetsPreserveLexicalEvidenceWithoutPreparingRuntime() async throws {
@@ -329,6 +437,60 @@ private struct FixedAskQueryExpander: AskQueryExpanding {
     }
 }
 
+private actor CountingAskQueryExpander: AskQueryExpanding {
+    let expansion: [String]
+    private(set) var callCount = 0
+
+    init(expansion: [String]) {
+        self.expansion = expansion
+    }
+
+    func expand(_ question: String) -> [String] {
+        callCount += 1
+        return expansion.isEmpty ? [question] : expansion
+    }
+}
+
+private actor AskEvidenceUpdateRecorder {
+    private(set) var values: [AskEvidenceUpdate] = []
+
+    func receive(_ update: AskEvidenceUpdate) {
+        values.append(update)
+    }
+
+    func waitForCount(_ count: Int) async {
+        while values.count < count {
+            await Task.yield()
+        }
+    }
+}
+
+private actor SemanticRuntimeGate {
+    private var didEnter = false
+    private var isReleased = false
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func wait() async {
+        didEnter = true
+        guard !isReleased else { return }
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func waitUntilEntered() async {
+        while !didEnter {
+            await Task.yield()
+        }
+    }
+
+    func release() {
+        isReleased = true
+        continuation?.resume()
+        continuation = nil
+    }
+}
+
 private struct FixedAskAnswerer: AskMeetingAnswering {
     func answer(
         question _: String,
@@ -389,6 +551,24 @@ private struct FixedSemanticRuntime: SemanticEmbeddingRuntimeClient {
         ) async throws -> Result
     ) async throws -> Result {
         try await operation(FixedSemanticEmbedding())
+    }
+}
+
+private struct BlockingSemanticRuntime: SemanticEmbeddingRuntimeClient {
+    let gate: SemanticRuntimeGate
+
+    var hasAvailableAssets: Bool { get async { true } }
+
+    func prepare(allowAssetDownload _: Bool) async throws {}
+
+    func withPreparedEmbedding<Result: Sendable>(
+        allowAssetDownload _: Bool,
+        operation: @Sendable (
+            _ embedder: any SemanticTextEmbedding
+        ) async throws -> Result
+    ) async throws -> Result {
+        await gate.wait()
+        return try await operation(FixedSemanticEmbedding())
     }
 }
 

@@ -6619,3 +6619,41 @@ content, or activates `processingJob.index`.
 boundaries. A small independent lease envelope makes process death and bounded
 retry deterministic, while the existing row cursor remains the exact,
 idempotent proof of completed derived work.
+
+## D201 — Publish exact Ask evidence before generation (Jul 2026)
+
+**Context:** D196–D200 separated product queries from corpus maintenance, but
+Ask still invoked optional Foundation Models query expansion before exact FTS.
+A cold or busy local model could therefore delay evidence that SQLite already
+had, while the full Ask surface exposed only one undifferentiated spinner.
+Sequential lexical and semantic work also made semantic readiness part of the
+exact-result critical path.
+
+**Decision:** `AskMeetings` owns a storage-independent progressive evidence
+contract with `lexical` and `fused` phases while preserving its existing final
+answer API for CLI, MCP, the command palette, and meeting preparation. The
+local adapter first applies the deterministic bounded English/Spanish lexicon,
+then starts exact FTS and optional published-vector augmentation concurrently.
+Exact citations cross the application boundary as soon as FTS finishes. The
+bounded reciprocal-rank-fused set is immutable before answer generation begins
+and is the only evidence supplied to the answer model.
+
+Foundation Models query expansion is no longer on the first-evidence path. It
+runs only when deterministic bilingual lexical retrieval plus available
+semantic retrieval found no citation, admits at most three new normalized
+variants, and never downloads an asset. That late fallback remains inside the
+operation's total duration but does not emit a duplicate primary expansion
+stage; adding dedicated fallback-stage timing requires a separately versioned
+telemetry receipt. Ordinary semantic or generation failure still preserves
+exact evidence, while cancellation propagates through every concurrent task.
+
+The macOS full Ask model presents distinct finding, semantic-refinement, and
+answer-generation states, exposes early citations, and fences every update by
+the request generation. Cancel or navigation removes pending state and rejects
+late evidence or completion. Other consumers retain their final-result
+behavior.
+
+**Rationale:** local evidence should feel instantaneous and must not depend on
+optional generation. A two-phase application contract makes progressive UX a
+presentation choice without exposing storage or model details, while one final
+evidence fence keeps generated answers and citations coherent.

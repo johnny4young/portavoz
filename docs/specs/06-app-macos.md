@@ -18,6 +18,8 @@ maintenance or reads and rebuilds incompatible derived vectors through the
 existing `NULL` cursor.
 D200 adds independent durable semantic-maintenance scheduling, bounded retry,
 and lease-expiry relaunch recovery without changing meeting lifecycle.
+D201 lets full Ask publish exact citations while semantic refinement and local
+generation continue, with generation-fenced progress and cancellation.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -829,8 +831,8 @@ transactional persistence. Ask runs in a third cold process, requires
 already-installed Apple Latin embedding assets and available Foundation Models,
 and measures the real `AskMeetings.local` workflow over the same fixed corpus,
 after explicitly indexing that disposable corpus outside measurement. The
-measured request includes bilingual query expansion, corpus-read-only hybrid
-retrieval, and generated answer. It emits no sample without citations and
+measured request includes deterministic bilingual expansion, corpus-read-only
+progressive hybrid retrieval, and generated answer. It emits no sample without citations and
 nonempty generated text. Indexing runs in a fourth cold process,
 prepares already-installed Apple Latin assets before sampling, inserts 1,024
 fixed public English segments into the disposable database, and measures
@@ -966,8 +968,13 @@ folder panel.
 main-actor app client. Each `ContentView` owns a per-window `AskModel`; the
 resident command palette owns one process-scoped `CommandPaletteModel`. The
 models own answer/search tasks and generations, and the palette resets both on
-close/reopen. AppKit owns panel lifetime, keyboard activation, clipboard, and
-window navigation only. The composition root also injects one
+close/reopen. Full Ask additionally owns the pending question, lexical/fused
+citations, and distinct finding/refinement/generation presentation phases.
+Every progressive update crosses the same request-generation fence; cancel or
+navigation clears pending state and rejects late work. The command palette and
+other consumers retain final-result behavior. AppKit owns panel lifetime,
+keyboard activation, clipboard, and window navigation only. The composition
+root also injects one
 `AppAskPipelineTelemetry` adapter (D192). It maps only the closed Ask operation,
 stage, milestone, and outcome enums to Points of Interest intervals and exposes
 an explicit observer seam for benchmark processes; user text and durable

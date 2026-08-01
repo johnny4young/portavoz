@@ -8,17 +8,20 @@ import StorageKit
 /// reads only embeddings already published by the maintenance owner.
 public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private let store: MeetingStore
+    private let lexicalExpander: BilingualSearchQueryExpander
     private let queryExpander: any AskQueryExpanding
     private let runtime: any SemanticEmbeddingRuntimeClient
     private let semanticReadiness: ResolveSemanticCorpusReadiness
 
     public init(
         store: MeetingStore,
+        lexicalExpander: BilingualSearchQueryExpander = .init(),
         queryExpander: any AskQueryExpanding = OnDeviceAskMeetingIntelligence(),
         runtime: any SemanticEmbeddingRuntimeClient,
         semanticReadiness: ResolveSemanticCorpusReadiness? = nil
     ) {
         self.store = store
+        self.lexicalExpander = lexicalExpander
         self.queryExpander = queryExpander
         self.runtime = runtime
         self.semanticReadiness = semanticReadiness
@@ -66,22 +69,64 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         limit: Int,
         trace: AskPipelineTrace
     ) async throws -> [AskCitation] {
-        let queries = await trace.measure(.expansion) {
-            await queryExpander.expand(question)
+        try await retrieve(
+            question: question,
+            limit: limit,
+            trace: trace,
+            onEvidence: { _ in })
+    }
+
+    public func retrieve(
+        question: String,
+        limit: Int,
+        trace: AskPipelineTrace,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> [AskCitation] {
+        guard limit > 0 else {
+            await onEvidence(AskEvidenceUpdate(phase: .fused, citations: []))
+            return []
         }
-        let lexical = try await trace.measure(.lexicalQuery) {
+        let queries = await trace.measure(.expansion) { [lexicalExpander] in
+            lexicalExpander.expand(question)
+        }
+        async let semanticResult = semanticCandidates(
+            queries: queries,
+            trace: trace)
+        let lexical = try await trace.measure(.lexicalQuery) { [store] in
             try await Self.retrieveLexical(
                 queries: queries,
                 store: store,
-                limit: 12 * queries.count)
+                limit: Self.candidateLimit(for: queries))
         }
-        let readiness = try await trace.measure(.corpusReadiness) {
-            try await semanticReadiness.current()
-        }
-        let semanticResult = try await semanticCandidates(
-            queries: queries,
-            readiness: readiness,
+        await onEvidence(AskEvidenceUpdate(
+            phase: .lexical,
+            citations: lexical.prefix(limit).map(Self.citation)))
+        let semantic = try await semanticResult
+        var citations = await fusedCitations(
+            lexical: lexical,
+            semanticResult: semantic,
+            limit: limit,
             trace: trace)
+
+        if citations.isEmpty {
+            citations = try await lateFallback(
+                question: question,
+                excluding: queries,
+                limit: limit,
+                onEvidence: onEvidence)
+        }
+        await onEvidence(AskEvidenceUpdate(
+            phase: .fused,
+            citations: citations))
+        return citations
+    }
+
+    private func fusedCitations(
+        lexical: [SearchHit],
+        semanticResult: SemanticCandidates,
+        limit: Int,
+        trace: AskPipelineTrace
+    ) async -> [AskCitation] {
         let semantic = semanticResult.bestRank.sorted {
             $0.value < $1.value
         }.map(\.key)
@@ -101,13 +146,47 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         }
     }
 
+    /// Foundation Models expansion is deliberately outside the first-evidence
+    /// path. It runs only when deterministic bilingual lexical plus available
+    /// semantic retrieval found nothing.
+    private func lateFallback(
+        question: String,
+        excluding initialQueries: [String],
+        limit: Int,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> [AskCitation] {
+        let expanded = await queryExpander.expand(question)
+        let queries = Self.uniqueQueries(expanded, excluding: initialQueries)
+        guard !queries.isEmpty else { return [] }
+        let trace = AskPipelineTelemetry.disabledTrace(for: .evidence)
+        async let semanticResult = semanticCandidates(
+            queries: queries,
+            trace: trace)
+        let lexical = try await Self.retrieveLexical(
+            queries: queries,
+            store: store,
+            limit: Self.candidateLimit(for: queries))
+        if !lexical.isEmpty {
+            await onEvidence(AskEvidenceUpdate(
+                phase: .lexical,
+                citations: lexical.prefix(limit).map(Self.citation)))
+        }
+        return await fusedCitations(
+            lexical: lexical,
+            semanticResult: try await semanticResult,
+            limit: limit,
+            trace: trace)
+    }
+
     private func semanticCandidates(
         queries: [String],
-        readiness: SemanticCorpusReadiness,
         trace: AskPipelineTrace
     ) async throws -> SemanticCandidates {
-        guard readiness.canSearchPublishedVectors else { return .empty }
         do {
+            let readiness = try await trace.measure(.corpusReadiness) {
+                try await semanticReadiness.current()
+            }
+            guard readiness.canSearchPublishedVectors else { return .empty }
             return try await runtime.withPreparedEmbedding(
                 allowAssetDownload: false
             ) { [store, trace] embedder in
@@ -128,6 +207,30 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             try Task.checkCancellation()
             return .empty
         }
+    }
+
+    private static func candidateLimit(for queries: [String]) -> Int {
+        max(12, 12 * min(12, queries.count))
+    }
+
+    private static func uniqueQueries(
+        _ candidates: [String],
+        excluding excluded: [String]
+    ) -> [String] {
+        var seen = Set(excluded.map(queryKey))
+        return Array(candidates.compactMap { candidate in
+            let value = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !value.isEmpty, seen.insert(queryKey(value)).inserted else {
+                return nil
+            }
+            return value
+        }.prefix(3))
+    }
+
+    private static func queryKey(_ value: String) -> String {
+        value.folding(
+            options: [.caseInsensitive, .diacriticInsensitive],
+            locale: Locale(identifier: "en_US_POSIX"))
     }
 
     private static func searchSemantic(

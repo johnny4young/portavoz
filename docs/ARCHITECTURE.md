@@ -331,7 +331,9 @@ The full Ask route and the command palette share one `AskMeetings` application
 workflow. Its public request and response values carry meeting identity,
 timestamps, snippets, complete evidence, and optional generated text without
 exposing StorageKit records or IntelligenceKit passages to presentation.
-`AskModel` owns each window's draft, conversation, progress, cancellation, and
+The same boundary can emit lexical and final fused evidence while preserving
+its final-result API. `AskModel` owns each window's draft, conversation,
+finding/refinement/generation progress, early citations, cancellation, and
 stale-result fence. `CommandPaletteModel` owns process-scoped instant results,
 answer state, cancellation, and generation fencing so closing one panel cannot
 publish work into a later invocation. SwiftUI and AppKit retain rendering,
@@ -595,12 +597,17 @@ authoritative corpus evidence. Source generation identifies an admitted
 mutation set but never counts progress; meeting lifecycle remains independent,
 and the dormant meeting-processing `.index` kind is not activated.
 
-Ask and Library are read-only with respect to that corpus. Every Ask request retrieves exact
-FTS evidence first, resolves the shared semantic state without preparing or
-downloading assets, and searches only embeddings already published by the
-maintenance owner. It never invokes `IndexSemanticCorpus` or persists an
-embedding. Missing assets and ordinary semantic preparation/query failures
-degrade to lexical evidence; cancellation still cancels the request. The
+Ask and Library are read-only with respect to that corpus. After bounded
+deterministic bilingual expansion, every Ask request starts exact FTS and
+optional semantic augmentation concurrently. Exact citations publish as soon
+as FTS completes; the fused citation set is fenced before answer generation.
+Semantic work resolves the shared state without downloading assets and searches
+only embeddings already published by the maintenance owner. Ask never invokes
+`IndexSemanticCorpus` or persists an embedding. Missing assets and ordinary
+semantic preparation/query failures degrade to lexical evidence; cancellation
+still cancels the complete request. Foundation Models query expansion is a
+bounded late fallback only when deterministic lexical plus available semantic
+retrieval found no citation, not a prerequisite for first evidence. The
 resource and quality harnesses prepare their disposable corpus before the
 measured query, so benchmark setup does not weaken this product invariant.
 
@@ -773,8 +780,9 @@ the replay-safe vector cursor.
 Both paths also borrow one process-owned semantic runtime through an injected
 ApplicationKit contract. The exact residency lease covers corpus maintenance,
 query embedding, and semantic retrieval as one operation, so Library and Ask
-cannot release or replace the model midway through a query. Moving the drain
-off the Ask request path remains unimplemented.
+cannot release or replace the model midway through a query. Corpus drains are
+owned exclusively by signal-driven durable background maintenance; Ask and
+Library only read compatible vectors already published by that owner.
 
 ## Durable recording lifecycle
 
@@ -1291,8 +1299,9 @@ requires already-installed Apple Latin embedding assets and available
 Foundation Models, then measures the real `AskMeetings.local` workflow over the
 same fixed corpus. Before measurement, the benchmark explicitly indexes its
 disposable fixture through the shared maintenance coordinator without
-downloading assets. The measured window includes bilingual query expansion,
-corpus-read-only hybrid retrieval, and generated answer. It admits a sample
+downloading assets. The measured window includes deterministic bilingual
+expansion, corpus-read-only progressive hybrid retrieval, and generated answer.
+It admits a sample
 only when both citations and nonempty generated text exist.
 
 Each passing Ask resource run also publishes one separate, exact-shaped
@@ -1516,23 +1525,31 @@ identity, evidence, and display output after generation.
 Local lexical search uses FTS5 and query-specific bounded reads. One
 ApplicationKit Ask workflow serves full Ask, the command palette, CLI, MCP, and
 meeting-brief retrieval. Its local adapter combines bounded per-term lexical
-candidates, exact semantic ranking, optional bilingual query expansion, and
-reciprocal-rank fusion. Local generation is optional: ordinary model failure
-preserves exact citations, while caller cancellation propagates. Embeddings are
-device-local derivation and do not mark a meeting for sync.
+candidates, deterministic bilingual expansion, exact semantic ranking, and
+reciprocal-rank fusion. Lexical and semantic candidates execute concurrently;
+the workflow publishes lexical evidence before fusion and fences final
+citations before optional generation. Foundation Models expansion is bounded
+and used only after both deterministic paths return no citation. Ordinary model
+failure preserves exact citations, while caller cancellation propagates.
+Embeddings are device-local derivation and do not mark a meeting for sync.
 
 One ApplicationKit trace spans each Ask search, evidence, or answer operation.
 The closed stage vocabulary covers corpus readiness, query expansion, lexical
 retrieval, query embedding, semantic scan, rank fusion, and citation materialization;
 separate milestones identify first evidence, the first answer token observable
-by the application, and terminal outcome. The trace admits only operation,
+by the application, and terminal outcome. Concurrent lexical and semantic
+stages have a partial order: expansion begins first, first evidence follows
+lexical completion, and fusion begins only after both candidate paths settle.
+The trace admits only operation,
 stage, milestone, outcome, and random process-local correlation values. The
 macOS adapter converts them into Points of Interest intervals without logging a
 question, meeting, citation, path, model, or error. The current answer provider
 returns one complete string, so first-token observation currently coincides
 with that string crossing the ApplicationKit boundary. CLI distribution and
 quality aggregation remain separate benchmark work; this trace changes no
-retrieval ordering, persistence, model preparation, or user-visible output.
+storage persistence or model preparation. The late evidence-empty generative
+fallback contributes to total operation duration but does not create a second
+primary expansion interval; a dedicated stage requires a versioned receipt.
 
 Meeting Detail
 seeks exact transcript evidence only after its audio player is ready; early

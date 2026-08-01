@@ -24,6 +24,17 @@ final class AppAskModelClient: AskModelClient {
     ) async throws -> AskMeetingAnswer {
         try await useCase.answer(question, limit: limit)
     }
+
+    func answerAskMeetings(
+        _ question: String,
+        limit: Int,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> AskMeetingAnswer {
+        try await useCase.answer(
+            question,
+            limit: limit,
+            onEvidence: onEvidence)
+    }
 }
 
 struct AppSemanticSearchComposition {
@@ -116,6 +127,23 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
         }
     }
 
+    func retrieve(
+        question: String,
+        limit: Int,
+        trace _: AskPipelineTrace,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> [AskCitation] {
+        let citations = try await retrieve(question: question, limit: limit)
+        await onEvidence(AskEvidenceUpdate(
+            phase: .lexical,
+            citations: citations))
+        try await Task.sleep(for: .seconds(5))
+        await onEvidence(AskEvidenceUpdate(
+            phase: .fused,
+            citations: citations))
+        return citations
+    }
+
     private static func searchResult(_ hit: SearchHit) -> AskSearchResult {
         AskSearchResult(
             meetingID: hit.meetingID,
@@ -131,6 +159,7 @@ private struct UITestAskMeetingAnswering: AskMeetingAnswering {
         question _: String,
         citations _: [AskCitation]
     ) async throws -> String? {
-        "El presupuesto se revisó y el rollout quedó para el viernes."
+        try await Task.sleep(for: .seconds(5))
+        return "El presupuesto se revisó y el rollout quedó para el viernes."
     }
 }

@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -348,20 +348,22 @@ meeting-content HTTP receipt boundary.
 
 - **Embeddings**: `NLContextualEmbedding(script: .latin)` — shared es/en space (genuinely cross-lingual). Mean-pool + L2-normalize. `prepare()` requests assets from the OS.
 - **Index**: BLOB in the `embedding` column of `segment` + brute-force cosine (sqlite-vec intentionally deferred). `ApplicationKit.IndexSemanticCorpus` owns corpus writes. It validates one returned vector per eligible segment before persistence and writes an empty marker for micro-segments (< 20 chars), which are excluded because they drowned out cross-lingual hits. The signal-driven background owner requests product drains; explicit disposable benchmarks may prepare their isolated stores. Ask and Library perform no backfill and read only already-published vectors. One process-shared coordinator admits only one maintenance flight.
-- **Application boundary (D100)**: `ApplicationKit.AskMeetings` is the only public workflow used by the macOS Ask route, resident command palette, CLI `ask`, local MCP `ask`, and meeting-brief evidence lookup. Instant results and citations are storage-independent values; generated text is optional, so unavailable or failed local generation preserves evidence instead of converting retrieval success into failure; cancellation still propagates as cancellation.
+- **Application boundary (D100/D201)**: `ApplicationKit.AskMeetings` is the only public workflow used by the macOS Ask route, resident command palette, CLI `ask`, local MCP `ask`, and meeting-brief evidence lookup. Instant results and citations are storage-independent values; the optional progressive contract emits lexical and final fused evidence without changing final-result consumers. Generated text is optional, so unavailable or failed local generation preserves evidence instead of converting retrieval success into failure; cancellation still propagates as cancellation.
 - **Meeting preparation (D101)**: `ApplicationKit.PrepareMeetingBrief` ranks the shared Ask citations, joins them to one batched latest-live-General-summary projection and independently loaded open commitments, and exposes only storage-independent related meetings, commitments, and knowledge points. Foundation Models synthesis is optional and every returned source index is validated before it becomes a navigable knowledge point; invalid indexes and ordinary model failure produce no invented source, while cancellation remains cancellation.
 - **Lexical candidates (D81)**: `ApplicationKit.LocalAskMeetingRetrieval` owns the policy. It normalizes and deduplicates content words ≥ 4 characters, retrieves a bounded FTS top-k list per term for normal questions of up to eight unique terms, and fuses those lists with RRF (`k=60`). Multi-term passages climb without scoring one complete OR union. Longer pasted questions retain the released broad-OR fallback, and every selected hit carries complete segment text in addition to its UI snippet.
-- **Hybrid retrieval**: lexical candidates + brute-force semantic candidates are fused again with RRF (`k=60`). Multi-query still asks FM for bilingual paraphrases (`expandQuery`), and term deduplication spans those variants.
+- **Hybrid retrieval (D201)**: deterministic English/Spanish variants start bounded lexical and brute-force semantic candidate work concurrently, then fuse with RRF (`k=60`). Lexical citations may publish before semantic completion; only the final fused set reaches generation. FM expansion is a bounded evidence-empty fallback, never a first-evidence prerequisite, and term deduplication spans all variants.
 - **Answer**: `OnDeviceAskMeetingIntelligence` wraps the IntelligenceKit query-expansion and answer primitives. The on-device FM receives complete selected segments, not bounded highlighted UI snippets, and citations retain segment/meeting identity plus timestamp. Verified E2E: MCP agent answered "what did we agree about the transcription budget?" with correct sources.
 
 ### Corpus-read-only Ask retrieval (D196)
 
 `LocalAskMeetingRetrieval` has no indexing coordinator or corpus-maintenance
-operation. It expands the question and retrieves exact FTS candidates before
-optional semantic work. If Apple Latin assets are already available, it
-borrows the shared runtime with `allowAssetDownload: false`, embeds only query
-variants, and scans only vectors already persisted by maintenance. The request
-cannot persist vectors or turn missing corpus rows into a query prerequisite.
+operation. It applies deterministic bounded bilingual expansion, then starts
+exact FTS and optional semantic work concurrently. Exact citations publish
+when FTS finishes. If Apple Latin assets are already available, the semantic
+task borrows the shared runtime with `allowAssetDownload: false`, embeds only
+query variants, and scans only vectors already persisted by maintenance. The
+request cannot persist vectors or turn missing corpus rows into a query
+prerequisite.
 
 An unavailable or ordinarily failing semantic runtime returns no semantic
 candidates, preserving exact evidence through the same fusion and citation
@@ -370,14 +372,23 @@ continues durable corpus work independently; explicit resource and quality
 benchmark setup may prepare only its disposable database before the observed
 request begins.
 
+When both deterministic paths produce no citation, the optional Foundation
+Models expander may add at most three new normalized variants and retry the
+same read-only retrieval. Its duration remains inside the complete Ask trace,
+but it emits no duplicate primary expansion stage; a separately versioned
+receipt is required before exposing a dedicated fallback-stage metric.
+
 ### Content-free Ask stage tracing, receipts, and quality contract (D192–D196)
 
 `AskPipelineTelemetry` owns one random process-local trace for every validated
 search, evidence, and answer request. `LocalAskMeetingRetrieval` emits matched
 intervals for the current corpus-readiness check, expansion, lexical query,
 query embedding, semantic scan, fusion, and citation materialization.
-`AskMeetings` emits first-evidence and first-token milestones plus one terminal
-outcome. Empty or invalid requests still bypass every capability and trace.
+`AskMeetings` emits first-evidence at the first nonempty progressive update,
+then first-token and one terminal outcome. Expansion starts before the two
+candidate paths; lexical and semantic stage order is intentionally concurrent,
+first evidence follows lexical completion, and fusion starts after both settle.
+Empty or invalid requests still bypass every capability and trace.
 
 The taxonomy accepts no question, meeting, segment, citation, file, model, or
 error payload. Cancellation closes the active stage and complete trace as
@@ -593,10 +604,11 @@ meeting-processing `.index` kind remains dormant.
 ApplicationKit exposes `SemanticEmbeddingRuntimeClient` rather than a concrete
 NaturalLanguage model. Its generic operation closure receives only a prepared
 `SemanticTextEmbedding` and keeps the app's exact residency lease alive for the
-entire callback. Ask performs lexical retrieval before borrowing the runtime,
-then performs only query-vector creation and semantic lookup inside that
-callback. Library performs only query-vector creation and semantic lookup
-inside the same boundary. Background maintenance separately holds its lease
+entire callback. Ask starts deterministic lexical retrieval and semantic
+readiness concurrently; only the semantic branch borrows the runtime and
+performs query-vector creation plus semantic lookup inside that callback.
+Library performs only query-vector creation and semantic lookup inside the
+same boundary. Background maintenance separately holds its lease
 around corpus indexing. The runtime also exposes the active compatibility
 profile without preparing or downloading assets.
 

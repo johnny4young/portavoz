@@ -32,6 +32,82 @@ final class AskPresentationModelTests: XCTestCase {
         XCTAssertEqual(model.state.exchanges.first?.citations, [fixture.citation])
     }
 
+    func testFullAskPublishesProgressiveEvidenceThenFencesFinalAnswer() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        let model = AskModel(client: client)
+
+        model.updateDraft("presupuesto")
+        model.submit()
+        XCTAssertEqual(model.state.pendingPhase, .findingEvidence)
+        try await waitUntil { client.answerRequests == ["presupuesto"] }
+
+        await client.publishEvidence(
+            "presupuesto",
+            update: AskEvidenceUpdate(
+                phase: .lexical,
+                citations: [fixture.citation]))
+        try await waitUntil { model.state.pendingPhase == .refiningEvidence }
+        XCTAssertEqual(model.state.pendingCitations, [fixture.citation])
+
+        await client.publishEvidence(
+            "presupuesto",
+            update: AskEvidenceUpdate(
+                phase: .fused,
+                citations: [fixture.citation]))
+        try await waitUntil { model.state.pendingPhase == .generatingAnswer }
+
+        client.completeAnswer(
+            "presupuesto",
+            with: AskMeetingAnswer(
+                question: "presupuesto",
+                generatedText: "El viernes.",
+                citations: [fixture.citation]))
+        try await waitUntil { model.state.exchanges.count == 1 }
+
+        XCTAssertFalse(model.state.isAsking)
+        XCTAssertNil(model.state.pendingQuestion)
+        XCTAssertNil(model.state.pendingPhase)
+        XCTAssertEqual(model.state.pendingCitations, [])
+        XCTAssertEqual(model.state.exchanges.first?.answer, "El viernes.")
+    }
+
+    func testFullAskCancellationRejectsLateProgressAndCompletion() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        let model = AskModel(client: client)
+
+        model.updateDraft("old")
+        model.submit()
+        try await waitUntil { client.answerRequests == ["old"] }
+        await client.publishEvidence(
+            "old",
+            update: AskEvidenceUpdate(
+                phase: .lexical,
+                citations: [fixture.citation]))
+        try await waitUntil { model.state.pendingPhase == .refiningEvidence }
+
+        model.cancelPendingAnswer()
+        await client.publishEvidence(
+            "old",
+            update: AskEvidenceUpdate(
+                phase: .fused,
+                citations: [fixture.citation]))
+        client.completeAnswer(
+            "old",
+            with: AskMeetingAnswer(
+                question: "old",
+                generatedText: "stale",
+                citations: [fixture.citation]))
+        await Task.yield()
+
+        XCTAssertFalse(model.state.isAsking)
+        XCTAssertNil(model.state.pendingQuestion)
+        XCTAssertNil(model.state.pendingPhase)
+        XCTAssertTrue(model.state.pendingCitations.isEmpty)
+        XCTAssertTrue(model.state.exchanges.isEmpty)
+    }
+
     func testPaletteResetPreventsClosedGenerationFromPublishingIntoReopen() async throws {
         let fixture = AskPresentationFixture()
         let client = ControlledAskModelClient()
@@ -143,6 +219,7 @@ private final class ControlledAskModelClient: AskModelClient {
     private(set) var answerRequests: [String] = []
     private var searchContinuations: [String: CheckedContinuation<[AskSearchResult], Error>] = [:]
     private var answerContinuations: [String: CheckedContinuation<AskMeetingAnswer, Error>] = [:]
+    private var evidenceReceivers: [String: AskEvidenceReceiver] = [:]
 
     func searchAskMeetings(
         _ query: String,
@@ -164,12 +241,32 @@ private final class ControlledAskModelClient: AskModelClient {
         }
     }
 
+    func answerAskMeetings(
+        _ question: String,
+        limit _: Int,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> AskMeetingAnswer {
+        answerRequests.append(question)
+        evidenceReceivers[question] = onEvidence
+        return try await withCheckedThrowingContinuation { continuation in
+            answerContinuations[question] = continuation
+        }
+    }
+
     func completeSearch(_ query: String, with hits: [AskSearchResult]) {
         searchContinuations.removeValue(forKey: query)?.resume(returning: hits)
     }
 
     func completeAnswer(_ question: String, with answer: AskMeetingAnswer) {
+        evidenceReceivers.removeValue(forKey: question)
         answerContinuations.removeValue(forKey: question)?.resume(returning: answer)
+    }
+
+    func publishEvidence(
+        _ question: String,
+        update: AskEvidenceUpdate
+    ) async {
+        await evidenceReceivers[question]?(update)
     }
 }
 

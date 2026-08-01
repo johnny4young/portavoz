@@ -75,6 +75,53 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         }
     }
 
+    func testProgressiveAnswerPublishesLexicalEvidenceBeforeGeneration() async throws {
+        let fixture = AskWorkflowFixture()
+        let retrieval = ProgressiveAskMeetingRetrievalFake(
+            lexical: fixture.citations,
+            fused: fixture.citations)
+        let answering = AskMeetingAnsweringFake(text: "El viernes.")
+        let updates = AskEvidenceUpdateRecorder()
+        let useCase = AskMeetings(retrieval: retrieval, answering: answering)
+
+        let task = Task {
+            try await useCase.answer(
+                "rollout",
+                onEvidence: { update in
+                    await updates.receive(update)
+                })
+        }
+        await retrieval.waitUntilLexicalEvidenceIsPublished()
+
+        let lexicalUpdates = await updates.values
+        let callsBeforeFusion = await answering.callCount
+        XCTAssertEqual(
+            lexicalUpdates,
+            [AskEvidenceUpdate(
+                phase: .lexical,
+                citations: fixture.citations)])
+        XCTAssertEqual(callsBeforeFusion, 0)
+
+        await retrieval.releaseFusion()
+        let result = try await task.value
+        let finalUpdates = await updates.values
+        let finalCallCount = await answering.callCount
+
+        XCTAssertEqual(result.generatedText, "El viernes.")
+        XCTAssertEqual(result.citations, fixture.citations)
+        XCTAssertEqual(
+            finalUpdates,
+            [
+                AskEvidenceUpdate(
+                    phase: .lexical,
+                    citations: fixture.citations),
+                AskEvidenceUpdate(
+                    phase: .fused,
+                    citations: fixture.citations),
+            ])
+        XCTAssertEqual(finalCallCount, 1)
+    }
+
     func testWhitespaceAndNonPositiveLimitsDoNotEnterCapabilities() async throws {
         let retrieval = AskMeetingRetrievalFake(searches: [], citations: [])
         let answering = AskMeetingAnsweringFake(text: "unused")
@@ -160,6 +207,64 @@ private actor AskMeetingAnsweringFake: AskMeetingAnswering {
         callCount += 1
         if let error { throw error }
         return text
+    }
+}
+
+private actor ProgressiveAskMeetingRetrievalFake: AskMeetingRetrieving {
+    let lexical: [AskCitation]
+    let fused: [AskCitation]
+    private var didPublishLexical = false
+    private var fusionContinuation: CheckedContinuation<Void, Never>?
+
+    init(lexical: [AskCitation], fused: [AskCitation]) {
+        self.lexical = lexical
+        self.fused = fused
+    }
+
+    func search(query _: String, limit _: Int) -> [AskSearchResult] {
+        []
+    }
+
+    func retrieve(question _: String, limit _: Int) -> [AskCitation] {
+        fused
+    }
+
+    func retrieve(
+        question _: String,
+        limit _: Int,
+        trace _: AskPipelineTrace,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async -> [AskCitation] {
+        await onEvidence(AskEvidenceUpdate(
+            phase: .lexical,
+            citations: lexical))
+        didPublishLexical = true
+        await withCheckedContinuation { continuation in
+            fusionContinuation = continuation
+        }
+        await onEvidence(AskEvidenceUpdate(
+            phase: .fused,
+            citations: fused))
+        return fused
+    }
+
+    func waitUntilLexicalEvidenceIsPublished() async {
+        while !didPublishLexical {
+            await Task.yield()
+        }
+    }
+
+    func releaseFusion() {
+        fusionContinuation?.resume()
+        fusionContinuation = nil
+    }
+}
+
+private actor AskEvidenceUpdateRecorder {
+    private(set) var values: [AskEvidenceUpdate] = []
+
+    func receive(_ update: AskEvidenceUpdate) {
+        values.append(update)
     }
 }
 

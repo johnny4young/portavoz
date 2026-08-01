@@ -15,12 +15,37 @@ protocol AskModelClient: AnyObject {
         _ question: String,
         limit: Int
     ) async throws -> AskMeetingAnswer
+    func answerAskMeetings(
+        _ question: String,
+        limit: Int,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> AskMeetingAnswer
+}
+
+extension AskModelClient {
+    func answerAskMeetings(
+        _ question: String,
+        limit: Int,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> AskMeetingAnswer {
+        let answer = try await answerAskMeetings(question, limit: limit)
+        await onEvidence(AskEvidenceUpdate(
+            phase: .fused,
+            citations: answer.citations))
+        return answer
+    }
 }
 
 /// Per-window presentation owner for the full Ask conversation.
 @MainActor
 @Observable
 final class AskModel {
+    enum PendingPhase: Equatable {
+        case findingEvidence
+        case refiningEvidence
+        case generatingAnswer
+    }
+
     struct Exchange: Identifiable, Equatable {
         let id: UUID
         let question: String
@@ -44,6 +69,9 @@ final class AskModel {
         fileprivate(set) var draft = ""
         fileprivate(set) var exchanges: [Exchange] = []
         fileprivate(set) var isAsking = false
+        fileprivate(set) var pendingQuestion: String?
+        fileprivate(set) var pendingCitations: [AskCitation] = []
+        fileprivate(set) var pendingPhase: PendingPhase?
     }
 
     private(set) var state = State()
@@ -65,6 +93,9 @@ final class AskModel {
         guard !question.isEmpty, !state.isAsking else { return }
         state.draft = ""
         state.isAsking = true
+        state.pendingQuestion = question
+        state.pendingCitations = []
+        state.pendingPhase = .findingEvidence
         generation += 1
         let requestGeneration = generation
         answerTask?.cancel()
@@ -77,13 +108,20 @@ final class AskModel {
         generation += 1
         answerTask?.cancel()
         answerTask = nil
-        state.isAsking = false
+        clearPendingState()
     }
 
     private func answer(_ question: String, generation requestGeneration: Int) async {
         let exchange: Exchange
         do {
-            let result = try await client.answerAskMeetings(question, limit: 6)
+            let result = try await client.answerAskMeetings(
+                question,
+                limit: 6,
+                onEvidence: { [weak self] update in
+                    await self?.publish(
+                        update,
+                        generation: requestGeneration)
+                })
             guard !Task.isCancelled, generation == requestGeneration else { return }
             exchange = Exchange(
                 question: question,
@@ -100,8 +138,34 @@ final class AskModel {
         }
         guard generation == requestGeneration else { return }
         state.exchanges.append(exchange)
-        state.isAsking = false
+        clearPendingState()
         answerTask = nil
+    }
+
+    private func publish(
+        _ update: AskEvidenceUpdate,
+        generation requestGeneration: Int
+    ) {
+        guard !Task.isCancelled,
+              generation == requestGeneration,
+              state.isAsking
+        else { return }
+        state.pendingCitations = update.citations
+        switch update.phase {
+        case .lexical:
+            state.pendingPhase = update.citations.isEmpty
+                ? .findingEvidence
+                : .refiningEvidence
+        case .fused:
+            state.pendingPhase = .generatingAnswer
+        }
+    }
+
+    private func clearPendingState() {
+        state.isAsking = false
+        state.pendingQuestion = nil
+        state.pendingCitations = []
+        state.pendingPhase = nil
     }
 
     private static func presentationText(for result: AskMeetingAnswer) -> String {

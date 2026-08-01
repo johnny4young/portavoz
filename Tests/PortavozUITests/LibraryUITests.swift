@@ -447,6 +447,23 @@ final class LibraryUITests: PortavozUITestCase {
         field.typeText("viernes")
         app.buttons["ask-submit"].click()
 
+        let progressiveEvidence = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-pending-citation-'"))
+            .firstMatch
+        XCTAssertTrue(
+            progressiveEvidence.waitForExistence(timeout: 10),
+            "exact evidence must appear before local answer generation finishes")
+        XCTAssertTrue(progressiveEvidence.label.contains("Test meeting · 00:03"))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-progress-refining"]
+                .waitForExistence(timeout: 5),
+            "Ask must distinguish lexical evidence from semantic refinement")
+        attachScreenshot(of: app, named: "ask-progressive-evidence")
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-progress-generating"]
+                .waitForExistence(timeout: 5),
+            "Ask must expose answer generation after the evidence set is fenced")
         XCTAssertTrue(
             app.staticTexts["El presupuesto se revisó y el rollout quedó para el viernes."]
                 .waitForExistence(timeout: 10),

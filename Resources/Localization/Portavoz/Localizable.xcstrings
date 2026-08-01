@@ -8440,6 +8440,46 @@
           }
         }
       }
+    },
+    "Evidence available now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidencia disponible ahora"
+          }
+        }
+      }
+    },
+    "Evidence ready — generating answer…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidencia lista — generando la respuesta…"
+          }
+        }
+      }
+    },
+    "Exact evidence found — checking related meaning…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidencia exacta encontrada — buscando contenido relacionado…"
+          }
+        }
+      }
+    },
+    "Finding exact evidence…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando evidencia exacta…"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

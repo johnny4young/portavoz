@@ -78,6 +78,19 @@ class UITestScopeTests(unittest.TestCase):
         )
         self.assertLess(len(selection.tests), len(ALL_TESTS))
 
+    def test_query_expander_selects_only_search_consumers(self):
+        selection = select_paths(
+            ["Sources/ApplicationKit/BilingualSearchQueryExpander.swift"]
+        )
+        expected = tuple(dict.fromkeys(
+            FEATURE_TESTS["library"]
+            + FEATURE_TESTS["meeting-brief"]
+            + FEATURE_TESTS["ask"]
+        ))
+        self.assertEqual(selection.tests, expected)
+        self.assertEqual(selection.locales, ("en",))
+        self.assertLess(len(selection.tests), len(ALL_TESTS))
+
     def test_summary_storage_selects_its_consumers_without_full_fallback(self):
         selection = select_paths(["Sources/StorageKit/MeetingStore+Summaries.swift"])
         self.assertIn(

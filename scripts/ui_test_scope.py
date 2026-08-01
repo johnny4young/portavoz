@@ -262,6 +262,11 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "queryexpander" in lowered:
+        # Deterministic query variants feed only Library search, full Ask,
+        # and the meeting-brief evidence lookup. Keep a lexicon-only change
+        # from expanding to every unrelated app surface.
+        return {"ask", "library", "meeting-brief"}
     if "micbleed" in lowered:
         # Bleed admission affects live captions and the reviewed Refine
         # replacement, not every unrelated screen in the application.

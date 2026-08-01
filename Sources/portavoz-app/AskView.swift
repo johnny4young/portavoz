@@ -28,6 +28,7 @@ struct AskView: View {
         }
         .navigationTitle("Ask your meetings")
         .onAppear { questionFocused = true }
+        .onDisappear { model.cancelPendingAnswer() }
     }
 
     private var exchangeList: some View {
@@ -37,12 +38,13 @@ struct AskView: View {
                     ForEach(model.state.exchanges) { exchange in
                         exchangeView(exchange)
                     }
-                    if model.state.isAsking {
-                        HStack(spacing: 8) {
-                            ProgressView().controlSize(.small)
-                            Text("Searching your meetings…").foregroundStyle(.secondary)
-                        }
-                        .accessibilityIdentifier("ask-progress")
+                    if model.state.isAsking,
+                       let question = model.state.pendingQuestion,
+                       let phase = model.state.pendingPhase {
+                        pendingExchange(
+                            question: question,
+                            citations: model.state.pendingCitations,
+                            phase: phase)
                         .id("asking")
                     }
                 }
@@ -53,6 +55,43 @@ struct AskView: View {
                 if let last = model.state.exchanges.last?.id {
                     withAnimation { proxy.scrollTo(last, anchor: .bottom) }
                 }
+            }
+        }
+    }
+
+    private func pendingExchange(
+        question: String,
+        citations: [AskCitation],
+        phase: AskModel.PendingPhase
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(question)
+                .font(.callout.weight(.semibold))
+                .padding(10)
+                .background(
+                    PVDesign.accent.opacity(0.12),
+                    in: RoundedRectangle(cornerRadius: 8))
+                .accessibilityIdentifier("ask-pending-question")
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(progressText(for: phase))
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(progressIdentifier(for: phase))
+                Spacer()
+                Button("Cancel") {
+                    model.cancelPendingAnswer()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(PVDesign.accent)
+                .accessibilityIdentifier("ask-cancel")
+            }
+            if !citations.isEmpty {
+                Text("Evidence available now")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                citationButtons(
+                    citations,
+                    identifierPrefix: "ask-pending-citation")
             }
         }
     }
@@ -70,26 +109,57 @@ struct AskView: View {
                 Text("Sources")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                ForEach(Array(exchange.citations.enumerated()), id: \.offset) { index, citation in
-                    Button {
-                        onOpenCitation(citation)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "arrow.turn.down.right")
-                            Text("\(citation.meetingTitle) · \(AskMarkdown.clock(citation.timestamp))")
-                                .lineLimit(1)
-                        }
-                        .font(.caption)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(PVDesign.accent)
-                    .help(citation.text)
-                    .accessibilityIdentifier(
-                        "ask-citation-\(exchange.id.uuidString)-\(index)")
-                }
+                citationButtons(
+                    exchange.citations,
+                    identifierPrefix: "ask-citation-\(exchange.id.uuidString)")
             }
         }
         .id(exchange.id)
+    }
+
+    @ViewBuilder
+    private func citationButtons(
+        _ citations: [AskCitation],
+        identifierPrefix: String
+    ) -> some View {
+        ForEach(Array(citations.enumerated()), id: \.offset) { index, citation in
+            Button {
+                onOpenCitation(citation)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.turn.down.right")
+                    Text("\(citation.meetingTitle) · \(AskMarkdown.clock(citation.timestamp))")
+                        .lineLimit(1)
+                }
+                .font(.caption)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(PVDesign.accent)
+            .help(citation.text)
+            .accessibilityIdentifier("\(identifierPrefix)-\(index)")
+        }
+    }
+
+    private func progressText(for phase: AskModel.PendingPhase) -> LocalizedStringKey {
+        switch phase {
+        case .findingEvidence:
+            "Finding exact evidence…"
+        case .refiningEvidence:
+            "Exact evidence found — checking related meaning…"
+        case .generatingAnswer:
+            "Evidence ready — generating answer…"
+        }
+    }
+
+    private func progressIdentifier(for phase: AskModel.PendingPhase) -> String {
+        switch phase {
+        case .findingEvidence:
+            "ask-progress-finding"
+        case .refiningEvidence:
+            "ask-progress-refining"
+        case .generatingAnswer:
+            "ask-progress-generating"
+        }
     }
 
     private var inputBar: some View {

@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## July 31, 2026
 
+- **⚡ Ask shows evidence before the answer** — Exact bilingual citations appear immediately while local semantic matching and answer generation continue, with clear progress and cancellation.
 - **🪶 Long recordings finish without a memory surge** — Capture now reuses bounded audio buffers and streams final checksums in short-lived blocks, so multi-hour Stop preserves every frame without retaining a recording-sized heap.
 - **🛟 Library backups survive a restart** — If Portavoz closes during a whole-library Markdown backup, the next launch now validates the exact saved work and resumes without overwriting or republishing completed files; ambiguous or conflicting evidence stays untouched instead of being guessed safe.
 
