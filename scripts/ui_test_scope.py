@@ -327,6 +327,11 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if lowered == "sources/applicationkit/composetranscript.swift":
+        # This is a pure, uncomposed ApplicationKit policy. Its unit and
+        # architecture tests are the executable evidence until a product
+        # consumer is explicitly wired and this mapping is updated.
+        return set()
     if "meetingtranscriptcontent" in lowered:
         return {
             "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"
@@ -416,6 +421,8 @@ def select_paths(paths: Iterable[str]) -> Selection:
 
         if path.startswith("Sources/") and path.endswith(".swift"):
             features = lower_layer_features(path)
+            if not features:
+                continue
             selected.update(feature_tests(features))
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue

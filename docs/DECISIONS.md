@@ -7676,3 +7676,45 @@ independently, while the route model remains the application effect owner and
 scene flow remains the presentation-state owner. Preserving structured
 concurrency, interaction contracts, and scoped UI selection makes removal of
 the monolith a mechanical refactor rather than a behavioral migration.
+
+## D229 — Define correction composition before persistence (Aug 2026)
+
+**Context:** D225 gave Meeting Detail a correction-ready reading snapshot, but
+the system had not defined how several edits compose, which revision they may
+target, or when downstream consumers see them. Starting with storage or UI
+would make persistence details decide domain semantics and could silently feed
+partially corrected text into search, summaries, exports, or generated
+evidence.
+
+**Decision:** keep accepted raw or refined transcript segments immutable and
+define a pure ApplicationKit `ComposeTranscript` operation first. A typed event
+may replace text, change speaker attribution, split one segment, merge adjacent
+same-speaker/channel segments, suppress exactly one row, or restore a
+superseded edit. Each event targets one explicit accepted revision and
+immutable segment IDs. Identity-first input validation plus deterministic
+source and `(createdAt, UUID)` composition ordering selects active events;
+stale revisions, missing or repeated targets, overlapping active events,
+branched or target-changing supersession,
+non-finite event times, nonlexical replacements, partial or gapped splits,
+out-of-order/incompatible merges, provisional base rows, and ambiguous output
+row identities fail before a composed snapshot is returned. A split must
+partition the complete source interval, and both merge targets and
+supersession targets preserve their explicit source order.
+
+Both accepted and composed readings use `MeetingTranscriptContent`. Every row
+retains its source-segment IDs, and `MeetingTranscriptLineage` identifies raw
+versus refined material, the selected accepted/composed projection, and active
+correction IDs. The projection remains explicit even when composed and
+accepted rows are currently identical. Downstream use is an explicit
+`TranscriptReadingPolicy` choice, guarded by an initial source allowlist that
+contains only the composer itself. This slice deliberately adds no tables,
+migration, sync envelope, editing surface, invalidation, or automatic consumer
+switch; all current product paths remain on accepted content.
+
+**Rationale:** freezing composition semantics independently makes later event
+storage additive and keeps SwiftUI, GRDB, and generated artifacts from becoming
+policy authorities. Explicit lineage preserves auditability and source
+navigation, while fail-closed validation prevents stale or ambiguous edits
+from changing what users read. Deferring consumer adoption preserves every
+released feature until each path has its own correction and invalidation
+contract.

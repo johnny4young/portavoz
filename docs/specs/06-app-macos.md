@@ -33,7 +33,9 @@ presentation routes. D228 completes the decomposition with a short-lived
 route-level effect coordinator, a modal host, focused notes and Refine review
 sections, and one cross-section playback-navigation owner; the compact root
 retains only route projection and observation lifecycle while the scene keeps
-route and preference mutation.
+route and preference mutation. D229 adds the pure correction composer behind
+the same ApplicationKit snapshot while keeping current Meeting Detail reads on
+accepted content until durable storage and explicit editing are implemented.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -203,13 +205,19 @@ identifiers do not overwrite the nested controls exposed to Voice Control,
 assistive technologies, or XCUITest.
 
 D225 adds `MeetingTranscriptContent` as the Foundation/ApplicationKit value
-between accepted transcript evidence and review presentation. The current
-factory projects each accepted segment to one stable row and carries source
+between accepted transcript evidence and review presentation. The accepted
+factory projects each source segment to one stable row and carries source
 segment IDs, speaker, channel, per-turn spoken language, timing, confidence,
-and finality. A future correction composer can split or merge those visible
-rows while retaining every source ID; neither `MeetingDetailView` nor its row
-renderer decides which correction wins. Chapters derive from the same snapshot
-as the visible rows, preventing independent projections from drifting.
+and finality. D229 adds a pure `ComposeTranscript` policy that can replace,
+reassign, split, merge, suppress, or restore visible rows while retaining every
+source ID. Lineage separately records raw/refined base material and the
+accepted/composed projection, including a composed reading with no active edit.
+Stable final base rows, exact split partitions, ordered merge/supersession
+targets, and unique generated row identities fail closed before presentation.
+Neither `MeetingDetailView` nor its row renderer decides which correction wins,
+and the current app has not opted into composed rows yet. Chapters derive from
+the same snapshot as the visible rows, preventing independent projections from
+drifting.
 
 `MeetingTranscriptNavigationState` resolves generated evidence through source
 IDs and timestamp-only Library/Ask/Spotlight routes through the visible-row

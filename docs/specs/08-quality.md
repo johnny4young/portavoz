@@ -1,7 +1,7 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the host-independent package gate executes 1,583 cases with zero
-failures (13 model-gated and two host-integration cases skipped) + 57 XCUITest
+Status: the host-independent package gate executes 1,612 cases with zero
+failures (13 environment-gated cases skipped) + 57 XCUITest
 UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
@@ -25,7 +25,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 461 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 469 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -88,6 +88,7 @@ documented below.
 | IntelligenceTests | PromptFactory, naming filters, **NamingExcerpt**, **LiveSummaryPolicy** |
 | ChapterExtractorTests / PlaybackRangesTests / SummarySectionsTests / VoiceHueTests / TranscriptNoiseFilterTests | chapter boundaries/labels, safe duration-bounded voice-range complements, language-agnostic summary sections, source-ordinal-preserving generated-document projection, typed-commitment deduplication with a legacy Markdown fallback, stable speaker hues, and conservative fragment filtering without losing sentences/acronyms |
 | MeetingTranscriptContentTests | Accepted-row projection, spoken-language/source-ID preservation, customized chapter labels, overlapping and gap playback semantics, split/merge-ready evidence mapping, timestamp-route focus before playback, one-shot pending seeks, and a 20,000-row frontier lookup |
+| TranscriptCorrectionCompositionTests | Explicit raw/refined base and accepted/composed projection lineage, including identical zero-edit readings; deterministic replace, speaker, complete split, ordered merge, suppress, restore, and linear supersession behavior; stale/missing/overlapping/branched/provisional/non-finite/ambiguous-ID edit rejection; and mixed optional language/confidence provenance preservation without invented evidence |
 | InsightsScopeTests / LibraryStatsTests / InsightsFindingsTests | current/previous calendar windows, duration averages, zero-filled weekly cadence and heatmaps, streaks, no-decision evidence thresholds, recurring-topic ranking, stoplists, and participant exclusion |
 | InsightsReadModelTests | complete scoped projection, current/previous totals, decision evidence from summaries/actions, recurring-topic extraction, and confirmed-participant exclusion |
 | InsightsModelTests | complete/empty/degraded/failed phases, one read snapshot, section-local replacement, scope restart, and no-global-version behavior through a database-free client fake |
@@ -1325,9 +1326,9 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability gate is 1,583 XCTest package cases with zero
-failures (13 model-gated and two host-integration cases skipped), zero
-strict-lint violations across 457 production Swift files, a 108-case
+The current field-reliability gate is 1,612 XCTest package cases with zero
+failures (13 environment-gated cases skipped), zero
+strict-lint violations across 469 production Swift files, a 108-case
 recording/recovery corpus passing 25 consecutive iterations, and 57 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
 explicit Whisper language detection, split-lineage identity, full-pair

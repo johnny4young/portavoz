@@ -1,12 +1,48 @@
 import Foundation
 import PortavozCore
 
+/// The immutable machine transcript under a reading projection.
+///
+/// `unspecified` keeps legacy callers honest until storage exposes accepted
+/// transcript provenance. Correction composition requires callers to choose
+/// `raw` or `refined` explicitly.
+public enum MeetingTranscriptBaseMaterial: String, Sendable, Equatable {
+    case unspecified
+    case raw
+    case refined
+}
+
+/// The explicit reading selected over immutable transcript material.
+public enum MeetingTranscriptProjection: String, Sendable, Equatable {
+    case accepted
+    case composed
+}
+
+/// Provenance for the rows currently presented to a transcript consumer.
+public struct MeetingTranscriptLineage: Sendable, Equatable {
+    public let baseMaterial: MeetingTranscriptBaseMaterial
+    public let projection: MeetingTranscriptProjection
+    public let activeCorrectionIDs: [UUID]
+
+    public init(
+        baseMaterial: MeetingTranscriptBaseMaterial,
+        projection: MeetingTranscriptProjection = .accepted,
+        activeCorrectionIDs: [UUID] = []
+    ) {
+        self.baseMaterial = baseMaterial
+        self.projection = projection
+        self.activeCorrectionIDs = activeCorrectionIDs
+    }
+
+    public var isComposed: Bool { projection == .composed }
+}
+
 /// The transcript value consumed by review presentation.
 ///
-/// Today `accepted` projects the stored transcript one row per source segment.
-/// A future correction composer can build the same value with split or merged
-/// rows while retaining `sourceSegmentIDs`; SwiftUI therefore never needs to
-/// decide whether text is raw, refined, or composed.
+/// `accepted` projects the stored transcript one row per source segment.
+/// `ComposeTranscript` can build the same value with split or merged rows while
+/// retaining `sourceSegmentIDs`; SwiftUI therefore never needs to decide
+/// whether text is raw, refined, or composed.
 public struct MeetingTranscriptContent: Sendable, Equatable {
     public struct Row: Sendable, Equatable, Identifiable {
         public let id: UUID
@@ -60,6 +96,7 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
     public let baseTranscriptRevision: Int
     public let rows: [Row]
     public let chapters: [Chapter]
+    public let lineage: MeetingTranscriptLineage
 
     private let sourceRowIDs: [UUID: UUID]
     private let maximumEndTree: [TimeInterval]
@@ -68,7 +105,9 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
     public init(
         baseTranscriptRevision: Int,
         rows: [Row],
-        chapters: [Chapter]
+        chapters: [Chapter],
+        lineage: MeetingTranscriptLineage = MeetingTranscriptLineage(
+            baseMaterial: .unspecified)
     ) {
         self.baseTranscriptRevision = baseTranscriptRevision
         self.rows = rows.sorted(by: Self.rowPrecedes)
@@ -76,6 +115,7 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
             if $0.startTime != $1.startTime { return $0.startTime < $1.startTime }
             return $0.title < $1.title
         }
+        self.lineage = lineage
 
         var sourceRowIDs: [UUID: UUID] = [:]
         for row in self.rows {
@@ -107,7 +147,8 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
     public static func accepted(
         baseTranscriptRevision: Int,
         segments: [TranscriptSegment],
-        chapterTitles: [TimeInterval: String]
+        chapterTitles: [TimeInterval: String],
+        baseMaterial: MeetingTranscriptBaseMaterial = .unspecified
     ) -> MeetingTranscriptContent {
         let rows = segments.map { segment in
             Row(
@@ -130,7 +171,8 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
         return MeetingTranscriptContent(
             baseTranscriptRevision: baseTranscriptRevision,
             rows: rows,
-            chapters: chapters)
+            chapters: chapters,
+            lineage: MeetingTranscriptLineage(baseMaterial: baseMaterial))
     }
 
     /// Resolves persisted evidence coordinates to the row currently shown.

@@ -272,6 +272,16 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
+    def test_uncomposed_transcript_policy_requires_no_ui_runner(self):
+        selection = select_paths(["Sources/ApplicationKit/ComposeTranscript.swift"])
+        self.assertFalse(selection.required)
+        self.assertEqual(selection.locales, ())
+        self.assertEqual(selection.reasons, ())
+
+        future_consumer = select_paths(["Sources/StorageKit/ComposeTranscriptStore.swift"])
+        self.assertTrue(future_consumer.required)
+        self.assertEqual(future_consumer.tests, ALL_TESTS)
+
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
         selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
         self.assertEqual(

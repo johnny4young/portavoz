@@ -1,6 +1,37 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy).
+
+## Correction composition contract (D229)
+
+The accepted machine transcript remains immutable. ApplicationKit exposes a
+pure `ComposeTranscript` policy over one explicit raw or refined transcript
+revision. Corrections are typed as text replacement, speaker reassignment,
+split, adjacent same-speaker/channel merge, single-row suppression, or
+restoration. Each visible composed row retains the ordered accepted segment IDs
+from which it was derived, and composed chapters are rebuilt from the same
+rows.
+
+Composition fails closed for an unspecified base, stale revision, duplicate
+correction identity, missing or repeated target, overlapping active edits,
+invalid or branched supersession, a target-changing supersession, nonmonotonic
+or partial split, nonadjacent/out-of-order/incompatible merge, nonlexical
+replacement, provisional base row, non-finite event time, or generated row-ID
+collision. Splits partition the complete source interval without gaps or
+zero-duration rows; merge and supersession target order is authoritative.
+Invalid inputs are admitted in correction-ID order so failure selection is
+stable; source order plus `(createdAt, correction ID)` then orders valid
+composition deterministically. Only the terminal event in a linear
+supersession chain is active.
+
+`TranscriptComposition` exposes both immutable accepted and composed readings.
+Their lineage carries an explicit accepted/composed projection even when no
+correction is active and both row arrays match. Callers must choose through
+`TranscriptReadingPolicy`; an architecture allowlist admits only the composer
+until a later slice intentionally adopts corrected text. No export, search,
+summary, storage adapter, or SwiftUI surface consumes composed content merely
+because corrections were supplied. Durable correction events and user editing
+begin in later slices, so current Meeting Detail behavior is unchanged.
 
 ## Roles and engines (D7)
 

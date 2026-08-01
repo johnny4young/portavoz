@@ -4662,6 +4662,52 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testTranscriptCorrectionCompositionStaysPureAndPolicyExplicit() throws {
+        let content = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingTranscriptContent.swift")
+        let composer = try Self.contents(
+            of: "Sources/ApplicationKit/ComposeTranscript.swift")
+
+        XCTAssertEqual(
+            composer.components(separatedBy: .newlines)
+                .filter { $0.hasPrefix("import ") },
+            ["import Foundation", "import PortavozCore"])
+        for correctionKind in [
+            "case replaceText", "case changeSpeaker", "case split",
+            "case merge", "case suppress", "case restore"
+        ] {
+            XCTAssertTrue(composer.contains(correctionKind), correctionKind)
+        }
+        XCTAssertTrue(composer.contains("enum TranscriptReadingPolicy"))
+        XCTAssertTrue(composer.contains("case accepted"))
+        XCTAssertTrue(composer.contains("case composed"))
+        XCTAssertTrue(composer.contains("baseTranscriptRevision"))
+        XCTAssertTrue(composer.contains("activeCorrectionIDs"))
+        XCTAssertTrue(content.contains("MeetingTranscriptBaseMaterial"))
+        XCTAssertTrue(content.contains("MeetingTranscriptProjection"))
+        XCTAssertTrue(content.contains("MeetingTranscriptLineage"))
+        XCTAssertTrue(content.contains("sourceSegmentIDs"))
+
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources",
+                pattern: #"\bTranscriptReadingPolicy\b|content\s*\(\s*for:\s*\.composed\s*\)"#),
+            ["ApplicationKit/ComposeTranscript.swift"])
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        XCTAssertTrue(decisions.contains("D229 — Define correction composition before persistence"))
+        XCTAssertTrue(decisions.contains("all current product paths remain on accepted content"))
+        XCTAssertTrue(gaps.contains("Product storage, sync, UI, exports, search, summaries"))
+
+        for forbidden in [
+            "import SwiftUI", "import StorageKit", "import GRDB",
+            "AppServices", "MeetingStore", "UserDefaults", "@State", "@Environment"
+        ] {
+            XCTAssertFalse(composer.contains(forbidden), forbidden)
+        }
+    }
+
     func testCanonicalPeopleRequireConfirmationAndStayOutOfAutomaticEvidencePaths() throws {
         let core = try Self.contents(of: "Sources/PortavozCore/PersonIdentity.swift")
         let application = try Self.contents(of: "Sources/ApplicationKit/CanonicalPeople.swift")
