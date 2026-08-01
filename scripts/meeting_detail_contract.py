@@ -31,6 +31,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/MeetingHealthView.swift",
     "Sources/portavoz-app/MeetingPlayerBar.swift",
     "Sources/portavoz-app/MeetingRecapSheet.swift",
+    "Sources/portavoz-app/MeetingTranscriptSection.swift",
     "Sources/portavoz-app/MirrorCard.swift",
     "Sources/portavoz-app/SpeakerPill.swift",
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
@@ -103,7 +104,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         ],
         "sourceAnchors": [
             {
-                "path": "Sources/portavoz-app/MeetingDetailView.swift",
+                "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
                 "anchor": '"detail-transcript-title"',
             },
         ],
@@ -136,7 +137,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "sourceAnchors": [
             {
                 "path": "Sources/portavoz-app/MeetingDetailView.swift",
-                "anchor": "evidenceFocusSegmentID",
+                "anchor": "transcriptNavigation.reveal(",
             },
         ],
     },
@@ -215,6 +216,10 @@ DEFAULT_FEATURE_OWNERSHIP = (
             {
                 "path": "Sources/portavoz-app/MirrorCard.swift",
                 "anchor": '"mirror-card"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+                "anchor": '"detail-chapters"',
             },
         ],
     },

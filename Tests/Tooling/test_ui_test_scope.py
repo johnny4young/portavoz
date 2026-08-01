@@ -134,6 +134,7 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.locales, ("en",))
 
     def test_meeting_detail_scene_and_presentation_select_all_detail_journeys(self):
+        self.assertNotIn("meeting-brief", MEETING_FEATURES)
         for path in [
             "Sources/portavoz-app/MeetingDetailScene.swift",
             "Sources/portavoz-app/MeetingDetailPresentation.swift",
@@ -149,6 +150,11 @@ class UITestScopeTests(unittest.TestCase):
             )
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
+            self.assertNotIn(
+                FEATURE_TESTS["meeting-brief"][0],
+                selection.tests,
+                path,
+            )
 
     def test_meeting_detail_sections_select_only_owned_journeys(self):
         expected_features = {
@@ -161,8 +167,14 @@ class UITestScopeTests(unittest.TestCase):
             "Sources/portavoz-app/MeetingDetailTrustSection.swift": {
                 "meeting-health", "meeting-processing"
             },
+            "Sources/portavoz-app/MeetingTranscriptSection.swift": {
+                "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"
+            },
             "Sources/ApplicationKit/MeetingGeneratedDocumentPresentation.swift": {
                 "meeting-evidence", "meeting-summary"
+            },
+            "Sources/ApplicationKit/MeetingTranscriptContent.swift": {
+                "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"
             },
         }
         for path, features in expected_features.items():

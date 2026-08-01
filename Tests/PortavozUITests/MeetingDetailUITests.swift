@@ -597,13 +597,32 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "detail-refine").exists,
             "the action row must offer the refine control")
         XCTAssertTrue(
+            app.control(withIdentifier: "detail-transcript-section").exists,
+            "the transcript must expose its correction-ready reading boundary")
+        XCTAssertTrue(
             app.control(withIdentifier: "detail-chapters").exists,
             "the right rail must show the ✦ chapters (the seed has a second chapter)")
         // The second chapter is the 200 s turn — proving a real break was
         // found (the title itself truncates in the narrow rail).
+        let laterChapter = app.control(withIdentifier: "chapter-200")
         XCTAssertTrue(
-            app.control(withIdentifier: "chapter-200").exists,
+            laterChapter.exists,
             "a chapter must mark the later turn the seed placed at 200 s")
+        XCTAssertTrue(
+            laterChapter.isEnabled,
+            "a chapter backed by saved audio must be actionable")
+        XCTAssertTrue(
+            app.prepareForInteraction(),
+            "Portavoz must be foreground before activating chapter navigation")
+        XCTAssertTrue(
+            laterChapter.waitForStableFrame(),
+            "the chapter control must finish layout before activation")
+        laterChapter.click()
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        let chapterSeeked = expectation(
+            for: NSPredicate(format: "value != '0:00'"),
+            evaluatedWith: currentTime)
+        wait(for: [chapterSeeked], timeout: 5)
         // The persisted Apuntador cards (D26) render in the rail: the seed
         // has an answered card (askedAt 6) and an "asked you" ping (200).
         // These WAIT: the cards are fetched separately from the meeting
@@ -616,6 +635,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "the answered Apuntador card must render for review")
 
         attachScreenshot(of: app, named: "meeting-detail-privacy-receipt")
+        attachScreenshot(of: app, named: "meeting-detail-transcript-navigation")
     }
 
     @MainActor

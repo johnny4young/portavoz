@@ -17,6 +17,7 @@
     "Sources/portavoz-app/MeetingHealthView.swift",
     "Sources/portavoz-app/MeetingPlayerBar.swift",
     "Sources/portavoz-app/MeetingRecapSheet.swift",
+    "Sources/portavoz-app/MeetingTranscriptSection.swift",
     "Sources/portavoz-app/MirrorCard.swift",
     "Sources/portavoz-app/SpeakerPill.swift",
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
@@ -321,7 +322,7 @@
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
       "source": "Button {",
-      "occurrences": 5
+      "occurrences": 4
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
@@ -542,19 +543,7 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "identifier",
-      "source": ".accessibilityIdentifier(\"chapter-\\(Int(chapter.startTime))\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-apuntador\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-chapters\")",
       "occurrences": 1
     },
     {
@@ -626,12 +615,6 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-transcript-title\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
       "source": ".accessibilityIdentifier(\"person-create-distinct\")",
       "occurrences": 1
     },
@@ -680,12 +663,6 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "navigation",
-      "source": "onSeek: { player?.seek(to: $0); player?.play() },",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "navigation",
       "source": "player.seek(to: player.duration * fraction)",
       "occurrences": 1
     },
@@ -698,13 +675,13 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "navigation",
-      "source": "player?.seek(to: card.askedAt)",
+      "source": "player.seek(to: timestamp)",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "navigation",
-      "source": "player?.seek(to: chapter.startTime)",
+      "source": "player?.seek(to: card.askedAt)",
       "occurrences": 1
     },
     {
@@ -848,12 +825,6 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
-      "source": "@State private var evidenceFocusSegmentID: UUID?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
       "source": "@State private var exportDocument: ExportDocument?",
       "occurrences": 1
     },
@@ -920,12 +891,6 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
-      "source": "@State private var pendingEvidenceSeek: TimeInterval?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
       "source": "@State private var personCandidates: [Person] = []",
       "occurrences": 1
     },
@@ -987,6 +952,12 @@
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
       "source": "@State private var summarySetupIssue: SummarySetupIssue?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "state",
+      "source": "@State private var transcriptNavigation = MeetingTranscriptNavigationState()",
       "occurrences": 1
     },
     {
@@ -1428,6 +1399,42 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"chapter-\\(Int(chapter.startTime))\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-chapters\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-section\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-title\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "navigation",
+      "source": "onSeek: actions.seekAndPlay,",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MirrorCard.swift",
       "category": "control",
       "source": "Button {",
@@ -1598,13 +1605,19 @@
     {
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "identifier",
-      "source": ".accessibilityIdentifier(\"transcript-segment-\\(segment.id.uuidString)\")",
+      "source": ".accessibilityIdentifier(\"transcript-segment-\\(row.id.uuidString)\")",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "navigation",
       "source": "let onSeek: (TimeInterval) -> Void",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "navigation",
+      "source": "onSeek: onSeek,",
       "occurrences": 1
     },
     {
@@ -1623,7 +1636,7 @@
       ],
       "sourceAnchors": [
         {
-          "path": "Sources/portavoz-app/MeetingDetailView.swift",
+          "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
           "anchor": "\"detail-transcript-title\""
         }
       ],
@@ -1664,7 +1677,7 @@
       "sourceAnchors": [
         {
           "path": "Sources/portavoz-app/MeetingDetailView.swift",
-          "anchor": "evidenceFocusSegmentID"
+          "anchor": "transcriptNavigation.reveal("
         }
       ],
       "screenshots": [
@@ -1760,13 +1773,18 @@
           "anchor": "\"detail-meeting-health\""
         },
         {
+          "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+          "anchor": "\"detail-chapters\""
+        },
+        {
           "path": "Sources/portavoz-app/MirrorCard.swift",
           "anchor": "\"mirror-card\""
         }
       ],
       "screenshots": [
         "meeting-detail-post-meeting-mirror",
-        "meeting-detail-privacy-receipt"
+        "meeting-detail-privacy-receipt",
+        "meeting-detail-transcript-navigation"
       ]
     },
     {

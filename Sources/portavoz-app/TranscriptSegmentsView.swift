@@ -2,116 +2,141 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// The transcript with a synchronized highlight (M11). Its own View so the
-/// playhead moving only re-renders here, not the summary/header above. The
-/// timestamp doubles as a "jump here" button, leaving the text selectable.
+/// A lazy, synchronized viewport over an already composed transcript value.
+/// Playhead updates invalidate only this subtree, and active-row lookup stays
+/// logarithmic instead of scanning every row at the playback refresh cadence.
 struct TranscriptSegmentsView: View {
-    let segments: [TranscriptSegment]
+    let content: MeetingTranscriptContent
     let speakers: [Speaker]
     let player: MeetingPlaybackSession?
-    let focusedSegmentID: UUID?
+    let focusedRowID: UUID?
     var performanceScrollEnabled = false
     let onSeek: (TimeInterval) -> Void
     let onRenameTap: (Speaker) -> Void
     /// Height of the lyrics carousel when there's audio — the detail sizes it
     /// to the available space so the docked player is never pushed off.
     var carouselHeight: CGFloat = 440
+
     @State private var didStartPerformanceScroll = false
 
-    /// The segment under the playhead: the one whose range contains the
-    /// current time, or the last one that already started (so a gap between
-    /// segments keeps the previous line lit).
-    private var activeSegmentID: TranscriptSegment.ID? {
+    private var activeRowID: MeetingTranscriptContent.Row.ID? {
         guard let player else { return nil }
-        let now = player.currentTime
-        return segments.last(where: { $0.startTime <= now && now < $0.endTime })?.id
-            ?? segments.last(where: { $0.startTime <= now })?.id
+        return content.activeRowID(at: player.currentTime)
     }
 
     var body: some View {
         if player != nil {
-            // With audio, the transcript is a Spotify-lyrics carousel: the
-            // spoken line stays centered inside its own viewport, so seeking
-            // moves the transcript, never the whole page.
+            // Playback always follows the synchronized row inside this
+            // viewport; it never moves the surrounding Meeting Detail chrome.
             FocusedTranscriptView(
-                segments: segments, activeID: activeSegmentID, height: carouselHeight
-            ) { segment, isActive in
-                row(segment, isActive: isActive)
+                segments: content.rows,
+                activeID: activeRowID,
+                height: carouselHeight
+            ) { row, isActive in
+                transcriptRow(row, isActive: isActive)
             }
         } else {
-            // Text-only meetings own their scroll viewport too, so a cited
-            // source can be focused without moving unrelated page chrome.
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 3) {
-                        ForEach(segments) { segment in
-                            row(segment, isActive: segment.id == focusedSegmentID)
-                                .id(segment.id)
-                        }
+            textOnlyTranscript
+        }
+    }
+
+    private var textOnlyTranscript: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 3) {
+                    ForEach(content.rows) { row in
+                        transcriptRow(row, isActive: row.id == focusedRowID)
+                            .id(row.id)
                     }
                 }
-                .onChange(of: focusedSegmentID) { _, id in
-                    guard let id else { return }
-                    let interval = MeetingDetailPerformanceTrace.beginTranscriptScroll()
-                    withAnimation(
-                        .easeInOut(duration: 0.25),
-                        completionCriteria: .logicallyComplete
-                    ) {
-                        proxy.scrollTo(id, anchor: .center)
-                    } completion: {
-                        MeetingDetailPerformanceTrace.endTranscriptScroll(interval)
-                    }
-                }
-                .task(id: performanceScrollEnabled ? segments.count : 0) {
-                    guard MeetingDetailPerformanceTrace.isEnabled,
-                          performanceScrollEnabled,
-                          !didStartPerformanceScroll,
-                          segments.count >= 4
-                    else { return }
-                    didStartPerformanceScroll = true
-                    let targetOffsets = [3, 1, 2, 0, 3].map {
-                        min(segments.count - 1, segments.count * $0 / 4)
-                    }
-                    let targets = targetOffsets.map { segments[$0].id }
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(2))
-                        for target in targets {
-                            let interval = MeetingDetailPerformanceTrace
-                                .beginTranscriptScroll()
-                            withAnimation(
-                                .easeInOut(duration: 0.25),
-                                completionCriteria: .logicallyComplete
-                            ) {
-                                proxy.scrollTo(target, anchor: .center)
-                            } completion: {
-                                MeetingDetailPerformanceTrace.endTranscriptScroll(interval)
-                            }
-                            try? await Task.sleep(for: .milliseconds(500))
-                        }
-                    }
-                }
+            }
+            .onChange(of: focusedRowID) { _, id in
+                guard let id else { return }
+                scroll(proxy, to: id)
+            }
+            .task(id: performanceScrollEnabled ? content.rows.count : 0) {
+                runPerformanceScrollIfRequested(proxy)
             }
         }
     }
 
-    private func row(_ segment: TranscriptSegment, isActive: Bool) -> some View {
+    private func scroll(_ proxy: ScrollViewProxy, to id: UUID) {
+        let interval = MeetingDetailPerformanceTrace.beginTranscriptScroll()
+        withAnimation(
+            .easeInOut(duration: 0.25),
+            completionCriteria: .logicallyComplete
+        ) {
+            proxy.scrollTo(id, anchor: .center)
+        } completion: {
+            MeetingDetailPerformanceTrace.endTranscriptScroll(interval)
+        }
+    }
+
+    private func runPerformanceScrollIfRequested(_ proxy: ScrollViewProxy) {
+        guard MeetingDetailPerformanceTrace.isEnabled,
+              performanceScrollEnabled,
+              !didStartPerformanceScroll,
+              content.rows.count >= 4
+        else { return }
+        didStartPerformanceScroll = true
+        let targetOffsets = [3, 1, 2, 0, 3].map {
+            min(content.rows.count - 1, content.rows.count * $0 / 4)
+        }
+        let targets = targetOffsets.map { content.rows[$0].id }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            for target in targets {
+                scroll(proxy, to: target)
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+        }
+    }
+
+    private func transcriptRow(
+        _ row: MeetingTranscriptContent.Row,
+        isActive: Bool
+    ) -> some View {
+        MeetingTranscriptRowView(
+            row: row,
+            speaker: speakers.first { $0.id == row.speakerID },
+            cast: speakers,
+            isActive: isActive,
+            canSeek: player != nil,
+            onSeek: onSeek,
+            onRenameTap: onRenameTap)
+    }
+}
+
+/// One correction-ready reading row. Its stable identity belongs to the
+/// composed input; source evidence coordinates remain outside presentation.
+private struct MeetingTranscriptRowView: View {
+    let row: MeetingTranscriptContent.Row
+    let speaker: Speaker?
+    let cast: [Speaker]
+    let isActive: Bool
+    let canSeek: Bool
+    let onSeek: (TimeInterval) -> Void
+    let onRenameTap: (Speaker) -> Void
+
+    var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Button {
-                onSeek(segment.startTime)
+                onSeek(row.startTime)
             } label: {
-                Text(clock(segment.startTime))
+                Text(clock(row.startTime))
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(isActive ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                    .foregroundStyle(
+                        isActive ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
                     .frame(width: 44, alignment: .trailing)
             }
             .buttonStyle(.plain)
-            .disabled(player == nil)
+            .disabled(!canSeek)
             .help("Jump to this moment")
             SpeakerPill(
-                speaker: speakers.first { $0.id == segment.speakerID },
-                cast: speakers,
+                speaker: speaker,
+                cast: cast,
                 onRename: onRenameTap)
-            Text(segment.text)
+            Text(row.text)
                 .font(.callout)
                 .textSelection(.enabled)
             Spacer(minLength: 0)
@@ -122,7 +147,7 @@ struct TranscriptSegmentsView: View {
             isActive ? PVDesign.accent.opacity(0.12) : Color.clear,
             in: RoundedRectangle(cornerRadius: 6))
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("transcript-segment-\(segment.id.uuidString)")
+        .accessibilityIdentifier("transcript-segment-\(row.id.uuidString)")
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 

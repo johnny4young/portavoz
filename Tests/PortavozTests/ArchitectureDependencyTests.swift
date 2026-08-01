@@ -4429,24 +4429,37 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift")
         let trust = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailTrustSection.swift")
+        let transcript = try Self.contents(
+            of: "Sources/portavoz-app/MeetingTranscriptSection.swift")
+        let focusedTranscript = try Self.contents(
+            of: "Sources/portavoz-app/FocusedTranscriptView.swift")
         let documentPresentation = try Self.contents(
             of: "Sources/ApplicationKit/MeetingGeneratedDocumentPresentation.swift")
+        let transcriptContent = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingTranscriptContent.swift")
 
         XCTAssertTrue(view.contains("MeetingDetailHeaderSection("))
         XCTAssertTrue(view.contains("MeetingGeneratedDocumentSection("))
         XCTAssertTrue(view.contains("MeetingDetailTrustSection("))
+        XCTAssertTrue(view.contains("MeetingTranscriptSection("))
+        XCTAssertTrue(view.contains("MeetingTranscriptChaptersSection("))
         XCTAssertFalse(view.contains("private func header("))
         XCTAssertFalse(view.contains("private func speakersRow("))
         XCTAssertFalse(view.contains("private func summarySection("))
+        XCTAssertFalse(view.contains("private var transcriptHeader"))
+        XCTAssertFalse(view.contains("private func transcriptArea("))
+        XCTAssertFalse(view.contains("private func transcriptLines("))
+        XCTAssertFalse(view.contains("private func chaptersSection("))
         XCTAssertLessThanOrEqual(
             view.components(separatedBy: .newlines).count,
-            1_750,
+            1_680,
             "Meeting Detail must not absorb extracted section presentation again")
 
         for (name, source) in [
             ("header", header),
             ("generated document", generatedDocument),
-            ("trust", trust)
+            ("trust", trust),
+            ("transcript", transcript)
         ] {
             XCTAssertTrue(source.contains("Values"), name)
             XCTAssertTrue(source.contains("Actions"), name)
@@ -4466,6 +4479,28 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(generatedDocument.contains("CustomRecipeStore"))
         XCTAssertTrue(generatedDocument.contains("MeetingEvidenceSources("))
         XCTAssertTrue(trust.contains("@State private var retryingProcessing"))
+        XCTAssertTrue(transcript.contains("struct MeetingTranscriptValues"))
+        XCTAssertTrue(transcript.contains("struct MeetingTranscriptActions"))
+        XCTAssertTrue(transcript.contains("MeetingTranscriptContent"))
+        XCTAssertFalse(transcript.contains("ChapterExtractor"))
+
+        XCTAssertEqual(
+            transcriptContent.components(separatedBy: .newlines)
+                .filter { $0.hasPrefix("import ") },
+            ["import Foundation", "import PortavozCore"])
+        XCTAssertTrue(transcriptContent.contains("sourceSegmentIDs"))
+        XCTAssertTrue(transcriptContent.contains("rowID(at:"))
+        XCTAssertTrue(transcriptContent.contains("activeRowID(at:"))
+        XCTAssertTrue(transcriptContent.contains("rightmostRowEnding("))
+        for forbidden in [
+            "import SwiftUI", "AppServices", "MeetingDetailModel", "MeetingStore",
+            "UserDefaults", "@State", "@Environment",
+        ] {
+            XCTAssertFalse(transcriptContent.contains(forbidden), forbidden)
+        }
+        XCTAssertTrue(focusedTranscript.contains("FocusedTranscriptView<Item: Identifiable"))
+        XCTAssertTrue(focusedTranscript.contains("TranscriptFollowOwnershipPolicy"))
+        XCTAssertFalse(focusedTranscript.contains("import PortavozCore"))
 
         XCTAssertEqual(
             documentPresentation.components(separatedBy: .newlines)
@@ -5401,7 +5436,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            265)
+            267)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             10)

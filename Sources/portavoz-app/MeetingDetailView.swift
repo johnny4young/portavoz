@@ -7,9 +7,9 @@ import SwiftUI
 import TranscriptionKit
 import UniformTypeIdentifiers
 
-// Large SwiftUI view (transcript + summary + action items). Helper types
-// (MeetingPlayerBar, WaveformView, TranscriptSegmentsView, SpeakerPill,
-// ExportDocument) live in their own files; this type body is split across
+// Meeting Detail composition and the remaining secondary flows. Focused
+// header, trust, generated-document, transcript, and player types live in
+// their own files; this type body is split across
 // `extension MeetingDetailView` blocks below. The file stays above the
 // file_length threshold because splitting the rest would expose ~24 private
 // `@State` properties to the whole module — an encapsulation cost not worth
@@ -85,13 +85,10 @@ struct MeetingDetailView: View {
     @State private var personCandidates: [Person] = []
     @State private var choosingPerson: PersonRememberOffer?
     @State private var findingPerson = false
-    /// Explicit summary-source navigation. Audio meetings seek the playhead
-    /// without surprising playback; text-only meetings use this ID to focus
-    /// the cited row.
-    @State private var evidenceFocusSegmentID: UUID?
-    /// Evidence can be clicked before a long waveform finishes preparing.
-    /// Keep the exact seek until the player exists instead of dropping it.
-    @State private var pendingEvidenceSeek: TimeInterval?
+    /// Cross-section evidence and external-seek navigation stays a small value.
+    /// It can map accepted evidence into a future correction-composed row and
+    /// retains a seek while a long waveform is still preparing.
+    @State private var transcriptNavigation = MeetingTranscriptNavigationState()
     /// Disposable Instruments automation runs once per detail instance. It is
     /// inert unless both the temp-store and performance-profile flags exist.
     @State private var didRunPerformanceSeek = false
@@ -217,12 +214,13 @@ struct MeetingDetailView: View {
 
 extension MeetingDetailView {
     private func loadedBody(_ detail: MeetingReviewReadModel) -> some View {
+        let transcript = transcriptContent(detail)
         // A fixed-height composition (NOT one big page scroll): header and
         // summary sit at the top, the transcript fills the middle and scrolls
         // in its own viewport, and the player is DOCKED at the bottom — so you
         // never scroll the page to reach the player, and reading the
         // transcript never moves it. The health + chapters rail sits alongside.
-        VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 12) {
             headerSection(detail)
             MeetingDetailOperationStatus(
                 progress: refining ?? applying,
@@ -231,13 +229,25 @@ extension MeetingDetailView {
                 VStack(alignment: .leading, spacing: 10) {
                     summaryOrGenerate(detail)
                     notesSection(detail)
-                    transcriptHeader
-                    transcriptArea(detail)
+                    MeetingTranscriptSection(
+                        values: MeetingTranscriptValues(
+                            content: transcript,
+                            speakers: detail.speakers,
+                            player: player,
+                            focusedRowID: transcriptNavigation.focusedRowID,
+                            performanceScrollEnabled: sceneValues.performanceProfile
+                                .shouldExerciseTranscriptScroll),
+                        actions: MeetingTranscriptActions(
+                            seekAndPlay: seekAndPlay,
+                            renameSpeaker: { speaker in
+                                renamingSpeaker = speaker
+                                newName = speaker.displayName ?? ""
+                            }))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     playerDock
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                detailRail(detail)
+                detailRail(detail, transcript: transcript)
             }
             .frame(maxHeight: .infinity)
         }
@@ -245,50 +255,13 @@ extension MeetingDetailView {
         .frame(maxWidth: 1060, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private var transcriptHeader: some View {
-        HStack {
-            Text("Transcript")
-                .font(.headline)
-                .accessibilityIdentifier("detail-transcript-title")
-            if player != nil {
-                Spacer()
-                Text("Click a line to jump there")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-    }
-
-    /// The transcript body: a self-centering lyrics carousel when there's
-    /// audio (sized to fill the space above the docked player), or a plain
-    /// scrolling list otherwise.
-    @ViewBuilder
-    private func transcriptArea(_ detail: MeetingReviewReadModel) -> some View {
-        if player != nil {
-            GeometryReader { geometry in
-                transcriptLines(detail, carouselHeight: max(180, geometry.size.height))
-            }
-        } else {
-            transcriptLines(detail, carouselHeight: 440)
-        }
-    }
-
-    private func transcriptLines(_ detail: MeetingReviewReadModel, carouselHeight: CGFloat) -> some View {
-        // Own View struct so only it re-renders as the playhead moves — the
-        // header and summary above stay put.
-        TranscriptSegmentsView(
+    private func transcriptContent(
+        _ detail: MeetingReviewReadModel
+    ) -> MeetingTranscriptContent {
+        .accepted(
+            baseTranscriptRevision: detail.meeting.transcriptRevision,
             segments: detail.segments,
-            speakers: detail.speakers,
-            player: player,
-            focusedSegmentID: evidenceFocusSegmentID,
-            performanceScrollEnabled: sceneValues.performanceProfile
-                .shouldExerciseTranscriptScroll,
-            onSeek: { player?.seek(to: $0); player?.play() },
-            onRenameTap: { speaker in
-                renamingSpeaker = speaker
-                newName = speaker.displayName ?? ""
-            },
-            carouselHeight: carouselHeight)
+            chapterTitles: model.state.chapterTitles)
     }
 
     /// The audio player, docked at the bottom of the transcript column so it
@@ -316,8 +289,11 @@ extension MeetingDetailView {
     /// cards) never grows the page and pushes the header or docked player
     /// off-screen — the rail stays within its column, everything else stays put.
     @ViewBuilder
-    private func detailRail(_ detail: MeetingReviewReadModel) -> some View {
-        let hasChapters = !ChapterExtractor.chapters(from: detail.segments).isEmpty
+    private func detailRail(
+        _ detail: MeetingReviewReadModel,
+        transcript: MeetingTranscriptContent
+    ) -> some View {
+        let hasChapters = !transcript.chapters.isEmpty
         let hasHealth = detail.segments.contains { $0.speakerID != nil }
         let hasProcessingState = detail.meeting.lifecycleState == .needsAttention
             || detail.processingJobs.contains {
@@ -348,7 +324,11 @@ extension MeetingDetailView {
                     if hasHealth {
                         MeetingHealthView(speakers: detail.speakers, segments: detail.segments)
                     }
-                    chaptersSection(detail)
+                    MeetingTranscriptChaptersSection(
+                        chapters: transcript.chapters,
+                        hasPlayback: player != nil,
+                        presentation: presentation,
+                        seekAndPlay: seekAndPlay)
                     companionCardsSection
                 }
             }
@@ -924,15 +904,19 @@ extension MeetingDetailView {
     }
 
     private func focusEvidence(_ segment: TranscriptSegment) {
-        evidenceFocusSegmentID = segment.id
-        pendingEvidenceSeek = segment.startTime
+        guard let detail else { return }
+        transcriptNavigation.reveal(
+            sourceSegmentID: segment.id,
+            at: segment.startTime,
+            in: transcriptContent(detail))
         applyPendingEvidenceSeekIfPossible()
     }
 
     private func applyPendingEvidenceSeekIfPossible() {
-        guard let seconds = pendingEvidenceSeek, let player else { return }
+        guard let player,
+              let seconds = transcriptNavigation.consumePendingSeek()
+        else { return }
         player.seek(to: seconds)
-        pendingEvidenceSeek = nil
     }
 
     private enum ExportFormat { case markdown, pdf, srt, vtt }
@@ -1477,10 +1461,12 @@ extension MeetingDetailView {
     /// citations that target an already-open meeting, while refresh covers a
     /// newly constructed destination and requests that arrive before loading.
     private func consumePendingMeetingSeekIfMatching() {
-        guard
-            let request = sceneActions.consumePendingSeek()
+        guard let detail,
+              let request = sceneActions.consumePendingSeek()
         else { return }
-        pendingEvidenceSeek = request.timestamp
+        transcriptNavigation.requestSeek(
+            to: request.timestamp,
+            in: transcriptContent(detail))
         applyPendingEvidenceSeekIfPossible()
     }
 
@@ -1532,49 +1518,14 @@ extension MeetingDetailView {
         presentation.clock(seconds, paddedMinutes: true)
     }
 
-    /// ✦ Chapters (design system): break points the app finds locally in
-    /// the transcript — a long pause or a topic that has run long — each
-    /// labeled with a real opening line and seeking the player on tap.
-    /// Shown only when the meeting actually breaks into more than one.
-    @ViewBuilder
-    private func chaptersSection(_ detail: MeetingReviewReadModel) -> some View {
-        let chapters = ChapterExtractor.chapters(from: detail.segments)
-        if !chapters.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Chapters", systemImage: "sparkles")
-                    .font(.headline)
-                    .foregroundStyle(PVDesign.accent)
-                    .accessibilityIdentifier("detail-chapters")
-                ForEach(chapters) { chapter in
-                    Button {
-                        player?.seek(to: chapter.startTime)
-                        player?.play()
-                    } label: {
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Text(timestamp(chapter.startTime))
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(PVDesign.accent)
-                                .frame(width: 44, alignment: .leading)
-                            Text(model.state.chapterTitles[chapter.startTime] ?? chapter.title)
-                                .font(.callout)
-                                .lineLimit(1)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(player == nil)
-                    .padding(.vertical, 3)
-                    .accessibilityIdentifier("chapter-\(Int(chapter.startTime))")
-                    .help(player == nil
-                        ? L10n.text("Chapters jump the player — this meeting has no audio.")
-                        : L10n.text("Jump to this moment"))
-                }
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
-        }
+    private func seekAndPlay(_ seconds: TimeInterval) {
+        guard let detail, let player else { return }
+        transcriptNavigation.requestSeek(
+            to: seconds,
+            in: transcriptContent(detail))
+        guard let timestamp = transcriptNavigation.consumePendingSeek() else { return }
+        player.seek(to: timestamp)
+        player.play()
     }
 
     /// The live Companion's answers, kept for review (D26): each card seeks

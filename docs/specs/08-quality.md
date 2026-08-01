@@ -1,6 +1,8 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: 1,487 package tests passing (13 model-gated) + 57 XCUITest UI cases. CI
+Status: the host-independent package gate executes 1,583 cases with zero
+failures (13 model-gated and two host-integration cases skipped) + 57 XCUITest
+UI cases. CI
 on GitHub Actions
 (`.github/workflows/ci.yml`: macos-latest build/test, an explicit macos-15
 Sequoia build/test lane, **SwiftLint `--strict`**, and a fast repository-hygiene
@@ -70,7 +72,7 @@ documented below.
 | StopRecordingUseCaseTests | Finalized/missing asset reconciliation, provisional attribution, per-turn mixed-language preservation, exact diarization/transcription initial-job policy and order, empty/partial-lane transcript recovery, truly silent/no-audio outcomes, admission and fallback failures, unconditional engine release, atomic real-Store snapshot/job adaptation, and one matched recording-critical workload |
 | MeetingStoreTests summary history/evidence | Per-recipe immutable versions, newest-across-recipe selection, retained history, fingerprint cache/pivots, atomic same-meeting overview/decision/action/Apuntador validation, canonical decision coordinates, stable task/card identity, role-separated links, evidence clear-on-overwrite, revision stamping/staleness, physical-deletion unavailability, correction/unsupported replacement, active-claim fencing, text-erasing clear, and rollback on foreign evidence |
 | AudioCaptureTests / LongCaptureBenchmarkTests / RecordingLevelBufferTests / RecordingLevelRelayTests | CaptureFileWriter staging CAF, reusable grow-only PCM storage, explicit idempotent close, exact frame conservation, atomic no-overwrite publication, persisted-PCM recovery measurement, complete streaming checksum/media/health evidence, accelerated bounded-heap dual-channel publication, same-pass compact per-chunk level evidence including accepted duration, drift summary, callback-liveness and two-minute Stop-nudge policy, mic-heartbeat stall/retry/recovery integration, post-close utility-queue publication with independent channel outcomes, recoverable-source invocation, one-slot 20 Hz level presentation with complete diagnostic ingestion, duration-stable sustained-ceiling hysteresis, isolated-peak rejection, clean-audio recovery, and cancellation fencing, Downmix, **Resample.linear**, startup cleanup |
-| LiveTranscriptionAttacherTests / LiveTranslationRoutingTests / LiveTranslationStateTests / LiveTranslationWakeHubTests | Bounded newest-only hot attachment, shared cold-model join and failure cancellation, pre-attachment recovery requirement, matched live-consumer workload intervals, target-fenced translation state/results, growing-row source-revision refresh, eight-row chronological framework batches, one-wake broadcast buffering and cancellation, consent-driven lane wakeup, automatic failure-retry copy, unsupported-lane passthrough with later supported-lane progress, partial-support persistence, and distinct recoverable-outage versus terminal-failure presentation |
+| LiveTranscriptionAttacherTests / LiveTranslationRoutingTests / LiveTranslationStateTests / LiveTranslationWakeHubTests | Bounded newest-only hot attachment, shared cold-model join and failure cancellation, pre-attachment recovery requirement, matched live-consumer workload intervals, target-fenced translation state/results, growing-row source-revision refresh, eight-row chronological framework batches, one-wake broadcast buffering and cancellation, consent-driven lane wakeup, automatic failure-retry copy, unsupported-lane passthrough with later supported-lane progress, partial-support persistence, distinct recoverable-outage versus terminal-failure presentation, and explicit live-reader versus playback follow ownership |
 | LiveCompanionWorkCoordinatorTests / LiveSummaryWorkCoordinatorTests / LiveSummaryWindowPolicyTests | One complete active Apuntador request plus one newest pending candidate; lifecycle cancellation and fresh-session handoff; one delayed summary cycle for burst signals, one retained wake during active work, successful bounded-backlog continuation, cancelled-worker replacement, oldest-unseen 32-row/6,000-character admission, and oversized-head progress |
 | LegacyScrollInteractionTrackerTests | macOS 14.4 AppKit reader-intent observer scope, unrelated-scroll isolation, disconnect, and exact reconnect behavior |
 | WaveformTests / AudioTranscoderTests / MeetingAudioWorkflowTests | Exact range-aligned Accelerate envelopes, deterministic fixed-chunk cancellation, already-cancelled caller rejection, one 600-default/2,000-maximum immutable waveform snapshot, host AAC integration, canonical-output collision preservation, all-channel verification before raw deletion, rollback after later-channel failure, live filesystem byte accounting, text-only playback degradation, role-aware reversible clear-mix ranges, injected application codec semantics, and matched waveform/media-export work |
@@ -85,6 +87,7 @@ documented below.
 | LiveSpeakerLabelerTests | 7 cases: row split with two voices, last row untouched, idempotency, mic never relabeled, "Me" by voiceprint |
 | IntelligenceTests | PromptFactory, naming filters, **NamingExcerpt**, **LiveSummaryPolicy** |
 | ChapterExtractorTests / PlaybackRangesTests / SummarySectionsTests / VoiceHueTests / TranscriptNoiseFilterTests | chapter boundaries/labels, safe duration-bounded voice-range complements, language-agnostic summary sections, source-ordinal-preserving generated-document projection, typed-commitment deduplication with a legacy Markdown fallback, stable speaker hues, and conservative fragment filtering without losing sentences/acronyms |
+| MeetingTranscriptContentTests | Accepted-row projection, spoken-language/source-ID preservation, customized chapter labels, overlapping and gap playback semantics, split/merge-ready evidence mapping, timestamp-route focus before playback, one-shot pending seeks, and a 20,000-row frontier lookup |
 | InsightsScopeTests / LibraryStatsTests / InsightsFindingsTests | current/previous calendar windows, duration averages, zero-filled weekly cadence and heatmaps, streaks, no-decision evidence thresholds, recurring-topic ranking, stoplists, and participant exclusion |
 | InsightsReadModelTests | complete scoped projection, current/previous totals, decision evidence from summaries/actions, recurring-topic extraction, and confirmed-participant exclusion |
 | InsightsModelTests | complete/empty/degraded/failed phases, one read snapshot, section-local replacement, scope restart, and no-global-version behavior through a database-free client fake |
@@ -1322,9 +1325,10 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability gate is 1,487 XCTest package cases (13 gated),
-zero strict-lint violations across 433 Swift files, a 108-case
-recording/recovery corpus passing 25 consecutive iterations, and 56 XCUITest
+The current field-reliability gate is 1,583 XCTest package cases with zero
+failures (13 model-gated and two host-integration cases skipped), zero
+strict-lint violations across 457 production Swift files, a 108-case
+recording/recovery corpus passing 25 consecutive iterations, and 57 XCUITest
 cases per locale. Package tests include real-Store Stop/recovery invariants,
 explicit Whisper language detection, split-lineage identity, full-pair
 translation fences, unsupported-lane progress, user-only macOS 14 scroll
@@ -1446,7 +1450,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   not substitute for the real-time physical-footprint or route matrix.
 - `make test-meeting-detail-baseline`: verifies the canonical source-derived
   interaction/feature-owner contract and the fail-closed Instruments parser.
-  The contract currently covers 265 interaction signals, ten owners, and all
+  The contract currently covers 267 interaction signals, ten owners, and all
   23 Meeting Detail UI journeys; both missing and duplicate ownership fail.
 - `make meeting-detail-baseline`: Portavoz Dev-only, disposable 5k playback-
   seek and 20k transcript-scroll profiles. Each interaction must produce

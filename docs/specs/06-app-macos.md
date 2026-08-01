@@ -23,7 +23,9 @@ generation continue, with generation-fenced progress and cancellation.
 D222 freezes Meeting Detail interactions and measured behavior before
 decomposition. D223 makes `MeetingDetailScene` the sole route composition
 owner. D224 extracts explicit header, trust, and generated-document sections
-without giving child presentation types model, service, or store access.
+without giving child presentation types model, service, or store access. D225
+adds one correction-ready transcript reading snapshot and extracts transcript
+and chapter presentation without moving correction policy into SwiftUI.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -191,6 +193,26 @@ Legacy summaries without typed commitments retain their Markdown section.
 The three section roots use accessibility containment so their stable section
 identifiers do not overwrite the nested controls exposed to Voice Control,
 assistive technologies, or XCUITest.
+
+D225 adds `MeetingTranscriptContent` as the Foundation/ApplicationKit value
+between accepted transcript evidence and review presentation. The current
+factory projects each accepted segment to one stable row and carries source
+segment IDs, speaker, channel, per-turn spoken language, timing, confidence,
+and finality. A future correction composer can split or merge those visible
+rows while retaining every source ID; neither `MeetingDetailView` nor its row
+renderer decides which correction wins. Chapters derive from the same snapshot
+as the visible rows, preventing independent projections from drifting.
+
+`MeetingTranscriptNavigationState` resolves generated evidence through source
+IDs and timestamp-only Library/Ask/Spotlight routes through the visible-row
+timeline. It keeps an exact pending seek while waveform/player construction is
+still in flight. Playback synchronization performs a start-time upper-bound
+search plus a maximum-end segment-tree lookup, retaining the released overlap
+and gap behavior without scanning up to 20,000 rows every 200 ms. The extracted
+transcript and chapter sections receive only immutable values and explicit seek
+or rename actions. Row rendering remains a stable-ID `LazyVStack`, while the
+generic focused viewport keeps live reader ownership and playback following in
+a separately tested pure policy.
 
 ### Resource workload measurement (D148)
 

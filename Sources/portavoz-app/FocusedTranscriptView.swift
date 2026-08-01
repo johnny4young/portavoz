@@ -1,4 +1,3 @@
-import PortavozCore
 import SwiftUI
 
 enum FocusedTranscriptMode: Equatable, Sendable {
@@ -52,14 +51,25 @@ enum TranscriptFocusVisualPolicy {
     }
 }
 
-@available(macOS 15.0, *)
-enum LiveTranscriptScrollOwnershipPolicy {
-    static func shouldYieldFollow(for phase: ScrollPhase) -> Bool {
+enum TranscriptFollowOwnershipPolicy {
+    static func followsActiveLine(
+        mode: FocusedTranscriptMode,
+        isFollowingLive: Bool
+    ) -> Bool {
+        mode == .playback || isFollowingLive
+    }
+
+    @available(macOS 15.0, *)
+    static func shouldYieldFollow(
+        mode: FocusedTranscriptMode,
+        for phase: ScrollPhase
+    ) -> Bool {
+        guard mode == .live else { return false }
         switch phase {
         case .tracking, .interacting, .decelerating:
-            true
+            return true
         case .idle, .animating:
-            false
+            return false
         }
     }
 }
@@ -68,9 +78,9 @@ enum LiveTranscriptScrollOwnershipPolicy {
 /// the others carousel past. Playback always follows its active line. Live
 /// recording follows the newest caption until the user scrolls, then yields
 /// ownership until they explicitly choose "Jump to live".
-struct FocusedTranscriptView<Row: View>: View {
-    let segments: [TranscriptSegment]
-    let activeID: TranscriptSegment.ID?
+struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID: Hashable {
+    let segments: [Item]
+    let activeID: Item.ID?
     var height: CGFloat = 440
     /// Where the focused line sits. `.center` for playback (past + future
     /// around it); lower (e.g. y ≈ 0.82) for live recording, where the new
@@ -80,7 +90,7 @@ struct FocusedTranscriptView<Row: View>: View {
     var followSignal: Double = 0
     var mode = FocusedTranscriptMode.playback
     var scrollAccessibilityIdentifier: String?
-    @ViewBuilder var row: (TranscriptSegment, Bool) -> Row
+    @ViewBuilder var row: (Item, Bool) -> Row
 
     @State private var isFollowing = true
 
@@ -158,7 +168,9 @@ struct FocusedTranscriptView<Row: View>: View {
     }
 
     private var followsActiveLine: Bool {
-        mode == .playback || isFollowing
+        TranscriptFollowOwnershipPolicy.followsActiveLine(
+            mode: mode,
+            isFollowingLive: isFollowing)
     }
 
     @ViewBuilder
@@ -177,8 +189,9 @@ struct FocusedTranscriptView<Row: View>: View {
     ) -> some View {
         if #available(macOS 15.0, *) {
             content.onScrollPhaseChange { _, phase in
-                guard mode == .live,
-                      LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: phase)
+                guard TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                    mode: mode,
+                    for: phase)
                 else { return }
                 onUserScroll()
             }
@@ -191,7 +204,7 @@ struct FocusedTranscriptView<Row: View>: View {
 
     private func recenter(
         _ proxy: ScrollViewProxy,
-        _ id: TranscriptSegment.ID?,
+        _ id: Item.ID?,
         animated: Bool = true
     ) {
         guard let id else { return }

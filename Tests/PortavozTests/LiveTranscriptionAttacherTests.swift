@@ -599,15 +599,44 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
         guard #available(macOS 15.0, *) else { return }
 
         XCTAssertTrue(
-            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .tracking))
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .live,
+                for: .tracking))
         XCTAssertTrue(
-            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .interacting))
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .live,
+                for: .interacting))
         XCTAssertTrue(
-            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .decelerating))
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .live,
+                for: .decelerating))
         XCTAssertFalse(
-            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .idle))
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .live,
+                for: .idle))
         XCTAssertFalse(
-            LiveTranscriptScrollOwnershipPolicy.shouldYieldFollow(for: .animating))
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .live,
+                for: .animating))
+        XCTAssertFalse(
+            TranscriptFollowOwnershipPolicy.shouldYieldFollow(
+                mode: .playback,
+                for: .tracking))
+    }
+
+    func testPlaybackAlwaysFollowsWhileLiveHonorsReaderOwnership() {
+        XCTAssertTrue(
+            TranscriptFollowOwnershipPolicy.followsActiveLine(
+                mode: .playback,
+                isFollowingLive: false))
+        XCTAssertTrue(
+            TranscriptFollowOwnershipPolicy.followsActiveLine(
+                mode: .live,
+                isFollowingLive: true))
+        XCTAssertFalse(
+            TranscriptFollowOwnershipPolicy.followsActiveLine(
+                mode: .live,
+                isFollowingLive: false))
     }
 
     func testLiveFollowKeepsNearbyHistorySharpLonger() {

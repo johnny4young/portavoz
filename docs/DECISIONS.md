@@ -7521,3 +7521,45 @@ Keeping ephemeral state beside its control reduces unrelated invalidation.
 The pure projection prevents duplicate task presentation without weakening
 legacy data or proof coordinates, and the shared evidence surface keeps trust
 behavior consistent wherever generated claims appear.
+
+## D225 — Read transcripts through a correction-ready snapshot (Aug 2026)
+
+**Context:** D224 removed generated-document presentation from the Meeting
+Detail coordinator, but that coordinator still built transcript rows, computed
+chapters, owned evidence focus, and wired every seek. Playback also found the
+active row by scanning the complete transcript every 200 ms. A later
+correction overlay must be able to split or merge visible rows without breaking
+persisted evidence coordinates or teaching SwiftUI which transcript version is
+authoritative.
+
+**Decision:** make `ApplicationKit.MeetingTranscriptContent` the immutable
+reading snapshot consumed by Meeting Detail. Each stable visible row carries
+its ordered immutable source-segment identities, speaker, channel, spoken
+language, timing, confidence, and finality. Chapters are projected from the
+same snapshot. The current `accepted` factory remains a one-source-to-one-row
+projection; a future correction composer may provide split or merged rows
+through the same public value without introducing correction policy into the
+view.
+
+Resolve evidence routes by source-segment identity and Library/Ask/Spotlight
+routes by timestamp. One small navigation value retains the focused visible row
+and an exact pending seek until playback exists. Active playback lookup uses a
+start-time upper-bound search plus a maximum-end segment tree, preserving the
+released overlap and gap behavior in logarithmic time rather than rescanning a
+large meeting on every playhead update.
+
+Extract the transcript and chapter surfaces behind explicit immutable values
+and actions. Row rendering remains a stable-ID `LazyVStack`; the shared focused
+viewport is generic over identifiable rows and keeps its playback-versus-live
+follow ownership as a pure policy. These presentation types cannot access the
+route model, services, store, or global preferences. Expand the reviewed
+interaction boundary to 267 signals across sixteen source files while retaining
+the same 23 UI journeys and ten feature owners. Transcript-section and reading-
+snapshot diffs select only audio, evidence, chapter/health, and scale journeys.
+
+**Rationale:** source mappings let immutable generated evidence survive future
+visual correction composition. One reading snapshot prevents rows and chapters
+from disagreeing, while indexed playback work keeps synchronization cost
+bounded for long meetings. Explicit values/actions preserve the D223 scene as
+the route owner and make correction policy independently testable before any
+editable overlay is introduced.

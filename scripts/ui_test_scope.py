@@ -144,7 +144,11 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
 
 ALL_TESTS = tuple(dict.fromkeys(test for tests in FEATURE_TESTS.values() for test in tests))
 ALL_FEATURES = frozenset(FEATURE_TESTS)
-MEETING_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("meeting-"))
+MEETING_FEATURES = frozenset(
+    feature
+    for feature in ALL_FEATURES
+    if feature.startswith("meeting-") and feature != "meeting-brief"
+)
 SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("settings-"))
 HARNESS_TESTS = (
     test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
@@ -246,6 +250,10 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-performance"}
     if "transcriptsegments" in lowered:
         return {"meeting-audio", "meeting-evidence", "meeting-performance"}
+    if "meetingtranscriptsection" in lowered:
+        return {
+            "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"
+        }
     if "meetingdetailheadersection" in lowered:
         return {"meeting-export", "meeting-naming", "meeting-processing"}
     if "meetinggenerateddocumentsection" in lowered:
@@ -278,6 +286,10 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "meetingtranscriptcontent" in lowered:
+        return {
+            "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"
+        }
     if "meetinggenerateddocumentpresentation" in lowered:
         return {"meeting-evidence", "meeting-summary"}
     if "queryexpander" in lowered:

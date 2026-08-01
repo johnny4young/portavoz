@@ -115,7 +115,7 @@ self-contained over system frameworks and carries no module dependency.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots and navigation state, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
@@ -988,8 +988,8 @@ or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
 Meeting Detail decomposition is also preceded by a frozen presentation
-boundary. A generated contract inventories 265 interaction signals across
-fifteen source files,
+boundary. A generated contract inventories 267 interaction signals across
+sixteen source files,
 assigns all 23 detail XCUITest journeys to exactly one of ten feature owners,
 and digest-binds the reviewed performance harness and evidence. Hidden
 payload-free scroll and seek signposts activate only when a disposable temp
@@ -1003,11 +1003,24 @@ zero. This contract is a refactor-parity guard, not product telemetry or a
 performance budget.
 
 The reviewed interaction boundary includes the scene shell and extracted
-header, trust, and generated-document sections. It preserves every journey,
-owner, control, sheet, keyboard shortcut, and performance fixture while adding
-stable section identifiers. Scene/presentation changes conservatively select
-all Meeting Detail journeys; each section and the pure generated-document
-projection select only the feature journeys they own.
+header, trust, generated-document, transcript, and chapter sections. It
+preserves every journey, owner, control, sheet, keyboard shortcut, and
+performance fixture while adding stable section identifiers. Scene/presentation
+changes conservatively select all Meeting Detail journeys; each section and its
+pure ApplicationKit projection select only the feature journeys they own.
+
+Meeting Detail reads transcript presentation through one immutable
+`MeetingTranscriptContent` snapshot. Stable visible rows retain ordered
+source-segment identities plus speaker, channel, spoken language, timing,
+confidence, and finality, so a later correction composer can split or merge
+rows without invalidating immutable evidence. Rows and chapters derive from the
+same snapshot. Source-ID routes focus evidence; timestamp routes from Library,
+Ask, and Spotlight focus the nearest visible row and retain an exact seek until
+audio is ready. A start-time binary search plus maximum-end segment tree keeps
+active-row resolution logarithmic while preserving released overlap and gap
+semantics. SwiftUI receives only the snapshot and explicit actions; the generic
+focused viewport owns its pure live-versus-playback follow policy, never
+correction authority.
 
 Core also owns one pure resource-admission policy, separate from both
 measurement and runtime scheduling. Its immutable snapshot contains the
