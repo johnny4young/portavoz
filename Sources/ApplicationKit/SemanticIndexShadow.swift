@@ -11,6 +11,15 @@ public enum SemanticIndexShadowAdapter: String, CaseIterable, Sendable {
     case sqliteVecANNResearch
 }
 
+/// Query contract for one concrete research candidate.
+///
+/// The closed adapter identity belongs to the implementation instead of a
+/// parallel call-site label, so comparison evidence cannot accidentally name
+/// a different engine family than the searcher that produced it.
+public protocol SemanticIndexShadowCandidateSearching: SemanticIndexSearching {
+    var adapter: SemanticIndexShadowAdapter { get }
+}
+
 public enum SemanticIndexShadowOutcome: String, CaseIterable, Sendable {
     case completed
     case cancelled
@@ -115,8 +124,7 @@ public struct ShadowComparingSemanticIndex: SemanticIndexSearching {
     }
 
     private struct CandidateWork: Sendable {
-        let candidate: any SemanticIndexSearching
-        let adapter: SemanticIndexShadowAdapter
+        let candidate: any SemanticIndexShadowCandidateSearching
         let telemetry: SemanticIndexShadowTelemetry
         let query: [Float]
         let profile: SemanticEmbeddingProfile
@@ -143,7 +151,7 @@ public struct ShadowComparingSemanticIndex: SemanticIndexSearching {
                     nil
                 }
                 telemetry.record(SemanticIndexShadowEvent(
-                    candidate: adapter,
+                    candidate: candidate.adapter,
                     outcome: .completed,
                     queryDimension: query.count,
                     requestedLimit: limit,
@@ -156,7 +164,7 @@ public struct ShadowComparingSemanticIndex: SemanticIndexSearching {
                     candidateDuration: startedAt.duration(to: .now)))
             } catch {
                 telemetry.record(SemanticIndexShadowEvent(
-                    candidate: adapter,
+                    candidate: candidate.adapter,
                     outcome: SemanticIndexShadowOutcome(error: error),
                     queryDimension: query.count,
                     requestedLimit: limit,
@@ -172,7 +180,7 @@ public struct ShadowComparingSemanticIndex: SemanticIndexSearching {
 
         func skip(_ reason: SemanticIndexShadowSkipReason) {
             telemetry.record(SemanticIndexShadowEvent(
-                candidate: adapter,
+                candidate: candidate.adapter,
                 outcome: reason.outcome,
                 queryDimension: query.count,
                 requestedLimit: limit,
@@ -187,21 +195,18 @@ public struct ShadowComparingSemanticIndex: SemanticIndexSearching {
     }
 
     private let control: any SemanticIndexSearching
-    private let candidate: any SemanticIndexSearching
-    private let candidateAdapter: SemanticIndexShadowAdapter
+    private let candidate: any SemanticIndexShadowCandidateSearching
     private let telemetry: SemanticIndexShadowTelemetry
     private let executor: SemanticIndexShadowExecutor
 
     public init(
         control: any SemanticIndexSearching,
-        candidate: any SemanticIndexSearching,
-        candidateAdapter: SemanticIndexShadowAdapter,
+        candidate: any SemanticIndexShadowCandidateSearching,
         telemetry: SemanticIndexShadowTelemetry,
         executor: SemanticIndexShadowExecutor
     ) {
         self.control = control
         self.candidate = candidate
-        self.candidateAdapter = candidateAdapter
         self.telemetry = telemetry
         self.executor = executor
     }
@@ -220,7 +225,6 @@ public struct ShadowComparingSemanticIndex: SemanticIndexSearching {
         let controlKeys = controlHits.map(Self.evidenceKey)
         let work = CandidateWork(
             candidate: candidate,
-            adapter: candidateAdapter,
             telemetry: telemetry,
             query: query,
             profile: profile,

@@ -6907,3 +6907,29 @@ ever enabled.
 introduced. Reusing one capture-aware maintenance gate prevents research work
 from competing with live audio, while single-flight/no-backlog behavior makes
 load deterministic and preserves the reversible exact-first Strangler seam.
+
+## D209 — Bind shadow evidence identity to the candidate implementation (Aug 2026)
+
+**Context:** D207 recorded a closed candidate-family label beside work submitted
+through the generic semantic-index port. The label and candidate were separate
+constructor arguments, so a benchmark call site could accidentally identify a
+sqlite-vec implementation as Core Spotlight or USearch. Aggregate telemetry
+would remain payload-free but become untrustworthy, and no later receipt could
+recover which implementation actually produced it.
+
+**Decision:** every research candidate conforms to
+`SemanticIndexShadowCandidateSearching`, which refines the D206 query port and
+owns one closed `SemanticIndexShadowAdapter` identity. The shadow decorator
+accepts only that identity-bearing candidate and derives completed, failed,
+cancelled, and skipped event identities from `candidate.adapter`. There is no
+independent adapter-label constructor argument.
+
+This contract does not introduce a concrete engine, package dependency,
+derived schema, index writer, app composition, or durable receipt. Exact
+Accelerate control remains the only product authority, and D208 admission still
+governs every optional benchmark candidate.
+
+**Rationale:** benchmark attribution must be correct by construction before
+engine work begins. Making identity an implementation property prevents label
+drift, keeps aggregate evidence explainable, and preserves the reversible
+shadow boundary without granting a candidate product authority.

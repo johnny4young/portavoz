@@ -462,6 +462,24 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testSemanticShadowCandidateOwnsItsEvidenceIdentity() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains("## D209"))
+
+        let shadow = try Self.contents(
+            of: "Sources/ApplicationKit/SemanticIndexShadow.swift")
+        for required in [
+            "protocol SemanticIndexShadowCandidateSearching: SemanticIndexSearching",
+            "var adapter: SemanticIndexShadowAdapter { get }",
+            "private let candidate: any SemanticIndexShadowCandidateSearching",
+            "candidate: any SemanticIndexShadowCandidateSearching,",
+            "candidate: candidate.adapter"
+        ] {
+            XCTAssertTrue(shadow.contains(required), "missing \(required)")
+        }
+        XCTAssertFalse(shadow.contains("candidateAdapter:"))
+    }
+
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {
         let policy = try Self.contents(
             of: "Sources/PortavozCore/ResourceGovernorPolicy.swift")

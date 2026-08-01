@@ -1619,15 +1619,19 @@ event schema cannot carry queries, vectors, meeting or segment identifiers,
 titles, transcript text, model names, paths, or raw errors. Construction
 requires an explicit telemetry receiver and executor; there is no inert
 accidental mode. Candidate failures and cancellation are observations only; a
-control failure schedules no shadow work. Benchmark composition may route the
-explicit executor through `SemanticIndexShadowCoordinator`. The actor asks the
-existing durable maintenance gate for `.maintenance` / `.searchIndex` /
-`.execute` admission, allows one candidate flight without a backlog, records
-policy, busy, and capture skips as closed payload-free outcomes, and
-cooperatively cancels the active candidate when capture starts. Resume waits
-for that cancelled flight to finish before allowing another candidate. Neither
-Ask nor Library composes this wrapper or coordinator, and no candidate package,
-schema, index writer, or production scheduler exists yet.
+control failure schedules no shadow work. Every research implementation must
+conform to `SemanticIndexShadowCandidateSearching`; its closed adapter identity
+travels with the implementation and is the only identity emitted for its work.
+The wrapper accepts no independent call-site label that could misattribute
+comparison evidence. Benchmark composition may route the explicit executor
+through `SemanticIndexShadowCoordinator`. The actor asks the existing durable
+maintenance gate for `.maintenance` / `.searchIndex` / `.execute` admission,
+allows one candidate flight without a backlog, records policy, busy, and
+capture skips as closed payload-free outcomes, and cooperatively cancels the
+active candidate when capture starts. Resume waits for that cancelled flight
+to finish before allowing another candidate. Neither Ask nor Library composes
+this wrapper or coordinator, and no candidate package, schema, index writer, or
+production scheduler exists yet.
 
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and

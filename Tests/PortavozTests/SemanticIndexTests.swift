@@ -78,8 +78,9 @@ final class SemanticIndexTests: XCTestCase {
         let events = SemanticIndexShadowEventRecorder()
         let index = ShadowComparingSemanticIndex(
             control: control,
-            candidate: candidate,
-            candidateAdapter: .sqliteVecExact,
+            candidate: TestSemanticIndexShadowCandidate(
+                adapter: .sqliteVecExact,
+                index: candidate),
             telemetry: events.telemetry,
             executor: operations.executor)
 
@@ -119,8 +120,9 @@ final class SemanticIndexTests: XCTestCase {
         let events = SemanticIndexShadowEventRecorder()
         let index = ShadowComparingSemanticIndex(
             control: RecordingSemanticIndex(hits: [controlHit]),
-            candidate: FailingSemanticIndex(),
-            candidateAdapter: .coreSpotlightSemantic,
+            candidate: TestSemanticIndexShadowCandidate(
+                adapter: .coreSpotlightSemantic,
+                index: FailingSemanticIndex()),
             telemetry: events.telemetry,
             executor: operations.executor)
 
@@ -147,8 +149,9 @@ final class SemanticIndexTests: XCTestCase {
         let candidate = RecordingSemanticIndex(hits: [])
         let index = ShadowComparingSemanticIndex(
             control: FailingSemanticIndex(),
-            candidate: candidate,
-            candidateAdapter: .usearchHNSW,
+            candidate: TestSemanticIndexShadowCandidate(
+                adapter: .usearchHNSW,
+                index: candidate),
             telemetry: events.telemetry,
             executor: operations.executor)
 
@@ -178,8 +181,9 @@ final class SemanticIndexTests: XCTestCase {
         let events = SemanticIndexShadowEventRecorder()
         let index = ShadowComparingSemanticIndex(
             control: RecordingSemanticIndex(hits: [controlHit]),
-            candidate: candidate,
-            candidateAdapter: .sqliteVecExact,
+            candidate: TestSemanticIndexShadowCandidate(
+                adapter: .sqliteVecExact,
+                index: candidate),
             telemetry: events.telemetry,
             executor: coordinator.executor)
 
@@ -215,8 +219,9 @@ final class SemanticIndexTests: XCTestCase {
         let events = SemanticIndexShadowEventRecorder()
         let index = ShadowComparingSemanticIndex(
             control: RecordingSemanticIndex(hits: [controlHit]),
-            candidate: candidate,
-            candidateAdapter: .usearchHNSW,
+            candidate: TestSemanticIndexShadowCandidate(
+                adapter: .usearchHNSW,
+                index: candidate),
             telemetry: events.telemetry,
             executor: coordinator.executor)
 
@@ -257,8 +262,9 @@ final class SemanticIndexTests: XCTestCase {
         let events = SemanticIndexShadowEventRecorder()
         let index = ShadowComparingSemanticIndex(
             control: RecordingSemanticIndex(hits: [controlHit]),
-            candidate: candidate,
-            candidateAdapter: .coreSpotlightSemantic,
+            candidate: TestSemanticIndexShadowCandidate(
+                adapter: .coreSpotlightSemantic,
+                index: candidate),
             telemetry: events.telemetry,
             executor: coordinator.executor)
 
@@ -353,6 +359,22 @@ private actor RecordingSemanticIndex: SemanticIndexSearching {
             profile: profile,
             limit: limit))
         return Array(hits.prefix(limit))
+    }
+}
+
+private struct TestSemanticIndexShadowCandidate: SemanticIndexShadowCandidateSearching {
+    let adapter: SemanticIndexShadowAdapter
+    let index: any SemanticIndexSearching
+
+    func search(
+        _ query: [Float],
+        profile: SemanticEmbeddingProfile,
+        limit: Int
+    ) async throws -> [SearchHit] {
+        try await index.search(
+            query,
+            profile: profile,
+            limit: limit)
     }
 }
 
