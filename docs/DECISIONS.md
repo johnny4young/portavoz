@@ -6817,3 +6817,33 @@ as a retrieval regression or fabricated score.
 immutable source identity and complete publication boundary. Separating asset
 preparation from measurement makes failures fast and attributable, while one
 private atomic run prevents accidental cross-build conclusions.
+
+## D206 — Inject one read-only semantic-index query port before shadow engines (Aug 2026)
+
+**Context:** Ask and Library called `MeetingStore.searchSemantic` directly.
+That is correct for the shipped Accelerate exact scan, but it makes a controlled
+shadow bake-off awkward: each consumer would need engine-specific branching,
+and a candidate could accidentally become coupled to query-vector creation,
+corpus maintenance, or user-visible fusion before its evidence is accepted.
+
+**Decision:** ApplicationKit owns one narrow `SemanticIndexSearching` query
+port. It accepts a finite vector space through the exact active
+`SemanticEmbeddingProfile` plus a bounded limit and returns ranked, current
+`SearchHit` projections. Ask and Library borrow the embedding runtime and create
+the query vector exactly as before, then call the injected port. Their default
+is `AccelerateExactSemanticIndex`, a behavior-preserving adapter over the
+existing SQLite-streamed Accelerate implementation.
+
+The seam is read-only and does not own embedding assets, vector publication,
+compatibility invalidation, maintenance scheduling, lexical search, fusion, or
+answer generation. Exact control remains the sole product result source.
+Candidate packages, persistence, shadow orchestration, content-free comparison
+telemetry, and engine selection remain separate SEARCH-5 slices. A future
+candidate adapter must still return authoritative current citation projections;
+it cannot make its derived index the meeting-data authority.
+
+**Rationale:** one injected port isolates the variable that the benchmark needs
+to compare without changing the safe exact-first product. Retaining the current
+adapter as the default creates a reversible Strangler seam and prevents a
+research engine from spreading into retrieval consumers or the durable writer
+before quality, resource, lifecycle, licensing, and packaging gates pass.

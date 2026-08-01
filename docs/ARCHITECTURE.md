@@ -1593,10 +1593,21 @@ observes a new request without depending on route reconstruction.
 
 The instant Library path is an exact-first hybrid distinct from Ask. Its FTS
 observation always publishes before optional semantic augmentation. It reuses
-the same device-local Apple embedding representation and StorageKit cosine
-adapter, skips semantic work during capture, refuses asset downloads as a
+the same device-local Apple embedding representation and the injected
+ApplicationKit semantic-index query port, skips semantic work during capture,
+refuses asset downloads as a
 side-effect of typing, and treats cancellation or embedding failure as an empty
 augmentation.
+
+Ask and Library no longer call StorageKit's cosine scan directly. Both receive
+the same read-only `SemanticIndexSearching` port after readiness and query-vector
+creation. Its shipped `AccelerateExactSemanticIndex` adapter delegates to the
+unchanged SQLite-streamed, bounded Accelerate top-k implementation and returns
+current `SearchHit` projections with segment identity and transcript revision.
+The default composition remains exact control, so ranking, fusion, corpus
+maintenance, storage schema, asset policy, and UI behavior are unchanged. This
+is the Strangler seam for later shadow candidates; it does not authorize a
+second product writer, serve candidate results, or select another engine.
 
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and

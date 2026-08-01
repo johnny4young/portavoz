@@ -10,11 +10,13 @@ public actor LocalLibrarySemanticSearch {
     private let store: MeetingStore
     private let runtime: any SemanticEmbeddingRuntimeClient
     private let semanticReadiness: ResolveSemanticCorpusReadiness
+    private let semanticIndex: any SemanticIndexSearching
 
     public init(
         store: MeetingStore,
         runtime: any SemanticEmbeddingRuntimeClient,
-        semanticReadiness: ResolveSemanticCorpusReadiness? = nil
+        semanticReadiness: ResolveSemanticCorpusReadiness? = nil,
+        semanticIndex: (any SemanticIndexSearching)? = nil
     ) {
         self.store = store
         self.runtime = runtime
@@ -22,6 +24,8 @@ public actor LocalLibrarySemanticSearch {
             ?? ResolveSemanticCorpusReadiness(
                 store: store,
                 runtime: runtime)
+        self.semanticIndex = semanticIndex
+            ?? AccelerateExactSemanticIndex(store: store)
     }
 
     public func search(
@@ -36,13 +40,13 @@ public actor LocalLibrarySemanticSearch {
         try Task.checkCancellation()
         return try await runtime.withPreparedEmbedding(
             allowAssetDownload: false
-        ) { [store] embedder in
+        ) { [semanticIndex] embedder in
             try Task.checkCancellation()
             let profile = await embedder.semanticEmbeddingProfile()
             guard let vector = try await embedder.vectors(
                 for: [query]
             ).first else { return [] }
-            return try await store.searchSemantic(
+            return try await semanticIndex.search(
                 vector,
                 profile: profile,
                 limit: limit)

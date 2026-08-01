@@ -12,13 +12,15 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private let queryExpander: any AskQueryExpanding
     private let runtime: any SemanticEmbeddingRuntimeClient
     private let semanticReadiness: ResolveSemanticCorpusReadiness
+    private let semanticIndex: any SemanticIndexSearching
 
     public init(
         store: MeetingStore,
         lexicalExpander: BilingualSearchQueryExpander = .init(),
         queryExpander: any AskQueryExpanding = OnDeviceAskMeetingIntelligence(),
         runtime: any SemanticEmbeddingRuntimeClient,
-        semanticReadiness: ResolveSemanticCorpusReadiness? = nil
+        semanticReadiness: ResolveSemanticCorpusReadiness? = nil,
+        semanticIndex: (any SemanticIndexSearching)? = nil
     ) {
         self.store = store
         self.lexicalExpander = lexicalExpander
@@ -28,6 +30,8 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             ?? ResolveSemanticCorpusReadiness(
                 store: store,
                 runtime: runtime)
+        self.semanticIndex = semanticIndex
+            ?? AccelerateExactSemanticIndex(store: store)
     }
 
     public func search(
@@ -189,7 +193,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             guard readiness.canSearchPublishedVectors else { return .empty }
             return try await runtime.withPreparedEmbedding(
                 allowAssetDownload: false
-            ) { [store, trace] embedder in
+            ) { [semanticIndex, trace] embedder in
                 let profile = await embedder.semanticEmbeddingProfile()
                 let vectors = try await trace.measure(.queryEmbedding) {
                     try await embedder.vectors(for: queries)
@@ -198,7 +202,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
                     try await Self.searchSemantic(
                         vectors: vectors,
                         profile: profile,
-                        store: store)
+                        semanticIndex: semanticIndex)
                 }
             }
         } catch is CancellationError {
@@ -236,11 +240,11 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private static func searchSemantic(
         vectors: [[Float]],
         profile: SemanticEmbeddingProfile,
-        store: MeetingStore
+        semanticIndex: any SemanticIndexSearching
     ) async throws -> SemanticCandidates {
         var result = SemanticCandidates.empty
         for vector in vectors {
-            for (rank, hit) in try await store.searchSemantic(
+            for (rank, hit) in try await semanticIndex.search(
                 vector,
                 profile: profile,
                 limit: 12

@@ -370,6 +370,27 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testSemanticIndexPortKeepsExactControlOutsideProductConsumers() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains("## D206"))
+
+        let index = try Self.contents(
+            of: "Sources/ApplicationKit/SemanticIndex.swift")
+        XCTAssertTrue(index.contains("protocol SemanticIndexSearching"))
+        XCTAssertTrue(index.contains("struct AccelerateExactSemanticIndex"))
+        XCTAssertTrue(index.contains("store.searchSemantic"))
+
+        for consumer in [
+            "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift",
+            "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift"
+        ] {
+            let source = try Self.contents(of: consumer)
+            XCTAssertTrue(source.contains("any SemanticIndexSearching"))
+            XCTAssertTrue(source.contains("AccelerateExactSemanticIndex"))
+            XCTAssertFalse(source.contains("store.searchSemantic("))
+        }
+    }
+
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {
         let policy = try Self.contents(
             of: "Sources/PortavozCore/ResourceGovernorPolicy.swift")
