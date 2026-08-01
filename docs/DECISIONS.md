@@ -6741,3 +6741,41 @@ evidence remains inspectable at its original transcript identity. Reusing the
 production retrieval path isolates chunk topology as the variable under test,
 while source-aware scoring prevents apparent recall gains from hiding wrong or
 stale evidence.
+
+## D204 — Version corpus topology and compare retrieval candidates as one run (Jul 2026)
+
+**Context:** D203 can score segment and speaker-turn units truthfully, but the
+first public corpus generation grouped four different actors per meeting. The
+candidate therefore collapsed to the segment control on almost every row, and
+independent scorecards could still be compared across a different corpus,
+build, commit, or observation schema. Replacing the original fixture would
+also make historical evidence impossible to reproduce.
+
+**Decision:** tracked public fixture generations are immutable. The historical
+`public-synthetic-v1` fixture remains accepted at its original checksum. The
+current `public-synthetic-v2` fixture preserves the exact 240-query multilingual
+distribution but deterministically interleaves relationships into sixty
+four-segment meetings. Every meeting has two ordered two-segment same-actor
+turns, including mixed-language turns. Hard negatives come from another
+meeting, so the speaker-turn candidate is exercised without manufacturing a
+hard-negative failure in every relevant chunk.
+
+The offline comparator accepts one validated canonical fixture and two complete
+scorecards. The control must use the D203 segment adapter, the candidate the
+D203 speaker-turn adapter, and both must share build, commit, fixture checksum,
+and observation schema 2. It publishes an owner-only, atomic, non-overwriting,
+payload-free receipt with aggregate and per-relationship retrieval deltas.
+Candidate parity requires no degradation in Hit@1, Recall@10, MRR, nDCG@10, or
+exact-rank-one, canonical citations for both candidates, and no hard-negative
+increase. Identity, aggregate, or language-slice mismatch blocks the receipt.
+
+A `candidate-parity` receipt is quality evidence only. It does not choose the
+product adapter or authorize chunk persistence, semantic maintenance, or query
+changes. Resource cost, correction cost, answer quality, and accepted hardware
+evidence remain separate gates before production selection.
+
+**Rationale:** corpus topology must vary the retrieval unit without changing
+the judged distribution, while one paired receipt must prove both candidates
+were measured from the same source and build. Immutable generations preserve
+historical reproducibility; strict per-slice comparison prevents an aggregate
+gain from hiding a Spanish, English, mixed, or cross-lingual regression.

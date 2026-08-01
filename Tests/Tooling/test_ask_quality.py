@@ -28,6 +28,50 @@ class AskQualityTests(unittest.TestCase):
         )
         self.assertEqual(len(validated["checksum"]), 64)
         self.assertEqual(validated["contentSource"], "public-synthetic-only")
+        self.assertEqual(validated["generation"], "public-synthetic-v2")
+
+    def test_public_fixture_v1_remains_reproducible(self):
+        fixture = quality.public_fixture("public-synthetic-v1")
+        validated = quality.validate_fixture(fixture)
+
+        self.assertEqual(
+            validated["checksum"],
+            "a44be7a1a90af377d45ebc5cfa97e807f9c270c70778bfe5f75d36707ec26303",
+        )
+
+    def test_v2_topology_has_two_multilingual_turns_per_meeting(self):
+        fixture = quality.public_fixture()
+        segments = {segment["id"]: segment for segment in fixture["segments"]}
+        meetings = {}
+        for segment in fixture["segments"]:
+            meetings.setdefault(segment["meetingID"], []).append(segment)
+
+        self.assertEqual(len(meetings), 60)
+        has_multilingual_turn = False
+        for meeting_segments in meetings.values():
+            meeting_segments.sort(key=lambda item: item["timestampMilliseconds"])
+            self.assertEqual(len(meeting_segments), 4)
+            self.assertEqual(
+                meeting_segments[0]["owner"], meeting_segments[1]["owner"]
+            )
+            self.assertEqual(
+                meeting_segments[2]["owner"], meeting_segments[3]["owner"]
+            )
+            self.assertNotEqual(
+                meeting_segments[0]["owner"], meeting_segments[2]["owner"]
+            )
+            has_multilingual_turn = has_multilingual_turn or any(
+                meeting_segments[index]["language"]
+                != meeting_segments[index + 1]["language"]
+                for index in (0, 2)
+            )
+        self.assertTrue(has_multilingual_turn)
+        for query in fixture["queries"]:
+            query_segment = segments[f"segment-{int(query['id'][-3:]):03d}"]
+            hard_negative = segments[query["hardNegativeSegmentIDs"][0]]
+            self.assertNotEqual(
+                query_segment["meetingID"], hard_negative["meetingID"]
+            )
 
     def test_robustness_cases_isolate_spanish_spelling_and_identifier_noise(self):
         fixture = quality.public_fixture()
@@ -42,11 +86,19 @@ class AskQualityTests(unittest.TestCase):
         for query in queries[:15]:
             segment_id = query["relevant"][0]["segmentID"]
             self.assertEqual(segments[segment_id]["language"], "es")
-        for expected_typo, query in zip(
-            ["progamó", "conprometió", "desición", "rieso", "esqumea"],
-            queries[5:10],
-        ):
-            self.assertIn(expected_typo, query["text"])
+        typo_by_intent = {
+            "name": "resposable",
+            "date": "progamó",
+            "commitment": "conprometió",
+            "decision": "desición",
+            "risk": "rieso",
+            "technicalIdentifier": "esqumea",
+            "paraphrase": "resolbió",
+        }
+        for query in queries[5:10]:
+            expected_typo = typo_by_intent.get(query["intent"])
+            if expected_typo is not None:
+                self.assertIn(expected_typo, query["text"])
         self.assertTrue(
             all("GraphQL-v3-atlas" in query["text"] for query in queries[10:15])
         )
@@ -129,6 +181,137 @@ class AskQualityTests(unittest.TestCase):
         self.assertNotIn('"text"', encoded)
         self.assertNotIn('"queryID"', encoded)
         self.assertNotIn("Mara", encoded)
+
+    def test_paired_receipt_accepts_exact_segment_parity_without_payloads(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        control = quality.evaluate(
+            fixture,
+            quality.validate_observations(
+                self.perfect_observations(fixture_document), fixture
+            ),
+        )
+        candidate = copy.deepcopy(control)
+        control["subject"]["adapter"] = quality.SEGMENT_ADAPTER
+        candidate["subject"]["adapter"] = quality.SPEAKER_TURN_ADAPTER
+
+        receipt = quality.compare_scorecards(
+            fixture,
+            quality.validate_scorecard(control, "controlScorecard"),
+            quality.validate_scorecard(candidate, "candidateScorecard"),
+        )
+        encoded = json.dumps(receipt, sort_keys=True)
+
+        self.assertEqual(receipt["outcome"], "candidate-parity")
+        self.assertTrue(all(receipt["gates"].values()))
+        self.assertTrue(
+            all(value == 0 for value in receipt["aggregateDeltas"].values())
+        )
+        self.assertNotIn('"text"', encoded)
+        self.assertNotIn('"queryID"', encoded)
+        self.assertNotIn("Mara", encoded)
+
+    def test_paired_receipt_blocks_run_identity_and_retrieval_regressions(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        control = self.scorecard(fixture_document, fixture, quality.SEGMENT_ADAPTER)
+        candidate_observations = self.perfect_observations(fixture_document)
+        candidate_observations["queries"][0]["hits"] = []
+        candidate = quality.evaluate(
+            fixture,
+            quality.validate_observations(candidate_observations, fixture),
+        )
+        candidate["subject"]["adapter"] = quality.SPEAKER_TURN_ADAPTER
+        candidate["subject"]["commit"] = "1" * 40
+
+        receipt = quality.compare_scorecards(
+            fixture,
+            quality.validate_scorecard(control, "controlScorecard"),
+            quality.validate_scorecard(candidate, "candidateScorecard"),
+        )
+
+        self.assertEqual(receipt["outcome"], "blocked")
+        self.assertFalse(receipt["gates"]["runIdentityMatches"])
+        self.assertFalse(receipt["gates"]["aggregateRetrievalParity"])
+        self.assertFalse(receipt["gates"]["relationshipRetrievalParity"])
+
+    def test_compare_command_publishes_owner_only_receipt(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        control = self.scorecard(fixture_document, fixture, quality.SEGMENT_ADAPTER)
+        candidate = copy.deepcopy(control)
+        candidate["subject"]["adapter"] = quality.SPEAKER_TURN_ADAPTER
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture_path = root / "fixture.json"
+            control_path = root / "control.json"
+            candidate_path = root / "candidate.json"
+            output = root / "comparison.json"
+            fixture_path.write_text(json.dumps(fixture_document))
+            control_path.write_text(json.dumps(control))
+            candidate_path.write_text(json.dumps(candidate))
+
+            result = quality.main_from_args(
+                [
+                    "compare",
+                    "--fixture",
+                    str(fixture_path),
+                    "--control",
+                    str(control_path),
+                    "--candidate",
+                    str(candidate_path),
+                    "--output",
+                    str(output),
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(
+                json.loads(output.read_text())["outcome"], "candidate-parity"
+            )
+            self.assertEqual(os.stat(output).st_mode & 0o777, 0o600)
+
+    def test_paired_receipt_blocks_hard_negative_chunk_regression(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        control = self.scorecard(fixture_document, fixture, quality.SEGMENT_ADAPTER)
+        candidate_observations = self.perfect_observations(fixture_document)
+        hard_negative = fixture_document["queries"][0][
+            "hardNegativeSegmentIDs"
+        ][0]
+        segment = next(
+            item
+            for item in fixture_document["segments"]
+            if item["id"] == hard_negative
+        )
+        candidate_observations["queries"][0]["hits"].append(self.hit(segment))
+        candidate = quality.evaluate(
+            fixture,
+            quality.validate_observations(candidate_observations, fixture),
+        )
+        candidate["subject"]["adapter"] = quality.SPEAKER_TURN_ADAPTER
+
+        receipt = quality.compare_scorecards(
+            fixture,
+            quality.validate_scorecard(control, "controlScorecard"),
+            quality.validate_scorecard(candidate, "candidateScorecard"),
+        )
+
+        self.assertEqual(receipt["outcome"], "blocked")
+        self.assertFalse(receipt["gates"]["hardNegativesDoNotRegress"])
+
+    def test_scorecard_validator_rejects_tampered_outcome(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        scorecard = self.scorecard(
+            fixture_document, fixture, quality.SEGMENT_ADAPTER
+        )
+        scorecard["outcome"] = "blocked"
+
+        with self.assertRaisesRegex(
+            quality.AskQualityError, "outcome does not match its gates"
+        ):
+            quality.validate_scorecard(scorecard)
 
     def test_exact_fact_missing_rank_one_blocks(self):
         fixture_document = quality.public_fixture()
@@ -221,9 +404,8 @@ class AskQualityTests(unittest.TestCase):
         fixture_document = quality.public_fixture()
         fixture = quality.validate_fixture(fixture_document)
         observations = self.perfect_observations(fixture_document)
-        hard_negative = fixture_document["queries"][0][
-            "hardNegativeSegmentIDs"
-        ][0]
+        hard_negative = "segment-002"
+        fixture["queries"]["query-001"]["hardNegatives"] = {hard_negative}
         observations["queries"][0]["hits"][0]["sourceSegmentIDs"].append(
             hard_negative
         )
@@ -477,6 +659,17 @@ class AskQualityTests(unittest.TestCase):
             "timestampMilliseconds": segment["timestampMilliseconds"],
             "transcriptRevision": segment["transcriptRevision"],
         }
+
+    @classmethod
+    def scorecard(cls, fixture_document, fixture, adapter):
+        scorecard = quality.evaluate(
+            fixture,
+            quality.validate_observations(
+                cls.perfect_observations(fixture_document), fixture
+            ),
+        )
+        scorecard["subject"]["adapter"] = adapter
+        return scorecard
 
     @classmethod
     def perfect_observations(cls, fixture):

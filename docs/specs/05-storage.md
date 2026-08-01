@@ -924,3 +924,8 @@ retrieval implementation can rank it, but the owner-only observation maps the
 candidate back to every ordered canonical fixture segment. This is not a
 StorageKit schema, migration, product write path, or authorization to persist
 chunk text in the user library.
+
+D204 versions only tracked synthetic fixtures and publishes a private
+content-free comparison receipt. Historical fixture verification, scorecard
+comparison, and receipt publication do not create a database schema, migration,
+derived corpus row, or product maintenance operation.

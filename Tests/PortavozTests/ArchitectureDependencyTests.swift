@@ -314,7 +314,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             "RELATIONSHIP_COUNTS", "RETRIEVAL_FLOORS", "ANSWER_FLOORS",
             "exactFactsRankFirst", "retrievalQualityFloor",
             "answerQualityFloor", "citationsCanonical",
-            "hardNegativesExcluded", "adapter", "commit",
+            "hardNegativesExcluded", "candidate-parity",
+            "aggregateRetrievalParity", "relationshipRetrievalParity",
+            "SEGMENT_ADAPTER", "SPEAKER_TURN_ADAPTER", "adapter", "commit",
         ] {
             XCTAssertTrue(
                 qualityHarness.contains(required),
@@ -342,10 +344,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D194"))
         XCTAssertTrue(decisions.contains("## D195"))
         XCTAssertTrue(decisions.contains("## D203"))
+        XCTAssertTrue(decisions.contains("## D204"))
         XCTAssertTrue(quality.contains(
             "The same run must emit a content-free pipeline sidecar"))
         XCTAssertTrue(quality.contains("exactly 240 judged queries"))
         XCTAssertTrue(quality.contains("portavoz-cli bench-ask-quality"))
+        XCTAssertTrue(quality.contains("scripts/ask_quality.py compare"))
+        XCTAssertTrue(quality.contains("public-synthetic-v2"))
     }
 
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {

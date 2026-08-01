@@ -1334,9 +1334,10 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 
 ## Measurement harnesses
 
-- `make test-ask-quality`: verifies the canonical public-synthetic Ask fixture
-  and runs 25 deterministic evaluator cases without loading models or user
-  data. The fixture has exactly 240 judged queries: 60 Spanish-to-Spanish, 60
+- `make test-ask-quality`: verifies both canonical public-synthetic Ask fixture
+  generations and runs 32 deterministic evaluator/comparator cases without
+  loading models or user data. Each fixture has exactly 240 judged queries: 60
+  Spanish-to-Spanish, 60
   English-to-English, 40 English-to-Spanish, 40 Spanish-to-English, 20
   code-switched, and 20 isolated robustness cases. Evaluation reports Hit@1,
   Recall@10, reciprocal rank, nDCG@10, factuality, citation coverage, answer
@@ -1346,11 +1347,15 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   claims fail closed. The owner-only scorecard retains aggregate metrics plus
   fixture, adapter, build, and commit identity, never source payloads. This
   adapter-neutral harness is the fail-closed quality boundary.
+  `public-synthetic-v1` stays reproducible for historical evidence;
+  `public-synthetic-v2` interleaves relationships
+  into sixty four-segment meetings with two exact two-segment same-actor turns
+  per meeting, multilingual turns, and hard negatives from another meeting.
 - `portavoz-cli bench-ask-quality` accepts fixture, output, build, commit, and
   an optional `segment|speaker-turn` retrieval-unit argument. It seeds and
   explicitly indexes a disposable database outside query observation and runs
   the real corpus-read-only `LocalAskMeetingRetrieval` path without opening the
-  user library. Five Swift tests cover product retrieval provenance,
+  user library. Six Swift tests cover product retrieval provenance,
   multilingual same-actor turn projection, exact source membership, and
   owner-only atomic non-overwriting publication. Observation schema 2 records
   one ranked unit ID and every ordered source segment ID. The evaluator still
@@ -1360,6 +1365,15 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   adapters intentionally emit `notEvaluated` answer fields, so retrieval can
   be scored while answer-quality and answer-policy gates remain blocked until
   a separate versioned judge exists.
+- `scripts/ask_quality.py compare` accepts one canonical fixture plus segment
+  control and speaker-turn candidate scorecards. It validates their complete
+  scorecard shape, canonical quality floors, adapter roles, fixture checksum,
+  build, commit, and observation schema before publishing an owner-only,
+  non-overwriting, payload-free comparison receipt. The candidate must match
+  or improve every aggregate and per-relationship retrieval metric, retain
+  canonical citations, and introduce no hard-negative regression. A
+  `candidate-parity` result is quality evidence only and cannot select the
+  product adapter without the separate resource and correction-cost matrix.
 - Six semantic-readiness package tests cover the shared `ready`, `partial`,
   `building`, `unsupported`, and `failed` contract, complete-corpus precedence
   over stale process failure, Library reads that cannot advance the durable

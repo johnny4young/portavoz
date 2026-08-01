@@ -139,6 +139,35 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
         XCTAssertEqual(observation.transcriptRevision, 3)
     }
 
+    func testCanonicalV2FixtureProjectsTwoExactSpeakerTurnsPerMeeting() async throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/AskQuality/public-synthetic-v2.json")
+        let fixture = try AskQualityFixture.load(from: fixtureURL)
+        let store = try MeetingStore.inMemory()
+        let mapping = try await AskQualityCorpusMapping.seed(
+            fixture: fixture,
+            store: store,
+            retrievalUnit: .speakerTurn)
+
+        XCTAssertEqual(fixture.generation, "public-synthetic-v2")
+        XCTAssertEqual(fixture.queries.count, 240)
+        let first = try await Self.observation(
+            matching: "atlas-001",
+            store: store,
+            mapping: mapping)
+        let second = try await Self.observation(
+            matching: "atlas-003",
+            store: store,
+            mapping: mapping)
+
+        XCTAssertEqual(first.sourceSegmentIDs, ["segment-001", "segment-002"])
+        XCTAssertEqual(second.sourceSegmentIDs, ["segment-003", "segment-004"])
+        XCTAssertNotEqual(first.unitID, second.unitID)
+    }
+
     func testPrivateWriterIsOwnerOnlyNonOverwritingAndPreservesParentMode() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "ask-quality-writer-\(UUID().uuidString)",
@@ -256,6 +285,22 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
                     expectedOwner: "Mara")],
                 hardNegativeSegmentIDs: ["segment-003"],
                 answerPolicy: "answer")])
+    }
+
+    private static func observation(
+        matching query: String,
+        store: MeetingStore,
+        mapping: AskQualityCorpusMapping
+    ) async throws -> AskQualityHitObservation {
+        let hits = try await store.search(query, limit: 1)
+        let hit = try XCTUnwrap(hits.first)
+        return try mapping.observation(for: AskCitation(
+            segmentID: hit.segmentID,
+            meetingID: hit.meetingID,
+            meetingTitle: hit.meetingTitle,
+            timestamp: hit.startTime,
+            transcriptRevision: hit.transcriptRevision,
+            text: hit.text))
     }
 }
 

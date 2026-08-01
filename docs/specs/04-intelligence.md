@@ -625,6 +625,12 @@ database and run the same production retrieval implementation used by the
 segment control. Observation schema 2 keeps one ranked chunk identity plus all
 ordered canonical source segment identities, so source order, revision,
 hard-negative inclusion, and exact citation timestamps remain fail-closed.
+The current public-synthetic-v2 topology contains two two-segment same-actor
+turns in every four-segment meeting and interleaves spoken languages. A strict
+offline comparator accepts only the exact segment-control and speaker-turn
+adapter identities from one fixture, build, commit, and schema-2 observation
+pair. It blocks any aggregate or language-relationship retrieval regression;
+its parity outcome is evidence, not permission to alter product retrieval.
 Segment-level embeddings remain authoritative until the candidate proves
 multilingual quality, latency, memory, disk, and incremental correction
 behavior against the current segment baseline.

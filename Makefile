@@ -27,6 +27,8 @@ test-ask-quality:
 	python3 -m unittest Tests.Tooling.test_ask_quality
 	python3 scripts/ask_quality.py verify-public \
 		--fixture Fixtures/AskQuality/public-synthetic-v1.json
+	python3 scripts/ask_quality.py verify-public \
+		--fixture Fixtures/AskQuality/public-synthetic-v2.json
 
 ## Release performance ledger (PERF-001/PERF-008): run the unattended
 ## benchmark harnesses, evaluate every journey against its declared budget and

@@ -18,8 +18,15 @@ OBSERVATION_SCHEMA_VERSIONS = {1, 2}
 FIXTURE_KIND = "ask-quality-fixture"
 OBSERVATION_KIND = "ask-quality-observations"
 SCORECARD_KIND = "ask-quality-scorecard"
-PUBLIC_GENERATION = "public-synthetic-v1"
+COMPARISON_KIND = "ask-quality-comparison"
+PUBLIC_GENERATION_V1 = "public-synthetic-v1"
+PUBLIC_GENERATION = "public-synthetic-v2"
+PUBLIC_GENERATIONS = {PUBLIC_GENERATION_V1, PUBLIC_GENERATION}
 PUBLIC_SOURCE = "public-synthetic-only"
+SEGMENT_ADAPTER = "local-hybrid-preindexed-segment-no-expansion-evidence-v3"
+SPEAKER_TURN_ADAPTER = (
+    "local-hybrid-preindexed-speaker-turn-v1-no-expansion-evidence-v1"
+)
 RELATIONSHIP_COUNTS = {
     "spanishToSpanish": 60,
     "englishToEnglish": 60,
@@ -68,10 +75,44 @@ EXACT_RANK_ONE_INTENTS = {
 LANGUAGES = {"en", "es", "mixed"}
 ANSWER_POLICIES = {"answer", "abstain"}
 ANSWER_OUTCOMES = {"answered", "abstained", "notEvaluated"}
+SCORECARD_OUTCOMES = {"pass", "blocked"}
+SCORECARD_GATES = {
+    "completeDistribution",
+    "exactFactsRankFirst",
+    "retrievalQualityFloor",
+    "answerQualityFloor",
+    "relationshipQualityFloor",
+    "citationsCanonical",
+    "answerPolicyHonored",
+    "hardNegativesExcluded",
+    "noUnsupportedClaims",
+}
+RETRIEVAL_METRICS = (
+    "hitAt1",
+    "recallAt10",
+    "meanReciprocalRank",
+    "ndcgAt10",
+    "exactRankOne",
+)
+SCORE_RATE_METRICS = RETRIEVAL_METRICS + (
+    "factuality",
+    "citationCoverage",
+    "answerOutcomeAccuracy",
+)
+SCORE_COUNT_METRICS = (
+    "queryCount",
+    "answerableCount",
+    "abstentionCount",
+    "hardNegativeHits",
+    "invalidCitationHits",
+    "staleCitationHits",
+    "unsupportedClaims",
+)
 SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,79}$")
 SAFE_GENERATION = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
 SAFE_BUILD = re.compile(r"^[A-Za-z0-9._+-]{1,80}$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 class AskQualityError(ValueError):
@@ -344,8 +385,11 @@ def validate_fixture(document, exact_distribution=True):
             "fixture query distribution must be exactly "
             + json.dumps(RELATIONSHIP_COUNTS, sort_keys=True)
         )
-    if fixture["contentSource"] == PUBLIC_SOURCE and fixture != public_fixture():
-        raise AskQualityError("public Ask quality fixture is not canonical")
+    if fixture["contentSource"] == PUBLIC_SOURCE:
+        if generation not in PUBLIC_GENERATIONS:
+            raise AskQualityError("public Ask quality generation is not canonical")
+        if fixture != public_fixture(generation):
+            raise AskQualityError("public Ask quality fixture is not canonical")
     return {
         "generation": generation,
         "contentSource": fixture["contentSource"],
@@ -721,12 +765,277 @@ def evaluate(fixture, observation_document):
     }
 
 
-def public_fixture():
-    relationships = [
-        relationship
-        for relationship, count in RELATIONSHIP_COUNTS.items()
-        for _ in range(count)
-    ]
+def validate_scorecard(document, label="scorecard"):
+    root = object_shape(
+        document,
+        label,
+        (
+            "schemaVersion",
+            "kind",
+            "outcome",
+            "subject",
+            "fixture",
+            "qualityFloors",
+            "gates",
+            "overall",
+            "slices",
+        ),
+    )
+    if integer(root["schemaVersion"], f"{label}.schemaVersion") != SCHEMA_VERSION:
+        raise AskQualityError(f"{label}.schemaVersion must be 1")
+    if root["kind"] != SCORECARD_KIND:
+        raise AskQualityError(f"{label}.kind must be {SCORECARD_KIND}")
+    outcome = enum_value(root["outcome"], f"{label}.outcome", SCORECARD_OUTCOMES)
+    subject = validate_scorecard_subject(root["subject"], f"{label}.subject")
+    fixture = validate_scorecard_fixture(root["fixture"], f"{label}.fixture")
+    expected_floors = {
+        "overallRetrieval": RETRIEVAL_FLOORS,
+        "overallAnswer": ANSWER_FLOORS,
+        "perRelationshipRetrieval": RELATIONSHIP_RETRIEVAL_FLOORS,
+        "perRelationshipAnswer": RELATIONSHIP_ANSWER_FLOORS,
+    }
+    if root["qualityFloors"] != expected_floors:
+        raise AskQualityError(f"{label}.qualityFloors are not canonical")
+    gates = validate_scorecard_gates(root["gates"], f"{label}.gates")
+    if (outcome == "pass") != all(gates.values()):
+        raise AskQualityError(f"{label}.outcome does not match its gates")
+    overall = validate_score_metrics(root["overall"], f"{label}.overall")
+    slices = object_shape(
+        root["slices"],
+        f"{label}.slices",
+        tuple(RELATIONSHIP_COUNTS),
+    )
+    normalized_slices = {
+        relationship: validate_score_metrics(
+            slices[relationship], f"{label}.slices.{relationship}"
+        )
+        for relationship in RELATIONSHIP_COUNTS
+    }
+    if overall["queryCount"] != fixture["queryCount"]:
+        raise AskQualityError(f"{label}.overall query count does not match fixture")
+    if sum(item["queryCount"] for item in normalized_slices.values()) != overall[
+        "queryCount"
+    ]:
+        raise AskQualityError(f"{label}.slice query counts do not match overall")
+    return {
+        "outcome": outcome,
+        "subject": subject,
+        "fixture": fixture,
+        "gates": gates,
+        "overall": overall,
+        "slices": normalized_slices,
+    }
+
+
+def validate_scorecard_subject(subject, path):
+    value = object_shape(
+        subject,
+        path,
+        ("adapter", "build", "commit", "observationSchemaVersion"),
+    )
+    return {
+        "adapter": safe_string(value["adapter"], f"{path}.adapter"),
+        "build": safe_string(value["build"], f"{path}.build", SAFE_BUILD),
+        "commit": safe_string(value["commit"], f"{path}.commit", COMMIT),
+        "observationSchemaVersion": integer(
+            value["observationSchemaVersion"],
+            f"{path}.observationSchemaVersion",
+            1,
+        ),
+    }
+
+
+def validate_scorecard_fixture(fixture, path):
+    value = object_shape(
+        fixture,
+        path,
+        (
+            "generation",
+            "contentSource",
+            "checksum",
+            "queryCount",
+            "segmentCount",
+            "relationshipCounts",
+        ),
+    )
+    relationship_counts = object_shape(
+        value["relationshipCounts"],
+        f"{path}.relationshipCounts",
+        tuple(RELATIONSHIP_COUNTS),
+    )
+    return {
+        "generation": safe_string(
+            value["generation"], f"{path}.generation", SAFE_GENERATION
+        ),
+        "contentSource": enum_value(
+            value["contentSource"],
+            f"{path}.contentSource",
+            {PUBLIC_SOURCE, "private-anonymized"},
+        ),
+        "checksum": safe_string(value["checksum"], f"{path}.checksum", SHA256),
+        "queryCount": integer(value["queryCount"], f"{path}.queryCount", 1),
+        "segmentCount": integer(value["segmentCount"], f"{path}.segmentCount", 1),
+        "relationshipCounts": {
+            relationship: integer(
+                relationship_counts[relationship],
+                f"{path}.relationshipCounts.{relationship}",
+            )
+            for relationship in RELATIONSHIP_COUNTS
+        },
+    }
+
+
+def validate_scorecard_gates(gates, path):
+    value = object_shape(gates, path, tuple(SCORECARD_GATES))
+    if any(not isinstance(result, bool) for result in value.values()):
+        raise AskQualityError(f"{path} values must be booleans")
+    return {gate: value[gate] for gate in sorted(SCORECARD_GATES)}
+
+
+def validate_score_metrics(metrics, path):
+    value = object_shape(
+        metrics,
+        path,
+        SCORE_RATE_METRICS + SCORE_COUNT_METRICS,
+    )
+    result = {
+        metric: optional_number(value[metric], f"{path}.{metric}", 0, 1)
+        for metric in SCORE_RATE_METRICS
+    }
+    result.update(
+        {
+            metric: integer(value[metric], f"{path}.{metric}")
+            for metric in SCORE_COUNT_METRICS
+        }
+    )
+    return result
+
+
+def compare_scorecards(fixture, control, candidate):
+    same_fixture = all(
+        scorecard_fixture_matches(item["fixture"], fixture)
+        for item in (control, candidate)
+    )
+    same_run = all(
+        control["subject"][key] == candidate["subject"][key]
+        for key in ("build", "commit")
+    )
+    schema_two = all(
+        item["subject"]["observationSchemaVersion"] == 2
+        for item in (control, candidate)
+    )
+    expected_adapters = (
+        control["subject"]["adapter"] == SEGMENT_ADAPTER
+        and candidate["subject"]["adapter"] == SPEAKER_TURN_ADAPTER
+    )
+    aggregate_parity = retrieval_parity(
+        control["overall"], candidate["overall"]
+    )
+    slice_parity = all(
+        retrieval_parity(
+            control["slices"][relationship],
+            candidate["slices"][relationship],
+        )
+        for relationship in RELATIONSHIP_COUNTS
+    )
+    canonical_sources = all(
+        item["gates"]["citationsCanonical"]
+        and item["overall"]["invalidCitationHits"] == 0
+        and item["overall"]["staleCitationHits"] == 0
+        for item in (control, candidate)
+    )
+    hard_negative_parity = (
+        candidate["overall"]["hardNegativeHits"]
+        <= control["overall"]["hardNegativeHits"]
+    )
+    gates = {
+        "fixtureIdentityMatches": same_fixture,
+        "runIdentityMatches": same_run,
+        "observationSchemaIsTwo": schema_two,
+        "adapterRolesMatch": expected_adapters,
+        "aggregateRetrievalParity": aggregate_parity,
+        "relationshipRetrievalParity": slice_parity,
+        "citationsCanonical": canonical_sources,
+        "hardNegativesDoNotRegress": hard_negative_parity,
+    }
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "kind": COMPARISON_KIND,
+        "outcome": "candidate-parity" if all(gates.values()) else "blocked",
+        "subject": {
+            "build": control["subject"]["build"],
+            "commit": control["subject"]["commit"],
+            "controlAdapter": control["subject"]["adapter"],
+            "candidateAdapter": candidate["subject"]["adapter"],
+            "observationSchemaVersion": control["subject"][
+                "observationSchemaVersion"
+            ],
+        },
+        "fixture": {
+            "generation": fixture["generation"],
+            "checksum": fixture["checksum"],
+            "queryCount": len(fixture["queries"]),
+            "segmentCount": len(fixture["segments"]),
+            "relationshipCounts": fixture["relationshipCounts"],
+        },
+        "sourceOutcomes": {
+            "control": control["outcome"],
+            "candidate": candidate["outcome"],
+        },
+        "gates": gates,
+        "aggregateDeltas": metric_deltas(
+            control["overall"], candidate["overall"]
+        ),
+        "relationshipDeltas": {
+            relationship: metric_deltas(
+                control["slices"][relationship],
+                candidate["slices"][relationship],
+            )
+            for relationship in RELATIONSHIP_COUNTS
+        },
+    }
+
+
+def scorecard_fixture_matches(scorecard_fixture, fixture):
+    return scorecard_fixture == {
+        "generation": fixture["generation"],
+        "contentSource": fixture["contentSource"],
+        "checksum": fixture["checksum"],
+        "queryCount": len(fixture["queries"]),
+        "segmentCount": len(fixture["segments"]),
+        "relationshipCounts": fixture["relationshipCounts"],
+    }
+
+
+def retrieval_parity(control, candidate):
+    return all(
+        control[metric] is not None
+        and candidate[metric] is not None
+        and candidate[metric] + 1e-12 >= control[metric]
+        for metric in RETRIEVAL_METRICS
+    )
+
+
+def metric_deltas(control, candidate):
+    metrics = RETRIEVAL_METRICS + (
+        "hardNegativeHits",
+        "invalidCitationHits",
+        "staleCitationHits",
+    )
+    return {
+        metric: (
+            None
+            if control[metric] is None or candidate[metric] is None
+            else candidate[metric] - control[metric]
+        )
+        for metric in metrics
+    }
+
+
+def public_fixture(generation=PUBLIC_GENERATION):
+    if generation not in PUBLIC_GENERATIONS:
+        raise AskQualityError(f"unknown public fixture generation: {generation}")
+    relationships = public_relationships(generation)
     owners = ["Mara", "Noah", "Sofía", "Eli", "Iris", "Leo"]
     intents = [
         "name",
@@ -748,8 +1057,13 @@ def public_fixture():
         identifier = f"atlas-{ordinal:03d}"
         segment_id = f"segment-{ordinal:03d}"
         meeting_id = f"meeting-{(index // 4) + 1:03d}"
-        owner = owners[index % len(owners)]
-        intent = intents[index % len(intents)]
+        owner = public_owner(generation, index, owners)
+        intent = public_intent(
+            generation,
+            index,
+            relationship_ordinal,
+            intents,
+        )
         answer_policy = "answer"
         if relationship == "robustness" and relationship_ordinal > 15:
             intent = "notFound"
@@ -798,7 +1112,7 @@ def public_fixture():
                     "expectedOwner": owner,
                 }
             ]
-        hard_negative = f"segment-{((index + 1) % len(relationships)) + 1:03d}"
+        hard_negative = public_hard_negative(generation, index, len(relationships))
         queries.append(
             {
                 "id": f"query-{ordinal:03d}",
@@ -813,11 +1127,47 @@ def public_fixture():
     return {
         "schemaVersion": SCHEMA_VERSION,
         "kind": FIXTURE_KIND,
-        "generation": PUBLIC_GENERATION,
+        "generation": generation,
         "contentSource": PUBLIC_SOURCE,
         "segments": segments,
         "queries": queries,
     }
+
+
+def public_relationships(generation):
+    if generation == PUBLIC_GENERATION_V1:
+        return [
+            relationship
+            for relationship, count in RELATIONSHIP_COUNTS.items()
+            for _ in range(count)
+        ]
+    remaining = dict(RELATIONSHIP_COUNTS)
+    relationships = []
+    while any(remaining.values()):
+        for relationship in RELATIONSHIP_COUNTS:
+            if remaining[relationship] > 0:
+                relationships.append(relationship)
+                remaining[relationship] -= 1
+    return relationships
+
+
+def public_owner(generation, index, owners):
+    if generation == PUBLIC_GENERATION_V1:
+        return owners[index % len(owners)]
+    meeting_index = index // 4
+    turn_index = (index % 4) // 2
+    return owners[((meeting_index * 2) + turn_index) % len(owners)]
+
+
+def public_intent(generation, index, relationship_ordinal, intents):
+    if generation == PUBLIC_GENERATION_V1:
+        return intents[index % len(intents)]
+    return intents[(relationship_ordinal - 1) % len(intents)]
+
+
+def public_hard_negative(generation, index, segment_count):
+    offset = 1 if generation == PUBLIC_GENERATION_V1 else 48
+    return f"segment-{((index + offset) % segment_count) + 1:03d}"
 
 
 def evidence_text(language, intent, owner, identifier):
@@ -917,14 +1267,14 @@ def query_text_for(
     return query
 
 
-def write_public_fixture(path):
+def write_public_fixture(path, generation=PUBLIC_GENERATION):
     path = Path(path).expanduser()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("x", encoding="utf-8") as handle:
             handle.write(
                 json.dumps(
-                    public_fixture(),
+                    public_fixture(generation),
                     ensure_ascii=False,
                     indent=2,
                     sort_keys=True,
@@ -986,30 +1336,51 @@ def build_parser():
     subparsers = parser.add_subparsers(dest="command", required=True)
     generate = subparsers.add_parser("generate-public")
     generate.add_argument("--output", required=True)
+    generate.add_argument(
+        "--generation", choices=sorted(PUBLIC_GENERATIONS), default=PUBLIC_GENERATION
+    )
     verify = subparsers.add_parser("verify-public")
     verify.add_argument("--fixture", required=True)
     evaluate_parser = subparsers.add_parser("evaluate")
     evaluate_parser.add_argument("--fixture", required=True)
     evaluate_parser.add_argument("--observations", required=True)
     evaluate_parser.add_argument("--output", required=True)
+    compare_parser = subparsers.add_parser("compare")
+    compare_parser.add_argument("--fixture", required=True)
+    compare_parser.add_argument("--control", required=True)
+    compare_parser.add_argument("--candidate", required=True)
+    compare_parser.add_argument("--output", required=True)
     return parser
 
 
 def main_from_args(arguments):
     args = build_parser().parse_args(arguments)
     if args.command == "generate-public":
-        write_public_fixture(args.output)
+        write_public_fixture(args.output, args.generation)
         return 0
     if args.command == "verify-public":
         path = Path(args.fixture).expanduser()
         actual = load_json(path, "public Ask quality fixture")
-        expected = public_fixture()
+        generation = actual.get("generation") if isinstance(actual, dict) else None
+        expected = public_fixture(generation)
         if actual != expected:
             raise AskQualityError("public Ask quality fixture is not canonical")
         validate_fixture(actual)
         return 0
     fixture_document = load_json(args.fixture, "Ask quality fixture")
     fixture = validate_fixture(fixture_document)
+    if args.command == "compare":
+        control = validate_scorecard(
+            load_json(args.control, "control Ask quality scorecard"),
+            "controlScorecard",
+        )
+        candidate = validate_scorecard(
+            load_json(args.candidate, "candidate Ask quality scorecard"),
+            "candidateScorecard",
+        )
+        receipt = compare_scorecards(fixture, control, candidate)
+        write_owner_only(args.output, receipt)
+        return 0 if receipt["outcome"] == "candidate-parity" else 1
     observations = validate_observations(
         load_json(args.observations, "Ask quality observations"),
         fixture,

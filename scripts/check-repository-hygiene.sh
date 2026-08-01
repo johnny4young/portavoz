@@ -85,6 +85,8 @@ python3 -m unittest Tests.Tooling.test_resource_baseline
 python3 -m unittest Tests.Tooling.test_ask_quality
 python3 scripts/ask_quality.py verify-public \
   --fixture Fixtures/AskQuality/public-synthetic-v1.json
+python3 scripts/ask_quality.py verify-public \
+  --fixture Fixtures/AskQuality/public-synthetic-v2.json
 python3 -m unittest Tests.Tooling.test_ui_test_scope
 python3 -m unittest Tests.Tooling.test_run_ui_tests
 

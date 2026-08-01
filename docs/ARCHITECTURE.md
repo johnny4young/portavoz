@@ -1327,8 +1327,8 @@ cold-backfill receipts remain historical and are not comparable with schema 2.
 These reports remain benchmark evidence only; product scheduling and storage
 never read them.
 
-A separate adapter-neutral Ask quality boundary owns one canonical tracked
-public-synthetic corpus with exactly 240 judged queries: 60 Spanish-to-Spanish,
+A separate adapter-neutral Ask quality boundary owns versioned canonical
+tracked public-synthetic corpora with exactly 240 judged queries each: 60 Spanish-to-Spanish,
 60 English-to-English, 40 English-to-Spanish, 40 Spanish-to-English, 20
 code-switched, and 20 isolated robustness cases. The strict evaluator admits
 only complete observations bound to one fixture generation, adapter, build,
@@ -1344,6 +1344,14 @@ queries, transcripts, answers, owners, or citation identifiers. This tooling is
 not linked into the application and does not choose or configure a retrieval
 engine.
 
+The historical `public-synthetic-v1` corpus remains reproducible by checksum.
+The current `public-synthetic-v2` corpus preserves the same query distribution
+but interleaves relationships into sixty four-segment meetings. Each meeting
+contains two exact two-segment same-actor turns, including multilingual turns,
+and assigns hard negatives from another meeting. This makes segment and
+speaker-turn topology materially different without hiding a hard negative
+inside every relevant turn.
+
 The CLI production-observation adapter loads that fixture into a disposable,
 owner-only database and executes the real `LocalAskMeetingRetrieval` hybrid
 path with deterministic no-expansion control. It never opens the user library.
@@ -1358,7 +1366,14 @@ generative answer: it emits explicit `notEvaluated` answer fields, preserving
 retrieval metrics while forcing the complete quality gate to remain blocked
 until a separately versioned answer judge supplies evidence. Observation
 publication is owner-only, atomic, non-overwriting, and remains outside the
-application dependency graph.
+application dependency graph. The offline comparator accepts only canonical
+fixture-bound scorecards, exact segment-control and speaker-turn adapter roles,
+one build and commit, and observation schema 2. Its owner-only, payload-free
+receipt reports aggregate and per-relationship retrieval deltas and blocks on
+any citation, hard-negative, identity, aggregate, or language-relationship regression.
+Candidate parity is quality evidence only; it cannot select product storage,
+indexing, or retrieval and does not replace the still-required resource and
+correction-cost matrix.
 
 Indexing prepares
 the already-installed embedding runtime before sampling, drains 1,024 fixed
@@ -1625,6 +1640,11 @@ the same production retrieval implementation, but every ranked unit is mapped
 back to its complete ordered source membership in observation schema 2. The
 benchmark projection does not create product storage, maintenance, or query
 lanes and cannot select the product default by itself.
+The current public corpus exercises two real same-actor turns per meeting, and
+the paired comparator requires the candidate to match or improve every overall
+and relationship retrieval metric while retaining canonical source evidence.
+Historical fixture generations remain verifiable rather than being rewritten
+when corpus topology evolves.
 
 Semantic maintenance does not publish `.index` work into the owner-leased
 processing ledger. That ledger continues to control the visible meeting
