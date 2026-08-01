@@ -278,7 +278,8 @@ private enum SemanticBenchmark {
                 segments.enumerated().map { localIndex, segment in
                     (segment.id, vector(index: seeded + localIndex, dimension: dimension))
                 })
-            try await store.storeEmbeddings(embeddings)
+            let candidates = try await store.segmentsNeedingEmbeddings(limit: count)
+            _ = try await store.storeEmbeddings(embeddings, for: candidates)
             seeded += count
             meetingIndex += 1
         }

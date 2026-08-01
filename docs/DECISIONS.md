@@ -6503,3 +6503,36 @@ testable degradation while separating user latency and cancellation from
 durable corpus progress. Keeping persistence behind the background owner makes
 write scheduling independently governable without sacrificing exact search or
 the value of semantic rows that are already published.
+
+## D198 — Fence semantic publication by exact transcript source (Jul 2026)
+
+**Context:** the `NULL` embedding cursor was crash-resumable, but batch
+selection returned only segment ID and text and publication updated by segment
+ID alone. A transcript edit, reviewed replacement, or deletion racing the
+embedding model could therefore let an old vector reach a reused segment
+identity. Activating the dormant `.index` processing-job kind does not solve
+that race and would currently let degradable derived work drive the meeting's
+visible `processing`/`needsAttention` lifecycle.
+
+**Decision:** every semantic candidate carries segment ID, meeting ID,
+transcript revision, and exact text from selection through publication.
+StorageKit accepts an exact candidate/vector key set and conditionally writes
+each vector only while the same segment remains live and unembedded, its exact
+text is unchanged, and its live meeting remains at the selected transcript
+revision. Concurrent completion, correction, replacement, or tombstone is a
+content-free skipped outcome. `IndexSemanticCorpus` reports accepted full-text
+vectors, accepted empty micro-segment markers, and skipped rows separately;
+the current live replacement remains `NULL` for a later signal-driven pass.
+
+This is the first SEARCH-2 durability unit, not a second job cursor. `NULL`
+rows remain authoritative across pause, failure, and relaunch, Ask and Library
+remain read-only, FTS remains independent, and `.index` remains dormant until
+derived-maintenance scheduling can be separated from the meeting lifecycle.
+Model/index-schema fingerprinting, bounded retry ownership, invalidation, and
+relaunch evidence remain later SEARCH-2 work.
+
+**Rationale:** stale derived data must be impossible before retry scheduling is
+made more durable. Compare-and-swap at the storage boundary protects every
+caller and preserves the smallest exact replay unit without manufacturing a
+second progress source or turning optional semantic maintenance into meeting
+recovery state.

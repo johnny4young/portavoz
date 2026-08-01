@@ -3,6 +3,47 @@ import Foundation
 import GRDB
 import PortavozCore
 
+/// Immutable source identity carried from semantic batch selection through
+/// publication. Storage revalidates every field before accepting a vector, so
+/// a concurrent transcript replacement cannot attach stale derived data to a
+/// reused segment identifier.
+public struct SemanticEmbeddingCandidate: Equatable, Sendable {
+    public let id: UUID
+    public let meetingID: MeetingID
+    public let transcriptRevision: Int
+    public let text: String
+
+    public init(
+        id: UUID,
+        meetingID: MeetingID,
+        transcriptRevision: Int,
+        text: String
+    ) {
+        self.id = id
+        self.meetingID = meetingID
+        self.transcriptRevision = transcriptRevision
+        self.text = text
+    }
+}
+
+/// Content-free outcome of a revision-fenced semantic batch publication.
+public struct SemanticEmbeddingPublicationResult: Equatable, Sendable {
+    public let publishedSegmentIDs: Set<UUID>
+    public let skippedSegmentIDs: Set<UUID>
+
+    public init(
+        publishedSegmentIDs: Set<UUID>,
+        skippedSegmentIDs: Set<UUID>
+    ) {
+        self.publishedSegmentIDs = publishedSegmentIDs
+        self.skippedSegmentIDs = skippedSegmentIDs
+    }
+
+    public static let empty = SemanticEmbeddingPublicationResult(
+        publishedSegmentIDs: [],
+        skippedSegmentIDs: [])
+}
+
 // Full-text (FTS5) and semantic (local RAG) search. Split out of
 // `MeetingStore.swift` so the core type stays small.
 extension MeetingStore {
@@ -79,35 +120,90 @@ extension MeetingStore {
     // MARK: - Semantic index (local RAG, M8)
 
     /// Segments (live, non-tombstoned) that still need an embedding.
-    public func segmentsNeedingEmbeddings(limit: Int = 512) async throws -> [(id: UUID, text: String)] {
+    public func segmentsNeedingEmbeddings(
+        limit: Int = 512
+    ) async throws -> [SemanticEmbeddingCandidate] {
         try await database.read { db in
             let rows = try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT segment.id AS id, segment.text AS text
+                    SELECT segment.id AS id,
+                           segment.meetingID AS meetingID,
+                           meeting.transcriptRevision AS transcriptRevision,
+                           segment.text AS text
                     FROM segment
                     JOIN meeting ON meeting.id = segment.meetingID AND meeting.deletedAt IS NULL
                     WHERE segment.embedding IS NULL AND segment.deletedAt IS NULL
-                    ORDER BY segment.createdAt
+                    ORDER BY segment.createdAt, segment.rowid
                     LIMIT ?
                     """,
                 arguments: [limit])
             return try rows.map { row in
-                let id = try PersistedIdentity.required(
-                    row["id"], table: "segment", column: "id")
-                return (id, row["text"])
+                SemanticEmbeddingCandidate(
+                    id: try PersistedIdentity.required(
+                        row["id"], table: "segment", column: "id"),
+                    meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                        row["meetingID"], table: "segment", column: "meetingID")),
+                    transcriptRevision: row["transcriptRevision"],
+                    text: row["text"])
             }
         }
     }
 
-    /// Stores L2-normalized embeddings (Float32 LE blobs) per segment.
-    public func storeEmbeddings(_ embeddings: [UUID: [Float]]) async throws {
-        try await database.write { db in
-            for (id, vector) in embeddings {
+    /// Stores L2-normalized embeddings (Float32 LE blobs) only while every
+    /// selected source identity is still current. Already-published,
+    /// tombstoned, edited, or revision-superseded rows are idempotent no-ops.
+    public func storeEmbeddings(
+        _ embeddings: [UUID: [Float]],
+        for candidates: [SemanticEmbeddingCandidate]
+    ) async throws -> SemanticEmbeddingPublicationResult {
+        guard Set(candidates.map(\.id)).count == candidates.count,
+              Set(embeddings.keys) == Set(candidates.map(\.id)),
+              candidates.allSatisfy({ $0.transcriptRevision >= 0 })
+        else {
+            throw StorageError.invalidSemanticEmbedding(
+                "vectors must exactly match unique candidates with nonnegative revisions")
+        }
+        guard !candidates.isEmpty else { return .empty }
+
+        return try await database.write { db in
+            var published: Set<UUID> = []
+            published.reserveCapacity(candidates.count)
+            for candidate in candidates {
+                guard let vector = embeddings[candidate.id] else {
+                    throw StorageError.invalidSemanticEmbedding(
+                        "every candidate must have one vector")
+                }
                 try db.execute(
-                    sql: "UPDATE segment SET embedding = ? WHERE id = ?",
-                    arguments: [Self.blob(from: vector), id.uuidString])
+                    sql: """
+                        UPDATE segment
+                        SET embedding = ?
+                        WHERE id = ?
+                          AND meetingID = ?
+                          AND text = ?
+                          AND deletedAt IS NULL
+                          AND embedding IS NULL
+                          AND EXISTS (
+                              SELECT 1 FROM meeting
+                              WHERE meeting.id = segment.meetingID
+                                AND meeting.deletedAt IS NULL
+                                AND meeting.transcriptRevision = ?
+                          )
+                        """,
+                    arguments: [
+                        Self.blob(from: vector),
+                        candidate.id.uuidString,
+                        candidate.meetingID.rawValue.uuidString,
+                        candidate.text,
+                        candidate.transcriptRevision
+                    ])
+                if db.changesCount == 1 {
+                    published.insert(candidate.id)
+                }
             }
+            return SemanticEmbeddingPublicationResult(
+                publishedSegmentIDs: published,
+                skippedSegmentIDs: Set(candidates.map(\.id)).subtracting(published))
         }
     }
 

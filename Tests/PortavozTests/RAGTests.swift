@@ -127,10 +127,12 @@ final class SemanticStoreTests: XCTestCase {
         XCTAssertEqual(missing.count, 2)
 
         // Synthetic normalized vectors: deploy ~ (1,0), gato ~ (0,1).
-        try await store.storeEmbeddings([
+        let publication = try await store.storeEmbeddings([
             segments[0].id: [1, 0],
             segments[1].id: [0, 1],
-        ])
+        ], for: missing)
+        XCTAssertEqual(publication.publishedSegmentIDs, Set(segments.map(\.id)))
+        XCTAssertTrue(publication.skippedSegmentIDs.isEmpty)
         let remaining = try await store.segmentsNeedingEmbeddings()
         XCTAssertTrue(remaining.isEmpty)
 
@@ -152,9 +154,80 @@ final class SemanticStoreTests: XCTestCase {
         XCTAssertEqual(invalidated.map(\.id), [segments[0].id])
     }
 
+    func testEmbeddingPublicationCannotOverwriteAnEditedCandidate() async throws {
+        let segments = try await seed([
+            "The original rollout remains scheduled for Friday afternoon.",
+        ])
+        let initialCandidates = try await store.segmentsNeedingEmbeddings()
+        let candidate = try XCTUnwrap(initialCandidates.first)
+        var edited = segments[0]
+        edited.text = "The corrected rollout is now scheduled for Monday morning."
+        try await store.save([edited])
+
+        let publication = try await store.storeEmbeddings(
+            [candidate.id: [1, 0]],
+            for: [candidate])
+
+        XCTAssertTrue(publication.publishedSegmentIDs.isEmpty)
+        XCTAssertEqual(publication.skippedSegmentIDs, [candidate.id])
+        let pending = try await store.segmentsNeedingEmbeddings()
+        XCTAssertEqual(pending.map(\.id), [edited.id])
+        XCTAssertEqual(pending.map(\.text), [edited.text])
+        let semanticHits = try await store.searchSemantic([1, 0])
+        XCTAssertTrue(semanticHits.isEmpty)
+    }
+
+    func testEmbeddingPublicationCannotCrossATranscriptRevision() async throws {
+        let segments = try await seed([
+            "The original transcript carries one stable semantic source.",
+        ])
+        let initialCandidates = try await store.segmentsNeedingEmbeddings()
+        let candidate = try XCTUnwrap(initialCandidates.first)
+        var revised = segments[0]
+        revised.text = "The reviewed transcript replaces the semantic source safely."
+        try await store.applyRefinedCast(
+            for: meeting.id,
+            expectedTranscriptRevision: 0,
+            language: "en",
+            speakers: [],
+            segments: [revised])
+
+        let publication = try await store.storeEmbeddings(
+            [candidate.id: [1, 0]],
+            for: [candidate])
+
+        XCTAssertTrue(publication.publishedSegmentIDs.isEmpty)
+        XCTAssertEqual(publication.skippedSegmentIDs, [candidate.id])
+        let pending = try await store.segmentsNeedingEmbeddings()
+        XCTAssertEqual(pending.map(\.transcriptRevision), [1])
+        XCTAssertEqual(pending.map(\.text), [revised.text])
+        let semanticHits = try await store.searchSemantic([1, 0])
+        XCTAssertTrue(semanticHits.isEmpty)
+    }
+
+    func testEmbeddingPublicationCannotReviveATombstonedMeeting() async throws {
+        _ = try await seed([
+            "This semantic source must disappear with its deleted meeting.",
+        ])
+        let initialCandidates = try await store.segmentsNeedingEmbeddings()
+        let candidate = try XCTUnwrap(initialCandidates.first)
+        try await store.delete(meeting.id)
+
+        let publication = try await store.storeEmbeddings(
+            [candidate.id: [1, 0]],
+            for: [candidate])
+
+        XCTAssertTrue(publication.publishedSegmentIDs.isEmpty)
+        XCTAssertEqual(publication.skippedSegmentIDs, [candidate.id])
+        let pending = try await store.segmentsNeedingEmbeddings()
+        let semanticHits = try await store.searchSemantic([1, 0])
+        XCTAssertTrue(pending.isEmpty)
+        XCTAssertTrue(semanticHits.isEmpty)
+    }
+
     func testTombstonedMeetingsLeaveTheSemanticIndex() async throws {
         let segments = try await seed(["contenido secreto"])
-        try await store.storeEmbeddings([segments[0].id: [1, 0]])
+        try await publish([segments[0].id: [1, 0]])
         try await store.delete(meeting.id)
 
         let hits = try await store.searchSemantic([1, 0], limit: 5)
@@ -184,7 +257,7 @@ final class SemanticStoreTests: XCTestCase {
                 vector[1] = sqrt(1 - similarity * similarity)
                 return (segment.id, vector)
             })
-        try await store.storeEmbeddings(embeddings)
+        try await publish(embeddings)
 
         var query = [Float](repeating: 0, count: dimension)
         query[0] = 1
@@ -204,7 +277,7 @@ final class SemanticStoreTests: XCTestCase {
         let vectors = (0..<segments.count).map {
             Self.normalizedVector(seed: UInt64($0 + 1), dimension: dimension)
         }
-        try await store.storeEmbeddings(Dictionary(uniqueKeysWithValues:
+        try await publish(Dictionary(uniqueKeysWithValues:
             zip(segments, vectors).map { ($0.id, $1) }))
 
         var reference: [(order: Int, id: UUID, score: Float)] = []
@@ -226,7 +299,7 @@ final class SemanticStoreTests: XCTestCase {
 
     func testSemanticRankingBreaksTiesByTraversalAndRejectsNonPositiveLimits() async throws {
         let segments = try await seed((0..<4).map { "equal semantic passage \($0)" })
-        try await store.storeEmbeddings(Dictionary(uniqueKeysWithValues:
+        try await publish(Dictionary(uniqueKeysWithValues:
             segments.map { ($0.id, [Float](arrayLiteral: 1, 0)) }))
 
         let hits = try await store.searchSemantic([1, 0], limit: 2)
@@ -247,7 +320,7 @@ final class SemanticStoreTests: XCTestCase {
                 let score = Float(index + 1) / Float(segments.count)
                 return (segment.id, [score, sqrt(1 - score * score)])
             })
-        try await store.storeEmbeddings(embeddings)
+        try await publish(embeddings)
 
         let hits = try await store.searchSemantic([1, 0], limit: segments.count)
 
@@ -259,6 +332,13 @@ final class SemanticStoreTests: XCTestCase {
     func testBlobRoundTrip() {
         let vector: [Float] = [0.25, -1, 3.5, .pi]
         XCTAssertEqual(MeetingStore.floats(from: MeetingStore.blob(from: vector)), vector)
+    }
+
+    private func publish(_ embeddings: [UUID: [Float]]) async throws {
+        let candidates = try await store.segmentsNeedingEmbeddings().filter {
+            embeddings[$0.id] != nil
+        }
+        _ = try await store.storeEmbeddings(embeddings, for: candidates)
     }
 
     private static func normalizedVector(seed: UInt64, dimension: Int) -> [Float] {

@@ -38,6 +38,10 @@ extension SentenceEmbedder: SemanticEmbeddingModel {
 public struct SemanticCorpusIndexingResult: Equatable, Sendable {
     public let embeddedSegments: Int
     public let excludedSegments: Int
+    /// Candidates no longer eligible at publication, including concurrent
+    /// completion or source supersession. Current rows keep their durable
+    /// published/NULL state and the condition is not a maintenance failure.
+    public let skippedSegments: Int
     /// Expected governor suspension, distinct from cancellation or failure.
     /// Missing database rows remain the durable cursor for a later pass.
     public let pausedByPolicy: Bool
@@ -45,10 +49,12 @@ public struct SemanticCorpusIndexingResult: Equatable, Sendable {
     public init(
         embeddedSegments: Int,
         excludedSegments: Int,
+        skippedSegments: Int = 0,
         pausedByPolicy: Bool = false
     ) {
         self.embeddedSegments = embeddedSegments
         self.excludedSegments = excludedSegments
+        self.skippedSegments = skippedSegments
         self.pausedByPolicy = pausedByPolicy
     }
 
@@ -68,6 +74,7 @@ public struct SemanticCorpusIndexingResult: Equatable, Sendable {
         SemanticCorpusIndexingResult(
             embeddedSegments: left.embeddedSegments + right.embeddedSegments,
             excludedSegments: left.excludedSegments + right.excludedSegments,
+            skippedSegments: left.skippedSegments + right.skippedSegments,
             pausedByPolicy: left.pausedByPolicy || right.pausedByPolicy)
     }
 
@@ -82,6 +89,7 @@ public struct SemanticCorpusIndexingResult: Equatable, Sendable {
         SemanticCorpusIndexingResult(
             embeddedSegments: embeddedSegments,
             excludedSegments: excludedSegments,
+            skippedSegments: skippedSegments,
             pausedByPolicy: true)
     }
 }
@@ -186,7 +194,7 @@ public struct IndexSemanticCorpus: Sendable {
     }
 
     private func index(
-        _ missing: [(id: UUID, text: String)],
+        _ missing: [SemanticEmbeddingCandidate],
         using embedder: any SemanticTextEmbedding
     ) async throws -> SemanticCorpusIndexingResult {
         try Task.checkCancellation()
@@ -209,9 +217,11 @@ public struct IndexSemanticCorpus: Sendable {
         for segment in excluded {
             update[segment.id] = []
         }
-        try await store.storeEmbeddings(update)
+        let publication = try await store.storeEmbeddings(update, for: missing)
+        let published = publication.publishedSegmentIDs
         return SemanticCorpusIndexingResult(
-            embeddedSegments: worthIndexing.count,
-            excludedSegments: excluded.count)
+            embeddedSegments: worthIndexing.count(where: { published.contains($0.id) }),
+            excludedSegments: excluded.count(where: { published.contains($0.id) }),
+            skippedSegments: publication.skippedSegmentIDs.count)
     }
 }

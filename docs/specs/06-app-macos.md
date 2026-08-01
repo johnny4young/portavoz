@@ -11,6 +11,8 @@ D196 keeps product Ask corpus-read-only and moves disposable benchmark corpus
 preparation outside the measured request.
 D197 gives Ask and Library one typed semantic-readiness view and makes the
 signal-driven supervisor the sole product corpus writer.
+D198 prevents that writer from publishing across a concurrent transcript
+correction, replacement, or deletion.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -501,6 +503,14 @@ payload-free process phase (`building`, `idle`, or `failed`) to the shared
 ApplicationKit readiness resolver. Combined with installed assets and one
 durable pending-row probe, Ask and Library observe `ready`, `partial`,
 `building`, `unsupported`, or `failed` without preparing or writing anything.
+
+The drain's selected rows retain segment, meeting, transcript-revision, and
+exact-text identity across the model call. StorageKit conditionally publishes
+only still-current rows (D198); a concurrent transcript mutation or deletion
+is a skipped checkpoint, not a failed meeting or stale vector. The replacement
+row remains pending and the existing coalesced mutation signal schedules the
+next pass. The dormant processing-job `.index` kind remains inactive until a
+derived-maintenance scheduler can avoid changing the meeting lifecycle.
 
 
 ### Capture-safe existing-library sync admission (D179)

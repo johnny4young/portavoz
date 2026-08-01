@@ -1535,9 +1535,22 @@ isolated benchmark stores disable the supervisor.
 
 The `NULL` embedding rows remain the durable cursor across suspension, failure,
 and process termination. A later signal or relaunch therefore resumes work
-without a separate jobs table. Ask still performs its released synchronous
-complete drain before hybrid retrieval; moving that latency out of the request
-path is a separate parity-preserving migration.
+without a second progress cursor. Ask and Library are corpus-read-only: both
+publish exact FTS first and may augment it only with vectors already committed
+by background maintenance.
+
+Every selected semantic row carries its segment ID, meeting ID, transcript
+revision, and exact source text through embedding. StorageKit accepts the
+result only when the same live row is still unembedded, its meeting remains
+live at that revision, and its text is unchanged. A concurrent correction,
+replacement, deletion, or duplicate publication is therefore a content-free
+skip; it cannot attach a stale vector to a reused identity, and the current
+live row remains on the `NULL` cursor for a later pass.
+
+Semantic maintenance does not publish `.index` work into the owner-leased
+processing ledger. That ledger continues to control the visible meeting
+lifecycle, while degradable derived-index failure remains outside
+`needsAttention`; the exact `NULL` embedding rows are its only replay cursor.
 
 Waveform generation is stateless and uses Accelerate over range-aligned channel
 spans. The application publishes one bounded snapshot, while route cancellation

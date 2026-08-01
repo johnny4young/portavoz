@@ -712,6 +712,46 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Signal-driven semantic maintenance (D178)"))
     }
 
+    func testSemanticPublicationIsFencedByExactTranscriptSource() throws {
+        let store = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Search.swift")
+        let operation = try Self.contents(
+            of: "Sources/ApplicationKit/IndexSemanticCorpus.swift")
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/ProcessPostCaptureJobs.swift")
+
+        for identity in [
+            "struct SemanticEmbeddingCandidate",
+            "public let meetingID: MeetingID",
+            "public let transcriptRevision: Int",
+            "public let text: String",
+            "AND meeting.transcriptRevision = ?",
+            "AND text = ?",
+            "AND deletedAt IS NULL",
+            "AND embedding IS NULL",
+        ] {
+            XCTAssertTrue(
+                store.contains(identity),
+                "Semantic publication is missing source fence: \(identity)")
+        }
+        XCTAssertTrue(operation.contains(
+            "store.storeEmbeddings(update, for: missing)"))
+        XCTAssertTrue(operation.contains("skippedSegments:"))
+        XCTAssertFalse(workflow.contains(".index"))
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
+        XCTAssertTrue(architecture.contains(
+            "live row remains on the `NULL` cursor"))
+        XCTAssertTrue(decisions.contains("## D198"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Revision-fenced semantic publication (D198)"))
+        XCTAssertTrue(storageSpec.contains("storeEmbeddings(_:for:)"))
+    }
+
     func testPressureDrivenReleaseUsesGovernorAndAllConcreteOwners() throws {
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")

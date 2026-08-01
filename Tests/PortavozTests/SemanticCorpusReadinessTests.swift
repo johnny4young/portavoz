@@ -23,8 +23,11 @@ final class SemanticCorpusReadinessTests: XCTestCase {
     func testCompleteCorpusReportsReadyDespiteStaleFailurePhase() async throws {
         let seeded = try await seededStore()
         let pending = try await seeded.segmentsNeedingEmbeddings()
-        try await seeded.storeEmbeddings(Dictionary(
-            uniqueKeysWithValues: pending.map { ($0.id, [Float](arrayLiteral: 1, 0)) }))
+        _ = try await seeded.storeEmbeddings(
+            Dictionary(uniqueKeysWithValues: pending.map {
+                ($0.id, [Float](arrayLiteral: 1, 0))
+            }),
+            for: pending)
         let state = SemanticCorpusMaintenanceState(phase: .failed)
         let resolver = ResolveSemanticCorpusReadiness(
             store: seeded,
@@ -75,7 +78,13 @@ final class SemanticCorpusReadinessTests: XCTestCase {
             isFinal: true)
         try await store.save(meeting)
         try await store.save([published, pending])
-        try await store.storeEmbeddings([published.id: [1, 0]])
+        let candidates = try await store.segmentsNeedingEmbeddings()
+        let publishedCandidate = try XCTUnwrap(candidates.first {
+            $0.id == published.id
+        })
+        _ = try await store.storeEmbeddings(
+            [published.id: [1, 0]],
+            for: [publishedCandidate])
         let runtime = ReadinessSemanticRuntime(assetsAvailable: true)
         let library = LocalLibrarySemanticSearch(
             store: store,

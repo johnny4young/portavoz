@@ -138,6 +138,41 @@ final class SemanticCorpusIndexingTests: XCTestCase {
         XCTAssertEqual(outcome, .failed)
     }
 
+    func testConcurrentTranscriptEditSkipsStaleVectorAndResumesFromCurrentRow() async throws {
+        let (store, segments) = try await seededStore(texts: [
+            "The initial semantic source will be corrected during embedding.",
+        ])
+        var correctedDraft = segments[0]
+        correctedDraft.text = "The corrected semantic source remains on the durable cursor."
+        let corrected = correctedDraft
+        let operation = IndexSemanticCorpus(store: store)
+
+        let stalePass = try await operation.nextBatch(
+            using: MutatingSemanticEmbedder {
+                try await store.save([corrected])
+            },
+            limit: 1)
+
+        XCTAssertEqual(
+            stalePass,
+            SemanticCorpusIndexingResult(
+                embeddedSegments: 0,
+                excludedSegments: 0,
+                skippedSegments: 1))
+        let pendingAfterEdit = try await store.segmentsNeedingEmbeddings()
+        let staleHits = try await store.searchSemantic([1, 0])
+        XCTAssertEqual(pendingAfterEdit.map(\.text), [corrected.text])
+        XCTAssertTrue(staleHits.isEmpty)
+
+        let resumed = try await operation.nextBatch(
+            using: DeterministicSemanticEmbedder(),
+            limit: 1)
+
+        let pendingAfterResume = try await store.segmentsNeedingEmbeddings()
+        XCTAssertEqual(resumed.embeddedSegments, 1)
+        XCTAssertTrue(pendingAfterResume.isEmpty)
+    }
+
     private func seededStore(
         texts: [String]
     ) async throws -> (MeetingStore, [TranscriptSegment]) {
@@ -198,6 +233,19 @@ private actor CountingSemanticEmbedder: SemanticTextEmbedding {
 
     func vectors(for texts: [String]) -> [[Float]] {
         callCount += 1
+        return texts.map { _ in [1, 0] }
+    }
+}
+
+private struct MutatingSemanticEmbedder: SemanticTextEmbedding {
+    let mutation: @Sendable () async throws -> Void
+
+    init(mutation: @escaping @Sendable () async throws -> Void) {
+        self.mutation = mutation
+    }
+
+    func vectors(for texts: [String]) async throws -> [[Float]] {
+        try await mutation()
         return texts.map { _ in [1, 0] }
     }
 }
