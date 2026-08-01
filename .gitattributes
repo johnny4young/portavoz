@@ -1,0 +1,2 @@
+Vendor/sqlite-vec/sqlite-vec.c -text linguist-vendored=true whitespace=-trailing-space
+Vendor/sqlite-vec/sqlite-vec.h -text linguist-vendored=true

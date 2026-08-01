@@ -659,7 +659,7 @@ selected. Later SEARCH-5 slices must put candidates behind this seam and retain
 exact control as the only user-visible authority until accepted quality and
 resource evidence exists.
 
-### Non-serving semantic shadow comparison (D207-D211)
+### Non-serving semantic shadow comparison (D207-D212)
 
 `ShadowComparingSemanticIndex` is a benchmark-only decorator over the D206
 port. It waits only for the exact control, projects its citation identity to a
@@ -708,7 +708,7 @@ implementations therefore remain responsible for cancellation cooperation.
 
 The default product composition still injects `AccelerateExactSemanticIndex`
 directly. The shadow wrapper and coordinator have no app wiring, durable output,
-candidate package, derived schema, or index writer. D208 governs research work;
+candidate ranker, derived schema, or index writer. D208 governs research work;
 it does not enable a shipping shadow lane or select an engine. D209 binds
 candidate identity to its implementation without adding an adapter dependency.
 D210 makes current StorageKit evidence the only candidate projection authority;
@@ -717,13 +717,20 @@ it still adds no concrete engine, package, schema, or app wiring.
 The first engine experiment is fixed to sqlite-vec v0.1.9 exact full-scan. Its
 official amalgamation archive is pinned by SHA-256 in
 `scripts/vendor-sqlite-vec.sh`, which accepts an offline archive or downloads
-the same checksum-pinned release asset and stages only static C/header files plus the
-separately reviewed and checksum-pinned upstream MIT text.
-Dynamic extension loading is not permitted in the signed macOS app. D211 is a
-supply-chain boundary only: no vendored source, SwiftPM target, schema, writer,
-ranker, benchmark composition, or product wiring exists yet. sqlite-vec ANN
-alphas and USearch HNSW remain deferred until exact parity has isolated runtime,
-disk, packaging, and correction costs without approximate-recall tradeoffs.
+the same checksum-pinned release asset. The vendored C file is also bound to
+the official tagged Git blob and its SHA-256; the small public header is
+deterministically rendered from the tagged template and version metadata. The
+reviewed upstream MIT text and complete provenance remain beside the source.
+
+`CSQLiteVecResearch` is a static C target depended on only by
+`PortavozTests`. It compiles the amalgamation in SQLite-core/static mode with
+filesystem helpers omitted and runs one in-memory four-dimensional `vec0`
+exact nearest-neighbor query. Dynamic extension loading is not permitted. This
+proves source compatibility and one exact query only: no meeting schema,
+writer, ranker, benchmark composition, app/CLI dependency, durable evidence,
+or product behavior exists. sqlite-vec ANN alphas and USearch HNSW remain
+deferred until exact parity has isolated runtime, disk, packaging, and
+correction costs without approximate-recall tradeoffs.
 
 ### Governed semantic embedding runtime (D165)
 

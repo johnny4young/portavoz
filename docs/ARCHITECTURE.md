@@ -1636,16 +1636,22 @@ identities. `ProjectedSemanticIndexShadowCandidate` resolves those ranks back
 through `MeetingStore`, which drops duplicate, missing, deleted, negative-
 revision, and stale evidence before producing current `SearchHit` values. A
 derived index can therefore rank but cannot author citation text or bypass the
-authoritative transcript-revision fence. No concrete candidate package, schema,
-index writer, app wiring, or production scheduler exists yet. The first
-research engine is supply-chain selected as sqlite-vec v0.1.9 exact full-scan.
+authoritative transcript-revision fence. No concrete ranker, schema, index
+writer, app wiring, or production scheduler exists yet. The first research
+engine is supply-chain selected as sqlite-vec v0.1.9 exact full-scan.
 `scripts/vendor-sqlite-vec.sh` pins the official amalgamation archive by
 SHA-256 and stages only static C/header material plus the separately reviewed,
 checksum-pinned upstream MIT text; dynamic SQLite extension loading is
-forbidden. The source is not yet vendored or linked, so this selection changes
-neither the package graph nor runtime behavior. ANN
-sqlite-vec prereleases and USearch remain later comparison candidates rather
-than hidden variables in the first exact-parity experiment.
+forbidden. `Vendor/sqlite-vec` now retains the byte-identical tagged C blob, a
+deterministically rendered tagged header, license, and provenance.
+`CSQLiteVecResearch` textually compiles that amalgamation with
+`SQLITE_CORE`, `SQLITE_VEC_STATIC`, and `SQLITE_VEC_OMIT_FS`; it is linked only
+by `PortavozTests`. Its fixed in-memory smoke executes one `vec0` exact query
+and proves the nearest row without touching a meeting store. Neither app nor
+CLI depends on the target, and there is still no product ranker, schema,
+writer, shadow composition, or durable receipt. ANN sqlite-vec prereleases and
+USearch remain later comparison candidates rather than hidden variables in the
+first exact-parity experiment.
 
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and

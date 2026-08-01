@@ -112,6 +112,15 @@ let package = Package(
         // types, so it carries no module dependencies.
         .target(name: "AudioPlaybackKit", dependencies: []),
 
+        // D212 research-only static sqlite-vec probe. It is intentionally not
+        // a product dependency: only PortavozTests compiles this boundary.
+        .target(
+            name: "CSQLiteVecResearch",
+            path: "Sources/CSQLiteVecResearch",
+            publicHeadersPath: "include",
+            linkerSettings: [.linkedLibrary("sqlite3")]
+        ),
+
         // IntegrationsKit is the outbound-adapter layer over stored meetings
         // (export, MCP protocol, providers, private sync transport). Application
         // orchestration belongs to ApplicationKit, including local Ask.
@@ -160,6 +169,7 @@ let package = Package(
                 "StorageKit",
                 "AudioPlaybackKit",
                 "IntegrationsKit",
+                "CSQLiteVecResearch",
                 .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),

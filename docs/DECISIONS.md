@@ -6998,3 +6998,36 @@ free C amalgamation fits the local-first and MIT/Apache policy, while strict
 digest verification and static linking keep the experiment reproducible and
 compatible with the signed macOS app. Deferring source activation also leaves
 the current build fully reproducible when network access is unavailable.
+
+## D212 — Compile sqlite-vec only as an isolated static research probe (Aug 2026)
+
+**Context:** D211 selected and checksum-pinned the first exact engine source,
+but linking a C extension into an app target before proving its static ABI would
+expand signing and runtime risk without producing useful benchmark evidence.
+The official release-asset transport was unavailable on the development host,
+while GitHub still exposed the immutable `v0.1.9` tagged C blob and the tagged
+header template through its authenticated content boundary.
+
+**Decision:** vendor the C amalgamation byte-identical to Git blob
+`de3176f9ca28a273c5086f1cc995ebf4e3c04c22` and SHA-256
+`ba081a47fa02eadc3cf6b16c314b695b84081269349aac722b4efa338fe8fd85`.
+Render the public header deterministically from the official tagged template,
+fixed version, tag commit, and tag-commit timestamp; retain its digest, the
+template/version blob identities, the archive digest, selected MIT license, and
+acquisition explanation in `Vendor/sqlite-vec/PROVENANCE.md`. The canonical
+vendoring script additionally verifies the archive's C digest and renders that
+same header, so a later offline archive reproduces the activated files.
+
+Compile the amalgamation textually inside `CSQLiteVecResearch` with
+`SQLITE_CORE`, `SQLITE_VEC_STATIC`, and `SQLITE_VEC_OMIT_FS`. Only
+`PortavozTests` depends on this target. Its sole executable proof opens an
+in-memory SQLite database, registers `vec0` directly, inserts four fixed
+vectors, and requires the exact query to return row 3 at zero distance. The app
+and CLI do not link the target. This slice creates no meeting schema, writer,
+ranker, shadow composition, durable observation, model, or user-visible path.
+
+**Rationale:** one static smoke separates source/build compatibility from the
+later ranking and benchmark experiment. Immutable blob and content digests keep
+the fallback acquisition auditable without claiming that a blocked ZIP was
+downloaded, while test-only linkage proves macOS compatibility without adding
+code, filesystem helpers, or dynamic-loader surface to either shipping binary.
