@@ -21,7 +21,7 @@ final class MeetingSyncStateTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 16)
+            XCTAssertEqual(StorageSchema.version, 17)
             XCTAssertEqual(
                 try Set(db.columns(in: "meetingSyncState").map(\.name)),
                 [
@@ -127,8 +127,16 @@ final class MeetingSyncStateTests: XCTestCase {
 
         try await store.database.write { db in
             try db.execute(
-                sql: "UPDATE segment SET embedding = ? WHERE id = ?",
-                arguments: [Data([0, 0, 0, 0]), segment.id.uuidString])
+                sql: """
+                    UPDATE segment
+                    SET embedding = ?, embeddingFingerprint = ?
+                    WHERE id = ?
+                    """,
+                arguments: [
+                    Data([0, 0, 0, 0]),
+                    "local-semantic-profile",
+                    segment.id.uuidString,
+                ])
         }
         pending = try await store.pendingMeetingSyncChanges()
         XCTAssertTrue(

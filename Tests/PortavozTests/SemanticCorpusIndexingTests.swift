@@ -173,6 +173,66 @@ final class SemanticCorpusIndexingTests: XCTestCase {
         XCTAssertTrue(pendingAfterResume.isEmpty)
     }
 
+    func testProfileChangeInvalidatesAndRebuildsTheCompleteCorpus() async throws {
+        let (store, segments) = try await seededStore(texts: [
+            "The first semantic source must move into the new vector space.",
+            "The second semantic source must move into the new vector space.",
+        ])
+        let firstProfile = semanticTestProfile(modelRevision: 1)
+        let secondProfile = semanticTestProfile(modelRevision: 2)
+        let operation = IndexSemanticCorpus(store: store)
+
+        _ = try await operation.all(
+            using: ProfiledSemanticEmbedder(profile: firstProfile))
+        let initialHits = try await store.searchSemantic(
+            [1, 0],
+            profile: firstProfile)
+        XCTAssertEqual(initialHits.count, segments.count)
+
+        let rebuilt = try await operation.all(
+            using: ProfiledSemanticEmbedder(profile: secondProfile))
+        let staleHits = try await store.searchSemantic(
+            [1, 0],
+            profile: firstProfile)
+        let rebuiltHits = try await store.searchSemantic(
+            [1, 0],
+            profile: secondProfile)
+        let requiresMaintenance = try await store.semanticIndexRequiresMaintenance(
+            for: secondProfile)
+
+        XCTAssertEqual(rebuilt.invalidatedSegments, segments.count)
+        XCTAssertEqual(rebuilt.embeddedSegments, segments.count)
+        XCTAssertTrue(staleHits.isEmpty)
+        XCTAssertEqual(rebuiltHits.count, segments.count)
+        XCTAssertFalse(requiresMaintenance)
+    }
+
+    func testInvalidProfileFailsBeforeMutatingTheDurableCursor() async throws {
+        let (store, _) = try await seededStore(texts: [
+            "This source must remain pending when compatibility identity is invalid.",
+        ])
+        let invalidProfile = SemanticEmbeddingProfile(
+            modelIdentifier: "",
+            modelRevision: 1,
+            vectorDimension: 2,
+            pipelineIdentifier: "test",
+            pipelineRevision: 1,
+            vectorSchemaVersion: 1)
+
+        do {
+            _ = try await IndexSemanticCorpus(store: store).all(
+                using: ProfiledSemanticEmbedder(profile: invalidProfile))
+            XCTFail("Expected invalid semantic profile")
+        } catch {
+            XCTAssertEqual(
+                error as? SemanticCorpusIndexingError,
+                .invalidProfile)
+        }
+
+        let pending = try await store.segmentsNeedingEmbeddings()
+        XCTAssertEqual(pending.count, 1)
+    }
+
     private func seededStore(
         texts: [String]
     ) async throws -> (MeetingStore, [TranscriptSegment]) {
@@ -247,5 +307,21 @@ private struct MutatingSemanticEmbedder: SemanticTextEmbedding {
     func vectors(for texts: [String]) async throws -> [[Float]] {
         try await mutation()
         return texts.map { _ in [1, 0] }
+    }
+}
+
+private actor ProfiledSemanticEmbedder: SemanticTextEmbedding {
+    let profile: SemanticEmbeddingProfile
+
+    init(profile: SemanticEmbeddingProfile) {
+        self.profile = profile
+    }
+
+    func semanticEmbeddingProfile() -> SemanticEmbeddingProfile {
+        profile
+    }
+
+    func vectors(for texts: [String]) -> [[Float]] {
+        texts.map { _ in [1, 0] }
     }
 }

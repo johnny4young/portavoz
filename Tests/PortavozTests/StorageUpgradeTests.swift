@@ -52,6 +52,78 @@ final class StorageUpgradeTests: XCTestCase {
         try await assertV060Content(fixture, in: reopened)
     }
 
+    func testV16SemanticVectorsReturnToReplayCursorWithoutLosingExactSearch() async throws {
+        let root = try temporaryRoot(named: "v16-semantic-upgrade")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let databaseURL = root.appendingPathComponent("portavoz.sqlite")
+        var legacyDatabase: DatabaseQueue? = try DatabaseQueue(path: databaseURL.path)
+        let meetingID = MeetingID()
+        let segmentID = UUID()
+        let timestamp = Date(timeIntervalSince1970: 1_752_000_000)
+        try StorageSchema.migrator().migrate(
+            try XCTUnwrap(legacyDatabase),
+            upTo: "v16")
+        try await legacyDatabase?.write { database in
+            try database.execute(
+                sql: """
+                    INSERT INTO meeting (
+                        id, title, startedAt, endedAt, language, audioDirectory,
+                        retention, visibility, createdAt, updatedAt, deletedAt
+                    ) VALUES (?, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, NULL)
+                    """,
+                arguments: [
+                    meetingID.rawValue.uuidString,
+                    "Legacy semantic meeting",
+                    timestamp,
+                    "en",
+                    try MeetingRecord.encode(.keep),
+                    "private",
+                    timestamp,
+                    timestamp
+                ])
+            try database.execute(
+                sql: """
+                    INSERT INTO segment (
+                        id, meetingID, speakerID, channel, text, language,
+                        startTime, endTime, confidence, isFinal,
+                        createdAt, updatedAt, deletedAt, embedding
+                    ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, ?)
+                    """,
+                arguments: [
+                    segmentID.uuidString,
+                    meetingID.rawValue.uuidString,
+                    AudioChannel.system.rawValue,
+                    "Legacy exact search remains available during semantic rebuild.",
+                    "en",
+                    0.0,
+                    4.0,
+                    true,
+                    timestamp,
+                    timestamp,
+                    MeetingStore.blob(from: [1, 0])
+                ])
+        }
+        legacyDatabase = nil
+
+        let upgraded = try MeetingStore(databaseURL: databaseURL)
+
+        try await upgraded.database.read { database in
+            let row = try XCTUnwrap(Row.fetchOne(
+                database,
+                sql: """
+                    SELECT embedding, embeddingFingerprint
+                    FROM segment WHERE id = ?
+                    """,
+                arguments: [segmentID.uuidString]))
+            XCTAssertNil(row["embedding"] as Data?)
+            XCTAssertNil(row["embeddingFingerprint"] as String?)
+        }
+        let pending = try await upgraded.segmentsNeedingEmbeddings()
+        let exactHits = try await upgraded.search("semantic rebuild")
+        XCTAssertEqual(pending.map(\.id), [segmentID])
+        XCTAssertEqual(exactHits.map(\.segmentID), [segmentID])
+    }
+
     private func temporaryRoot(named name: String) throws -> URL {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-\(name)-\(UUID().uuidString)")
@@ -92,6 +164,11 @@ final class StorageUpgradeTests: XCTestCase {
                           AND name = 'meeting_on_live_startedAt_id'
                         """),
                 1,
+                file: file,
+                line: line)
+            XCTAssertTrue(
+                try Row.fetchAll(database, sql: "PRAGMA table_info(segment)")
+                    .contains { ($0["name"] as String) == "embeddingFingerprint" },
                 file: file,
                 line: line)
         }

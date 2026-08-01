@@ -4,6 +4,8 @@ import PortavozCore
 import StorageKit
 
 public protocol SemanticTextEmbedding: Sendable {
+    func semanticEmbeddingProfile() async -> SemanticEmbeddingProfile
+
     func vectors(for texts: [String]) async throws -> [[Float]]
 }
 
@@ -18,6 +20,8 @@ public protocol SemanticEmbeddingModel: SemanticTextEmbedding {
 /// indexing-and-query operation instead of exposing a shared mutable model.
 public protocol SemanticEmbeddingRuntimeClient: Sendable {
     var hasAvailableAssets: Bool { get async }
+
+    func semanticEmbeddingProfile() async -> SemanticEmbeddingProfile?
 
     func prepare(allowAssetDownload: Bool) async throws
 
@@ -36,6 +40,9 @@ extension SentenceEmbedder: SemanticEmbeddingModel {
 }
 
 public struct SemanticCorpusIndexingResult: Equatable, Sendable {
+    /// Previously published vectors made incompatible by the active model or
+    /// vector schema and reset to the durable NULL replay cursor.
+    public let invalidatedSegments: Int
     public let embeddedSegments: Int
     public let excludedSegments: Int
     /// Candidates no longer eligible at publication, including concurrent
@@ -47,11 +54,13 @@ public struct SemanticCorpusIndexingResult: Equatable, Sendable {
     public let pausedByPolicy: Bool
 
     public init(
+        invalidatedSegments: Int = 0,
         embeddedSegments: Int,
         excludedSegments: Int,
         skippedSegments: Int = 0,
         pausedByPolicy: Bool = false
     ) {
+        self.invalidatedSegments = invalidatedSegments
         self.embeddedSegments = embeddedSegments
         self.excludedSegments = excludedSegments
         self.skippedSegments = skippedSegments
@@ -72,6 +81,7 @@ public struct SemanticCorpusIndexingResult: Equatable, Sendable {
         right: SemanticCorpusIndexingResult
     ) -> SemanticCorpusIndexingResult {
         SemanticCorpusIndexingResult(
+            invalidatedSegments: left.invalidatedSegments + right.invalidatedSegments,
             embeddedSegments: left.embeddedSegments + right.embeddedSegments,
             excludedSegments: left.excludedSegments + right.excludedSegments,
             skippedSegments: left.skippedSegments + right.skippedSegments,
@@ -87,6 +97,7 @@ public struct SemanticCorpusIndexingResult: Equatable, Sendable {
 
     func markingPolicyPause() -> SemanticCorpusIndexingResult {
         SemanticCorpusIndexingResult(
+            invalidatedSegments: invalidatedSegments,
             embeddedSegments: embeddedSegments,
             excludedSegments: excludedSegments,
             skippedSegments: skippedSegments,
@@ -96,12 +107,15 @@ public struct SemanticCorpusIndexingResult: Equatable, Sendable {
 
 public enum SemanticCorpusIndexingError: Error, Equatable, LocalizedError {
     case invalidBatchSize
+    case invalidProfile
     case vectorCountMismatch(expected: Int, actual: Int)
 
     public var errorDescription: String? {
         switch self {
         case .invalidBatchSize:
             "semantic indexing batch size must be positive"
+        case .invalidProfile:
+            "semantic embedding profile must identify a valid model and vector schema"
         case .vectorCountMismatch(let expected, let actual):
             "semantic embedder returned \(actual) vectors for \(expected) segments"
         }
@@ -143,10 +157,26 @@ public struct IndexSemanticCorpus: Sendable {
         }
         try Task.checkCancellation()
         guard shouldProceed(at: .admission) else { return .paused }
+        let profile = await embedder.semanticEmbeddingProfile()
+        guard profile.isValid else { throw SemanticCorpusIndexingError.invalidProfile }
+        let invalidated = try await store.invalidateSemanticEmbeddings(
+            incompatibleWith: profile)
         let missing = try await store.segmentsNeedingEmbeddings(limit: limit)
-        guard !missing.isEmpty else { return .empty }
+        guard !missing.isEmpty else {
+            return SemanticCorpusIndexingResult(
+                invalidatedSegments: invalidated,
+                embeddedSegments: 0,
+                excludedSegments: 0)
+        }
         return try await measure {
-            try await index(missing, using: embedder)
+            SemanticCorpusIndexingResult(
+                invalidatedSegments: invalidated,
+                embeddedSegments: 0,
+                excludedSegments: 0)
+                + (try await index(
+                    missing,
+                    using: embedder,
+                    profile: profile))
         }
     }
 
@@ -159,10 +189,26 @@ public struct IndexSemanticCorpus: Sendable {
         }
         try Task.checkCancellation()
         guard shouldProceed(at: .admission) else { return .paused }
+        let profile = await embedder.semanticEmbeddingProfile()
+        guard profile.isValid else { throw SemanticCorpusIndexingError.invalidProfile }
+        let invalidated = try await store.invalidateSemanticEmbeddings(
+            incompatibleWith: profile)
         let initial = try await store.segmentsNeedingEmbeddings(limit: batchSize)
-        guard !initial.isEmpty else { return .empty }
+        guard !initial.isEmpty else {
+            return SemanticCorpusIndexingResult(
+                invalidatedSegments: invalidated,
+                embeddedSegments: 0,
+                excludedSegments: 0)
+        }
         return try await measure {
-            var result = try await index(initial, using: embedder)
+            var result = SemanticCorpusIndexingResult(
+                invalidatedSegments: invalidated,
+                embeddedSegments: 0,
+                excludedSegments: 0)
+            result += try await index(
+                initial,
+                using: embedder,
+                profile: profile)
             var batch = initial
             while batch.count == batchSize {
                 try Task.checkCancellation()
@@ -171,7 +217,10 @@ public struct IndexSemanticCorpus: Sendable {
                 }
                 batch = try await store.segmentsNeedingEmbeddings(limit: batchSize)
                 guard !batch.isEmpty else { break }
-                result += try await index(batch, using: embedder)
+                result += try await index(
+                    batch,
+                    using: embedder,
+                    profile: profile)
             }
             return result
         }
@@ -195,7 +244,8 @@ public struct IndexSemanticCorpus: Sendable {
 
     private func index(
         _ missing: [SemanticEmbeddingCandidate],
-        using embedder: any SemanticTextEmbedding
+        using embedder: any SemanticTextEmbedding,
+        profile: SemanticEmbeddingProfile
     ) async throws -> SemanticCorpusIndexingResult {
         try Task.checkCancellation()
         let worthIndexing = missing.filter {
@@ -217,7 +267,10 @@ public struct IndexSemanticCorpus: Sendable {
         for segment in excluded {
             update[segment.id] = []
         }
-        let publication = try await store.storeEmbeddings(update, for: missing)
+        let publication = try await store.storeEmbeddings(
+            update,
+            for: missing,
+            profile: profile)
         let published = publication.publishedSegmentIDs
         return SemanticCorpusIndexingResult(
             embeddedSegments: worthIndexing.count(where: { published.contains($0.id) }),

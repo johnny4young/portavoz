@@ -50,6 +50,11 @@ actor CLISemanticEmbeddingRuntime:
         }
     }
 
+    func semanticEmbeddingProfile() async -> SemanticEmbeddingProfile? {
+        guard let embedder = try? model() else { return nil }
+        return await embedder.semanticEmbeddingProfile()
+    }
+
     func prepare(allowAssetDownload: Bool) async throws {
         let embedder = try model()
         try await embedder.prepare(

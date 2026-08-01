@@ -119,6 +119,78 @@ extension MeetingStore {
 
     // MARK: - Semantic index (local RAG, M8)
 
+    /// Whether the live library contains any row eligible for semantic search.
+    /// Background maintenance uses this profile-free probe to avoid touching
+    /// the model runtime for a genuinely empty corpus.
+    public func hasSemanticCorpusRows() async throws -> Bool {
+        try await database.read { db in
+            try Bool.fetchOne(
+                db,
+                sql: """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM segment
+                        JOIN meeting ON meeting.id = segment.meetingID
+                        WHERE segment.deletedAt IS NULL
+                          AND meeting.deletedAt IS NULL
+                        LIMIT 1
+                    )
+                    """) ?? false
+        }
+    }
+
+    /// Whether live searchable rows are missing a vector compatible with the
+    /// active model and vector schema. This probe is read-only so Library and
+    /// Ask can expose exact-first readiness without owning maintenance.
+    public func semanticIndexRequiresMaintenance(
+        for profile: SemanticEmbeddingProfile
+    ) async throws -> Bool {
+        guard profile.isValid else {
+            throw StorageError.invalidSemanticEmbedding("profile is invalid")
+        }
+        return try await database.read { db in
+            try Bool.fetchOne(
+                db,
+                sql: """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM segment
+                        JOIN meeting ON meeting.id = segment.meetingID
+                        WHERE segment.deletedAt IS NULL
+                          AND meeting.deletedAt IS NULL
+                          AND (
+                              segment.embedding IS NULL
+                              OR segment.embeddingFingerprint IS NOT ?
+                          )
+                        LIMIT 1
+                    )
+                    """,
+                arguments: [profile.fingerprint]) ?? false
+        }
+    }
+
+    /// Resets incompatible derived vectors to the existing NULL replay cursor.
+    /// Transcript, FTS, and other authoritative meeting state are untouched.
+    @discardableResult
+    public func invalidateSemanticEmbeddings(
+        incompatibleWith profile: SemanticEmbeddingProfile
+    ) async throws -> Int {
+        guard profile.isValid else {
+            throw StorageError.invalidSemanticEmbedding("profile is invalid")
+        }
+        return try await database.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE segment
+                    SET embedding = NULL, embeddingFingerprint = NULL
+                    WHERE (embedding IS NOT NULL AND embeddingFingerprint IS NOT ?)
+                       OR (embedding IS NULL AND embeddingFingerprint IS NOT NULL)
+                    """,
+                arguments: [profile.fingerprint])
+            return db.changesCount
+        }
+    }
+
     /// Segments (live, non-tombstoned) that still need an embedding.
     public func segmentsNeedingEmbeddings(
         limit: Int = 512
@@ -155,14 +227,21 @@ extension MeetingStore {
     /// tombstoned, edited, or revision-superseded rows are idempotent no-ops.
     public func storeEmbeddings(
         _ embeddings: [UUID: [Float]],
-        for candidates: [SemanticEmbeddingCandidate]
+        for candidates: [SemanticEmbeddingCandidate],
+        profile: SemanticEmbeddingProfile
     ) async throws -> SemanticEmbeddingPublicationResult {
-        guard Set(candidates.map(\.id)).count == candidates.count,
+        guard profile.isValid,
+              Set(candidates.map(\.id)).count == candidates.count,
               Set(embeddings.keys) == Set(candidates.map(\.id)),
-              candidates.allSatisfy({ $0.transcriptRevision >= 0 })
+              candidates.allSatisfy({ $0.transcriptRevision >= 0 }),
+              embeddings.values.allSatisfy({ vector in
+                  vector.isEmpty
+                      || (vector.count == profile.vectorDimension
+                          && vector.allSatisfy(\.isFinite))
+              })
         else {
             throw StorageError.invalidSemanticEmbedding(
-                "vectors must exactly match unique candidates with nonnegative revisions")
+                "profile and finite vectors must exactly match unique candidates")
         }
         guard !candidates.isEmpty else { return .empty }
 
@@ -177,12 +256,13 @@ extension MeetingStore {
                 try db.execute(
                     sql: """
                         UPDATE segment
-                        SET embedding = ?
+                        SET embedding = ?, embeddingFingerprint = ?
                         WHERE id = ?
                           AND meetingID = ?
                           AND text = ?
                           AND deletedAt IS NULL
                           AND embedding IS NULL
+                          AND embeddingFingerprint IS NULL
                           AND EXISTS (
                               SELECT 1 FROM meeting
                               WHERE meeting.id = segment.meetingID
@@ -192,6 +272,7 @@ extension MeetingStore {
                         """,
                     arguments: [
                         Self.blob(from: vector),
+                        profile.fingerprint,
                         candidate.id.uuidString,
                         candidate.meetingID.rawValue.uuidString,
                         candidate.text,
@@ -211,8 +292,16 @@ extension MeetingStore {
     /// normalized at write time, so cosine is a dot product. Rows stream from
     /// SQLite, BLOB bytes are scored without a Float-array copy, and only the
     /// bounded best candidates survive (D83).
-    public func searchSemantic(_ query: [Float], limit: Int = 8) async throws -> [SearchHit] {
-        guard limit > 0, !query.isEmpty else { return [] }
+    public func searchSemantic(
+        _ query: [Float],
+        profile: SemanticEmbeddingProfile,
+        limit: Int = 8
+    ) async throws -> [SearchHit] {
+        guard profile.isValid,
+              limit > 0,
+              query.count == profile.vectorDimension,
+              query.allSatisfy(\.isFinite)
+        else { return [] }
         let (expectedBytes, overflow) = query.count.multipliedReportingOverflow(
             by: MemoryLayout<Float>.size)
         guard !overflow else { return [] }
@@ -223,12 +312,15 @@ extension MeetingStore {
                     SELECT segment.embedding AS embedding,
                            segment.rowid AS rowID
                     FROM segment
-                    WHERE segment.embedding IS NOT NULL AND segment.deletedAt IS NULL
+                    WHERE segment.embedding IS NOT NULL
+                      AND segment.embeddingFingerprint = ?
+                      AND segment.deletedAt IS NULL
                       AND segment.meetingID NOT IN (
                           SELECT meeting.id FROM meeting WHERE meeting.deletedAt IS NOT NULL
                       )
                     ORDER BY segment.rowid ASC
-                    """)
+                    """,
+                arguments: [profile.fingerprint])
             var candidates: [SemanticCandidate] = []
             candidates.reserveCapacity(min(limit, 64))
             var traversalOrder = 0

@@ -270,6 +270,7 @@ extension MeetingStore {
             if let localRecord = local.segmentsByID[record.id],
                localRecord.text == record.text {
                 record.embedding = localRecord.embedding
+                record.embeddingFingerprint = localRecord.embeddingFingerprint
                 record.generationRunID = localRecord.generationRunID
             }
             try record.insert(db)

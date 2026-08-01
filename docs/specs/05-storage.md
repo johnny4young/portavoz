@@ -5,12 +5,14 @@ Status: implemented and in production (the user's DB survived a real incident th
 D190 adds explicit intentional suspension for owner-leased processing jobs.
 D198 adds exact source identity and compare-and-swap publication for semantic
 embedding batches.
+D199 adds compatibility-fingerprinted semantic vectors and fail-closed rebuilds
+when the model or vector pipeline changes.
 
 ## Database
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v16` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v17` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -18,7 +20,7 @@ Singular camelCase tables, 1:1 with Codable records:
 |---|---|
 | `meeting` | id (UUID TEXT PK), title, startedAt, endedAt, language, audioDirectory (RELATIVE), retention, visibility (reserved), **lifecycleState**, **transcriptRevision**, **lastProcessingError** (v6), createdAt/updatedAt/deletedAt |
 | `speaker` | id, meetingID (FK CASCADE), label (S1/Me…), displayName, isMe, personID? (v8, FK SET NULL), tombstone |
-| `segment` | id, meetingID, speakerID?, channel, text, language?, startTime/endTime, confidence?, isFinal, **embedding BLOB** (v2), generationRunID? (v6), tombstone |
+| `segment` | id, meetingID, speakerID?, channel, text, language?, startTime/endTime, confidence?, isFinal, **embedding BLOB** (v2), **embeddingFingerprint** (v17), generationRunID? (v6), tombstone |
 | `summary` | id, meetingID, recipeID, language, markdown, **version** (UNIQUE meetingID+recipeID+version — immutable snapshots), **fingerprint** (v4, D25 — language-independent material identity; NULL in old snapshots = never match), generationRunID? (v6) |
 | `actionItem` | id, summaryID (FK CASCADE), meetingID, text, ownerSpeakerID?, isDone (the MUTABLE exception), tombstone |
 | `contextItem` (v3) | id, meetingID (FK CASCADE), kind (note/link/codeSnippet/file), content, timestamp (seconds from start), tombstone — user notes (D28) |
@@ -49,6 +51,13 @@ Schema v16 adds the partial
 `meeting_on_live_startedAt_id(startedAt DESC, id ASC)` index for deterministic
 newest-first keyset scans. It contains no new data and is copied into a backup
 stage with the database.
+
+Schema v17 adds nullable `segment.embeddingFingerprint`. Existing vectors have
+no trustworthy model/pipeline identity, so the migration clears only their
+derived embedding BLOB and fingerprint to the established `NULL` replay cursor.
+It does not rewrite transcript text, segment identity, meeting revisions, or
+FTS rows. Background maintenance may therefore rebuild a compatible vector
+space while exact search remains available.
 
 Schema v6 is an additive foundation (D36). Existing meetings migrate to
 `ready`, revision zero, and no processing error. The migration does not inspect
@@ -449,7 +458,7 @@ ApplicationKit port with a PlatformKit macOS adapter; bookmark identity never
 enters the database stage or StorageKit.
 
 The existing aggregate API remains:
-`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)` (preserves an existing run link and transactionally replaces optional typed evidence), `companionCards(for:)`, `deleteCompanionCard(_:)`, `saveCompanionGenerationRun(_:workflow:sourceTranscriptRevision:)` (current-revision failed/cancelled attempt), and `replaceCompanionCards(_:generated:for:)` (current-revision atomic card/run/evidence replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint and rejects user feedback), `setSummaryClaimFeedback(_:for:meetingID:)` (newest-claim-fenced replace/clear), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets — hostile input sanitized), `searchSemantic(vector, limit:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
+`save(meeting/speakers/segments/contextItems)`, `contextItems(for:)`, `deleteContextItem(_:)` (tombstone), `save(companionCards:for:)` (preserves an existing run link and transactionally replaces optional typed evidence), `companionCards(for:)`, `deleteCompanionCard(_:)`, `saveCompanionGenerationRun(_:workflow:sourceTranscriptRevision:)` (current-revision failed/cancelled attempt), and `replaceCompanionCards(_:generated:for:)` (current-revision atomic card/run/evidence replacement with tombstones), `meetings(includeDeleted:)`, `detail(id)` (live meeting+speakers+segments), `delete(id)` (tombstone), `saveSummary(draft)` (auto-incrementing version per meeting+recipe; never touches previous snapshots; persists the D25 fingerprint and rejects user feedback), `setSummaryClaimFeedback(_:for:meetingID:)` (newest-claim-fenced replace/clear), `summary(id:recipeID:version:)` (recipe-specific snapshot, General by default), `mostRecentSummary(id)` (newest live snapshot across recipes by creation/insertion order for Meeting Detail), `latestSummary(id:recipeID:fingerprint:language:)` (D25 — with `language`, it is the exact recipe-scoped cache hit; without it, returns that recipe's translation pivot in any language), `search(text, requireAll:)` (FTS5 with snippets — hostile input sanitized), `searchSemantic(_:profile:limit:)`, `hasSemanticCorpusRows()`, `semanticIndexRequiresMaintenance(for:)`, `invalidateSemanticEmbeddings(incompatibleWith:)`, `segmentsNeedingEmbeddings`/`storeEmbeddings(_:for:profile:)`, `openActionItems`/`setActionItem(done:)`, `replaceCast(for:speakers:segments:)` (legacy/general atomic cast replacement), `applyRefinedCast(for:expectedTranscriptRevision:language:speakers:segments:generationRun:)` (validated, revision-fenced refined aggregate replacement with optional accepted-transcript provenance — D47/D65), `enforceAudioRetention(audioRoot:)` (deletes ONLY expired audio according to the meeting's policy, never the transcript; anti-path-escape guard).
 
 `detail(id)` orders summary metadata by creation time, then version, recipe,
 and identity. The explicit tie-break keeps the newest immutable version first
@@ -858,18 +867,23 @@ queries, and non-positive limits return no invalid hits. Comparable results:
 
 The 100k wall/CPU path is 72.3%/72.2% faster and passes both targets. D83
 retains exact schema-v7 Float32 BLOBs and rejects sqlite-vec, a new embedding
-table, approximation, and vector-cache invalidation at the measured scale.
-D176–D178 and D196–D198 retain `NULL` embedding rows as the durable retry
+table, and approximation at the measured scale.
+D176–D178 and D196–D199 retain `NULL` embedding rows as the durable retry
 ledger while ApplicationKit coalesces redundant background-maintenance flights,
 pauses between committed batches, and resumes from explicit app
 lifecycle/mutation/capture-stop signals. D198 strengthens the write boundary:
 `segmentsNeedingEmbeddings` returns segment/meeting/revision/text source
-identity, and `storeEmbeddings(_:for:)` accepts only an exact candidate/vector
-set. Each conditional update requires that same live unembedded segment, exact
-text, and a live meeting at the selected transcript revision. Concurrent
+identity, and `storeEmbeddings(_:for:profile:)` accepts only an exact
+candidate/vector set plus a valid compatibility profile. Each non-empty vector
+must match the declared dimension and contain only finite values. Each
+conditional update requires that same live unembedded segment, exact text, and
+a live meeting at the selected transcript revision; vector and profile
+fingerprint publish atomically. Concurrent
 publication, correction, replacement, or deletion is an idempotent skipped
 outcome and cannot overwrite current derived state. Ask and Library only read
-published vectors; their shared typed readiness probe reads at most one pending
-row and never changes storage.
+vectors carrying the active fingerprint; their shared typed readiness probe
+checks at most one missing or incompatible row and never changes storage.
+Maintenance resets incompatible derived vectors and fingerprints to `NULL`
+before rebuilding; exact FTS and authoritative transcript state are unchanged.
 Process termination, policy suspension, or an ordinary background failure
 therefore needs no in-memory cursor repair, retry table, or vector rollback.

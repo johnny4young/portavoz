@@ -510,12 +510,13 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 16. It includes:
+The current schema version is 17. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
 - meeting-local speakers and explicitly confirmed canonical people/aliases;
-- transcript segments and FTS5 search;
+- transcript segments, FTS5 search, and compatibility-fingerprinted local
+  semantic-vector derivations;
 - immutable summary versions and action items;
 - Apuntador cards and role-separated source evidence;
 - generated overview, decision, and action-item evidence;
@@ -554,9 +555,10 @@ dependency is loaded. A selected hit emits the same one-shot
 meeting/timestamp seek request used by Ask evidence before routing.
 
 Ask and Library share one typed ApplicationKit readiness resolver. It combines
-installed query-vector capability, one durable pending-row probe, and the
-process maintenance status into `ready`, `partial`, `building`, `unsupported`,
-or `failed`. Exact search remains available in every state. `partial`,
+installed query-vector capability, a valid active embedding profile, one
+profile-aware durable maintenance probe, and the process maintenance status
+into `ready`, `partial`, `building`, `unsupported`, or `failed`. Exact search
+remains available in every state. `partial`,
 `building`, and `failed` may still query published vectors; `unsupported`
 means no query vector can be produced. A complete durable corpus resolves
 `ready` even after an older process failure.
@@ -567,11 +569,13 @@ coordinator; explicit disposable benchmark preparation may use the same
 operation outside product requests. There is no pending-request array and
 never more than one embedding flight.
 Cancelling the final waiter cancels the worker before persistence; another
-borrower keeps shared work alive. The writer marks micro-segments with an empty
-vector, validates the embedder's result count before persistence, and emits
-content-free maintenance/search-index intervals. Missing embeddings remain
-durable `NULL` rows, so coalescing or policy suspension loses no corpus
-evidence.
+borrower keeps shared work alive. The writer obtains one valid compatibility
+profile from the prepared embedder, resets incompatible derived vectors to the
+existing `NULL` cursor, marks micro-segments with an empty vector, validates
+the result count and every non-empty vector against that profile before
+persistence, and emits content-free maintenance/search-index intervals.
+Missing or invalidated embeddings remain durable `NULL` rows, so coalescing,
+profile changes, or policy suspension lose no authoritative corpus evidence.
 
 Ask and Library are read-only with respect to that corpus. Every Ask request retrieves exact
 FTS evidence first, resolves the shared semantic state without preparing or
@@ -1529,9 +1533,10 @@ the shared corpus-indexing coordinator. App launch, searchable mutations, and
 capture returning inactive are wake signals. Bursts collapse to at most one
 rerun behind the active drain; no timer, polling loop, or in-memory work queue
 exists. Before borrowing the semantic runtime, the background adapter checks
-capture state and one durable missing row. It uses only already-installed Apple
-embedding assets and never downloads assets in the background. Temporary and
-isolated benchmark stores disable the supervisor.
+capture state, whether the live corpus has any searchable row, installed Apple
+embedding assets, a valid active profile, and whether any row lacks that exact
+profile. It never downloads assets in the background. Temporary and isolated
+benchmark stores disable the supervisor.
 
 The `NULL` embedding rows remain the durable cursor across suspension, failure,
 and process termination. A later signal or relaunch therefore resumes work
@@ -1546,6 +1551,15 @@ live at that revision, and its text is unchanged. A concurrent correction,
 replacement, deletion, or duplicate publication is therefore a content-free
 skip; it cannot attach a stale vector to a reused identity, and the current
 live row remains on the `NULL` cursor for a later pass.
+
+Every persisted semantic vector also carries one SHA-256 compatibility
+fingerprint derived from the concrete model identifier and revision, vector
+dimension, Portavoz pooling-pipeline identifier and revision, and binary
+vector-schema version. Semantic reads require the exact active fingerprint.
+Maintenance atomically resets incompatible derived vectors to `NULL` before
+rebuilding them, while transcript text and FTS rows remain untouched. Schema
+v17 performs that same fail-closed reset for legacy vectors whose compatibility
+cannot be proven.
 
 Semantic maintenance does not publish `.index` work into the owner-leased
 processing ledger. That ledger continues to control the visible meeting

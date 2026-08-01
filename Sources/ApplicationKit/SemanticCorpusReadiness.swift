@@ -72,11 +72,14 @@ public struct ResolveSemanticCorpusReadiness: Sendable {
         try Task.checkCancellation()
         guard await runtime.hasAvailableAssets else { return .unsupported }
         try Task.checkCancellation()
+        guard let profile = await runtime.semanticEmbeddingProfile(),
+              profile.isValid
+        else { return .unsupported }
 
         let hasPendingRows: Bool
         do {
-            hasPendingRows = try await !store
-                .segmentsNeedingEmbeddings(limit: 1).isEmpty
+            hasPendingRows = try await store.semanticIndexRequiresMaintenance(
+                for: profile)
         } catch {
             try Task.checkCancellation()
             return .failed

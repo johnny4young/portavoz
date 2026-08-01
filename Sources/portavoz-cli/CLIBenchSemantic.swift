@@ -187,6 +187,7 @@ private enum SemanticBenchmark {
         #endif
         let embedder = try SentenceEmbedder()
         let dimension = await embedder.dimension
+        let profile = await embedder.semanticEmbeddingProfile()
 
         return try await withSemanticTemporaryDirectory { directory in
             let databaseURL = directory.appendingPathComponent("semantic.sqlite")
@@ -195,7 +196,8 @@ private enum SemanticBenchmark {
             try await seed(
                 store: store,
                 totalSegments: options.segments,
-                dimension: dimension)
+                dimension: dimension,
+                profile: profile)
             let seedMilliseconds = semanticMilliseconds(since: seedStart)
 
             // Query a vector that is present in the corpus. This keeps result
@@ -204,7 +206,10 @@ private enum SemanticBenchmark {
             let query = vector(index: queryIndex, dimension: dimension)
             let expectedText = "Semantic benchmark transcript segment \(queryIndex)"
             for _ in 0..<warmupRuns {
-                let hits = try await store.searchSemantic(query, limit: resultLimit)
+                let hits = try await store.searchSemantic(
+                    query,
+                    profile: profile,
+                    limit: resultLimit)
                 guard hits.first?.text == expectedText else {
                     throw SemanticBenchmarkError.unexpectedTopResult
                 }
@@ -214,43 +219,64 @@ private enum SemanticBenchmark {
                 runs: options.runs,
                 store: store,
                 query: query,
+                profile: profile,
                 expectedText: expectedText)
 
-            return SemanticBenchmarkReport(
-                schemaVersion: 1,
-                generatedAt: Date(),
+            return try report(
+                options: options,
                 buildConfiguration: buildConfiguration,
-                host: .init(
-                    operatingSystem: ProcessInfo.processInfo.operatingSystemVersionString,
-                    architecture: ProcessInfo.processInfo.semanticMachineArchitecture,
-                    processorCount: ProcessInfo.processInfo.processorCount,
-                    physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory),
-                configuration: .init(
-                    measurementRuns: options.runs,
-                    warmupRuns: warmupRuns,
-                    embeddingDimension: dimension,
-                    resultLimit: resultLimit,
-                    segmentsPerMeeting: segmentsPerMeeting),
-                checkpoint: .init(
-                    totalSegments: options.segments,
-                    meetingCount: Int(ceil(Double(options.segments) / Double(segmentsPerMeeting))),
-                    seedMilliseconds: seedMilliseconds,
-                    databaseBytes: try FileManager.default.allocatedSizeOfDirectory(at: directory),
-                    rawEmbeddingBytes: Int64(options.segments * dimension * MemoryLayout<Float>.size),
-                    resultCount: measurement.resultCount,
-                    wallTime: .init(measurement.wallMilliseconds),
-                    processCPUTime: .init(measurement.cpuMilliseconds),
-                    baselinePhysicalFootprint: .init(measurement.baselineBytes),
-                    peakPhysicalFootprint: .init(measurement.peakBytes),
-                    incrementalPeakPhysicalFootprint: .init(measurement.incrementalPeakBytes),
-                    endingPhysicalFootprint: .init(measurement.endingBytes)))
+                dimension: dimension,
+                directory: directory,
+                seedMilliseconds: seedMilliseconds,
+                measurement: measurement)
         }
+    }
+
+    private static func report(
+        options: SemanticBenchmarkOptions,
+        buildConfiguration: String,
+        dimension: Int,
+        directory: URL,
+        seedMilliseconds: Double,
+        measurement: Measurement
+    ) throws -> SemanticBenchmarkReport {
+        SemanticBenchmarkReport(
+            schemaVersion: 1,
+            generatedAt: Date(),
+            buildConfiguration: buildConfiguration,
+            host: .init(
+                operatingSystem: ProcessInfo.processInfo.operatingSystemVersionString,
+                architecture: ProcessInfo.processInfo.semanticMachineArchitecture,
+                processorCount: ProcessInfo.processInfo.processorCount,
+                physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory),
+            configuration: .init(
+                measurementRuns: options.runs,
+                warmupRuns: warmupRuns,
+                embeddingDimension: dimension,
+                resultLimit: resultLimit,
+                segmentsPerMeeting: segmentsPerMeeting),
+            checkpoint: .init(
+                totalSegments: options.segments,
+                meetingCount: Int(ceil(Double(options.segments) / Double(segmentsPerMeeting))),
+                seedMilliseconds: seedMilliseconds,
+                databaseBytes: try FileManager.default.allocatedSizeOfDirectory(at: directory),
+                rawEmbeddingBytes: Int64(
+                    options.segments * dimension * MemoryLayout<Float>.size),
+                resultCount: measurement.resultCount,
+                wallTime: .init(measurement.wallMilliseconds),
+                processCPUTime: .init(measurement.cpuMilliseconds),
+                baselinePhysicalFootprint: .init(measurement.baselineBytes),
+                peakPhysicalFootprint: .init(measurement.peakBytes),
+                incrementalPeakPhysicalFootprint: .init(
+                    measurement.incrementalPeakBytes),
+                endingPhysicalFootprint: .init(measurement.endingBytes)))
     }
 
     private static func seed(
         store: MeetingStore,
         totalSegments: Int,
-        dimension: Int
+        dimension: Int,
+        profile: SemanticEmbeddingProfile
     ) async throws {
         var seeded = 0
         var meetingIndex = 0
@@ -279,7 +305,10 @@ private enum SemanticBenchmark {
                     (segment.id, vector(index: seeded + localIndex, dimension: dimension))
                 })
             let candidates = try await store.segmentsNeedingEmbeddings(limit: count)
-            _ = try await store.storeEmbeddings(embeddings, for: candidates)
+            _ = try await store.storeEmbeddings(
+                embeddings,
+                for: candidates,
+                profile: profile)
             seeded += count
             meetingIndex += 1
         }
@@ -316,6 +345,7 @@ private enum SemanticBenchmark {
         runs: Int,
         store: MeetingStore,
         query: [Float],
+        profile: SemanticEmbeddingProfile,
         expectedText: String
     ) async throws -> Measurement {
         var measurement = Measurement()
@@ -332,7 +362,10 @@ private enum SemanticBenchmark {
                 return peak
             }
             let start = ContinuousClock.now
-            let hits = try await store.searchSemantic(query, limit: resultLimit)
+            let hits = try await store.searchSemantic(
+                query,
+                profile: profile,
+                limit: resultLimit)
             let wall = semanticMilliseconds(since: start)
             let after = try ProcessUsage.current()
             sampler.cancel()

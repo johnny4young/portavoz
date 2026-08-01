@@ -50,6 +50,15 @@ actor AppSemanticEmbeddingRuntime: SemanticEmbeddingRuntimeClient {
         }
     }
 
+    func semanticEmbeddingProfile() async -> SemanticEmbeddingProfile? {
+        do {
+            let model = try availableModel()
+            return await model.semanticEmbeddingProfile()
+        } catch {
+            return nil
+        }
+    }
+
     func prepare(allowAssetDownload: Bool) async throws {
         _ = try await preparedModel(
             allowAssetDownload: allowAssetDownload)

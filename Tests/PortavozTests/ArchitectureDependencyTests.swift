@@ -679,7 +679,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(supervisor.contains(
             "allowAssetDownload: false"))
         XCTAssertTrue(supervisor.contains(
-            "segmentsNeedingEmbeddings(limit: 1)"))
+            "hasSemanticCorpusRows()"))
+        XCTAssertTrue(supervisor.contains(
+            "semanticIndexRequiresMaintenance(for: profile)"))
         XCTAssertFalse(supervisor.contains("Task.sleep"))
         XCTAssertTrue(services.contains(
             "@ObservationIgnored let semanticIndexingSupervisor:"))
@@ -734,8 +736,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 store.contains(identity),
                 "Semantic publication is missing source fence: \(identity)")
         }
-        XCTAssertTrue(operation.contains(
-            "store.storeEmbeddings(update, for: missing)"))
+        XCTAssertTrue(operation.contains("profile: profile"))
         XCTAssertTrue(operation.contains("skippedSegments:"))
         XCTAssertFalse(workflow.contains(".index"))
 
@@ -749,7 +750,97 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D198"))
         XCTAssertTrue(intelligenceSpec.contains(
             "### Revision-fenced semantic publication (D198)"))
-        XCTAssertTrue(storageSpec.contains("storeEmbeddings(_:for:)"))
+        XCTAssertTrue(storageSpec.contains("storeEmbeddings(_:for:profile:)"))
+    }
+
+    func testSemanticEmbeddingsAreCompatibilityFenced() throws {
+        let profile = try Self.contents(
+            of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")
+        let embedder = try Self.contents(
+            of: "Sources/IntelligenceKit/SentenceEmbedder.swift")
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let schemaMigration = try Self.contents(
+            of: "Sources/StorageKit/Schema+SemanticEmbedding.swift")
+        let store = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Search.swift")
+        let operation = try Self.contents(
+            of: "Sources/ApplicationKit/IndexSemanticCorpus.swift")
+        let readiness = try Self.contents(
+            of: "Sources/ApplicationKit/SemanticCorpusReadiness.swift")
+        let supervisor = try Self.contents(
+            of: "Sources/portavoz-app/SemanticCorpusIndexingSupervisor.swift")
+        let ask = try Self.contents(
+            of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
+        let library = try Self.contents(
+            of: "Sources/ApplicationKit/LocalLibrarySemanticSearch.swift")
+
+        for identity in [
+            "public struct SemanticEmbeddingProfile",
+            "public let modelIdentifier: String",
+            "public let modelRevision: Int",
+            "public let vectorDimension: Int",
+            "public let pipelineIdentifier: String",
+            "public let pipelineRevision: Int",
+            "public let vectorSchemaVersion: Int",
+            "version: \"semantic-embedding-profile-v1\"",
+        ] {
+            XCTAssertTrue(
+                profile.contains(identity),
+                "Semantic profile is missing compatibility identity: \(identity)")
+        }
+        XCTAssertTrue(embedder.contains("embedding.modelIdentifier"))
+        XCTAssertTrue(embedder.contains("embedding.revision"))
+        XCTAssertTrue(embedder.contains("embedding.dimension"))
+
+        XCTAssertTrue(schema.contains("public static let version = 17"))
+        XCTAssertTrue(schema.contains(
+            "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
+        XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
+        XCTAssertTrue(schemaMigration.contains("embeddingFingerprint"))
+        XCTAssertTrue(schemaMigration.contains(
+            "SET embedding = NULL, embeddingFingerprint = NULL"))
+
+        for fence in [
+            "semanticIndexRequiresMaintenance(",
+            "invalidateSemanticEmbeddings(",
+            "profile: SemanticEmbeddingProfile",
+            "vector.count == profile.vectorDimension",
+            "vector.allSatisfy(\\.isFinite)",
+            "SET embedding = ?, embeddingFingerprint = ?",
+            "segment.embeddingFingerprint = ?",
+        ] {
+            XCTAssertTrue(
+                store.contains(fence),
+                "Semantic storage is missing profile fence: \(fence)")
+        }
+
+        XCTAssertTrue(operation.contains("case invalidProfile"))
+        XCTAssertTrue(operation.contains(
+            "invalidateSemanticEmbeddings("))
+        XCTAssertTrue(readiness.contains(
+            "semanticEmbeddingProfile()"))
+        XCTAssertTrue(readiness.contains(
+            "semanticIndexRequiresMaintenance("))
+        XCTAssertTrue(supervisor.contains("hasSemanticCorpusRows()"))
+        XCTAssertTrue(supervisor.contains(
+            "semanticIndexRequiresMaintenance(for: profile)"))
+        XCTAssertTrue(ask.contains("profile: profile"))
+        XCTAssertTrue(library.contains("profile: profile"))
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(architecture.contains("current schema version is 17"))
+        XCTAssertTrue(architecture.contains(
+            "Every persisted semantic vector also carries one SHA-256"))
+        XCTAssertTrue(decisions.contains("## D199"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Compatibility-fenced semantic vectors (D199)"))
+        XCTAssertTrue(storageSpec.contains("Schema v17 adds nullable"))
+        XCTAssertTrue(appSpec.contains("D199 compatibility"))
     }
 
     func testPressureDrivenReleaseUsesGovernorAndAllConcreteOwners() throws {
@@ -4282,7 +4373,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(scaleRunner.contains("swift build -c release --product portavoz-cli"))
         XCTAssertTrue(scaleRunner.contains(#""buildConfiguration") != "release""#))
         XCTAssertTrue(semanticCLI.contains("let dimension = await embedder.dimension"))
-        XCTAssertTrue(semanticCLI.contains("store.searchSemantic(query, limit: resultLimit)"))
+        XCTAssertTrue(semanticCLI.contains("profile: profile"))
         XCTAssertTrue(semanticCLI.contains("mach_timebase_info(&timebase)"))
         XCTAssertTrue(semanticCLI.contains("usage.ri_phys_footprint"))
         XCTAssertTrue(semanticRunner.contains("swift build -c release --product portavoz-cli"))

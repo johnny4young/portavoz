@@ -63,7 +63,8 @@ final class MeetingSyncAggregateTests: XCTestCase {
         XCTAssertEqual(MeetingSyncEnvelopeCodec.sha256(encoded).count, 64)
         let json = String(decoding: encoded, as: UTF8.self)
         for forbidden in [
-            "Audio/local-only", "personID", "embedding", "generationRunID",
+            "Audio/local-only", "personID", "embedding",
+            "embeddingFingerprint", "generationRunID",
         ] {
             XCTAssertFalse(json.contains(forbidden), "sync envelope leaked \(forbidden)")
         }
@@ -157,6 +158,7 @@ final class MeetingSyncAggregateTests: XCTestCase {
         XCTAssertEqual(stored.0.audioDirectory, "Audio/on-this-device")
         XCTAssertNotNil(stored.1.personID)
         XCTAssertEqual(stored.2.embedding, Data([1, 2, 3, 4]))
+        XCTAssertEqual(stored.2.embeddingFingerprint, "local-semantic-profile")
         XCTAssertEqual(try stored.0.meeting.title, "Portable — refreshed")
         let pending = try await destination.pendingMeetingSyncChanges()
         XCTAssertTrue(pending.isEmpty)
@@ -451,8 +453,16 @@ final class MeetingSyncAggregateTests: XCTestCase {
                 sql: "UPDATE speaker SET personID = ? WHERE id = ?",
                 arguments: [person.id.rawValue.uuidString, speakerID.rawValue.uuidString])
             try db.execute(
-                sql: "UPDATE segment SET embedding = ? WHERE id = ?",
-                arguments: [Data([1, 2, 3, 4]), segmentID.uuidString])
+                sql: """
+                    UPDATE segment
+                    SET embedding = ?, embeddingFingerprint = ?
+                    WHERE id = ?
+                    """,
+                arguments: [
+                    Data([1, 2, 3, 4]),
+                    "local-semantic-profile",
+                    segmentID.uuidString,
+                ])
         }
     }
 }

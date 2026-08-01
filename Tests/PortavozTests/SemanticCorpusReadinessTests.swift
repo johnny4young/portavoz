@@ -100,6 +100,37 @@ final class SemanticCorpusReadinessTests: XCTestCase {
         XCTAssertEqual(preparationRequests, [false])
     }
 
+    func testIncompatiblePublishedCorpusReportsPartialWithoutWritingRows() async throws {
+        let store = try await seededStore()
+        let firstProfile = semanticTestProfile(modelRevision: 1)
+        let secondProfile = semanticTestProfile(modelRevision: 2)
+        let candidates = try await store.segmentsNeedingEmbeddings()
+        _ = try await store.storeEmbeddings(
+            Dictionary(uniqueKeysWithValues: candidates.map {
+                ($0.id, [Float](arrayLiteral: 1, 0))
+            }),
+            for: candidates,
+            profile: firstProfile)
+        let resolver = ResolveSemanticCorpusReadiness(
+            store: store,
+            runtime: ReadinessSemanticRuntime(
+                assetsAvailable: true,
+                profile: secondProfile))
+
+        let readiness = try await resolver.current()
+        let pending = try await store.segmentsNeedingEmbeddings()
+        let requiresMaintenance = try await store.semanticIndexRequiresMaintenance(
+            for: secondProfile)
+        let firstProfileHits = try await store.searchSemantic(
+            [1, 0],
+            profile: firstProfile)
+
+        XCTAssertEqual(readiness, .partial)
+        XCTAssertTrue(pending.isEmpty)
+        XCTAssertTrue(requiresMaintenance)
+        XCTAssertEqual(firstProfileHits.count, 1)
+    }
+
     private func seededStore() async throws -> MeetingStore {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(
@@ -121,14 +152,23 @@ final class SemanticCorpusReadinessTests: XCTestCase {
 
 private actor ReadinessSemanticRuntime: SemanticEmbeddingRuntimeClient {
     private let assetsAvailable: Bool
+    private let profile: SemanticEmbeddingProfile
     private(set) var preparationRequests: [Bool] = []
 
-    init(assetsAvailable: Bool) {
+    init(
+        assetsAvailable: Bool,
+        profile: SemanticEmbeddingProfile = semanticTestProfile()
+    ) {
         self.assetsAvailable = assetsAvailable
+        self.profile = profile
     }
 
     var hasAvailableAssets: Bool {
         get async { assetsAvailable }
+    }
+
+    func semanticEmbeddingProfile() -> SemanticEmbeddingProfile? {
+        profile
     }
 
     func prepare(allowAssetDownload: Bool) {
@@ -142,11 +182,17 @@ private actor ReadinessSemanticRuntime: SemanticEmbeddingRuntimeClient {
         ) async throws -> Result
     ) async throws -> Result {
         preparationRequests.append(allowAssetDownload)
-        return try await operation(ReadinessSemanticEmbedder())
+        return try await operation(ReadinessSemanticEmbedder(profile: profile))
     }
 }
 
 private struct ReadinessSemanticEmbedder: SemanticTextEmbedding {
+    let profile: SemanticEmbeddingProfile
+
+    func semanticEmbeddingProfile() -> SemanticEmbeddingProfile {
+        profile
+    }
+
     func vectors(for texts: [String]) async throws -> [[Float]] {
         texts.map { _ in [1, 0] }
     }

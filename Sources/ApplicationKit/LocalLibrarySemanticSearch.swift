@@ -38,10 +38,14 @@ public actor LocalLibrarySemanticSearch {
             allowAssetDownload: false
         ) { [store] embedder in
             try Task.checkCancellation()
+            let profile = await embedder.semanticEmbeddingProfile()
             guard let vector = try await embedder.vectors(
                 for: [query]
             ).first else { return [] }
-            return try await store.searchSemantic(vector, limit: limit)
+            return try await store.searchSemantic(
+                vector,
+                profile: profile,
+                limit: limit)
         }
     }
 

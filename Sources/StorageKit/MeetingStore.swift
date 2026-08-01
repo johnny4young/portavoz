@@ -191,6 +191,7 @@ public final class MeetingStore: Sendable {
                 // Text unchanged → the stored embedding stays valid.
                 if existing?.text == segment.text {
                     record.embedding = existing?.embedding
+                    record.embeddingFingerprint = existing?.embeddingFingerprint
                 }
                 try record.save(db)
             }

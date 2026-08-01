@@ -13,6 +13,9 @@ D197 gives Ask and Library one typed semantic-readiness view and makes the
 signal-driven supervisor the sole product corpus writer.
 D198 prevents that writer from publishing across a concurrent transcript
 correction, replacement, or deletion.
+D199 requires one valid embedding compatibility profile before semantic
+maintenance or reads and rebuilds incompatible derived vectors through the
+existing `NULL` cursor.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -488,10 +491,12 @@ semantic wake until the capture-state transition publishes inactive.
 
 The supervisor serializes one complete drain and collapses every concurrent
 wake into one later rerun. It never schedules a timer. Its production adapter
-checks one pending database row before borrowing the app-owned semantic
-runtime, uses only already-installed Apple assets, and cannot request an asset
-download. The D177 gate remains the final admission/checkpoint authority if
-capture changes after wake admission.
+first uses a profile-free row-existence probe so an empty library never touches
+the model runtime. For a nonempty corpus it requires already-installed Apple
+assets, a valid active embedding profile, and one missing-or-incompatible row
+before borrowing the runtime; it cannot request an asset download. The D177
+gate remains the final admission/checkpoint authority if capture changes after
+wake admission.
 
 Temporary/UI stores and isolated resource benchmarks disable the owner. A
 failed drain logs only an ordinary content-free operational message; durable
@@ -500,17 +505,22 @@ retries them. Ask never joins the maintenance flight: exact FTS remains
 authoritative, semantic lookup uses only already-published rows, and ordinary
 runtime failure degrades to lexical evidence. The supervisor publishes a
 payload-free process phase (`building`, `idle`, or `failed`) to the shared
-ApplicationKit readiness resolver. Combined with installed assets and one
-durable pending-row probe, Ask and Library observe `ready`, `partial`,
-`building`, `unsupported`, or `failed` without preparing or writing anything.
+ApplicationKit readiness resolver. Combined with installed assets, a valid
+active profile, and one profile-aware durable maintenance probe, Ask and
+Library observe `ready`, `partial`, `building`, `unsupported`, or `failed`
+without preparing or writing anything.
 
 The drain's selected rows retain segment, meeting, transcript-revision, and
 exact-text identity across the model call. StorageKit conditionally publishes
 only still-current rows (D198); a concurrent transcript mutation or deletion
 is a skipped checkpoint, not a failed meeting or stale vector. The replacement
 row remains pending and the existing coalesced mutation signal schedules the
-next pass. The dormant processing-job `.index` kind remains inactive until a
-derived-maintenance scheduler can avoid changing the meeting lifecycle.
+next pass. Every accepted vector also publishes the D199 compatibility
+fingerprint for its concrete model, dimension, pooling pipeline, and vector
+schema. A profile change resets only incompatible derived rows to `NULL` before
+the drain rebuilds them; exact FTS remains available throughout. The dormant
+processing-job `.index` kind remains inactive until a derived-maintenance
+scheduler can avoid changing the meeting lifecycle.
 
 
 ### Capture-safe existing-library sync admission (D179)

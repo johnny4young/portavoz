@@ -183,6 +183,44 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         XCTAssertEqual(remaining.count, 2)
     }
 
+    func testBackgroundDrainRebuildsRowsFromAnIncompatibleProfile() async throws {
+        let store = try await seededStore()
+        let firstProfile = semanticTestProfile(modelRevision: 1)
+        let secondProfile = semanticTestProfile(modelRevision: 2)
+        _ = try await IndexSemanticCorpus(store: store).all(
+            using: BackgroundSemanticEmbedder(profile: firstProfile))
+        let pendingBefore = try await store.segmentsNeedingEmbeddings()
+        XCTAssertTrue(pendingBefore.isEmpty)
+
+        let runtime = BackgroundSemanticRuntime(
+            assetsAvailable: true,
+            profile: secondProfile)
+        let indexer = AppSemanticCorpusBackgroundIndexer(
+            store: store,
+            runtime: runtime,
+            coordinator: SemanticCorpusIndexingCoordinator(
+                operation: IndexSemanticCorpus(store: store)),
+            captureState: AppResourceCaptureState())
+
+        let result = try await indexer.drain()
+        let runtimeSnapshot = await runtime.snapshot
+        let staleHits = try await store.searchSemantic(
+            [1, 0],
+            profile: firstProfile)
+        let rebuiltHits = try await store.searchSemantic(
+            [1, 0],
+            profile: secondProfile)
+        let requiresMaintenance = try await store.semanticIndexRequiresMaintenance(
+            for: secondProfile)
+
+        XCTAssertEqual(result.invalidatedSegments, 2)
+        XCTAssertEqual(result.embeddedSegments, 2)
+        XCTAssertEqual(runtimeSnapshot.downloadRequests, [false])
+        XCTAssertTrue(staleHits.isEmpty)
+        XCTAssertEqual(rebuiltHits.count, 2)
+        XCTAssertFalse(requiresMaintenance)
+    }
+
     private func seededStore() async throws -> MeetingStore {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(
@@ -333,11 +371,16 @@ private actor BackgroundSemanticRuntime: SemanticEmbeddingRuntimeClient {
     }
 
     private let assetsAvailable: Bool
+    private let profile: SemanticEmbeddingProfile
     private var assetChecks = 0
     private var downloadRequests: [Bool] = []
 
-    init(assetsAvailable: Bool) {
+    init(
+        assetsAvailable: Bool,
+        profile: SemanticEmbeddingProfile = semanticTestProfile()
+    ) {
         self.assetsAvailable = assetsAvailable
+        self.profile = profile
     }
 
     var hasAvailableAssets: Bool {
@@ -353,6 +396,10 @@ private actor BackgroundSemanticRuntime: SemanticEmbeddingRuntimeClient {
             downloadRequests: downloadRequests)
     }
 
+    func semanticEmbeddingProfile() -> SemanticEmbeddingProfile? {
+        profile
+    }
+
     func prepare(allowAssetDownload: Bool) {
         downloadRequests.append(allowAssetDownload)
     }
@@ -364,11 +411,21 @@ private actor BackgroundSemanticRuntime: SemanticEmbeddingRuntimeClient {
         ) async throws -> Result
     ) async throws -> Result {
         downloadRequests.append(allowAssetDownload)
-        return try await operation(BackgroundSemanticEmbedder())
+        return try await operation(BackgroundSemanticEmbedder(profile: profile))
     }
 }
 
 private actor BackgroundSemanticEmbedder: SemanticTextEmbedding {
+    let profile: SemanticEmbeddingProfile
+
+    init(profile: SemanticEmbeddingProfile = semanticTestProfile()) {
+        self.profile = profile
+    }
+
+    func semanticEmbeddingProfile() -> SemanticEmbeddingProfile {
+        profile
+    }
+
     func vectors(for texts: [String]) -> [[Float]] {
         texts.map { _ in [1, 0] }
     }

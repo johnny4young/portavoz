@@ -111,12 +111,14 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             return try await runtime.withPreparedEmbedding(
                 allowAssetDownload: false
             ) { [store, trace] embedder in
+                let profile = await embedder.semanticEmbeddingProfile()
                 let vectors = try await trace.measure(.queryEmbedding) {
                     try await embedder.vectors(for: queries)
                 }
                 return try await trace.measure(.semanticScan) {
                     try await Self.searchSemantic(
                         vectors: vectors,
+                        profile: profile,
                         store: store)
                 }
             }
@@ -130,12 +132,14 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
 
     private static func searchSemantic(
         vectors: [[Float]],
+        profile: SemanticEmbeddingProfile,
         store: MeetingStore
     ) async throws -> SemanticCandidates {
         var result = SemanticCandidates.empty
         for vector in vectors {
             for (rank, hit) in try await store.searchSemantic(
                 vector,
+                profile: profile,
                 limit: 12
             ).enumerated()
             where result.bestRank[hit.segmentID].map({ rank < $0 }) ?? true {

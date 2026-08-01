@@ -42,8 +42,10 @@ struct BenchIndexingResourceWorkload {
                 expected: expectedSegments,
                 actual: completed)
         }
-        let remaining = try await store.segmentsNeedingEmbeddings(limit: 1)
-        guard remaining.isEmpty else {
+        guard let profile = await runtime.semanticEmbeddingProfile(),
+              profile.isValid,
+              try await !store.semanticIndexRequiresMaintenance(for: profile)
+        else {
             throw BenchIndexingResourceError.incomplete(
                 expected: expectedSegments,
                 actual: completed)

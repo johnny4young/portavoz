@@ -40,7 +40,7 @@ final class MeetingStoreTests: XCTestCase {
         return (ana, segments)
     }
 
-    // MARK: - Schema v9-v14 evidence, review, and sync journal
+    // MARK: - Schema v9-v17 evidence, review, sync, and semantic compatibility
 
     func testV8MigratesAdditivelyThroughMeetingSyncSchema() throws {
         let database = try DatabaseQueue()
@@ -65,11 +65,25 @@ final class MeetingStoreTests: XCTestCase {
                 createdAt: timestamp,
                 updatedAt: timestamp)
                 .insert(db)
-            try SegmentRecord(
-                legacySegment,
-                createdAt: timestamp,
-                updatedAt: timestamp)
-                .insert(db)
+            try db.execute(
+                sql: """
+                    INSERT INTO segment (
+                        id, meetingID, speakerID, channel, text, language,
+                        startTime, endTime, confidence, isFinal,
+                        generationRunID, createdAt, updatedAt, deletedAt, embedding
+                    ) VALUES (?, ?, NULL, ?, ?, NULL, ?, ?, NULL, ?, NULL, ?, ?, NULL, NULL)
+                    """,
+                arguments: [
+                    legacySegment.id.uuidString,
+                    legacyMeeting.id.rawValue.uuidString,
+                    legacySegment.channel.rawValue,
+                    legacySegment.text,
+                    legacySegment.startTime,
+                    legacySegment.endTime,
+                    legacySegment.isFinal,
+                    timestamp,
+                    timestamp,
+                ])
             try SummaryRecord(
                 id: summaryID,
                 meetingID: legacyMeeting.id.rawValue.uuidString,
@@ -88,7 +102,7 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 16)
+            XCTAssertEqual(StorageSchema.version, 17)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])

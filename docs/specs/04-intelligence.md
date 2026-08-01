@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors).
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -513,8 +513,9 @@ latency.
 
 `ResolveSemanticCorpusReadiness` is the shared ApplicationKit query contract.
 It performs no preparation or persistence. It combines the injected runtime's
-installed-asset capability, a bounded durable pending-row probe, and one
-process-shared `SemanticCorpusMaintenanceState` into five closed states:
+installed-asset capability, a valid active embedding profile, a profile-aware
+durable maintenance probe, and one process-shared
+`SemanticCorpusMaintenanceState` into five closed states:
 `ready` when no live row is pending, `partial` when rows are pending and the
 owner is idle, `building` while a drain is active, `failed` after an ordinary
 drain failure with pending rows, and `unsupported` when this process cannot
@@ -542,8 +543,31 @@ Published and skipped segment IDs are returned as content-free outcomes. The
 operation counts only accepted full-text and micro-segment-marker writes;
 concurrent completion, correction, replacement, or deletion is not a model
 failure. Current replacement rows remain `NULL` and a later supervisor signal
-resumes them. This slice adds no second cursor, timer, heartbeat, processing
-job, asset download, or query-path write.
+resumes them. No second cursor, timer, heartbeat, processing job, asset
+download, or query-path write is introduced.
+
+### Compatibility-fenced semantic vectors (D199)
+
+`SemanticEmbeddingProfile` identifies the complete persisted vector space:
+the Natural Language model identifier and revision, vector dimension,
+Portavoz pooling-pipeline identifier and revision, and binary vector-schema
+version. A stable SHA-256 fingerprint of that profile is stored beside every
+vector. The profile contains no transcript or query content.
+
+The prepared embedder is the authority for the active profile. Readiness,
+background maintenance, Ask, Library, CLI, and benchmark adapters pass that
+same typed value instead of inferring compatibility from vector width. Storage
+accepts publication only when every non-empty vector has the profile's exact
+dimension and only finite values, then commits the vector and fingerprint in
+the same revision-fenced update. Semantic reads scan only rows carrying the
+active fingerprint.
+
+When the model, its revision, dimension, pooling pipeline, or vector schema
+changes, maintenance resets only incompatible derived vectors to the existing
+`NULL` replay cursor before rebuilding them. Exact FTS and authoritative
+transcript rows remain available throughout the rebuild. An invalid or
+unavailable profile disables semantic work rather than reading an unknown
+vector space.
 
 ### Governed semantic embedding runtime (D165)
 
@@ -554,7 +578,8 @@ entire callback. Ask performs lexical retrieval before borrowing the runtime,
 then performs only query-vector creation and semantic lookup inside that
 callback. Library performs only query-vector creation and semantic lookup
 inside the same boundary. Background maintenance separately holds its lease
-around corpus indexing.
+around corpus indexing. The runtime also exposes the active compatibility
+profile without preparing or downloading assets.
 
 The macOS adapter owns one actor-backed `SentenceEmbedder` per process and
 coalesces preparation. Library and Ask call it only after

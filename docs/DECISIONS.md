@@ -6528,11 +6528,52 @@ This is the first SEARCH-2 durability unit, not a second job cursor. `NULL`
 rows remain authoritative across pause, failure, and relaunch, Ask and Library
 remain read-only, FTS remains independent, and `.index` remains dormant until
 derived-maintenance scheduling can be separated from the meeting lifecycle.
-Model/index-schema fingerprinting, bounded retry ownership, invalidation, and
-relaunch evidence remain later SEARCH-2 work.
+This decision itself does not add model/index-schema fingerprinting,
+invalidation, bounded retry ownership, or relaunch evidence; D199 subsequently
+adds the profile fingerprint and invalidation boundary, while durable retry
+ownership and relaunch evidence remain separate work.
 
 **Rationale:** stale derived data must be impossible before retry scheduling is
 made more durable. Compare-and-swap at the storage boundary protects every
 caller and preserves the smallest exact replay unit without manufacturing a
 second progress source or turning optional semantic maintenance into meeting
 recovery state.
+
+## D199 — Fence semantic reads and rebuilds by embedding compatibility (Jul 2026)
+
+**Context:** D198 proved that a vector belongs to an exact transcript source,
+but the persisted BLOB still did not identify the vector space that produced
+it. An operating-system model revision, dimension change, Portavoz pooling
+change, or binary-schema change could leave structurally valid but semantically
+incompatible rows queryable. Vector width alone cannot prove compatibility,
+and existing databases contain unprofiled vectors.
+
+**Decision:** PortavozCore owns `SemanticEmbeddingProfile`, a content-free
+typed identity containing the concrete model identifier and revision, vector
+dimension, pooling-pipeline identifier and revision, and vector-schema version.
+Its stable SHA-256 fingerprint is stored atomically beside each embedding.
+The prepared embedder is the authority for the active profile; app and CLI
+runtimes, readiness, maintenance, Ask, Library, and benchmark paths pass the
+same value through their existing boundaries.
+
+Storage rejects an invalid profile, a non-empty vector of the wrong dimension,
+and every non-finite value. Semantic lookup accepts a query only at the active
+dimension and scans only rows with the exact active fingerprint. Maintenance
+detects missing or incompatible rows, resets incompatible derived vector state
+to the existing `NULL` cursor, and rebuilds it under the active profile before
+publication. Empty libraries use a profile-free row-existence probe and do not
+touch model assets. Schema v17 adds nullable `segment.embeddingFingerprint` and
+fails closed by clearing legacy unprofiled embedding BLOBs; transcript, FTS,
+meeting revision, and all other authoritative rows remain untouched.
+
+This remains derived background maintenance, not meeting processing. Ask and
+Library stay corpus-read-only, exact FTS stays available during a rebuild, no
+query or background path downloads assets, and the dormant `.index` processing
+kind remains inactive. The fingerprint contains no meeting, transcript, or
+query content.
+
+**Rationale:** semantic results are valid only when both their source and
+vector space are current. A single typed profile and fail-closed storage fence
+make that invariant enforceable at every read/write boundary, while reusing the
+existing crash-resumable `NULL` cursor avoids a second ledger and preserves
+exact local search throughout migration and rebuild.

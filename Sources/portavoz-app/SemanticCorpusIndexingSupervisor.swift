@@ -83,10 +83,12 @@ struct AppSemanticCorpusBackgroundIndexer: Sendable {
     func drain() async throws -> SemanticCorpusIndexingResult {
         try Task.checkCancellation()
         guard captureState.current == .inactive else { return .paused }
-        guard !(
-            try await store.segmentsNeedingEmbeddings(limit: 1)
-        ).isEmpty else { return .empty }
+        guard try await store.hasSemanticCorpusRows() else { return .empty }
         guard await runtime.hasAvailableAssets else { return .empty }
+        guard let profile = await runtime.semanticEmbeddingProfile(),
+              profile.isValid,
+              try await store.semanticIndexRequiresMaintenance(for: profile)
+        else { return .empty }
         try Task.checkCancellation()
         guard captureState.current == .inactive else { return .paused }
 
