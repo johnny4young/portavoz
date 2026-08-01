@@ -849,6 +849,37 @@ and source proves which aggregate artifact was explicitly accepted, not who
 reviewed it, whether one engine is better, or whether product composition may
 change. No real baseline is tracked in the repository.
 
+The separate correction-cost root remains test-only. The disposable
+`SQLiteVecExactShadowRanker` applies one fully validated add/update/delete batch
+inside a native immediate transaction. Existing entries retain their source
+row for deterministic ties, tombstoned slots are never reused, and additions
+append. Invalid dimensions, non-finite vectors, duplicate or overlapping
+identities, missing deletes, noncontiguous native appends, and SQLite failures
+leave both native and Swift state unchanged. The API remains absent from app,
+CLI, ApplicationKit, StorageKit schema, and durable maintenance composition.
+
+`ExactPathMutationBenchmarkTests` uses
+`synthetic-exact-path-mutation-v1` to measure one complete reconstruction plus
+add, update, and delete batches of 1, 10, and 100 against the real scratch-store
+Accelerate control and the exact sqlite-vec candidate. Canonical corpus sizes
+remain 1k/10k/50k/100k at 512 dimensions and top 10. Every mutation is followed
+by source-identity rank comparison; top hit and top-k set must match while exact
+lower-rank order remains visible. Execution order alternates under
+`alternating-mutation-engine-order-v1`. The two reconstruction values describe
+different lifecycles—control source/FTS/vector publication versus candidate
+prepared-vector construction—and are never divided into an engine ratio.
+Mutation timings carry a second explicit lifecycle label because control
+add/update/delete includes authoritative source and embedding publication while
+the candidate receives prepared vectors. Those values are not direct
+cross-engine write-speed comparisons either.
+
+The Release runner emits one content-free schema-1 stdout observation per fresh
+scale process. It exposes only closed operation, host, configuration, byte,
+count, timing-distribution, and aggregate agreement fields; there is no durable
+output option. This proves deterministic mutation semantics and creates raw
+development measurements, not accepted resource/correction evidence, recovery
+proof, a product writer, or engine authority.
+
 ### Governed semantic embedding runtime (D165)
 
 ApplicationKit exposes `SemanticEmbeddingRuntimeClient` rather than a concrete

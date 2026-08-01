@@ -16,11 +16,31 @@ public struct SQLiteVecShadowEntry: Equatable, Sendable {
     }
 }
 
+public struct SQLiteVecShadowMutation: Equatable, Sendable {
+    public let upserts: [SQLiteVecShadowEntry]
+    public let deletedSegmentIDs: [UUID]
+
+    public init(
+        upserts: [SQLiteVecShadowEntry],
+        deletedSegmentIDs: [UUID]
+    ) {
+        self.upserts = upserts
+        self.deletedSegmentIDs = deletedSegmentIDs
+    }
+
+    public static let empty = SQLiteVecShadowMutation(
+        upserts: [],
+        deletedSegmentIDs: [])
+}
+
 public enum SQLiteVecExactShadowRankerError: Error, Equatable, Sendable {
     case invalidProfile
     case tooManyEntries
     case invalidIdentity(position: Int)
     case duplicateSegment(position: Int)
+    case duplicateDeletion(position: Int)
+    case missingDeletedSegment(position: Int)
+    case overlappingSegment(position: Int)
     case invalidVector(position: Int)
     case profileMismatch
     case invalidQuery
@@ -33,9 +53,16 @@ public enum SQLiteVecExactShadowRankerError: Error, Equatable, Sendable {
 /// No meeting database, transcript text, or durable derived state crosses this
 /// target. Shipping app and CLI targets do not depend on this module.
 public actor SQLiteVecExactShadowRanker {
+    private struct PreparedMutation {
+        let upsertPositions: [Int32]
+        let vectors: [Float]
+        let deletionPositions: [Int32]
+    }
+
     private let profile: SemanticEmbeddingProfile
-    private let identities: [SemanticSearchCandidateIdentity]
-    private let index: SQLiteVecIndexStorage?
+    private var identitySlots: [SemanticSearchCandidateIdentity?]
+    private var positionsBySegmentID: [UUID: Int]
+    private let index: SQLiteVecIndexStorage
 
     public init(
         profile: SemanticEmbeddingProfile,
@@ -69,13 +96,159 @@ public actor SQLiteVecExactShadowRanker {
         }
 
         self.profile = profile
-        self.identities = entries.map(\.identity)
-        self.index = entries.isEmpty
-            ? nil
-            : try SQLiteVecIndexStorage(
-                vectors: flattened,
-                count: entries.count,
-                dimension: profile.vectorDimension)
+        self.identitySlots = entries.map { Optional($0.identity) }
+        self.positionsBySegmentID = Dictionary(
+            uniqueKeysWithValues: entries.enumerated().map {
+                ($0.element.identity.segmentID, $0.offset)
+            })
+        self.index = try SQLiteVecIndexStorage(
+            vectors: flattened,
+            count: entries.count,
+            dimension: profile.vectorDimension)
+    }
+
+    public var count: Int {
+        positionsBySegmentID.count
+    }
+
+    /// Applies one research-only mutation atomically. Existing identities keep
+    /// their deterministic tie slot, deleted slots are never reused, and new
+    /// identities append. Swift state changes only after the native transaction
+    /// commits successfully.
+    public func apply(
+        _ mutation: SQLiteVecShadowMutation,
+        profile requestedProfile: SemanticEmbeddingProfile
+    ) throws {
+        guard requestedProfile == profile else {
+            throw SQLiteVecExactShadowRankerError.profileMismatch
+        }
+        guard mutation.upserts.count <= Int(Int32.max),
+              mutation.deletedSegmentIDs.count <= Int(Int32.max)
+        else {
+            throw SQLiteVecExactShadowRankerError.tooManyEntries
+        }
+
+        let prepared = try prepare(mutation)
+        let status = index.apply(
+            upsertPositions: prepared.upsertPositions,
+            vectors: prepared.vectors,
+            deletePositions: prepared.deletionPositions)
+        guard status == SQLiteCode.ok else {
+            throw SQLiteVecExactShadowRankerError.engineFailure(code: status)
+        }
+        publish(mutation, at: prepared.upsertPositions)
+    }
+
+    private func prepare(
+        _ mutation: SQLiteVecShadowMutation
+    ) throws -> PreparedMutation {
+        let deletions = try prepareDeletions(mutation.deletedSegmentIDs)
+        let upserts = try prepareUpserts(
+            mutation.upserts,
+            excluding: deletions.segmentIDs)
+        return PreparedMutation(
+            upsertPositions: upserts.positions,
+            vectors: upserts.vectors,
+            deletionPositions: deletions.positions)
+    }
+
+    private func prepareDeletions(
+        _ segmentIDs: [UUID]
+    ) throws -> (segmentIDs: Set<UUID>, positions: [Int32]) {
+        var deletionIDs: Set<UUID> = []
+        var deletionPositions: [Int32] = []
+        deletionPositions.reserveCapacity(segmentIDs.count)
+        for (position, segmentID) in segmentIDs.enumerated() {
+            guard deletionIDs.insert(segmentID).inserted else {
+                throw SQLiteVecExactShadowRankerError.duplicateDeletion(
+                    position: position)
+            }
+            guard let slot = positionsBySegmentID[segmentID] else {
+                throw SQLiteVecExactShadowRankerError.missingDeletedSegment(
+                    position: position)
+            }
+            deletionPositions.append(Int32(slot))
+        }
+        return (deletionIDs, deletionPositions)
+    }
+
+    private func prepareUpserts(
+        _ entries: [SQLiteVecShadowEntry],
+        excluding deletionIDs: Set<UUID>
+    ) throws -> (positions: [Int32], vectors: [Float]) {
+        var upsertIDs: Set<UUID> = []
+        var upsertPositions: [Int32] = []
+        var flattened: [Float] = []
+        upsertPositions.reserveCapacity(entries.count)
+        flattened.reserveCapacity(entries.count * profile.vectorDimension)
+        var nextSlot = identitySlots.count
+        for (position, entry) in entries.enumerated() {
+            try validate(entry, position: position)
+            guard upsertIDs.insert(entry.identity.segmentID).inserted else {
+                throw SQLiteVecExactShadowRankerError.duplicateSegment(
+                    position: position)
+            }
+            guard !deletionIDs.contains(entry.identity.segmentID) else {
+                throw SQLiteVecExactShadowRankerError.overlappingSegment(
+                    position: position)
+            }
+            let slot = try resolvedSlot(
+                for: entry.identity.segmentID,
+                nextSlot: &nextSlot)
+            upsertPositions.append(Int32(slot))
+            flattened.append(contentsOf: entry.vector)
+        }
+        return (upsertPositions, flattened)
+    }
+
+    private func validate(
+        _ entry: SQLiteVecShadowEntry,
+        position: Int
+    ) throws {
+        guard entry.identity.transcriptRevision >= 0 else {
+            throw SQLiteVecExactShadowRankerError.invalidIdentity(
+                position: position)
+        }
+        guard entry.vector.count == profile.vectorDimension,
+              entry.vector.allSatisfy(\.isFinite)
+        else {
+            throw SQLiteVecExactShadowRankerError.invalidVector(
+                position: position)
+        }
+    }
+
+    private func resolvedSlot(
+        for segmentID: UUID,
+        nextSlot: inout Int
+    ) throws -> Int {
+        if let existing = positionsBySegmentID[segmentID] {
+            return existing
+        }
+        guard nextSlot < Int(Int32.max) else {
+            throw SQLiteVecExactShadowRankerError.tooManyEntries
+        }
+        defer { nextSlot += 1 }
+        return nextSlot
+    }
+
+    private func publish(
+        _ mutation: SQLiteVecShadowMutation,
+        at upsertPositions: [Int32]
+    ) {
+        for segmentID in mutation.deletedSegmentIDs {
+            if let slot = positionsBySegmentID.removeValue(forKey: segmentID) {
+                identitySlots[slot] = nil
+            }
+        }
+        for (offset, entry) in mutation.upserts.enumerated() {
+            let slot = Int(upsertPositions[offset])
+            if slot == identitySlots.count {
+                identitySlots.append(entry.identity)
+            } else {
+                identitySlots[slot] = entry.identity
+            }
+            positionsBySegmentID[entry.identity.segmentID] = slot
+        }
     }
 
     public func rankedCandidates(
@@ -83,7 +256,7 @@ public actor SQLiteVecExactShadowRanker {
         profile requestedProfile: SemanticEmbeddingProfile,
         limit: Int
     ) async throws -> [SemanticSearchCandidateIdentity] {
-        guard limit > 0, let index else { return [] }
+        guard limit > 0, !positionsBySegmentID.isEmpty else { return [] }
         guard requestedProfile == profile else {
             throw SQLiteVecExactShadowRankerError.profileMismatch
         }
@@ -99,7 +272,7 @@ public actor SQLiteVecExactShadowRanker {
             try Task.checkCancellation()
             let result = index.rank(
                 query: query,
-                limit: min(limit, identities.count),
+                limit: min(limit, positionsBySegmentID.count),
                 cancellation: cancellation)
             switch result.status {
             case SQLiteCode.ok:
@@ -114,7 +287,15 @@ public actor SQLiteVecExactShadowRanker {
             cancellation.cancel()
         }
         try Task.checkCancellation()
-        return rankedPositions.map { identities[$0] }
+        return try rankedPositions.map { position in
+            guard identitySlots.indices.contains(position),
+                  let identity = identitySlots[position]
+            else {
+                throw SQLiteVecExactShadowRankerError.engineFailure(
+                    code: SQLiteCode.corrupt)
+            }
+            return identity
+        }
     }
 }
 
@@ -122,6 +303,7 @@ private enum SQLiteCode {
     static let ok: Int32 = 0
     static let noMemory: Int32 = 7
     static let interrupt: Int32 = 9
+    static let corrupt: Int32 = 11
 }
 
 private final class SQLiteVecCancellationStorage: @unchecked Sendable {
@@ -194,5 +376,26 @@ private final class SQLiteVecIndexStorage: @unchecked Sendable {
         }
         guard status == SQLiteCode.ok else { return (status, []) }
         return (status, output.prefix(Int(outputCount)).map(Int.init))
+    }
+
+    func apply(
+        upsertPositions: [Int32],
+        vectors: [Float],
+        deletePositions: [Int32]
+    ) -> Int32 {
+        upsertPositions.withUnsafeBufferPointer { upsertBuffer in
+            vectors.withUnsafeBufferPointer { vectorBuffer in
+                deletePositions.withUnsafeBufferPointer { deleteBuffer in
+                    portavoz_sqlite_vec_index_apply(
+                        pointer,
+                        upsertBuffer.baseAddress,
+                        vectorBuffer.baseAddress,
+                        Int32(upsertBuffer.count),
+                        deleteBuffer.baseAddress,
+                        Int32(deleteBuffer.count),
+                        Int32(dimension))
+                }
+            }
+        }
     }
 }

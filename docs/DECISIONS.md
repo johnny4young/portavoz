@@ -7241,3 +7241,51 @@ click-through flag. Revalidation keeps the source receipts auditable, while
 private non-overwriting publication prevents an accepted run from being silently
 replaced. The acknowledgement does not authenticate the reviewer or prove
 engine superiority; those remain separate human and later selection gates.
+
+## D218 — Measure exact-path corrections through atomic disposable mutations (Aug 2026)
+
+**Context:** D214-D217 isolate exact query scale, host acceptance, cross-host
+comparison, and reviewed baseline retention, but SEARCH-5 also requires
+incremental add/update/delete and correction cost. Rebuilding the disposable
+candidate after every edit would hide its maintenance behavior; adding a writer
+to product storage before measuring it would grant an unselected engine durable
+authority. A mutable in-memory candidate can also corrupt deterministic tie
+order if deleted slots are silently reused or Swift identity state advances
+before the native transaction commits.
+
+**Decision:** extend only the test-owned sqlite-vec exact ranker with one atomic
+mutation batch. Existing segment identities update in their original source-row
+slot, deleted slots remain empty permanently, and new identities append as one
+contiguous suffix. Validate profile, dimensions, finite vectors, revisions,
+duplicate identities, missing deletes, overlaps, and append shape before
+starting one native `BEGIN IMMEDIATE` transaction. Delete/replace rows and add
+new rows inside that transaction; on any failure roll back and leave the actor's
+identity slots unchanged. Query bounds use live-row count while row validation
+uses the monotonic slot count.
+
+Add a test-only `synthetic-exact-path-mutation-v1` harness over the same
+1k/10k/50k/100k, 512-dimensional exact corpus family. Measure add, update, and
+delete batches of 1, 10, and 100 for five runs by default, alternating which
+engine mutates first. After every operation, require the real scratch-store
+Accelerate control and sqlite-vec candidate to agree on top hit and top-k source
+identity; retain exact ordered-rank agreement as a diagnostic. Record one full
+reconstruction per engine, but label control source/FTS/embedding publication
+and candidate prepared-vector construction as different lifecycles rather than
+comparing their values directly. Label mutation timing separately for the same
+reason: control add/update/delete includes authoritative source and embedding
+publication, while the candidate receives prepared vectors. A raw observation
+must not report a cross-engine mutation ratio.
+
+Emit one schema-1, content-free stdout observation from a fresh Release XCTest
+process per scale. The report may contain only closed operation names,
+host/configuration, byte/count, timing distributions, and aggregate agreement;
+it accepts no output path. This slice creates no accepted mutation baseline,
+cross-host correction receipt, crash/interruption proof, product schema, durable
+writer, app/CLI wiring, or serving authority. Accelerate exact remains the only
+product adapter.
+
+**Rationale:** atomic disposable mutation semantics expose the candidate's real
+incremental cost without risking authoritative user data. Stable monotonic slots
+preserve deterministic ties across corrections, and post-operation rank checks
+make deletion or update drift visible. Keeping raw measurements stdout-only
+preserves separate resource acceptance and engine-decision gates.

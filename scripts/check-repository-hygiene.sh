@@ -81,6 +81,7 @@ python3 -m unittest Tests.Tooling.test_collect_field_evidence
 python3 -m unittest Tests.Tooling.test_release_reliability
 bash -n scripts/run-resource-baseline.sh
 bash -n scripts/run-resource-recording-baseline.sh
+bash -n scripts/run-exact-path-mutation-benchmark.sh
 python3 -m unittest Tests.Tooling.test_resource_baseline
 python3 -m unittest Tests.Tooling.test_exact_path_matrix
 python3 -m unittest Tests.Tooling.test_exact_path_cross_host

@@ -1397,6 +1397,16 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 - `scripts/verify_drift.py`: drift through envelope correlation (±5 s, edge warning, multi-point).
 - `scripts/run-sandbox-capability-spike.sh`: signed sandbox/control capability matrix with full private tap-graph setup and tracked JSON evidence.
 - `scripts/run-scale-baseline.sh`: Release production-schema library/detail matrix with disposable databases.
+- `make exact-path-mutation-matrix`: test-only Release mutation/correction-cost
+  observations at 1k/10k/50k/100k exact corpora. Each fresh process measures
+  one lifecycle-labelled full reconstruction and lifecycle-labelled add/update/
+  delete batches of 1, 10, and 100 against the scratch-store Accelerate control
+  and disposable sqlite-vec candidate. Control timings include authoritative
+  source and embedding publication; candidate timings receive prepared vectors,
+  so the report defines no cross-engine ratio. Every operation verifies top-hit
+  and top-k-set source identity, while schema-1 stdout retains only host/
+  configuration, counts, bytes, timings, and aggregate agreement. No
+  observation is retained or accepted automatically.
 - `make long-capture-baseline`: clean-commit Release proof that accelerates
   three hours of bounded synthetic microphone/system PCM through the production
   session and requires exact frames, healthy publication, zero drift, and no

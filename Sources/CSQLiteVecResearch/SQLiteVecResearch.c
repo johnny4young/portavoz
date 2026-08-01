@@ -14,7 +14,8 @@
 
 struct PortavozSQLiteVecIndex {
   sqlite3 *database;
-  int32_t vector_count;
+  int32_t live_count;
+  int32_t slot_count;
   int32_t dimension;
 };
 
@@ -40,6 +41,100 @@ static int portavoz_sqlite_vec_was_cancelled(void *context) {
   return cancellation != NULL &&
          atomic_load_explicit(&cancellation->cancelled,
                               memory_order_relaxed);
+}
+
+static bool portavoz_sqlite_vec_positions_are_unique(const int32_t *positions,
+                                                      int32_t count) {
+  for (int32_t left = 0; left < count; left++) {
+    for (int32_t right = left + 1; right < count; right++) {
+      if (positions[left] == positions[right]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+static bool portavoz_sqlite_vec_positions_overlap(const int32_t *left,
+                                                   int32_t left_count,
+                                                   const int32_t *right,
+                                                   int32_t right_count) {
+  for (int32_t left_index = 0; left_index < left_count; left_index++) {
+    for (int32_t right_index = 0; right_index < right_count; right_index++) {
+      if (left[left_index] == right[right_index]) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+static int portavoz_sqlite_vec_position_exists(PortavozSQLiteVecIndex *index,
+                                                int32_t position,
+                                                bool *out_exists) {
+  sqlite3_stmt *statement = NULL;
+  int result = sqlite3_prepare_v2(
+      index->database,
+      "SELECT 1 FROM research_vectors WHERE rowid = ?1 LIMIT 1", -1,
+      &statement, NULL);
+  if (result == SQLITE_OK) {
+    result = sqlite3_bind_int64(statement, 1, (sqlite3_int64)position + 1);
+  }
+  if (result == SQLITE_OK) {
+    result = sqlite3_step(statement);
+    if (result == SQLITE_ROW) {
+      *out_exists = true;
+      result = SQLITE_OK;
+    } else if (result == SQLITE_DONE) {
+      *out_exists = false;
+      result = SQLITE_OK;
+    }
+  }
+  sqlite3_finalize(statement);
+  return result;
+}
+
+static int portavoz_sqlite_vec_bind_position(sqlite3_stmt *statement,
+                                             int32_t position) {
+  int result = sqlite3_bind_int64(
+      statement, 1, (sqlite3_int64)position + 1);
+  if (result != SQLITE_OK) {
+    return result;
+  }
+  result = sqlite3_step(statement);
+  if (result != SQLITE_DONE || sqlite3_changes(sqlite3_db_handle(statement)) != 1) {
+    return result == SQLITE_DONE ? SQLITE_NOTFOUND : result;
+  }
+  result = sqlite3_reset(statement);
+  if (result != SQLITE_OK) {
+    return result;
+  }
+  return sqlite3_clear_bindings(statement);
+}
+
+static int portavoz_sqlite_vec_insert(sqlite3_stmt *statement,
+                                      int32_t position,
+                                      const float *vector,
+                                      int vector_bytes) {
+  int result = sqlite3_bind_int64(
+      statement, 1, (sqlite3_int64)position + 1);
+  if (result == SQLITE_OK) {
+    result = sqlite3_bind_blob(
+        statement, 2, vector, vector_bytes, SQLITE_TRANSIENT);
+  }
+  if (result == SQLITE_OK) {
+    result = sqlite3_step(statement);
+    if (result == SQLITE_DONE) {
+      result = SQLITE_OK;
+    }
+  }
+  if (result == SQLITE_OK) {
+    result = sqlite3_reset(statement);
+  }
+  if (result == SQLITE_OK) {
+    result = sqlite3_clear_bindings(statement);
+  }
+  return result;
 }
 
 PortavozSQLiteVecCancellation *portavoz_sqlite_vec_cancellation_create(void) {
@@ -88,7 +183,8 @@ int portavoz_sqlite_vec_index_create(const float *vectors,
     return SQLITE_NOMEM;
   }
   index->database = NULL;
-  index->vector_count = vector_count;
+  index->live_count = vector_count;
+  index->slot_count = vector_count;
   index->dimension = dimension;
 
   char *extension_error = NULL;
@@ -189,6 +285,161 @@ void portavoz_sqlite_vec_index_destroy(PortavozSQLiteVecIndex *index) {
   }
 }
 
+int portavoz_sqlite_vec_index_apply(
+    PortavozSQLiteVecIndex *index,
+    const int32_t *upsert_positions,
+    const float *upsert_vectors,
+    int32_t upsert_count,
+    const int32_t *delete_positions,
+    int32_t delete_count,
+    int32_t dimension) {
+  if (index == NULL || upsert_count < 0 || delete_count < 0 ||
+      dimension != index->dimension ||
+      (upsert_count > 0 &&
+       (upsert_positions == NULL || upsert_vectors == NULL)) ||
+      (delete_count > 0 && delete_positions == NULL)) {
+    return SQLITE_MISUSE;
+  }
+  if (upsert_count == 0 && delete_count == 0) {
+    return SQLITE_OK;
+  }
+  const size_t scalar_count = (size_t)upsert_count * (size_t)dimension;
+  if (upsert_count > 0 &&
+      scalar_count / (size_t)dimension != (size_t)upsert_count) {
+    return SQLITE_TOOBIG;
+  }
+  if (!portavoz_sqlite_vec_values_are_finite(upsert_vectors, scalar_count) ||
+      !portavoz_sqlite_vec_positions_are_unique(upsert_positions,
+                                                upsert_count) ||
+      !portavoz_sqlite_vec_positions_are_unique(delete_positions,
+                                                delete_count) ||
+      portavoz_sqlite_vec_positions_overlap(
+          upsert_positions, upsert_count, delete_positions, delete_count)) {
+    return SQLITE_MISMATCH;
+  }
+
+  int32_t append_count = 0;
+  for (int32_t offset = 0; offset < upsert_count; offset++) {
+    const int32_t position = upsert_positions[offset];
+    if (position < 0) {
+      return SQLITE_MISUSE;
+    }
+    if (position >= index->slot_count) {
+      append_count += 1;
+    }
+  }
+  if (append_count > INT32_MAX - index->slot_count) {
+    return SQLITE_TOOBIG;
+  }
+  for (int32_t expected = index->slot_count;
+       expected < index->slot_count + append_count; expected++) {
+    bool found = false;
+    for (int32_t offset = 0; offset < upsert_count; offset++) {
+      if (upsert_positions[offset] == expected) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return SQLITE_MISUSE;
+    }
+  }
+  for (int32_t offset = 0; offset < upsert_count; offset++) {
+    const int32_t position = upsert_positions[offset];
+    if (position >= index->slot_count + append_count) {
+      return SQLITE_MISUSE;
+    }
+    if (position < index->slot_count) {
+      bool exists = false;
+      int result = portavoz_sqlite_vec_position_exists(index, position, &exists);
+      if (result != SQLITE_OK) {
+        return result;
+      }
+      if (!exists) {
+        return SQLITE_NOTFOUND;
+      }
+    }
+  }
+  for (int32_t offset = 0; offset < delete_count; offset++) {
+    const int32_t position = delete_positions[offset];
+    if (position < 0 || position >= index->slot_count) {
+      return SQLITE_MISUSE;
+    }
+    bool exists = false;
+    int result = portavoz_sqlite_vec_position_exists(index, position, &exists);
+    if (result != SQLITE_OK) {
+      return result;
+    }
+    if (!exists) {
+      return SQLITE_NOTFOUND;
+    }
+  }
+
+  sqlite3_stmt *deletion = NULL;
+  sqlite3_stmt *insertion = NULL;
+  bool transaction_open = false;
+  int result = sqlite3_exec(
+      index->database, "BEGIN IMMEDIATE", NULL, NULL, NULL);
+  if (result != SQLITE_OK) {
+    goto cleanup;
+  }
+  transaction_open = true;
+  result = sqlite3_prepare_v2(
+      index->database, "DELETE FROM research_vectors WHERE rowid = ?1", -1,
+      &deletion, NULL);
+  if (result != SQLITE_OK) {
+    goto cleanup;
+  }
+  result = sqlite3_prepare_v2(
+      index->database,
+      "INSERT INTO research_vectors(rowid, embedding) VALUES (?1, ?2)", -1,
+      &insertion, NULL);
+  if (result != SQLITE_OK) {
+    goto cleanup;
+  }
+
+  for (int32_t offset = 0; offset < delete_count; offset++) {
+    result = portavoz_sqlite_vec_bind_position(
+        deletion, delete_positions[offset]);
+    if (result != SQLITE_OK) {
+      goto cleanup;
+    }
+  }
+  for (int32_t offset = 0; offset < upsert_count; offset++) {
+    if (upsert_positions[offset] < index->slot_count) {
+      result = portavoz_sqlite_vec_bind_position(
+          deletion, upsert_positions[offset]);
+      if (result != SQLITE_OK) {
+        goto cleanup;
+      }
+    }
+  }
+  const int vector_bytes = dimension * (int32_t)sizeof(float);
+  for (int32_t offset = 0; offset < upsert_count; offset++) {
+    result = portavoz_sqlite_vec_insert(
+        insertion, upsert_positions[offset],
+        upsert_vectors + ((size_t)offset * (size_t)dimension), vector_bytes);
+    if (result != SQLITE_OK) {
+      goto cleanup;
+    }
+  }
+  result = sqlite3_exec(index->database, "COMMIT", NULL, NULL, NULL);
+  if (result != SQLITE_OK) {
+    goto cleanup;
+  }
+  transaction_open = false;
+  index->slot_count += append_count;
+  index->live_count += append_count - delete_count;
+
+cleanup:
+  sqlite3_finalize(deletion);
+  sqlite3_finalize(insertion);
+  if (result != SQLITE_OK && transaction_open) {
+    sqlite3_exec(index->database, "ROLLBACK", NULL, NULL, NULL);
+  }
+  return result;
+}
+
 int portavoz_sqlite_vec_index_rank(
     PortavozSQLiteVecIndex *index,
     const float *query,
@@ -205,7 +456,7 @@ int portavoz_sqlite_vec_index_rank(
     return SQLITE_MISUSE;
   }
   *out_count = 0;
-  if (limit == 0 || index->vector_count == 0) {
+  if (limit == 0 || index->live_count == 0) {
     return SQLITE_OK;
   }
   if (portavoz_sqlite_vec_was_cancelled(cancellation)) {
@@ -213,7 +464,7 @@ int portavoz_sqlite_vec_index_rank(
   }
 
   const int32_t requested =
-      limit < index->vector_count ? limit : index->vector_count;
+      limit < index->live_count ? limit : index->live_count;
   sqlite3_stmt *statement = NULL;
   sqlite3_progress_handler(index->database, 1000,
                            portavoz_sqlite_vec_was_cancelled, cancellation);
@@ -239,7 +490,7 @@ int portavoz_sqlite_vec_index_rank(
   while ((result = sqlite3_step(statement)) == SQLITE_ROW) {
     const sqlite3_int64 rowid = sqlite3_column_int64(statement, 0);
     const double distance = sqlite3_column_double(statement, 1);
-    if (rowid <= 0 || rowid > index->vector_count) {
+    if (rowid <= 0 || rowid > index->slot_count) {
       result = SQLITE_CORRUPT;
       goto cleanup;
     }

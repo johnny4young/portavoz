@@ -1769,6 +1769,38 @@ the exact artifact the maintainer accepted; it is not reviewer authentication,
 a quality verdict, a numeric budget, or permission to change serving behavior.
 Accelerate exact remains the only serving adapter.
 
+Correction-cost measurement is also isolated from product composition. The
+test-only `SQLiteVecExactShadowRanker` now accepts atomic add, update, and
+delete batches under its fixed embedding profile. Existing identities retain
+their original deterministic tie slot, deleted slots are not reused, and new
+identities append. The native wrapper validates the entire batch before one
+`BEGIN IMMEDIATE` transaction; failure rolls back both the `vec0` table and the
+Swift actor's identity map. No mutation API is exposed by a shipping target.
+
+`ExactPathMutationBenchmarkTests` drives a
+`synthetic-exact-path-mutation-v1` corpus through the real scratch-store
+`AccelerateExactSemanticIndex` and the disposable sqlite-vec ranker. It measures
+add, update, and delete batches of 1, 10, and 100 over the canonical
+1k/10k/50k/100k exact corpora, alternates engine order under
+`alternating-mutation-engine-order-v1`, verifies top-hit and top-k-set agreement
+after every mutation, and labels one complete reconstruction for each engine.
+The control reconstruction includes authoritative rows, FTS, and embedding
+publication; the candidate reconstruction begins with prepared vectors, so
+those values remain separate lifecycle observations rather than a direct speed
+ratio. Mutation timing is labelled with the same boundary: control add/update/
+delete includes authoritative source and embedding publication, while the
+candidate receives prepared vectors. Cross-engine timing ratios are therefore
+not valid; only within-engine, same-scale stability is directly comparable.
+
+`scripts/run-exact-path-mutation-benchmark.sh` starts one fresh Release XCTest
+process per scale and emits one schema-1 observation to stdout. The report
+contains only closed operation names, host/configuration, counts, bytes,
+timings, and aggregate agreement. It cannot carry source identities, vectors,
+transcript text, model identity, database paths, or raw errors and accepts no
+output destination. This is development evidence only: resource acceptance,
+interruption/recovery, a cross-host mutation receipt, and engine selection
+remain later SEARCH-5 boundaries.
+
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and
 capture returning inactive are wake signals. Bursts collapse to at most one

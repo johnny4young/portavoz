@@ -649,7 +649,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "distance_metric=cosine",
             "vec_distance_cosine(embedding, ?1) AS distance",
             "ORDER BY distance, rowid LIMIT ?2",
-            "index->vector_count",
+            "index->live_count",
             "sqlite3_bind_int(statement, 2, requested)",
             "sqlite3_progress_handler",
         ] {
@@ -721,6 +721,87 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertTrue(runner.contains(required), "missing \(required)")
         }
         XCTAssertFalse(runner.contains("--output"))
+    }
+
+    func testExactPathMutationHarnessRemainsAtomicContentFreeAndTestOnly() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let specification = try Self.contents(of: "docs/specs/04-intelligence.md")
+        let harness = try Self.contents(
+            of: "Tests/PortavozTests/ExactPathMutationBenchmarkTests.swift")
+        let runner = try Self.contents(
+            of: "scripts/run-exact-path-mutation-benchmark.sh")
+        let ranker = try Self.contents(
+            of: "Sources/SQLiteVecResearchKit/SQLiteVecExactShadowRanker.swift")
+        let native = try Self.contents(
+            of: "Sources/CSQLiteVecResearch/SQLiteVecResearch.c")
+        let targets = try TargetManifestParser.declarations(
+            in: Self.contents(of: "Package.swift"))
+
+        XCTAssertTrue(decisions.contains("## D218"))
+        XCTAssertTrue(architecture.contains("synthetic-exact-path-mutation-v1"))
+        XCTAssertTrue(specification.contains("alternating-mutation-engine-order-v1"))
+        for required in [
+            "static let canonicalBatchSizes = [1, 10, 100]",
+            "fullRebuildMilliseconds",
+            "mutationLifecycle",
+            "control-authoritative-source-publication-vs-candidate-prepared-vectors-v1",
+            "case add",
+            "case update",
+            "case delete",
+            "AccelerateExactSemanticIndex",
+            "SQLiteVecExactShadowRanker",
+            "topKSetMatchCount",
+        ] {
+            XCTAssertTrue(harness.contains(required), "missing \(required)")
+        }
+        for required in [
+            "BEGIN IMMEDIATE",
+            "ROLLBACK",
+            "index->slot_count += append_count",
+            "index->live_count += append_count - delete_count",
+        ] {
+            XCTAssertTrue(native.contains(required), "missing \(required)")
+        }
+        for required in [
+            "public struct SQLiteVecShadowMutation",
+            "deleted slots are never reused",
+            "Swift state changes only after the native transaction",
+        ] {
+            XCTAssertTrue(ranker.contains(required), "missing \(required)")
+        }
+
+        let reportStart = try XCTUnwrap(harness.range(
+            of: "private struct ExactPathMutationReport"))
+        let reportEnd = try XCTUnwrap(harness.range(
+            of: "private struct MutationMillisecondDistribution",
+            range: reportStart.upperBound..<harness.endIndex))
+        let reportSchema = String(
+            harness[reportStart.lowerBound..<reportEnd.lowerBound])
+        for forbidden in [
+            "segmentID", "meetingID", "transcript", "queryVector",
+            "modelIdentifier", "databasePath", "filePath", "rawError",
+        ] {
+            XCTAssertFalse(
+                reportSchema.contains(forbidden),
+                "report schema leaked \(forbidden)")
+        }
+
+        for required in [
+            "swift test -c release",
+            "1000 10000 50000 100000",
+            "PORTAVOZ_EXACT_PATH_MUTATION_REPORT",
+            "Each corpus size gets a fresh XCTest process.",
+            "does not persist benchmark results",
+        ] {
+            XCTAssertTrue(runner.contains(required), "missing \(required)")
+        }
+        XCTAssertFalse(runner.contains("--output"))
+        for productTarget in ["portavoz-app", "portavoz-cli", "ApplicationKit"] {
+            let dependencies = try XCTUnwrap(targets[productTarget]).dependencies
+            XCTAssertFalse(dependencies.contains("SQLiteVecResearchKit"))
+            XCTAssertFalse(dependencies.contains("CSQLiteVecResearch"))
+        }
     }
 
     func testExactPathHostReceiptRequiresACompleteStableContentFreeMatrix() throws {
