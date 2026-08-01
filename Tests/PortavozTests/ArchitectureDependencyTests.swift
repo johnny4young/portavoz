@@ -4425,7 +4425,12 @@ final class ArchitectureDependencyTests: XCTestCase {
     }
 
     func testMeetingDetailSectionsReceiveOnlyExplicitValuesAndActions() throws {
+        let scene = try Self.contents(of: "Sources/portavoz-app/MeetingDetailScene.swift")
         let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let flow = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailFlowState.swift")
+        let actions = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailActionSection.swift")
         let header = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailHeaderSection.swift")
         let generatedDocument = try Self.contents(
@@ -4436,6 +4441,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/MeetingTranscriptSection.swift")
         let player = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailPlayerSection.swift")
+        let rail = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailRailSection.swift")
         let focusedTranscript = try Self.contents(
             of: "Sources/portavoz-app/FocusedTranscriptView.swift")
         let documentPresentation = try Self.contents(
@@ -4445,10 +4452,12 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         XCTAssertTrue(view.contains("MeetingDetailHeaderSection("))
         XCTAssertTrue(view.contains("MeetingGeneratedDocumentSection("))
-        XCTAssertTrue(view.contains("MeetingDetailTrustSection("))
+        XCTAssertTrue(view.contains("MeetingDetailActionSection("))
+        XCTAssertTrue(view.contains("MeetingDetailRailSection("))
         XCTAssertTrue(view.contains("MeetingTranscriptSection("))
-        XCTAssertTrue(view.contains("MeetingTranscriptChaptersSection("))
         XCTAssertTrue(view.contains("MeetingDetailPlayerSection("))
+        XCTAssertTrue(rail.contains("MeetingDetailTrustSection("))
+        XCTAssertTrue(rail.contains("MeetingTranscriptChaptersSection("))
         XCTAssertFalse(view.contains("private func header("))
         XCTAssertFalse(view.contains("private func speakersRow("))
         XCTAssertFalse(view.contains("private func summarySection("))
@@ -4458,17 +4467,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("private func chaptersSection("))
         XCTAssertFalse(view.contains("private var playerDock"))
         XCTAssertFalse(view.contains("private var compressRow"))
+        XCTAssertFalse(view.contains("private var companionCardsSection"))
         XCTAssertLessThanOrEqual(
             view.components(separatedBy: .newlines).count,
-            1_680,
+            1_400,
             "Meeting Detail must not absorb extracted section presentation again")
 
         for (name, source) in [
+            ("actions", actions),
             ("header", header),
             ("generated document", generatedDocument),
             ("trust", trust),
             ("transcript", transcript),
-            ("player", player)
+            ("player", player),
+            ("rail", rail)
         ] {
             XCTAssertTrue(source.contains("Values"), name)
             XCTAssertTrue(source.contains("Actions"), name)
@@ -4496,6 +4508,40 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(player.contains("struct MeetingDetailPlayerActions"))
         XCTAssertTrue(player.contains("MeetingPlayerBar("))
         XCTAssertFalse(player.contains("@State"))
+        XCTAssertTrue(actions.contains("struct MeetingDetailActionValues"))
+        XCTAssertTrue(actions.contains("struct MeetingDetailActionActions"))
+        XCTAssertFalse(actions.contains("@State"))
+        XCTAssertTrue(rail.contains("struct MeetingDetailRailValues"))
+        XCTAssertTrue(rail.contains("struct MeetingDetailRailActions"))
+        XCTAssertTrue(rail.contains("MeetingDetailCompanionSection("))
+        XCTAssertTrue(rail.contains("let hasHealth: Bool"))
+        XCTAssertFalse(rail.contains("segments.contains"))
+        XCTAssertFalse(rail.contains("@State"))
+
+        XCTAssertTrue(scene.contains("@State private var flow = MeetingDetailFlowState()"))
+        XCTAssertTrue(scene.contains("flow: flow"))
+        XCTAssertTrue(flow.contains("@Observable"))
+        XCTAssertTrue(flow.contains("enum SheetRoute"))
+        XCTAssertTrue(flow.contains("enum DialogRoute"))
+        XCTAssertTrue(flow.contains("enum AlertRoute"))
+        for legacyState in [
+            "@State private var renamingSpeaker",
+            "@State private var exportDocument",
+            "@State private var showGistConfirm",
+            "@State private var showingRecap",
+            "@State private var summarySetupIssue",
+            "@State private var editingTitle",
+            "@State private var showingNewStructure",
+            "@State private var choosingPerson",
+        ] {
+            XCTAssertFalse(view.contains(legacyState), legacyState)
+        }
+        for forbidden in [
+            "AppServices", "MeetingDetailModel", "MeetingStore",
+            "UserDefaults.standard", "@Environment", "services.", "model."
+        ] {
+            XCTAssertFalse(flow.contains(forbidden), "flow: \(forbidden)")
+        }
 
         XCTAssertEqual(
             transcriptContent.components(separatedBy: .newlines)
@@ -4695,7 +4741,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/IntelligenceKit/CompanionGenerationProvenance.swift")
         let companion = try Self.contents(of: "Sources/IntelligenceKit/Companion.swift")
         let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
-        let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let detail = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailRailSection.swift")
         let diagnostics = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
 
@@ -5449,7 +5496,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            268)
+            262)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             10)

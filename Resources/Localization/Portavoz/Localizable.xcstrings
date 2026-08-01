@@ -1331,6 +1331,16 @@
         }
       }
     },
+    "Current label: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etiqueta actual: %@"
+          }
+        }
+      }
+    },
     "Custom structures": {
       "localizations": {
         "es": {

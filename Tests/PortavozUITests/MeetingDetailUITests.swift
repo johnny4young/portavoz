@@ -429,6 +429,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
 
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-apuntador-section")
+                .waitForExistence(timeout: 10),
+            "persisted Companion evidence must retain one accessible section boundary")
         let source = app.control(
             withIdentifier:
                 "apuntador-card-B5F00000-0000-4000-8000-000000000002-answer-evidence-0")
@@ -570,6 +574,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         XCTAssertTrue(
+            app.control(withIdentifier: "detail-secondary-rail")
+                .waitForExistence(timeout: 10),
+            "secondary review panels must retain one independently scrolling boundary")
+        XCTAssertTrue(
             app.control(withIdentifier: "detail-meeting-health").waitForExistence(timeout: 10),
             "the right rail must show meeting health")
         XCTAssertTrue(
@@ -654,6 +662,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = launchOnSeededMeeting(refineRunning: true)
         defer { app.terminate() }
 
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-actions").waitForExistence(timeout: 10),
+            "meeting actions must retain one accessible section boundary")
         let refine = app.control(withIdentifier: "detail-refine")
         XCTAssertTrue(refine.waitForExistence(timeout: 10))
         let enteredRunningState = XCTNSPredicateExpectation(
@@ -704,6 +715,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let app = launchOnSeededMeeting()
         defer { app.terminate() }
 
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-actions").waitForExistence(timeout: 10),
+            "exports must remain inside the explicit meeting-actions boundary")
         let menu = app.control(withIdentifier: "detail-export-menu")
         XCTAssertTrue(
             menu.waitForExistence(timeout: 10),

@@ -25,7 +25,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 458 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 461 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1450,7 +1450,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   not substitute for the real-time physical-footprint or route matrix.
 - `make test-meeting-detail-baseline`: verifies the canonical source-derived
   interaction/feature-owner contract and the fail-closed Instruments parser.
-  The contract currently covers 268 interaction signals, ten owners, and all
+  The contract currently covers 262 interaction signals, ten owners, and all
   23 Meeting Detail UI journeys; both missing and duplicate ownership fail.
 - `make meeting-detail-baseline`: Portavoz Dev-only, disposable 5k playback-
   seek and 20k transcript-scroll profiles. Each interaction must produce

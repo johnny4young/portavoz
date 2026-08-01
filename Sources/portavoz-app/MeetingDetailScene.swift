@@ -19,6 +19,7 @@ struct MeetingDetailScene: View {
     @Environment(\.openSettings) private var openSettings
     @Environment(\.timeZone) private var timeZone
     @State private var model: MeetingDetailModel
+    @State private var flow = MeetingDetailFlowState()
 
     init(
         services: AppServices,
@@ -36,6 +37,7 @@ struct MeetingDetailScene: View {
             meetingID: meetingID,
             route: $route,
             model: model,
+            flow: flow,
             presentation: MeetingDetailPresentation(
                 locale: locale,
                 timeZone: timeZone),
@@ -119,8 +121,8 @@ struct MeetingDetailSceneValues {
     let performanceProfile: MeetingDetailPerformanceProfile
 }
 
-/// Explicit capabilities needed by the still-monolithic detail presentation.
-/// Later decomposition slices pass only the relevant closure to each section.
+/// Explicit route-level capabilities used to compose Meeting Detail sections.
+/// Child sections receive only the relevant closure from this boundary.
 struct MeetingDetailSceneActions {
     let openSettings: @MainActor (SettingsCategory) -> Void
     let exportBundle: @MainActor (Bool) async throws -> Data

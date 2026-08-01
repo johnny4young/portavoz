@@ -260,8 +260,20 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-evidence", "meeting-summary"}
     if "meetingdetailtrustsection" in lowered:
         return {"meeting-health", "meeting-processing"}
+    if "meetingdetailactionsection" in lowered:
+        return {"meeting-export", "meeting-processing", "meeting-recap"}
+    if "meetingdetailrailsection" in lowered:
+        return {"meeting-evidence", "meeting-health", "meeting-processing"}
     if "meetingdetailplayersection" in lowered:
         return {"meeting-audio"}
+    if "meetingdetailflowstate" in lowered:
+        return {
+            "meeting-export",
+            "meeting-naming",
+            "meeting-processing",
+            "meeting-recap",
+            "meeting-summary",
+        }
     if "focusedtranscript" in lowered:
         return {"meeting-audio", "recording-recovery"}
     if any(token in lowered for token in ("meetingplayer", "audioworkflow", "meetingaudio")):

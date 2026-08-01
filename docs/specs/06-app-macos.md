@@ -26,8 +26,10 @@ owner. D224 extracts explicit header, trust, and generated-document sections
 without giving child presentation types model, service, or store access. D225
 adds one correction-ready transcript reading snapshot and extracts transcript
 and chapter presentation without moving correction policy into SwiftUI. D226
-extracts the complete docked playback surface behind immutable values and
-explicit audio intents without moving playback policy into SwiftUI.
+extracts playback behind immutable values and explicit audio intents. D227
+extracts secondary actions, the review rail, and Companion behind the same
+boundary, then replaces unrelated modal booleans with scene-owned typed
+presentation routes.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -225,6 +227,14 @@ or local state, and cannot resolve files or perform audio work itself.
 save-panel state needed to choose a clip destination. The route model and
 ApplicationKit continue to own playback preparation, compression, file re-
 resolution, and pending seeks.
+
+`MeetingDetailActionSection` separately renders Refine, recap, export, Gist,
+and delete capabilities. `MeetingDetailRailSection` renders recovery, privacy,
+health, chapters, and persisted Companion cards in one independently scrolling
+column. Neither section can reach the model, services, store, or preferences.
+`MeetingDetailScene` owns one observable `MeetingDetailFlowState`; its typed
+sheet, dialog, alert, and export routes replace independent modal flags while
+preserving Refine and mirror presentations owned by their source services.
 
 ### Resource workload measurement (D148)
 
@@ -1855,8 +1865,8 @@ the scoped summary stream remains functional at scale; it does not substitute
 for the unavailable SwiftUI update-cause lane.
 
 The characterization baseline freezes the complete surface before decomposition. The generated
-`meeting-detail-interaction-contract.json` snapshots 268 state/control/
-presentation/keyboard/identifier/navigation signals across seventeen reviewed
+`meeting-detail-interaction-contract.json` snapshots 262 state/control/
+presentation/keyboard/identifier/navigation signals across twenty reviewed
 detail files and assigns all 23 `MeetingDetailUITests` journeys to exactly one
 of ten feature owners. Screenshot names are derived from their test bodies;
 changing a control, route, owner, screenshot, or reviewed evidence digest

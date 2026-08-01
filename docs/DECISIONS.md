@@ -7594,3 +7594,40 @@ boundary auditable without moving audio policy into SwiftUI. Immutable values
 and narrow intents preserve the scene/model/application ownership chain, while
 focused UI-test selection protects released playback behavior without running
 unrelated Meeting Detail journeys.
+
+## D227 — Own Meeting Detail secondary flows through explicit boundaries (Aug 2026)
+
+**Context:** D226 extracted the playback dock, but the Meeting Detail
+coordinator still rendered the action row, secondary rail, and persisted
+Companion cards inline. It also owned separate booleans and payloads for
+rename, recap, custom structure, Gist, summary setup, speaker identity, person
+linking, and file export. Those independent flags could represent impossible
+overlapping presentations and made each flow hard to review or test without
+selecting the whole detail surface.
+
+**Decision:** extract two additional values/actions boundaries.
+`MeetingDetailActionSection` owns Refine, recap, export, Gist, and delete
+controls. `MeetingDetailRailSection` owns the independently scrolling recovery,
+privacy, health, chapters, and persisted Companion presentation. Their
+application work remains in the route model and ApplicationKit. They import no
+storage or composition root and own no local presentation state. Health
+availability is projected once by the coordinator so the rail does not rescan
+large transcripts merely to decide whether it is visible.
+
+Move route-lifetime presentation state to one scene-owned
+`MeetingDetailFlowState`. One typed route per sheet, dialog, alert, and file
+export makes mutually exclusive presentations unrepresentable, while explicit
+operation state may coexist with them. Refine review and the post-meeting mirror
+remain source-derived sheets because their lifetimes belong to the Refine
+service and just-recorded state rather than an independent Boolean.
+
+Give every extracted surface one accessibility-contained root without masking
+its existing nested controls. Map each new file only to its owned UI journeys.
+The reviewed interaction boundary now contains 262 signals across twenty source
+files while retaining the same 23 UI journeys and ten feature owners.
+
+**Rationale:** explicit sections make secondary behavior auditable without
+moving audio, persistence, identity, or processing policy into SwiftUI. Typed
+routes eliminate contradictory modal state. Immutable values, narrow intents,
+and feature-scoped tests preserve the scene/model/application ownership chain
+while protecting released behavior without running unrelated journeys.

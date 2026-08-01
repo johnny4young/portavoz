@@ -988,8 +988,8 @@ or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
 Meeting Detail decomposition is also preceded by a frozen presentation
-boundary. A generated contract inventories 268 interaction signals across
-seventeen source files,
+boundary. A generated contract inventories 262 interaction signals across
+twenty source files,
 assigns all 23 detail XCUITest journeys to exactly one of ten feature owners,
 and digest-binds the reviewed performance harness and evidence. Hidden
 payload-free scroll and seek signposts activate only when a disposable temp
@@ -1003,7 +1003,8 @@ zero. This contract is a refactor-parity guard, not product telemetry or a
 performance budget.
 
 The reviewed interaction boundary includes the scene shell and extracted
-header, trust, generated-document, transcript, chapter, and player sections. It
+header, actions, trust, generated-document, transcript, chapter, player,
+secondary-rail, and Companion sections. It
 preserves every journey, owner, control, sheet, keyboard shortcut, and
 performance fixture while adding stable section identifiers. Scene/presentation
 changes conservatively select all Meeting Detail journeys; each section and its
@@ -1031,6 +1032,19 @@ transport/clip interaction and the native save-panel state required to choose a
 clip destination; playback preparation, compression, file re-resolution, and
 pending seek coordination remain above the section in the route model and
 ApplicationKit workflows.
+
+Secondary Meeting Detail flows use the same rule. `MeetingDetailActionSection`
+renders Refine, recap, export, Gist, and delete capabilities from immutable
+values and explicit intents. `MeetingDetailRailSection` owns the independently
+scrolling recovery, privacy, health, chapter, and persisted Companion
+presentation without reaching the model or composition root; the coordinator
+projects health availability once rather than making the rail rescan every
+segment during presentation. One
+scene-owned `MeetingDetailFlowState` represents mutually exclusive sheet,
+dialog, alert, and file-export routes; route payloads replace the previous
+collection of unrelated booleans. Refine drafts and the post-meeting mirror
+remain source-derived presentations because their lifetimes are owned by their
+dedicated service and recording state rather than by a UI toggle.
 
 Core also owns one pure resource-admission policy, separate from both
 measurement and runtime scheduling. Its immutable snapshot contains the

@@ -9,8 +9,11 @@
     "Sources/portavoz-app/AutoSelectTextField.swift",
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
+    "Sources/portavoz-app/MeetingDetailActionSection.swift",
+    "Sources/portavoz-app/MeetingDetailFlowState.swift",
     "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
     "Sources/portavoz-app/MeetingDetailPlayerSection.swift",
+    "Sources/portavoz-app/MeetingDetailRailSection.swift",
     "Sources/portavoz-app/MeetingDetailScene.swift",
     "Sources/portavoz-app/MeetingDetailTrustSection.swift",
     "Sources/portavoz-app/MeetingDetailView.swift",
@@ -152,6 +155,120 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export Markdown…\") { actions.export(.markdown) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export PDF…\") { actions.export(.pdf) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export meeting file (.portavoz)…\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export meeting file with audio…\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export subtitles (SRT)…\") { actions.export(.srt) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Export subtitles (VTT)…\") { actions.export(.vtt) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Publish as Gist…\") { actions.export(.gist) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Re-transcribe in English\", action: actions.startEnglishRefine)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Re-transcribe in Spanish\", action: actions.startSpanishRefine)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(\"Share a recap…\") { actions.export(.recap) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(role: .destructive, action: actions.cancelRefine) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Button(role: .destructive, action: actions.deleteMeeting) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
+      "source": "Menu {",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-actions\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-export-menu\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-export-srt\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-export-vtt\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-refine\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-share-recap\")",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
       "category": "control",
       "source": "Button(L10n.text(\"Remember\"), action: accept)",
@@ -230,6 +347,48 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "control",
+      "source": "Button { actions.copyAnswer(card.answer) } label: {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "control",
+      "source": "Button { actions.seekAndPlay(card.askedAt) } label: {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"apuntador-card-\\(Int(card.askedAt))\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-apuntador\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-apuntador-section\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-secondary-rail\")",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MeetingDetailScene.swift",
       "category": "navigation",
       "source": "@Environment(\\.openSettings) private var openSettings",
@@ -251,6 +410,12 @@
       "path": "Sources/portavoz-app/MeetingDetailScene.swift",
       "category": "navigation",
       "source": "openSettings: { category in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "state",
+      "source": "@State private var flow = MeetingDetailFlowState()",
       "occurrences": 1
     },
     {
@@ -334,14 +499,14 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
-      "source": "AutoSelectTextField(text: $newTitle, onSubmit: { commitRename(detail) })",
+      "source": "AutoSelectTextField(",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
       "source": "Button {",
-      "occurrences": 4
+      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
@@ -352,7 +517,7 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
-      "source": "Button(\"Cancel\") { editingTitle = false }",
+      "source": "Button(\"Cancel\") { flow.sheet = nil }",
       "occurrences": 1
     },
     {
@@ -400,42 +565,6 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
-      "source": "Button(\"Export Markdown…\") { export(as: .markdown) }",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button(\"Export PDF…\") { export(as: .pdf) }",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button(\"Export meeting file (.portavoz)…\") {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button(\"Export meeting file with audio…\") {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button(\"Export subtitles (SRT)…\") { export(as: .srt) }",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button(\"Export subtitles (VTT)…\") { export(as: .vtt) }",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
       "source": "Button(\"Not now\", role: .cancel) {}",
       "occurrences": 1
     },
@@ -443,7 +572,7 @@
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
       "source": "Button(\"OK\", role: .cancel) {}",
-      "occurrences": 3
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
@@ -454,31 +583,13 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
-      "source": "Button(\"Open\") {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button(\"Publish as Gist…\") { showGistConfirm = true }",
+      "source": "Button(\"Open\") { NSWorkspace.shared.open(url) }",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
       "source": "Button(\"Publish secret gist\") { Task { await publishGist() } }",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button(\"Re-transcribe in English\") {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button(\"Re-transcribe in Spanish\") {",
       "occurrences": 1
     },
     {
@@ -491,12 +602,6 @@
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
       "source": "Button(\"Save\") { commitRename(detail) }",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button(\"Share a recap…\") { showingRecap = true }",
       "occurrences": 1
     },
     {
@@ -520,20 +625,8 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
-      "source": "Button(role: .destructive) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button(role: role, action: action) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
       "source": "Menu {",
-      "occurrences": 3
+      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
@@ -544,43 +637,13 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
-      "source": "TextField(\"Name\", text: $newName)",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"apuntador-card-\\(Int(card.askedAt))\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-apuntador\")",
+      "source": "TextField(",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-enhance-notes\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-export-menu\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-export-srt\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-export-vtt\")",
       "occurrences": 1
     },
     {
@@ -593,18 +656,6 @@
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-notes-title\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-refine\")",
-      "occurrences": 2
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-share-recap\")",
       "occurrences": 1
     },
     {
@@ -664,7 +715,13 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "navigation",
-      "source": "if let url = gistResult { NSWorkspace.shared.open(url) }",
+      "source": "Button(\"Open\") { NSWorkspace.shared.open(url) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "navigation",
+      "source": "openSupportDiagnostics: { sceneActions.openSettings(.data) },",
       "occurrences": 1
     },
     {
@@ -688,12 +745,6 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "navigation",
-      "source": "player?.seek(to: card.askedAt)",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "navigation",
       "source": "route = .insights",
       "occurrences": 1
     },
@@ -706,73 +757,25 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "navigation",
-      "source": "sceneActions.openSettings(.data)",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "navigation",
       "source": "sceneActions.openSettings(.intelligence)",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "presentation",
-      "source": ".alert(\"Couldn’t complete\", isPresented: gistErrorBinding) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "presentation",
-      "source": ".alert(\"Gist published\", isPresented: gistResultBinding) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "presentation",
-      "source": ".alert(\"Rename speaker\", isPresented: renameBinding) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "presentation",
-      "source": ".alert(\"Summary needs setup\", isPresented: summarySetupBinding) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "presentation",
-      "source": ".alert(\"Summary\", isPresented: summaryNoticeBinding) {",
+      "source": ".alert(alertTitle, isPresented: alertBinding) {",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "presentation",
       "source": ".confirmationDialog(",
-      "occurrences": 2
+      "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "presentation",
       "source": ".fileExporter(",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "presentation",
-      "source": ".sheet(isPresented: $editingTitle) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "presentation",
-      "source": ".sheet(isPresented: $showingNewStructure) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "presentation",
-      "source": ".sheet(isPresented: $showingRecap) { recapSheet(detail) }",
       "occurrences": 1
     },
     {
@@ -789,6 +792,132 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": ".sheet(item: sheetRouteBinding) { route in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "Binding(get: { flow.sheet }, set: { flow.sheet = $0 })",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "Button(\"Cancel\") { flow.sheet = nil }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "createStructure: { flow.sheet = .newStructure },",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "dismiss: { flow.sheet = nil })",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = .failure(L10n.text(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = .failure(L10n.text(\"Could not encode the meeting file.\"))",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = .failure(message)",
+      "occurrences": 6
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = .gistPublished(url)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summaryNotice(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summarySetup(.appleRequiresMacOS26)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summarySetup(.appleUnavailable(reason))",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summarySetup(.localEngineFailed)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summarySetup(.mlxModelNotDownloaded)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = .summarySetup(.ollamaModelNotSelected)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.alert = nil",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.sheet = .recap",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "flow.sheet = nil",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "get: { flow.alert != nil },",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "set: { if !$0 { flow.alert = nil } })",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "presentation",
+      "source": "switch flow.alert {",
+      "occurrences": 3
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
       "source": "@AppStorage(\"mirrorAfterMeeting\") private var mirrorAfterMeeting = false",
       "occurrences": 1
@@ -796,169 +925,7 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
-      "source": "@State private var actionError: String?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var applying: String?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var choosingPerson: PersonRememberOffer?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
       "source": "@State private var didRunPerformanceSeek = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var editingTitle = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var enhancingNotes = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var exportDocument: ExportDocument?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var exportName = \"reunion\"",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var exportType: UTType = .plainText",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var findingPerson = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var gistError: String?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var gistResult: URL?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var mirrorAverageLoadedFor: MeetingID?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var mirrorAverageShare: Double?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var newName = \"\"",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var newTitle = \"\"",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var notesNotice: String?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var personCandidates: [Person] = []",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var personOffer: PersonRememberOffer?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var regenerating = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var rememberOffer: Speaker?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var rememberingVoice = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var renamingSpeaker: Speaker?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var showGistConfirm = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var showingNewStructure = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var showingRecap = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var summaryNotice: String?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var summarySetupIssue: SummarySetupIssue?",
       "occurrences": 1
     },
     {
@@ -1683,6 +1650,10 @@
       ],
       "sourceAnchors": [
         {
+          "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+          "anchor": "\"detail-apuntador-section\""
+        },
+        {
           "path": "Sources/portavoz-app/MeetingDetailView.swift",
           "anchor": "transcriptNavigation.reveal("
         }
@@ -1701,7 +1672,7 @@
       ],
       "sourceAnchors": [
         {
-          "path": "Sources/portavoz-app/MeetingDetailView.swift",
+          "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
           "anchor": "\"detail-export-menu\""
         }
       ],
@@ -1760,12 +1731,12 @@
       ],
       "sourceAnchors": [
         {
-          "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
-          "anchor": "\"detail-recover-with-refine\""
+          "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+          "anchor": "\"detail-refine\""
         },
         {
-          "path": "Sources/portavoz-app/MeetingDetailView.swift",
-          "anchor": "\"detail-refine\""
+          "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+          "anchor": "\"detail-recover-with-refine\""
         }
       ],
       "screenshots": [
@@ -1779,6 +1750,10 @@
         "testRightRailShowsHealthAndChapters"
       ],
       "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+          "anchor": "\"detail-secondary-rail\""
+        },
         {
           "path": "Sources/portavoz-app/MeetingHealthView.swift",
           "anchor": "\"detail-meeting-health\""

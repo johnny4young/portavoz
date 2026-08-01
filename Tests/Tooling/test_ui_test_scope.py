@@ -48,6 +48,36 @@ class UITestScopeTests(unittest.TestCase):
                 path,
             )
 
+    def test_detail_secondary_sections_select_only_owned_journeys(self):
+        expected = {
+            "Sources/portavoz-app/MeetingDetailActionSection.swift": (
+                "meeting-export",
+                "meeting-processing",
+                "meeting-recap",
+            ),
+            "Sources/portavoz-app/MeetingDetailRailSection.swift": (
+                "meeting-evidence",
+                "meeting-health",
+                "meeting-processing",
+            ),
+            "Sources/portavoz-app/MeetingDetailFlowState.swift": (
+                "meeting-export",
+                "meeting-naming",
+                "meeting-processing",
+                "meeting-recap",
+                "meeting-summary",
+            ),
+        }
+        for path, features in expected.items():
+            selection = select_paths([path])
+            owned_tests = {
+                test
+                for feature in features
+                for test in FEATURE_TESTS[feature]
+            }
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertEqual(set(selection.tests), owned_tests, path)
+
     def test_localization_selects_bilingual_canaries_at_the_real_catalog_path(self):
         selection = select_paths(["Resources/Localization/Portavoz/Localizable.xcstrings"])
         self.assertEqual(selection.tests, HARNESS_TESTS)
