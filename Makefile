@@ -13,6 +13,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-ask-quality ask-quality-pair test-exact-path-matrix exact-path-matrix \
+	test-exact-path-cross-host exact-path-cross-host \
 	test-recording-stress test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
@@ -45,6 +46,19 @@ exact-path-matrix:
 		(echo "PORTAVOZ_EXACT_PATH_PROFILE is required" >&2; exit 64)
 	scripts/run-exact-path-shadow-matrix.sh \
 		--profile "$(PORTAVOZ_EXACT_PATH_PROFILE)"
+
+## Validate the cross-host scorecard boundary with synthetic host receipts.
+test-exact-path-cross-host:
+	python3 -m unittest Tests.Tooling.test_exact_path_cross_host
+
+## Compare accepted host receipts without retaining a baseline or selecting an
+## engine. The input is JSONL with one receipt per measured host profile.
+PORTAVOZ_EXACT_PATH_RECEIPTS ?=
+exact-path-cross-host:
+	@test -n "$(PORTAVOZ_EXACT_PATH_RECEIPTS)" || \
+		(echo "PORTAVOZ_EXACT_PATH_RECEIPTS is required" >&2; exit 64)
+	python3 scripts/exact_path_cross_host.py \
+		--input "$(PORTAVOZ_EXACT_PATH_RECEIPTS)"
 
 ## Build one Release CLI and compare segment control with speaker-turn retrieval
 ## from the same clean commit. Output is private, non-overwriting local evidence.

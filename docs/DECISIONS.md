@@ -7156,3 +7156,49 @@ durable baseline, cross-host verdict, engine comparison, or selection authority.
 comparison, and product selection makes every trust transition explicit.
 Fail-closed exact shapes preserve privacy and expose missing or unstable work
 without allowing one convenient developer run to become architecture policy.
+
+## D216 — Validate three-profile evidence before retaining a baseline (Aug 2026)
+
+**Context:** D215 accepts one host at a time, but its schema-1 receipt retained
+only a final unstable label for the within-observation query ratio. A later
+consumer could not independently recompute that state, and three individually
+valid receipts could still be incomparable because of missing hardware tiers,
+single-OS coverage, or different source/toolchain identities. None of those
+conditions should silently become a baseline.
+
+**Decision:** evolve the host receipt to schema 2. Every aggregate engine row
+retains the maximum within-observation query p95/p50 ratio; `null` represents a
+nonzero p95 over a zero median and is unstable. Add an exact host-receipt
+validator that recomputes closed configuration, canonical scales, distribution
+counts and monotonicity, timing/agreement state, and final outcome without raw
+observations. It rejects an internal ratio below the lower bound demonstrated
+by its own aggregate distributions. Cross-host candidate/control ratios with a
+zero control denominator are `not-comparable`, including zero divided by zero,
+rather than an invented equality result.
+
+Track a separate cross-host contract requiring exactly one receipt for each
+8 GB, 16 GB, and reference-memory profile. The three-host set must represent
+both supported OS majors, Sequoia and Tahoe, at least once; do not require the
+unnecessary six-machine profile-by-OS Cartesian product. A passing scorecard
+also requires one source commit, one Apple Swift toolchain, and a passing host
+receipt for every profile. Missing profile or OS coverage, valid blocked host
+evidence, or source/toolchain mismatch emits a complete blocked scorecard.
+Malformed, duplicate, payload-bearing, or repeated-profile evidence emits no
+scorecard.
+
+The stdout-only scorecard may expose closed host/configuration fields, separate
+engine query p50/p95, candidate-to-control query ratios, exact-rank agreement,
+byte counts, and lifecycle-labelled build p50 values. It accepts no output
+destination. The versioned comparison policy divides candidate query timing by
+the control timing measured on that same host; a zero control denominator is
+`not-comparable`, never reported as an equal-performance ratio. The scorecard
+authorizes no retained baseline, budget, quality judgment, engine selection,
+product schema, writer, app composition, or user-visible candidate. Accelerate
+exact remains the sole serving authority.
+
+**Rationale:** coverage and comparability must be proven before performance can
+be interpreted. Recomputable receipts prevent a status label from becoming a
+trust shortcut, while a three-profile/two-OS matrix captures the supported
+resource and compatibility surfaces without multiplying machines that add no
+new acceptance dimension. Keeping the scorecard ephemeral preserves a final,
+explicit baseline-review and engine-decision boundary.

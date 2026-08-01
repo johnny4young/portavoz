@@ -659,7 +659,7 @@ selected. Later SEARCH-5 slices must put candidates behind this seam and retain
 exact control as the only user-visible authority until accepted quality and
 resource evidence exists.
 
-### Non-serving semantic shadow comparison (D207-D215)
+### Non-serving semantic shadow comparison (D207-D216)
 
 `ShadowComparingSemanticIndex` is a benchmark-only decorator over the D206
 port. It waits only for the exact control, projects its citation identity to a
@@ -794,6 +794,40 @@ contains no raw observation, payload, path, identifier, model, or error. It
 validates only one concrete host. It does not compare host receipts, persist a
 baseline, compare unlike build lifecycles, authorize product composition, or
 select an engine.
+
+Host receipt schema 2 adds the maximum within-observation query p95/p50 ratio
+to every engine aggregate. A `null` ratio represents a nonzero p95 over a zero
+median and is necessarily unstable. `validate_host_receipt` can therefore
+recompute exact shape, host/profile fit, canonical configuration and scales,
+distribution counts and monotonicity, timing/agreement state, and outcome from
+the content-free receipt rather than trusting its labels. The validator also
+rejects an internal timing ratio below the lower bound implied by its aggregate
+distributions. At comparison time, a zero control denominator is
+`not-comparable`, including zero divided by zero; it is never presented as
+equal candidate performance.
+
+`docs/evidence/exact-path-cross-host-matrix.json` requires one receipt for each
+8 GB, 16 GB, and reference-memory profile, while the three-host set must cover
+both Sequoia and Tahoe. This is profile coverage plus supported-OS coverage,
+not a six-cell profile-by-OS Cartesian product. All receipts must validate
+against the same host contract. A passing comparison additionally requires the
+same source commit and Apple Swift toolchain plus a passing host outcome in
+every profile. The scorecard exposes these predicates as
+`comparability.sameSourceCommit` and `comparability.sameToolchain` rather than
+assuming that independently valid receipts are comparable.
+
+`scripts/exact_path_cross_host.py` consumes JSONL receipts and emits one
+aggregate-only `exact-path-shadow-cross-host-scorecard` to stdout. Missing
+profiles or OS majors, source/toolchain mismatch, or a valid blocked receipt
+remain visible in a blocked scorecard; malformed, duplicate, repeated-profile,
+or payload-bearing receipts produce no scorecard. Passing rows report separate
+engine query p50/p95, candidate-to-control query ratios, exact-rank agreement,
+and lifecycle-labelled build values. Its versioned policy compares query timing
+only as a candidate/control ratio within one host. A zero control denominator
+marks that scale `not-comparable`; it is never interpreted as ratio 1. The
+evaluator accepts no output path and does not retain a baseline, define budgets,
+combine unlike build lifecycles, judge multilingual quality, authorize a
+candidate, or alter product wiring.
 
 ### Governed semantic embedding runtime (D165)
 

@@ -740,6 +740,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             #""canonicalScales": ["#,
             #""minimumStableObservations": 3"#,
             #""maximumTimingP95ToP50Ratio": 1.25"#,
+            #""hostReceiptSchemaVersion": 2"#,
             #""supportedOperatingSystemMajors": ["#,
         ] {
             XCTAssertTrue(contract.contains(required), "missing \(required)")
@@ -751,6 +752,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "scale {corpus_size} has excess or duplicate observations",
             "agreement-failed",
             "exact-path-shadow-host-receipt",
+            "maximumWithinObservationTimingP95ToP50Ratio",
+            "validate_host_receipt",
             "return 0 if receipt[\"outcome\"] == \"pass\" else 1",
         ] {
             XCTAssertTrue(evaluator.contains(required), "missing \(required)")
@@ -774,6 +777,51 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(
             productReferences.isEmpty,
             "Exact-path acceptance tooling entered product code: \(productReferences)")
+    }
+
+    func testExactPathCrossHostScorecardRequiresComparableProfileAndOSCoverage() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let specification = try Self.contents(of: "docs/specs/04-intelligence.md")
+        let contract = try Self.contents(
+            of: "docs/evidence/exact-path-cross-host-matrix.json")
+        let evaluator = try Self.contents(of: "scripts/exact_path_cross_host.py")
+
+        XCTAssertTrue(decisions.contains("## D216"))
+        XCTAssertTrue(architecture.contains("exact-path-shadow-cross-host-scorecard"))
+        XCTAssertTrue(specification.contains("sameSourceCommit"))
+        for required in [
+            #""requiredHostProfiles": ["#,
+            #""memory-8gb""#,
+            #""memory-16gb""#,
+            #""reference""#,
+            #""requiredOperatingSystemMajors": ["#,
+            #""hostReceiptSchemaVersion": 2"#,
+            #""comparisonPolicyVersion": "within-host-query-p50-p95-ratio-v1""#,
+        ] {
+            XCTAssertTrue(contract.contains(required), "missing \(required)")
+        }
+        for required in [
+            "host_matrix.validate_host_receipt",
+            "host receipt stream repeats profile",
+            "missingOperatingSystemMajors",
+            "sameSourceCommit",
+            "sameToolchain",
+            "candidateToControlQueryP50Ratio",
+            "not-comparable",
+            "exact-path-shadow-cross-host-scorecard",
+            "return 0 if scorecard[\"outcome\"] == \"pass\" else 1",
+        ] {
+            XCTAssertTrue(evaluator.contains(required), "missing \(required)")
+        }
+        XCTAssertFalse(evaluator.contains("--output"))
+
+        let productReferences = try Self.sourceMatches(
+            under: "Sources",
+            pattern: #"exact[_-]path[_-](?:cross[_-]host|shadow-cross-host-scorecard)"#)
+        XCTAssertTrue(
+            productReferences.isEmpty,
+            "Cross-host exact-path tooling entered product code: \(productReferences)")
     }
 
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {

@@ -1,0 +1,16 @@
+{
+  "comparisonPolicyVersion": "within-host-query-p50-p95-ratio-v1",
+  "hostReceiptContractSchemaVersion": 1,
+  "hostReceiptSchemaVersion": 2,
+  "requiredHostProfiles": [
+    "memory-8gb",
+    "memory-16gb",
+    "reference"
+  ],
+  "requiredOperatingSystemMajors": [
+    15,
+    26
+  ],
+  "schemaVersion": 1,
+  "scorecardSchemaVersion": 1
+}

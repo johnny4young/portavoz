@@ -30,6 +30,7 @@ PROFILE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 CONTRACT_KEYS = {
     "schemaVersion",
+    "hostReceiptSchemaVersion",
     "fixtureVersion",
     "measurementPolicyVersion",
     "stabilityPolicyVersion",
@@ -100,6 +101,65 @@ AGREEMENT_KEYS = {
     "topHitMatchCount",
     "exactRankMatchCount",
     "overlapAtKCount",
+}
+HOST_RECEIPT_KEYS = {
+    "schemaVersion",
+    "kind",
+    "generatedAt",
+    "sourceCommit",
+    "toolchain",
+    "fixtureVersion",
+    "measurementPolicyVersion",
+    "stabilityPolicyVersion",
+    "buildConfiguration",
+    "hostProfile",
+    "host",
+    "configuration",
+    "outcome",
+    "scales",
+}
+HOST_RECEIPT_CONFIGURATION_KEYS = {
+    "dimension",
+    "queryCount",
+    "runsPerQuery",
+    "resultLimit",
+    "minimumStableObservations",
+    "maximumTimingP95ToP50Ratio",
+    "buildOrder",
+}
+HOST_RECEIPT_SCALE_KEYS = {
+    "corpusSize",
+    "state",
+    "observationCount",
+    "rawEmbeddingBytes",
+    "controlDatabaseBytes",
+    "fixturePreparationMilliseconds",
+    "engines",
+    "agreement",
+}
+HOST_RECEIPT_ENGINE_KEYS = {
+    "engine",
+    "buildMilliseconds",
+    "queryWallMilliseconds",
+    "maximumWithinObservationTimingP95ToP50Ratio",
+    "resultCount",
+}
+HOST_RECEIPT_QUERY_KEYS = {
+    "p50Observation",
+    "p95Observation",
+    "maximumObservation",
+}
+NEAREST_RANK_KEYS = {
+    "sampleCount",
+    "p50",
+    "p95",
+    "maximum",
+}
+HOST_RECEIPT_SCALE_STATES = {
+    "pass",
+    "incomplete",
+    "unstable",
+    "agreement-failed",
 }
 ENGINE_ORDER = ("accelerateExact", "sqliteVecExact")
 BUILD_ORDER = "accelerate-control-then-sqlite-vec-v1"
@@ -200,12 +260,34 @@ def bounded_string(value: Any, label: str, maximum: int = 256) -> str:
     return value
 
 
+def utc_timestamp(value: Any, label: str) -> str:
+    timestamp = bounded_string(value, label, 40)
+    if not timestamp.endswith("Z"):
+        raise MatrixError(f"{label} must be a UTC timestamp")
+    try:
+        parsed = dt.datetime.fromisoformat(timestamp.removesuffix("Z") + "+00:00")
+    except ValueError as error:
+        raise MatrixError(f"{label} must be a UTC timestamp") from error
+    if parsed.utcoffset() != dt.timedelta(0):
+        raise MatrixError(f"{label} must be a UTC timestamp")
+    return timestamp
+
+
 def load_contract(path: Path) -> dict[str, Any]:
     raw = exact_object(read_json(path, "matrix contract"), CONTRACT_KEYS, "contract")
     if integer(raw["schemaVersion"], "contract.schemaVersion", 1) != 1:
         raise MatrixError("contract.schemaVersion must be 1")
     if raw["fixtureVersion"] != "synthetic-exact-path-v1":
         raise MatrixError("contract fixture is not supported")
+    if (
+        integer(
+            raw["hostReceiptSchemaVersion"],
+            "contract.hostReceiptSchemaVersion",
+            1,
+        )
+        != 2
+    ):
+        raise MatrixError("contract host receipt schema is not supported")
     if raw["measurementPolicyVersion"] != "alternating-query-order-v1":
         raise MatrixError("contract measurement policy is not supported")
     if raw["stabilityPolicyVersion"] != "nearest-rank-p95-p50-v1":
@@ -499,6 +581,12 @@ def query_observation_is_stable(
     return p95 / p50 <= maximum_ratio
 
 
+def timing_ratio(p50: float, p95: float) -> float | None:
+    if p50 == 0:
+        return 1.0 if p95 == 0 else None
+    return p95 / p50
+
+
 def aggregate_scale(
     corpus_size: int,
     observations: list[dict[str, Any]],
@@ -544,6 +632,18 @@ def aggregate_scale(
             query_observation_is_stable(item["queryWallMilliseconds"], maximum_ratio)
             for item in engine_observations
         )
+        within_observation_ratios = [
+            timing_ratio(
+                float(item["queryWallMilliseconds"]["p50Milliseconds"]),
+                float(item["queryWallMilliseconds"]["p95Milliseconds"]),
+            )
+            for item in engine_observations
+        ]
+        maximum_within_observation_ratio = (
+            None
+            if any(value is None for value in within_observation_ratios)
+            else max(value for value in within_observation_ratios if value is not None)
+        )
         timing_stable = (
             timing_stable
             and stable(build, maximum_ratio)
@@ -560,6 +660,9 @@ def aggregate_scale(
                     "p95Observation": p95,
                     "maximumObservation": maximum,
                 },
+                "maximumWithinObservationTimingP95ToP50Ratio": (
+                    maximum_within_observation_ratio
+                ),
                 "resultCount": contract["resultLimit"],
             }
         )
@@ -614,6 +717,8 @@ def build_receipt(
         validate_observation(value, contract, profiles, profile_id, f"observations[{index}]")
         for index, value in enumerate(raw_observations)
     ]
+    if not parsed:
+        raise MatrixError("observation stream is empty")
     canonical = [
         json.dumps(value, sort_keys=True, separators=(",", ":"))
         for value in raw_observations
@@ -632,8 +737,9 @@ def build_receipt(
     timestamp = generated_at or dt.datetime.now(dt.timezone.utc).isoformat().replace(
         "+00:00", "Z"
     )
+    timestamp = utc_timestamp(timestamp, "receipt.generatedAt")
     return {
-        "schemaVersion": 1,
+        "schemaVersion": contract["hostReceiptSchemaVersion"],
         "kind": "exact-path-shadow-host-receipt",
         "generatedAt": timestamp,
         "sourceCommit": source_commit,
@@ -658,6 +764,295 @@ def build_receipt(
         "outcome": outcome,
         "scales": scales,
     }
+
+
+def validate_nearest_rank_distribution(
+    raw: Any,
+    expected_count: int,
+    label: str,
+    *,
+    integral: bool = False,
+) -> dict[str, float | int]:
+    distribution = exact_object(raw, NEAREST_RANK_KEYS, label)
+    if integer(distribution["sampleCount"], f"{label}.sampleCount", 1) != expected_count:
+        raise MatrixError(f"{label}.sampleCount is inconsistent")
+
+    def value(key: str) -> float | int:
+        if integral:
+            return integer(distribution[key], f"{label}.{key}")
+        return finite(distribution[key], f"{label}.{key}")
+
+    p50 = value("p50")
+    p95 = value("p95")
+    maximum = value("maximum")
+    if not p50 <= p95 <= maximum:
+        raise MatrixError(f"{label} percentiles are not monotonic")
+    return {
+        "sampleCount": expected_count,
+        "p50": p50,
+        "p95": p95,
+        "maximum": maximum,
+    }
+
+
+def validate_host_receipt_scale(
+    raw: Any,
+    expected_corpus_size: int,
+    contract: dict[str, Any],
+    label: str,
+) -> dict[str, Any]:
+    scale = exact_object(raw, HOST_RECEIPT_SCALE_KEYS, label)
+    corpus_size = integer(scale["corpusSize"], f"{label}.corpusSize", 1)
+    if corpus_size != expected_corpus_size:
+        raise MatrixError(f"{label}.corpusSize is not in canonical order")
+    state = bounded_string(scale["state"], f"{label}.state", 32)
+    if state not in HOST_RECEIPT_SCALE_STATES:
+        raise MatrixError(f"{label}.state is not supported")
+    observation_count = integer(scale["observationCount"], f"{label}.observationCount")
+    required = contract["minimumStableObservations"]
+    if observation_count > required:
+        raise MatrixError(f"{label}.observationCount exceeds the contract")
+    expected_raw_bytes = corpus_size * contract["dimension"] * 4
+    if (
+        integer(scale["rawEmbeddingBytes"], f"{label}.rawEmbeddingBytes", 1)
+        != expected_raw_bytes
+    ):
+        raise MatrixError(f"{label}.rawEmbeddingBytes is inconsistent")
+
+    if observation_count < required:
+        if (
+            state != "incomplete"
+            or scale["controlDatabaseBytes"] is not None
+            or scale["fixturePreparationMilliseconds"] is not None
+            or scale["engines"] != []
+            or scale["agreement"] is not None
+        ):
+            raise MatrixError(f"{label} has an inconsistent incomplete shape")
+        return scale
+
+    fixture = validate_nearest_rank_distribution(
+        scale["fixturePreparationMilliseconds"],
+        required,
+        f"{label}.fixturePreparationMilliseconds",
+    )
+    validate_nearest_rank_distribution(
+        scale["controlDatabaseBytes"],
+        required,
+        f"{label}.controlDatabaseBytes",
+        integral=True,
+    )
+    timing_stable = stable(fixture, contract["maximumTimingP95ToP50Ratio"])
+
+    engines = scale["engines"]
+    if not isinstance(engines, list) or len(engines) != len(ENGINE_ORDER):
+        raise MatrixError(f"{label}.engines must contain the two exact engines")
+    for index, expected_engine in enumerate(ENGINE_ORDER):
+        engine_label = f"{label}.engines[{index}]"
+        engine = exact_object(engines[index], HOST_RECEIPT_ENGINE_KEYS, engine_label)
+        if engine["engine"] != expected_engine:
+            raise MatrixError(f"{label}.engines must use canonical order")
+        build = validate_nearest_rank_distribution(
+            engine["buildMilliseconds"],
+            required,
+            f"{engine_label}.buildMilliseconds",
+        )
+        query = exact_object(
+            engine["queryWallMilliseconds"],
+            HOST_RECEIPT_QUERY_KEYS,
+            f"{engine_label}.queryWallMilliseconds",
+        )
+        p50 = validate_nearest_rank_distribution(
+            query["p50Observation"],
+            required,
+            f"{engine_label}.queryWallMilliseconds.p50Observation",
+        )
+        p95 = validate_nearest_rank_distribution(
+            query["p95Observation"],
+            required,
+            f"{engine_label}.queryWallMilliseconds.p95Observation",
+        )
+        maximum = validate_nearest_rank_distribution(
+            query["maximumObservation"],
+            required,
+            f"{engine_label}.queryWallMilliseconds.maximumObservation",
+        )
+        for percentile in ("p50", "p95", "maximum"):
+            if not (
+                p50[percentile]
+                <= p95[percentile]
+                <= maximum[percentile]
+            ):
+                raise MatrixError(
+                    f"{engine_label}.queryWallMilliseconds distributions are not monotonic"
+                )
+        within_ratio_raw = engine["maximumWithinObservationTimingP95ToP50Ratio"]
+        within_ratio = (
+            None
+            if within_ratio_raw is None
+            else finite(
+                within_ratio_raw,
+                f"{engine_label}.maximumWithinObservationTimingP95ToP50Ratio",
+                1,
+            )
+        )
+        maximum_p50 = float(p50["maximum"])
+        maximum_p95 = float(p95["maximum"])
+        if maximum_p50 == 0:
+            expected_zero_ratio = 1.0 if maximum_p95 == 0 else None
+            if within_ratio != expected_zero_ratio:
+                raise MatrixError(
+                    f"{engine_label}.maximumWithinObservationTimingP95ToP50Ratio "
+                    "is inconsistent with zero-median evidence"
+                )
+        elif (
+            within_ratio is not None
+            and within_ratio + 1e-12 < maximum_p95 / maximum_p50
+        ):
+            raise MatrixError(
+                f"{engine_label}.maximumWithinObservationTimingP95ToP50Ratio "
+                "is below its aggregate lower bound"
+            )
+        timing_stable = (
+            timing_stable
+            and stable(build, contract["maximumTimingP95ToP50Ratio"])
+            and stable(p50, contract["maximumTimingP95ToP50Ratio"])
+            and stable(p95, contract["maximumTimingP95ToP50Ratio"])
+            and within_ratio is not None
+            and within_ratio <= contract["maximumTimingP95ToP50Ratio"]
+        )
+        if (
+            integer(engine["resultCount"], f"{engine_label}.resultCount", 1)
+            != contract["resultLimit"]
+        ):
+            raise MatrixError(f"{engine_label}.resultCount is inconsistent")
+
+    agreement = exact_object(scale["agreement"], AGREEMENT_KEYS, f"{label}.agreement")
+    expected_comparisons = required * contract["queryCount"] * contract["runsPerQuery"]
+    expected_overlap = expected_comparisons * contract["resultLimit"]
+    if (
+        integer(
+            agreement["comparisonCount"],
+            f"{label}.agreement.comparisonCount",
+            1,
+        )
+        != expected_comparisons
+    ):
+        raise MatrixError(f"{label}.agreement.comparisonCount is inconsistent")
+    if (
+        integer(
+            agreement["expectedTopHitCount"],
+            f"{label}.agreement.expectedTopHitCount",
+            1,
+        )
+        != expected_comparisons
+    ):
+        raise MatrixError(f"{label}.agreement.expectedTopHitCount is inconsistent")
+    for key, maximum in (
+        ("topHitMatchCount", expected_comparisons),
+        ("exactRankMatchCount", expected_comparisons),
+        ("overlapAtKCount", expected_overlap),
+    ):
+        count = integer(agreement[key], f"{label}.agreement.{key}")
+        if count > maximum:
+            raise MatrixError(f"{label}.agreement.{key} exceeds its bound")
+    result_agreement = (
+        agreement["topHitMatchCount"] == expected_comparisons
+        and agreement["overlapAtKCount"] == expected_overlap
+    )
+    expected_state = (
+        "pass"
+        if timing_stable and result_agreement
+        else "unstable"
+        if not timing_stable
+        else "agreement-failed"
+    )
+    if state != expected_state:
+        raise MatrixError(f"{label}.state is inconsistent with its aggregate evidence")
+    return scale
+
+
+def validate_host_receipt(
+    raw: Any,
+    contract: dict[str, Any],
+    profiles: dict[str, tuple[int, int | None]],
+    label: str = "host receipt",
+) -> dict[str, Any]:
+    receipt = exact_object(raw, HOST_RECEIPT_KEYS, label)
+    if (
+        integer(receipt["schemaVersion"], f"{label}.schemaVersion", 1)
+        != contract["hostReceiptSchemaVersion"]
+    ):
+        raise MatrixError(f"{label}.schemaVersion is not supported")
+    if receipt["kind"] != "exact-path-shadow-host-receipt":
+        raise MatrixError(f"{label}.kind is not supported")
+    utc_timestamp(receipt["generatedAt"], f"{label}.generatedAt")
+    if not isinstance(receipt["sourceCommit"], str) or not COMMIT.fullmatch(
+        receipt["sourceCommit"]
+    ):
+        raise MatrixError(f"{label}.sourceCommit is invalid")
+    if not isinstance(receipt["toolchain"], str) or not TOOLCHAIN.fullmatch(
+        receipt["toolchain"]
+    ):
+        raise MatrixError(f"{label}.toolchain is invalid")
+    for key in (
+        "fixtureVersion",
+        "measurementPolicyVersion",
+        "stabilityPolicyVersion",
+        "buildConfiguration",
+    ):
+        if receipt[key] != contract[key]:
+            raise MatrixError(f"{label}.{key} does not match the contract")
+    profile = bounded_string(receipt["hostProfile"], f"{label}.hostProfile", 64)
+    validate_host(receipt["host"], contract, profiles, profile, f"{label}.host")
+
+    configuration = exact_object(
+        receipt["configuration"],
+        HOST_RECEIPT_CONFIGURATION_KEYS,
+        f"{label}.configuration",
+    )
+    for key in (
+        "dimension",
+        "queryCount",
+        "runsPerQuery",
+        "resultLimit",
+        "minimumStableObservations",
+    ):
+        if integer(configuration[key], f"{label}.configuration.{key}", 1) != contract[key]:
+            raise MatrixError(f"{label}.configuration.{key} is inconsistent")
+    if (
+        finite(
+            configuration["maximumTimingP95ToP50Ratio"],
+            f"{label}.configuration.maximumTimingP95ToP50Ratio",
+            1,
+        )
+        != contract["maximumTimingP95ToP50Ratio"]
+    ):
+        raise MatrixError(
+            f"{label}.configuration.maximumTimingP95ToP50Ratio is inconsistent"
+        )
+    if configuration["buildOrder"] != BUILD_ORDER:
+        raise MatrixError(f"{label}.configuration.buildOrder is inconsistent")
+
+    scales = receipt["scales"]
+    if not isinstance(scales, list) or len(scales) != len(contract["canonicalScales"]):
+        raise MatrixError(f"{label}.scales must cover every canonical scale")
+    validated_scales = [
+        validate_host_receipt_scale(
+            scales[index],
+            corpus_size,
+            contract,
+            f"{label}.scales[{index}]",
+        )
+        for index, corpus_size in enumerate(contract["canonicalScales"])
+    ]
+    expected_outcome = (
+        "pass"
+        if all(scale["state"] == "pass" for scale in validated_scales)
+        else "blocked"
+    )
+    if receipt["outcome"] != expected_outcome:
+        raise MatrixError(f"{label}.outcome is inconsistent with its scales")
+    return receipt
 
 
 def build_parser() -> argparse.ArgumentParser:

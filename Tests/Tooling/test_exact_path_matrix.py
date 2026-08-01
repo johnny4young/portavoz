@@ -26,6 +26,7 @@ class ExactPathMatrixTests(unittest.TestCase):
     def test_complete_stable_matrix_passes_and_emits_only_aggregates(self):
         receipt = self.receipt(self.observations())
 
+        self.assertEqual(receipt["schemaVersion"], 2)
         self.assertEqual(receipt["outcome"], "pass")
         self.assertEqual(receipt["hostProfile"], "memory-16gb")
         self.assertEqual(
@@ -37,6 +38,12 @@ class ExactPathMatrixTests(unittest.TestCase):
         self.assertEqual(first["observationCount"], 3)
         self.assertEqual(first["engines"][0]["engine"], "accelerateExact")
         self.assertEqual(first["engines"][1]["engine"], "sqliteVecExact")
+        self.assertLessEqual(
+            first["engines"][0][
+                "maximumWithinObservationTimingP95ToP50Ratio"
+            ],
+            1.25,
+        )
         self.assertEqual(first["agreement"]["comparisonCount"], 120)
         self.assertEqual(first["agreement"]["overlapAtKCount"], 1_200)
 
@@ -53,6 +60,14 @@ class ExactPathMatrixTests(unittest.TestCase):
             "operatorNotes",
         ):
             self.assertNotIn(forbidden, encoded)
+        self.assertEqual(
+            matrix.validate_host_receipt(
+                receipt,
+                self.contract,
+                self.profiles,
+            ),
+            receipt,
+        )
 
     def test_missing_scale_is_a_complete_blocked_receipt(self):
         observations = self.observations()
@@ -79,6 +94,38 @@ class ExactPathMatrixTests(unittest.TestCase):
 
         self.assertEqual(receipt["outcome"], "blocked")
         self.assertEqual(receipt["scales"][0]["state"], "unstable")
+        self.assertGreater(
+            receipt["scales"][0]["engines"][0][
+                "maximumWithinObservationTimingP95ToP50Ratio"
+            ],
+            1.25,
+        )
+        matrix.validate_host_receipt(receipt, self.contract, self.profiles)
+
+    def test_host_receipt_rejects_tampered_state_and_unbounded_numeric_output(self):
+        receipt = self.receipt(self.observations())
+        receipt["scales"][0]["state"] = "unstable"
+        with self.assertRaisesRegex(matrix.MatrixError, "state is inconsistent"):
+            matrix.validate_host_receipt(receipt, self.contract, self.profiles)
+
+        receipt = self.receipt(self.observations())
+        receipt["scales"][0]["engines"][0][
+            "maximumWithinObservationTimingP95ToP50Ratio"
+        ] = 1.0
+        with self.assertRaisesRegex(matrix.MatrixError, "aggregate lower bound"):
+            matrix.validate_host_receipt(receipt, self.contract, self.profiles)
+
+        observations = self.observations()
+        observations[0]["engines"][0]["queryWallMilliseconds"][
+            "p50Milliseconds"
+        ] = 0.0
+        receipt = self.receipt(observations)
+        ratio = receipt["scales"][0]["engines"][0][
+            "maximumWithinObservationTimingP95ToP50Ratio"
+        ]
+        self.assertIsNone(ratio)
+        self.assertNotIn("Infinity", json.dumps(receipt))
+        matrix.validate_host_receipt(receipt, self.contract, self.profiles)
 
     def test_lower_rank_drift_remains_visible_without_invalidating_same_top_k(self):
         observations = self.observations()
@@ -170,6 +217,21 @@ class ExactPathMatrixTests(unittest.TestCase):
 
             with self.assertRaisesRegex(matrix.MatrixError, "duplicate JSON key"):
                 matrix.read_observations(path)
+
+    def test_direct_empty_input_and_invalid_timestamp_fail_closed(self):
+        with self.assertRaisesRegex(matrix.MatrixError, "observation stream is empty"):
+            self.receipt([])
+
+        with self.assertRaisesRegex(matrix.MatrixError, "UTC timestamp"):
+            matrix.build_receipt(
+                self.observations(),
+                self.contract,
+                self.profiles,
+                "memory-16gb",
+                self.commit,
+                self.toolchain,
+                generated_at="2026-99-01T00:00:00Z",
+            )
 
     def test_cli_exit_codes_distinguish_pass_blocked_and_malformed(self):
         with tempfile.TemporaryDirectory() as directory:

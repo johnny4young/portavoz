@@ -1718,6 +1718,37 @@ and per-scale pass/block state only. It neither stores raw observations nor
 compares the unlike control/candidate build lifecycles. One receipt proves one
 host matrix; cross-host acceptance and engine authority remain separate.
 
+Host receipts use schema 2 so a later consumer can validate their aggregate
+state without raw observations. Each engine row retains the maximum
+within-observation p95/p50 query ratio; `null` means an unbounded zero-median
+ratio and therefore an unstable row. `validate_host_receipt` independently
+checks exact scalar types, timestamp and source identity, host/profile fit,
+canonical scale order, aggregate distribution counts and monotonicity, result
+agreement, the internal-ratio lower bound implied by the aggregate timing
+distributions, timing stability, scale state, and final outcome. A zero control
+query denominator is never reported as equal candidate performance in the
+cross-host scorecard; that scale is explicitly not comparable.
+
+Cross-host acceptance is another tooling-only boundary. The tracked
+`exact-path-cross-host-matrix.json` contract requires exactly one valid host
+receipt for each 8 GB, 16 GB, and reference-memory profile, with Sequoia and
+Tahoe each represented at least once. `exact_path_cross_host.py` rejects
+malformed, payload-bearing, duplicate, or repeated-profile receipts and emits
+one `exact-path-shadow-cross-host-scorecard` to stdout. Missing profile or OS
+coverage, a blocked host receipt, or different source commits or Swift
+toolchains produces a complete blocked scorecard rather than comparable
+evidence.
+
+Passing profile rows expose only closed host/configuration data, per-engine
+query p50/p95, candidate-to-control query ratios, build p50 values kept as
+separate lifecycle observations, byte counts, and exact-rank agreement. The
+versioned comparison policy normalizes candidate query timing against the
+control on the same host; a zero control denominator is `not-comparable`, never
+invented as equal performance. The scorecard accepts no output destination and
+sets no cross-host performance threshold, retained baseline, engine verdict,
+product schema, writer, app composition, or user-visible authority. Accelerate
+exact remains the only serving adapter.
+
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and
 capture returning inactive are wake signals. Bursts collapse to at most one

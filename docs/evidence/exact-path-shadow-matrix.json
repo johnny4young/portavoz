@@ -8,6 +8,7 @@
   ],
   "dimension": 512,
   "fixtureVersion": "synthetic-exact-path-v1",
+  "hostReceiptSchemaVersion": 2,
   "maximumTimingP95ToP50Ratio": 1.25,
   "measurementPolicyVersion": "alternating-query-order-v1",
   "minimumStableObservations": 3,
