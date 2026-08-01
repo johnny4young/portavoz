@@ -151,6 +151,14 @@ public struct ProcessSemanticCorpusMaintenance: Sendable {
                     after: now()))
         }
 
+        return try await processClaimedJob(job, profile: profile, owner: owner)
+    }
+
+    private func processClaimedJob(
+        _ job: DerivedMaintenanceJob,
+        profile: SemanticEmbeddingProfile,
+        owner: String
+    ) async throws -> SemanticCorpusMaintenanceRun {
         let heartbeat = heartbeatTask(for: job, owner: owner)
         defer { heartbeat.cancel() }
         do {
