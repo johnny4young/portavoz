@@ -659,7 +659,7 @@ selected. Later SEARCH-5 slices must put candidates behind this seam and retain
 exact control as the only user-visible authority until accepted quality and
 resource evidence exists.
 
-### Non-serving semantic shadow comparison (D207-D210)
+### Non-serving semantic shadow comparison (D207-D211)
 
 `ShadowComparingSemanticIndex` is a benchmark-only decorator over the D206
 port. It waits only for the exact control, projects its citation identity to a
@@ -713,6 +713,17 @@ it does not enable a shipping shadow lane or select an engine. D209 binds
 candidate identity to its implementation without adding an adapter dependency.
 D210 makes current StorageKit evidence the only candidate projection authority;
 it still adds no concrete engine, package, schema, or app wiring.
+
+The first engine experiment is fixed to sqlite-vec v0.1.9 exact full-scan. Its
+official amalgamation archive is pinned by SHA-256 in
+`scripts/vendor-sqlite-vec.sh`, which accepts an offline archive or downloads
+the same checksum-pinned release asset and stages only static C/header files plus the
+separately reviewed and checksum-pinned upstream MIT text.
+Dynamic extension loading is not permitted in the signed macOS app. D211 is a
+supply-chain boundary only: no vendored source, SwiftPM target, schema, writer,
+ranker, benchmark composition, or product wiring exists yet. sqlite-vec ANN
+alphas and USearch HNSW remain deferred until exact parity has isolated runtime,
+disk, packaging, and correction costs without approximate-recall tradeoffs.
 
 ### Governed semantic embedding runtime (D165)
 

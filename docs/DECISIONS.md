@@ -6962,3 +6962,39 @@ Accelerate control remains the only product authority.
 the revision-fenced projection before an engine experiment isolates ranking as
 the measured variable, makes correction/deletion races fail closed, and keeps
 future adapters reversible without duplicating authoritative meeting content.
+
+## D211 — Start engine research with pinned static sqlite-vec exact (Aug 2026)
+
+**Context:** D206-D210 make a non-serving candidate safe to compare, but the
+first concrete engine choice can still confound the experiment. sqlite-vec now
+has a stable v0.1.9 exact full-scan release and separate alpha ANN/DiskANN work;
+USearch provides HNSW with Swift support. Starting with either approximate path
+would mix packaging and execution cost with recall loss, build parameters, and
+incremental-index behavior. macOS system SQLite also blocks dynamic extensions
+by default, and a loadable dylib is an unnecessary signing and runtime surface.
+
+**Decision:** the first disposable SEARCH-5 engine is sqlite-vec v0.1.9 exact
+full-scan, statically compiled from the official amalgamation archive. The
+archive is pinned to SHA-256
+`b87cdda12112657ba5ab8842f0088a4090982eaf41f22b2bd6d495b81765a8c9`.
+`scripts/vendor-sqlite-vec.sh` downloads that release URL or accepts the same
+offline archive, verifies the digest before extraction, uses the upstream MIT
+terms from the tagged source, and stages only C source, header, that
+checksum-pinned license text, and provenance. The official amalgamation
+manifest contains only `sqlite-vec.c` and `sqlite-vec.h`, so the reviewed MIT
+text is retained separately under `scripts/vendor-metadata/` rather than
+pretending it came from the binary release asset. Existing destinations are
+never overwritten. Dynamic extension loading is forbidden.
+
+This slice selects and secures the source but does not vendor it, change
+`Package.swift`, create a schema or writer, implement a ranker, compose a
+benchmark, or alter product behavior. The next slice must statically compile
+the verified source and prove an isolated exact query before any meeting index
+exists. sqlite-vec ANN prereleases and USearch HNSW remain later candidates.
+
+**Rationale:** exact-versus-exact establishes packaging, latency, memory, disk,
+and correction cost without approximate-recall ambiguity. A small dependency-
+free C amalgamation fits the local-first and MIT/Apache policy, while strict
+digest verification and static linking keep the experiment reproducible and
+compatible with the signed macOS app. Deferring source activation also leaves
+the current build fully reproducible when network access is unavailable.

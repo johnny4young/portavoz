@@ -1637,7 +1637,15 @@ through `MeetingStore`, which drops duplicate, missing, deleted, negative-
 revision, and stale evidence before producing current `SearchHit` values. A
 derived index can therefore rank but cannot author citation text or bypass the
 authoritative transcript-revision fence. No concrete candidate package, schema,
-index writer, app wiring, or production scheduler exists yet.
+index writer, app wiring, or production scheduler exists yet. The first
+research engine is supply-chain selected as sqlite-vec v0.1.9 exact full-scan.
+`scripts/vendor-sqlite-vec.sh` pins the official amalgamation archive by
+SHA-256 and stages only static C/header material plus the separately reviewed,
+checksum-pinned upstream MIT text; dynamic SQLite extension loading is
+forbidden. The source is not yet vendored or linked, so this selection changes
+neither the package graph nor runtime behavior. ANN
+sqlite-vec prereleases and USearch remain later comparison candidates rather
+than hidden variables in the first exact-parity experiment.
 
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and

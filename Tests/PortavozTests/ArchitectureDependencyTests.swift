@@ -518,6 +518,58 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(manifest.contains("usearch"))
     }
 
+    func testFirstSemanticResearchEngineIsPinnedStaticAndDormant() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let vendor = try Self.contents(of: "scripts/vendor-sqlite-vec.sh")
+        let license = try Self.contents(
+            of: "scripts/vendor-metadata/sqlite-vec/LICENSE-MIT")
+
+        XCTAssertTrue(decisions.contains("## D211"))
+        XCTAssertTrue(architecture.contains("sqlite-vec v0.1.9 exact full-scan"))
+        XCTAssertTrue(architecture.contains("source is not yet vendored or linked"))
+        for required in [
+            #"readonly VERSION="0.1.9""#,
+            #"readonly ARCHIVE_NAME="sqlite-vec-${VERSION}-amalgamation.zip""#,
+            #"readonly ARCHIVE_SHA256="b87cdda12112657ba5ab8842f0088a4090982eaf41f22b2bd6d495b81765a8c9""#,
+            #"readonly LICENSE_SHA256="e49d7859a0fd8d3f8a2a7b81ca1dbddf61bd4f9e981d12908ead721a78c42f32""#,
+            #"actual_sha256="$(shasum -a 256 "$verified_archive""#,
+            #"actual_license_sha256="$(shasum -a 256 "$license_source""#,
+            "find_exactly_one sqlite-vec.c",
+            "find_exactly_one sqlite-vec.h",
+            #"[[ ! -e "$destination" ]]"#,
+            "static source only; dynamic extension loading is forbidden"
+        ] {
+            XCTAssertTrue(vendor.contains(required), "missing \(required)")
+        }
+        for forbidden in [
+            "enable_load_extension", "sqlite3_load_extension", "dlopen(", ".load "
+        ] {
+            XCTAssertFalse(
+                vendor.contains(forbidden),
+                "dynamic loading leaked: \(forbidden)")
+        }
+        XCTAssertTrue(license.contains("MIT License"))
+        XCTAssertTrue(license.contains("Copyright (c) 2024 Alex Garcia"))
+
+        let manifest = try Self.contents(of: "Package.swift").lowercased()
+        XCTAssertFalse(manifest.contains("sqlite-vec"))
+        XCTAssertFalse(manifest.contains("usearch"))
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: Self.repoRoot.appendingPathComponent("Vendor/sqlite-vec").path))
+        let integrationPattern = [
+            #"import\s+CSQLiteVec"#,
+            "sqlite3_vec_init",
+            "sqlite3_auto_extension",
+            #"CREATE\s+VIRTUAL\s+TABLE.+USING\s+vec0"#
+        ].joined(separator: "|")
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources",
+                pattern: "(?i)\\b(?:\(integrationPattern))"),
+            [])
+    }
+
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {
         let policy = try Self.contents(
             of: "Sources/PortavozCore/ResourceGovernorPolicy.swift")
