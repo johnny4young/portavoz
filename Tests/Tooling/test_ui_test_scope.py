@@ -12,6 +12,7 @@ from ui_test_scope import (  # noqa: E402
     ALL_TESTS,
     FEATURE_TESTS,
     HARNESS_TESTS,
+    MEETING_FEATURES,
     select_paths,
     validate_catalog,
     working_tree_paths,
@@ -131,6 +132,23 @@ class UITestScopeTests(unittest.TestCase):
         expected = tuple(test for test in ALL_TESTS if test in selected)
         self.assertEqual(selection.tests, expected)
         self.assertEqual(selection.locales, ("en",))
+
+    def test_meeting_detail_scene_and_presentation_select_all_detail_journeys(self):
+        for path in [
+            "Sources/portavoz-app/MeetingDetailScene.swift",
+            "Sources/portavoz-app/MeetingDetailPresentation.swift",
+        ]:
+            selection = select_paths([path])
+            expected = tuple(
+                test for test in ALL_TESTS
+                if test in {
+                    item
+                    for feature in MEETING_FEATURES
+                    for item in FEATURE_TESTS[feature]
+                }
+            )
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
 
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
         selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])

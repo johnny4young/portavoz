@@ -9,6 +9,7 @@
     "Sources/portavoz-app/AutoSelectTextField.swift",
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
+    "Sources/portavoz-app/MeetingDetailScene.swift",
     "Sources/portavoz-app/MeetingDetailView.swift",
     "Sources/portavoz-app/MeetingHealthView.swift",
     "Sources/portavoz-app/MeetingPlayerBar.swift",
@@ -146,6 +147,36 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
+      "source": "@Environment(\\.openSettings) private var openSettings",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
+      "source": "let openSettings: @MainActor (SettingsCategory) -> Void",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
+      "source": "openSettings()",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "navigation",
+      "source": "openSettings: { category in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailScene.swift",
+      "category": "state",
+      "source": "@State private var model: MeetingDetailModel",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
       "source": "AutoSelectTextField(text: $newTitle, onSubmit: { commitRename(detail) })",
@@ -202,7 +233,7 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "control",
-      "source": "Button(\"Discard\", role: .cancel) { services.refines.clear(meetingID) }",
+      "source": "Button(\"Discard\", role: .cancel) { sceneActions.clearRefine() }",
       "occurrences": 1
     },
     {
@@ -712,12 +743,6 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "navigation",
-      "source": "@Environment(\\.openSettings) private var openSettings",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "navigation",
       "source": "if let url = gistResult { NSWorkspace.shared.open(url) }",
       "occurrences": 1
     },
@@ -726,12 +751,6 @@
       "category": "navigation",
       "source": "onSeek: { player?.seek(to: $0); player?.play() },",
       "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "navigation",
-      "source": "openSettings()",
-      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
@@ -767,6 +786,18 @@
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "navigation",
       "source": "route = nil",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "navigation",
+      "source": "sceneActions.openSettings(.data)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailView.swift",
+      "category": "navigation",
+      "source": "sceneActions.openSettings(.intelligence)",
       "occurrences": 1
     },
     {
@@ -935,12 +966,6 @@
       "path": "Sources/portavoz-app/MeetingDetailView.swift",
       "category": "state",
       "source": "@State private var mirrorAverageShare: Double?",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "state",
-      "source": "@State private var model: MeetingDetailModel",
       "occurrences": 1
     },
     {

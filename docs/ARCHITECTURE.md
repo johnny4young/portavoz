@@ -212,7 +212,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 |---|---|---|
 | Library | `LibraryModel` | one main window |
 | Insights | `InsightsModel` | one main window |
-| Meeting Detail | `MeetingDetailModel` | one selected meeting route |
+| Meeting Detail | `MeetingDetailScene` + `MeetingDetailModel` | one selected meeting route |
 | Ask conversation | `AskModel` | one main window |
 | Command palette | `CommandPaletteModel` | application process |
 | First-run welcome | `FirstRunModel` | application process |
@@ -231,6 +231,17 @@ commitments, talk balance, and bounded finding evidence. Meeting Detail merges
 transcript/cast, newest summary, Apuntador, privacy receipt, and durable
 processing streams. A failed stream degrades only its section and preserves
 healthy state from the remaining sections.
+
+`MeetingDetailScene` is the route/composition owner and the only Meeting Detail
+presentation type that receives `AppServices`. It constructs one
+`MeetingDetailModel` in `@State`; the route keys the scene by `MeetingID`, so a
+different destination cannot retain the prior model. The scene projects process
+observations into immutable values and exposes explicit meeting-scoped actions. The child
+`MeetingDetailView` receives the model, values, actions, route binding, and one
+pure `MeetingDetailPresentation`; it neither observes `AppServices` nor creates
+the model. Presentation formatting receives its locale and time zone explicitly
+and imports Foundation only. The composition root is not an allowed dependency
+of child presentation types; scoped action values are their mutation boundary.
 
 Meeting Detail audio uses the same route owner. `MeetingDetailModel` owns
 one-shot preparation, cancellation retry, compression state, playback
@@ -961,7 +972,7 @@ or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
 Meeting Detail decomposition is also preceded by a frozen presentation
-boundary. A generated contract inventories 248 source interaction signals,
+boundary. A generated contract inventories 252 source interaction signals,
 assigns all 23 detail XCUITest journeys to exactly one of ten feature owners,
 and digest-binds the reviewed performance harness and evidence. Hidden
 payload-free scroll and seek signposts activate only when a disposable temp
@@ -973,6 +984,12 @@ hitches and zero potential hangs. Xcode emitted no SwiftUI update rows, so
 body invalidation counts remain unavailable rather than being reported as
 zero. This contract is a refactor-parity guard, not product telemetry or a
 performance budget.
+
+The reviewed interaction boundary includes the current scene shell. This
+adds route-owned state and navigation signals without changing any journey,
+owner, control, accessibility identifier, sheet, keyboard shortcut, or
+performance fixture. Scene and presentation changes conservatively select all
+Meeting Detail XCUITest journeys; section files keep their narrower mappings.
 
 Core also owns one pure resource-admission policy, separate from both
 measurement and runtime scheduling. Its immutable snapshot contains the

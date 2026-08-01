@@ -3549,10 +3549,14 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testAppMeetingBundleExportEntersThroughApplicationKit() throws {
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let scene = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailScene.swift")
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+Bundle.swift")
 
-        XCTAssertTrue(view.contains("services.exportMeetingBundle"))
+        XCTAssertTrue(view.contains("sceneActions.exportBundle"))
+        XCTAssertFalse(view.contains("services.exportMeetingBundle"))
+        XCTAssertTrue(scene.contains("services.exportMeetingBundle"))
         XCTAssertFalse(view.contains("let bundle = MeetingBundle("))
         XCTAssertFalse(view.contains("MeetingBundle.AudioAttachment"))
         XCTAssertFalse(view.contains("Data(contentsOf:"))
@@ -4336,6 +4340,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         let adapter = try Self.contents(of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
         let voiceAdapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+MeetingVoiceMemory.swift")
+        let content = try Self.contents(of: "Sources/portavoz-app/ContentView.swift")
+        let scene = try Self.contents(of: "Sources/portavoz-app/MeetingDetailScene.swift")
+        let presentation = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailPresentation.swift")
         let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
         let storage = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+MeetingDetailObservation.swift")
@@ -4348,8 +4356,31 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("store.observeMeetingReviewCore"))
         XCTAssertTrue(adapter.contains("store.observeMeetingReviewSummary"))
         XCTAssertTrue(adapter.contains("store.observeMeetingReviewCompanionCards"))
-        XCTAssertTrue(view.contains("@State private var model: MeetingDetailModel"))
+        XCTAssertTrue(content.contains("MeetingDetailScene("))
+        XCTAssertFalse(content.contains("MeetingDetailView("))
+        XCTAssertTrue(content.contains(".id(id)"))
+        XCTAssertTrue(scene.contains("@State private var model: MeetingDetailModel"))
+        XCTAssertTrue(scene.contains("services.makeMeetingDetailModel(meetingID)"))
+        XCTAssertTrue(scene.contains("MeetingDetailView("))
+        XCTAssertTrue(view.contains("let model: MeetingDetailModel"))
         XCTAssertTrue(view.contains(".task { await model.observe() }"))
+        XCTAssertFalse(view.contains("AppServices"))
+        XCTAssertFalse(view.contains("services."))
+        XCTAssertEqual(
+            presentation.components(separatedBy: .newlines)
+                .filter { $0.hasPrefix("import ") },
+            ["import Foundation"])
+        for forbidden in [
+            "AppLanguage",
+            "AppServices",
+            "Locale.current",
+            "MeetingStore",
+            "TimeZone.current",
+            "@State",
+            "@Environment",
+        ] {
+            XCTAssertFalse(presentation.contains(forbidden), forbidden)
+        }
         XCTAssertFalse(view.contains("ReloadID"))
         XCTAssertFalse(view.contains("services.store.detail"))
         XCTAssertFalse(view.contains("services.store.mostRecentSummary"))
@@ -4669,6 +4700,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let observation = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+MeetingDetailObservation.swift")
         let detail = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let scene = try Self.contents(of: "Sources/portavoz-app/MeetingDetailScene.swift")
 
         // v15 owns its own triggers — the registered v14 list is never edited.
         XCTAssertTrue(schema.contains("registerMigration(\"v15\")"))
@@ -4695,7 +4727,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(observation.contains(
             "regions: [\n                Table(\"meeting\"), Table(\"contextItem\"), Table(\"enhancedNote\")\n            ]"))
         // The view reaches enhancement through the use case, never the store.
-        XCTAssertTrue(detail.contains("services.enhanceMeetingNotes.execute"))
+        XCTAssertTrue(detail.contains("sceneActions.enhanceNotes"))
+        XCTAssertFalse(detail.contains("services.enhanceMeetingNotes.execute"))
+        XCTAssertTrue(scene.contains("services.enhanceMeetingNotes.execute"))
         XCTAssertFalse(detail.contains("saveEnhancedNote"))
     }
 
@@ -5305,7 +5339,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            248)
+            252)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             10)

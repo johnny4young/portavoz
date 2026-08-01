@@ -160,6 +160,17 @@ policy. Library, Insights, and Meeting Detail receive storage-independent
 updates from query-scoped Store observations; no app feature consumes a global
 `libraryVersion` counter.
 
+Meeting Detail routing enters `MeetingDetailScene` (D223). The scene owns the
+route's observable `MeetingDetailModel`, is keyed by `MeetingID`, and is the
+only detail presentation
+type allowed to receive `AppServices`. It projects current refine, navigation,
+summary-provider, mirror, and disposable-performance values plus explicit
+meeting-scoped actions into `MeetingDetailView`; the view does not create its
+model or observe the process composition root. Locale and time-zone rendering
+uses a pure Foundation-only `MeetingDetailPresentation` value. This shell
+changes no released control or workflow and is the seam for later section
+extraction.
+
 ### Resource workload measurement (D148)
 
 `AppServices` owns one `AppResourceWorkloadTelemetry` adapter and injects its

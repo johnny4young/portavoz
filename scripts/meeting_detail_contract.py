@@ -23,6 +23,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/AutoSelectTextField.swift",
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
+    "Sources/portavoz-app/MeetingDetailScene.swift",
     "Sources/portavoz-app/MeetingDetailView.swift",
     "Sources/portavoz-app/MeetingHealthView.swift",
     "Sources/portavoz-app/MeetingPlayerBar.swift",

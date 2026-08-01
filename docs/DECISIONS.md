@@ -7454,3 +7454,35 @@ measured behavior. Restricting automation to a disposable store prevents
 benchmark code from becoming a production back door. Recording unavailable
 tool output explicitly preserves trust while still providing actionable first-
 content, interaction, hitch, hang, and symbol evidence for later decomposition.
+
+## D223 — Own Meeting Detail composition in an explicit scene (Aug 2026)
+
+**Context:** the D222 contract froze released behavior, but
+`MeetingDetailView` still observed process-wide `AppServices`, constructed its
+own route model, and mixed locale-dependent formatting with a 2,400-line
+presentation. Extracting visual sections on top of that ownership would let
+every child inherit the composition root and make route lifetime ambiguous.
+
+**Decision:** route every selected meeting through `MeetingDetailScene`. The
+scene is the sole Meeting Detail presentation type that receives `AppServices`
+and owns one `MeetingDetailModel` in `@State` for the route lifetime. The route
+keys scene identity by `MeetingID`, preventing a new destination from retaining
+the previous route's state. It passes
+the child immutable observed values and explicit meeting-scoped actions; the
+child never receives or discovers `AppServices`. Keep application workflows in
+their current owners and preserve every released gesture and result while the
+later decomposition narrows each section to only its relevant closure.
+
+Move locale and time-zone formatting into a Foundation-only,
+side-effect-free `MeetingDetailPresentation` value. It receives all varying
+inputs explicitly and cannot reach storage, platform capability, clocks, or
+application services. Expand the D222 reviewed source boundary to include the
+scene, producing 252 interaction signals across twelve files while preserving
+the same 23 journeys and ten feature owners. Scene/presentation diffs select
+all Meeting Detail UI journeys until later sections have independent mappings.
+
+**Rationale:** explicit scene ownership gives the route one observable model,
+makes the composition root mechanically enforceable, and creates a stable
+Strangler seam without a feature-parity rewrite. Pure presentation formatting
+is deterministic and directly testable, while explicit action projection keeps
+future child views from gaining broad capabilities by convenience.

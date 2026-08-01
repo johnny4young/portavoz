@@ -24,11 +24,12 @@ private struct PersonRememberOffer {
 /// Transcript with editable speaker pills (the M3 leftover), the latest
 /// summary snapshot, and its checkable action items.
 struct MeetingDetailView: View {
-    @Environment(AppServices.self) private var services
-    @Environment(\.openSettings) private var openSettings
     let meetingID: MeetingID
     @Binding var route: Route?
-    @State private var model: MeetingDetailModel
+    let model: MeetingDetailModel
+    let presentation: MeetingDetailPresentation
+    let sceneValues: MeetingDetailSceneValues
+    let sceneActions: MeetingDetailSceneActions
 
     private var detail: MeetingReviewReadModel? { model.state.readModel }
     /// The live Companion's answer cards, persisted (D26) so the meeting can
@@ -56,7 +57,7 @@ struct MeetingDetailView: View {
     @State private var notesNotice: String?
     /// Refine state lives in RefineService (keyed by meeting) so the work
     /// and its draft survive navigating away from this view.
-    private var refinePhase: RefineService.Phase? { services.refines.phase(for: meetingID) }
+    private var refinePhase: RefineService.Phase? { sceneValues.refinePhase }
     private var refining: String? {
         if case .running(let status) = refinePhase { return status } else { return nil }
     }
@@ -99,16 +100,6 @@ struct MeetingDetailView: View {
     /// inert unless both the temp-store and performance-profile flags exist.
     @State private var didRunPerformanceSeek = false
 
-    init(
-        services: AppServices,
-        meetingID: MeetingID,
-        route: Binding<Route?>
-    ) {
-        self.meetingID = meetingID
-        _route = route
-        _model = State(initialValue: services.makeMeetingDetailModel(meetingID))
-    }
-
     /// The post-meeting mirror (6a-2): opt-in, shown once right after a
     /// qualifying recording. `mirrorAverageShare` is the user's usual talk
     /// share across recent meetings, loaded lazily so the card can compare.
@@ -127,7 +118,7 @@ struct MeetingDetailView: View {
         .task { await model.observe() }
         .task(id: playbackTaskID) { await refreshPlayback() }
         .task(id: model.state.revision) { await refreshPresentation() }
-        .onChange(of: services.pendingMeetingSeek) { _, _ in
+        .onChange(of: sceneValues.pendingSeek) { _, _ in
             consumePendingMeetingSeekIfMatching()
         }
         .onDisappear { model.invalidatePlayback() }
@@ -196,8 +187,7 @@ struct MeetingDetailView: View {
             }
             .alert("Summary needs setup", isPresented: summarySetupBinding) {
                 Button("Open Intelligence Settings") {
-                    services.pendingSettingsCategory = .intelligence
-                    openSettings()
+                    sceneActions.openSettings(.intelligence)
                 }
                 .accessibilityIdentifier("detail-summary-open-settings")
                 Button("Not now", role: .cancel) {}
@@ -294,7 +284,7 @@ extension MeetingDetailView {
             speakers: detail.speakers,
             player: player,
             focusedSegmentID: evidenceFocusSegmentID,
-            performanceScrollEnabled: services.meetingDetailPerformanceProfile
+            performanceScrollEnabled: sceneValues.performanceProfile
                 .shouldExerciseTranscriptScroll,
             onSeek: { player?.seek(to: $0); player?.play() },
             onRenameTap: { speaker in
@@ -448,8 +438,7 @@ extension MeetingDetailView {
                     "Re-transcribe the saved audio with Whisper, then review the result before applying it."))
         } else {
             Button("Open support diagnostics") {
-                services.pendingSettingsCategory = .data
-                openSettings()
+                sceneActions.openSettings(.data)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
@@ -531,7 +520,7 @@ extension MeetingDetailView {
                         Text(event.destinationHost)
                             .font(.caption2.monospaced())
                             .foregroundStyle(.secondary)
-                        Text(event.attemptedAt.formatted(date: .abbreviated, time: .shortened))
+                        Text(presentation.shortDate(event.attemptedAt))
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
@@ -622,7 +611,7 @@ extension MeetingDetailView {
         case .noRemoteTransferRecorded:
             return L10n.format(
                 "Tracking began %@; earlier activity is not covered.",
-                receipt.trackingStartedAt.formatted(date: .abbreviated, time: .shortened))
+                presentation.shortDate(receipt.trackingStartedAt))
         case .remoteTransferAttempted:
             if receipt.remoteEvents.count == 1 {
                 return L10n.text(
@@ -710,9 +699,7 @@ extension MeetingDetailView {
     /// latest summary + notes — and optionally the recording itself
     /// (compress first via "Compress audio (AAC)" for a mail-sized file).
     private func exportBundle(_ detail: MeetingReviewReadModel, includeAudio: Bool) async {
-        guard let data = try? await services.exportMeetingBundle(
-            meetingID: detail.meeting.id,
-            includeAudio: includeAudio)
+        guard let data = try? await sceneActions.exportBundle(includeAudio)
         else {
             gistError = L10n.text("Could not encode the meeting file.")
             return
@@ -799,7 +786,7 @@ extension MeetingDetailView {
     private var refineDraftBinding: Binding<Bool> {
         Binding(
             get: { refineDraft != nil },
-            set: { if !$0 { services.refines.clear(meetingID) } })
+            set: { if !$0 { sceneActions.clearRefine() } })
     }
 
     private var exportBinding: Binding<Bool> {
@@ -907,12 +894,14 @@ extension MeetingDetailView {
             }
             actionRow(detail)
             HStack(spacing: 12) {
-                Text(detail.meeting.startedAt.formatted(date: .long, time: .shortened))
-                if let ended = detail.meeting.endedAt {
-                    let minutes = Int(ended.timeIntervalSince(detail.meeting.startedAt) / 60)
-                    Text("\(minutes) min")
+                Text(presentation.meetingDate(detail.meeting.startedAt))
+                if let duration = presentation.meetingDuration(
+                    startedAt: detail.meeting.startedAt,
+                    endedAt: detail.meeting.endedAt
+                ) {
+                    Text(duration)
                 }
-                Text("\(detail.segments.count) segments")
+                Text(presentation.segmentCount(detail.segments.count))
             }
             .font(.callout)
             .foregroundStyle(.secondary)
@@ -1586,8 +1575,7 @@ extension MeetingDetailView {
     }
 
     private func evidenceClock(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%d:%02d", total / 60, total % 60)
+        presentation.clock(seconds)
     }
 
     private enum ExportFormat { case markdown, pdf, srt, vtt }
@@ -1633,14 +1621,14 @@ extension MeetingDetailView {
     /// The engine that is NOT the global default, offered as a per-meeting
     /// override in the regenerate menu — only when it can actually run here (M12).
     private var alternateEngine: (engine: SummaryEngine, label: String)? {
-        switch services.summaryEngine {
+        switch sceneValues.summaryEngine {
         case .appleOnDevice:
-            if let model = services.ollamaModel {
+            if let model = sceneValues.ollamaModel {
                 return (.ollama, "Regenerar con Ollama · \(model)")
             }
             return nil
         case .ollama, .mlx:
-            if services.appleSummaryAvailable {
+            if sceneValues.appleSummaryAvailable {
                 return (.appleOnDevice, "Regenerar con Apple (on-device)")
             }
             return nil
@@ -1678,7 +1666,7 @@ extension MeetingDetailView {
                 recipe: activeRecipe,
                 targetLanguage: language.identifier,
                 providerOverride: engine)
-            let result = await services.regenerateSummary.execute(request)
+            let result = await sceneActions.regenerateSummary(request)
             switch result {
             case .completed:
                 // Keep Spotlight's released broad invalidation until Band 4
@@ -1775,7 +1763,7 @@ extension MeetingDetailView {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(notes.contextItems) { item in
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            Text(Self.noteTimestamp(item.timestamp))
+                            Text(presentation.clock(item.timestamp))
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(.tertiary)
                             Text(item.content)
@@ -1790,11 +1778,6 @@ extension MeetingDetailView {
         }
     }
 
-    private static func noteTimestamp(_ seconds: TimeInterval) -> String {
-        let total = Int(seconds.rounded())
-        return String(format: "%d:%02d", total / 60, total % 60)
-    }
-
     private func enhanceNotes(language: LanguageCode, engine: SummaryEngine? = nil) {
         guard let detail, !enhancingNotes else { return }
         enhancingNotes = true
@@ -1807,7 +1790,7 @@ extension MeetingDetailView {
                 speakers: detail.speakers,
                 targetLanguage: language.identifier,
                 providerOverride: engine)
-            applyEnhanceNotesResult(await services.enhanceMeetingNotes.execute(request))
+            applyEnhanceNotesResult(await sceneActions.enhanceNotes(request))
         }
     }
 
@@ -1874,7 +1857,7 @@ extension MeetingDetailView {
         let disabled = !isRefining && detail.meeting.audioDirectory == nil
         if isRefining {
             Button(role: .destructive) {
-                services.refines.cancel(meetingID)
+                sceneActions.cancelRefine()
             } label: {
                 refineControlLabel(isRefining: true)
             }
@@ -1925,22 +1908,16 @@ extension MeetingDetailView {
         _ detail: MeetingReviewReadModel,
         languagePolicy: TranscriptLanguagePolicy? = nil
     ) {
-        services.refines.start(
-            meetingID: meetingID,
-            meeting: detail.meeting,
-            speakers: detail.speakers,
-            segments: detail.segments,
-            useCase: services.refineMeeting.draft,
-            languagePolicy: languagePolicy)
+        sceneActions.startRefine(detail, languagePolicy)
     }
 
     private func applyRefineDraft(_ draft: RefineDraft) {
-        services.refines.clear(meetingID)
+        sceneActions.clearRefine()
         applying = L10n.text("Applying the refined transcript…")
         Task {
             defer { applying = nil }
             do {
-                let result = try await services.applyMeetingDetailRefine(
+                let result = try await sceneActions.applyRefine(
                     ApplyRefinedMeetingRequest(
                         meetingID: meetingID,
                         draft: draft
@@ -2024,7 +2001,7 @@ extension MeetingDetailView {
 
             HStack {
                 Spacer()
-                Button("Discard", role: .cancel) { services.refines.clear(meetingID) }
+                Button("Discard", role: .cancel) { sceneActions.clearRefine() }
                 Button("Apply") { applyRefineDraft(draft) }
                     .buttonStyle(.borderedProminent)
                     .disabled(draft.segments.isEmpty)
@@ -2035,8 +2012,7 @@ extension MeetingDetailView {
     }
 
     private func minutes(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%d:%02d min", total / 60, total % 60)
+        presentation.refinedDuration(seconds)
     }
 }
 
@@ -2096,7 +2072,7 @@ extension MeetingDetailView {
     /// The mirror shows once, right after a qualifying recording, and only
     /// when the user opted in. Everything is local and gated on real signal.
     private func mirrorShouldShow(_ detail: MeetingReviewReadModel) -> Bool {
-        guard mirrorAfterMeeting, services.justRecorded == meetingID else { return false }
+        guard mirrorAfterMeeting, sceneValues.justRecorded == meetingID else { return false }
         let health = MeetingHealth.compute(segments: detail.segments)
         guard mirrorMyStat(detail, health: health) != nil else { return false }
         return MirrorStats.qualifies(
@@ -2107,18 +2083,18 @@ extension MeetingDetailView {
     private func mirrorBinding(_ detail: MeetingReviewReadModel) -> Binding<Bool> {
         Binding(
             get: { mirrorShouldShow(detail) },
-            set: { if !$0 { services.justRecorded = nil } })
+            set: { if !$0 { sceneActions.clearJustRecorded() } })
     }
 
     /// Recompute the comparison average whenever a fresh recording arrives.
-    private var mirrorTaskID: MeetingID? { services.justRecorded }
+    private var mirrorTaskID: MeetingID? { sceneValues.justRecorded }
 
     private func loadMirrorAverageIfNeeded() async {
-        guard mirrorAfterMeeting, services.justRecorded == meetingID,
+        guard mirrorAfterMeeting, sceneValues.justRecorded == meetingID,
             mirrorAverageLoadedFor != meetingID
         else { return }
         mirrorAverageLoadedFor = meetingID
-        mirrorAverageShare = await services.averageMyShare(excluding: meetingID)
+        mirrorAverageShare = await sceneActions.averageMyShare()
     }
 
     @ViewBuilder
@@ -2129,16 +2105,16 @@ extension MeetingDetailView {
                 myShare: mine.share,
                 myQuestions: mine.questions,
                 myInterruptions: mine.interruptionsMade,
-                language: Locale.current.language.languageCode?.identifier ?? "en",
+                language: presentation.languageIdentifier,
                 averageShare: mirrorAverageShare,
                 onSeeTrend: {
-                    services.justRecorded = nil
+                    sceneActions.clearJustRecorded()
                     route = .insights
                 },
-                onDismiss: { services.justRecorded = nil },
+                onDismiss: sceneActions.clearJustRecorded,
                 onTurnOff: {
                     mirrorAfterMeeting = false
-                    services.justRecorded = nil
+                    sceneActions.clearJustRecorded()
                 })
         }
     }
@@ -2156,10 +2132,8 @@ extension MeetingDetailView {
     /// newly constructed destination and requests that arrive before loading.
     private func consumePendingMeetingSeekIfMatching() {
         guard
-            let request = services.pendingMeetingSeek,
-            request.meetingID == meetingID
+            let request = sceneActions.consumePendingSeek()
         else { return }
-        services.pendingMeetingSeek = nil
         pendingEvidenceSeek = request.timestamp
         applyPendingEvidenceSeekIfPossible()
     }
@@ -2177,7 +2151,7 @@ extension MeetingDetailView {
 
     private func runPerformanceSeekIfRequested() {
         guard MeetingDetailPerformanceTrace.isEnabled,
-              services.meetingDetailPerformanceProfile.shouldExercisePlaybackSeek,
+              sceneValues.performanceProfile.shouldExercisePlaybackSeek,
               !didRunPerformanceSeek,
               let player
         else { return }
@@ -2228,8 +2202,8 @@ extension MeetingDetailView {
         _ summary: MeetingReviewSummary
     ) -> some View {
         if !regenerating,
-            services.summaryEngine != .mlx,
-            services.mlxDownloaded,
+            sceneValues.summaryEngine != .mlx,
+            sceneValues.mlxDownloaded,
             model.state.dismissedThinSummaryVersion != summary.version,
             let detail,
             let ended = detail.meeting.endedAt,
@@ -2295,8 +2269,7 @@ extension MeetingDetailView {
     }
 
     private func timestamp(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%02d:%02d", total / 60, total % 60)
+        presentation.clock(seconds, paddedMinutes: true)
     }
 
     /// ✦ Chapters (design system): break points the app finds locally in

@@ -52,11 +52,11 @@ struct ContentView: View {
                 case .recording(let event):
                     RecordingView(route: $route, event: event)
                 case .meeting(let id):
-                    MeetingDetailView(
+                    MeetingDetailScene(
                         services: services,
                         meetingID: id,
                         route: $route)
-                        .id(id)  // reload state when switching meetings
+                        .id(id)  // Reset route-owned state when switching meetings.
                 case .ask:
                     AskView(
                         model: askModel,
