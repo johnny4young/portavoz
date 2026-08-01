@@ -597,7 +597,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "#define SQLITE_VEC_OMIT_FS 1",
             #"#include "../../Vendor/sqlite-vec/sqlite-vec.c""#,
             "portavoz_sqlite_vec_run_exact_query_smoke",
-            "WHERE embedding MATCH ?1 ORDER BY distance LIMIT 1",
+            "WHERE embedding MATCH ?1 ORDER BY distance LIMIT ?2",
         ] {
             XCTAssertTrue(wrapper.contains(required), "missing \(required)")
         }
@@ -606,6 +606,60 @@ final class ArchitectureDependencyTests: XCTestCase {
             under: "Sources/portavoz-app",
             pattern: #"CSQLiteVecResearch|sqlite3_vec_init|USING\s+vec0"#)
         XCTAssertEqual(productMatches, [])
+    }
+
+    func testFirstSemanticResearchRankerRemainsDisposableShadowOnly() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let ranker = try Self.contents(
+            of: "Sources/SQLiteVecResearchKit/SQLiteVecExactShadowRanker.swift")
+        let native = try Self.contents(
+            of: "Sources/CSQLiteVecResearch/SQLiteVecResearch.c")
+        let semanticTests = try Self.contents(
+            of: "Tests/PortavozTests/SemanticIndexTests.swift")
+        let targets = try TargetManifestParser.declarations(
+            in: Self.contents(of: "Package.swift"))
+
+        XCTAssertTrue(decisions.contains("## D213"))
+        XCTAssertTrue(architecture.contains("SQLiteVecExactShadowRanker"))
+        XCTAssertTrue(try XCTUnwrap(targets["SQLiteVecResearchKit"]).dependencies.contains(
+            "CSQLiteVecResearch"))
+        XCTAssertFalse(try XCTUnwrap(targets["SQLiteVecResearchKit"]).dependencies.contains(
+            "ApplicationKit"))
+        XCTAssertTrue(try XCTUnwrap(targets["PortavozTests"]).dependencies.contains(
+            "SQLiteVecResearchKit"))
+        for productTarget in ["portavoz-app", "portavoz-cli", "ApplicationKit"] {
+            let dependencies = try XCTUnwrap(targets[productTarget]).dependencies
+            XCTAssertFalse(dependencies.contains("SQLiteVecResearchKit"))
+            XCTAssertFalse(dependencies.contains("CSQLiteVecResearch"))
+        }
+
+        for required in [
+            "public actor SQLiteVecExactShadowRanker",
+            "entry.identity.transcriptRevision >= 0",
+            "segmentIDs.insert(entry.identity.segmentID).inserted",
+            "query.allSatisfy(\\.isFinite)",
+            "withTaskCancellationHandler",
+            "cancellation.cancel()",
+        ] {
+            XCTAssertTrue(ranker.contains(required), "missing \(required)")
+        }
+        for required in [
+            "distance_metric=cosine",
+            "SELECT rowid, distance FROM research_vectors",
+            "index->vector_count",
+            "distances[insertion] == distance",
+            "sqlite3_progress_handler",
+        ] {
+            XCTAssertTrue(native.contains(required), "missing \(required)")
+        }
+        XCTAssertTrue(semanticTests.contains(
+            "testSQLiteVecRankerRunsBehindProjectionAndAggregateShadowOnly"))
+        XCTAssertTrue(semanticTests.contains(
+            "ProjectedSemanticIndexShadowCandidate"))
+        XCTAssertTrue(semanticTests.contains("ShadowComparingSemanticIndex"))
+        XCTAssertTrue(semanticTests.contains(
+            "SQLiteVecShadowRankerAdapter: SemanticIndexShadowRanking"))
     }
 
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {

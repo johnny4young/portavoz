@@ -120,6 +120,15 @@ let package = Package(
             publicHeadersPath: "include",
             linkerSettings: [.linkedLibrary("sqlite3")]
         ),
+        // D213 disposable exact ranker. A test-owned adapter implements the
+        // ApplicationKit shadow port; this capability remains a lower layer.
+        .target(
+            name: "SQLiteVecResearchKit",
+            dependencies: [
+                "PortavozCore", "StorageKit",
+                "CSQLiteVecResearch",
+            ]
+        ),
 
         // IntegrationsKit is the outbound-adapter layer over stored meetings
         // (export, MCP protocol, providers, private sync transport). Application
@@ -170,6 +179,7 @@ let package = Package(
                 "AudioPlaybackKit",
                 "IntegrationsKit",
                 "CSQLiteVecResearch",
+                "SQLiteVecResearchKit",
                 .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),

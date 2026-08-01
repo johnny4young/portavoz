@@ -1,6 +1,7 @@
 import ApplicationKit
 import Foundation
 import PortavozCore
+import SQLiteVecResearchKit
 import StorageKit
 import XCTest
 
@@ -265,6 +266,61 @@ final class SemanticIndexTests: XCTestCase {
             limit: 1)
 
         XCTAssertTrue(hits.isEmpty)
+    }
+
+    func testSQLiteVecRankerRunsBehindProjectionAndAggregateShadowOnly() async throws {
+        let fixture = try await Self.fixture()
+        let control = AccelerateExactSemanticIndex(store: fixture.store)
+        let controlHits = try await control.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 2)
+        XCTAssertEqual(controlHits.count, 2)
+        let entries = [
+            SQLiteVecShadowEntry(
+                identity: SemanticSearchCandidateIdentity(
+                    segmentID: controlHits[0].segmentID,
+                    transcriptRevision: controlHits[0].transcriptRevision),
+                vector: [1, 0]),
+            SQLiteVecShadowEntry(
+                identity: SemanticSearchCandidateIdentity(
+                    segmentID: controlHits[1].segmentID,
+                    transcriptRevision: controlHits[1].transcriptRevision),
+                vector: [0, 1]),
+        ]
+        let projected = ProjectedSemanticIndexShadowCandidate(
+            ranker: SQLiteVecShadowRankerAdapter(
+                ranker: try SQLiteVecExactShadowRanker(
+                    profile: fixture.profile,
+                    entries: entries)),
+            store: fixture.store)
+        let operations = SemanticIndexShadowOperationQueue()
+        let events = SemanticIndexShadowEventRecorder()
+        let index = ShadowComparingSemanticIndex(
+            control: control,
+            candidate: projected,
+            telemetry: events.telemetry,
+            executor: operations.executor)
+
+        let served = try await index.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 2)
+
+        XCTAssertEqual(served.map(\.segmentID), controlHits.map(\.segmentID))
+        XCTAssertTrue(events.values.isEmpty)
+        XCTAssertEqual(operations.count, 1)
+
+        await operations.runNext()
+
+        let event = try XCTUnwrap(events.values.first)
+        XCTAssertEqual(event.candidate, .sqliteVecExact)
+        XCTAssertEqual(event.outcome, .completed)
+        XCTAssertEqual(event.controlResultCount, 2)
+        XCTAssertEqual(event.candidateResultCount, 2)
+        XCTAssertEqual(event.overlapCount, 2)
+        XCTAssertEqual(event.sameRankCount, 2)
+        XCTAssertEqual(event.topHitAgreement, true)
     }
 
     func testShadowCoordinatorUsesMaintenanceAdmissionAndSkipsDeniedWork() async throws {
@@ -676,6 +732,23 @@ private actor ControllableShadowSemanticIndex: SemanticIndexSearching {
     private func cancelFirstCall() {
         firstContinuation?.resume(throwing: CancellationError())
         firstContinuation = nil
+    }
+}
+
+private struct SQLiteVecShadowRankerAdapter: SemanticIndexShadowRanking {
+    let ranker: SQLiteVecExactShadowRanker
+
+    var adapter: SemanticIndexShadowAdapter { .sqliteVecExact }
+
+    func rankedCandidates(
+        for query: [Float],
+        profile: SemanticEmbeddingProfile,
+        limit: Int
+    ) async throws -> [SemanticSearchCandidateIdentity] {
+        try await ranker.rankedCandidates(
+            for: query,
+            profile: profile,
+            limit: limit)
     }
 }
 

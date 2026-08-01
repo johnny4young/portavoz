@@ -659,7 +659,7 @@ selected. Later SEARCH-5 slices must put candidates behind this seam and retain
 exact control as the only user-visible authority until accepted quality and
 resource evidence exists.
 
-### Non-serving semantic shadow comparison (D207-D212)
+### Non-serving semantic shadow comparison (D207-D213)
 
 `ShadowComparingSemanticIndex` is a benchmark-only decorator over the D206
 port. It waits only for the exact control, projects its citation identity to a
@@ -722,14 +722,30 @@ the official tagged Git blob and its SHA-256; the small public header is
 deterministically rendered from the tagged template and version metadata. The
 reviewed upstream MIT text and complete provenance remain beside the source.
 
-`CSQLiteVecResearch` is a static C target depended on only by
-`PortavozTests`. It compiles the amalgamation in SQLite-core/static mode with
-filesystem helpers omitted and runs one in-memory four-dimensional `vec0`
-exact nearest-neighbor query. Dynamic extension loading is not permitted. This
-proves source compatibility and one exact query only: no meeting schema,
-writer, ranker, benchmark composition, app/CLI dependency, durable evidence,
-or product behavior exists. sqlite-vec ANN alphas and USearch HNSW remain
-deferred until exact parity has isolated runtime, disk, packaging, and
+`CSQLiteVecResearch` is a static C target depended on only by the test-only
+`SQLiteVecResearchKit` and `PortavozTests`. It compiles the amalgamation in
+SQLite-core/static mode with filesystem helpers omitted. Dynamic extension
+loading is not permitted.
+
+`SQLiteVecExactShadowRanker` builds one disposable in-memory `vec0` table from
+fixed-profile vectors and source identities. It validates nonnegative
+revisions, unique segment identity, finite vectors, exact dimensions, and
+query-profile compatibility before calling C. The native table uses cosine
+distance. Because sqlite-vec KNN accepts only `ORDER BY distance`, the wrapper
+reads the complete exact result and retains bounded top-k by distance then
+corpus position to match the control's deterministic tie policy. Task
+cancellation is checked on both sides of the native call and a cancellation
+token drives the SQLite progress handler.
+
+The ranker emits only `SemanticSearchCandidateIdentity` and does not depend
+back on `ApplicationKit`. A test-owned `SemanticIndexShadowRanking` adapter
+flows it through the D210 authoritative projection and D207 aggregate
+comparator while exact Accelerate results remain the returned value.
+No app, CLI, `ApplicationKit`, meeting schema, writer, durable output, or
+user-visible query path depends on either research target. The complete-result
+tie normalization is not accepted performance evidence; scale/resource
+measurement remains the next gate. sqlite-vec ANN alphas and USearch HNSW
+remain deferred until exact parity has isolated runtime, disk, packaging, and
 correction costs without approximate-recall tradeoffs.
 
 ### Governed semantic embedding runtime (D165)

@@ -7031,3 +7031,42 @@ later ranking and benchmark experiment. Immutable blob and content digests keep
 the fallback acquisition auditable without claiming that a blocked ZIP was
 downloaded, while test-only linkage proves macOS compatibility without adding
 code, filesystem helpers, or dynamic-loader surface to either shipping binary.
+
+## D213 — Put a disposable sqlite-vec ranker behind authoritative projection (Aug 2026)
+
+**Context:** D212 proved the pinned static amalgamation and one query, but it
+did not exercise the D210 identity-only ranker contract or D207 aggregate
+comparison path. A direct product dependency, persisted `vec0` table, or app
+composition would grant an unmeasured engine authority too early. sqlite-vec
+also permits only one KNN sort term, so equal-distance row order is not the
+same deterministic contract as the current Accelerate traversal order.
+
+**Decision:** add `SQLiteVecResearchKit`, reachable only by `PortavozTests`,
+with `SQLiteVecExactShadowRanker` exposing an identity-only exact rank
+primitive without depending back on `ApplicationKit`. A test-owned
+`SemanticIndexShadowRanking` adapter provides the D210 research conformance.
+Construction builds one disposable in-memory
+cosine `vec0` table after validating one exact embedding profile, finite fixed-
+dimension vectors, nonnegative transcript revisions, and unique segment IDs.
+Queries require the same profile and emit only ordered segment/revision
+identity. The native wrapper requests the complete exact result and retains a
+bounded top-k by distance then original corpus position, making equal-distance
+evidence deterministic before D210 projection. Task cancellation is checked
+before and after native execution and signalled through a native atomic token
+and SQLite progress handler.
+
+Characterization composes the concrete ranker through
+`ProjectedSemanticIndexShadowCandidate` and
+`ShadowComparingSemanticIndex`: Accelerate control is returned immediately,
+StorageKit rehydrates current citation evidence, and only payload-free
+aggregate agreement is recorded. The app, CLI, and `ApplicationKit` do not
+depend on either research target. This decision creates no product schema,
+writer, durable receipt, app composition, or user-visible path, and accepts no
+quality or resource evidence.
+
+**Rationale:** exercising the complete Strangler path finds engine-specific
+correctness differences before persistence or product integration. A
+disposable index keeps authoritative data untouched and deletion/correction
+fencing in StorageKit. Deterministic tie normalization prevents false rank
+drift; its complete-result overhead is deliberately visible and must be
+measured before any adoption decision.

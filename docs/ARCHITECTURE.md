@@ -1636,22 +1636,39 @@ identities. `ProjectedSemanticIndexShadowCandidate` resolves those ranks back
 through `MeetingStore`, which drops duplicate, missing, deleted, negative-
 revision, and stale evidence before producing current `SearchHit` values. A
 derived index can therefore rank but cannot author citation text or bypass the
-authoritative transcript-revision fence. No concrete ranker, schema, index
+authoritative transcript-revision fence. No product ranker, schema, index
 writer, app wiring, or production scheduler exists yet. The first research
-engine is supply-chain selected as sqlite-vec v0.1.9 exact full-scan.
+engine is sqlite-vec v0.1.9 exact full-scan.
 `scripts/vendor-sqlite-vec.sh` pins the official amalgamation archive by
 SHA-256 and stages only static C/header material plus the separately reviewed,
 checksum-pinned upstream MIT text; dynamic SQLite extension loading is
 forbidden. `Vendor/sqlite-vec` now retains the byte-identical tagged C blob, a
 deterministically rendered tagged header, license, and provenance.
 `CSQLiteVecResearch` textually compiles that amalgamation with
-`SQLITE_CORE`, `SQLITE_VEC_STATIC`, and `SQLITE_VEC_OMIT_FS`; it is linked only
-by `PortavozTests`. Its fixed in-memory smoke executes one `vec0` exact query
-and proves the nearest row without touching a meeting store. Neither app nor
-CLI depends on the target, and there is still no product ranker, schema,
-writer, shadow composition, or durable receipt. ANN sqlite-vec prereleases and
-USearch remain later comparison candidates rather than hidden variables in the
-first exact-parity experiment.
+`SQLITE_CORE`, `SQLITE_VEC_STATIC`, and `SQLITE_VEC_OMIT_FS`.
+`SQLiteVecResearchKit` owns `SQLiteVecExactShadowRanker`, a disposable actor
+over one in-memory `vec0` index. Construction accepts one valid embedding
+profile, unique current-source identities, finite fixed-dimension vectors, and
+no text. Queries require that same profile and dimension, use cosine distance,
+and normalize equal distances by original corpus order because sqlite-vec
+permits only one `ORDER BY distance` term. Cancellation is checked before and
+after the native call and signalled through a native token plus SQLite progress
+handler.
+
+The ranker depends only on the native research target, `PortavozCore`, and
+`StorageKit`; it does not depend back on `ApplicationKit`. A test-owned
+`SemanticIndexShadowRanking` adapter exposes its ordered segment/revision
+identities to the research seam. A characterization composes that adapter through
+`ProjectedSemanticIndexShadowCandidate` and `ShadowComparingSemanticIndex`,
+proving that current StorageKit evidence remains citation authority and only
+aggregate agreement crosses the shadow boundary. Both research targets are
+reachable only from `PortavozTests`; neither app, CLI, nor `ApplicationKit`
+depends on them. The native query currently reads the complete exact result set
+to impose deterministic tie order before retaining bounded top-k, so no
+resource result is accepted yet. There is still no product schema, writer, app
+composition, durable receipt, or user-visible authority. ANN sqlite-vec
+prereleases and USearch remain later comparison candidates rather than hidden
+variables in the first exact-parity experiment.
 
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and
