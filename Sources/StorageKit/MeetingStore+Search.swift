@@ -44,6 +44,23 @@ public struct SemanticEmbeddingPublicationResult: Equatable, Sendable {
         skippedSegmentIDs: [])
 }
 
+/// Ordered citation identity emitted by a derived semantic-search engine.
+///
+/// The authoritative store resolves this value back to current transcript
+/// evidence before an engine result may cross the semantic query port.
+public struct SemanticSearchCandidateIdentity: Equatable, Hashable, Sendable {
+    public let segmentID: UUID
+    public let transcriptRevision: Int
+
+    public init(
+        segmentID: UUID,
+        transcriptRevision: Int
+    ) {
+        self.segmentID = segmentID
+        self.transcriptRevision = transcriptRevision
+    }
+}
+
 // Full-text (FTS5) and semantic (local RAG) search. Split out of
 // `MeetingStore.swift` so the core type stays small.
 extension MeetingStore {
@@ -352,6 +369,66 @@ extension MeetingStore {
                 }
             }
             return try Self.semanticHits(in: db, candidates: candidates)
+        }
+    }
+
+    /// Resolves ordered derived-index identities through current authoritative
+    /// transcript rows. Missing, deleted, duplicate, invalid-revision, or stale
+    /// candidates are omitted without allowing later ranks to exceed `limit`.
+    public func projectSemanticSearchCandidates(
+        _ candidates: [SemanticSearchCandidateIdentity],
+        limit: Int
+    ) async throws -> [SearchHit] {
+        guard limit > 0 else { return [] }
+        var seen: Set<UUID> = []
+        var ordered: [SemanticSearchCandidateIdentity] = []
+        ordered.reserveCapacity(min(limit, candidates.count))
+        for candidate in candidates.prefix(limit) where candidate.transcriptRevision >= 0 {
+            guard seen.insert(candidate.segmentID).inserted else { continue }
+            ordered.append(candidate)
+        }
+        guard !ordered.isEmpty else { return [] }
+        let orderedCandidates = ordered
+
+        return try await database.read { db in
+            let segmentKeys = orderedCandidates.map { $0.segmentID.uuidString }
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT segment.id AS segmentID,
+                           segment.meetingID AS meetingID,
+                           segment.startTime AS startTime,
+                           segment.text AS text,
+                           meeting.title AS title,
+                           meeting.transcriptRevision AS transcriptRevision
+                    FROM segment
+                    JOIN meeting ON meeting.id = segment.meetingID
+                        AND meeting.deletedAt IS NULL
+                    WHERE segment.id IN (\(databaseQuestionMarks(count: segmentKeys.count)))
+                      AND segment.deletedAt IS NULL
+                    """,
+                arguments: StatementArguments(segmentKeys))
+            var current: [UUID: SearchHit] = [:]
+            current.reserveCapacity(rows.count)
+            for row in rows {
+                let segmentID = try PersistedIdentity.required(
+                    row["segmentID"], table: "segment", column: "id")
+                current[segmentID] = SearchHit(
+                    meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                        row["meetingID"], table: "segment", column: "meetingID")),
+                    meetingTitle: row["title"],
+                    segmentID: segmentID,
+                    text: row["text"],
+                    snippet: row["text"],
+                    startTime: row["startTime"],
+                    transcriptRevision: row["transcriptRevision"])
+            }
+            return orderedCandidates.compactMap { candidate in
+                guard let hit = current[candidate.segmentID],
+                      hit.transcriptRevision == candidate.transcriptRevision
+                else { return nil }
+                return hit
+            }
         }
     }
 

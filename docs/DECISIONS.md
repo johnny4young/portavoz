@@ -6933,3 +6933,32 @@ governs every optional benchmark candidate.
 engine work begins. Making identity an implementation property prevents label
 drift, keeps aggregate evidence explainable, and preserves the reversible
 shadow boundary without granting a candidate product authority.
+
+## D210 — Project derived ranks through current authoritative evidence (Aug 2026)
+
+**Context:** a sqlite-vec, USearch, or Core Spotlight candidate will maintain
+derived state that can lag transcript correction, deletion, or rebuild. The
+D206 query port returns complete `SearchHit` citations, so allowing an engine to
+construct those values would make derived storage an accidental content
+authority. Comparing stale text or an old transcript revision could also make
+aggregate agreement look valid while its source evidence is no longer current.
+
+**Decision:** research engines implement `SemanticIndexShadowRanking` and
+return only ordered `SemanticSearchCandidateIdentity` values containing segment
+ID and transcript revision. `ProjectedSemanticIndexShadowCandidate` bounds the
+ranked window to the requested limit and resolves it through `MeetingStore`.
+Storage preserves first-seen candidate order while omitting negative revisions,
+duplicate IDs, missing or deleted segments, deleted meetings, and any candidate
+whose revision differs from the current meeting transcript. It does not search
+beyond the bounded candidate window to replace rejected ranks.
+
+The ranker owns its D209 adapter identity. The projection returns authoritative
+current text, title, time, meeting identity, and revision; candidate-provided
+content cannot cross the query port. This slice adds no concrete engine,
+package, schema, writer, app composition, or durable shadow receipt, and exact
+Accelerate control remains the only product authority.
+
+**Rationale:** a derived index may propose rank but never evidence. Installing
+the revision-fenced projection before an engine experiment isolates ranking as
+the measured variable, makes correction/deletion races fail closed, and keeps
+future adapters reversible without duplicating authoritative meeting content.

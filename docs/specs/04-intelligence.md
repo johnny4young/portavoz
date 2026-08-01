@@ -659,7 +659,7 @@ selected. Later SEARCH-5 slices must put candidates behind this seam and retain
 exact control as the only user-visible authority until accepted quality and
 resource evidence exists.
 
-### Non-serving semantic shadow comparison (D207-D209)
+### Non-serving semantic shadow comparison (D207-D210)
 
 `ShadowComparingSemanticIndex` is a benchmark-only decorator over the D206
 port. It waits only for the exact control, projects its citation identity to a
@@ -687,6 +687,16 @@ parallel constructor label can name a different engine than the implementation
 that ran. This binds comparison attribution before a concrete engine or package
 is introduced.
 
+Derived engines implement `SemanticIndexShadowRanking` and return only ordered
+`SemanticSearchCandidateIdentity` values: segment ID plus the transcript
+revision from which the rank was derived. The generic
+`ProjectedSemanticIndexShadowCandidate` bounds the candidate list by the
+requested limit and asks `MeetingStore` to materialize current citations in
+that order. Projection omits negative revisions, duplicate segment IDs,
+missing/deleted rows, deleted meetings, and revision mismatches. It never
+backfills from ranks beyond the requested window, so stale evidence cannot
+silently change the measured candidate workload or citation authority.
+
 `SemanticIndexShadowCoordinator` is the optional benchmark executor for the
 decorator. It evaluates every candidate at the existing durable-maintenance
 `.admission` boundary as a `.maintenance` / `.searchIndex` / `.execute`
@@ -701,6 +711,8 @@ directly. The shadow wrapper and coordinator have no app wiring, durable output,
 candidate package, derived schema, or index writer. D208 governs research work;
 it does not enable a shipping shadow lane or select an engine. D209 binds
 candidate identity to its implementation without adding an adapter dependency.
+D210 makes current StorageKit evidence the only candidate projection authority;
+it still adds no concrete engine, package, schema, or app wiring.
 
 ### Governed semantic embedding runtime (D165)
 

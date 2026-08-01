@@ -1630,8 +1630,14 @@ allows one candidate flight without a backlog, records policy, busy, and
 capture skips as closed payload-free outcomes, and cooperatively cancels the
 active candidate when capture starts. Resume waits for that cancelled flight
 to finish before allowing another candidate. Neither Ask nor Library composes
-this wrapper or coordinator, and no candidate package, schema, index writer, or
-production scheduler exists yet.
+this wrapper or coordinator. Research engines enter through
+`SemanticIndexShadowRanking` and return only bounded, ordered segment/revision
+identities. `ProjectedSemanticIndexShadowCandidate` resolves those ranks back
+through `MeetingStore`, which drops duplicate, missing, deleted, negative-
+revision, and stale evidence before producing current `SearchHit` values. A
+derived index can therefore rank but cannot author citation text or bypass the
+authoritative transcript-revision fence. No concrete candidate package, schema,
+index writer, app wiring, or production scheduler exists yet.
 
 App composition owns one signal-driven semantic-maintenance supervisor over
 the shared corpus-indexing coordinator. App launch, searchable mutations, and

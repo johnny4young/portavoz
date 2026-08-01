@@ -171,6 +171,102 @@ final class SemanticIndexTests: XCTestCase {
         XCTAssertEqual(events.values.count, 0)
     }
 
+    func testProjectedShadowCandidateUsesCurrentStoreEvidenceInRankOrder() async throws {
+        let fixture = try await Self.fixture()
+        let launchHits = try await fixture.store.search("launch")
+        let archiveHits = try await fixture.store.search("archive")
+        let launch = try XCTUnwrap(launchHits.first)
+        let archive = try XCTUnwrap(archiveHits.first)
+        let ranker = RecordingShadowRanker(
+            adapter: .sqliteVecExact,
+            candidates: [
+                SemanticSearchCandidateIdentity(
+                    segmentID: archive.segmentID,
+                    transcriptRevision: archive.transcriptRevision),
+                SemanticSearchCandidateIdentity(
+                    segmentID: archive.segmentID,
+                    transcriptRevision: archive.transcriptRevision),
+                SemanticSearchCandidateIdentity(
+                    segmentID: UUID(),
+                    transcriptRevision: archive.transcriptRevision),
+                SemanticSearchCandidateIdentity(
+                    segmentID: launch.segmentID,
+                    transcriptRevision: launch.transcriptRevision)
+            ])
+        let candidate = ProjectedSemanticIndexShadowCandidate(
+            ranker: ranker,
+            store: fixture.store)
+
+        let hits = try await candidate.search(
+            [0, 1],
+            profile: fixture.profile,
+            limit: 4)
+        let requests = await ranker.requests
+
+        XCTAssertEqual(candidate.adapter, .sqliteVecExact)
+        XCTAssertEqual(hits.map(\.segmentID), [archive.segmentID, launch.segmentID])
+        XCTAssertEqual(hits.map(\.text), [archive.text, launch.text])
+        XCTAssertEqual(requests, [ShadowRankRequest(
+            query: [0, 1],
+            profile: fixture.profile,
+            limit: 4)])
+    }
+
+    func testProjectedShadowCandidateDropsStaleRankWithoutBackfillingPastLimit() async throws {
+        let fixture = try await Self.fixture()
+        let launchHits = try await fixture.store.search("launch")
+        let archiveHits = try await fixture.store.search("archive")
+        let launch = try XCTUnwrap(launchHits.first)
+        let archive = try XCTUnwrap(archiveHits.first)
+        let ranker = RecordingShadowRanker(
+            adapter: .usearchHNSW,
+            candidates: [
+                SemanticSearchCandidateIdentity(
+                    segmentID: launch.segmentID,
+                    transcriptRevision: launch.transcriptRevision + 1),
+                SemanticSearchCandidateIdentity(
+                    segmentID: archive.segmentID,
+                    transcriptRevision: archive.transcriptRevision),
+                SemanticSearchCandidateIdentity(
+                    segmentID: launch.segmentID,
+                    transcriptRevision: launch.transcriptRevision)
+            ])
+        let candidate = ProjectedSemanticIndexShadowCandidate(
+            ranker: ranker,
+            store: fixture.store)
+
+        let hits = try await candidate.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 2)
+        let requestLimits = await ranker.requests.map(\.limit)
+
+        XCTAssertEqual(hits.map(\.segmentID), [archive.segmentID])
+        XCTAssertEqual(requestLimits, [2])
+    }
+
+    func testProjectedShadowCandidateDropsEvidenceFromDeletedMeeting() async throws {
+        let fixture = try await Self.fixture()
+        let storedHits = try await fixture.store.search("launch")
+        let hit = try XCTUnwrap(storedHits.first)
+        let candidate = ProjectedSemanticIndexShadowCandidate(
+            ranker: RecordingShadowRanker(
+                adapter: .coreSpotlightSemantic,
+                candidates: [SemanticSearchCandidateIdentity(
+                    segmentID: hit.segmentID,
+                    transcriptRevision: hit.transcriptRevision)]),
+            store: fixture.store)
+
+        try await fixture.store.delete(hit.meetingID)
+
+        let hits = try await candidate.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 1)
+
+        XCTAssertTrue(hits.isEmpty)
+    }
+
     func testShadowCoordinatorUsesMaintenanceAdmissionAndSkipsDeniedWork() async throws {
         let fixture = try await Self.fixture()
         let storedHits = try await fixture.store.search("launch")
@@ -375,6 +471,38 @@ private struct TestSemanticIndexShadowCandidate: SemanticIndexShadowCandidateSea
             query,
             profile: profile,
             limit: limit)
+    }
+}
+
+private struct ShadowRankRequest: Equatable, Sendable {
+    let query: [Float]
+    let profile: SemanticEmbeddingProfile
+    let limit: Int
+}
+
+private actor RecordingShadowRanker: SemanticIndexShadowRanking {
+    nonisolated let adapter: SemanticIndexShadowAdapter
+    private let candidates: [SemanticSearchCandidateIdentity]
+    private(set) var requests: [ShadowRankRequest] = []
+
+    init(
+        adapter: SemanticIndexShadowAdapter,
+        candidates: [SemanticSearchCandidateIdentity]
+    ) {
+        self.adapter = adapter
+        self.candidates = candidates
+    }
+
+    func rankedCandidates(
+        for query: [Float],
+        profile: SemanticEmbeddingProfile,
+        limit: Int
+    ) -> [SemanticSearchCandidateIdentity] {
+        requests.append(ShadowRankRequest(
+            query: query,
+            profile: profile,
+            limit: limit))
+        return candidates
     }
 }
 

@@ -480,6 +480,44 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(shadow.contains("candidateAdapter:"))
     }
 
+    func testSemanticShadowRanksResolveThroughCurrentAuthoritativeEvidence() throws {
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains("## D210"))
+
+        let candidate = try Self.contents(
+            of: "Sources/ApplicationKit/SemanticIndexShadowCandidate.swift")
+        for required in [
+            "protocol SemanticIndexShadowRanking: Sendable",
+            "var adapter: SemanticIndexShadowAdapter { get }",
+            ") async throws -> [SemanticSearchCandidateIdentity]",
+            "struct ProjectedSemanticIndexShadowCandidate",
+            "store.projectSemanticSearchCandidates"
+        ] {
+            XCTAssertTrue(candidate.contains(required), "missing \(required)")
+        }
+
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Search.swift")
+        for required in [
+            "struct SemanticSearchCandidateIdentity",
+            "func projectSemanticSearchCandidates(",
+            "meeting.deletedAt IS NULL",
+            "segment.deletedAt IS NULL",
+            "hit.transcriptRevision == candidate.transcriptRevision"
+        ] {
+            XCTAssertTrue(storage.contains(required), "missing \(required)")
+        }
+
+        let appMatches = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"ProjectedSemanticIndexShadowCandidate|SemanticIndexShadowRanking"#)
+        XCTAssertEqual(appMatches, [])
+
+        let manifest = try Self.contents(of: "Package.swift").lowercased()
+        XCTAssertFalse(manifest.contains("sqlite-vec"))
+        XCTAssertFalse(manifest.contains("usearch"))
+    }
+
     func testResourceGovernorPolicyRemainsPureExplicitAndOutsideAudioCallbacks() throws {
         let policy = try Self.contents(
             of: "Sources/PortavozCore/ResourceGovernorPolicy.swift")
