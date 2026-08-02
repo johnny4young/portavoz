@@ -105,10 +105,7 @@ struct MeetingDetailView: View {
     private func transcriptContent(
         _ detail: MeetingReviewReadModel
     ) -> MeetingTranscriptContent {
-        .accepted(
-            baseTranscriptRevision: detail.meeting.transcriptRevision,
-            segments: detail.segments,
-            chapterTitles: model.state.chapterTitles)
+        detail.transcriptContent(chapterTitles: model.state.chapterTitles)
     }
 
     private func transcriptSection(
@@ -119,13 +116,23 @@ struct MeetingDetailView: View {
             values: MeetingTranscriptValues(
                 content: content,
                 speakers: detail.speakers,
+                correctionContext: {
+                    detail.transcriptCorrectionEditorContext(for: $0)
+                },
                 player: player,
                 focusedRowID: playbackNavigation.focusedRowID,
                 performanceScrollEnabled: sceneValues.performanceProfile
                     .shouldExerciseTranscriptScroll),
             actions: MeetingTranscriptActions(
                 seekAndPlay: seekAndPlay,
-                renameSpeaker: flow.presentRenameSpeaker))
+                renameSpeaker: flow.presentRenameSpeaker,
+                correct: { original, text, speakerID in
+                    await coordinator.correctTranscript(
+                        original,
+                        text: text,
+                        speakerID: speakerID,
+                        revision: detail.meeting.transcriptRevision)
+                }))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 

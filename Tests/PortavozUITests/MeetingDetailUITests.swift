@@ -122,6 +122,66 @@ final class MeetingDetailUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let correct = app.buttons[
+            "transcript-correct-B5B00000-0000-4000-8000-000000000002"]
+        XCTAssertTrue(
+            correct.waitForExistence(timeout: 10),
+            "a stable accepted source row must expose its correction action")
+        correct.click()
+
+        let editor = app.control(withIdentifier: "transcript-correction-editor")
+        XCTAssertTrue(
+            editor.waitForExistence(timeout: 5),
+            "text and speaker editing must use one focused accessible surface")
+        let originalEvidence = app.control(
+            withIdentifier: "transcript-correction-original-evidence")
+        XCTAssertTrue(originalEvidence.waitForExistence(timeout: 5))
+        originalEvidence.click()
+        let sheet = app.sheets.firstMatch
+        XCTAssertTrue(
+            sheet.staticTexts["El rollout del modelo queda para el viernes."].exists,
+            "the accepted transcript must remain available as immutable evidence")
+
+        let textEditor = app.control(withIdentifier: "transcript-correction-text")
+        XCTAssertTrue(textEditor.waitForExistence(timeout: 5))
+        textEditor.click()
+        textEditor.typeKey("a", modifierFlags: .command)
+        textEditor.typeText("El rollout del modelo queda para el lunes.")
+        let speakerPicker = app.control(
+            withIdentifier: "transcript-correction-speaker")
+        XCTAssertTrue(speakerPicker.waitForExistence(timeout: 5))
+        speakerPicker.click()
+        let localSpeaker = app.menuItems["Me"]
+        XCTAssertTrue(
+            localSpeaker.waitForExistence(timeout: 5),
+            "one focused edit must support speaker correction beside text")
+        localSpeaker.click()
+        attachScreenshot(of: app, named: "transcript-correction-original-evidence")
+        app.buttons["transcript-correction-save"].click()
+
+        XCTAssertTrue(
+            app.staticTexts["El rollout del modelo queda para el lunes."]
+                .waitForExistence(timeout: 5),
+            "the composed Meeting Detail reading must update after persistence")
+        XCTAssertTrue(correct.waitForExistence(timeout: 5))
+        correct.click()
+        let undo = app.buttons["transcript-correction-undo"]
+        XCTAssertTrue(
+            undo.waitForExistence(timeout: 5),
+            "an active correction must expose durable restore-based undo")
+        undo.click()
+
+        XCTAssertTrue(
+            app.staticTexts["El rollout del modelo queda para el viernes."]
+                .waitForExistence(timeout: 5),
+            "undo must restore the accepted reading without deleting history")
+    }
+
+    @MainActor
     func testUnnamedSpeakerOffersExplicitNameSuggestions() {
         let app = launchOnSeededMeeting(unnamedSpeaker: true)
         defer { app.terminate() }

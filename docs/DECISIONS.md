@@ -7772,3 +7772,49 @@ dependencies. Typed additive tables make migration, corruption, and rollback
 observable; append-only undo and retained tombstones preserve auditability.
 Separating durable convergence from product visibility preserves every released
 feature while the remaining correction policies are implemented incrementally.
+
+## D231 — Adopt focused text and speaker corrections in Meeting Detail (Aug 2026)
+
+**Context:** D230 made correction history durable and convergent but deliberately
+kept every product path on accepted transcript material. The first editing
+surface must let a user correct ordinary text and attribution without making
+SwiftUI a domain authority, destructively rewriting evidence, or silently
+presenting stale summaries and search results as corrected.
+
+**Decision:** model text and speaker attribution as independent correction
+domains. Both may be active on the same accepted source segment, while
+split/merge/suppress remains one exclusive structural domain. A restore inherits
+its predecessor's domain, and malformed or cyclic history fails closed. Add the
+ApplicationKit `CorrectMeetingTranscript` command: it loads and validates the
+complete retained history, accepts one current accepted source row, derives the
+active terminal per domain, and atomically appends only the changed text and
+speaker events. Returning a domain to its exact original value emits a
+superseding restore event. A no-op emits nothing; exact unchanged text is never
+trimmed by a speaker-only edit. Both events use the same stable installation
+source-device identity.
+
+Extend the scoped Meeting Detail read model with ordered correction history and
+raw/refined base identity. Its application projection composes only events for
+the currently observed transcript revision; composition failure returns the
+accepted snapshot rather than partially applying history. No other consumer is
+authorized by this slice: search, summaries, exports, generated evidence, and
+semantic/FTS indexes remain on accepted material until explicit invalidation and
+adoption decisions land.
+
+Expose correction through a focused SwiftUI editor reachable only from a visible
+row that maps to one accepted source segment. It offers text and speaker controls,
+immutable original evidence, append-only history, keyboard default/cancel
+actions, progress/error state, durable Undo, and stable accessibility identifiers.
+A structurally corrected row explains why text/speaker editing is unavailable
+instead of opening an ambiguous editor. Presentation receives values and actions
+only; it imports neither StorageKit nor the meeting store. The reviewed Meeting
+Detail interaction contract now contains 289 signals, eleven owners, and 24 UI
+journeys, including one disposable end-to-end save/reopen/undo journey with
+app-window evidence.
+
+**Rationale:** independent lanes match the user's intent without forcing an
+unrelated text rewrite when attribution changes. Atomic application commands,
+immutable originals, and append-only restores preserve auditability and sync
+convergence. Limiting adoption to Meeting Detail gives immediate value while
+keeping every derived consumer honestly stale until the next correction slices
+define invalidation and regeneration.

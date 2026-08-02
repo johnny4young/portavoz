@@ -38,7 +38,11 @@ the same ApplicationKit snapshot while keeping current Meeting Detail reads on
 accepted content. D230 adds typed durable correction history behind that same
 boundary without changing any visible Meeting Detail row, product consumer,
 or correction-editing capability; private meeting aggregate v2 transports the
-history without changing the accepted-only presentation policy.
+history without changing the accepted-only presentation policy. D231 adopts
+current-revision text and speaker corrections only in Meeting Detail through
+one focused, accessible editor with immutable original evidence, append-only
+history, and durable Undo; every other transcript consumer remains
+accepted-only.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -265,8 +269,18 @@ focused rendering only. `MeetingDetailPlaybackNavigation` retains evidence
 focus and pending seeks across transcript and player sections but receives an
 already prepared session and cannot resolve audio or storage. Architecture
 tests keep the root at 500 lines or fewer and reject model effects or broad
-composition dependencies in presentation children. The reviewed boundary now
-covers 263 signals across 27 source files, ten owners, and the same 23 UI
+composition dependencies in presentation children.
+
+D231 adds the first correction adopter without reopening that composition
+boundary. Meeting Detail observes correction history and asks an ApplicationKit
+projection for the current-revision composed snapshot, falling back to accepted
+material on malformed history. One focused editor owns text and speaker
+presentation only; the application command validates history and atomically
+persists independent lanes. Original evidence and append-only history remain
+available, durable Undo restores each active lane, structural rows fail closed
+with guidance, and every control has keyboard and accessibility reachability.
+Search, summaries, exports, and generated evidence remain accepted-only. The
+reviewed boundary now covers 289 signals across eleven owners and 24 UI
 journeys.
 
 ### Resource workload measurement (D148)

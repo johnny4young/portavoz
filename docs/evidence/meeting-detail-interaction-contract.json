@@ -32,6 +32,7 @@
     "Sources/portavoz-app/MirrorCard.swift",
     "Sources/portavoz-app/SpeakerPill.swift",
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+    "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
     "Sources/portavoz-app/TranscriptSegmentsView.swift"
   ],
   "interactionSignals": [
@@ -1422,6 +1423,18 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "presentation",
+      "source": ".sheet(item: $correctionRow) { row in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "state",
+      "source": "@State private var correctionRow: MeetingTranscriptContent.Row?",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MirrorCard.swift",
       "category": "control",
       "source": "Button {",
@@ -1578,15 +1591,159 @@
       "occurrences": 1
     },
     {
-      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
       "category": "control",
-      "source": "Button {",
+      "source": "Button(\"Cancel\", role: .cancel) { dismiss() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Save correction\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Undo correction\", role: .destructive) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "control",
+      "source": "Picker(\"Correct speaker\", selection: $speakerID) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "control",
+      "source": "TextEditor(text: $text)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-cancel\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-editor\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-error\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-history\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-mode-guidance\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-original-evidence\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-progress\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-save\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-speaker\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-text\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-undo\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "state",
+      "source": "@FocusState private var textEditorFocused: Bool",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var isSaving = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var operationError: String?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var speakerID: SpeakerID?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var text: String",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "control",
+      "source": "Button {",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "control",
       "source": "SpeakerPill(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
       "occurrences": 1
     },
     {
@@ -1841,6 +1998,25 @@
         "meeting-detail-generated-document",
         "sequoia-apuntador-requirements",
         "sequoia-summary-actionable-settings"
+      ]
+    },
+    {
+      "feature": "transcript-corrections",
+      "tests": [
+        "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+          "anchor": "\"transcript-correction-original-evidence\""
+        },
+        {
+          "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+          "anchor": "\"transcript-correct-\\(row.sourceSegmentIDs.first?.uuidString ?? row.id.uuidString)\""
+        }
+      ],
+      "screenshots": [
+        "transcript-correction-original-evidence"
       ]
     }
   ],

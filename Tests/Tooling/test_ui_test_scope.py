@@ -210,6 +210,7 @@ class UITestScopeTests(unittest.TestCase):
         )
         selected = set(
             FEATURE_TESTS["meeting-audio"]
+            + FEATURE_TESTS["meeting-correction"]
             + FEATURE_TESTS["meeting-evidence"]
             + FEATURE_TESTS["meeting-performance"]
         )
@@ -252,7 +253,8 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-health", "meeting-processing"
             },
             "Sources/portavoz-app/MeetingTranscriptSection.swift": {
-                "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"
+                "meeting-audio", "meeting-correction", "meeting-evidence",
+                "meeting-health", "meeting-performance"
             },
             "Sources/ApplicationKit/MeetingGeneratedDocumentPresentation.swift": {
                 "meeting-evidence", "meeting-summary"
@@ -272,18 +274,17 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_uncomposed_transcript_policy_requires_no_ui_runner(self):
+    def test_composed_transcript_policy_selects_only_correction_journey(self):
         selection = select_paths(["Sources/ApplicationKit/ComposeTranscript.swift"])
-        self.assertFalse(selection.required)
-        self.assertEqual(selection.locales, ())
-        self.assertEqual(selection.reasons, ())
+        self.assertEqual(selection.tests, FEATURE_TESTS["meeting-correction"])
+        self.assertEqual(selection.locales, ("en",))
 
         future_consumer = select_paths(["Sources/StorageKit/ComposeTranscriptStore.swift"])
         self.assertTrue(future_consumer.required)
         self.assertEqual(future_consumer.tests, ALL_TESTS)
 
-    def test_durable_correction_storage_selects_only_library_launch(self):
-        expected = tuple(test for test in ALL_TESTS if test in FEATURE_TESTS["library"])
+    def test_durable_correction_storage_selects_only_correction_journey(self):
+        expected = FEATURE_TESTS["meeting-correction"]
         for path in [
             "Sources/PortavozCore/TranscriptCorrection.swift",
             "Sources/StorageKit/MeetingStore+TranscriptCorrections.swift",

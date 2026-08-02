@@ -46,6 +46,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/MirrorCard.swift",
     "Sources/portavoz-app/SpeakerPill.swift",
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
+    "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
 )
 
@@ -291,6 +292,22 @@ DEFAULT_FEATURE_OWNERSHIP = (
             {
                 "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
                 "anchor": '"detail-structure-menu"',
+            },
+        ],
+    },
+    {
+        "feature": "transcript-corrections",
+        "tests": [
+            "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
+        ],
+        "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
+                "anchor": '"transcript-correction-original-evidence"',
+            },
+            {
+                "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+                "anchor": '"transcript-correct-\\(row.sourceSegmentIDs.first?.uuidString ?? row.id.uuidString)"',
             },
         ],
     },

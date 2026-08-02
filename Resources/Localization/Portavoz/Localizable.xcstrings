@@ -8490,6 +8490,256 @@
           }
         }
       }
+    },
+    "Correct transcript": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir transcripción"
+          }
+        }
+      }
+    },
+    "The original remains available as evidence. Existing summaries and search results are not regenerated.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El original sigue disponible como evidencia. Los resúmenes y resultados de búsqueda existentes no se regeneran."
+          }
+        }
+      }
+    },
+    "Text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto"
+          }
+        }
+      }
+    },
+    "Corrected transcript text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto corregido de la transcripción"
+          }
+        }
+      }
+    },
+    "Speaker": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hablante"
+          }
+        }
+      }
+    },
+    "Correct speaker": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir hablante"
+          }
+        }
+      }
+    },
+    "Unknown speaker": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hablante desconocido"
+          }
+        }
+      }
+    },
+    "Original evidence": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidencia original"
+          }
+        }
+      }
+    },
+    "Correction history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historial de correcciones"
+          }
+        }
+      }
+    },
+    "Saving transcript correction": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardando corrección de la transcripción"
+          }
+        }
+      }
+    },
+    "Undo correction": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deshacer corrección"
+          }
+        }
+      }
+    },
+    "Restore the original text and speaker with durable history entries": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar el texto y el hablante originales con un historial duradero"
+          }
+        }
+      }
+    },
+    "Text corrected": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto corregido"
+          }
+        }
+      }
+    },
+    "Speaker corrected": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hablante corregido"
+          }
+        }
+      }
+    },
+    "Segment split": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segmento dividido"
+          }
+        }
+      }
+    },
+    "Segments merged": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segmentos combinados"
+          }
+        }
+      }
+    },
+    "Segment hidden": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segmento oculto"
+          }
+        }
+      }
+    },
+    "Original restored": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Original restaurado"
+          }
+        }
+      }
+    },
+    "Correct transcript row": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir línea de la transcripción"
+          }
+        }
+      }
+    },
+    "Correct text or speaker": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir texto o hablante"
+          }
+        }
+      }
+    },
+    "Could not save this transcript correction: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar esta corrección de la transcripción: %@"
+          }
+        }
+      }
+    },
+    "This transcript line no longer matches the accepted recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta línea de la transcripción ya no coincide con la grabación aceptada."
+          }
+        }
+      }
+    },
+    "Corrected transcript text must contain spoken content.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El texto corregido de la transcripción debe contener contenido hablado."
+          }
+        }
+      }
+    },
+    "This line has a structural correction that must be reviewed first.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta línea tiene una corrección estructural que debe revisarse primero."
+          }
+        }
+      }
+    },
+    "This row already has a split, merge, or suppression correction. Text and speaker editing is unavailable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta línea ya tiene una corrección de división, combinación o supresión. La edición de texto y hablante no está disponible."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

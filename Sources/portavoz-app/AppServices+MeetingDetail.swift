@@ -47,6 +47,12 @@ extension AppServices: MeetingDetailModelClient {
         try await store.save([speaker])
     }
 
+    func correctMeetingDetailTranscript(
+        _ request: CorrectMeetingTranscriptRequest
+    ) async throws -> CorrectMeetingTranscriptResult {
+        try await makeTranscriptEditor().execute(request)
+    }
+
     func findMeetingDetailPeople(matchingAlias alias: String) async throws -> [Person] {
         try await FindCanonicalPeople(store: store).execute(alias)
     }
@@ -167,5 +173,31 @@ private func makeApplicationMeetingReviewCore(
     MeetingReviewCore(
         meeting: core.meeting,
         speakers: core.speakers,
-        segments: core.segments)
+        segments: core.segments,
+        corrections: core.corrections,
+        isRefinedTranscript: core.isRefinedTranscript)
+}
+
+private extension AppServices {
+    func makeTranscriptEditor() -> CorrectMeetingTranscript {
+        CorrectMeetingTranscript(
+            repository: AppTranscriptCorrectionRepository(store: store),
+            sourceDeviceID: Self.persistentMeetingSyncDeviceID())
+    }
+}
+
+private struct AppTranscriptCorrectionRepository: TranscriptCorrectionRepository {
+    let store: MeetingStore
+
+    func transcriptCorrectionHistory(
+        for meetingID: MeetingID
+    ) async throws -> [TranscriptCorrectionEvent] {
+        try await store.transcriptCorrectionHistory(for: meetingID)
+    }
+
+    func appendTranscriptCorrections(
+        _ events: [TranscriptCorrectionEvent]
+    ) async throws -> [TranscriptCorrectionEvent] {
+        try await store.appendTranscriptCorrections(events)
+    }
 }

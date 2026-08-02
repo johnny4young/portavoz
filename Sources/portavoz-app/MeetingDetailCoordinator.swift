@@ -51,6 +51,23 @@ struct MeetingDetailCoordinator {
         await model.send(.compressAudio)
     }
 
+    func correctTranscript(
+        _ original: MeetingTranscriptContent.Row,
+        text: String,
+        speakerID: SpeakerID?,
+        revision: Int
+    ) async -> String? {
+        let effect = await model.send(.correctTranscript(
+            CorrectMeetingTranscriptRequest(
+                meetingID: meetingID,
+                baseTranscriptRevision: revision,
+                original: original,
+                correctedText: text,
+                correctedSpeakerID: speakerID)))
+        guard case .operationFailed(let message) = effect else { return nil }
+        return message
+    }
+
     func removeCompanionCard(_ id: UUID) async {
         await model.send(.removeCompanionCard(id))
     }

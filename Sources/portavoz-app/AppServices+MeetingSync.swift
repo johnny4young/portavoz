@@ -40,7 +40,7 @@ extension AppServices {
             telemetry: telemetry)
     }
 
-    private static func persistentMeetingSyncDeviceID() -> UUID {
+    static func persistentMeetingSyncDeviceID() -> UUID {
         if let raw = UserDefaults.standard.string(forKey: meetingSyncDeviceIDKey),
            let existing = UUID(uuidString: raw) {
             return existing

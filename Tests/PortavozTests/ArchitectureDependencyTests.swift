@@ -3614,6 +3614,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+MeetingNames.swift")
         let model = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailModel.swift")
+            + Self.contents(
+                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
         let coordinator = try Self.contents(
@@ -3648,6 +3650,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+MeetingReviewMetadata.swift")
         let model = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailModel.swift")
+            + Self.contents(
+                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
         let coordinator = try Self.contents(
@@ -3691,6 +3695,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+MeetingAudio.swift")
         let model = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailModel.swift")
+            + Self.contents(
+                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
         let playerBar = try Self.contents(
@@ -4352,7 +4358,10 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testMeetingDetailUsesScopedReadModelWithoutGlobalReload() throws {
         let readModels = try Self.contents(
             of: "Sources/ApplicationKit/MeetingDetailReadModels.swift")
-        let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailModel.swift")
+            + Self.contents(
+                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
         let adapter = try Self.contents(of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
         let voiceAdapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+MeetingVoiceMemory.swift")
@@ -4429,7 +4438,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("deleteMeetingDetail"))
         XCTAssertTrue(adapter.contains("requestMeetingDetailSearchReindex"))
         XCTAssertTrue(storage.contains(
-            "regions: [Table(\"meeting\"), Table(\"speaker\"), Table(\"segment\")]"))
+            "Table(\"transcriptCorrection\"), Table(\"transcriptCorrectionTarget\")"))
+        XCTAssertTrue(storage.contains(
+            "Table(\"transcriptCorrectionPayload\"), Table(\"transcriptCorrectionPart\")"))
         XCTAssertTrue(storage.contains("Table(\"summaryClaim\")"))
         XCTAssertTrue(storage.contains("Table(\"summaryClaimSegment\")"))
         XCTAssertTrue(storage.contains("Table(\"companionCard\")"))
@@ -4667,6 +4678,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/MeetingTranscriptContent.swift")
         let composer = try Self.contents(
             of: "Sources/ApplicationKit/ComposeTranscript.swift")
+        let corrector = try Self.contents(
+            of: "Sources/ApplicationKit/CorrectMeetingTranscript.swift")
         let core = try Self.contents(
             of: "Sources/PortavozCore/TranscriptCorrection.swift")
         let store = try Self.contents(
@@ -4677,6 +4690,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+SyncAggregate.swift")
         let syncReplay = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+SyncReplay.swift")
+        let editor = try Self.contents(
+            of: "Sources/portavoz-app/TranscriptCorrectionEditor.swift")
 
         XCTAssertEqual(
             composer.components(separatedBy: .newlines)
@@ -4708,6 +4723,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(content.contains("MeetingTranscriptLineage"))
         XCTAssertTrue(content.contains("sourceSegmentIDs"))
         XCTAssertTrue(store.contains("appendTranscriptCorrection("))
+        XCTAssertTrue(store.contains("appendTranscriptCorrections("))
         XCTAssertTrue(store.contains("transcriptCorrectionHistory("))
         XCTAssertTrue(store.contains("tombstoneTranscriptCorrection("))
         XCTAssertTrue(store.contains("transcriptCorrectionSyncEnvelope("))
@@ -4723,6 +4739,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(syncReplay.contains("aggregate.formatVersion >= 2"))
         XCTAssertTrue(syncReplay.contains("includingTranscriptCorrections"))
         XCTAssertTrue(syncReplay.contains("validateTombstoneTransition"))
+        XCTAssertTrue(corrector.contains("struct CorrectMeetingTranscript"))
+        XCTAssertTrue(corrector.contains("func transcriptContent("))
+        XCTAssertTrue(corrector.contains("appendTranscriptCorrections(events)"))
+        XCTAssertTrue(editor.contains("Original evidence"))
+        XCTAssertTrue(editor.contains("Undo correction"))
+        XCTAssertFalse(editor.contains("StorageKit"))
+        XCTAssertFalse(editor.contains("MeetingStore"))
 
         XCTAssertEqual(
             try Self.sourceMatches(
@@ -4735,8 +4758,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("D229 — Define correction composition before persistence"))
         XCTAssertTrue(decisions.contains(
             "D230 — Persist and synchronize correction history without product adoption"))
+        XCTAssertTrue(decisions.contains(
+            "D231 — Adopt focused text and speaker corrections in Meeting Detail"))
         XCTAssertTrue(decisions.contains("all current product paths remain on accepted content"))
-        XCTAssertTrue(gaps.contains("Product UI, exports, search, summaries"))
+        XCTAssertTrue(gaps.contains("Meeting Detail now composes current-revision text and speaker"))
+        XCTAssertTrue(gaps.contains("Search, summaries, exports, generated evidence"))
 
         for forbidden in [
             "import SwiftUI", "import StorageKit", "import GRDB",
@@ -4814,7 +4840,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         let summaries = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+Summaries.swift")
         let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
-        let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailModel.swift")
+            + Self.contents(
+                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
         let diagnostics = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
 
@@ -5521,7 +5550,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Tests/PortavozUITests/MeetingDetailUITests.swift")
         let fixture = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
-        let model = try Self.contents(of: "Sources/portavoz-app/MeetingDetailModel.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailModel.swift")
+            + Self.contents(
+                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
         let health = try Self.contents(of: "Sources/IntelligenceKit/MeetingHealth.swift")
         let search = try Self.contents(of: "Sources/StorageKit/MeetingStore+Search.swift")
         let ask = try Self.contents(
@@ -5671,10 +5703,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            263)
+            289)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
-            10)
+            11)
 
         let detailZero = try Self.jsonObject(
             at: "docs/evidence/meeting-detail-performance-baseline-20260801.json")

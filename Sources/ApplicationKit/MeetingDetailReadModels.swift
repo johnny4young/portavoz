@@ -6,15 +6,21 @@ public struct MeetingReviewCore: Sendable {
     public let meeting: Meeting
     public let speakers: [Speaker]
     public let segments: [TranscriptSegment]
+    public let corrections: [TranscriptCorrectionEvent]
+    public let isRefinedTranscript: Bool
 
     public init(
         meeting: Meeting,
         speakers: [Speaker],
-        segments: [TranscriptSegment]
+        segments: [TranscriptSegment],
+        corrections: [TranscriptCorrectionEvent] = [],
+        isRefinedTranscript: Bool = false
     ) {
         self.meeting = meeting
         self.speakers = speakers
         self.segments = segments
+        self.corrections = corrections
+        self.isRefinedTranscript = isRefinedTranscript
     }
 }
 
@@ -60,6 +66,7 @@ public struct MeetingReviewReadModel: Sendable {
     public var meeting: Meeting { core.meeting }
     public var speakers: [Speaker] { core.speakers }
     public var segments: [TranscriptSegment] { core.segments }
+    public var corrections: [TranscriptCorrectionEvent] { core.corrections }
 }
 
 /// The user's own notes for one meeting: the raw timestamped context items

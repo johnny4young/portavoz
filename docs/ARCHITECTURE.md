@@ -115,14 +115,14 @@ self-contained over system frameworks and carries no module dependency.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, immutable transcript-correction, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots and pure transcript-correction composition, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, and the focused text/speaker correction command, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, segment mapping, and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
-| `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
+| `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
@@ -1021,13 +1021,17 @@ operations before producing anything. Stable final base rows, finite event
 ordering, complete split partitions, ordered merges/supersession targets, and
 globally unambiguous composed-row identities are enforced at the pure boundary.
 Accepted and composed readings share the same snapshot type but carry an
-explicit projection even when their rows are identical. Every downstream
-caller must choose one through `TranscriptReadingPolicy`; an architecture
-allowlist currently permits only the composer itself, so no product surface
-has opted into composed content yet. Rows and chapters derive from the same
-snapshot. Source-ID routes focus evidence; timestamp routes from Library, Ask,
-and Spotlight focus the nearest visible row and retain an exact seek until
-audio is ready. A start-time binary search plus maximum-end segment tree keeps
+explicit projection even when their rows are identical. `TranscriptReadingPolicy`
+keeps direct projection choices constrained to the pure composer. Meeting
+Detail is the first explicit product adopter: its application read-model
+extension composes only corrections for the observed accepted revision and
+falls back to accepted material if the retained history cannot be composed.
+Search, summaries, exports, generated evidence, and their indexes remain on
+accepted material until their own invalidation contracts land. Rows and
+chapters in Meeting Detail derive from the same selected snapshot. Source-ID
+routes focus evidence; timestamp routes from Library, Ask, and Spotlight focus
+the nearest visible row and retain an exact seek until audio is ready. A start-
+time binary search plus maximum-end segment tree keeps
 active-row resolution logarithmic while preserving released overlap and gap
 semantics. SwiftUI receives only the snapshot and explicit actions; the generic
 focused viewport owns its pure live-versus-playback follow policy, never
@@ -1049,9 +1053,20 @@ source retirement must not erase what the correction originally addressed.
 Every schema v1-v18 library migrates through the empty additive v19 tables, and
 legacy meetings remain valid without synthetic corrections.
 
-This durability boundary does not make corrections visible. Meeting Detail,
-search, summaries, exports, generated evidence, and chapters still read accepted
-material. Correction inserts and tombstones advance the meeting journal exactly
+The focused correction command is the first product adoption of this durability
+boundary. It validates the complete retained history, treats text and speaker
+attribution as independent lanes that may coexist on one accepted source row,
+and appends both changes atomically. Structural corrections remain exclusive.
+Returning either lane to its exact original value appends a lane-specific
+restore event; it never deletes or rewrites history. The editor exposes immutable
+original evidence and correction history, and speaker-only edits preserve the
+current text exactly.
+
+Meeting Detail observes correction history and composes current-revision text
+and speaker changes. Malformed or stale composition falls back to accepted
+material. Search, summaries, exports, generated evidence, and indexing still
+read accepted material, so this adoption cannot make derived artifacts silently
+current. Correction inserts and tombstones advance the meeting journal exactly
 once per logical event. Meeting aggregate format 2 carries the canonically
 ordered typed history; replay rejects immutable rewrites and tombstone
 regression, replaces v2 history atomically, and preserves local corrections when

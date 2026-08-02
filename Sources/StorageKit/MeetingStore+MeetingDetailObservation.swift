@@ -8,6 +8,8 @@ extension MeetingStore {
         public let meeting: Meeting
         public let speakers: [Speaker]
         public let segments: [TranscriptSegment]
+        public let corrections: [TranscriptCorrectionEvent]
+        public let isRefinedTranscript: Bool
     }
 
     /// Transcript/cast observation for one meeting. Summary and Companion
@@ -16,7 +18,11 @@ extension MeetingStore {
         _ id: MeetingID
     ) -> AsyncThrowingStream<MeetingReviewCore?, Error> {
         let observation = ValueObservation.tracking(
-            regions: [Table("meeting"), Table("speaker"), Table("segment")],
+            regions: [
+                Table("meeting"), Table("speaker"), Table("segment"),
+                Table("transcriptCorrection"), Table("transcriptCorrectionTarget"),
+                Table("transcriptCorrectionPayload"), Table("transcriptCorrectionPart")
+            ],
             fetch: { database -> MeetingReviewCore? in
                 try Self.fetchMeetingReviewCore(id, in: database)
             })
@@ -127,16 +133,22 @@ extension MeetingStore {
             .filter(Column("deletedAt") == nil)
             .fetchAll(database)
             .map { try $0.speaker }
-        let segments = try SegmentRecord
+        let segmentRecords = try SegmentRecord
             .filter(Column("meetingID") == key)
             .filter(Column("deletedAt") == nil)
             .order(Column("startTime"))
             .fetchAll(database)
-            .map { try $0.segment }
+        let segments = try segmentRecords.map { try $0.segment }
         return MeetingReviewCore(
             meeting: try meetingRecord.meeting,
             speakers: speakers,
-            segments: segments)
+            segments: segments,
+            corrections: try fetchTranscriptCorrectionHistory(
+                meetingID: id,
+                in: database),
+            isRefinedTranscript: segmentRecords.contains {
+                $0.generationRunID != nil
+            })
     }
 
     static func fetchMeetingReviewSummary(

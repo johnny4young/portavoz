@@ -1,0 +1,147 @@
+import ApplicationKit
+import Foundation
+import PortavozCore
+
+extension MeetingDetailModel {
+    enum ContentAction {
+        case renameMeeting(Meeting, title: String)
+        case acceptNameSuggestion(Speaker, name: String)
+        case acceptVoiceSuggestion(Speaker, name: String)
+        case renameSpeaker(Speaker, name: String)
+        case correctTranscript(CorrectMeetingTranscriptRequest)
+        case findCanonicalPeople(Speaker, source: PersonAliasSource)
+        case linkCanonicalPerson(
+            Speaker,
+            source: PersonAliasSource,
+            selection: CanonicalPersonSelection)
+        case setActionItem(UUID, done: Bool)
+        case setSummaryClaimFeedback(SummaryClaimID, SummaryClaimFeedback?)
+        case removeCompanionCard(UUID)
+    }
+
+    enum ReviewAction {
+        case deleteMeeting
+        case retryProcessing
+        case prepareDocument(MeetingDocumentFormat)
+        case publishGist
+        case loadNameSuggestions
+        case loadVoiceSuggestions
+        case loadMetadataSuggestions
+        case loadPlayback
+        case compressAudio
+        case exportAudioClip(ClosedRange<TimeInterval>, to: URL)
+        case checkVoiceMemoryOffer(name: String)
+        case rememberVoice(SpeakerID)
+    }
+
+    enum Action {
+        case content(ContentAction)
+        case review(ReviewAction)
+        case searchableContentChanged
+
+        static func renameMeeting(_ meeting: Meeting, title: String) -> Self {
+            .content(.renameMeeting(meeting, title: title))
+        }
+
+        static func acceptNameSuggestion(_ speaker: Speaker, name: String) -> Self {
+            .content(.acceptNameSuggestion(speaker, name: name))
+        }
+
+        static func acceptVoiceSuggestion(_ speaker: Speaker, name: String) -> Self {
+            .content(.acceptVoiceSuggestion(speaker, name: name))
+        }
+
+        static func renameSpeaker(_ speaker: Speaker, name: String) -> Self {
+            .content(.renameSpeaker(speaker, name: name))
+        }
+
+        static func correctTranscript(
+            _ request: CorrectMeetingTranscriptRequest
+        ) -> Self {
+            .content(.correctTranscript(request))
+        }
+
+        static func findCanonicalPeople(
+            _ speaker: Speaker,
+            source: PersonAliasSource
+        ) -> Self {
+            .content(.findCanonicalPeople(speaker, source: source))
+        }
+
+        static func linkCanonicalPerson(
+            _ speaker: Speaker,
+            source: PersonAliasSource,
+            selection: CanonicalPersonSelection
+        ) -> Self {
+            .content(.linkCanonicalPerson(
+                speaker,
+                source: source,
+                selection: selection))
+        }
+
+        static func setActionItem(_ id: UUID, done: Bool) -> Self {
+            .content(.setActionItem(id, done: done))
+        }
+
+        static func setSummaryClaimFeedback(
+            _ claimID: SummaryClaimID,
+            _ feedback: SummaryClaimFeedback?
+        ) -> Self {
+            .content(.setSummaryClaimFeedback(claimID, feedback))
+        }
+
+        static func removeCompanionCard(_ id: UUID) -> Self {
+            .content(.removeCompanionCard(id))
+        }
+
+        static var deleteMeeting: Self { .review(.deleteMeeting) }
+        static var retryProcessing: Self { .review(.retryProcessing) }
+
+        static func prepareDocument(_ format: MeetingDocumentFormat) -> Self {
+            .review(.prepareDocument(format))
+        }
+
+        static var publishGist: Self { .review(.publishGist) }
+        static var loadNameSuggestions: Self { .review(.loadNameSuggestions) }
+        static var loadVoiceSuggestions: Self { .review(.loadVoiceSuggestions) }
+        static var loadMetadataSuggestions: Self { .review(.loadMetadataSuggestions) }
+        static var loadPlayback: Self { .review(.loadPlayback) }
+        static var compressAudio: Self { .review(.compressAudio) }
+
+        static func exportAudioClip(
+            _ range: ClosedRange<TimeInterval>,
+            to destination: URL
+        ) -> Self {
+            .review(.exportAudioClip(range, to: destination))
+        }
+
+        static func checkVoiceMemoryOffer(name: String) -> Self {
+            .review(.checkVoiceMemoryOffer(name: name))
+        }
+
+        static func rememberVoice(_ speakerID: SpeakerID) -> Self {
+            .review(.rememberVoice(speakerID))
+        }
+    }
+
+    enum Effect {
+        case nameSuggestionAccepted(Speaker)
+        case voiceSuggestionAccepted(Speaker)
+        case speakerRenamed(Speaker)
+        case transcriptCorrected(CorrectMeetingTranscriptResult)
+        case canonicalPeopleFound(Speaker, PersonAliasSource, [Person])
+        case canonicalPersonLinked(ConfirmedPersonLink)
+        case summaryClaimFeedbackSaved(SummaryClaimID)
+        case meetingDeleted(MeetingID)
+        case documentPrepared(PreparedMeetingDocument)
+        case gistPublished(URL)
+        case nameSuggestionsLoaded
+        case voiceMemoryOfferChecked(Bool)
+        case voiceRemembered
+        case voiceMemoryInsufficientAudio
+        case audioCompressed(Int64)
+        case audioClipExported(URL)
+        case operationFailed(String)
+    }
+
+}

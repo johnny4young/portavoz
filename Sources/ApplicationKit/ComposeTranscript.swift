@@ -121,9 +121,10 @@ public struct ComposeTranscript: Sendable {
             corrections,
             baseTranscriptRevision: baseTranscriptRevision,
             segments: orderedSegments)
-        let rows = composeRows(
+        let rows = try composeRows(
             segments: orderedSegments,
-            corrections: activeCorrections)
+            corrections: activeCorrections,
+            history: corrections)
         let chapters = composedChapters(
             rows: rows,
             meetingID: orderedSegments.first?.meetingID,
@@ -193,6 +194,7 @@ private extension ComposeTranscript {
             }
         try validateActiveCorrections(
             active,
+            history: orderedCorrections,
             segments: segments,
             indexBySourceID: indexBySourceID)
         try validateGeneratedRowIDs(active, sourceIDs: sourceIDs)
@@ -282,18 +284,33 @@ private extension ComposeTranscript {
 
     func validateActiveCorrections(
         _ active: [TranscriptCorrectionEvent],
+        history: [TranscriptCorrectionEvent],
         segments: [TranscriptSegment],
         indexBySourceID: [UUID: Int]
     ) throws {
-        var ownerByTarget: [UUID: UUID] = [:]
+        var ownersByTarget: [UUID: [TranscriptCorrectionDomain: UUID]] = [:]
         for correction in active {
+            let domain: TranscriptCorrectionDomain
+            do {
+                domain = try TranscriptCorrectionPolicy.correctionDomain(
+                    of: correction,
+                    in: history)
+            } catch {
+                throw ComposeTranscriptError.invalidSupersession(correction.id)
+            }
             for target in correction.targetSegmentIDs {
-                if let existing = ownerByTarget.updateValue(correction.id, forKey: target) {
+                var owners = ownersByTarget[target, default: [:]]
+                let existing = domain == .structure
+                    ? owners.values.first
+                    : owners[domain] ?? owners[.structure]
+                if let existing {
                     throw ComposeTranscriptError.overlappingTarget(
                         target,
                         existing,
                         correction.id)
                 }
+                owners[domain] = correction.id
+                ownersByTarget[target] = owners
             }
             try validateKind(
                 correction,
@@ -393,33 +410,99 @@ private extension ComposeTranscript {
 
     func composeRows(
         segments: [TranscriptSegment],
-        corrections: [TranscriptCorrectionEvent]
-    ) -> [MeetingTranscriptContent.Row] {
+        corrections: [TranscriptCorrectionEvent],
+        history: [TranscriptCorrectionEvent]
+    ) throws -> [MeetingTranscriptContent.Row] {
         let segmentByID = Dictionary(uniqueKeysWithValues: segments.map { ($0.id, $0) })
         let indexByID = Dictionary(
             uniqueKeysWithValues: segments.enumerated().map { ($0.element.id, $0.offset) })
-        let correctionByTarget = Dictionary(
-            uniqueKeysWithValues: corrections.flatMap { correction in
-                correction.targetSegmentIDs.map { ($0, correction) }
-            })
+        let correctionsByTarget = Dictionary(grouping: corrections.flatMap { correction in
+            correction.targetSegmentIDs.map { ($0, correction) }
+        }, by: \.0).mapValues { $0.map(\.1).sorted(by: correctionPrecedes) }
+        var domainByCorrectionID: [UUID: TranscriptCorrectionDomain] = [:]
+        for correction in corrections {
+            do {
+                domainByCorrectionID[correction.id] = try TranscriptCorrectionPolicy
+                    .correctionDomain(of: correction, in: history)
+            } catch {
+                throw ComposeTranscriptError.invalidSupersession(correction.id)
+            }
+        }
         var rows: [MeetingTranscriptContent.Row] = []
         var consumed = Set<UUID>()
 
         for segment in segments where !consumed.contains(segment.id) {
-            guard let correction = correctionByTarget[segment.id] else {
+            guard let targetCorrections = correctionsByTarget[segment.id],
+                  !targetCorrections.isEmpty
+            else {
                 rows.append(row(from: segment))
                 continue
             }
-            let targetSet = Set(correction.targetSegmentIDs)
-            let targetSegments = correction.targetSegmentIDs
-                .sorted { (indexByID[$0] ?? 0) < (indexByID[$1] ?? 0) }
-                .compactMap { segmentByID[$0] }
-            consumed.formUnion(targetSet)
-            rows.append(contentsOf: correctedRows(
-                for: correction,
-                targetSegments: targetSegments))
+            if let structural = targetCorrections.first(where: {
+                domainByCorrectionID[$0.id] == .structure
+            }) {
+                let targetSet = Set(structural.targetSegmentIDs)
+                let targetSegments = structural.targetSegmentIDs
+                    .sorted { (indexByID[$0] ?? 0) < (indexByID[$1] ?? 0) }
+                    .compactMap { segmentByID[$0] }
+                consumed.formUnion(targetSet)
+                rows.append(contentsOf: correctedRows(
+                    for: structural,
+                    targetSegments: targetSegments))
+            } else {
+                rows.append(propertyCorrectedRow(
+                    source: segment,
+                    corrections: targetCorrections,
+                    domainByCorrectionID: domainByCorrectionID))
+            }
         }
         return rows
+    }
+
+    func propertyCorrectedRow(
+        source: TranscriptSegment,
+        corrections: [TranscriptCorrectionEvent],
+        domainByCorrectionID: [UUID: TranscriptCorrectionDomain]
+    ) -> MeetingTranscriptContent.Row {
+        var text = source.text
+        var language = source.language
+        var speakerID = source.speakerID
+        var confidence = source.confidence
+        var effectiveCorrections: [TranscriptCorrectionEvent] = []
+
+        for correction in corrections {
+            switch correction.kind {
+            case .replaceText(let replacement, let replacementLanguage):
+                text = replacement
+                language = replacementLanguage ?? source.language
+                confidence = nil
+                effectiveCorrections.append(correction)
+            case .changeSpeaker(let replacementSpeakerID):
+                speakerID = replacementSpeakerID
+                effectiveCorrections.append(correction)
+            case .restore:
+                switch domainByCorrectionID[correction.id] {
+                case .text:
+                    text = source.text
+                    language = source.language
+                    confidence = source.confidence
+                case .speaker:
+                    speakerID = source.speakerID
+                case .structure, .none:
+                    break
+                }
+            case .split, .merge, .suppress:
+                break
+            }
+        }
+
+        return row(
+            id: effectiveCorrections.last?.id ?? source.id,
+            sources: [source],
+            text: text,
+            speakerID: speakerID,
+            language: language,
+            confidence: confidence)
     }
 
     func correctedRows(

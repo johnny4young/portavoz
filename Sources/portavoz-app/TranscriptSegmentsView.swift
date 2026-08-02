@@ -13,6 +13,8 @@ struct TranscriptSegmentsView: View {
     var performanceScrollEnabled = false
     let onSeek: (TimeInterval) -> Void
     let onRenameTap: (Speaker) -> Void
+    let canCorrect: (MeetingTranscriptContent.Row) -> Bool
+    let onCorrect: (MeetingTranscriptContent.Row) -> Void
     /// Height of the lyrics carousel when there's audio — the detail sizes it
     /// to the available space so the docked player is never pushed off.
     var carouselHeight: CGFloat = 440
@@ -103,7 +105,9 @@ struct TranscriptSegmentsView: View {
             isActive: isActive,
             canSeek: player != nil,
             onSeek: onSeek,
-            onRenameTap: onRenameTap)
+            onRenameTap: onRenameTap,
+            canCorrect: canCorrect,
+            onCorrect: onCorrect)
     }
 }
 
@@ -117,6 +121,8 @@ private struct MeetingTranscriptRowView: View {
     let canSeek: Bool
     let onSeek: (TimeInterval) -> Void
     let onRenameTap: (Speaker) -> Void
+    let canCorrect: (MeetingTranscriptContent.Row) -> Bool
+    let onCorrect: (MeetingTranscriptContent.Row) -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -140,6 +146,19 @@ private struct MeetingTranscriptRowView: View {
                 .font(.callout)
                 .textSelection(.enabled)
             Spacer(minLength: 0)
+            if canCorrect(row) {
+                Button {
+                    onCorrect(row)
+                } label: {
+                    Image(systemName: "pencil")
+                        .imageScale(.small)
+                }
+                .buttonStyle(.borderless)
+                .help("Correct text or speaker")
+                .accessibilityLabel("Correct transcript row")
+                .accessibilityIdentifier(
+                    "transcript-correct-\(row.sourceSegmentIDs.first?.uuidString ?? row.id.uuidString)")
+            }
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 8)

@@ -42,10 +42,13 @@ final class MeetingSyncStateTests: XCTestCase {
                      WHERE type = 'trigger' AND name LIKE '%_sync_%'
                      ORDER BY name
                     """)
-            XCTAssertEqual(triggers.count, 51)
+            XCTAssertEqual(triggers.count, 54)
             XCTAssertTrue(triggers.contains("meeting_sync_au"))
             XCTAssertTrue(triggers.contains("companionCardEvidenceSegment_sync_au"))
             XCTAssertTrue(triggers.contains("summaryClaimFeedback_sync_au"))
+            XCTAssertTrue(triggers.contains("transcriptCorrection_sync_ai"))
+            XCTAssertTrue(triggers.contains("transcriptCorrection_sync_au"))
+            XCTAssertTrue(triggers.contains("transcriptCorrection_sync_ad"))
 
             try db.execute(
                 sql: "UPDATE meeting SET title = ?, updatedAt = ? WHERE id = ?",

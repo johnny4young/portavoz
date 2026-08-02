@@ -115,6 +115,12 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
         test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),
     ),
+    "meeting-correction": (
+        test_id(
+            "MeetingDetailUITests",
+            "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
+        ),
+    ),
     "settings-navigation": (
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
         test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
@@ -207,6 +213,8 @@ def tests_for_ui_test_file(path: str) -> set[str]:
 
 def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
+    if lowered == "appservices+meetingsync.swift":
+        return {"settings-data"}
     if any(token in lowered for token in ("l10n", "applanguage")):
         return set(ALL_FEATURES)
     if "showcase" in lowered:
@@ -221,6 +229,8 @@ def app_features(filename: str) -> set[str]:
         return {"settings-audio"}
     if any(token in lowered for token in ("ask", "commandpalette")):
         return {"ask", "library"}
+    if "transcriptcorrection" in lowered:
+        return {"meeting-correction"}
     if any(token in lowered for token in ("insight",)):
         return {"insights"}
     if any(token in lowered for token in ("onboarding", "firstrun", "firstlisten")):
@@ -249,10 +259,13 @@ def app_features(filename: str) -> set[str]:
     )):
         return {"meeting-performance"}
     if "transcriptsegments" in lowered:
-        return {"meeting-audio", "meeting-evidence", "meeting-performance"}
+        return {
+            "meeting-audio", "meeting-correction", "meeting-evidence", "meeting-performance"
+        }
     if "meetingtranscriptsection" in lowered:
         return {
-            "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"
+            "meeting-audio", "meeting-correction", "meeting-evidence", "meeting-health",
+            "meeting-performance",
         }
     if "meetingdetailheadersection" in lowered:
         return {"meeting-export", "meeting-naming", "meeting-processing"}
@@ -327,21 +340,21 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
-    if lowered == "sources/applicationkit/composetranscript.swift":
-        # This is a pure, uncomposed ApplicationKit policy. Its unit and
-        # architecture tests are the executable evidence until a product
-        # consumer is explicitly wired and this mapping is updated.
-        return set()
     if lowered in {
+        "sources/applicationkit/correctmeetingtranscript.swift",
         "sources/portavozcore/transcriptcorrection.swift",
         "sources/storagekit/meetingstore+transcriptcorrections.swift",
         "sources/storagekit/schema+transcriptcorrection.swift",
         "sources/storagekit/transcriptcorrectionrecords.swift",
     }:
-        # Durable correction events are not rendered yet. The Library launch
-        # journey is the narrow executable smoke for opening and migrating a
-        # real app store until a correction surface adopts composed content.
-        return {"library"}
+        return {"meeting-correction"}
+    if lowered in {
+        "sources/applicationkit/meetingdetailreadmodels.swift",
+        "sources/storagekit/meetingstore+meetingdetailobservation.swift",
+    }:
+        return set(MEETING_FEATURES)
+    if lowered == "sources/applicationkit/composetranscript.swift":
+        return {"meeting-correction"}
     if "meetingtranscriptcontent" in lowered:
         return {
             "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"

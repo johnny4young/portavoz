@@ -157,6 +157,54 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertNil(model.state.lastActionError)
     }
 
+    func testTranscriptCorrectionReturnsTypedEffectWithoutReindexingAcceptedSearch() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let correction = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.segment.id],
+            kind: .replaceText(text: "Este viernes.", language: "es"),
+            sourceDeviceID: UUID(),
+            createdAt: Date())
+        client.correctionResult = CorrectMeetingTranscriptResult(events: [correction])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let original = MeetingTranscriptContent.Row(
+            id: fixture.segment.id,
+            sourceSegmentIDs: [fixture.segment.id],
+            speakerID: fixture.segment.speakerID,
+            channel: fixture.segment.channel,
+            text: fixture.segment.text,
+            language: fixture.segment.language,
+            startTime: fixture.segment.startTime,
+            endTime: fixture.segment.endTime,
+            confidence: fixture.segment.confidence,
+            isFinal: fixture.segment.isFinal)
+        let request = CorrectMeetingTranscriptRequest(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            original: original,
+            correctedText: "Este viernes.",
+            correctedSpeakerID: fixture.speaker.id)
+
+        let effect = await model.send(.correctTranscript(request))
+
+        guard case .transcriptCorrected(let result) = effect else {
+            return XCTFail("the model must preserve the typed correction result")
+        }
+        XCTAssertEqual(result.events, [correction])
+        XCTAssertEqual(client.calls, [.correctTranscript(request)])
+        XCTAssertEqual(client.searchReindexRequests, 0)
+        XCTAssertNil(model.state.lastActionError)
+
+        client.failures.insert(.correctTranscript)
+        let failed = await model.send(.correctTranscript(request))
+        guard case .operationFailed = failed else {
+            return XCTFail("persistence failures must stay visible to the editor")
+        }
+        XCTAssertNotNil(model.state.lastActionError)
+    }
+
     func testDocumentNameAndVoiceActionsStayBehindTheFeatureOwner() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
@@ -698,6 +746,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var playbackCancellationsRemaining = 0
     var preparedPlaybackResult: PreparedMeetingPlayback?
     var compressionResult = MeetingAudioCompressionResult(bytesFreed: 1_024)
+    var correctionResult = CorrectMeetingTranscriptResult(events: [])
     var prepareDocumentError: (any Error)?
     var publishGistError: (any Error)?
     var nameSuggestionsResult: [MeetingNameSuggestion] = [
@@ -737,6 +786,14 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     func renameMeetingDetailSpeaker(_ speaker: Speaker) throws {
         calls.append(.renameSpeaker(speaker.displayName))
         try fail(.renameSpeaker)
+    }
+
+    func correctMeetingDetailTranscript(
+        _ request: CorrectMeetingTranscriptRequest
+    ) throws -> CorrectMeetingTranscriptResult {
+        calls.append(.correctTranscript(request))
+        try fail(.correctTranscript)
+        return correctionResult
     }
 
     func findMeetingDetailPeople(matchingAlias alias: String) throws -> [Person] {
@@ -903,6 +960,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
 private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedError {
     case renameMeeting
     case renameSpeaker
+    case correctTranscript
     case findPeople
     case linkPerson
     case setActionItem
@@ -927,6 +985,7 @@ private enum MeetingDetailModelCall: Equatable {
     case observe(MeetingID)
     case renameMeeting(String)
     case renameSpeaker(String?)
+    case correctTranscript(CorrectMeetingTranscriptRequest)
     case findPeople(String)
     case linkPerson(SpeakerID, PersonID?)
     case setActionItem(UUID, Bool)

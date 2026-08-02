@@ -9,59 +9,45 @@ extension MeetingStore {
     public func appendTranscriptCorrection(
         _ proposedEvent: TranscriptCorrectionEvent
     ) async throws -> TranscriptCorrectionEvent {
-        do {
-            try TranscriptCorrectionPolicy.validatePortable(proposedEvent)
-        } catch {
+        guard let event = try await appendTranscriptCorrections([proposedEvent]).first else {
             throw StorageError.invalidTranscriptCorrection(
-                "portable event is invalid: \(error)")
+                "an appended event could not be reloaded")
         }
-        let event = Self.canonicalCorrectionEvent(proposedEvent)
-        guard TranscriptCorrectionPolicy.samePersistedInstant(
-            event.createdAt,
-            event.updatedAt),
-            event.deletedAt == nil
-        else {
+        return event
+    }
+
+    /// Atomically appends one user edit that may contain independent text and
+    /// speaker correction events. The batch either publishes every event or
+    /// leaves correction history untouched.
+    public func appendTranscriptCorrections(
+        _ proposedEvents: [TranscriptCorrectionEvent]
+    ) async throws -> [TranscriptCorrectionEvent] {
+        guard !proposedEvents.isEmpty else { return [] }
+        guard Set(proposedEvents.map(\.id)).count == proposedEvents.count else {
             throw StorageError.invalidTranscriptCorrection(
-                "new events must begin as immutable live records")
+                "one correction event appeared more than once in the append batch")
         }
-
-        return try await database.write { database in
-            try Self.requireLiveCorrectionMeeting(event, in: database)
-            if let existing = try Self.fetchTranscriptCorrection(
-                id: event.id,
-                in: database) {
-                guard Self.sameCorrectionForRetry(existing, event) else {
-                    throw StorageError.invalidTranscriptCorrection(
-                        "event identity was reused with different content")
-                }
-                return existing
-            }
-
-            let history = try Self.fetchTranscriptCorrectionHistory(
-                meetingID: event.meetingID,
-                in: database)
-            try Self.validateCorrectionAppendPredecessor(
-                event,
-                history: history)
+        let events = try proposedEvents.map { proposedEvent in
             do {
-                try TranscriptCorrectionPolicy.validateHistory(
-                    history + [event],
-                    meetingID: event.meetingID)
+                try TranscriptCorrectionPolicy.validatePortable(proposedEvent)
             } catch {
                 throw StorageError.invalidTranscriptCorrection(
-                    "event does not extend the correction history: \(error)")
+                    "portable event is invalid: \(error)")
             }
-            try Self.validateCorrectionAgainstAcceptedTranscript(
-                event,
-                in: database)
-            try Self.insertTranscriptCorrection(event, in: database)
-            guard let persisted = try Self.fetchTranscriptCorrection(
-                id: event.id,
-                in: database) else {
+            let event = Self.canonicalCorrectionEvent(proposedEvent)
+            guard TranscriptCorrectionPolicy.samePersistedInstant(
+                event.createdAt,
+                event.updatedAt),
+                event.deletedAt == nil
+            else {
                 throw StorageError.invalidTranscriptCorrection(
-                    "inserted event could not be reloaded")
+                    "new events must begin as immutable live records")
             }
-            return persisted
+            return event
+        }
+
+        return try await database.write {
+            try Self.appendCanonicalTranscriptCorrections(events, in: $0)
         }
     }
 
@@ -134,6 +120,53 @@ extension MeetingStore {
             }
             return tombstone
         }
+    }
+}
+
+private extension MeetingStore {
+    static func appendCanonicalTranscriptCorrections(
+        _ events: [TranscriptCorrectionEvent],
+        in database: Database
+    ) throws -> [TranscriptCorrectionEvent] {
+        var histories: [MeetingID: [TranscriptCorrectionEvent]] = [:]
+        var persistedEvents: [TranscriptCorrectionEvent] = []
+        for event in events {
+            try requireLiveCorrectionMeeting(event, in: database)
+            if let existing = try fetchTranscriptCorrection(id: event.id, in: database) {
+                guard sameCorrectionForRetry(existing, event) else {
+                    throw StorageError.invalidTranscriptCorrection(
+                        "event identity was reused with different content")
+                }
+                persistedEvents.append(existing)
+                continue
+            }
+
+            let history = try histories[event.meetingID]
+                ?? fetchTranscriptCorrectionHistory(
+                    meetingID: event.meetingID,
+                    in: database)
+            try validateCorrectionAppendPredecessor(event, history: history)
+            do {
+                try TranscriptCorrectionPolicy.validateHistory(
+                    history + [event],
+                    meetingID: event.meetingID)
+            } catch {
+                throw StorageError.invalidTranscriptCorrection(
+                    "event does not extend the correction history: \(error)")
+            }
+            try validateCorrectionAgainstAcceptedTranscript(event, in: database)
+            try insertTranscriptCorrection(event, in: database)
+            guard let persisted = try fetchTranscriptCorrection(
+                id: event.id,
+                in: database)
+            else {
+                throw StorageError.invalidTranscriptCorrection(
+                    "inserted event could not be reloaded")
+            }
+            histories[event.meetingID] = history + [persisted]
+            persistedEvents.append(persisted)
+        }
+        return persistedEvents
     }
 }
 

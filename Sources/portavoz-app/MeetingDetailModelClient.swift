@@ -13,6 +13,9 @@ protocol MeetingDetailModelClient: AnyObject {
 
     func renameMeetingDetailMeeting(_ meeting: Meeting) async throws
     func renameMeetingDetailSpeaker(_ speaker: Speaker) async throws
+    func correctMeetingDetailTranscript(
+        _ request: CorrectMeetingTranscriptRequest
+    ) async throws -> CorrectMeetingTranscriptResult
     func findMeetingDetailPeople(matchingAlias alias: String) async throws -> [Person]
     func linkMeetingDetailSpeaker(
         _ request: LinkObservedSpeakerRequest

@@ -97,6 +97,21 @@ final class MeetingDetailObservationTests: XCTestCase {
         let transcript = try await nextCore(&core) { $0?.segments.count == 1 }
         XCTAssertEqual(transcript?.speakers.first?.displayName, "Ana")
         XCTAssertEqual(transcript?.segments.first?.text, "Publicamos el viernes.")
+        XCTAssertFalse(transcript?.isRefinedTranscript ?? true)
+
+        let correction = TranscriptCorrectionEvent(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            targetSegmentIDs: [segment.id],
+            kind: .replaceText(text: "Publicamos este viernes.", language: "es"),
+            sourceDeviceID: UUID(),
+            createdAt: Date())
+        _ = try await store.appendTranscriptCorrection(correction)
+        let correctedCore = try await nextCore(&core) {
+            $0?.corrections.map(\.id) == [correction.id]
+        }
+        XCTAssertEqual(correctedCore?.corrections.map(\.id), [correction.id])
+        XCTAssertEqual(correctedCore?.corrections.map(\.kind), [correction.kind])
 
         let action = ActionItem(text: "Publicar")
         _ = try await store.saveSummary(SummaryDraft(

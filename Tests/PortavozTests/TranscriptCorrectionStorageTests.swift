@@ -86,6 +86,86 @@ final class TranscriptCorrectionStorageTests: XCTestCase {
         }
     }
 
+    func testAtomicBatchPersistsCompatibleTextAndSpeakerCorrections() async throws {
+        let fixture = try await makeFixture(segmentCount: 1)
+        let source = fixture.segments[0]
+        let text = event(
+            101,
+            fixture: fixture,
+            targets: [source.id],
+            kind: .replaceText(text: "Corrected", language: "en"))
+        let speaker = event(
+            102,
+            fixture: fixture,
+            targets: [source.id],
+            kind: .changeSpeaker(fixture.secondSpeaker.id))
+        let generationBefore = try await localSyncGeneration(fixture)
+
+        let persisted = try await fixture.store.appendTranscriptCorrections([text, speaker])
+
+        XCTAssertEqual(persisted, [text, speaker])
+        let history = try await fixture.store.transcriptCorrectionHistory(
+            for: fixture.meeting.id)
+        XCTAssertEqual(history, [text, speaker])
+        let composition = try ComposeTranscript().execute(
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            baseMaterial: .refined,
+            segments: fixture.segments,
+            corrections: history)
+        XCTAssertEqual(composition.composed.rows.map(\.text), ["Corrected"])
+        XCTAssertEqual(
+            composition.composed.rows.map(\.speakerID),
+            [fixture.secondSpeaker.id])
+        let generationAfter = try await localSyncGeneration(fixture)
+        XCTAssertEqual(generationAfter, generationBefore + 2)
+    }
+
+    func testAtomicBatchRollsBackEveryEventWhenOneDomainIsInvalid() async throws {
+        let fixture = try await makeFixture(segmentCount: 1)
+        let foreignMeeting = Meeting(
+            title: "Foreign",
+            startedAt: date(1),
+            transcriptRevision: fixture.meeting.transcriptRevision)
+        let foreignSpeaker = Speaker(meetingID: foreignMeeting.id, label: "S9")
+        try await fixture.store.save(foreignMeeting)
+        try await fixture.store.save([foreignSpeaker])
+        let text = event(
+            101,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(text: "Must roll back", language: "en"))
+        let invalidSpeaker = event(
+            102,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .changeSpeaker(foreignSpeaker.id))
+        let generationBefore = try await localSyncGeneration(fixture)
+
+        await assertInvalidCorrection {
+            _ = try await fixture.store.appendTranscriptCorrections([text, invalidSpeaker])
+        }
+
+        let history = try await fixture.store.transcriptCorrectionHistory(
+            for: fixture.meeting.id)
+        XCTAssertTrue(history.isEmpty)
+        let generationAfter = try await localSyncGeneration(fixture)
+        XCTAssertEqual(generationAfter, generationBefore)
+        try await fixture.store.database.read { database in
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: "SELECT COUNT(*) FROM transcriptCorrection"),
+                0)
+        }
+
+        await assertInvalidCorrection {
+            _ = try await fixture.store.appendTranscriptCorrections([text, text])
+        }
+        let historyAfterDuplicate = try await fixture.store.transcriptCorrectionHistory(
+            for: fixture.meeting.id)
+        XCTAssertTrue(historyAfterDuplicate.isEmpty)
+    }
+
     func testIdempotentAppendLinearUndoAndTombstonePreserveHistory() async throws {
         let fixture = try await makeFixture(segmentCount: 1)
         let source = fixture.segments[0]

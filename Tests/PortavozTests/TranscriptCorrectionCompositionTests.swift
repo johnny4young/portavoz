@@ -110,18 +110,92 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
             corrections: [missing])
     }
 
-    func testActiveCorrectionsCannotOverlap() {
+    func testTextAndSpeakerCorrectionsComposeIndependently() throws {
+        let source = segment(1, text: "Source", start: 0, end: 4)
+        let text = edit(
+            101,
+            targets: [source.id],
+            kind: .replaceText(text: "Corrected", language: "en"))
+        let speaker = edit(
+            102,
+            targets: [source.id],
+            kind: .changeSpeaker(secondSpeaker))
+
+        let result = try compose(
+            segments: [source],
+            corrections: [speaker, text])
+
+        XCTAssertEqual(result.composed.rows.map(\.text), ["Corrected"])
+        XCTAssertEqual(result.composed.rows.map(\.speakerID), [secondSpeaker])
+        XCTAssertEqual(result.composed.rows.map(\.id), [speaker.id])
+        XCTAssertEqual(
+            result.composed.lineage.activeCorrectionIDs,
+            [text.id, speaker.id])
+    }
+
+    func testSameDomainCorrectionsCannotOverlap() {
         let source = segment(1, text: "Source", start: 0, end: 4)
         let first = edit(
             101,
             targets: [source.id],
             kind: .replaceText(text: "First", language: "en"))
-        let second = edit(102, targets: [source.id], kind: .changeSpeaker(secondSpeaker))
+        let second = edit(
+            102,
+            targets: [source.id],
+            kind: .replaceText(text: "Second", language: "en"))
 
         assertComposeError(
             .overlappingTarget(source.id, first.id, second.id),
             segments: [source],
             corrections: [second, first])
+    }
+
+    func testStructuralCorrectionConflictsWithPropertyCorrection() {
+        let source = segment(1, text: "Source", start: 0, end: 4)
+        let text = edit(
+            101,
+            targets: [source.id],
+            kind: .replaceText(text: "Corrected", language: "en"))
+        let suppression = edit(
+            102,
+            targets: [source.id],
+            kind: .suppress)
+
+        assertComposeError(
+            .overlappingTarget(source.id, text.id, suppression.id),
+            segments: [source],
+            corrections: [suppression, text])
+    }
+
+    func testTextRestorePreservesIndependentSpeakerCorrection() throws {
+        let source = segment(1, text: "Original", start: 0, end: 4)
+        let text = edit(
+            101,
+            targets: [source.id],
+            kind: .replaceText(text: "Corrected", language: "en"),
+            at: 1)
+        let speaker = edit(
+            102,
+            targets: [source.id],
+            kind: .changeSpeaker(secondSpeaker),
+            at: 2)
+        let restoreText = edit(
+            103,
+            targets: [source.id],
+            kind: .restore,
+            at: 3,
+            supersedes: text.id)
+
+        let result = try compose(
+            segments: [source],
+            corrections: [speaker, restoreText, text])
+
+        XCTAssertEqual(result.composed.rows.map(\.text), ["Original"])
+        XCTAssertEqual(result.composed.rows.map(\.speakerID), [secondSpeaker])
+        XCTAssertEqual(result.composed.rows.map(\.id), [speaker.id])
+        XCTAssertEqual(
+            result.composed.lineage.activeCorrectionIDs,
+            [speaker.id, restoreText.id])
     }
 
     func testSupersedingEditAndRestoreLeaveOneDeterministicActiveEvent() throws {

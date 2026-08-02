@@ -36,6 +36,15 @@ public enum TranscriptCorrectionKind: Codable, Sendable, Equatable {
     case restore
 }
 
+/// Independent correction lanes that may coexist over one accepted segment.
+/// Text and speaker edits do not destroy one another; structural edits own the
+/// complete visible row and therefore remain exclusive.
+public enum TranscriptCorrectionDomain: String, Codable, Sendable, Equatable, Hashable {
+    case text
+    case speaker
+    case structure
+}
+
 /// Corrections are user-authored truth until another explicit author class is
 /// designed and admitted. Generated suggestions never enter this enum.
 public enum TranscriptCorrectionAuthor: String, Codable, Sendable, Equatable {
@@ -329,20 +338,44 @@ public enum TranscriptCorrectionPolicy {
         let active = events
             .filter { $0.deletedAt == nil && !supersededIDs.contains($0.id) }
             .sorted(by: precedes)
-        var ownerByRevisionAndTarget: [Int: [UUID: UUID]] = [:]
+        var ownersByRevisionAndTarget: [Int: [UUID: [TranscriptCorrectionDomain: UUID]]] = [:]
         for event in active {
+            let domain = try correctionDomain(of: event, indexedBy: byID)
             for targetID in event.targetSegmentIDs {
-                var ownerByTarget = ownerByRevisionAndTarget[
+                var ownersByTarget = ownersByRevisionAndTarget[
                     event.baseTranscriptRevision,
                     default: [:]]
-                if let owner = ownerByTarget.updateValue(event.id, forKey: targetID) {
+                var owners = ownersByTarget[targetID, default: [:]]
+                let conflictingOwner = domain == .structure
+                    ? owners.values.first
+                    : owners[domain] ?? owners[.structure]
+                if let conflictingOwner {
                     throw TranscriptCorrectionValidationError.overlappingTargets(
-                        owner,
+                        conflictingOwner,
                         event.id)
                 }
-                ownerByRevisionAndTarget[event.baseTranscriptRevision] = ownerByTarget
+                owners[domain] = event.id
+                ownersByTarget[targetID] = owners
+                ownersByRevisionAndTarget[event.baseTranscriptRevision] = ownersByTarget
             }
         }
+    }
+
+    /// Resolves the lane owned by an event. A restore remains in its
+    /// predecessor's lane, so undo can be superseded later without rewriting
+    /// or deactivating an independent correction.
+    public static func correctionDomain(
+        of event: TranscriptCorrectionEvent,
+        in history: [TranscriptCorrectionEvent]
+    ) throws -> TranscriptCorrectionDomain {
+        let grouped = Dictionary(grouping: history, by: \.id)
+        guard grouped.values.allSatisfy({ $0.count == 1 }) else {
+            throw TranscriptCorrectionValidationError.duplicateEventID(event.id)
+        }
+        return try correctionDomain(
+            of: event,
+            indexedBy: grouped.mapValues { $0[0] },
+            visited: [])
     }
 
     public static func precedes(
@@ -391,6 +424,36 @@ public enum TranscriptCorrectionPolicy {
             else { throw TranscriptCorrectionValidationError.invalidKind(event.id) }
             try validateLanguage(part.language, eventID: event.id)
             priorEnd = part.endTime
+        }
+    }
+
+    private static func correctionDomain(
+        of event: TranscriptCorrectionEvent,
+        indexedBy events: [UUID: TranscriptCorrectionEvent],
+        visited: Set<UUID> = []
+    ) throws -> TranscriptCorrectionDomain {
+        guard !visited.contains(event.id) else {
+            throw TranscriptCorrectionValidationError.invalidSupersession(event.id)
+        }
+        var visited = visited
+        visited.insert(event.id)
+        switch event.kind {
+        case .replaceText:
+            return .text
+        case .changeSpeaker:
+            return .speaker
+        case .split, .merge, .suppress:
+            return .structure
+        case .restore:
+            guard let predecessorID = event.supersedesCorrectionID,
+                  let predecessor = events[predecessorID]
+            else {
+                throw TranscriptCorrectionValidationError.missingPredecessor(event.id)
+            }
+            return try correctionDomain(
+                of: predecessor,
+                indexedBy: events,
+                visited: visited)
         }
     }
 }

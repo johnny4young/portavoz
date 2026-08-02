@@ -5,6 +5,9 @@ import SwiftUI
 struct MeetingTranscriptValues {
     let content: MeetingTranscriptContent
     let speakers: [Speaker]
+    let correctionContext: @MainActor (
+        MeetingTranscriptContent.Row
+    ) -> TranscriptCorrectionEditorContext?
     let player: MeetingPlaybackSession?
     let focusedRowID: UUID?
     let performanceScrollEnabled: Bool
@@ -13,6 +16,11 @@ struct MeetingTranscriptValues {
 struct MeetingTranscriptActions {
     let seekAndPlay: @MainActor (TimeInterval) -> Void
     let renameSpeaker: @MainActor (Speaker) -> Void
+    let correct: @MainActor (
+        MeetingTranscriptContent.Row,
+        String,
+        SpeakerID?
+    ) async -> String?
 }
 
 /// The synchronized transcript reading surface. It consumes a neutral reading
@@ -21,6 +29,7 @@ struct MeetingTranscriptActions {
 struct MeetingTranscriptSection: View {
     let values: MeetingTranscriptValues
     let actions: MeetingTranscriptActions
+    @State private var correctionRow: MeetingTranscriptContent.Row?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -30,6 +39,9 @@ struct MeetingTranscriptSection: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-transcript-section")
+        .sheet(item: $correctionRow) { row in
+            correctionEditor(for: row)
+        }
     }
 
     private var transcriptHeader: some View {
@@ -66,7 +78,29 @@ struct MeetingTranscriptSection: View {
             performanceScrollEnabled: values.performanceScrollEnabled,
             onSeek: actions.seekAndPlay,
             onRenameTap: actions.renameSpeaker,
+            canCorrect: { values.correctionContext($0) != nil },
+            onCorrect: { correctionRow = $0 },
             carouselHeight: carouselHeight)
+    }
+
+    @ViewBuilder
+    private func correctionEditor(
+        for row: MeetingTranscriptContent.Row
+    ) -> some View {
+        if let context = values.correctionContext(row) {
+            TranscriptCorrectionEditor(
+                context: context,
+                speakers: values.speakers,
+                save: { text, speakerID in
+                    await actions.correct(context.original, text, speakerID)
+                },
+                undo: {
+                    await actions.correct(
+                        context.original,
+                        context.original.text,
+                        context.original.speakerID)
+                })
+        }
     }
 }
 
