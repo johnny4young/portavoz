@@ -166,6 +166,12 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
       "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "control",
       "source": "Button(\"Export Markdown…\") { actions.export(.markdown) }",
       "occurrences": 1
     },
@@ -245,6 +251,12 @@
       "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-actions\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-export-correction-provenance\")",
       "occurrences": 1
     },
     {
@@ -2109,7 +2121,9 @@
           "anchor": "func handleExportAction("
         }
       ],
-      "screenshots": []
+      "screenshots": [
+        "meeting-detail-correction-aware-export"
+      ]
     },
     {
       "feature": "notes-and-recap",

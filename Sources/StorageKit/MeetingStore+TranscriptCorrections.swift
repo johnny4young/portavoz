@@ -299,6 +299,20 @@ extension MeetingStore {
             language: language,
             speakerID: speakerID?.rawValue.uuidString)
     }
+
+    static func canonicalCorrectionForReplicaMerge(
+        _ event: TranscriptCorrectionEvent
+    ) -> TranscriptCorrectionEvent { canonicalCorrectionEvent(event) }
+
+    static func sameCorrectionForReplicaMerge(
+        _ lhs: TranscriptCorrectionEvent,
+        _ rhs: TranscriptCorrectionEvent
+    ) -> Bool { sameCorrectionForRetry(lhs, rhs) }
+
+    static func validateReplicaCorrectionAgainstAcceptedTranscript(
+        _ event: TranscriptCorrectionEvent,
+        in database: Database
+    ) throws { try validateCorrectionAgainstAcceptedTranscript(event, in: database) }
 }
 
 private extension MeetingStore {

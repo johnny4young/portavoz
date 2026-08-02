@@ -117,6 +117,40 @@ final class MeetingExporterTests: XCTestCase {
         XCTAssertTrue(markdown.contains("## Transcript"))
     }
 
+    func testMarkdownCorrectionProvenanceIsExplicitAndDeterministicallyOrdered() throws {
+        let (record, speakers, segments, _) = fixture()
+        let revision = try XCTUnwrap(TranscriptCorrectionRevision(
+            rawValue: String(repeating: "c", count: 64)))
+        let laterRow = UUID(uuidString: "F0000000-0000-4000-8000-000000000002")!
+        let earlierRow = UUID(uuidString: "F0000000-0000-4000-8000-000000000001")!
+        let provenance = TranscriptCorrectionExportProvenance(
+            baseTranscriptRevision: 6,
+            correctionRevision: revision,
+            activeCorrectionIDs: [UUID(), UUID()],
+            sourceSegmentIDsByExportedSegmentID: [
+                laterRow: [segments[1].id],
+                earlierRow: [segments[0].id],
+            ])
+
+        let markdown = MeetingExporter.markdown(
+            meeting: record,
+            speakers: speakers,
+            segments: segments,
+            correctionProvenance: provenance)
+
+        XCTAssertTrue(markdown.contains("## Transcript correction provenance"))
+        XCTAssertTrue(markdown.contains("Accepted transcript revision: 6"))
+        XCTAssertTrue(markdown.contains("Applied corrections: 2"))
+        XCTAssertTrue(markdown.contains("original audio remain unchanged"))
+        let earlierRange = try XCTUnwrap(markdown.range(of: earlierRow.uuidString))
+        let laterRange = try XCTUnwrap(markdown.range(of: laterRow.uuidString))
+        XCTAssertLessThan(earlierRange.lowerBound, laterRange.lowerBound)
+        XCTAssertTrue(
+            try MeetingExporter.pdf(fromMarkdown: markdown)
+                .starts(with: Data("%PDF".utf8)),
+            "PDF must consume the same provenance-bearing Markdown projection")
+    }
+
     func testPDFIsValidAndPaginates() throws {
         let (record, speakers, _, summary) = fixture()
         // Enough transcript to overflow one US Letter page.

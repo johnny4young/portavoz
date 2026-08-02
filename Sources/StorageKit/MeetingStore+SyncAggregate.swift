@@ -280,7 +280,12 @@ public struct MeetingSyncEnvelope: Codable, Sendable {
 public enum MeetingSyncRemoteApplyResult: Equatable, Sendable {
     case applied
     case localChangePending(generation: Int)
+    case correctionConflict(localGeneration: Int)
     case deletionWon(discardedLocalGeneration: Int?)
+}
+
+private struct PendingTranscriptCorrectionConflict: Error {
+    let localGeneration: Int
 }
 
 extension MeetingStore {
@@ -334,44 +339,143 @@ extension MeetingStore {
         else {
             throw StorageError.invalidSyncState("unsupported remote sync envelope")
         }
-        return try await database.write { db in
-            let key = envelope.meetingID.rawValue.uuidString
-            let state = try MeetingSyncStateRecord.fetchOne(db, key: key)
-            let pendingGeneration = state.flatMap {
-                $0.localGeneration > $0.acknowledgedGeneration ? $0.localGeneration : nil
+        do {
+            return try await database.write { db in
+                try Self.applyRemoteMeetingSyncEnvelope(envelope, in: db)
             }
-
-            switch envelope.mutation {
-            case .delete:
-                try Self.applyRemoteMeetingDeletion(
-                    meetingID: envelope.meetingID,
-                    changedAt: envelope.changedAt,
-                    in: db)
-                try Self.settleRemoteMeetingMutation(
-                    meetingID: envelope.meetingID,
-                    changedAt: envelope.changedAt,
-                    isDeleted: true,
-                    in: db)
-                return pendingGeneration.map {
-                    .deletionWon(discardedLocalGeneration: $0)
-                } ?? .applied
-
-            case .upsert(let aggregate):
-                try Self.validateRemoteMeetingSyncAggregate(
-                    aggregate,
-                    meetingID: envelope.meetingID)
-                if let pendingGeneration {
-                    return .localChangePending(generation: pendingGeneration)
-                }
-                try Self.replaceWithRemoteMeetingSyncAggregate(aggregate, in: db)
-                try Self.settleRemoteMeetingMutation(
-                    meetingID: envelope.meetingID,
-                    changedAt: envelope.changedAt,
-                    isDeleted: false,
-                    in: db)
-                return .applied
-            }
+        } catch let conflict as PendingTranscriptCorrectionConflict {
+            return .correctionConflict(
+                localGeneration: conflict.localGeneration)
         }
+    }
+
+    private static func applyRemoteMeetingSyncEnvelope(
+        _ envelope: MeetingSyncEnvelope,
+        in db: Database
+    ) throws -> MeetingSyncRemoteApplyResult {
+        let key = envelope.meetingID.rawValue.uuidString
+        let state = try MeetingSyncStateRecord.fetchOne(db, key: key)
+        let pendingGeneration = state.flatMap {
+            $0.localGeneration > $0.acknowledgedGeneration
+                ? $0.localGeneration
+                : nil
+        }
+        switch envelope.mutation {
+        case .delete:
+            try applyRemoteMeetingDeletion(
+                meetingID: envelope.meetingID,
+                changedAt: envelope.changedAt,
+                in: db)
+            try settleRemoteMeetingMutation(
+                meetingID: envelope.meetingID,
+                changedAt: envelope.changedAt,
+                isDeleted: true,
+                in: db)
+            return pendingGeneration.map {
+                .deletionWon(discardedLocalGeneration: $0)
+            } ?? .applied
+        case .upsert(let aggregate):
+            return try applyRemoteMeetingSyncUpsert(
+                aggregate,
+                envelope: envelope,
+                state: state,
+                pendingGeneration: pendingGeneration,
+                in: db)
+        }
+    }
+
+    private static func applyRemoteMeetingSyncUpsert(
+        _ aggregate: MeetingSyncAggregate,
+        envelope: MeetingSyncEnvelope,
+        state: MeetingSyncStateRecord?,
+        pendingGeneration: Int?,
+        in db: Database
+    ) throws -> MeetingSyncRemoteApplyResult {
+        try validateRemoteMeetingSyncAggregate(
+            aggregate,
+            meetingID: envelope.meetingID)
+        guard let pendingGeneration else {
+            try replaceWithRemoteMeetingSyncAggregate(aggregate, in: db)
+            try settleRemoteMeetingMutation(
+                meetingID: envelope.meetingID,
+                changedAt: envelope.changedAt,
+                isDeleted: false,
+                in: db)
+            return .applied
+        }
+        guard state?.isDeleted != true, aggregate.formatVersion >= 2 else {
+            return .localChangePending(generation: pendingGeneration)
+        }
+        try mergePendingRemoteCorrections(
+            aggregate,
+            meetingID: envelope.meetingID,
+            localGeneration: pendingGeneration,
+            in: db)
+        let mergedGeneration = try MeetingSyncStateRecord.fetchOne(
+            db,
+            key: envelope.meetingID.rawValue.uuidString)?
+            .localGeneration ?? pendingGeneration
+        return .localChangePending(generation: mergedGeneration)
+    }
+
+    private static func mergePendingRemoteCorrections(
+        _ aggregate: MeetingSyncAggregate,
+        meetingID: MeetingID,
+        localGeneration: Int,
+        in db: Database
+    ) throws {
+        let localCorrections = try fetchTranscriptCorrectionHistory(
+            meetingID: meetingID,
+            in: db)
+        guard !localCorrections.isEmpty || !aggregate.transcriptCorrections.isEmpty else {
+            return
+        }
+        guard try hasCompatibleCorrectionBase(aggregate, meetingID: meetingID, in: db) else {
+            throw PendingTranscriptCorrectionConflict(localGeneration: localGeneration)
+        }
+        do {
+            _ = try mergeRemoteTranscriptCorrectionHistory(
+                aggregate.transcriptCorrections,
+                meetingID: meetingID,
+                in: db)
+        } catch is TranscriptCorrectionReplicaMergeError {
+            throw PendingTranscriptCorrectionConflict(localGeneration: localGeneration)
+        } catch is TranscriptCorrectionValidationError {
+            throw PendingTranscriptCorrectionConflict(localGeneration: localGeneration)
+        }
+    }
+
+    private static func hasCompatibleCorrectionBase(
+        _ remote: MeetingSyncAggregate,
+        meetingID: MeetingID,
+        in db: Database
+    ) throws -> Bool {
+        let key = meetingID.rawValue.uuidString
+        guard let localMeeting = try MeetingRecord.fetchOne(db, key: key),
+              localMeeting.deletedAt == nil,
+              remote.meeting.value.transcriptRevision == localMeeting.transcriptRevision
+        else { return false }
+        let localSegments = try meetingSyncSegments(meetingKey: key, in: db)
+        guard localSegments.count == remote.segments.count else { return false }
+        return zip(localSegments, remote.segments).allSatisfy { local, remote in
+            sameCorrectionBaseSegment(local.value, remote.value)
+        }
+    }
+
+    private static func sameCorrectionBaseSegment(
+        _ lhs: TranscriptSegment,
+        _ rhs: TranscriptSegment
+    ) -> Bool {
+        lhs.id == rhs.id
+            && lhs.meetingID == rhs.meetingID
+            && lhs.speakerID == rhs.speakerID
+            && lhs.channel == rhs.channel
+            && lhs.text == rhs.text
+            && lhs.language == rhs.language
+            && lhs.startTime == rhs.startTime
+            && lhs.endTime == rhs.endTime
+            && lhs.confidence == rhs.confidence
+            && lhs.isFinal == rhs.isFinal
     }
 
     private static func meetingSyncAggregate(

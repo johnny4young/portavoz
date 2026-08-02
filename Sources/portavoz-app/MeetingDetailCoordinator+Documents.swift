@@ -250,7 +250,7 @@ extension MeetingDetailCoordinator {
 
     func publishGist() {
         Task {
-            switch await model.send(.publishGist) {
+            switch await model.send(.publishGist(options: documentOptions)) {
             case .gistPublished(let url):
                 flow.alert = .gistPublished(url)
             case .operationFailed(let message):
@@ -290,7 +290,9 @@ extension MeetingDetailCoordinator {
             case .srt: .srt
             case .vtt: .vtt
             }
-            let effect = await model.send(.prepareDocument(documentFormat))
+            let effect = await model.send(.prepareDocument(
+                documentFormat,
+                options: documentOptions))
             switch effect {
             case .documentPrepared(let document):
                 let contentType: UTType = switch format {
@@ -309,6 +311,11 @@ extension MeetingDetailCoordinator {
                 break
             }
         }
+    }
+
+    private var documentOptions: MeetingDocumentOptions {
+        MeetingDocumentOptions(
+            includeCorrectionProvenance: flow.includeCorrectionProvenance)
     }
 
     private func copySummary(

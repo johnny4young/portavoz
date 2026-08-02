@@ -270,13 +270,14 @@ actor CLIAudioSummaryProcessor: AudioFileSummaryProcessor {
 }
 
 struct CLIMeetingDocumentRenderer: MeetingDocumentRendering {
-    func markdown(from detail: MeetingLibraryDetail) async throws -> String {
+    func markdown(from content: MeetingDocumentContent) async throws -> String {
         MeetingExporter.markdown(
-            meeting: detail.meeting,
-            speakers: detail.speakers,
-            segments: detail.segments,
-            summary: detail.summary,
-            summaryVersion: detail.summaryVersion)
+            meeting: content.meeting,
+            speakers: content.speakers,
+            segments: content.segments,
+            summary: content.summary,
+            summaryVersion: content.summaryVersion,
+            correctionProvenance: content.correctionProvenance)
     }
 
     func pdf(fromMarkdown markdown: String) async throws -> Data {
@@ -286,7 +287,7 @@ struct CLIMeetingDocumentRenderer: MeetingDocumentRendering {
     }
 
     func subtitles(
-        from detail: MeetingLibraryDetail,
+        from content: MeetingDocumentContent,
         format: MeetingSubtitleFormat
     ) async throws -> String {
         let exportFormat: SubtitleExport.Format = switch format {
@@ -295,8 +296,9 @@ struct CLIMeetingDocumentRenderer: MeetingDocumentRendering {
         }
         return SubtitleExport.render(
             exportFormat,
-            segments: detail.segments,
-            speakers: detail.speakers)
+            segments: content.segments,
+            speakers: content.speakers,
+            correctionProvenance: content.correctionProvenance)
     }
 }
 

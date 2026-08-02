@@ -191,10 +191,10 @@ final class MeetingDetailModel {
         case .retryProcessing:
             await retryProcessing()
             return nil
-        case .prepareDocument(let format):
-            return await prepareDocument(format)
-        case .publishGist:
-            return await publishGist()
+        case .prepareDocument(let format, let options):
+            return await prepareDocument(format, options: options)
+        case .publishGist(let options):
+            return await publishGist(options: options)
         case .loadNameSuggestions:
             return await loadNameSuggestions()
         case .loadVoiceSuggestions:
@@ -398,19 +398,25 @@ private extension MeetingDetailModel {
         }
     }
 
-    func prepareDocument(_ format: MeetingDocumentFormat) async -> Effect {
+    func prepareDocument(
+        _ format: MeetingDocumentFormat,
+        options: MeetingDocumentOptions
+    ) async -> Effect {
         do {
             return .documentPrepared(try await client.prepareMeetingDetailDocument(
                 meetingID,
-                format: format))
+                format: format,
+                options: options))
         } catch {
             return .operationFailed(UseCaseErrorMessages.describe(error))
         }
     }
 
-    func publishGist() async -> Effect {
+    func publishGist(options: MeetingDocumentOptions) async -> Effect {
         do {
-            return .gistPublished(try await client.publishMeetingDetailGist(meetingID))
+            return .gistPublished(try await client.publishMeetingDetailGist(
+                meetingID,
+                options: options))
         } catch {
             return .operationFailed(UseCaseErrorMessages.describe(error))
         }

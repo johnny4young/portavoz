@@ -2846,7 +2846,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertFalse(publisher.contains("URLSession"))
             XCTAssertFalse(publisher.contains("data(for:"))
         }
-        XCTAssertTrue(detail.contains("model.send(.publishGist)"))
+        XCTAssertTrue(detail.contains("model.send(.publishGist("))
         XCTAssertTrue(detail.contains("model.send(.prepareDocument("))
         XCTAssertFalse(detail.contains("services.publishMeetingDetailGist("))
         XCTAssertFalse(detail.contains("services.prepareMeetingDetailDocument("))
@@ -4775,11 +4775,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             "D232 — Make structural transcript corrections explicit and recoverable"))
         XCTAssertTrue(decisions.contains(
             "D233 — Fence derived artifacts by effective correction lineage"))
+        XCTAssertTrue(decisions.contains(
+            "D234 — Export corrected readings and converge private replicas without guessing"))
         XCTAssertTrue(decisions.contains("all current product paths remain on accepted content"))
         XCTAssertTrue(gaps.contains(
             "Meeting Detail composes current-revision text, speaker, split, explicit adjacent merge"))
         XCTAssertTrue(gaps.contains(
-            "Transcript corrections are not yet searchable/exportable as composed material"))
+            "Transcript corrections are not yet searchable or exposed through MCP as composed material"))
 
         for forbidden in [
             "import SwiftUI", "import StorageKit", "import GRDB",
@@ -5059,6 +5061,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "IntegrationsKit/CloudMeetingSyncCoordinator.swift",
                 "IntegrationsKit/CloudMeetingSyncEngineDelegate.swift",
                 "IntegrationsKit/CloudMeetingSyncRuntime.swift",
+                "IntegrationsKit/CloudMeetingSyncStateStore+CorrectionReplay.swift",
                 "IntegrationsKit/CloudMeetingSyncStateStore+Persistence.swift",
                 "IntegrationsKit/CloudMeetingSyncStateStore.swift",
                 "IntegrationsKit/CloudRecordSystemFieldsCodec.swift",
@@ -5720,7 +5723,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            332)
+            334)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             11)

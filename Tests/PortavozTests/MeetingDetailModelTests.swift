@@ -955,8 +955,10 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
 
     func prepareMeetingDetailDocument(
         _ meetingID: MeetingID,
-        format: MeetingDocumentFormat
+        format: MeetingDocumentFormat,
+        options: MeetingDocumentOptions
     ) throws -> PreparedMeetingDocument {
+        _ = options
         calls.append(.prepareDocument(meetingID, format))
         if let prepareDocumentError { throw prepareDocumentError }
         try fail(.prepareDocument)
@@ -965,7 +967,11 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
             filename: "planning.\(format == .markdown ? "md" : "pdf")")
     }
 
-    func publishMeetingDetailGist(_ meetingID: MeetingID) throws -> URL {
+    func publishMeetingDetailGist(
+        _ meetingID: MeetingID,
+        options: MeetingDocumentOptions
+    ) throws -> URL {
+        _ = options
         calls.append(.publishGist(meetingID))
         if let publishGistError { throw publishGistError }
         try fail(.publishGist)

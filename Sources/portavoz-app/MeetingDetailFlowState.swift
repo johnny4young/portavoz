@@ -64,6 +64,7 @@ final class MeetingDetailFlowState {
     var dialog: DialogRoute?
     var alert: AlertRoute?
     var export: MeetingDetailExportRoute?
+    var includeCorrectionProvenance = false
 
     var renameMeetingTitle = ""
     var renameSpeakerName = ""

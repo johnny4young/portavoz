@@ -114,6 +114,65 @@ final class MeetingTranscriptContentTests: XCTestCase {
         XCTAssertEqual(navigation.pendingSeek, 7)
     }
 
+    func testComposedSplitSeeksTheOriginalAudioTimeline() throws {
+        let sourceID = id(21)
+        let source = segment(
+            id: sourceID,
+            start: 3,
+            end: 8,
+            text: "First part second part",
+            language: "en")
+        let firstPartID = id(22)
+        let secondPartID = id(23)
+        let correction = TranscriptCorrectionEvent(
+            id: id(24),
+            meetingID: meetingID,
+            baseTranscriptRevision: 4,
+            targetSegmentIDs: [sourceID],
+            kind: .split([
+                TranscriptCorrectionPart(
+                    id: firstPartID,
+                    text: "First part",
+                    speakerID: nil,
+                    language: "en",
+                    startTime: 3,
+                    endTime: 5),
+                TranscriptCorrectionPart(
+                    id: secondPartID,
+                    text: "second part",
+                    speakerID: nil,
+                    language: "en",
+                    startTime: 5,
+                    endTime: 8),
+            ]),
+            sourceDeviceID: id(25),
+            createdAt: Date(timeIntervalSince1970: 10))
+        let composition = try ComposeTranscript().execute(
+            baseTranscriptRevision: 4,
+            baseMaterial: .raw,
+            segments: [source],
+            corrections: [correction])
+        var navigation = MeetingTranscriptNavigationState()
+
+        navigation.reveal(
+            sourceSegmentID: sourceID,
+            at: 7,
+            in: composition.composed)
+
+        XCTAssertEqual(composition.accepted.rows.map(\.id), [sourceID])
+        XCTAssertEqual(composition.composed.rows.map(\.id), [firstPartID, secondPartID])
+        XCTAssertEqual(
+            composition.composed.rows.map(\.sourceSegmentIDs),
+            [[sourceID], [sourceID]])
+        XCTAssertEqual(composition.composed.rows.map(\.startTime), [3, 5])
+        XCTAssertEqual(composition.composed.rows.map(\.endTime), [5, 8])
+        XCTAssertEqual(navigation.focusedRowID, secondPartID)
+        XCTAssertEqual(navigation.consumePendingSeek(), 7)
+        XCTAssertEqual(source.startTime, 3)
+        XCTAssertEqual(source.endTime, 8)
+        XCTAssertEqual(source.text, "First part second part")
+    }
+
     func testTimestampRouteFocusesTheVisibleRowBeforePlaybackExists() {
         let firstID = id(1)
         let secondID = id(2)

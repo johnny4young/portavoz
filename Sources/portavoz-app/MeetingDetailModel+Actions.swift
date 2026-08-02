@@ -23,8 +23,8 @@ extension MeetingDetailModel {
     enum ReviewAction {
         case deleteMeeting
         case retryProcessing
-        case prepareDocument(MeetingDocumentFormat)
-        case publishGist
+        case prepareDocument(MeetingDocumentFormat, MeetingDocumentOptions)
+        case publishGist(MeetingDocumentOptions)
         case loadNameSuggestions
         case loadVoiceSuggestions
         case loadMetadataSuggestions
@@ -104,11 +104,22 @@ extension MeetingDetailModel {
         static var deleteMeeting: Self { .review(.deleteMeeting) }
         static var retryProcessing: Self { .review(.retryProcessing) }
 
-        static func prepareDocument(_ format: MeetingDocumentFormat) -> Self {
-            .review(.prepareDocument(format))
+        static func prepareDocument(
+            _ format: MeetingDocumentFormat,
+            options: MeetingDocumentOptions = MeetingDocumentOptions()
+        ) -> Self {
+            .review(.prepareDocument(format, options))
         }
 
-        static var publishGist: Self { .review(.publishGist) }
+        static func publishGist(
+            options: MeetingDocumentOptions = MeetingDocumentOptions()
+        ) -> Self {
+            .review(.publishGist(options))
+        }
+
+        static var publishGist: Self {
+            .review(.publishGist(MeetingDocumentOptions()))
+        }
         static var loadNameSuggestions: Self { .review(.loadNameSuggestions) }
         static var loadVoiceSuggestions: Self { .review(.loadVoiceSuggestions) }
         static var loadMetadataSuggestions: Self { .review(.loadMetadataSuggestions) }

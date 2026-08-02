@@ -151,6 +151,160 @@ final class PublishMeetingContentUseCaseTests: XCTestCase {
         XCTAssertEqual(subtitleFormats, [.vtt])
     }
 
+    func testCorrectedDocumentUsesComposedRowsAndOmitsAStaleSummary() async throws {
+        let meeting = correctionMeeting()
+        let source = correctionSegment(meeting: meeting, id: correctionID(2))
+        let correction = correctionEvent(
+            meeting: meeting,
+            id: correctionID(10),
+            sourceID: source.id,
+            kind: .replaceText(text: "Hola, probando.", language: "es"))
+        let detail = MeetingLibraryDetail(
+            meeting: meeting,
+            speakers: [],
+            segments: [source],
+            corrections: [correction],
+            summary: SummaryDraft(
+                meetingID: meeting.id,
+                recipeID: Recipe.general.id,
+                language: "en",
+                markdown: "Stale summary",
+                actionItems: []),
+            summaryVersion: 3)
+        let documents = MeetingDocumentsFake()
+        let useCase = PrepareMeetingDocument(
+            library: QueryMeetingLibrary(reader: PublishingReaderFake(detail: detail)),
+            documents: documents)
+
+        _ = try await useCase.execute(.init(
+            meetingID: meeting.id,
+            format: .markdown,
+            options: MeetingDocumentOptions(includeCorrectionProvenance: true)))
+
+        let renderedContents = await documents.contents
+        let content = try XCTUnwrap(renderedContents.first)
+        XCTAssertEqual(content.segments.map(\.text), ["Hola, probando."])
+        XCTAssertEqual(content.segments.map(\.language), ["es"])
+        XCTAssertEqual(content.segments.map(\.startTime), [12])
+        XCTAssertEqual(content.segments.map(\.endTime), [18])
+        XCTAssertNil(content.summary)
+        XCTAssertNil(content.summaryVersion)
+        let provenance = try XCTUnwrap(content.correctionProvenance)
+        let exportedSegment = try XCTUnwrap(content.segments.first)
+        XCTAssertEqual(provenance.baseTranscriptRevision, meeting.transcriptRevision)
+        XCTAssertEqual(provenance.activeCorrectionIDs, [correction.id])
+        XCTAssertEqual(
+            provenance.sourceSegmentIDsByExportedSegmentID[exportedSegment.id],
+            [source.id])
+    }
+
+    func testSplitExportPreservesOriginalTimelineAndMakesProvenanceOptIn() async throws {
+        let meeting = correctionMeeting()
+        let source = correctionSegment(meeting: meeting, id: correctionID(2))
+        let firstPartID = correctionID(11)
+        let secondPartID = correctionID(12)
+        let split = correctionEvent(
+            meeting: meeting,
+            id: correctionID(10),
+            sourceID: source.id,
+            kind: .split([
+                TranscriptCorrectionPart(
+                    id: firstPartID,
+                    text: "Primera parte",
+                    speakerID: nil,
+                    language: "es",
+                    startTime: 12,
+                    endTime: 14.5),
+                TranscriptCorrectionPart(
+                    id: secondPartID,
+                    text: "segunda parte",
+                    speakerID: nil,
+                    language: "es",
+                    startTime: 14.5,
+                    endTime: 18),
+            ]))
+        let revision = try TranscriptCorrectionRevision.current(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            history: [split])
+        let summary = SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: Recipe.general.id,
+            language: "es",
+            markdown: "Resumen vigente",
+            actionItems: [])
+        let detail = MeetingLibraryDetail(
+            meeting: meeting,
+            speakers: [],
+            segments: [source],
+            corrections: [split],
+            summary: summary,
+            summaryVersion: 4,
+            summaryCorrectionSource: .revision(revision))
+        let documents = MeetingDocumentsFake()
+        let useCase = PrepareMeetingDocument(
+            library: QueryMeetingLibrary(reader: PublishingReaderFake(detail: detail)),
+            documents: documents)
+
+        _ = try await useCase.execute(.init(
+            meetingID: meeting.id,
+            format: .markdown))
+        _ = try await useCase.execute(.init(
+            meetingID: meeting.id,
+            format: .markdown,
+            options: MeetingDocumentOptions(includeCorrectionProvenance: true)))
+
+        let contents = await documents.contents
+        XCTAssertEqual(contents.count, 2)
+        XCTAssertEqual(contents[0].segments.map(\.id), [firstPartID, secondPartID])
+        XCTAssertEqual(contents[0].segments.map(\.startTime), [12, 14.5])
+        XCTAssertEqual(contents[0].segments.map(\.endTime), [14.5, 18])
+        XCTAssertEqual(contents[0].summary?.meetingID, summary.meetingID)
+        XCTAssertEqual(contents[0].summary?.markdown, summary.markdown)
+        XCTAssertEqual(contents[0].summaryVersion, 4)
+        XCTAssertNil(contents[0].correctionProvenance)
+        let provenance = try XCTUnwrap(contents[1].correctionProvenance)
+        XCTAssertEqual(provenance.sourceSegmentIDsByExportedSegmentID, [
+            firstPartID: [source.id],
+            secondPartID: [source.id],
+        ])
+    }
+
+    func testDocumentProjectionRejectsCorrectionRevisionMismatch() async {
+        let meeting = correctionMeeting()
+        let source = correctionSegment(meeting: meeting, id: correctionID(2))
+        let correction = correctionEvent(
+            meeting: meeting,
+            id: correctionID(10),
+            sourceID: source.id,
+            kind: .replaceText(text: "Corrected", language: "en"))
+        let detail = MeetingLibraryDetail(
+            meeting: meeting,
+            speakers: [],
+            segments: [source],
+            corrections: [correction],
+            correctionRevision: .accepted,
+            summary: nil,
+            summaryVersion: nil)
+        let documents = MeetingDocumentsFake()
+        let useCase = PrepareMeetingDocument(
+            library: QueryMeetingLibrary(reader: PublishingReaderFake(detail: detail)),
+            documents: documents)
+
+        do {
+            _ = try await useCase.execute(.init(
+                meetingID: meeting.id,
+                format: .markdown))
+            XCTFail("expected fail-closed correction projection")
+        } catch let error as ExportMeetingDocumentError {
+            XCTAssertEqual(error, .invalidCorrectionSnapshot)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+        let renderedContents = await documents.contents
+        XCTAssertTrue(renderedContents.isEmpty)
+    }
+
     func testOutputRequirementCopyAppliesToEveryNonStreamingFormat() {
         XCTAssertEqual(
             ExportMeetingDocumentError.outputFileRequired.errorDescription,
@@ -261,6 +415,49 @@ final class PublishMeetingContentUseCaseTests: XCTestCase {
     }
 }
 
+private func correctionMeeting() -> Meeting {
+    Meeting(
+        id: MeetingID(rawValue: correctionID(1)),
+        title: "Correction export",
+        startedAt: Date(timeIntervalSince1970: 1_800_000_000),
+        endedAt: Date(timeIntervalSince1970: 1_800_000_030),
+        language: "es",
+        transcriptRevision: 4)
+}
+
+private func correctionSegment(meeting: Meeting, id: UUID) -> TranscriptSegment {
+    TranscriptSegment(
+        id: id,
+        meetingID: meeting.id,
+        channel: .system,
+        text: "Original words",
+        language: "en",
+        startTime: 12,
+        endTime: 18,
+        confidence: 0.8,
+        isFinal: true)
+}
+
+private func correctionEvent(
+    meeting: Meeting,
+    id: UUID,
+    sourceID: UUID,
+    kind: TranscriptCorrectionKind
+) -> TranscriptCorrectionEvent {
+    TranscriptCorrectionEvent(
+        id: id,
+        meetingID: meeting.id,
+        baseTranscriptRevision: meeting.transcriptRevision,
+        targetSegmentIDs: [sourceID],
+        kind: kind,
+        sourceDeviceID: correctionID(999),
+        createdAt: Date(timeIntervalSince1970: 1_800_000_010))
+}
+
+private func correctionID(_ value: Int) -> UUID {
+    UUID(uuidString: String(format: "00000000-0000-4000-8000-%012d", value))!
+}
+
 private struct PublishingFixture {
     let meetingID = MeetingID(rawValue: UUID(
         uuidString: "00000000-0000-0000-0000-000000000421")!)
@@ -333,9 +530,10 @@ private actor PublishingReaderFake: MeetingLibraryQueryReading {
 private actor MeetingDocumentsFake: MeetingDocumentRendering {
     private(set) var markdownCalls = 0
     private(set) var subtitleFormats: [MeetingSubtitleFormat] = []
+    private(set) var contents: [MeetingDocumentContent] = []
 
-    func markdown(from detail: MeetingLibraryDetail) -> String {
-        _ = detail
+    func markdown(from content: MeetingDocumentContent) -> String {
+        contents.append(content)
         markdownCalls += 1
         return "# Weekly Sync"
     }
@@ -346,10 +544,10 @@ private actor MeetingDocumentsFake: MeetingDocumentRendering {
     }
 
     func subtitles(
-        from detail: MeetingLibraryDetail,
+        from content: MeetingDocumentContent,
         format: MeetingSubtitleFormat
     ) -> String {
-        _ = detail
+        contents.append(content)
         subtitleFormats.append(format)
         return format == .vtt ? "WEBVTT\n\nfixture" : "1\nfixture"
     }

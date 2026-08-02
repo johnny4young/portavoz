@@ -22,17 +22,24 @@ extension AppServices {
     /// native save panel and its presentation state.
     func prepareMeetingDetailDocument(
         _ meetingID: MeetingID,
-        format: MeetingDocumentFormat
+        format: MeetingDocumentFormat,
+        options: MeetingDocumentOptions
     ) async throws -> PreparedMeetingDocument {
         try await PrepareMeetingDocument(
             library: .local(store: store),
             documents: AppMeetingDocumentRenderer())
-            .execute(.init(meetingID: meetingID, format: format))
+            .execute(.init(
+                meetingID: meetingID,
+                format: format,
+                options: options))
     }
 
     /// Publishes only after the application workflow has admitted and rendered
     /// one current local meeting snapshot. Credential resolution stays lazy.
-    func publishMeetingDetailGist(_ meetingID: MeetingID) async throws -> URL {
+    func publishMeetingDetailGist(
+        _ meetingID: MeetingID,
+        options: MeetingDocumentOptions
+    ) async throws -> URL {
         let useCase = ExportMeetingDocument(
             library: .local(store: store),
             documents: AppMeetingDocumentRenderer(),
@@ -42,20 +49,22 @@ extension AppServices {
         guard case .published(let url) = try await useCase.execute(
             ExportMeetingDocumentRequest(
                 meetingID: meetingID,
-                format: .markdown))
+                format: .markdown,
+                options: options))
         else { throw AppMeetingDocumentError.unexpectedResult }
         return url
     }
 }
 
 private struct AppMeetingDocumentRenderer: MeetingDocumentRendering {
-    func markdown(from detail: MeetingLibraryDetail) async throws -> String {
+    func markdown(from content: MeetingDocumentContent) async throws -> String {
         MeetingExporter.markdown(
-            meeting: detail.meeting,
-            speakers: detail.speakers,
-            segments: detail.segments,
-            summary: detail.summary,
-            summaryVersion: detail.summaryVersion)
+            meeting: content.meeting,
+            speakers: content.speakers,
+            segments: content.segments,
+            summary: content.summary,
+            summaryVersion: content.summaryVersion,
+            correctionProvenance: content.correctionProvenance)
     }
 
     func pdf(fromMarkdown markdown: String) async throws -> Data {
@@ -65,7 +74,7 @@ private struct AppMeetingDocumentRenderer: MeetingDocumentRendering {
     }
 
     func subtitles(
-        from detail: MeetingLibraryDetail,
+        from content: MeetingDocumentContent,
         format: MeetingSubtitleFormat
     ) async throws -> String {
         let exportFormat: SubtitleExport.Format = switch format {
@@ -74,8 +83,9 @@ private struct AppMeetingDocumentRenderer: MeetingDocumentRendering {
         }
         return SubtitleExport.render(
             exportFormat,
-            segments: detail.segments,
-            speakers: detail.speakers)
+            segments: content.segments,
+            speakers: content.speakers,
+            correctionProvenance: content.correctionProvenance)
     }
 }
 

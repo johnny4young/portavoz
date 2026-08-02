@@ -118,6 +118,19 @@ extension MeetingStore {
         }
     }
 
+    public func pendingMeetingSyncChange(
+        for meetingID: MeetingID
+    ) async throws -> MeetingSyncChange? {
+        try await database.read { database in
+            guard let record = try MeetingSyncStateRecord.fetchOne(
+                database,
+                key: meetingID.rawValue.uuidString),
+                record.localGeneration > record.acknowledgedGeneration
+            else { return nil }
+            return try record.syncChange
+        }
+    }
+
     /// Acknowledges only the generation actually sent. If a newer local edit
     /// arrived meanwhile, it remains pending by construction.
     public func acknowledgeMeetingSync(_ change: MeetingSyncChange) async throws {

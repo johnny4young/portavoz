@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## August 2, 2026
+
+- **📤 Corrected words travel safely** — Markdown, PDF, SRT, WebVTT, terminal, and Gist exports now use the corrected reading, can disclose correction provenance on request, and keep every playback time tied to the original recording.
+
 ## August 1, 2026
 
 - **🔄 Transcript fixes keep AI honest** — Editing a transcript now marks older summaries and Apuntador answers as outdated, regenerates summaries from the corrected words on request, and keeps stale corrected lines out of search instead of presenting them as current.

@@ -911,7 +911,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     /// and VTT items must exist for a seeded diarized meeting.
     @MainActor
     func testExportMenuOffersSubtitleFormats() {
-        let app = launchOnSeededMeeting()
+        let app = launchOnSeededMeeting(staleDerived: true)
         defer { app.terminate() }
 
         XCTAssertTrue(
@@ -928,6 +928,21 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.menuItems["detail-export-vtt"].waitForExistence(timeout: 5),
             "the diarized transcript must export as VTT")
+        let provenance = app.menuItems["detail-export-correction-provenance"]
+        XCTAssertTrue(
+            provenance.waitForExistence(timeout: 5),
+            "the export menu must disclose the opt-in correction provenance control")
+        XCTAssertTrue(provenance.isEnabled)
+        XCTAssertFalse(provenance.isSelected)
+        provenance.click()
+
+        menu.click()
+        let included = app.menuItems["detail-export-correction-provenance"]
+        XCTAssertTrue(included.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            included.isSelected,
+            "correction provenance must be an explicit persistent export option")
+        attachScreenshot(of: app, named: "meeting-detail-correction-aware-export")
         // Close the menu without exporting — the save panel is native UI.
         app.typeKey(.escape, modifierFlags: [])
     }

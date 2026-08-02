@@ -7441,6 +7441,16 @@
         }
       }
     },
+    "Include correction provenance": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluir procedencia de correcciones"
+          }
+        }
+      }
+    },
     "Push-to-talk mouse button": {
       "localizations": {
         "es": {

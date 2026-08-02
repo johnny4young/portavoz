@@ -14,6 +14,8 @@ struct MeetingDetailActionValues {
     let isRefining: Bool
     let hasAudio: Bool
     let hasSummary: Bool
+    let hasCorrections: Bool
+    let includeCorrectionProvenance: Bool
 }
 
 struct MeetingDetailActionActions {
@@ -21,6 +23,7 @@ struct MeetingDetailActionActions {
     let startSpanishRefine: @MainActor () -> Void
     let startEnglishRefine: @MainActor () -> Void
     let cancelRefine: @MainActor () -> Void
+    let setIncludeCorrectionProvenance: @MainActor (Bool) -> Void
     let export: @MainActor (MeetingDetailExportAction) -> Void
     let deleteMeeting: @MainActor () -> Void
 }
@@ -88,6 +91,20 @@ struct MeetingDetailActionSection: View {
                 .accessibilityIdentifier("detail-export-srt")
             Button("Export subtitles (VTT)…") { actions.export(.vtt) }
                 .accessibilityIdentifier("detail-export-vtt")
+            Button {
+                actions.setIncludeCorrectionProvenance(
+                    !values.includeCorrectionProvenance)
+            } label: {
+                if values.includeCorrectionProvenance {
+                    Label("Include correction provenance", systemImage: "checkmark")
+                } else {
+                    Text("Include correction provenance")
+                }
+            }
+                .disabled(!values.hasCorrections)
+                .accessibilityIdentifier("detail-export-correction-provenance")
+                .accessibilityAddTraits(
+                    values.includeCorrectionProvenance ? .isSelected : [])
             Button("Export meeting file (.portavoz)…") {
                 actions.export(.meetingBundle(includeAudio: false))
             }

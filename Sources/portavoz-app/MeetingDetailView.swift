@@ -330,7 +330,9 @@ private extension MeetingDetailView {
             values: MeetingDetailActionValues(
                 isRefining: refine.status != nil,
                 hasAudio: detail.meeting.audioDirectory != nil,
-                hasSummary: summary != nil),
+                hasSummary: summary != nil,
+                hasCorrections: !detail.correctionRevision.isAccepted,
+                includeCorrectionProvenance: flow.includeCorrectionProvenance),
             actions: MeetingDetailActionActions(
                 startRefine: { coordinator.startRefine(detail) },
                 startSpanishRefine: {
@@ -340,6 +342,9 @@ private extension MeetingDetailView {
                     coordinator.startRefine(detail, languagePolicy: .fixed(.english))
                 },
                 cancelRefine: sceneActions.cancelRefine,
+                setIncludeCorrectionProvenance: {
+                    flow.includeCorrectionProvenance = $0
+                },
                 export: { coordinator.handleExportAction($0, detail: detail) },
                 deleteMeeting: { Task { await deleteMeeting() } }))
     }

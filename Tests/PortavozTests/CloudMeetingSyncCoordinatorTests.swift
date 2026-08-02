@@ -192,6 +192,125 @@ final class CloudMeetingSyncCoordinatorTests: XCTestCase {
         XCTAssertTrue(tombstoneSnapshot.deferredReplays.isEmpty)
     }
 
+    func testCompetingCorrectionFetchBlocksOutgoingAcrossRestartAndLateSave() async throws {
+        let root = temporaryDirectory()
+        let assetRoot = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: assetRoot)
+        }
+        let fixture = try await correctionConflictFixture(
+            transportRoot: root,
+            assetRoot: assetRoot)
+        let now = Date(timeIntervalSince1970: 1_784_330_300)
+
+        let result = try await fixture.coordinator.handleFetchedRecord(
+            fixture.remoteRecord,
+            at: now)
+
+        XCTAssertEqual(
+            result,
+            .blockedCorrectionConflict(
+                localGeneration: fixture.localOutgoingEnvelope.generation))
+        var snapshot = await fixture.transportStore.currentSnapshot()
+        XCTAssertEqual(snapshot.deferredReplays.map(\.blocksOutgoing), [true])
+        XCTAssertEqual(snapshot.attempts.map(\.phase), [.blocked])
+        XCTAssertEqual(snapshot.attempts.map(\.lastFailure), [.serverConflict])
+        let conflictMetadata = snapshot.recordMetadata
+        let restagedRecordIDs = try await fixture.coordinator.stagePendingChanges(at: now)
+        XCTAssertTrue(restagedRecordIDs.isEmpty)
+        let blockedRecord = try await fixture.coordinator.encodedRecord(
+            for: fixture.localOutgoingRecord.recordID,
+            at: now)
+        XCTAssertNil(blockedRecord)
+        let retryCount = try await fixture.transportStore.retryPendingAttempts(at: now)
+        XCTAssertEqual(
+            retryCount,
+            0,
+            "an explicit transport retry must not bypass a correction decision")
+
+        let shouldRemainPending = try await fixture.coordinator.handleSavedRecord(
+            fixture.localOutgoingRecord)
+        XCTAssertTrue(shouldRemainPending)
+        let pendingAfterLateSave = try await fixture.destination
+            .pendingMeetingSyncChange(for: fixture.meeting.id)
+        XCTAssertEqual(
+            pendingAfterLateSave?.generation,
+            fixture.localOutgoingEnvelope.generation,
+            "a late callback must not acknowledge a blocked replica")
+        snapshot = await fixture.transportStore.currentSnapshot()
+        XCTAssertEqual(
+            snapshot.recordMetadata,
+            conflictMetadata,
+            "a late local callback must not replace the remote conflict system fields")
+
+        let restarted = try CloudMeetingSyncStateStore(rootDirectory: root)
+        snapshot = await restarted.currentSnapshot()
+        XCTAssertEqual(snapshot.deferredReplays.map(\.blocksOutgoing), [true])
+        XCTAssertEqual(snapshot.attempts.map(\.phase), [.blocked])
+        let restartedEnvelope = try await restarted.deferredEnvelope(
+            for: fixture.meeting.id)
+        XCTAssertNotNil(restartedEnvelope)
+    }
+
+    func testRestoringLocalCorrectionMergesDeferredReplicaAndReleasesSend() async throws {
+        let root = temporaryDirectory()
+        let assetRoot = temporaryDirectory()
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            try? FileManager.default.removeItem(at: assetRoot)
+        }
+        let fixture = try await correctionConflictFixture(
+            transportRoot: root,
+            assetRoot: assetRoot)
+        let now = Date(timeIntervalSince1970: 1_784_330_300)
+        _ = try await fixture.coordinator.handleFetchedRecord(
+            fixture.remoteRecord,
+            at: now)
+
+        _ = try await fixture.destination.tombstoneTranscriptCorrection(
+            fixture.localCorrection.id,
+            meetingID: fixture.meeting.id,
+            at: now.addingTimeInterval(1))
+        let recordIDs = try await fixture.coordinator.stagePendingChanges(
+            at: now.addingTimeInterval(2))
+
+        XCTAssertEqual(recordIDs, [fixture.localOutgoingRecord.recordID])
+        let history = try await fixture.destination.transcriptCorrectionHistory(
+            for: fixture.meeting.id)
+        XCTAssertEqual(Set(history.map(\.id)), Set([
+            fixture.localCorrection.id,
+            fixture.remoteCorrection.id,
+        ]))
+        XCTAssertNotNil(history.first(where: {
+            $0.id == fixture.localCorrection.id
+        })?.deletedAt)
+        var snapshot = await fixture.transportStore.currentSnapshot()
+        XCTAssertEqual(snapshot.deferredReplays.map(\.blocksOutgoing), [false])
+        XCTAssertEqual(snapshot.attempts.map(\.phase), [.ready])
+
+        let candidate = try await fixture.coordinator.encodedRecord(
+            for: fixture.localOutgoingRecord.recordID,
+            at: now.addingTimeInterval(2))
+        let mergedRecord = try XCTUnwrap(candidate).record
+        let mergedEnvelope = try await fixture.transportStore.envelope(
+            from: mergedRecord)
+        guard case .upsert(let aggregate) = mergedEnvelope.mutation else {
+            return XCTFail("resolved correction conflict must publish an aggregate")
+        }
+        XCTAssertEqual(
+            Set(aggregate.transcriptCorrections.map(\.id)),
+            Set([fixture.localCorrection.id, fixture.remoteCorrection.id]))
+
+        try await fixture.coordinator.handleSavedRecord(mergedRecord)
+        let pendingAfterSave = try await fixture.destination.pendingMeetingSyncChange(
+            for: fixture.meeting.id)
+        XCTAssertNil(pendingAfterSave)
+        snapshot = await fixture.transportStore.currentSnapshot()
+        XCTAssertTrue(snapshot.attempts.isEmpty)
+        XCTAssertTrue(snapshot.deferredReplays.isEmpty)
+    }
+
     func testFailureClassifierSeparatesRetryConflictAndTerminalPaths() {
         let transient = NSError(
             domain: CKError.errorDomain,
@@ -320,6 +439,107 @@ final class CloudMeetingSyncCoordinatorTests: XCTestCase {
         uuidString: "40000000-0000-0000-0000-000000000001")!
     private let remoteDeviceID = UUID(
         uuidString: "40000000-0000-0000-0000-000000000002")!
+
+    private struct CorrectionConflictFixture {
+        let meeting: Meeting
+        let destination: MeetingStore
+        let transportStore: CloudMeetingSyncStateStore
+        let coordinator: CloudMeetingSyncCoordinator
+        let localCorrection: TranscriptCorrectionEvent
+        let remoteCorrection: TranscriptCorrectionEvent
+        let localOutgoingRecord: CKRecord
+        let localOutgoingEnvelope: MeetingSyncEnvelope
+        let remoteRecord: CKRecord
+    }
+
+    private func correctionConflictFixture(
+        transportRoot: URL,
+        assetRoot: URL
+    ) async throws -> CorrectionConflictFixture {
+        let source = try MeetingStore.inMemory()
+        let meeting = Meeting(
+            title: "Correction replicas",
+            startedAt: Date(timeIntervalSince1970: 1_784_330_000))
+        let speaker = Speaker(
+            meetingID: meeting.id,
+            label: "S1",
+            displayName: "Speaker")
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            speakerID: speaker.id,
+            channel: .system,
+            text: "Original",
+            language: "en",
+            startTime: 1,
+            endTime: 3,
+            isFinal: true)
+        try await source.save(meeting)
+        try await source.save([speaker])
+        try await source.save([segment])
+
+        let codec = CloudMeetingRecordCodec()
+        let firstEnvelope = try await newestEnvelope(
+            in: source,
+            sourceDeviceID: remoteDeviceID)
+        let firstRecord = try codec.encode(
+            firstEnvelope,
+            assetDirectory: assetRoot).record
+        let destination = try MeetingStore.inMemory()
+        let transportStore = try await readyTransportStore(at: transportRoot)
+        let coordinator = CloudMeetingSyncCoordinator(
+            meetingStore: destination,
+            transportStore: transportStore,
+            localDeviceID: localDeviceID)
+        let initialResult = try await coordinator.handleFetchedRecord(firstRecord)
+        XCTAssertEqual(initialResult, .applied(.applied))
+
+        let localCorrection = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "40000000-0000-0000-0000-000000000101")!,
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            targetSegmentIDs: [segment.id],
+            kind: .replaceText(text: "Local", language: "en"),
+            sourceDeviceID: localDeviceID,
+            createdAt: Date(timeIntervalSince1970: 1_784_330_100))
+        _ = try await destination.appendTranscriptCorrection(localCorrection)
+        let recordIDs = try await coordinator.stagePendingChanges(
+            at: localCorrection.createdAt)
+        let recordID: CKRecord.ID = try XCTUnwrap(recordIDs.first)
+        let localCandidate = try await coordinator.encodedRecord(
+            for: recordID,
+            at: localCorrection.createdAt)
+        let localOutgoingRecord: CKRecord = try XCTUnwrap(localCandidate).record
+        let localOutgoingEnvelope = try await transportStore.envelope(
+            from: localOutgoingRecord)
+
+        let remoteCorrection = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "40000000-0000-0000-0000-000000000102")!,
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            targetSegmentIDs: [segment.id],
+            kind: .replaceText(text: "Remote", language: "en"),
+            sourceDeviceID: remoteDeviceID,
+            createdAt: Date(timeIntervalSince1970: 1_784_330_200))
+        _ = try await source.appendTranscriptCorrection(remoteCorrection)
+        let remoteEnvelope = try await newestEnvelope(
+            in: source,
+            sourceDeviceID: remoteDeviceID)
+        let remoteRecord = try codec.encode(
+            remoteEnvelope,
+            existingRecord: firstRecord,
+            assetDirectory: assetRoot).record
+
+        return CorrectionConflictFixture(
+            meeting: meeting,
+            destination: destination,
+            transportStore: transportStore,
+            coordinator: coordinator,
+            localCorrection: localCorrection,
+            remoteCorrection: remoteCorrection,
+            localOutgoingRecord: localOutgoingRecord,
+            localOutgoingEnvelope: localOutgoingEnvelope,
+            remoteRecord: remoteRecord)
+    }
 
     private func readyTransportStore(
         at root: URL

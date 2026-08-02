@@ -6,6 +6,7 @@ import StorageKit
 public enum CloudMeetingFetchResult: Equatable, Sendable {
     case applied(MeetingSyncRemoteApplyResult)
     case deferred(localGeneration: Int)
+    case blockedCorrectionConflict(localGeneration: Int)
     case ignoredOwnDevice
     case ignoredDuplicate
 }
@@ -51,17 +52,11 @@ public actor CloudMeetingSyncCoordinator {
         at date: Date = Date()
     ) async throws -> [CKRecord.ID] {
         let changes = try await meetingStore.pendingMeetingSyncChanges(limit: limit)
-        var recordIDs: [CKRecord.ID] = []
-        recordIDs.reserveCapacity(changes.count)
         for change in changes {
-            let envelope = try await meetingStore.meetingSyncEnvelope(
-                for: change,
-                sourceDeviceID: localDeviceID)
-            let attempt = try await transportStore.stage(envelope, at: date)
-            recordIDs.append(CloudMeetingRecordCodec.recordID(for: attempt.meetingID))
+            try await stagePendingChange(change, at: date)
         }
-        recordIDs.append(contentsOf: await transportStore.outstandingRecordIDs())
-        return Array(Set(recordIDs)).sorted { $0.recordName < $1.recordName }
+        return await transportStore.readyRecordIDs(at: date)
+            .sorted { $0.recordName < $1.recordName }
     }
 
     public func encodedRecord(
@@ -140,6 +135,12 @@ public actor CloudMeetingSyncCoordinator {
     @discardableResult
     public func handleSavedRecord(_ record: CKRecord) async throws -> Bool {
         let envelope = try await transportStore.envelope(from: record)
+        if await transportStore.deferredReplayBlocksOutgoing(
+            for: envelope.meetingID) {
+            return try await transportStore.completeSend(
+                of: envelope,
+                savedRecord: record)
+        }
         let change = MeetingSyncChange(
             meetingID: envelope.meetingID,
             generation: envelope.generation,
@@ -151,7 +152,10 @@ public actor CloudMeetingSyncCoordinator {
         return await transportStore.hasOutgoingAttempt(for: envelope.meetingID)
     }
 
-    public func handleFetchedRecord(_ record: CKRecord) async throws -> CloudMeetingFetchResult {
+    public func handleFetchedRecord(
+        _ record: CKRecord,
+        at date: Date = Date()
+    ) async throws -> CloudMeetingFetchResult {
         let envelope = try await transportStore.envelope(from: record)
         switch try await transportStore.replayDecision(
             for: envelope,
@@ -173,6 +177,15 @@ public actor CloudMeetingSyncCoordinator {
         case .localChangePending(let generation):
             try await transportStore.stageDeferredReplay(envelope, from: record)
             return .deferred(localGeneration: generation)
+        case .correctionConflict:
+            try await transportStore.stageDeferredReplay(
+                envelope,
+                from: record,
+                blocksOutgoing: true)
+            let generation = try await blockCurrentLocalGeneration(
+                for: envelope.meetingID,
+                at: date)
+            return .blockedCorrectionConflict(localGeneration: generation)
         case .applied:
             try await transportStore.completeReplay(
                 of: envelope,
@@ -200,7 +213,7 @@ public actor CloudMeetingSyncCoordinator {
            let serverRecord = CloudSyncFailureClassifier.serverRecord(from: error) {
             let serverEnvelope = try await transportStore.envelope(from: serverRecord)
             let serverMatchesOutgoing = try Self.samePayload(envelope, serverEnvelope)
-            let fetchResult = try await handleFetchedRecord(serverRecord)
+            let fetchResult = try await handleFetchedRecord(serverRecord, at: date)
             switch fetchResult {
             case .applied(.deletionWon):
                 return CloudSyncFailureResolution(
@@ -218,10 +231,15 @@ public actor CloudMeetingSyncCoordinator {
                     category: .serverConflict,
                     shouldRetry: false)
             case .applied(.localChangePending),
+                 .applied(.correctionConflict),
                  .deferred,
                  .ignoredOwnDevice,
                  .ignoredDuplicate:
                 break
+            case .blockedCorrectionConflict:
+                return CloudSyncFailureResolution(
+                    category: .serverConflict,
+                    shouldRetry: false)
             }
         }
         try await transportStore.markFailure(
@@ -244,6 +262,67 @@ public actor CloudMeetingSyncCoordinator {
     private static func isDeletion(_ envelope: MeetingSyncEnvelope) -> Bool {
         if case .delete = envelope.mutation { return true }
         return false
+    }
+
+    /// Re-evaluates protected remote work before admitting a local generation.
+    /// Compatible correction histories are merged into the newest local
+    /// generation. A competing correction lane keeps both exact payloads but
+    /// blocks the local save until the user restores one lane.
+    private func stagePendingChange(
+        _ candidate: MeetingSyncChange,
+        at date: Date
+    ) async throws {
+        if let deferred = try await transportStore.deferredEnvelope(
+            for: candidate.meetingID) {
+            switch try await meetingStore.applyRemoteMeetingSyncEnvelope(deferred) {
+            case .correctionConflict:
+                _ = try await blockCurrentLocalGeneration(
+                    for: candidate.meetingID,
+                    at: date)
+                return
+            case .deletionWon:
+                try await transportStore.markReplayApplied(deferred)
+                try await transportStore.discardDeferredReplay(
+                    for: candidate.meetingID)
+                try await transportStore.discardAttempt(for: candidate.meetingID)
+                return
+            case .applied:
+                try await transportStore.markReplayApplied(deferred)
+                try await transportStore.discardDeferredReplay(
+                    for: candidate.meetingID)
+            case .localChangePending:
+                try await transportStore.releaseDeferredReplayBlock(
+                    for: candidate.meetingID)
+            }
+        }
+
+        guard let current = try await meetingStore.pendingMeetingSyncChange(
+            for: candidate.meetingID)
+        else {
+            try await transportStore.discardAttempt(for: candidate.meetingID)
+            return
+        }
+        let envelope = try await meetingStore.meetingSyncEnvelope(
+            for: current,
+            sourceDeviceID: localDeviceID)
+        _ = try await transportStore.stage(envelope, at: date)
+    }
+
+    private func blockCurrentLocalGeneration(
+        for meetingID: MeetingID,
+        at date: Date
+    ) async throws -> Int {
+        guard let current = try await meetingStore.pendingMeetingSyncChange(
+            for: meetingID)
+        else {
+            throw CloudMeetingTransportError.invalidState(
+                "correction conflict has no pending local generation")
+        }
+        let envelope = try await meetingStore.meetingSyncEnvelope(
+            for: current,
+            sourceDeviceID: localDeviceID)
+        _ = try await transportStore.stage(envelope, at: date)
+        return current.generation
     }
 
     private func shouldProceed(

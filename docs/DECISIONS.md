@@ -7923,3 +7923,56 @@ truthful freshness preserves auditability, while explicit on-demand generation
 avoids surprising model cost and keeps correction writes fast. Excluding only
 affected accepted rows preserves useful search without pretending the corrected
 projection is already indexed.
+
+## D234 — Export corrected readings and converge private replicas without guessing (Aug 2026)
+
+**Context:** D233 makes the effective correction overlay safe for regeneration
+and invalidation, but document export still reads accepted-only rows and private
+sync still defers every live/live collision. That leaves a corrected meeting
+inconsistent across review and export, and it cannot distinguish independent
+edits that can converge from two devices changing the same authored truth.
+
+**Decision:** introduce one ApplicationKit `MeetingDocumentContent` projection
+for Markdown, PDF, SRT, WebVTT, CLI, and Gist. It loads one coherent Library
+snapshot, verifies the persisted correction revision against the complete
+history, composes only events for the accepted transcript revision, retains
+original source IDs and time intervals, and omits a summary whose correction
+lineage is stale. Any malformed or revision-mismatched snapshot fails closed
+before a renderer or remote publisher receives content. Correction provenance
+is explicit opt-in metadata. Markdown and PDF append an overlay disclosure and
+source map; WebVTT uses a valid `NOTE` plus corrected-cue markers; SRT uses only
+visible markers so its grammar remains portable. Meeting Detail keeps the option
+route-local and disables it when no correction exists; the CLI offers the same
+contract through `--correction-provenance`. Playback always seeks the immutable
+original audio coordinates. The reviewed Meeting Detail contract therefore
+advances to 334 interaction signals while retaining eleven owners and the same
+26 journeys; the existing export journey now owns deterministic app-window
+evidence for the provenance choice.
+
+Define a transport-neutral `TranscriptCorrectionReplicaMerge` in
+`PortavozCore`. Matching correction IDs require identical immutable fields;
+tombstones converge only through the existing monotonic transition. Disjoint
+text/speaker/structural lanes may union only when the complete accepted segment
+base and revision match. Competing lanes, divergent tombstones, and incompatible
+accepted bases fail closed without partial storage changes. During a private-
+sync collision, IntegrationsKit preserves the exact remote payload and blocks
+outgoing attempts across relaunch, explicit retry, and late save callbacks. An
+explicit local restore or tombstone may make both histories compatible; replay
+then merges them, deletes only the obsolete blocked attempt, releases the send
+fence atomically, and publishes the newest local generation. Remote deletion
+remains privacy-dominant and legacy format-1 peers remain local-wins.
+Only deterministic replica-merge and correction-history validation failures
+map to the user-visible correction conflict; unrelated database or storage
+failures remain typed failures and roll back instead of masquerading as an edit
+collision.
+
+Corrected-text search/index materialization, MCP transcript adoption, and
+automatic Apuntador regeneration remain separate decisions. The accepted raw or
+refined transcript and original audio are never rewritten.
+
+**Rationale:** every exported format should represent the same reading the user
+reviewed without pretending an overlay changed the recording. One projection
+prevents renderer drift, opt-in provenance keeps normal documents clean, and
+immutable source coordinates preserve audit and playback. Set union is safe for
+independent correction lanes, while a durable conflict fence prevents silent
+last-writer-wins loss when two devices edit the same claim.

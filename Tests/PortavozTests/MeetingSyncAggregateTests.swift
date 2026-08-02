@@ -342,6 +342,187 @@ final class MeetingSyncAggregateTests: XCTestCase {
         XCTAssertEqual(remaining.first?.generation, pending.generation)
     }
 
+    func testPendingLocalMeetingUnionsCompatibleRemoteCorrectionLane() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+        let localSpeaker = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000121")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [seed.segments[0].id],
+            kind: .changeSpeaker(seed.speaker.id),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_784_300_210))
+        _ = try await destination.appendTranscriptCorrection(localSpeaker)
+        let pendingBeforeCandidate = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        let pendingBefore = try XCTUnwrap(pendingBeforeCandidate)
+
+        let remoteText = correctionEvent(
+            id: "00000000-0000-4000-9000-000000000122",
+            seed: seed,
+            kind: .replaceText(text: "Hola corregida", language: "es"))
+        _ = try await source.appendTranscriptCorrection(remoteText)
+
+        let result = try await destination.applyRemoteMeetingSyncEnvelope(
+            latestEnvelope(in: source))
+        guard case .localChangePending(let mergedGeneration) = result else {
+            return XCTFail("expected compatible local-wins merge, got \(result)")
+        }
+        XCTAssertGreaterThan(mergedGeneration, pendingBefore.generation)
+        let history = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(
+            Set(history.map(\.id)),
+            Set([localSpeaker.id, remoteText.id]))
+        let pendingAfter = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        XCTAssertEqual(pendingAfter?.generation, mergedGeneration)
+    }
+
+    func testPendingLocalMeetingBlocksCompetingRemoteCorrectionLane() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+        let localText = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000123")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [seed.segments[0].id],
+            kind: .replaceText(text: "Texto local", language: "es"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_784_300_210))
+        _ = try await destination.appendTranscriptCorrection(localText)
+        let pendingCandidate = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        let pending = try XCTUnwrap(pendingCandidate)
+
+        let remoteText = correctionEvent(
+            id: "00000000-0000-4000-9000-000000000124",
+            seed: seed,
+            kind: .replaceText(text: "Texto remoto", language: "es"))
+        _ = try await source.appendTranscriptCorrection(remoteText)
+
+        let result = try await destination.applyRemoteMeetingSyncEnvelope(
+            latestEnvelope(in: source))
+
+        XCTAssertEqual(
+            result,
+            .correctionConflict(localGeneration: pending.generation))
+        let history = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(history, [localText])
+        let pendingAfter = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        XCTAssertEqual(pendingAfter, pending)
+    }
+
+    func testPendingRemoteCorrectionStorageFailureIsNotReportedAsUserConflict() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+        let localSpeaker = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000127")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [seed.segments[0].id],
+            kind: .changeSpeaker(seed.speaker.id),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_784_300_210))
+        _ = try await destination.appendTranscriptCorrection(localSpeaker)
+        let pendingCandidate = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        let pending = try XCTUnwrap(pendingCandidate)
+
+        let sourceEnvelope = try await latestEnvelope(in: source)
+        guard case .upsert(let aggregate) = sourceEnvelope.mutation else {
+            return XCTFail("Expected a live aggregate")
+        }
+        let invalidRemote = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000128")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [UUID()],
+            kind: .replaceText(text: "Invalid target", language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_784_300_220))
+        let invalidAggregate = MeetingSyncAggregate(
+            meeting: aggregate.meeting,
+            speakers: aggregate.speakers,
+            segments: aggregate.segments,
+            summaries: aggregate.summaries,
+            contextItems: aggregate.contextItems,
+            companionCards: aggregate.companionCards,
+            transcriptCorrections: [invalidRemote])
+        let invalidEnvelope = MeetingSyncEnvelope(
+            meetingID: sourceEnvelope.meetingID,
+            sourceDeviceID: sourceEnvelope.sourceDeviceID,
+            generation: sourceEnvelope.generation + 1,
+            changedAt: sourceEnvelope.changedAt.addingTimeInterval(1),
+            mutation: .upsert(invalidAggregate))
+
+        await XCTAssertMeetingSyncThrowsAsync {
+            _ = try await destination.applyRemoteMeetingSyncEnvelope(invalidEnvelope)
+        }
+        let history = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(history, [localSpeaker])
+        let pendingAfter = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        XCTAssertEqual(pendingAfter, pending)
+    }
+
+    func testPendingCorrectionRejectsRemoteHistoryFromDifferentAcceptedBase() async throws {
+        let source = try MeetingStore.inMemory()
+        let seed = try await seedMeeting(in: source)
+        let destination = try MeetingStore.inMemory()
+        _ = try await destination.applyRemoteMeetingSyncEnvelope(latestEnvelope(in: source))
+
+        let localSpeaker = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "00000000-0000-4000-9000-000000000125")!,
+            meetingID: seed.meeting.id,
+            baseTranscriptRevision: seed.meeting.transcriptRevision,
+            targetSegmentIDs: [seed.segments[0].id],
+            kind: .changeSpeaker(seed.speaker.id),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_784_300_210))
+        _ = try await destination.appendTranscriptCorrection(localSpeaker)
+        let pendingCandidate = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        let pending = try XCTUnwrap(pendingCandidate)
+
+        var divergentBase = seed.segments[0]
+        divergentBase.text = "Different accepted text"
+        try await source.save([divergentBase])
+        let remoteText = correctionEvent(
+            id: "00000000-0000-4000-9000-000000000126",
+            seed: seed,
+            kind: .replaceText(text: "Remote correction", language: "en"))
+        _ = try await source.appendTranscriptCorrection(remoteText)
+
+        let result = try await destination.applyRemoteMeetingSyncEnvelope(
+            latestEnvelope(in: source))
+
+        XCTAssertEqual(
+            result,
+            .correctionConflict(localGeneration: pending.generation))
+        let history = try await destination.transcriptCorrectionHistory(
+            for: seed.meeting.id)
+        XCTAssertEqual(history, [localSpeaker])
+        let detail = try await destination.detail(seed.meeting.id)
+        XCTAssertEqual(detail?.segments[0].text, seed.segments[0].text)
+        let pendingAfter = try await destination.pendingMeetingSyncChange(
+            for: seed.meeting.id)
+        XCTAssertEqual(pendingAfter, pending)
+    }
+
     func testRemoteDeletionWinsPendingLocalEditAndLeavesRecoverableTombstone() async throws {
         let source = try MeetingStore.inMemory()
         let seed = try await seedMeeting(in: source)

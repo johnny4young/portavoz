@@ -34,9 +34,13 @@ protocol MeetingDetailModelClient: AnyObject {
     func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws
     func prepareMeetingDetailDocument(
         _ meetingID: MeetingID,
-        format: MeetingDocumentFormat
+        format: MeetingDocumentFormat,
+        options: MeetingDocumentOptions
     ) async throws -> PreparedMeetingDocument
-    func publishMeetingDetailGist(_ meetingID: MeetingID) async throws -> URL
+    func publishMeetingDetailGist(
+        _ meetingID: MeetingID,
+        options: MeetingDocumentOptions
+    ) async throws -> URL
     func meetingDetailNameSuggestions(
         _ meetingID: MeetingID
     ) async throws -> [MeetingNameSuggestion]

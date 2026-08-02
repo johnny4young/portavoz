@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence).
 
 ## Correction composition contract (D229)
 
@@ -58,9 +58,9 @@ boundary, rejects immutable rewrites and tombstone regression, and preserves
 local history when decoding a legacy aggregate that cannot contain corrections.
 The focused Meeting Detail editor now writes text and speaker corrections
 through an atomic ApplicationKit command. It exposes immutable original evidence
-and appends domain-specific restore events for Undo. Search, summaries, exports,
-generated artifacts, and indexes continue to use accepted text until their own
-explicit policies land.
+and appends domain-specific restore events for Undo. Exports adopt the composed
+projection under D234; corrected-text search/index materialization and automatic
+Apuntador refresh remain separate policies.
 
 ## Structural correction command (D232)
 
@@ -95,8 +95,11 @@ summary and Apuntador artifacts retain their original transcript/correction
 lineage and become stale instead of being rewritten. Search still has no
 corrected-text projection: affected accepted rows are excluded from exact and
 semantic retrieval until restore, while unaffected rows remain available.
-Exports and automatic Apuntador regeneration remain accepted-only. No correction
-starts model work automatically.
+Document exports compose the current correction overlay, preserve original row
+times and accepted source IDs, omit summaries from a different correction
+revision, and can disclose the overlay through explicit provenance. Automatic
+Apuntador regeneration remains deferred. No correction starts model work
+automatically.
 
 ## Roles and engines (D7)
 

@@ -8,21 +8,46 @@ public struct MeetingLibraryDetail: Sendable {
     public let meeting: Meeting
     public let speakers: [Speaker]
     public let segments: [TranscriptSegment]
+    public let corrections: [TranscriptCorrectionEvent]
+    public let correctionRevision: TranscriptCorrectionRevision
+    public let isRefinedTranscript: Bool
     public let summary: SummaryDraft?
     public let summaryVersion: Int?
+    public let summaryCorrectionSource: TranscriptCorrectionArtifactSource
 
     public init(
         meeting: Meeting,
         speakers: [Speaker],
         segments: [TranscriptSegment],
+        corrections: [TranscriptCorrectionEvent] = [],
+        correctionRevision: TranscriptCorrectionRevision? = nil,
+        isRefinedTranscript: Bool = false,
         summary: SummaryDraft?,
-        summaryVersion: Int?
+        summaryVersion: Int?,
+        summaryCorrectionSource: TranscriptCorrectionArtifactSource = .legacyAccepted
     ) {
         self.meeting = meeting
         self.speakers = speakers
         self.segments = segments
+        self.corrections = corrections
+        self.correctionRevision = correctionRevision ?? Self.derivedCorrectionRevision(
+            meeting: meeting,
+            corrections: corrections)
+        self.isRefinedTranscript = isRefinedTranscript
         self.summary = summary
         self.summaryVersion = summaryVersion
+        self.summaryCorrectionSource = summaryCorrectionSource
+    }
+
+    private static func derivedCorrectionRevision(
+        meeting: Meeting,
+        corrections: [TranscriptCorrectionEvent]
+    ) -> TranscriptCorrectionRevision {
+        guard !corrections.isEmpty else { return .accepted }
+        return (try? TranscriptCorrectionRevision.current(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            history: corrections)) ?? .unavailable
     }
 }
 
@@ -122,8 +147,12 @@ private struct LocalMeetingLibraryQueryReader: MeetingLibraryQueryReading {
             meeting: snapshot.detail.meeting,
             speakers: snapshot.detail.speakers,
             segments: snapshot.detail.segments,
+            corrections: snapshot.corrections,
+            correctionRevision: snapshot.correctionRevision,
+            isRefinedTranscript: snapshot.isRefinedTranscript,
             summary: snapshot.summary?.draft,
-            summaryVersion: snapshot.summary?.version)
+            summaryVersion: snapshot.summary?.version,
+            summaryCorrectionSource: snapshot.summary?.correctionSource ?? .legacyAccepted)
     }
 
     func meetingLibrarySearch(

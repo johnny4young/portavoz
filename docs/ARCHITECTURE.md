@@ -988,7 +988,7 @@ or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
 Meeting Detail decomposition is also preceded by a frozen presentation
-boundary. A generated contract inventories 332 interaction signals across
+boundary. A generated contract inventories 334 interaction signals across
 29 source files,
 assigns all 26 detail XCUITest journeys to exactly one of eleven feature owners,
 and digest-binds the reviewed performance harness and evidence. Hidden
@@ -1125,8 +1125,35 @@ and Apuntador cards are retained but resolve as stale in Meeting Detail; their
 evidence controls are disabled, a stale summary offers an explicit Regenerate
 action, and correction changes clear route-local generated chapter/title/recipe
 suggestions before recomputation. No correction transaction starts model work
-or rewrites an artifact automatically. Exports and automatic Apuntador refresh
-remain accepted-only until their own composed-material adoption contracts land.
+or rewrites an artifact automatically. Automatic Apuntador refresh remains a
+separate future adoption.
+
+Every Markdown, PDF, SRT, VTT, CLI, and Gist document now enters one
+ApplicationKit correction-aware projection built from the same coherent Library
+snapshot. It composes only current-revision history, preserves original audio
+intervals and accepted source IDs, omits a summary whose correction lineage is
+stale, and fails closed when the snapshot revision disagrees with its history.
+Correction provenance is explicit opt-in metadata: Markdown/PDF append a local-
+overlay disclosure and stable source map; VTT adds a standards-compatible NOTE
+plus visible corrected-cue markers; SRT keeps strict cue grammar and uses only
+the visible marker. Meeting Detail owns only a route-local option and forwards
+it through typed application effects; CLI exposes the same policy as
+`--correction-provenance`. The accepted transcript and audio remain unchanged.
+
+Private sync now treats correction history as convergent user-authored truth
+rather than applying the previous blanket local-wins rule. With an unsent local
+generation, a format-2 remote aggregate may union disjoint correction lanes only
+when its accepted transcript revision and complete segment material match.
+Competing lanes preserve both exact payloads and install a protected outgoing
+send fence that survives relaunch, explicit retry, and late CloudKit callbacks.
+An explicit restore/tombstone can make the histories compatible; replay then
+merges them, removes only the obsolete blocked attempt, and publishes the newest
+local generation. Remote deletion remains privacy-dominant, legacy format-1
+peers remain local-wins, and IntegrationsKit still owns no correction policy.
+Only deterministic replica-merge and correction-history validation failures
+become the user-visible correction conflict. Unrelated database or storage
+failures propagate through the typed storage boundary and roll back instead of
+being misclassified as a competing edit.
 
 The complete docked playback surface enters SwiftUI through
 `MeetingDetailPlayerSection`. The section receives the current application-
