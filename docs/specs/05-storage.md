@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints), D182 (crash-safe backup-stage ownership), D183 (process-local destination identity), D184 (durable publication evidence), D185 (strict staged-source adoption), D186 (durable source checkpoints), D187 (pending-publication reconciliation), D188 (durable typed failure outcomes), D189 (launch recovery stage preservation), D230 (typed immutable transcript-correction history), D231 (atomic focused correction batches), D232 (append-only structural correction commands), D233 (correction-aware derived-artifact invalidation and publication fences), D234 (correction replica convergence and conflict fencing).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints), D182 (crash-safe backup-stage ownership), D183 (process-local destination identity), D184 (durable publication evidence), D185 (strict staged-source adoption), D186 (durable source checkpoints), D187 (pending-publication reconciliation), D188 (durable typed failure outcomes), D189 (launch recovery stage preservation), D230 (typed immutable transcript-correction history), D231 (atomic focused correction batches), D232 (append-only structural correction commands), D233 (correction-aware derived-artifact invalidation and publication fences), D234 (correction replica convergence and conflict fencing), D237 (confirmed-only commitment continuity).
 
 D190 adds explicit intentional suspension for owner-leased processing jobs.
 D198 adds exact source identity and compare-and-swap publication for semantic
@@ -16,7 +16,7 @@ schema change.
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v19` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v20` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -56,6 +56,10 @@ Singular camelCase tables, 1:1 with Codable records:
 | `transcriptCorrectionTarget` (v19) | correction FK plus ordered accepted segment identity; unique per correction, deliberately no segment FK so source replacement cannot erase history |
 | `transcriptCorrectionPayload` (v19) | one typed scalar payload for replace/speaker/merge operations; text, language, and speaker fields are decoded against the parent kind |
 | `transcriptCorrectionPart` (v19) | stable split-row identity plus correction FK, ordinal, text, optional speaker/language, and finite ordered interval |
+| `commitment` (v20) | confirmed continuity identity, optional exact canonical person FK, immutable title/createdAt, current `confirmed`/`done`/`dismissed` projection, optional due date, timestamps, and tombstone |
+| `commitmentSource` (v20) | commitment FK plus typed generated-action-item, user-note, or manual source; durable meeting/action/note identities and optional transcript revision intentionally have no ownership FK |
+| `commitmentEvidenceSegment` (v20) | source FK, ordered typed evidence role, and optional durable segment identity without a segment FK so later source retirement cannot rewrite history |
+| `commitmentEvent` (v20) | immutable append-only confirm/reassign/reschedule/complete/reopen/dismiss event with optional exact person FK and historical source-meeting identity |
 
 Schema v16 adds the partial
 `meeting_on_live_startedAt_id(startedAt DESC, id ASC)` index for deterministic
@@ -84,6 +88,26 @@ migrates through the same additive step, and legacy/imported meetings remain
 valid with no synthetic events. Parent deletion cascades the correction history;
 target identities intentionally outlive source-row retirement because they have
 no segment foreign key.
+
+Schema v20 adds empty confirmed-continuity tables, indexes for status/due date,
+person/status, source lookup, and event history, plus immutability triggers for
+the commitment identity and all source/evidence/event rows. The migration does
+not inspect action items, infer owners, create candidates, or synthesize
+commitments. Confirmation inserts the current projection, one explicit source,
+and the first `confirm` event atomically. Generated action items qualify only
+when their immutable evidence is nonempty, current-revision, live, and
+meeting-local; user notes and manual entries remain explicitly user-authored
+origins. Canonical ownership accepts only an exact live `PersonID`. Later
+transitions append one validated event and update the current projection in the
+same transaction; invalid lifecycle edges write nothing.
+
+The format-1 `CommitmentContinuityEnvelope` is a database-record-independent,
+canonically ordered replay representation. Exact replay is idempotent; identity
+reuse with different content fails closed. Imports require referenced meetings,
+notes/action items/evidence, and people to exist locally with exact identities
+before any row is inserted. This slice does not add the envelope to meeting
+bundles, the CloudKit meeting replica, CLI, MCP, or a user-facing import/export
+surface.
 
 `appendTranscriptCorrection` canonicalizes timestamps to persisted
 milliseconds, validates portable history plus current meeting/revision/targets,
@@ -123,7 +147,7 @@ projection. Unaffected rows remain available. Restored rows become eligible
 again; corrected text has no index row yet. Summary and Apuntador publication
 now require exact current accepted-transcript and correction revisions from
 the linked `GenerationRun`. Summary cache lookup applies the same requirement,
-and malformed provenance fails closed. No schema migration is needed: the v19
+and malformed provenance fails closed. No schema migration is needed: the v20
 history and existing generation/maintenance tables already hold the authority.
 
 D235 proves the correction transaction's crash boundary with an injected

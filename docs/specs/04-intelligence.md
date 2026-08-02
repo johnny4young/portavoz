@@ -139,8 +139,10 @@ The first uncommitted-development observation of local
 `qwen3-coder:latest` reached candidate F1 0.689655 with 0.194444 candidate,
 0.179487 owner, and 0.157895 deadline false-positive rates. Those values are a
 development finding, not an accepted engine result. Product action items remain
-immutable generated observations, and there is no commitment entity,
-confirmation lifecycle, persistence, sync representation, or UI in this slice.
+immutable generated observations. D237 now adds a separate confirmed-only
+commitment aggregate and transport-neutral replay representation in Core and
+Storage, but this benchmark still cannot admit a candidate or write that
+aggregate; no confirmation inbox, Radar read model, or commitment UI exists yet.
 
 ## Human claim feedback is not model material (D88)
 

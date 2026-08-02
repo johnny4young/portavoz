@@ -21,6 +21,24 @@ public struct PersonID: Hashable, Codable, Sendable, RawRepresentable {
     public init() { self.rawValue = UUID() }
 }
 
+public struct CommitmentID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct CommitmentSourceID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct CommitmentEventID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
 public struct SummaryID: Hashable, Codable, Sendable, RawRepresentable {
     public let rawValue: UUID
     public init(rawValue: UUID) { self.rawValue = rawValue }

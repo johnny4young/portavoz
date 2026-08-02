@@ -1051,6 +1051,28 @@ source retirement must not erase what the correction originally addressed.
 Every schema v1-v18 library migrates through the empty additive v19 tables, and
 legacy meetings remain valid without synthetic corrections.
 
+Schema v20 adds a separate confirmed-continuity aggregate without promoting
+generated tasks. `commitment` stores only `confirmed`, `done`, or `dismissed`
+current state; `commitmentSource` records whether the user confirmed an existing
+evidence-linked action item, one live note, or a manual entry; ordered evidence
+and append-only events preserve the source and every reassign, reschedule,
+complete, reopen, or dismiss transition. The title and creation identity plus
+all history rows are database-immutable. Current owner and due date are derived
+from the event sequence and updated atomically with each appended event. An
+existing action item can cross the boundary only when its immutable evidence is
+nonempty, current-revision, live, and from the same meeting. A canonical owner
+is accepted only by exact live `PersonID`; aliases and display-name similarity
+never assign continuity state.
+
+`PortavozCore` owns the strict lifecycle and a canonical format-1 continuity
+envelope. `StorageKit` exports and replays that representation idempotently,
+requiring exact local source, meeting, evidence, and person identities before
+writing anything. It is a transport-neutral backup/sync contract, not yet part
+of the per-meeting `.portavoz` bundle, meeting CloudKit replica, CLI, MCP, or
+SwiftUI. This keeps generated candidates and the candidate benchmark separate
+from confirmed user truth until a later explicit confirmation surface selects
+an admission policy.
+
 The focused correction command is the first product adoption of this durability
 boundary. It validates the complete retained history, treats text and speaker
 attribution as independent lanes that may coexist on one accepted source row,
@@ -1797,8 +1819,9 @@ names become unassigned rather than visible identity claims.
 Translation pivots carry only evidence and tasks that already passed this
 source-language gate.
 
-Commitment continuity has a benchmark authority before it has a product
-entity. A canonical 48-case public-synthetic fixture balances English,
+Commitment candidate extraction has a benchmark authority, while durable
+continuity is a separate confirmed-only aggregate. A canonical 48-case
+public-synthetic fixture balances English,
 Spanish, and mixed speech and explicitly separates commitments from
 suggestions, hypotheticals, status reports, and questions. The fixture starts
 from the existing generated `ActionItem` observation, but a candidate is
@@ -1811,7 +1834,8 @@ precision/recall/F1, false-positive rate, exact evidence, and exact/false-
 positive owner and deadline metrics. Comparison reports deltas only; it cannot
 choose an engine or make a product decision. Per-case observations are optional
 owner-only local artifacts, while tracked evidence is aggregate public-fixture
-research. No commitment storage, confirmation state, or UI exists yet.
+research. The benchmark still chooses no engine and cannot write schema v20;
+no candidate admission, confirmation inbox, radar read model, or UI exists yet.
 
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,

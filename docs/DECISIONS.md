@@ -8063,3 +8063,44 @@ multilingual, evidence-bound benchmark quantifies that risk before schema and
 UX make it durable, while the adapter-neutral and loopback-only boundary keeps
 local model research replaceable, private, and incapable of silently changing
 product truth.
+
+## D237 — Persist only explicitly confirmed commitment continuity (Aug 2026)
+
+**Context:** D236 established that candidate extraction still has material
+false positives and therefore cannot choose an engine or promote generated
+action items automatically. Continuity nevertheless needs a durable domain
+boundary before a confirmation inbox or cross-meeting read model can be built.
+Conflating that boundary with candidate storage would let experimental model
+output become user truth and would make regeneration capable of overwriting
+ownership, due dates, or completion.
+
+**Decision:** add schema v20 as a confirmed-only aggregate. `ActionItem` remains
+the generated observation attached to an immutable summary; there is no
+`proposed` commitment status or candidate table. A commitment starts only at an
+explicit confirmation boundary from one of three origins: an existing generated
+action item with nonempty current-revision live same-meeting evidence, a live
+user note, or a manual entry. The aggregate stores one immutable title and
+source history plus append-only confirm, reassign, reschedule, complete, reopen,
+and dismiss events. Current `confirmed`/`done`/`dismissed` state, optional owner,
+and optional due date are projections updated in the same transaction as each
+new event. Invalid lifecycle transitions write nothing.
+
+Canonical ownership accepts only an exact live `PersonID`. Alias or name
+similarity may be presented later as a candidate, but cannot enter persistence.
+Source meeting, action-item, note, and segment identities are retained as
+historical references rather than cascade ownership; source/evidence/event rows
+and commitment title/creation identity are database-immutable.
+
+Define a canonical format-1 `CommitmentContinuityEnvelope` in PortavozCore and
+exact replay in StorageKit. Exact retries are idempotent; conflicting identity,
+missing local source truth, mismatched evidence, or unavailable exact people
+fails closed before any insert. This is a transport-neutral representation, not
+yet a `.portavoz` meeting-bundle field, CloudKit meeting record, CLI/MCP
+contract, or UI. Candidate admission, confirmation UX, library-global sync
+transport, and the Radar read model remain separate decisions.
+
+**Rationale:** storing only confirmed user truth makes candidate models
+replaceable and keeps summary regeneration harmless to longitudinal state.
+Append-only events preserve auditability and future convergence, while exact
+identity/evidence admission prevents aliases or stale generated output from
+silently becoming ownership claims.

@@ -11,6 +11,7 @@ public enum StorageError: Error, LocalizedError {
     case invalidSemanticEmbedding(String)
     case invalidDerivedMaintenanceJob(String)
     case invalidTranscriptCorrection(String)
+    case invalidCommitment(String)
     case staleRefineDraft(meetingID: MeetingID, expected: Int, actual: Int)
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
@@ -45,6 +46,8 @@ public enum StorageError: Error, LocalizedError {
             return "invalid derived maintenance job: \(reason)"
         case .invalidTranscriptCorrection(let reason):
             return "invalid transcript correction: \(reason)"
+        case .invalidCommitment(let reason):
+            return "invalid commitment continuity: \(reason)"
         case .staleRefineDraft(let meetingID, let expected, let actual):
             return "refine draft for \(meetingID.rawValue.uuidString) expected transcript revision "
                 + "\(expected), current revision is \(actual)"

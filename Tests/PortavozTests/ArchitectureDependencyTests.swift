@@ -1548,6 +1548,37 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storageSpec.contains("storeEmbeddings(_:for:profile:)"))
     }
 
+    func testCommitmentContinuityStoresOnlyExplicitConfirmedTruth() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/CommitmentContinuity.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+CommitmentContinuity.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+CommitmentContinuity.swift")
+        let bundle = try Self.contents(
+            of: "Sources/IntegrationsKit/MeetingBundle.swift")
+        let meetingSync = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SyncAggregate.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains("case confirmed"))
+        XCTAssertFalse(core.contains("case proposed"))
+        XCTAssertTrue(core.contains("case generatedActionItem(UUID)"))
+        XCTAssertTrue(core.contains("case userNote(UUID)"))
+        XCTAssertTrue(schema.contains("status IN ('confirmed', 'done', 'dismissed')"))
+        XCTAssertTrue(schema.contains("commitment history is immutable"))
+        XCTAssertTrue(storage.contains(
+            "generated ActionItem lacks current direct transcript evidence"))
+        XCTAssertTrue(storage.contains(
+            "canonical owner must be an exact live PersonID"))
+        XCTAssertTrue(storage.contains("applyCommitmentContinuityEnvelope"))
+        XCTAssertFalse(bundle.contains("CommitmentContinuityEnvelope"))
+        XCTAssertFalse(meetingSync.contains("CommitmentContinuityEnvelope"))
+        XCTAssertTrue(decisions.contains("## D237"))
+        XCTAssertTrue(decisions.contains(
+            "Persist only explicitly confirmed commitment continuity"))
+    }
+
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
         let profile = try Self.contents(
             of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")
@@ -1587,7 +1618,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 19"))
+        XCTAssertTrue(schema.contains("public static let version = 20"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))

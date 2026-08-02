@@ -40,7 +40,7 @@ final class MeetingStoreTests: XCTestCase {
         return (ana, segments)
     }
 
-    // MARK: - Schema v9-v19 evidence, review, sync, semantic maintenance, and corrections
+    // MARK: - Schema v9-v20 evidence, review, sync, corrections, and continuity
 
     func testV8MigratesAdditivelyThroughMeetingSyncSchema() throws {
         let database = try DatabaseQueue()
@@ -102,7 +102,7 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 19)
+            XCTAssertEqual(StorageSchema.version, 20)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])
@@ -136,6 +136,66 @@ final class MeetingStoreTests: XCTestCase {
             XCTAssertEqual(
                 try Set(db.columns(in: "companionCardEvidenceSegment").map(\.name)),
                 ["id", "evidenceID", "role", "segmentID", "ordinal", "createdAt"])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitment").map(\.name)),
+                [
+                    "id", "canonicalPersonID", "title", "status", "dueAt",
+                    "createdAt", "updatedAt", "deletedAt",
+                ])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitmentSource").map(\.name)),
+                [
+                    "id", "commitmentID", "kind", "meetingID", "actionItemID",
+                    "contextItemID", "transcriptRevision", "firstSeenAt",
+                ])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitmentEvidenceSegment").map(\.name)),
+                ["sourceID", "segmentID", "role", "ordinal"])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitmentEvent").map(\.name)),
+                [
+                    "id", "commitmentID", "kind", "canonicalPersonID", "dueAt",
+                    "sourceMeetingID", "occurredAt",
+                ])
+            for table in [
+                "commitment", "commitmentSource", "commitmentEvidenceSegment",
+                "commitmentEvent",
+            ] {
+                XCTAssertEqual(
+                    try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(table)"),
+                    0,
+                    "the additive migration must not infer confirmed user truth")
+            }
+            let continuityIndexes = try Set(String.fetchAll(
+                db,
+                sql: """
+                    SELECT name FROM sqlite_master
+                    WHERE type = 'index' AND name LIKE 'commitment%'
+                    """))
+            XCTAssertTrue(continuityIndexes.isSuperset(of: [
+                "commitment_on_status_dueAt",
+                "commitment_on_person_status",
+                "commitmentSource_on_commitment",
+                "commitmentSource_on_meeting",
+                "commitmentSource_on_actionItem",
+                "commitmentSource_on_contextItem",
+                "commitmentEvidenceSegment_on_segment",
+                "commitmentEvent_on_history",
+                "commitmentEvent_on_sourceMeeting",
+            ]))
+            XCTAssertEqual(
+                Set(try db.foreignKeys(on: "commitment").map(\.destinationTable)),
+                ["person"])
+            XCTAssertEqual(
+                Set(try db.foreignKeys(on: "commitmentSource").map(\.destinationTable)),
+                ["commitment"])
+            XCTAssertEqual(
+                Set(try db.foreignKeys(on: "commitmentEvidenceSegment")
+                    .map(\.destinationTable)),
+                ["commitmentSource"])
+            XCTAssertEqual(
+                Set(try db.foreignKeys(on: "commitmentEvent").map(\.destinationTable)),
+                ["commitment", "person"])
             XCTAssertEqual(
                 try String.fetchOne(
                     db, sql: "SELECT markdown FROM summary WHERE id = ?",
