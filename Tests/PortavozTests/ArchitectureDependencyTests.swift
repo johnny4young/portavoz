@@ -1612,6 +1612,30 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Keep commitment review feedback source-bound"))
     }
 
+    func testCommitmentRadarRemainsBoundedAndApplicationOwned() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/CommitmentRadar.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/LoadCommitmentRadar.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+CommitmentRadar.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains("maximumItemCount = 200"))
+        XCTAssertTrue(core.contains("maximumRelatedRowCount = 20"))
+        XCTAssertTrue(application.contains("calendar.startOfDay(for: now())"))
+        XCTAssertTrue(application.contains("private static let dueSoonDays = 7"))
+        XCTAssertTrue(application.contains("private static let newActivityDays = 7"))
+        XCTAssertTrue(storage.contains("database.read"))
+        XCTAssertTrue(storage.contains("ROW_NUMBER() OVER"))
+        XCTAssertTrue(storage.contains("COUNT(*) OVER"))
+        XCTAssertTrue(storage.contains("commitmentRadarPersonNames"))
+        XCTAssertFalse(storage.contains("meetingDetail"))
+        XCTAssertTrue(decisions.contains("## D241"))
+        XCTAssertTrue(decisions.contains(
+            "Bound Commitment Radar as a confirmed-only read model"))
+    }
+
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
         let profile = try Self.contents(
             of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")
@@ -1693,7 +1717,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
-        XCTAssertTrue(architecture.contains("current schema version is 18"))
+        XCTAssertTrue(architecture.contains("current schema version is 22"))
         XCTAssertTrue(architecture.contains(
             "Every persisted semantic vector also carries one SHA-256"))
         XCTAssertTrue(decisions.contains("## D199"))

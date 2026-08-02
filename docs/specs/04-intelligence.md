@@ -154,8 +154,9 @@ current evidence plus explicit user editing before confirmation. The UI may
 accept an explicit local-user, exact-person, or unassigned owner plus a
 user-entered date, but none becomes a model output or candidate-quality result.
 D240 keeps those three ownership states distinct in continuity storage without
-changing candidate generation. No Radar read model or automatic promotion
-exists.
+changing candidate generation. D241 reads only confirmed continuity through a
+bounded Core/Application/Storage projection; it performs no model call and
+cannot promote a generated candidate automatically.
 
 ## Human claim feedback is not model material (D88)
 

@@ -8207,3 +8207,40 @@ unassigned without name matching or synthetic identity. Existing libraries and
 portable format-1 data remain readable without retroactive guesses. This
 decision does not add a Radar query, candidate engine, automatic ownership,
 deadline inference, bundle field, CloudKit transport, CLI, or MCP contract.
+
+## D241 — Bound Commitment Radar as a confirmed-only read model (Aug 2026)
+
+**Context:** D237–D240 created evidence-backed, explicitly confirmed continuity
+with honest ownership, but a global view could still regress into per-row
+Meeting Detail hydration, mix generated candidates with user truth, or invent
+calendar semantics inside persistence. A useful Radar also needs source and
+history without allowing an unbounded library to become an unbounded read.
+
+**Decision:** define the Radar contract in PortavozCore and let ApplicationKit
+own relative-time policy through an injected calendar and clock. `dayStart`,
+the half-open seven-day due-soon boundary, and the seven-day new-activity
+boundary enter StorageKit as concrete dates. The read accepts explicit owner,
+urgency, and activity filters and never calls an intelligence provider.
+
+StorageKit executes one snapshot-consistent read with at most four set-based
+SELECT statements independent of root count: bounded roots, bounded oldest
+sources, bounded newest events, and referenced exact-person labels when needed.
+Root pages are limited to 200 and source/history rows to 20 per root; exact
+counts and truncation flags remain visible. Every result preserves durable
+source identities, lifecycle history, and optional source-meeting navigation.
+No row hydrates Meeting Detail.
+
+Urgency applies only to open confirmed work. Activity is derived from current
+status plus the latest immutable event: `done`/`complete` is completed,
+`confirmed`/`reopen` is reopened, and a latest recent `confirm` is new; other
+coherent open state is unchanged. Projection/history disagreement fails the
+read. Dismissed and tombstoned roots are excluded.
+
+**Consequences:** Radar can distinguish mine, exact people, and unassigned work
+and expose bounded proof without importing model guesses into continuity. The
+read model adds no schema migration, candidate engine, inferred owner/deadline,
+automatic promotion, reminder, bundle/CloudKit field, CLI, or MCP contract.
+Project/topic grouping remains deferred until a real project/topic entity
+exists; meeting navigation is source evidence, not a project proxy. A
+user-facing global surface and canonical 1k/10k Release benchmark remain
+separate adoption and quality work.

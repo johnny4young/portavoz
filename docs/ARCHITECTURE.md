@@ -539,7 +539,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 18. It includes:
+The current schema version is 22. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -550,6 +550,8 @@ The current schema version is 18. It includes:
 - Apuntador cards and role-separated source evidence;
 - generated overview, decision, and action-item evidence;
 - reversible current-claim feedback stored separately from generated output;
+- explicitly confirmed commitment continuity, typed ownership, immutable
+  source/history evidence, and reversible generated-source review treatment;
 - immutable generation-run provenance;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);
@@ -1109,8 +1111,30 @@ wording, explicitly choose the local user, choose an exact canonical person,
 leave the owner unassigned, and add a user-entered date; it never infers
 ownership or a deadline. Dismiss and defer remain
 source-bound review feedback, and each candidate keeps its own evidence seek
-before any action. Schema v22 still adds no candidate-admission engine, Radar
-query, bundle field, CloudKit transport, CLI, or MCP contract.
+before any action. Confirmation still adds no candidate-admission engine,
+bundle field, CloudKit transport, CLI, or MCP contract.
+
+The library-global Commitment Radar is a separate bounded read model over only
+confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
+clock that define start-of-day, the seven-day due-soon interval, and the
+seven-day new-activity interval. StorageKit receives those concrete boundaries
+and executes one snapshot-consistent read with an upper bound of four set-based
+SELECT statements: roots, oldest source material, newest lifecycle history,
+and any exact referenced people. Root pages stop at 200 rows; source and
+history material stop at 20 rows per root and carry exact total counts so
+truncation is visible. No Radar row hydrates Meeting Detail, invokes a model,
+or infers an owner or date.
+
+Owner filters distinguish the local user, exact people, and unassigned work.
+Urgency filters include only open confirmed commitments and classify overdue
+before the injected day boundary, due soon inside the half-open seven-day
+window, or no date. Activity is derived from the latest immutable event:
+completed requires `done` plus `complete`, reopened requires `confirmed` plus
+`reopen`, and new requires a latest `confirm` inside the injected activity
+window. Any current projection that disagrees with its latest event fails the
+read instead of publishing misleading activity. Every item carries bounded
+source and history rows plus source-meeting navigation metadata; deleted or
+dismissed commitments never enter the result.
 
 The focused correction command is the first product adoption of this durability
 boundary. It validates the complete retained history, treats text and speaker
@@ -1880,8 +1904,9 @@ dismiss/defer feedback until an explicit user confirmation enters the separate
 confirmed aggregate. It is not a candidate-admission engine. The shipped
 Meeting Detail surface requires current evidence, offers exact source seek and
 an editable confirmation sheet, suggests only an already linked canonical
-person, and produces no deadline suggestion. No deadline extractor, Radar read
-model, or automatic commitment promotion exists.
+person, and produces no deadline suggestion. The bounded Radar reads only that
+confirmed aggregate and adds no deadline extractor or automatic commitment
+promotion.
 
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
@@ -2769,13 +2794,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,727 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,735 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 499 Swift source files;
+- strict SwiftLint reports zero violations across 502 Swift source files;
 - 61 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
