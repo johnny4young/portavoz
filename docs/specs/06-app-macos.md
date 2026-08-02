@@ -1810,6 +1810,18 @@ exercises this same production path in the durable-resume XCUITest (D63).
   identifiers and a dedicated disposable `-seed-commitment-inbox` fixture
   verifies the English and Spanish journey without changing the default seed's
   identity behavior.
+- **Global Commitment Radar (D241):** Library exposes one dedicated Radar route
+  for confirmed continuity only. A per-window `CommitmentRadarModel` maps owner,
+  due-date, and activity filters to a narrow ApplicationKit client, fences stale
+  async responses, and switches presentation-only grouping between canonical
+  owner and exact source meeting without reloading. Cards expose bounded source
+  and lifecycle counts, optional details, and the first exact meeting link; the
+  shared typed route opens that durable source. Generated candidates remain in
+  Meeting Detail until explicit confirmation. The view imports neither
+  StorageKit nor Intelligence, and project/topic grouping is unavailable until
+  a canonical entity exists. Stable identifiers and the disposable
+  `-seed-commitment-radar` fixture verify filtering and exact source navigation
+  in English and Spanish.
 - **Summary sources (D87):** the overview tab renders compact localized
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source

@@ -24,7 +24,7 @@ struct LibraryView: View {
     private var state: LibraryModel.State { model.state }
 
     /// The sidebar List owns meeting selection only. `route` also represents
-    /// Ask, Insights, and Recording; binding the List directly to that broader
+    /// Ask, Insights, Radar, and Recording; binding the List directly to that broader
     /// state lets a transient list refresh write `nil` and dismiss those
     /// destinations. Ignore those native deselection writes while explicit
     /// navigation and deletion continue to own the full route.
@@ -70,6 +70,12 @@ struct LibraryView: View {
                         id: "library-insights-button", active: route == .insights,
                         help: "Totals, cadence, people and commitments — computed on your Mac"
                     ) { route = .insights }
+                    actionChip(
+                        "Radar", systemImage: "scope",
+                        id: "library-commitment-radar-button",
+                        active: route == .commitments,
+                        help: "Confirmed commitments, deadlines, sources and changes — kept on your Mac"
+                    ) { route = .commitments }
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 8)

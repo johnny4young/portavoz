@@ -58,6 +58,24 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("InsightsUITests", "testInsightsRendersHeatmap"),
         test_id("InsightsUITests", "testInsightsShowsWhoYouTalkWith"),
     ),
+    "commitment-radar": (
+        test_id(
+            "CommitmentRadarUITests",
+            "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting",
+        ),
+    ),
+    "main-shell": (
+        test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
+        test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
+        test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
+        test_id("InsightsUITests", "testInsightsRendersHeatmap"),
+        test_id("MeetingDetailUITests", "testRightRailShowsHealthAndChapters"),
+        test_id("OnboardingUITests", "testOpensOnTheFirstListenStep"),
+        test_id(
+            "CommitmentRadarUITests",
+            "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting",
+        ),
+    ),
     "onboarding": (
         test_id("OnboardingUITests", "testOpensOnTheFirstListenStep"),
         test_id("OnboardingUITests", "testContinueAdvancesPastTheFirstListen"),
@@ -227,8 +245,15 @@ def tests_for_ui_test_file(path: str) -> set[str]:
 
 def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
+    if lowered == "contentview.swift":
+        # Root composition changes can affect every destination, but one
+        # deterministic canary per route is sufficient; do not rerun all
+        # feature permutations merely because a route was added or wired.
+        return {"main-shell"}
     if lowered == "appservices+meetingsync.swift":
         return {"settings-data"}
+    if "commitmentradar" in lowered:
+        return {"commitment-radar"}
     if any(token in lowered for token in ("l10n", "applanguage")):
         return set(ALL_FEATURES)
     if "showcase" in lowered:
@@ -363,6 +388,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "commitmentradar" in lowered:
+        return {"commitment-radar"}
     if any(token in lowered for token in (
         "managemeetingcommitmentinbox",
         "meetingcommitmentinbox",

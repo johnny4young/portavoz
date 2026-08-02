@@ -9400,6 +9400,436 @@
           }
         }
       }
+    },
+    "Commitment Radar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Radar de compromisos"
+          }
+        }
+      }
+    },
+    "Confirmed work, with its source and history.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trabajo confirmado, con su fuente e historial."
+          }
+        }
+      }
+    },
+    "Local and confirmed by you": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local y confirmado por ti"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos"
+          }
+        }
+      }
+    },
+    "Mine": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Míos"
+          }
+        }
+      }
+    },
+    "Others": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otros"
+          }
+        }
+      }
+    },
+    "Any date": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cualquier fecha"
+          }
+        }
+      }
+    },
+    "Due soon": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próximos 7 días"
+          }
+        }
+      }
+    },
+    "Overdue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vencidos"
+          }
+        }
+      }
+    },
+    "No date": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin fecha"
+          }
+        }
+      }
+    },
+    "Activity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actividad"
+          }
+        }
+      }
+    },
+    "Any activity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cualquier actividad"
+          }
+        }
+      }
+    },
+    "New": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuevos"
+          }
+        }
+      }
+    },
+    "Unchanged": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin cambios"
+          }
+        }
+      }
+    },
+    "Completed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completados"
+          }
+        }
+      }
+    },
+    "Reopened": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reabiertos"
+          }
+        }
+      }
+    },
+    "Group by": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agrupar por"
+          }
+        }
+      }
+    },
+    "Source meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reunión de origen"
+          }
+        }
+      }
+    },
+    "Loading confirmed commitments…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando compromisos confirmados…"
+          }
+        }
+      }
+    },
+    "Couldn’t load commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar los compromisos"
+          }
+        }
+      }
+    },
+    "Your confirmed commitments are still safe on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus compromisos confirmados siguen a salvo en esta Mac."
+          }
+        }
+      }
+    },
+    "No confirmed commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay compromisos confirmados"
+          }
+        }
+      }
+    },
+    "Showing %d of %d commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrando %d de %d compromisos"
+          }
+        }
+      }
+    },
+    "Refine the filters to see more.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajusta los filtros para ver más."
+          }
+        }
+      }
+    },
+    "%d sources": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d fuentes"
+          }
+        }
+      }
+    },
+    "%d changes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d cambios"
+          }
+        }
+      }
+    },
+    "Review sources and history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar fuentes e historial"
+          }
+        }
+      }
+    },
+    "Source unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente no disponible"
+          }
+        }
+      }
+    },
+    "History": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historial"
+          }
+        }
+      }
+    },
+    "%d more sources not shown": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d fuentes más no mostradas"
+          }
+        }
+      }
+    },
+    "%d earlier changes not shown": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d cambios anteriores no mostrados"
+          }
+        }
+      }
+    },
+    "First seen %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visto por primera vez %@"
+          }
+        }
+      }
+    },
+    "No commitments match these filters.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún compromiso coincide con estos filtros."
+          }
+        }
+      }
+    },
+    "Confirm an action item in Meeting Detail to track it here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirma un pendiente en el detalle de la reunión para seguirlo aquí."
+          }
+        }
+      }
+    },
+    "Unknown person": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Persona desconocida"
+          }
+        }
+      }
+    },
+    "No due date": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin fecha límite"
+          }
+        }
+      }
+    },
+    "Due %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vence %@"
+          }
+        }
+      }
+    },
+    "Confirmed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmado"
+          }
+        }
+      }
+    },
+    "Reassigned": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reasignado"
+          }
+        }
+      }
+    },
+    "Rescheduled": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reprogramado"
+          }
+        }
+      }
+    },
+    "Dismissed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartado"
+          }
+        }
+      }
+    },
+    "Radar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Radar"
+          }
+        }
+      }
+    },
+    "Confirmed commitments, deadlines, sources and changes — kept on your Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromisos confirmados, fechas límite, fuentes y cambios — guardados en tu Mac"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

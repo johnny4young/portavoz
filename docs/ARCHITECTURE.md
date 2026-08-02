@@ -212,6 +212,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 |---|---|---|
 | Library | `LibraryModel` | one main window |
 | Insights | `InsightsModel` | one main window |
+| Commitment Radar | `CommitmentRadarModel` | one main window |
 | Meeting Detail | `MeetingDetailScene` + `MeetingDetailModel` | one selected meeting route |
 | Ask conversation | `AskModel` | one main window |
 | Command palette | `CommandPaletteModel` | application process |
@@ -1135,6 +1136,16 @@ window. Any current projection that disagrees with its latest event fails the
 read instead of publishing misleading activity. Every item carries bounded
 source and history rows plus source-meeting navigation metadata; deleted or
 dismissed commitments never enter the result.
+
+The macOS app adopts that read through a window-owned `CommitmentRadarModel`
+and one narrow `AppServices` adapter at the composition root. A dedicated
+Library route renders confirmed work only, maps owner, due-date, and activity
+choices to the ApplicationKit query, and groups the resulting immutable page by
+canonical owner or exact source meeting. Selecting a source opens that durable
+meeting through the shared typed route. SwiftUI does not import StorageKit,
+invoke intelligence, hydrate Meeting Detail per row, or promote generated
+action items. Project and topic grouping remain absent because neither has a
+canonical product entity.
 
 The focused correction command is the first product adoption of this durability
 boundary. It validates the complete retained history, treats text and speaker

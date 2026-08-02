@@ -1619,6 +1619,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/LoadCommitmentRadar.swift")
         let storage = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+CommitmentRadar.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentRadarModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentRadarView.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+CommitmentRadar.swift")
+        let root = try Self.contents(of: "Sources/portavoz-app/ContentView.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(core.contains("maximumItemCount = 200"))
@@ -1631,6 +1638,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("COUNT(*) OVER"))
         XCTAssertTrue(storage.contains("commitmentRadarPersonNames"))
         XCTAssertFalse(storage.contains("meetingDetail"))
+        XCTAssertTrue(model.contains("protocol CommitmentRadarModelClient"))
+        XCTAssertTrue(model.contains("private var requestID = UUID()"))
+        XCTAssertTrue(model.contains("case ownerChanged"))
+        XCTAssertTrue(model.contains("case groupingChanged"))
+        XCTAssertTrue(composition.contains("LoadCommitmentRadar(repository: store)"))
+        XCTAssertTrue(root.contains("@State private var commitmentRadarModel"))
+        XCTAssertTrue(root.contains("case .commitments:"))
+        XCTAssertTrue(view.contains("let onOpenMeeting: (MeetingID) -> Void"))
+        XCTAssertTrue(view.contains("case .owner:"))
+        XCTAssertTrue(view.contains("case .meeting:"))
+        XCTAssertFalse(view.contains("AppServices"))
+        XCTAssertFalse(view.contains("MeetingStore"))
+        XCTAssertFalse(view.contains("SummaryProvider"))
+        XCTAssertFalse(view.contains("IntelligenceKit"))
         XCTAssertTrue(decisions.contains("## D241"))
         XCTAssertTrue(decisions.contains(
             "Bound Commitment Radar as a confirmed-only read model"))

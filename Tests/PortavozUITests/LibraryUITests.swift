@@ -55,6 +55,7 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(app.buttons["library-import-audio-button"].exists)
         XCTAssertTrue(app.buttons["library-ask-button"].exists)
         XCTAssertTrue(app.buttons["library-insights-button"].exists)
+        XCTAssertTrue(app.buttons["library-commitment-radar-button"].exists)
     }
 
     @MainActor

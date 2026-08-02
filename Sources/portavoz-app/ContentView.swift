@@ -10,6 +10,7 @@ enum Route: Hashable {
     case meeting(MeetingID)
     case ask
     case insights
+    case commitments
 }
 
 struct ContentView: View {
@@ -19,6 +20,7 @@ struct ContentView: View {
     @State private var libraryModel: LibraryModel
     @State private var insightsModel: InsightsModel
     @State private var askModel: AskModel
+    @State private var commitmentRadarModel: CommitmentRadarModel
     @State private var reminder = MeetingReminderController()
     @State private var firstRunHostID = UUID()
 
@@ -27,6 +29,8 @@ struct ContentView: View {
         _libraryModel = State(initialValue: services.makeLibraryModel())
         _insightsModel = State(initialValue: services.makeInsightsModel())
         _askModel = State(initialValue: services.makeAskModel())
+        _commitmentRadarModel = State(
+            initialValue: services.makeCommitmentRadarModel())
     }
 
     var body: some View {
@@ -66,6 +70,10 @@ struct ContentView: View {
                         })
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)
+                case .commitments:
+                    CommitmentRadarView(
+                        model: commitmentRadarModel,
+                        onOpenMeeting: { route = .meeting($0) })
                 case nil:
                     ContentUnavailableView(
                         "Portavoz",

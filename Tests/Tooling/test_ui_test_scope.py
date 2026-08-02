@@ -316,6 +316,24 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
+    def test_commitment_radar_selects_only_its_global_continuity_journey(self):
+        expected = FEATURE_TESTS["commitment-radar"]
+        for path in [
+            "Sources/PortavozCore/CommitmentRadar.swift",
+            "Sources/ApplicationKit/LoadCommitmentRadar.swift",
+            "Sources/StorageKit/MeetingStore+CommitmentRadar.swift",
+            "Sources/portavoz-app/CommitmentRadarView.swift",
+        ]:
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+
+    def test_content_composition_selects_one_canary_per_root_route(self):
+        selection = select_paths(["Sources/portavoz-app/ContentView.swift"])
+        self.assertEqual(set(selection.tests), set(FEATURE_TESTS["main-shell"]))
+        self.assertEqual(selection.locales, ("en",))
+        self.assertLess(len(selection.tests), len(ALL_TESTS))
+
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
         selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
         self.assertEqual(

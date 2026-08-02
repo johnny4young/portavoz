@@ -28,12 +28,7 @@ extension AppServices {
                 ? nil
                 : "Ana")
         try? await store.save([me, ana])
-        if ProcessInfo.processInfo.arguments.contains("-seed-commitment-inbox") {
-            _ = try? await store.createPersonAndLink(
-                speakerID: ana.id,
-                preferredName: "Ana",
-                source: .manualName)
-        }
+        let canonicalPersonID = await seedCanonicalPersonIfNeeded(ana)
         let citedSegmentID = UUID(uuidString: "B5B00000-0000-4000-8000-000000000002")!
         let companionQuestionID = UUID(
             uuidString: "B5F00000-0000-4000-8000-000000000001")!
@@ -48,6 +43,9 @@ extension AppServices {
             meetingID: meeting.id,
             ownerID: ana.id,
             citedSegmentID: citedSegmentID)
+        await seedCommitmentRadarIfRequested(
+            meetingID: meeting.id,
+            canonicalPersonID: canonicalPersonID)
         try? await store.save([
             ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
         ])
@@ -133,6 +131,17 @@ extension AppServices {
         ], for: meetingID)
     }
 
+    private func seedCanonicalPersonIfNeeded(_ speaker: Speaker) async -> PersonID? {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-seed-commitment-inbox")
+                || arguments.contains("-seed-commitment-radar")
+        else { return nil }
+        return try? await store.createPersonAndLink(
+            speakerID: speaker.id,
+            preferredName: "Ana",
+            source: .manualName).person.id
+    }
+
     private func seedStaleDerivedArtifactsIfRequested(
         meetingID: MeetingID,
         sourceSegmentID: UUID,
@@ -175,7 +184,7 @@ extension AppServices {
                     - [ ] Prepare the rollout — S1
                     """,
                 actionItems: [ActionItem(
-                    id: UUID(uuidString: "B5E00000-0000-4000-8000-000000000001")!,
+                    id: Self.seedActionItemID,
                     text: "Prepare the rollout",
                     ownerSpeakerID: ownerID)],
                 claims: [SummaryClaim(
@@ -186,8 +195,7 @@ extension AppServices {
                     bulletOrdinal: 0,
                     evidenceSegmentIDs: [citedSegmentID])],
                 actionItemEvidence: [SummaryActionItemEvidence(
-                    actionItemID: UUID(
-                        uuidString: "B5E00000-0000-4000-8000-000000000001")!,
+                    actionItemID: Self.seedActionItemID,
                     evidenceSegmentIDs: [citedSegmentID])]))
         await seedLatestRecipeSummaryIfRequested(for: meetingID)
     }
@@ -218,6 +226,141 @@ extension AppServices {
         } catch {
             assertionFailure("Could not seed processing failure: \(error)")
         }
+    }
+
+    private func seedCommitmentRadarIfRequested(
+        meetingID: MeetingID,
+        canonicalPersonID: PersonID?
+    ) async {
+        guard ProcessInfo.processInfo.arguments.contains("-seed-commitment-radar") else {
+            return
+        }
+        guard let canonicalPersonID else {
+            assertionFailure("Could not seed the Radar's canonical person")
+            return
+        }
+
+        let now = Date()
+        let old = now.addingTimeInterval(-10 * 86_400)
+        do {
+            try await seedNewRadarCommitment(
+                personID: canonicalPersonID,
+                now: now)
+            try await seedReopenedRadarCommitment(
+                meetingID: meetingID,
+                old: old,
+                now: now)
+            try await seedUnchangedRadarCommitment(meetingID: meetingID, old: old)
+            try await seedCompletedRadarCommitment(
+                meetingID: meetingID,
+                personID: canonicalPersonID,
+                old: old)
+        } catch {
+            assertionFailure("Could not seed Commitment Radar: \(error)")
+        }
+    }
+
+    private func seedNewRadarCommitment(
+        personID: PersonID,
+        now: Date
+    ) async throws {
+        _ = try await store.confirmCommitment(
+            CommitmentConfirmation(
+                commitmentID: Self.radarCommitmentID(1),
+                sourceID: Self.radarSourceID(1),
+                eventID: Self.radarEventID(1),
+                title: "Send the rollout brief",
+                assignee: .person(personID),
+                dueAt: now.addingTimeInterval(2 * 86_400),
+                origin: .generatedActionItem(Self.seedActionItemID)),
+            at: now.addingTimeInterval(-3_600))
+    }
+
+    private func seedReopenedRadarCommitment(
+        meetingID: MeetingID,
+        old: Date,
+        now: Date
+    ) async throws {
+        let reopened = try await store.confirmCommitment(
+            CommitmentConfirmation(
+                commitmentID: Self.radarCommitmentID(2),
+                sourceID: Self.radarSourceID(2),
+                eventID: Self.radarEventID(2),
+                title: "Recheck the launch checklist",
+                assignee: .me,
+                dueAt: now.addingTimeInterval(-86_400),
+                origin: .manual(meetingID: meetingID)),
+            at: old)
+        _ = try await store.applyCommitmentTransition(
+            .complete,
+            to: reopened.commitment.id,
+            eventID: Self.radarEventID(3),
+            sourceMeetingID: meetingID,
+            at: old.addingTimeInterval(60))
+        _ = try await store.applyCommitmentTransition(
+            .reopen,
+            to: reopened.commitment.id,
+            eventID: Self.radarEventID(4),
+            sourceMeetingID: meetingID,
+            at: now.addingTimeInterval(-7_200))
+    }
+
+    private func seedUnchangedRadarCommitment(
+        meetingID: MeetingID,
+        old: Date
+    ) async throws {
+        _ = try await store.confirmCommitment(
+            CommitmentConfirmation(
+                commitmentID: Self.radarCommitmentID(3),
+                sourceID: Self.radarSourceID(3),
+                eventID: Self.radarEventID(5),
+                title: "Clarify the budget owner",
+                assignee: .unassigned,
+                origin: .manual(meetingID: meetingID)),
+            at: old.addingTimeInterval(120))
+    }
+
+    private func seedCompletedRadarCommitment(
+        meetingID: MeetingID,
+        personID: PersonID,
+        old: Date
+    ) async throws {
+        let completed = try await store.confirmCommitment(
+            CommitmentConfirmation(
+                commitmentID: Self.radarCommitmentID(4),
+                sourceID: Self.radarSourceID(4),
+                eventID: Self.radarEventID(6),
+                title: "Archive the approved plan",
+                assignee: .person(personID),
+                origin: .manual(meetingID: meetingID)),
+            at: old.addingTimeInterval(180))
+        _ = try await store.applyCommitmentTransition(
+            .complete,
+            to: completed.commitment.id,
+            eventID: Self.radarEventID(7),
+            sourceMeetingID: meetingID,
+            at: old.addingTimeInterval(240))
+    }
+
+    private static let seedActionItemID = UUID(
+        uuidString: "B5E00000-0000-4000-8000-000000000001")!
+
+    private static func radarCommitmentID(_ ordinal: Int) -> CommitmentID {
+        CommitmentID(rawValue: UUID(uuidString: String(
+            format: "B5D10000-0000-4000-8000-%012d",
+            ordinal))!)
+    }
+
+    private static func radarSourceID(_ ordinal: Int) -> CommitmentSourceID {
+        CommitmentSourceID(rawValue: UUID(uuidString: String(
+            format: "B5D20000-0000-4000-8000-%012d",
+            ordinal))!)
+    }
+
+    private static func radarEventID(_ ordinal: Int) -> CommitmentEventID {
+        CommitmentEventID(rawValue: UUID(uuidString: String(
+            format: "B5D30000-0000-4000-8000-%012d",
+            ordinal))!)
     }
 
     private func seedPrivacyReceipt(for meetingID: MeetingID) async {

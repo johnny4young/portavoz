@@ -8236,11 +8236,14 @@ status plus the latest immutable event: `done`/`complete` is completed,
 coherent open state is unchanged. Projection/history disagreement fails the
 read. Dismissed and tombstoned roots are excluded.
 
-**Consequences:** Radar can distinguish mine, exact people, and unassigned work
-and expose bounded proof without importing model guesses into continuity. The
-read model adds no schema migration, candidate engine, inferred owner/deadline,
-automatic promotion, reminder, bundle/CloudKit field, CLI, or MCP contract.
-Project/topic grouping remains deferred until a real project/topic entity
-exists; meeting navigation is source evidence, not a project proxy. A
-user-facing global surface and canonical 1k/10k Release benchmark remain
-separate adoption and quality work.
+**Consequences:** Radar distinguishes mine, exact people, and unassigned work
+and exposes bounded proof without importing model guesses into continuity. The
+macOS Library now owns a dedicated global route backed by a per-window model and
+narrow composition adapter. It filters by owner, due date, and activity, groups
+only by canonical owner or exact source meeting, and opens that durable source
+without per-row Meeting Detail hydration. The surface adds no schema migration,
+candidate engine, inferred owner/deadline, automatic promotion, reminder,
+bundle/CloudKit field, CLI, or MCP contract. Project/topic grouping remains
+deferred until a real project/topic entity exists; meeting navigation is source
+evidence, not a project proxy. The canonical 1k/10k Release benchmark remains
+separate quality work.
