@@ -15,6 +15,8 @@ D239 adopts the existing v21 review and confirmation transactions through a
 narrow ApplicationKit repository; it adds no schema or presentation-owned SQL.
 D243 adds an explicit append-only cross-meeting source link; it reuses schema
 v20–v22 and adds no migration.
+D244 adds only a storage-independent Core suggestion policy. It neither queries
+nor writes StorageKit and adds no schema, index, migration, or product adapter.
 
 ## Database
 
@@ -168,7 +170,9 @@ advanced by one millisecond beyond the latest source or lifecycle timestamp so
 the append remains canonically ordered across return and reload. No migration
 is required. The
 application repository exposes this command for later presentation adoption,
-but no candidate scorer or UI invokes it yet.
+but no UI invokes it yet. D244's pure Core scorer consumes bounded target
+snapshots supplied by a future adapter; it does not open this Store or call the
+link command.
 
 `commitmentRadar(_:)` is the library-global continuity read boundary. One GRDB
 snapshot performs at most four set-based SELECT statements regardless of root

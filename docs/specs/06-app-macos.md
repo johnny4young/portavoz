@@ -25,7 +25,8 @@ one ApplicationKit use case and narrow repository.
 D243 extends that same repository with an explicit source-link command. The app
 composition adapter can append a later meeting's active evidence to an existing
 open commitment without exposing StorageKit to presentation. No current SwiftUI
-action invokes it; the candidate scorer, confirmation affordance, and chronology
+action invokes it. D244 adds only a pure Core suggestion policy; app target
+loading, semantic-query composition, confirmation affordance, and chronology
 presentation remain later COMMIT-4 slices.
 D201 lets full Ask publish exact citations while semantic refinement and local
 generation continue, with generation-fenced progress and cancellation.

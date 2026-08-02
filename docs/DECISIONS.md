@@ -8312,3 +8312,37 @@ source per meeting. The app repository adapter exists, but no SwiftUI link
 affordance or scorer ships in this slice. `firstSeenAt` records confirmation
 time, so future first-promised/last-discussed labels must derive meeting
 chronology explicitly. Sync/export, reminders, CLI, and MCP remain unchanged.
+
+## D244 — Rank commitment links from exact person and evidence identity only (Aug 2026)
+
+**Context:** D243 provides the only durable way to append later evidence to an
+open commitment, but it deliberately supplies no candidate policy. Reusing a
+model answer, display-name similarity, or an uncalibrated vector score here
+would let probabilistic output look like an identity decision. The current
+semantic query boundary returns an authoritative ordered list of segment
+identities, not calibrated scores, so it cannot yet support an honest global
+similarity threshold.
+
+**Decision:** add one pure, storage-independent PortavozCore ranker. A new
+action-item candidate may suggest an existing open commitment only when its
+known typed assignee exactly equals the confirmed target assignee and the
+caller's ordered semantic segment identities intersect the target's exact
+stored evidence identities. Nil or unassigned candidates, conflicting owners,
+same-meeting targets, closed or deleted commitments, malformed continuity
+values, duplicate identities, and any input beyond its fixed bounds abstain.
+
+The ranker accepts at most 20 semantic hits and 200 targets, inspects at most 20
+meeting and evidence identities per target, and returns at most three
+suggestions. It orders by earliest semantic hit, then greater exact evidence
+coverage, then commitment UUID for a stable tie. Every result carries only the
+candidate identity, target commitment, exact assignee, matched evidence IDs,
+and explainable one-based semantic rank. It cannot call ApplicationKit,
+IntelligenceKit, StorageKit, a provider, or the D243 mutation command.
+
+**Consequences:** the policy can be benchmarked without becoming a serving
+feature or creating a second semantic engine. No similarity threshold is
+selected until a cross-meeting quality pack supplies calibrated evidence. A
+future adapter must assemble current bounded targets and semantic identities,
+and a future UI must require the user to confirm through D243. This slice adds
+no schema, storage query, application composition, SwiftUI, automatic merge,
+chronology presentation, sync/export field, reminder, CLI, or MCP contract.

@@ -39,6 +39,29 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
             "Append cross-meeting commitment evidence only after explicit confirmation"))
     }
 
+    func testSuggestionPolicyRemainsPureBoundedAndNonServing() throws {
+        let policy = try Self.contents(
+            of: "Sources/PortavozCore/CommitmentLinkSuggestion.swift")
+        let candidateProjection = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingCommitmentInbox.swift")
+        let appComposition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(policy.contains("maximumSemanticHitCount = 20"))
+        XCTAssertTrue(policy.contains("maximumTargetCount = 200"))
+        XCTAssertTrue(policy.contains("maximumSuggestionCount = 3"))
+        XCTAssertTrue(policy.contains("target.commitment.assignee == candidateAssignee"))
+        XCTAssertFalse(policy.contains("import ApplicationKit"))
+        XCTAssertFalse(policy.contains("import IntelligenceKit"))
+        XCTAssertFalse(policy.contains("import StorageKit"))
+        XCTAssertFalse(candidateProjection.contains("CommitmentLinkSuggestionPolicy"))
+        XCTAssertFalse(appComposition.contains("CommitmentLinkSuggestionPolicy"))
+        XCTAssertTrue(decisions.contains("## D244"))
+        XCTAssertTrue(decisions.contains(
+            "Rank commitment links from exact person and evidence identity only"))
+    }
+
     private static func contents(of relativePath: String) throws -> String {
         try String(
             contentsOf: repoRoot.appendingPathComponent(relativePath),

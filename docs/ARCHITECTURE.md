@@ -1170,8 +1170,20 @@ date, current projection, and lifecycle event history remain byte-for-byte
 unchanged.
 
 This boundary adds no schema migration and cannot be called by the transient
-candidate projection. No semantic/person scorer, confirmation UI, automatic
-merge, reminder, sync/export field, CLI, or MCP surface exists for the link yet.
+candidate projection. Below it, `CommitmentLinkSuggestionPolicy` is a pure,
+non-serving PortavozCore ranker over already-authoritative identities. It
+requires both exact typed-assignee equality and an intersection between at most
+20 ordered semantic-hit segment IDs and the target's exact evidence IDs. It
+examines at most 200 targets with 20 meeting/evidence rows each and returns at
+most three stable, explainable suggestions ordered by first semantic rank,
+evidence coverage, and commitment identity. Unknown or unassigned people,
+same-meeting/closed/deleted targets, duplicate or malformed input, and every
+overflow abstain.
+
+The policy imports no ApplicationKit, IntelligenceKit, or StorageKit, cannot
+invoke the append command, and has no runtime adapter or calibrated similarity
+threshold. No confirmation UI, automatic merge, reminder, sync/export field,
+CLI, or MCP surface exists for the link yet.
 `CommitmentSource.firstSeenAt` continues to mean the time that evidence entered
 confirmed continuity, not the meeting start or the original spoken promise. A
 regressed wall clock is advanced beyond the target's latest source or lifecycle

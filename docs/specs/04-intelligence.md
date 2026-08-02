@@ -4,8 +4,9 @@ Status: implemented and verified (ES summary of EN meeting with glossary intact 
 
 D239 additionally owns explicit evidence-first commitment admission in Meeting
 Detail. D243 adds an explicit Application/Storage link boundary for a later
-meeting's active evidence, but neither decision adds a provider or candidate
-engine to IntelligenceKit.
+meeting's active evidence. D244 adds a pure PortavozCore link ranker over
+ordered semantic-result identities and exact typed people, but none of these
+decisions adds a provider or candidate engine to IntelligenceKit.
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -161,7 +162,12 @@ bounded Core/Application/Storage projection; it performs no model call and
 cannot promote a generated candidate automatically. D243 lets an explicit
 application command append one later active-summary ActionItem as evidence for
 an open commitment, while this benchmark projection remains unable to call that
-command. Semantic/person ranking and its quality authority are still pending.
+command. D244's non-serving Core policy accepts at most 20 ordered semantic
+segment identities and 200 bounded confirmed targets, requires an exact typed
+assignee plus target-evidence intersection, and returns at most three
+explainable suggestions. It neither invokes this benchmark nor selects a model,
+provider, vector engine, or score threshold. A cross-meeting link quality pack
+and runtime adapter remain pending.
 
 ## Human claim feedback is not model material (D88)
 
