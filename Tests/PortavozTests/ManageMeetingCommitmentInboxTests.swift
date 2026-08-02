@@ -90,6 +90,28 @@ final class ManageMeetingCommitmentInboxTests: XCTestCase {
         XCTAssertEqual(calls.first?.confirmation.assignee, .me)
         XCTAssertEqual(commitment.assignee, .me)
     }
+
+    func testLinkPreservesExpectedSourceAndExistingCommitmentIdentity() async throws {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let meetingID = MeetingID()
+        let actionItemID = UUID()
+        let commitmentID = CommitmentID()
+        let repository = CommitmentReviewRepositoryFake()
+        let useCase = ManageMeetingCommitmentInbox(repository: repository, now: { now })
+
+        let commitment = try await useCase.link(LinkMeetingCommitmentRequest(
+            meetingID: meetingID,
+            actionItemID: actionItemID,
+            commitmentID: commitmentID))
+
+        let calls = await repository.links
+        XCTAssertEqual(calls.count, 1)
+        XCTAssertEqual(calls.first?.date, now)
+        XCTAssertEqual(calls.first?.confirmation.commitmentID, commitmentID)
+        XCTAssertEqual(calls.first?.confirmation.sourceMeetingID, meetingID)
+        XCTAssertEqual(calls.first?.confirmation.actionItemID, actionItemID)
+        XCTAssertEqual(commitment.id, commitmentID)
+    }
 }
 
 private actor CommitmentReviewRepositoryFake: MeetingCommitmentReviewRepository {
@@ -106,7 +128,13 @@ private actor CommitmentReviewRepositoryFake: MeetingCommitmentReviewRepository 
         let date: Date
     }
 
+    struct LinkCall: Sendable {
+        let confirmation: CommitmentLinkConfirmation
+        let date: Date
+    }
+
     private(set) var confirmations: [ConfirmationCall] = []
+    private(set) var links: [LinkCall] = []
     private(set) var decisions: [DecisionCall] = []
 
     func confirmCommitment(
@@ -134,6 +162,37 @@ private actor CommitmentReviewRepositoryFake: MeetingCommitmentReviewRepository 
         return try CommitmentContinuityEnvelope(
             commitment: commitment,
             sources: [source],
+            events: [event])
+    }
+
+    func linkCommitmentSource(
+        _ confirmation: CommitmentLinkConfirmation,
+        at date: Date
+    ) throws -> CommitmentContinuityEnvelope {
+        links.append(LinkCall(confirmation: confirmation, date: date))
+        let event = CommitmentEvent(
+            commitmentID: confirmation.commitmentID,
+            kind: .confirm,
+            assignee: .unassigned,
+            occurredAt: date.addingTimeInterval(-1))
+        let commitment = try CommitmentContinuityPolicy.projectedCommitment(
+            id: confirmation.commitmentID,
+            title: "Existing commitment",
+            events: [event])
+        let initial = CommitmentSource(
+            commitmentID: confirmation.commitmentID,
+            kind: .manual,
+            meetingID: nil,
+            firstSeenAt: date.addingTimeInterval(-1))
+        let linked = CommitmentSource(
+            id: confirmation.sourceID,
+            commitmentID: confirmation.commitmentID,
+            kind: .manual,
+            meetingID: confirmation.sourceMeetingID,
+            firstSeenAt: date)
+        return try CommitmentContinuityEnvelope(
+            commitment: commitment,
+            sources: [initial, linked],
             events: [event])
     }
 

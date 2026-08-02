@@ -22,6 +22,11 @@ D238 adds an independently observed, source-bound commitment-review projection
 without adding a user-facing confirmation surface. D239 adopts that projection
 as a separate evidence-first Meeting Detail confirmation surface routed through
 one ApplicationKit use case and narrow repository.
+D243 extends that same repository with an explicit source-link command. The app
+composition adapter can append a later meeting's active evidence to an existing
+open commitment without exposing StorageKit to presentation. No current SwiftUI
+action invokes it; the candidate scorer, confirmation affordance, and chronology
+presentation remain later COMMIT-4 slices.
 D201 lets full Ask publish exact citations while semantic refinement and local
 generation continue, with generation-fenced progress and cancellation.
 D222 freezes Meeting Detail interactions and measured behavior before

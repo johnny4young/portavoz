@@ -100,9 +100,7 @@ extension MeetingStore {
         record.deletedAt = effectiveTimestamp
         try record.update(database)
     }
-}
 
-private extension MeetingStore {
     static func validateActiveCommitmentSource(
         _ actionItemID: UUID,
         meetingID: MeetingID,
@@ -132,10 +130,12 @@ private extension MeetingStore {
             arguments: [actionItemID.uuidString, meetingKey, meetingKey]) ?? false
         guard sourceIsActive else {
             throw StorageError.invalidCommitment(
-                "review feedback requires an ActionItem in the active summary")
+                "commitment source requires an ActionItem in the active summary")
         }
     }
+}
 
+private extension MeetingStore {
     static func persistCommitmentReviewDecision(
         _ decision: CommitmentReviewDecision,
         in database: Database

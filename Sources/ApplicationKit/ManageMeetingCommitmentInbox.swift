@@ -10,6 +10,11 @@ public protocol MeetingCommitmentReviewRepository: Sendable {
         at date: Date
     ) async throws -> CommitmentContinuityEnvelope
 
+    func linkCommitmentSource(
+        _ confirmation: CommitmentLinkConfirmation,
+        at date: Date
+    ) async throws -> CommitmentContinuityEnvelope
+
     func setCommitmentReviewDecision(
         _ disposition: CommitmentReviewDisposition?,
         for actionItemID: UUID,
@@ -58,6 +63,22 @@ public struct ConfirmMeetingCommitmentRequest: Sendable, Equatable {
     public var canonicalPersonID: PersonID? { assignee.canonicalPersonID }
 }
 
+public struct LinkMeetingCommitmentRequest: Sendable, Equatable {
+    public let meetingID: MeetingID
+    public let actionItemID: UUID
+    public let commitmentID: CommitmentID
+
+    public init(
+        meetingID: MeetingID,
+        actionItemID: UUID,
+        commitmentID: CommitmentID
+    ) {
+        self.meetingID = meetingID
+        self.actionItemID = actionItemID
+        self.commitmentID = commitmentID
+    }
+}
+
 public enum ReviewMeetingCommitmentRequest: Sendable, Equatable {
     case dismiss(meetingID: MeetingID, actionItemID: UUID)
     case deferUntil(meetingID: MeetingID, actionItemID: UUID, revisitAt: Date)
@@ -66,11 +87,13 @@ public enum ReviewMeetingCommitmentRequest: Sendable, Equatable {
 
 public enum ManageMeetingCommitmentInboxRequest: Sendable, Equatable {
     case confirm(ConfirmMeetingCommitmentRequest)
+    case link(LinkMeetingCommitmentRequest)
     case review(ReviewMeetingCommitmentRequest)
 }
 
 public enum ManageMeetingCommitmentInboxResult: Sendable, Equatable {
     case confirmed(Commitment)
+    case linked(Commitment)
     case reviewed
 }
 
@@ -108,6 +131,8 @@ public struct ManageMeetingCommitmentInbox: ApplicationUseCase {
         switch request {
         case .confirm(let confirmation):
             return .confirmed(try await confirm(confirmation))
+        case .link(let linkRequest):
+            return .linked(try await link(linkRequest))
         case .review(let reviewRequest):
             try await review(reviewRequest)
             return .reviewed
@@ -126,6 +151,19 @@ public struct ManageMeetingCommitmentInbox: ApplicationUseCase {
                 assignee: request.assignee,
                 dueAt: request.dueAt,
                 origin: .generatedActionItem(request.actionItemID)),
+            at: timestamp)
+        return envelope.commitment
+    }
+
+    public func link(
+        _ request: LinkMeetingCommitmentRequest
+    ) async throws -> Commitment {
+        let timestamp = now()
+        let envelope = try await repository.linkCommitmentSource(
+            CommitmentLinkConfirmation(
+                commitmentID: request.commitmentID,
+                sourceMeetingID: request.meetingID,
+                actionItemID: request.actionItemID),
             at: timestamp)
         return envelope.commitment
     }

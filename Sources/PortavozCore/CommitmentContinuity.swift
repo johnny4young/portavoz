@@ -438,6 +438,29 @@ public struct CommitmentConfirmation: Sendable, Equatable {
     public var canonicalPersonID: PersonID? { assignee.canonicalPersonID }
 }
 
+/// Explicit user confirmation that one current generated ActionItem is later
+/// evidence for an existing open commitment. Candidate ranking never creates
+/// this value, and accepting it appends source history without changing the
+/// commitment's canonical identity or lifecycle projection.
+public struct CommitmentLinkConfirmation: Sendable, Equatable {
+    public let commitmentID: CommitmentID
+    public let sourceID: CommitmentSourceID
+    public let sourceMeetingID: MeetingID
+    public let actionItemID: UUID
+
+    public init(
+        commitmentID: CommitmentID,
+        sourceID: CommitmentSourceID = CommitmentSourceID(),
+        sourceMeetingID: MeetingID,
+        actionItemID: UUID
+    ) {
+        self.commitmentID = commitmentID
+        self.sourceID = sourceID
+        self.sourceMeetingID = sourceMeetingID
+        self.actionItemID = actionItemID
+    }
+}
+
 public enum CommitmentContinuityValidationError: Error, Equatable, Sendable {
     case invalidCommitment
     case invalidSource(CommitmentSourceID)

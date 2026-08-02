@@ -59,6 +59,76 @@ extension MeetingStore {
         }
     }
 
+    /// Appends one user-confirmed, evidence-linked ActionItem to an existing
+    /// open commitment. This never changes commitment identity or lifecycle;
+    /// semantic/person candidates must cross the ApplicationKit confirmation
+    /// boundary before this transaction can run.
+    public func linkCommitmentSource(
+        _ confirmation: CommitmentLinkConfirmation,
+        at proposedDate: Date = Date()
+    ) async throws -> CommitmentContinuityEnvelope {
+        let requestedTimestamp = Self.canonicalCommitmentDate(proposedDate)
+        return try await database.write { database in
+            let current = try Self.commitmentEnvelope(
+                id: confirmation.commitmentID,
+                in: database)
+            guard current.commitment.status == .confirmed else {
+                throw StorageError.invalidCommitment(
+                    "only an open commitment accepts new evidence")
+            }
+            try Self.validateActiveCommitmentSource(
+                confirmation.actionItemID,
+                meetingID: confirmation.sourceMeetingID,
+                in: database)
+            guard try Self.confirmedCommitment(
+                actionItemID: confirmation.actionItemID,
+                in: database) == nil
+            else {
+                throw StorageError.invalidCommitment(
+                    "generated ActionItem is already confirmed")
+            }
+            let continuityFloor = max(
+                current.commitment.updatedAt,
+                current.sources.last?.firstSeenAt ?? current.commitment.updatedAt)
+            let timestamp = requestedTimestamp > continuityFloor
+                ? requestedTimestamp
+                : continuityFloor.addingTimeInterval(0.001)
+            let source = try Self.generatedActionItemSource(
+                actionItemID: confirmation.actionItemID,
+                commitmentID: confirmation.commitmentID,
+                sourceID: confirmation.sourceID,
+                at: timestamp,
+                in: database)
+            guard source.meetingID == confirmation.sourceMeetingID else {
+                throw StorageError.invalidCommitment(
+                    "generated ActionItem does not belong to the expected meeting")
+            }
+            guard !current.sources.contains(where: {
+                $0.meetingID == confirmation.sourceMeetingID
+            }) else {
+                throw StorageError.invalidCommitment(
+                    "cross-meeting evidence must come from a new meeting")
+            }
+
+            let envelope = try CommitmentContinuityEnvelope(
+                commitment: current.commitment,
+                sources: current.sources + [source],
+                events: current.events)
+            try CommitmentSourceRecord(source).insert(database)
+            for evidence in source.evidence {
+                try CommitmentEvidenceSegmentRecord(
+                    sourceID: source.id,
+                    evidence: evidence)
+                    .insert(database)
+            }
+            try Self.clearCommitmentReviewDecision(
+                actionItemID: confirmation.actionItemID,
+                at: timestamp,
+                in: database)
+            return envelope
+        }
+    }
+
     /// Applies one strict append-only user-truth transition and updates the
     /// current projection in the same transaction.
     public func applyCommitmentTransition(

@@ -3,7 +3,9 @@
 Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (application-owned durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence), D206 (injected semantic-index query port with exact control retained), D207–D217 (governed non-serving semantic shadows, exact-path evidence, and research-only baseline retention), D233 (correction-aware generation lineage and stale artifacts), D236 (commitment-candidate benchmark before continuity state).
 
 D239 additionally owns explicit evidence-first commitment admission in Meeting
-Detail; it adds no provider or candidate engine to IntelligenceKit.
+Detail. D243 adds an explicit Application/Storage link boundary for a later
+meeting's active evidence, but neither decision adds a provider or candidate
+engine to IntelligenceKit.
 
 ## Model scheduler — `IntelligenceScheduler` (D29)
 
@@ -156,7 +158,10 @@ user-entered date, but none becomes a model output or candidate-quality result.
 D240 keeps those three ownership states distinct in continuity storage without
 changing candidate generation. D241 reads only confirmed continuity through a
 bounded Core/Application/Storage projection; it performs no model call and
-cannot promote a generated candidate automatically.
+cannot promote a generated candidate automatically. D243 lets an explicit
+application command append one later active-summary ActionItem as evidence for
+an open commitment, while this benchmark projection remains unable to call that
+command. Semantic/person ranking and its quality authority are still pending.
 
 ## Human claim feedback is not model material (D88)
 

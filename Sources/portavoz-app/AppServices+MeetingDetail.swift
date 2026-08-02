@@ -290,6 +290,13 @@ private struct AppMeetingCommitmentReviewRepository: MeetingCommitmentReviewRepo
         try await store.confirmCommitment(confirmation, at: date)
     }
 
+    func linkCommitmentSource(
+        _ confirmation: CommitmentLinkConfirmation,
+        at date: Date
+    ) async throws -> CommitmentContinuityEnvelope {
+        try await store.linkCommitmentSource(confirmation, at: date)
+    }
+
     func setCommitmentReviewDecision(
         _ disposition: CommitmentReviewDisposition?,
         for actionItemID: UUID,

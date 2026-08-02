@@ -1158,6 +1158,27 @@ user library or records commitment, source, event, meeting, text, or path
 identity. This gate measures the StorageKit read, not UI rendering, candidate
 quality, or cross-meeting continuity inference.
 
+Cross-meeting continuity now has one explicit append boundary below any future
+ranking. `ManageMeetingCommitmentInbox` accepts a typed link confirmation for
+an existing open commitment and one generated action item from the active
+summary of a different, not-yet-linked meeting. StorageKit revalidates current
+direct transcript evidence, exact expected meeting identity, active-summary
+membership, and global generated-source uniqueness in one transaction. It then
+appends only the immutable source and its ordered evidence and tombstones any
+review treatment for that action item. The commitment title, typed owner, due
+date, current projection, and lifecycle event history remain byte-for-byte
+unchanged.
+
+This boundary adds no schema migration and cannot be called by the transient
+candidate projection. No semantic/person scorer, confirmation UI, automatic
+merge, reminder, sync/export field, CLI, or MCP surface exists for the link yet.
+`CommitmentSource.firstSeenAt` continues to mean the time that evidence entered
+confirmed continuity, not the meeting start or the original spoken promise. A
+regressed wall clock is advanced beyond the target's latest source or lifecycle
+timestamp so append order remains durable and reload-stable.
+Future `first promised` and `last discussed` presentation must therefore join
+source meeting chronology explicitly rather than relabeling confirmation time.
+
 The focused correction command is the first product adoption of this durability
 boundary. It validates the complete retained history, treats text and speaker
 attribution as independent lanes that may coexist on one accepted source row,

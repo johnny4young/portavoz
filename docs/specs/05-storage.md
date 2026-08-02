@@ -13,12 +13,14 @@ D235 adds correction transaction and replica-replay recovery gates without a
 schema change.
 D239 adopts the existing v21 review and confirmation transactions through a
 narrow ApplicationKit repository; it adds no schema or presentation-owned SQL.
+D243 adds an explicit append-only cross-meeting source link; it reuses schema
+v20–v22 and adds no migration.
 
 ## Database
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v21` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v22` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -142,15 +144,31 @@ then require `person` to carry exactly one canonical ID and require `me` and
 `unassigned` to carry none. The migration does not infer self or extend any
 sync/export surface.
 
-`ManageMeetingCommitmentInbox` is the only product command used by the visual
-confirmation surface. Its `MeetingCommitmentReviewRepository` adapter delegates
-to the existing atomic Store operations for confirm, dismiss, defer, and
-restore; SwiftUI never receives a Store or record type. Confirmation therefore
+`ManageMeetingCommitmentInbox` owns the commitment-inbox product commands. Its
+`MeetingCommitmentReviewRepository` adapter delegates to the existing atomic
+Store operations for confirm, link, dismiss, defer, and restore; SwiftUI never
+receives a Store or record type. The current visual confirmation surface uses
+confirm and review operations while link remains reserved for later adoption.
+Confirmation therefore
 reuses current-evidence, exact-person, unique-source, and feedback-tombstone
 validation instead of duplicating those rules in presentation. The UI may
 collect edited wording, explicit self/person/unassigned ownership, and a
 user-entered due date, but StorageKit still accepts them only through the
 confirmed aggregate boundary.
+
+`linkCommitmentSource` is the D243 append-only cross-meeting boundary. It
+accepts only an existing open commitment and a generated action item that is
+still in the expected meeting's newest live summary, has current direct
+same-meeting evidence, has not backed any confirmed commitment, and comes from
+a meeting not already represented in the target. One transaction appends the
+immutable source/evidence rows and tombstones source-bound review feedback. It
+does not insert a lifecycle event or update the commitment projection, title,
+owner, due date, or projection timestamps. A regressed proposed timestamp is
+advanced by one millisecond beyond the latest source or lifecycle timestamp so
+the append remains canonically ordered across return and reload. No migration
+is required. The
+application repository exposes this command for later presentation adoption,
+but no candidate scorer or UI invokes it yet.
 
 `commitmentRadar(_:)` is the library-global continuity read boundary. One GRDB
 snapshot performs at most four set-based SELECT statements regardless of root

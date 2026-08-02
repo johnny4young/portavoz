@@ -8279,3 +8279,36 @@ incidental host noise. The observation authorizes neither a candidate engine
 nor a storage-engine replacement, and it says nothing about SwiftUI rendering,
 semantic linking quality, reminders, sync, CLI, or MCP latency; those remain
 separate contracts.
+
+## D243 — Append cross-meeting commitment evidence only after explicit confirmation (Aug 2026)
+
+**Context:** confirmed commitments and their bounded Radar exist, but a later
+meeting can produce a new generated action item about the same obligation. A
+semantic or person match may be useful evidence, yet automatically merging it
+would turn a ranking heuristic into durable user truth. Current transcript
+evidence alone is also insufficient because summary regeneration can retire an
+otherwise current-revision action item.
+
+**Decision:** add a typed `CommitmentLinkConfirmation` and route it through
+`ManageMeetingCommitmentInbox` to one atomic StorageKit operation. The target
+must be open. The action item must remain in the expected meeting's newest live
+summary, retain nonempty current-revision direct evidence, have no existing
+confirmed source, and come from a meeting not already represented in the target.
+Only after that explicit command does StorageKit append the immutable source and
+ordered evidence and tombstone any review treatment for the linked item.
+Its source timestamp is advanced beyond the target's latest source or lifecycle
+timestamp when the caller's wall clock regresses, preserving append order.
+
+The transaction does not create or merge a commitment, append a lifecycle
+event, or rewrite the canonical title, owner, due date, projection, or
+projection timestamps. It needs no migration. Candidate ranking cannot invoke
+the command; the current transient inbox projection remains read-only with
+respect to links.
+
+**Consequences:** later semantic/person scoring can remain non-serving until a
+user confirms the proposed relationship, while source history can accumulate
+without falsifying lifecycle history. A commitment accepts at most one linked
+source per meeting. The app repository adapter exists, but no SwiftUI link
+affordance or scorer ships in this slice. `firstSeenAt` records confirmation
+time, so future first-promised/last-discussed labels must derive meeting
+chronology explicitly. Sync/export, reminders, CLI, and MCP remain unchanged.
