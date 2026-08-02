@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,759 cases (13 environment-gated) + 62
+Status: the package inventory contains 1,764 cases (13 environment-gated) + 62
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -27,7 +27,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 508 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 511 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1333,8 +1333,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,759 XCTest package cases (13
-environment-gated), zero strict-lint violations across 508 Swift
+The current field-reliability inventory is 1,764 XCTest package cases (13
+environment-gated), zero strict-lint violations across 511 Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 62 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package
@@ -1396,14 +1396,24 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   arithmetic; it remains `review-required`, makes no product decision, and
   selects no threshold or engine. Optional case details are mode `0600`, non-
   overwriting, and untracked.
-- Eight focused package cases cover D246's non-serving product seam: five
+- Twelve focused package cases cover D246/D247's non-serving product seam: five
   observer/storage behaviors and three source-link architecture contracts.
   The real in-memory Store path proves exact open source/evidence identities,
   installed-assets-only borrowing, and semantic-hit versus legal-admission
   separation. Source inspection keeps the observer behind the existing
   semantic port and Core policy, enforces bounded ranked reads, prohibits the
-  confirmation mutation, and proves no app composition. These tests create no
-  product observation scorecard and accept no quality floor.
+  confirmation mutation, and proves no app composition. Four runner cases add
+  canonical digest parity, strict CLI options, all-36-case isolated scratch
+  mapping, installed-assets-only observation, exact external-identity output,
+  and owner-only non-overwriting publication. `make commitment-link-quality-
+  product PORTAVOZ_COMMITMENT_LINK_OBSERVATIONS=<ignored-path>` runs the real
+  Storage/Application path and immediately validates it with the D245
+  evaluator; downloads remain disabled unless the caller explicitly selects
+  `if-needed`. One dirty-head development smoke over the installed Apple
+  profile completed the pack with semantic Hit@1 0.969697, Recall@20 1.0, link
+  precision 0.777778, link recall 1.0, abstention accuracy 0.666667, and six
+  explanation-supported false suggestions. This is not a retained clean-head
+  baseline or accepted quality floor, and no result is served.
 - `make test-ask-quality`: verifies both canonical public-synthetic Ask fixture
   generations and runs 38 deterministic evaluator/comparator/runner cases without
   loading models or user data. Each fixture has exactly 240 judged queries: 60

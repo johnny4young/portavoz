@@ -1,5 +1,4 @@
 import ApplicationKit
-import Darwin
 import Foundation
 import PortavozCore
 import StorageKit
@@ -431,95 +430,12 @@ enum AskQualityPrivateJSONWriter {
         _ document: AskQualityObservationDocument,
         to output: URL
     ) throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        let data = try encoder.encode(document) + Data("\n".utf8)
-        let parent = output.deletingLastPathComponent()
-        try prepareDirectory(parent)
-        let temporary = parent.appendingPathComponent(
-            ".\(output.lastPathComponent).\(UUID().uuidString).tmp")
-        try publish(data, temporary: temporary, output: output, parent: parent)
-    }
-
-    private static func prepareDirectory(_ parent: URL) throws {
-        var isDirectory: ObjCBool = false
-        let parentExisted = FileManager.default.fileExists(
-            atPath: parent.path,
-            isDirectory: &isDirectory)
-        if parentExisted && !isDirectory.boolValue {
-            throw AskQualityBenchmarkError.outputPublicationFailed
-        }
-        if !parentExisted {
-            try FileManager.default.createDirectory(
-                at: parent,
-                withIntermediateDirectories: true,
-                attributes: [.posixPermissions: 0o700])
-            try FileManager.default.setAttributes(
-                [.posixPermissions: 0o700],
-                ofItemAtPath: parent.path)
-        }
-    }
-
-    private static func publish(
-        _ data: Data,
-        temporary: URL,
-        output: URL,
-        parent: URL
-    ) throws {
-        var descriptor = Darwin.open(
-            temporary.path,
-            O_WRONLY | O_CREAT | O_EXCL,
-            S_IRUSR | S_IWUSR)
-        guard descriptor >= 0 else {
-            throw AskQualityBenchmarkError.outputPublicationFailed
-        }
-        defer {
-            if descriptor >= 0 { Darwin.close(descriptor) }
-            try? FileManager.default.removeItem(at: temporary)
-        }
         do {
-            try writeAll(data, descriptor: descriptor)
-            guard Darwin.fsync(descriptor) == 0,
-                  Darwin.close(descriptor) == 0
-            else {
-                descriptor = -1
-                throw AskQualityBenchmarkError.outputPublicationFailed
-            }
-            descriptor = -1
-            guard Darwin.link(temporary.path, output.path) == 0 else {
-                if errno == EEXIST {
-                    throw AskQualityBenchmarkError.outputAlreadyExists
-                }
-                throw AskQualityBenchmarkError.outputPublicationFailed
-            }
-            let directoryDescriptor = Darwin.open(parent.path, O_RDONLY)
-            guard directoryDescriptor >= 0 else {
-                throw AskQualityBenchmarkError.outputPublicationFailed
-            }
-            defer { Darwin.close(directoryDescriptor) }
-            guard Darwin.fsync(directoryDescriptor) == 0 else {
-                throw AskQualityBenchmarkError.outputPublicationFailed
-            }
-        } catch let error as AskQualityBenchmarkError {
-            throw error
-        } catch {
+            try CLIPrivateJSONWriter.write(document, to: output)
+        } catch CLIPrivateJSONWriterError.outputAlreadyExists {
+            throw AskQualityBenchmarkError.outputAlreadyExists
+        } catch CLIPrivateJSONWriterError.publicationFailed {
             throw AskQualityBenchmarkError.outputPublicationFailed
-        }
-    }
-
-    private static func writeAll(_ data: Data, descriptor: Int32) throws {
-        try data.withUnsafeBytes { buffer in
-            guard var cursor = buffer.baseAddress else { return }
-            var remaining = buffer.count
-            while remaining > 0 {
-                let written = Darwin.write(descriptor, cursor, remaining)
-                if written < 0 && errno == EINTR { continue }
-                guard written > 0 else {
-                    throw AskQualityBenchmarkError.outputPublicationFailed
-                }
-                cursor = cursor.advanced(by: written)
-                remaining -= written
-            }
         }
     }
 }

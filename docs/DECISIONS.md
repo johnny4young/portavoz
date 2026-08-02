@@ -8430,3 +8430,46 @@ used by the product while keeping provider choice, score thresholds, accepted
 quality floors, UI, chronology presentation, and automatic behavior deferred.
 No schema, index, migration, model download, durable write, user-visible
 feature, sync/export field, reminder, or external API is added.
+
+## D247 — Measure commitment links through isolated product-path fixtures (Aug 2026)
+
+**Context:** D246 exposes the real read-only Storage/Application observation
+seam, but D245 cannot score it until fixture identities are mapped to durable
+meetings, transcript evidence, generated action items, canonical people, and
+confirmed continuity. Running all 36 fixture cases in one corpus would also let
+evidence from unrelated cases enter top-k results and turn benchmark leakage
+into apparent product quality.
+
+**Decision:** add a CLI-only product adapter for the exact D245 schema. It
+accepts only the canonical public fixture digest, creates one mode-0700 scratch
+root, and uses a separate `MeetingStore` database for every case. Each case is
+materialized through public product boundaries: target evidence becomes
+transcript segments; exact external people are created through the explicit
+speaker-link transaction; evidence-backed generated action items are saved in
+immutable summaries; and targets cross the confirmed-continuity transaction
+before optional complete/dismiss lifecycle events are applied. Fixture
+identities map deterministically to domain UUIDs and map back to the exact
+external IDs required by D245.
+
+The runner indexes each isolated corpus with `IndexSemanticCorpus`, invokes
+`ObserveCommitmentLinkSuggestions`, and emits semantic hits separately from
+D244 proposals. The adapter identity includes a bounded prefix of the exact
+embedding-profile fingerprint. Asset download defaults to `never` and requires
+an explicit `if-needed` CLI argument; D246's measured query still prohibits a
+download. Output uses one shared owner-only, atomic, non-overwriting CLI JSON
+publisher. The runner never opens the user library, enters app composition,
+serves a suggestion, invokes link confirmation, retains transcript text, or
+selects a threshold.
+
+**Consequences:** D245 can now score the real persistence, indexing, semantic
+query, and legal-admission path without exposing it. A dirty-head development
+smoke using the installed Apple profile completed all 36 cases and validated
+through the public evaluator: semantic Hit@1 was 0.969697, Recall@20 was 1.0,
+link precision was 0.777778, link recall was 1.0, abstention accuracy was
+0.666667, and six false suggestions remained. All proposals were explanation-
+supported, but same-owner distractors in no-overlap and wrong-person cases show
+that exact ownership plus evidence identity is not a semantic relevance floor.
+The result is review-required development evidence, not a clean-head baseline
+or product decision. Serving stays blocked pending an ignored anonymized pack,
+clean-head profile matrix, explicit similarity/abstention research, and an
+accepted quality floor.

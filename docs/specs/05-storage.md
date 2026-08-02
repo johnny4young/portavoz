@@ -27,6 +27,11 @@ most 20 ordered evidence-segment identities per root. Ranked queries fetch one
 extra related row so malformed over-bounded aggregates are omitted instead of
 silently truncated. Persisted identities decode strictly. The adapter adds no
 schema, index, migration, score, lifecycle interpretation, or write path.
+D247 adds no StorageKit API or schema. Its CLI benchmark creates one disposable
+database per case and seeds it only through existing meeting, speaker, segment,
+summary, person-link, confirmation, and lifecycle transactions. Per-case
+isolation prevents fixture evidence leakage, and every database is removed
+after observation; the user's default store is never opened.
 
 ## Database
 

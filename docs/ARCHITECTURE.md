@@ -1983,6 +1983,21 @@ The observer is deliberately absent from app composition and SwiftUI, may not
 download an embedding asset, and selects no quality floor. The explicit
 confirmation transaction remains the sole confirmed write boundary.
 
+The development CLI maps this observer back into the same quality contract
+without adding a second retrieval implementation. `bench-commitment-link-
+quality` accepts only the digest-bound canonical public fixture and creates one
+isolated scratch database per case, preventing unrelated fixture evidence from
+entering the semantic result set. It materializes transcript evidence,
+generated action items, explicit person links, confirmed targets, and closed
+lifecycle states through the same public StorageKit transactions used by the
+product; indexes through `IndexSemanticCorpus`; and invokes the read-only
+commitment-link observer.
+Only external fixture identities are emitted. The adapter is profile-
+fingerprinted, defaults to installed assets, and writes owner-only,
+non-overwriting JSON. It never opens the user library or enters app
+composition. One unaccepted development smoke exposed six false suggestions,
+so the path remains non-serving and threshold-free.
+
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
 pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title
@@ -2869,13 +2884,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,759 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,764 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 508 Swift source files;
+- strict SwiftLint reports zero violations across 511 Swift source files;
 - 62 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

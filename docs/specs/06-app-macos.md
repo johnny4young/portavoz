@@ -33,6 +33,10 @@ adapter over installed semantic assets and the existing query port, but the
 `portavoz-app` composition root does not construct or invoke it. There is still
 no scene state, SwiftUI affordance, automatic link, model download, or visible
 commitment-link behavior.
+D247 composes the observer only in the development CLI against per-case
+scratch stores. It does not add an app service, menu command, background job,
+SwiftUI state, model download, or user-library access, so macOS product
+behavior remains unchanged.
 D201 lets full Ask publish exact citations while semantic refinement and local
 generation continue, with generation-fenced progress and cancellation.
 D222 freezes Meeting Detail interactions and measured behavior before

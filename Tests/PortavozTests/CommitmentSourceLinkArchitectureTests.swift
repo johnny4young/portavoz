@@ -85,6 +85,29 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
             "Observe commitment links through bounded product ports"))
     }
 
+    func testQualityRunnerUsesScratchProductPathWithoutAppComposition() throws {
+        let runner = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchCommitmentLinkQuality.swift")
+        let mapping = try Self.contents(
+            of: "Sources/portavoz-cli/CLICommitmentLinkQualityCorpusMapping.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/ObserveCommitmentLinkSuggestions.swift")
+        let appComposition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(runner.contains("MeetingStore(databaseURL: database)"))
+        XCTAssertTrue(runner.contains("ObserveCommitmentLinkSuggestions("))
+        XCTAssertTrue(runner.contains("allowAssetDownload: allowAssetDownload"))
+        XCTAssertTrue(mapping.contains("saveSummary(SummaryDraft("))
+        XCTAssertTrue(mapping.contains("confirmCommitment("))
+        XCTAssertTrue(application.contains("allowAssetDownload: false"))
+        XCTAssertFalse(appComposition.contains("ObserveCommitmentLinkSuggestions"))
+        XCTAssertTrue(decisions.contains("## D247"))
+        XCTAssertTrue(decisions.contains(
+            "Measure commitment links through isolated product-path fixtures"))
+    }
+
     private static func contents(of relativePath: String) throws -> String {
         try String(
             contentsOf: repoRoot.appendingPathComponent(relativePath),

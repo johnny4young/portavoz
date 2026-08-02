@@ -68,6 +68,8 @@ struct PortavozCLI {
             await BenchCaptureCommand.run(arguments)
         case "bench-ask-quality":
             await BenchAskQualityCommand.run(arguments)
+        case "bench-commitment-link-quality":
+            await BenchCommitmentLinkQualityCommand.run(arguments)
         default:
             printUsage()
         }
@@ -97,6 +99,8 @@ struct PortavozCLI {
                                               --build <id> --commit <sha>
                                               [--retrieval-unit segment|speaker-turn]
                                               [--asset-download never|if-needed]
+              portavoz-cli bench-commitment-link-quality --fixture <json> --output <json>
+                                                         [--asset-download never|if-needed]
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]

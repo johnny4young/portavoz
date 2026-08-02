@@ -16,6 +16,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-commitment-quality commitment-quality-deterministic \
 	commitment-quality-model commitment-quality-compare \
 	test-commitment-link-quality commitment-link-quality-control \
+	commitment-link-quality-product \
 	test-correction-composition correction-composition-benchmark \
 	test-commitment-radar-scale commitment-radar-benchmark \
 	test-exact-path-matrix exact-path-matrix \
@@ -121,6 +122,22 @@ test-commitment-link-quality:
 commitment-link-quality-control:
 	@python3 scripts/commitment_link_quality.py control \
 		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json
+
+## Run the real non-serving Storage/Application observation path over the
+## public pack. The output is owner-only, non-overwriting evidence and the
+## model may download only when the caller opts in explicitly.
+PORTAVOZ_COMMITMENT_LINK_OBSERVATIONS ?=
+PORTAVOZ_COMMITMENT_LINK_ASSET_DOWNLOAD ?= never
+commitment-link-quality-product:
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_OBSERVATIONS)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_OBSERVATIONS is required" >&2; exit 64)
+	$(XCODE) swift run -c release portavoz-cli bench-commitment-link-quality \
+		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json \
+		--output "$(PORTAVOZ_COMMITMENT_LINK_OBSERVATIONS)" \
+		--asset-download "$(PORTAVOZ_COMMITMENT_LINK_ASSET_DOWNLOAD)"
+	@python3 scripts/commitment_link_quality.py evaluate \
+		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json \
+		--observations "$(PORTAVOZ_COMMITMENT_LINK_OBSERVATIONS)"
 
 ## Validate the exact-shaped, content-free host receipt boundary without
 ## running the expensive Release scale harness.
