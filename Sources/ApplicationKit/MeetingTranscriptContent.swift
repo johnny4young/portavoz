@@ -98,7 +98,7 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
     public let chapters: [Chapter]
     public let lineage: MeetingTranscriptLineage
 
-    private let sourceRowIDs: [UUID: UUID]
+    private let sourceMap: MeetingTranscriptSourceMap
     private let maximumEndTree: [TimeInterval]
     private let maximumEndTreeLeafCount: Int
 
@@ -117,13 +117,7 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
         }
         self.lineage = lineage
 
-        var sourceRowIDs: [UUID: UUID] = [:]
-        for row in self.rows {
-            for sourceID in row.sourceSegmentIDs where sourceRowIDs[sourceID] == nil {
-                sourceRowIDs[sourceID] = row.id
-            }
-        }
-        self.sourceRowIDs = sourceRowIDs
+        self.sourceMap = MeetingTranscriptSourceMap(rows: self.rows)
 
         var leafCount = 1
         while leafCount < self.rows.count { leafCount *= 2 }
@@ -179,7 +173,23 @@ public struct MeetingTranscriptContent: Sendable, Equatable {
     /// Split and merged correction rows can therefore keep pointing back to
     /// immutable accepted segments without presentation knowing the policy.
     public func rowID(containingSourceSegmentID sourceSegmentID: UUID) -> UUID? {
-        sourceRowIDs[sourceSegmentID]
+        sourceMap.rowID(containing: sourceSegmentID)
+    }
+
+    /// Resolves one immutable source coordinate to the matching visible split
+    /// part when possible. Merged rows still map every source to their single
+    /// composed row; a timestamp outside the source interval falls back to the
+    /// nearest visible row rather than losing navigation.
+    public func rowID(
+        containingSourceSegmentID sourceSegmentID: UUID,
+        at timestamp: TimeInterval
+    ) -> UUID? {
+        sourceMap.rowID(containing: sourceSegmentID, at: timestamp)
+    }
+
+    /// Returns the immutable accepted evidence represented by one visible row.
+    public func sourceSegmentIDs(forRowID rowID: UUID) -> [UUID] {
+        sourceMap.sourceSegmentIDs(for: rowID)
     }
 
     /// Resolves a timestamp-only route (Library, Ask, Spotlight) to the row
@@ -263,7 +273,9 @@ public struct MeetingTranscriptNavigationState: Sendable, Equatable {
         at timestamp: TimeInterval,
         in content: MeetingTranscriptContent
     ) {
-        focusedRowID = content.rowID(containingSourceSegmentID: sourceSegmentID)
+        focusedRowID = content.rowID(
+            containingSourceSegmentID: sourceSegmentID,
+            at: timestamp)
         pendingSeek = max(0, timestamp)
     }
 
@@ -279,5 +291,83 @@ public struct MeetingTranscriptNavigationState: Sendable, Equatable {
     public mutating func consumePendingSeek() -> TimeInterval? {
         defer { pendingSeek = nil }
         return pendingSeek
+    }
+}
+
+/// Bidirectional evidence map between immutable accepted segments and the
+/// current reading rows. It is built once with the transcript snapshot so
+/// navigation never infers split/merge policy in SwiftUI.
+public struct MeetingTranscriptSourceMap: Sendable, Equatable {
+    private struct Location: Sendable, Equatable {
+        let rowID: UUID
+        let startTime: TimeInterval
+        let endTime: TimeInterval
+    }
+
+    private let rowsBySourceID: [UUID: [Location]]
+    private let sourcesByRowID: [UUID: [UUID]]
+
+    public init(rows: [MeetingTranscriptContent.Row]) {
+        var rowsBySourceID: [UUID: [Location]] = [:]
+        var sourcesByRowID: [UUID: [UUID]] = [:]
+        for row in rows.sorted(by: Self.rowPrecedes) {
+            sourcesByRowID[row.id] = row.sourceSegmentIDs
+            let location = Location(
+                rowID: row.id,
+                startTime: row.startTime,
+                endTime: row.endTime)
+            for sourceID in row.sourceSegmentIDs {
+                rowsBySourceID[sourceID, default: []].append(location)
+            }
+        }
+        self.rowsBySourceID = rowsBySourceID
+        self.sourcesByRowID = sourcesByRowID
+    }
+
+    public func rowID(containing sourceSegmentID: UUID) -> UUID? {
+        rowsBySourceID[sourceSegmentID]?.first?.rowID
+    }
+
+    public func rowID(
+        containing sourceSegmentID: UUID,
+        at timestamp: TimeInterval
+    ) -> UUID? {
+        guard let locations = rowsBySourceID[sourceSegmentID],
+              !locations.isEmpty
+        else { return nil }
+        if let exact = locations.last(where: {
+            $0.startTime <= timestamp && timestamp <= $0.endTime
+        }) {
+            return exact.rowID
+        }
+        return locations.min { lhs, rhs in
+            let lhsDistance = Self.distance(from: timestamp, to: lhs)
+            let rhsDistance = Self.distance(from: timestamp, to: rhs)
+            if lhsDistance != rhsDistance { return lhsDistance < rhsDistance }
+            if lhs.startTime != rhs.startTime { return lhs.startTime < rhs.startTime }
+            return lhs.rowID.uuidString < rhs.rowID.uuidString
+        }?.rowID
+    }
+
+    public func sourceSegmentIDs(for rowID: UUID) -> [UUID] {
+        sourcesByRowID[rowID] ?? []
+    }
+
+    private static func distance(
+        from timestamp: TimeInterval,
+        to location: Location
+    ) -> TimeInterval {
+        if timestamp < location.startTime { return location.startTime - timestamp }
+        if timestamp > location.endTime { return timestamp - location.endTime }
+        return 0
+    }
+
+    private static func rowPrecedes(
+        _ lhs: MeetingTranscriptContent.Row,
+        _ rhs: MeetingTranscriptContent.Row
+    ) -> Bool {
+        if lhs.startTime != rhs.startTime { return lhs.startTime < rhs.startTime }
+        if lhs.endTime != rhs.endTime { return lhs.endTime < rhs.endTime }
+        return lhs.id.uuidString < rhs.id.uuidString
     }
 }

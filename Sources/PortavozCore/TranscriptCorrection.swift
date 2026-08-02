@@ -340,6 +340,10 @@ public enum TranscriptCorrectionPolicy {
             .sorted(by: precedes)
         var ownersByRevisionAndTarget: [Int: [UUID: [TranscriptCorrectionDomain: UUID]]] = [:]
         for event in active {
+            // A restore is durable history, not a visible correction. Leaving
+            // it as an owner would permanently reserve the lane and prevent a
+            // later explicit correction with a different structural target.
+            if case .restore = event.kind { continue }
             let domain = try correctionDomain(of: event, indexedBy: byID)
             for targetID in event.targetSegmentIDs {
                 var ownersByTarget = ownersByRevisionAndTarget[

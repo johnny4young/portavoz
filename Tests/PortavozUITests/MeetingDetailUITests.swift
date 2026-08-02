@@ -141,9 +141,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
             withIdentifier: "transcript-correction-original-evidence")
         XCTAssertTrue(originalEvidence.waitForExistence(timeout: 5))
         originalEvidence.click()
-        let sheet = app.sheets.firstMatch
+        let acceptedEvidence = app.staticTexts[
+            "El rollout del modelo queda para el viernes."]
         XCTAssertTrue(
-            sheet.staticTexts["El rollout del modelo queda para el viernes."].exists,
+            acceptedEvidence.waitForExistence(timeout: 5),
             "the accepted transcript must remain available as immutable evidence")
 
         let textEditor = app.control(withIdentifier: "transcript-correction-text")
@@ -179,6 +180,108 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.staticTexts["El rollout del modelo queda para el viernes."]
                 .waitForExistence(timeout: 5),
             "undo must restore the accepted reading without deleting history")
+    }
+
+    @MainActor
+    func testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let sourceID = "B5B00000-0000-4000-8000-000000000002"
+        let neighborID = "B5F00000-0000-4000-8000-000000000001"
+        let correct = app.buttons["transcript-correct-\(sourceID)"]
+        XCTAssertTrue(correct.waitForExistence(timeout: 10))
+        correct.click()
+
+        let split = app.buttons["transcript-structure-split"]
+        XCTAssertTrue(
+            split.waitForExistence(timeout: 5),
+            "one accepted line with spoken duration must offer an explicit split")
+        split.click()
+        XCTAssertTrue(app.control(
+            withIdentifier: "transcript-structure-split-first").exists)
+        XCTAssertTrue(app.control(
+            withIdentifier: "transcript-structure-split-second").exists)
+        XCTAssertTrue(app.control(
+            withIdentifier: "transcript-structure-split-time").exists)
+        attachScreenshot(of: app, named: "transcript-structural-split-evidence")
+        app.buttons["transcript-structure-confirm"].click()
+
+        XCTAssertTrue(
+            app.staticTexts["El rollout del modelo"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["queda para el viernes."].exists)
+        let splitCorrection = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "transcript-correct-\(sourceID)-")).firstMatch
+        XCTAssertTrue(
+            splitCorrection.waitForExistence(timeout: 5),
+            "each visible split part must retain a unique correction route")
+        splitCorrection.click()
+        let splitUndo = app.buttons["transcript-structure-undo"]
+        XCTAssertTrue(splitUndo.waitForExistence(timeout: 5))
+        splitUndo.click()
+
+        XCTAssertTrue(
+            app.staticTexts["El rollout del modelo queda para el viernes."]
+                .waitForExistence(timeout: 5),
+            "restoring a split must recover the exact accepted line")
+        XCTAssertTrue(correct.waitForExistence(timeout: 5))
+        correct.click()
+
+        let merge = app.buttons["transcript-structure-merge-\(neighborID)"]
+        XCTAssertTrue(
+            merge.waitForExistence(timeout: 5),
+            "merge must name the explicit adjacent accepted line")
+        merge.click()
+        let sheet = app.sheets.firstMatch
+        XCTAssertTrue(sheet.staticTexts["El rollout del modelo queda para el viernes."].exists)
+        XCTAssertTrue(sheet.staticTexts["¿Cuándo es el rollout?"].exists)
+        attachScreenshot(of: app, named: "transcript-structural-correction-evidence")
+        app.buttons["transcript-structure-confirm"].click()
+
+        XCTAssertTrue(
+            app.staticTexts[
+                "El rollout del modelo queda para el viernes. ¿Cuándo es el rollout?"
+            ].waitForExistence(timeout: 5),
+            "an explicit merge must preserve both accepted texts")
+        XCTAssertTrue(correct.waitForExistence(timeout: 5))
+        correct.click()
+        let undo = app.buttons["transcript-structure-undo"]
+        XCTAssertTrue(
+            undo.waitForExistence(timeout: 5),
+            "merged evidence must expose durable restore-based undo")
+        undo.click()
+
+        XCTAssertTrue(
+            app.staticTexts["El rollout del modelo queda para el viernes."]
+                .waitForExistence(timeout: 5))
+        XCTAssertTrue(correct.waitForExistence(timeout: 5))
+        correct.click()
+        let hide = app.buttons["transcript-structure-suppress"]
+        XCTAssertTrue(hide.waitForExistence(timeout: 5))
+        hide.click()
+        app.buttons["transcript-structure-confirm"].click()
+
+        let hiddenLines = app.buttons["transcript-hidden-lines"]
+        XCTAssertTrue(
+            hiddenLines.waitForExistence(timeout: 5),
+            "suppressed speech must remain discoverable as hidden evidence")
+        hiddenLines.click()
+        let hiddenSheet = app.control(withIdentifier: "transcript-hidden-lines-sheet")
+        XCTAssertTrue(hiddenSheet.waitForExistence(timeout: 5))
+        XCTAssertTrue(hiddenSheet.staticTexts[
+            "El rollout del modelo queda para el viernes."
+        ].exists)
+        let restore = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'transcript-hidden-restore-'"
+        )).firstMatch
+        XCTAssertTrue(restore.waitForExistence(timeout: 5))
+        restore.click()
+
+        XCTAssertTrue(
+            app.staticTexts["El rollout del modelo queda para el viernes."]
+                .waitForExistence(timeout: 5),
+            "restore must recover the accepted row without erasing history")
     }
 
     @MainActor

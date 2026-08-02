@@ -115,7 +115,7 @@ self-contained over system frameworks and carries no module dependency.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, immutable transcript-correction, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, and the focused text/speaker correction command, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, focused text/speaker correction, and accepted-snapshot structural correction commands, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
@@ -988,9 +988,9 @@ or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
 Meeting Detail decomposition is also preceded by a frozen presentation
-boundary. A generated contract inventories 263 interaction signals across
-27 source files,
-assigns all 23 detail XCUITest journeys to exactly one of ten feature owners,
+boundary. A generated contract inventories 328 interaction signals across
+29 source files,
+assigns all 25 detail XCUITest journeys to exactly one of eleven feature owners,
 and digest-binds the reviewed performance harness and evidence. Hidden
 payload-free scroll and seek signposts activate only when a disposable temp
 store, the scale fixture, and the explicit detail-profile flag are present.
@@ -1061,6 +1061,29 @@ Returning either lane to its exact original value appends a lane-specific
 restore event; it never deletes or rewrites history. The editor exposes immutable
 original evidence and correction history, and speaker-only edits preserve the
 current text exactly.
+
+The structural correction command extends the same boundary without mutating
+accepted evidence. Every request carries the exact accepted projection and
+revision observed by Meeting Detail. Split requires two lexical parts and a
+strictly interior boundary that partitions the source interval. Merge accepts
+only an explicit, ordered, contiguous selection from one meeting, speaker, and
+audio channel whose accepted intervals remain time-monotonic; the current UI
+deliberately offers pairwise previous/next
+candidates rather than inferring a group. Suppress appends a typed event and
+removes only the composed row. Hidden-line review retains the exact accepted
+text and a durable restore action. Split and merge rows preserve every ordered
+source ID, so later playback/export adoption can still resolve original audio.
+Generated correction and split-part identities retry only within a bounded
+budget and may not reuse accepted rows, correction events, or historical split
+parts. A bidirectional source map uses the evidence timestamp to select the
+right visible split part while retaining reverse access to all immutable source
+IDs.
+Restore remains in immutable lineage but is neither a visible edit nor an
+active lane owner, allowing a later explicit correction over restored evidence.
+Meeting Detail precomputes one immutable structural-editor projection per
+accepted/composed snapshot pair, so row rendering performs constant-time
+context lookups instead of repeatedly scanning transcript and correction
+history while the user scrolls.
 
 Meeting Detail observes correction history and composes current-revision text
 and speaker changes. Malformed or stale composition falls back to accepted

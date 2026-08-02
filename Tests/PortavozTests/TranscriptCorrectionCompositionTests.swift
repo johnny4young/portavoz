@@ -110,6 +110,20 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
             corrections: [missing])
     }
 
+    func testMergeRejectsOverlappingAcceptedEvidence() {
+        let first = segment(1, text: "First", start: 0, end: 3)
+        let second = segment(2, text: "Second", start: 2, end: 4)
+        let merge = edit(
+            101,
+            targets: [first.id, second.id],
+            kind: .merge(replacementText: nil, language: "en"))
+
+        assertComposeError(
+            .invalidMerge(merge.id),
+            segments: [first, second],
+            corrections: [merge])
+    }
+
     func testTextAndSpeakerCorrectionsComposeIndependently() throws {
         let source = segment(1, text: "Source", start: 0, end: 4)
         let text = edit(
@@ -196,6 +210,42 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
         XCTAssertEqual(
             result.composed.lineage.activeCorrectionIDs,
             [speaker.id, restoreText.id])
+    }
+
+    func testRestoredPropertyLaneDoesNotBlockLaterStructuralCorrection() throws {
+        let source = segment(1, text: "Original evidence", start: 0, end: 4)
+        let replacement = edit(
+            101,
+            targets: [source.id],
+            kind: .replaceText(text: "Temporary correction", language: "en"),
+            at: 1)
+        let restore = edit(
+            102,
+            targets: [source.id],
+            kind: .restore,
+            at: 2,
+            supersedes: replacement.id)
+        let split = edit(
+            103,
+            targets: [source.id],
+            kind: .split([
+                part(301, text: "Original", start: 0, end: 2),
+                part(302, text: "evidence", start: 2, end: 4),
+            ]),
+            at: 3)
+
+        XCTAssertNoThrow(try TranscriptCorrectionPolicy.validateHistory(
+            [replacement, restore, split],
+            meetingID: meetingID))
+        let result = try compose(
+            segments: [source],
+            corrections: [split, restore, replacement])
+
+        XCTAssertEqual(result.composed.rows.map(\.text), ["Original", "evidence"])
+        XCTAssertEqual(
+            result.composed.lineage.activeCorrectionIDs,
+            [restore.id, split.id],
+            "restore remains terminal lineage but not a visible correction owner")
     }
 
     func testSupersedingEditAndRestoreLeaveOneDeterministicActiveEvent() throws {

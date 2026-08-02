@@ -16,6 +16,9 @@ protocol MeetingDetailModelClient: AnyObject {
     func correctMeetingDetailTranscript(
         _ request: CorrectMeetingTranscriptRequest
     ) async throws -> CorrectMeetingTranscriptResult
+    func restructureMeetingDetailTranscript(
+        _ request: RestructureMeetingTranscriptRequest
+    ) async throws -> RestructureMeetingTranscriptResult
     func findMeetingDetailPeople(matchingAlias alias: String) async throws -> [Person]
     func linkMeetingDetailSpeaker(
         _ request: LinkObservedSpeakerRequest

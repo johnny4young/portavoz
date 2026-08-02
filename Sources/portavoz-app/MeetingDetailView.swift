@@ -65,7 +65,9 @@ struct MeetingDetailView: View {
         }
         .onDisappear { model.invalidatePlayback() }
     }
+}
 
+private extension MeetingDetailView {
     private func loaded(_ detail: MeetingReviewReadModel) -> some View {
         MeetingDetailFlowHost(
             flow: flow,
@@ -81,6 +83,11 @@ struct MeetingDetailView: View {
 
     private func loadedBody(_ detail: MeetingReviewReadModel) -> some View {
         let transcript = transcriptContent(detail)
+        let accepted = detail.acceptedTranscriptContent(
+            chapterTitles: model.state.chapterTitles)
+        let structureProjection = detail.transcriptStructureProjection(
+            current: transcript,
+            accepted: accepted)
         return VStack(alignment: .leading, spacing: 12) {
             headerSection(detail)
             MeetingDetailOperationStatus(
@@ -90,7 +97,10 @@ struct MeetingDetailView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     summaryOrGenerate(detail)
                     notesSection(detail)
-                    transcriptSection(detail, content: transcript)
+                    transcriptSection(
+                        detail,
+                        content: transcript,
+                        structureProjection: structureProjection)
                     playerSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -110,7 +120,8 @@ struct MeetingDetailView: View {
 
     private func transcriptSection(
         _ detail: MeetingReviewReadModel,
-        content: MeetingTranscriptContent
+        content: MeetingTranscriptContent,
+        structureProjection: MeetingTranscriptStructureProjection
     ) -> some View {
         MeetingTranscriptSection(
             values: MeetingTranscriptValues(
@@ -119,6 +130,7 @@ struct MeetingDetailView: View {
                 correctionContext: {
                     detail.transcriptCorrectionEditorContext(for: $0)
                 },
+                structureProjection: structureProjection,
                 player: player,
                 focusedRowID: playbackNavigation.focusedRowID,
                 performanceScrollEnabled: sceneValues.performanceProfile
@@ -132,6 +144,12 @@ struct MeetingDetailView: View {
                         text: text,
                         speakerID: speakerID,
                         revision: detail.meeting.transcriptRevision)
+                },
+                restructure: { operation in
+                    await coordinator.restructureTranscript(
+                        accepted: structureProjection.accepted,
+                        revision: detail.meeting.transcriptRevision,
+                        operation: operation)
                 }))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }

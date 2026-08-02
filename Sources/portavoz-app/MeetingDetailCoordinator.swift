@@ -68,6 +68,21 @@ struct MeetingDetailCoordinator {
         return message
     }
 
+    func restructureTranscript(
+        accepted: MeetingTranscriptContent,
+        revision: Int,
+        operation: TranscriptStructuralCorrectionOperation
+    ) async -> String? {
+        let effect = await model.send(.restructureTranscript(
+            RestructureMeetingTranscriptRequest(
+                meetingID: meetingID,
+                baseTranscriptRevision: revision,
+                accepted: accepted,
+                operation: operation)))
+        guard case .operationFailed(let message) = effect else { return nil }
+        return message
+    }
+
     func removeCompanionCard(_ id: UUID) async {
         await model.send(.removeCompanionCard(id))
     }

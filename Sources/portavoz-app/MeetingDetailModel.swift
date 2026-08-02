@@ -162,6 +162,8 @@ final class MeetingDetailModel {
             return await renameSpeaker(speaker, name: name)
         case .correctTranscript(let request):
             return await correctTranscript(request)
+        case .restructureTranscript(let request):
+            return await restructureTranscript(request)
         case .findCanonicalPeople(let speaker, let source):
             return await findCanonicalPeople(speaker, source: source)
         case .linkCanonicalPerson(let speaker, let source, let selection):
@@ -287,6 +289,22 @@ private extension MeetingDetailModel {
             let result = try await client.correctMeetingDetailTranscript(request)
             state.lastActionError = nil
             return .transcriptCorrected(result)
+        } catch {
+            let message = L10n.format(
+                "Could not save this transcript correction: %@",
+                TranscriptCorrectionErrorMessages.describe(error))
+            state.lastActionError = message
+            return .operationFailed(message)
+        }
+    }
+
+    func restructureTranscript(
+        _ request: RestructureMeetingTranscriptRequest
+    ) async -> Effect {
+        do {
+            let result = try await client.restructureMeetingDetailTranscript(request)
+            state.lastActionError = nil
+            return .transcriptRestructured(result)
         } catch {
             let message = L10n.format(
                 "Could not save this transcript correction: %@",

@@ -8,6 +8,7 @@ struct MeetingTranscriptValues {
     let correctionContext: @MainActor (
         MeetingTranscriptContent.Row
     ) -> TranscriptCorrectionEditorContext?
+    let structureProjection: MeetingTranscriptStructureProjection
     let player: MeetingPlaybackSession?
     let focusedRowID: UUID?
     let performanceScrollEnabled: Bool
@@ -21,6 +22,9 @@ struct MeetingTranscriptActions {
         String,
         SpeakerID?
     ) async -> String?
+    let restructure: @MainActor (
+        TranscriptStructuralCorrectionOperation
+    ) async -> String?
 }
 
 /// The synchronized transcript reading surface. It consumes a neutral reading
@@ -30,6 +34,7 @@ struct MeetingTranscriptSection: View {
     let values: MeetingTranscriptValues
     let actions: MeetingTranscriptActions
     @State private var correctionRow: MeetingTranscriptContent.Row?
+    @State private var showingHiddenLines = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -42,6 +47,11 @@ struct MeetingTranscriptSection: View {
         .sheet(item: $correctionRow) { row in
             correctionEditor(for: row)
         }
+        .sheet(isPresented: $showingHiddenLines) {
+            SuppressedTranscriptCorrectionsSheet(
+                contexts: values.structureProjection.suppressedContexts,
+                restore: actions.restructure)
+        }
     }
 
     private var transcriptHeader: some View {
@@ -49,8 +59,22 @@ struct MeetingTranscriptSection: View {
             Text("Transcript")
                 .font(.headline)
                 .accessibilityIdentifier("detail-transcript-title")
+            Spacer()
+            if !values.structureProjection.suppressedContexts.isEmpty {
+                Button {
+                    showingHiddenLines = true
+                } label: {
+                    Label(
+                        L10n.format(
+                            "Hidden lines · %d",
+                            values.structureProjection.suppressedContexts.count),
+                        systemImage: "eye.slash")
+                }
+                .buttonStyle(.borderless)
+                .accessibilityIdentifier("transcript-hidden-lines")
+                .help("Review hidden transcript evidence")
+            }
             if values.player != nil {
-                Spacer()
                 Text("Click a line to jump there")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -78,7 +102,10 @@ struct MeetingTranscriptSection: View {
             performanceScrollEnabled: values.performanceScrollEnabled,
             onSeek: actions.seekAndPlay,
             onRenameTap: actions.renameSpeaker,
-            canCorrect: { values.correctionContext($0) != nil },
+            canCorrect: {
+                values.correctionContext($0) != nil
+                    || values.structureProjection.context(for: $0) != nil
+            },
             onCorrect: { correctionRow = $0 },
             carouselHeight: carouselHeight)
     }
@@ -90,6 +117,7 @@ struct MeetingTranscriptSection: View {
         if let context = values.correctionContext(row) {
             TranscriptCorrectionEditor(
                 context: context,
+                structuralContext: values.structureProjection.context(for: row),
                 speakers: values.speakers,
                 save: { text, speakerID in
                     await actions.correct(context.original, text, speakerID)
@@ -99,7 +127,12 @@ struct MeetingTranscriptSection: View {
                         context.original,
                         context.original.text,
                         context.original.speakerID)
-                })
+                },
+                restructure: actions.restructure)
+        } else if let context = values.structureProjection.context(for: row) {
+            TranscriptStructuralCorrectionEditor(
+                context: context,
+                perform: actions.restructure)
         }
     }
 }

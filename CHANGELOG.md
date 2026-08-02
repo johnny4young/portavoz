@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 1, 2026
 
+- **✂️ Shape the transcript, keep the source** — Split a line, explicitly merge adjacent speech, or hide noise while Portavoz preserves the accepted recording and keeps every hidden line ready to restore.
 - **✏️ Fix the transcript without losing the recording** — Correct a line or its speaker from Meeting Detail, inspect the immutable original and correction history, and undo later without rewriting evidence; summaries and search stay honestly unchanged until regenerated.
 - **⚡ Long transcripts stay on the right line** — Playback, chapter jumps, and citations now use one indexed transcript snapshot, so large meetings stay synchronized and external search results reveal the matching row even while audio is still loading.
 - **✅ One trustworthy task list** — A generated `Action Items` or `Pendientes` appendix no longer appears beside the same typed To-dos; older summaries without typed tasks still keep every original line.

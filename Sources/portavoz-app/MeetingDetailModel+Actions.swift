@@ -9,6 +9,7 @@ extension MeetingDetailModel {
         case acceptVoiceSuggestion(Speaker, name: String)
         case renameSpeaker(Speaker, name: String)
         case correctTranscript(CorrectMeetingTranscriptRequest)
+        case restructureTranscript(RestructureMeetingTranscriptRequest)
         case findCanonicalPeople(Speaker, source: PersonAliasSource)
         case linkCanonicalPerson(
             Speaker,
@@ -59,6 +60,12 @@ extension MeetingDetailModel {
             _ request: CorrectMeetingTranscriptRequest
         ) -> Self {
             .content(.correctTranscript(request))
+        }
+
+        static func restructureTranscript(
+            _ request: RestructureMeetingTranscriptRequest
+        ) -> Self {
+            .content(.restructureTranscript(request))
         }
 
         static func findCanonicalPeople(
@@ -129,6 +136,7 @@ extension MeetingDetailModel {
         case voiceSuggestionAccepted(Speaker)
         case speakerRenamed(Speaker)
         case transcriptCorrected(CorrectMeetingTranscriptResult)
+        case transcriptRestructured(RestructureMeetingTranscriptResult)
         case canonicalPeopleFound(Speaker, PersonAliasSource, [Person])
         case canonicalPersonLinked(ConfirmedPersonLink)
         case summaryClaimFeedbackSaved(SummaryClaimID)

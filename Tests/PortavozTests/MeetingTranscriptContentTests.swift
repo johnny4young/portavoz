@@ -87,6 +87,33 @@ final class MeetingTranscriptContentTests: XCTestCase {
         XCTAssertNil(navigation.consumePendingSeek())
     }
 
+    func testSplitSourceMapUsesEvidenceTimestampAndRetainsReverseEvidence() {
+        let sourceID = id(1)
+        let firstPartID = id(11)
+        let secondPartID = id(12)
+        let content = MeetingTranscriptContent(
+            baseTranscriptRevision: 4,
+            rows: [
+                row(id: firstPartID, sourceIDs: [sourceID], start: 3, end: 5),
+                row(id: secondPartID, sourceIDs: [sourceID], start: 5, end: 8),
+            ],
+            chapters: [])
+        var navigation = MeetingTranscriptNavigationState()
+
+        navigation.reveal(sourceSegmentID: sourceID, at: 7, in: content)
+
+        XCTAssertEqual(
+            content.rowID(containingSourceSegmentID: sourceID),
+            firstPartID,
+            "timestamp-free callers retain deterministic first-row behavior")
+        XCTAssertEqual(
+            content.rowID(containingSourceSegmentID: sourceID, at: 7),
+            secondPartID)
+        XCTAssertEqual(content.sourceSegmentIDs(forRowID: secondPartID), [sourceID])
+        XCTAssertEqual(navigation.focusedRowID, secondPartID)
+        XCTAssertEqual(navigation.pendingSeek, 7)
+    }
+
     func testTimestampRouteFocusesTheVisibleRowBeforePlaybackExists() {
         let firstID = id(1)
         let secondID = id(2)

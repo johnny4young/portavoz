@@ -8740,6 +8740,416 @@
           }
         }
       }
+    },
+    "Line structure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estructura de la línea"
+          }
+        }
+      }
+    },
+    "Undo the text or speaker correction before changing this line's structure.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deshaz la corrección de texto o hablante antes de cambiar la estructura de esta línea."
+          }
+        }
+      }
+    },
+    "Undo structural correction": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deshacer corrección estructural"
+          }
+        }
+      }
+    },
+    "Restore the exact accepted transcript lines without deleting history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar las líneas exactas aceptadas sin borrar el historial"
+          }
+        }
+      }
+    },
+    "Change how this line is grouped while keeping the recording evidence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambia cómo se agrupa esta línea conservando la evidencia de la grabación."
+          }
+        }
+      }
+    },
+    "Split line…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir línea…"
+          }
+        }
+      }
+    },
+    "Hide as noise…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar como ruido…"
+          }
+        }
+      }
+    },
+    "Merge with previous line…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Combinar con la línea anterior…"
+          }
+        }
+      }
+    },
+    "Merge with next line…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Combinar con la línea siguiente…"
+          }
+        }
+      }
+    },
+    "Merge these two lines?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Combinar estas dos líneas?"
+          }
+        }
+      }
+    },
+    "They will appear as one line and keep links to both originals.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aparecerán como una sola línea y conservarán los vínculos a ambos originales."
+          }
+        }
+      }
+    },
+    "Merge lines": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Combinar líneas"
+          }
+        }
+      }
+    },
+    "Hide this line as noise?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Ocultar esta línea como ruido?"
+          }
+        }
+      }
+    },
+    "It leaves the transcript view, but the original and a restore action remain available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saldrá de la vista de transcripción, pero el original y una acción para restaurarlo seguirán disponibles."
+          }
+        }
+      }
+    },
+    "Hide line": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar línea"
+          }
+        }
+      }
+    },
+    "Split into two lines": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir en dos líneas"
+          }
+        }
+      }
+    },
+    "First line": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primera línea"
+          }
+        }
+      }
+    },
+    "Second line": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segunda línea"
+          }
+        }
+      }
+    },
+    "Split time": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo de división"
+          }
+        }
+      }
+    },
+    "Boundary at %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Límite en %@"
+          }
+        }
+      }
+    },
+    "Split line": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir línea"
+          }
+        }
+      }
+    },
+    "This line was split.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta línea se dividió."
+          }
+        }
+      }
+    },
+    "These lines were merged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estas líneas se combinaron."
+          }
+        }
+      }
+    },
+    "This line is hidden as noise.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta línea está oculta como ruido."
+          }
+        }
+      }
+    },
+    "This line has a correction.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta línea tiene una corrección."
+          }
+        }
+      }
+    },
+    "Review transcript structure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar la estructura de la transcripción"
+          }
+        }
+      }
+    },
+    "The accepted recording and transcript lines remain unchanged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La grabación aceptada y las líneas de transcripción permanecen sin cambios."
+          }
+        }
+      }
+    },
+    "Hidden transcript lines": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Líneas de transcripción ocultas"
+          }
+        }
+      }
+    },
+    "Noise stays out of the reading without deleting recorded evidence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El ruido queda fuera de la lectura sin borrar la evidencia grabada."
+          }
+        }
+      }
+    },
+    "Hidden as noise · original preserved": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oculta como ruido · original conservado"
+          }
+        }
+      }
+    },
+    "Restore": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar"
+          }
+        }
+      }
+    },
+    "Hidden lines · %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Líneas ocultas · %d"
+          }
+        }
+      }
+    },
+    "Review hidden transcript evidence": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar evidencia oculta de la transcripción"
+          }
+        }
+      }
+    },
+    "Correct transcript line": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Corregir línea de la transcripción"
+          }
+        }
+      }
+    },
+    "The accepted transcript cannot be edited safely.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción aceptada no se puede editar de forma segura."
+          }
+        }
+      }
+    },
+    "The transcript changed before this correction was saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción cambió antes de guardar esta corrección."
+          }
+        }
+      }
+    },
+    "The selected transcript line is no longer available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La línea seleccionada de la transcripción ya no está disponible."
+          }
+        }
+      }
+    },
+    "A split needs two spoken parts and a time inside the selected line.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una división necesita dos partes habladas y un tiempo dentro de la línea seleccionada."
+          }
+        }
+      }
+    },
+    "Only adjacent lines from the same speaker and audio channel can be merged.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo se pueden combinar líneas adyacentes del mismo hablante y canal de audio."
+          }
+        }
+      }
+    },
+    "Undo the existing correction before changing this line's structure.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deshaz la corrección existente antes de cambiar la estructura de esta línea."
+          }
+        }
+      }
+    },
+    "This structural correction has already been restored or replaced.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta corrección estructural ya se restauró o reemplazó."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

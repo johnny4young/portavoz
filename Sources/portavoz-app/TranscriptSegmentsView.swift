@@ -107,7 +107,23 @@ struct TranscriptSegmentsView: View {
             onSeek: onSeek,
             onRenameTap: onRenameTap,
             canCorrect: canCorrect,
-            onCorrect: onCorrect)
+            onCorrect: onCorrect,
+            correctionIdentifier: correctionIdentifier(for: row))
+    }
+
+    private func correctionIdentifier(
+        for row: MeetingTranscriptContent.Row
+    ) -> String {
+        guard let sourceID = row.sourceSegmentIDs.first else {
+            return "transcript-correct-\(row.id.uuidString)"
+        }
+        let visibleCount = content.rows.lazy.filter {
+            $0.sourceSegmentIDs.contains(sourceID)
+        }.count
+        if visibleCount == 1 {
+            return "transcript-correct-\(sourceID.uuidString)"
+        }
+        return "transcript-correct-\(sourceID.uuidString)-\(row.id.uuidString)"
     }
 }
 
@@ -123,6 +139,7 @@ private struct MeetingTranscriptRowView: View {
     let onRenameTap: (Speaker) -> Void
     let canCorrect: (MeetingTranscriptContent.Row) -> Bool
     let onCorrect: (MeetingTranscriptContent.Row) -> Void
+    let correctionIdentifier: String
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -154,10 +171,9 @@ private struct MeetingTranscriptRowView: View {
                         .imageScale(.small)
                 }
                 .buttonStyle(.borderless)
-                .help("Correct text or speaker")
+                .help("Correct transcript line")
                 .accessibilityLabel("Correct transcript row")
-                .accessibilityIdentifier(
-                    "transcript-correct-\(row.sourceSegmentIDs.first?.uuidString ?? row.id.uuidString)")
+                .accessibilityIdentifier(correctionIdentifier)
             }
         }
         .padding(.vertical, 2)

@@ -376,7 +376,10 @@ private extension MeetingStore {
               indexes == indexes.sorted(),
               indexes == Array(indexes[0]...indexes[indexes.count - 1]),
               Set(targets.map(\.speakerID)).count == 1,
-              Set(targets.map(\.channel)).count == 1
+              Set(targets.map(\.channel)).count == 1,
+              zip(targets, targets.dropFirst()).allSatisfy({ pair in
+                  pair.0.endTime <= pair.1.startTime
+              })
         else { throw StorageError.invalidTranscriptCorrection("merge is invalid") }
     }
 

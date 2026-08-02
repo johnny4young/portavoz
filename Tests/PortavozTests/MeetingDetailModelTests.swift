@@ -205,6 +205,47 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertNotNil(model.state.lastActionError)
     }
 
+    func testTranscriptRestructureReturnsTypedEffectWithoutReindexingAcceptedSearch() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let accepted = MeetingTranscriptContent.accepted(
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            segments: [fixture.segment],
+            chapterTitles: [:],
+            baseMaterial: .raw)
+        let correction = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.segment.id],
+            kind: .suppress,
+            sourceDeviceID: UUID(),
+            createdAt: Date())
+        client.restructureResult = RestructureMeetingTranscriptResult(event: correction)
+        let request = RestructureMeetingTranscriptRequest(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            accepted: accepted,
+            operation: .suppress(sourceSegmentID: fixture.segment.id))
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        let effect = await model.send(.restructureTranscript(request))
+
+        guard case .transcriptRestructured(let result) = effect else {
+            return XCTFail("the model must preserve the typed restructure result")
+        }
+        XCTAssertEqual(result.event, correction)
+        XCTAssertEqual(client.calls, [.restructureTranscript(request)])
+        XCTAssertEqual(client.searchReindexRequests, 0)
+        XCTAssertNil(model.state.lastActionError)
+
+        client.failures.insert(.restructureTranscript)
+        let failed = await model.send(.restructureTranscript(request))
+        guard case .operationFailed = failed else {
+            return XCTFail("structural persistence failures must remain visible")
+        }
+        XCTAssertNotNil(model.state.lastActionError)
+    }
+
     func testDocumentNameAndVoiceActionsStayBehindTheFeatureOwner() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
@@ -747,6 +788,14 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var preparedPlaybackResult: PreparedMeetingPlayback?
     var compressionResult = MeetingAudioCompressionResult(bytesFreed: 1_024)
     var correctionResult = CorrectMeetingTranscriptResult(events: [])
+    var restructureResult = RestructureMeetingTranscriptResult(event:
+        TranscriptCorrectionEvent(
+            meetingID: MeetingID(),
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [UUID()],
+            kind: .suppress,
+            sourceDeviceID: UUID(),
+            createdAt: Date()))
     var prepareDocumentError: (any Error)?
     var publishGistError: (any Error)?
     var nameSuggestionsResult: [MeetingNameSuggestion] = [
@@ -794,6 +843,14 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         calls.append(.correctTranscript(request))
         try fail(.correctTranscript)
         return correctionResult
+    }
+
+    func restructureMeetingDetailTranscript(
+        _ request: RestructureMeetingTranscriptRequest
+    ) async throws -> RestructureMeetingTranscriptResult {
+        calls.append(.restructureTranscript(request))
+        try fail(.restructureTranscript)
+        return restructureResult
     }
 
     func findMeetingDetailPeople(matchingAlias alias: String) throws -> [Person] {
@@ -961,6 +1018,7 @@ private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedEr
     case renameMeeting
     case renameSpeaker
     case correctTranscript
+    case restructureTranscript
     case findPeople
     case linkPerson
     case setActionItem
@@ -986,6 +1044,7 @@ private enum MeetingDetailModelCall: Equatable {
     case renameMeeting(String)
     case renameSpeaker(String?)
     case correctTranscript(CorrectMeetingTranscriptRequest)
+    case restructureTranscript(RestructureMeetingTranscriptRequest)
     case findPeople(String)
     case linkPerson(SpeakerID, PersonID?)
     case setActionItem(UUID, Bool)

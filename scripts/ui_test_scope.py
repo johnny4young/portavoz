@@ -120,6 +120,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "MeetingDetailUITests",
             "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
         ),
+        test_id(
+            "MeetingDetailUITests",
+            "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence",
+        ),
     ),
     "settings-navigation": (
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
@@ -229,7 +233,9 @@ def app_features(filename: str) -> set[str]:
         return {"settings-audio"}
     if any(token in lowered for token in ("ask", "commandpalette")):
         return {"ask", "library"}
-    if "transcriptcorrection" in lowered:
+    if any(token in lowered for token in (
+        "transcriptcorrection", "transcriptstructuralcorrection"
+    )):
         return {"meeting-correction"}
     if any(token in lowered for token in ("insight",)):
         return {"insights"}
@@ -342,6 +348,7 @@ def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
     if lowered in {
         "sources/applicationkit/correctmeetingtranscript.swift",
+        "sources/applicationkit/restructuremeetingtranscript.swift",
         "sources/portavozcore/transcriptcorrection.swift",
         "sources/storagekit/meetingstore+transcriptcorrections.swift",
         "sources/storagekit/schema+transcriptcorrection.swift",

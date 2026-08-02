@@ -7818,3 +7818,45 @@ immutable originals, and append-only restores preserve auditability and sync
 convergence. Limiting adoption to Meeting Detail gives immediate value while
 keeping every derived consumer honestly stale until the next correction slices
 define invalidation and regeneration.
+
+## D232 — Make structural transcript corrections explicit and recoverable (Aug 2026)
+
+**Context:** D231 adopted text and speaker lanes but intentionally left split,
+merge, and suppress unavailable. Structural edits need stronger target and time
+rules, and suppression must not become a convenient path to erase accepted
+recording evidence.
+
+**Decision:** add an ApplicationKit `RestructureMeetingTranscript` command over
+one exact accepted projection and revision. Split requires two lexical outputs
+and a strictly interior time boundary. Merge requires an explicit ordered,
+contiguous selection from one meeting, speaker, and audio channel; Meeting
+Detail offers only pairwise previous/next candidates and never infers a merge.
+Accepted merge intervals must remain time-monotonic. Generated event and split-
+part identities retry within one bounded budget and fail closed if they collide
+with accepted rows, retained events, or historical split parts.
+Suppress appends a typed event and removes only the composed row. Every output
+retains the ordered accepted source map.
+
+Expose structural actions through the focused correction surface. A hidden-
+line review keeps exact accepted text visible and offers durable Restore after
+the row leaves the composed reading. Restore remains immutable terminal lineage but is not applied to the reading
+projection or retained as a target owner, so restored evidence may receive a
+later explicit correction. Property lanes and structure remain mutually
+exclusive while active. The route supplies immutable values and explicit
+actions; SwiftUI owns no correction or persistence policy. One immutable
+structural projection precomputes accepted evidence, active ownership, merge
+candidates, and hidden rows for the complete Meeting Detail snapshot, leaving
+visible-row lookups constant time. Its bidirectional source map uses an evidence
+timestamp to select the matching visible split part and preserves the reverse
+mapping to immutable sources. The reviewed Meeting Detail boundary now
+contains 328 interaction signals, eleven owners, and 25 UI journeys.
+
+No derived consumer adopts structural corrections in this decision. Search,
+summaries, generated evidence, exports, chapters, FTS, and semantic indexes stay
+on accepted material until a separate invalidation policy prevents stale work
+from publishing.
+
+**Rationale:** explicit selection prevents grouping guesses, complete source
+maps preserve future audio navigation, and recoverable suppression removes
+reading noise without deleting evidence. Keeping invalidation separate avoids
+silently mixing corrected presentation with stale derived artifacts.

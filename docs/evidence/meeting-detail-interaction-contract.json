@@ -33,7 +33,8 @@
     "Sources/portavoz-app/SpeakerPill.swift",
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
     "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
-    "Sources/portavoz-app/TranscriptSegmentsView.swift"
+    "Sources/portavoz-app/TranscriptSegmentsView.swift",
+    "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift"
   ],
   "interactionSignals": [
     {
@@ -1390,7 +1391,7 @@
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
       "category": "control",
       "source": "Button {",
-      "occurrences": 1
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
@@ -1418,8 +1419,20 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-hidden-lines\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
       "category": "navigation",
       "source": "onSeek: actions.seekAndPlay,",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "presentation",
+      "source": ".sheet(isPresented: $showingHiddenLines) {",
       "occurrences": 1
     },
     {
@@ -1432,6 +1445,12 @@
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
       "category": "state",
       "source": "@State private var correctionRow: MeetingTranscriptContent.Row?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
+      "category": "state",
+      "source": "@State private var showingHiddenLines = false",
       "occurrences": 1
     },
     {
@@ -1743,13 +1762,13 @@
     {
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "identifier",
-      "source": ".accessibilityIdentifier(",
+      "source": ".accessibilityIdentifier(\"transcript-segment-\\(row.id.uuidString)\")",
       "occurrences": 1
     },
     {
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "identifier",
-      "source": ".accessibilityIdentifier(\"transcript-segment-\\(row.id.uuidString)\")",
+      "source": ".accessibilityIdentifier(correctionIdentifier)",
       "occurrences": 1
     },
     {
@@ -1768,6 +1787,222 @@
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "state",
       "source": "@State private var didStartPerformanceScroll = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Back\") { draft = nil }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Close\") { dismiss() }",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Hide as noise…\", role: .destructive) { draft = .suppress }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Restore\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Split line…\") { draft = .split }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(\"Undo structural correction\", role: .destructive) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Button(confirmTitle) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "Slider(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "TextField(\"First line\", text: $firstText, axis: .vertical)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "control",
+      "source": "TextField(\"Second line\", text: $secondText, axis: .vertical)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-hidden-lines-sheet\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-hidden-restore-\\(context.id.uuidString)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-cancel\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-close\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-controls\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-editor\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-error\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-guidance\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-merge-\\(candidate.id.uuidString)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-original-evidence\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-split\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-split-first\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-split-second\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-split-time\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-suppress\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-structure-undo\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var draft: TranscriptStructuralDraft?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var firstText: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var isSaving = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var operationError: String?",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var restoringID: UUID?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var secondText: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+      "category": "state",
+      "source": "@State private var splitTime: TimeInterval",
       "occurrences": 1
     }
   ],
@@ -2003,7 +2238,8 @@
     {
       "feature": "transcript-corrections",
       "tests": [
-        "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo"
+        "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
+        "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence"
       ],
       "sourceAnchors": [
         {
@@ -2012,11 +2248,17 @@
         },
         {
           "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
-          "anchor": "\"transcript-correct-\\(row.sourceSegmentIDs.first?.uuidString ?? row.id.uuidString)\""
+          "anchor": "\"transcript-correct-\\(sourceID.uuidString)\""
+        },
+        {
+          "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+          "anchor": "\"transcript-structure-original-evidence\""
         }
       ],
       "screenshots": [
-        "transcript-correction-original-evidence"
+        "transcript-correction-original-evidence",
+        "transcript-structural-correction-evidence",
+        "transcript-structural-split-evidence"
       ]
     }
   ],

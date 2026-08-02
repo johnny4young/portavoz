@@ -4760,8 +4760,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             "D230 — Persist and synchronize correction history without product adoption"))
         XCTAssertTrue(decisions.contains(
             "D231 — Adopt focused text and speaker corrections in Meeting Detail"))
+        XCTAssertTrue(decisions.contains(
+            "D232 — Make structural transcript corrections explicit and recoverable"))
         XCTAssertTrue(decisions.contains("all current product paths remain on accepted content"))
-        XCTAssertTrue(gaps.contains("Meeting Detail now composes current-revision text and speaker"))
+        XCTAssertTrue(gaps.contains(
+            "Meeting Detail composes current-revision text, speaker, split, explicit adjacent merge"))
         XCTAssertTrue(gaps.contains("Search, summaries, exports, generated evidence"))
 
         for forbidden in [
@@ -5703,7 +5706,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            289)
+            328)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             11)

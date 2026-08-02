@@ -42,7 +42,9 @@ history without changing the accepted-only presentation policy. D231 adopts
 current-revision text and speaker corrections only in Meeting Detail through
 one focused, accessible editor with immutable original evidence, append-only
 history, and durable Undo; every other transcript consumer remains
-accepted-only.
+accepted-only. D232 adds explicit split, pairwise adjacent merge, hide-as-noise,
+hidden evidence review, and durable restore to that same value/action boundary.
+It does not let SwiftUI infer targets or mutate accepted transcript rows.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -280,8 +282,14 @@ persists independent lanes. Original evidence and append-only history remain
 available, durable Undo restores each active lane, structural rows fail closed
 with guidance, and every control has keyboard and accessibility reachability.
 Search, summaries, exports, and generated evidence remain accepted-only. The
-reviewed boundary now covers 289 signals across eleven owners and 24 UI
-journeys.
+reviewed boundary now covers 328 signals across eleven owners and 25 UI
+journeys. D232 keeps structural policy in ApplicationKit: the focused surface
+offers only validated explicit merge neighbors, split inputs and timing, and
+recoverable hide-as-noise. Hidden accepted evidence remains reachable after the
+composed row disappears, and restore appends history rather than deleting it.
+One immutable structural projection precomputes row contexts and hidden evidence
+for each observed detail snapshot, avoiding transcript-wide work per rendered
+row.
 
 ### Resource workload measurement (D148)
 

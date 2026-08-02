@@ -53,6 +53,12 @@ extension AppServices: MeetingDetailModelClient {
         try await makeTranscriptEditor().execute(request)
     }
 
+    func restructureMeetingDetailTranscript(
+        _ request: RestructureMeetingTranscriptRequest
+    ) async throws -> RestructureMeetingTranscriptResult {
+        try await makeTranscriptRestructurer().execute(request)
+    }
+
     func findMeetingDetailPeople(matchingAlias alias: String) async throws -> [Person] {
         try await FindCanonicalPeople(store: store).execute(alias)
     }
@@ -181,6 +187,12 @@ private func makeApplicationMeetingReviewCore(
 private extension AppServices {
     func makeTranscriptEditor() -> CorrectMeetingTranscript {
         CorrectMeetingTranscript(
+            repository: AppTranscriptCorrectionRepository(store: store),
+            sourceDeviceID: Self.persistentMeetingSyncDeviceID())
+    }
+
+    func makeTranscriptRestructurer() -> RestructureMeetingTranscript {
+        RestructureMeetingTranscript(
             repository: AppTranscriptCorrectionRepository(store: store),
             sourceDeviceID: Self.persistentMeetingSyncDeviceID())
     }

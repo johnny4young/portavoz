@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands).
 
 ## Correction composition contract (D229)
 
@@ -59,6 +59,27 @@ through an atomic ApplicationKit command. It exposes immutable original evidence
 and appends domain-specific restore events for Undo. Search, summaries, exports,
 generated artifacts, and indexes continue to use accepted text until their own
 explicit policies land.
+
+## Structural correction command (D232)
+
+`RestructureMeetingTranscript` accepts one explicit accepted projection and its
+revision. It rejects stale/composed input, missing or repeated targets,
+incompatible active lanes, nonlexical or nonmonotonic splits, and unordered,
+nonadjacent, cross-speaker, or cross-channel merges before persistence. The
+Meeting Detail read model offers only compatible previous/next merge candidates;
+the user must choose one. Every split/merge keeps its ordered accepted source
+map. One bidirectional source map resolves visible rows back to immutable
+accepted IDs and uses evidence timestamps to choose the correct half of a split
+during playback or citation navigation. Suppression removes a row only from the
+composed reading and exposes its accepted text through a hidden-evidence sheet
+with durable restore.
+
+Restore is retained in correction lineage and domain validation but does not
+compose as an active edit or reserve a target lane. A restored accepted row can
+therefore receive a later explicit correction without rewriting history. This
+slice still leaves summaries, search, generated evidence, exports, chapters,
+and indexes on accepted material; their invalidation/adoption is a separate
+contract.
 
 ## Roles and engines (D7)
 

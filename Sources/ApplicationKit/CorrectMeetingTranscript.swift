@@ -49,11 +49,7 @@ public extension MeetingReviewReadModel {
         let currentCorrections = corrections.filter {
             $0.baseTranscriptRevision == meeting.transcriptRevision
         }
-        let accepted = MeetingTranscriptContent.accepted(
-            baseTranscriptRevision: meeting.transcriptRevision,
-            segments: segments,
-            chapterTitles: chapterTitles,
-            baseMaterial: material)
+        let accepted = acceptedTranscriptContent(chapterTitles: chapterTitles)
         guard let composition = try? ComposeTranscript().execute(
             baseTranscriptRevision: meeting.transcriptRevision,
             baseMaterial: material,

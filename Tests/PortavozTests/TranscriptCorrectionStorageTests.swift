@@ -334,6 +334,52 @@ final class TranscriptCorrectionStorageTests: XCTestCase {
         }
     }
 
+    func testStructuralTargetsMustBeMeetingLocalAcceptedAndExplicitlyAdjacent() async throws {
+        let fixture = try await makeFixture(segmentCount: 4)
+
+        await assertInvalidCorrection {
+            _ = try await fixture.store.appendTranscriptCorrection(self.event(
+                201,
+                fixture: fixture,
+                targets: [fixture.segments[0].id, fixture.segments[2].id],
+                kind: .merge(replacementText: nil, language: "en")))
+        }
+        await assertInvalidCorrection {
+            _ = try await fixture.store.appendTranscriptCorrection(self.event(
+                202,
+                fixture: fixture,
+                targets: [fixture.segments[2].id, fixture.segments[1].id],
+                kind: .merge(replacementText: nil, language: "en")))
+        }
+
+        let foreignMeeting = Meeting(
+            title: "Foreign correction source",
+            startedAt: date(1),
+            transcriptRevision: fixture.meeting.transcriptRevision)
+        let foreignSegment = TranscriptSegment(
+            meetingID: foreignMeeting.id,
+            channel: .system,
+            text: "Foreign evidence",
+            language: "en",
+            startTime: 0,
+            endTime: 2,
+            confidence: 0.9,
+            isFinal: true)
+        try await fixture.store.save(foreignMeeting)
+        try await fixture.store.save([foreignSegment])
+        await assertInvalidCorrection {
+            _ = try await fixture.store.appendTranscriptCorrection(self.event(
+                203,
+                fixture: fixture,
+                targets: [foreignSegment.id],
+                kind: .suppress))
+        }
+
+        let history = try await fixture.store.transcriptCorrectionHistory(
+            for: fixture.meeting.id)
+        XCTAssertTrue(history.isEmpty)
+    }
+
     func testHistorySurvivesSourceRetirementButFailsOnMalformedPayload() async throws {
         let fixture = try await makeFixture(segmentCount: 2)
         let correction = event(

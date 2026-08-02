@@ -117,13 +117,13 @@ public struct ComposeTranscript: Sendable {
             segments: orderedSegments,
             chapterTitles: chapterTitles,
             baseMaterial: baseMaterial)
-        let activeCorrections = try validatedActiveCorrections(
+        let correctionState = try validatedCorrectionState(
             corrections,
             baseTranscriptRevision: baseTranscriptRevision,
             segments: orderedSegments)
         let rows = try composeRows(
             segments: orderedSegments,
-            corrections: activeCorrections,
+            corrections: correctionState.readingCorrections,
             history: corrections)
         let chapters = composedChapters(
             rows: rows,
@@ -136,7 +136,7 @@ public struct ComposeTranscript: Sendable {
             lineage: MeetingTranscriptLineage(
                 baseMaterial: baseMaterial,
                 projection: .composed,
-                activeCorrectionIDs: activeCorrections.map(\.id)))
+                activeCorrectionIDs: correctionState.lineageCorrectionIDs))
         return TranscriptComposition(accepted: accepted, composed: composed)
     }
 }
@@ -163,11 +163,16 @@ private extension ComposeTranscript {
         return segments.sorted(by: segmentPrecedes)
     }
 
-    func validatedActiveCorrections(
+    struct ValidatedCorrectionState {
+        let readingCorrections: [TranscriptCorrectionEvent]
+        let lineageCorrectionIDs: [UUID]
+    }
+
+    func validatedCorrectionState(
         _ corrections: [TranscriptCorrectionEvent],
         baseTranscriptRevision: Int,
         segments: [TranscriptSegment]
-    ) throws -> [TranscriptCorrectionEvent] {
+    ) throws -> ValidatedCorrectionState {
         let correctionsByID = try indexCorrections(corrections)
         let sourceIDs = Set(segments.map(\.id))
         let correctionsByIdentity = corrections.sorted {
@@ -184,7 +189,7 @@ private extension ComposeTranscript {
             correctionsByID: correctionsByID)
         let indexBySourceID = Dictionary(
             uniqueKeysWithValues: segments.enumerated().map { ($0.element.id, $0.offset) })
-        let active = orderedCorrections
+        let terminal = orderedCorrections
             .filter { !superseded.contains($0.id) && $0.deletedAt == nil }
             .sorted { lhs, rhs in
                 let lhsIndex = lhs.targetSegmentIDs.compactMap { indexBySourceID[$0] }.min() ?? 0
@@ -192,13 +197,19 @@ private extension ComposeTranscript {
                 if lhsIndex != rhsIndex { return lhsIndex < rhsIndex }
                 return correctionPrecedes(lhs, rhs)
             }
+        let readingCorrections = terminal.filter {
+            if case .restore = $0.kind { return false }
+            return true
+        }
         try validateActiveCorrections(
-            active,
+            readingCorrections,
             history: orderedCorrections,
             segments: segments,
             indexBySourceID: indexBySourceID)
-        try validateGeneratedRowIDs(active, sourceIDs: sourceIDs)
-        return active
+        try validateGeneratedRowIDs(readingCorrections, sourceIDs: sourceIDs)
+        return ValidatedCorrectionState(
+            readingCorrections: readingCorrections,
+            lineageCorrectionIDs: terminal.map(\.id))
     }
 
     func indexCorrections(
@@ -345,12 +356,16 @@ private extension ComposeTranscript {
                   splitIsValid(parts, inside: source)
             else { throw ComposeTranscriptError.invalidSplit(correction.id) }
         case .merge(let replacementText, _):
+            let targetSegments = sortedTargets.map { segments[$0] }
             guard orderedTargets.count >= 2,
                   orderedTargets == sortedTargets,
                   sortedTargets == Array(
                       sortedTargets[0]...sortedTargets[sortedTargets.count - 1]),
-                  Set(sortedTargets.map { segments[$0].speakerID }).count == 1,
-                  Set(sortedTargets.map { segments[$0].channel.rawValue }).count == 1,
+                  Set(targetSegments.map(\.speakerID)).count == 1,
+                  Set(targetSegments.map(\.channel.rawValue)).count == 1,
+                  zip(targetSegments, targetSegments.dropFirst()).allSatisfy({ pair in
+                      pair.0.endTime <= pair.1.startTime
+                  }),
                   replacementText.map(TranscriptContentPolicy.hasLexicalContent) ?? true
             else { throw ComposeTranscriptError.invalidMerge(correction.id) }
         case .suppress:

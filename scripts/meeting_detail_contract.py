@@ -48,6 +48,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
     "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
     "Sources/portavoz-app/TranscriptSegmentsView.swift",
+    "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
 )
 
 PERFORMANCE_EVIDENCE_PATHS = (
@@ -299,6 +300,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "feature": "transcript-corrections",
         "tests": [
             "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
+            "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence",
         ],
         "sourceAnchors": [
             {
@@ -307,7 +309,11 @@ DEFAULT_FEATURE_OWNERSHIP = (
             },
             {
                 "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
-                "anchor": '"transcript-correct-\\(row.sourceSegmentIDs.first?.uuidString ?? row.id.uuidString)"',
+                "anchor": '"transcript-correct-\\(sourceID.uuidString)"',
+            },
+            {
+                "path": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+                "anchor": '"transcript-structure-original-evidence"',
             },
         ],
     },

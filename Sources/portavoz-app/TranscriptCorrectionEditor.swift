@@ -4,9 +4,11 @@ import SwiftUI
 
 struct TranscriptCorrectionEditor: View {
     let context: TranscriptCorrectionEditorContext
+    let structuralContext: TranscriptStructuralCorrectionContext?
     let speakers: [Speaker]
     let save: (String, SpeakerID?) async -> String?
     let undo: () async -> String?
+    let restructure: (TranscriptStructuralCorrectionOperation) async -> String?
 
     @Environment(\.dismiss) private var dismiss
     @State private var text: String
@@ -17,14 +19,18 @@ struct TranscriptCorrectionEditor: View {
 
     init(
         context: TranscriptCorrectionEditorContext,
+        structuralContext: TranscriptStructuralCorrectionContext?,
         speakers: [Speaker],
         save: @escaping (String, SpeakerID?) async -> String?,
-        undo: @escaping () async -> String?
+        undo: @escaping () async -> String?,
+        restructure: @escaping (TranscriptStructuralCorrectionOperation) async -> String?
     ) {
         self.context = context
+        self.structuralContext = structuralContext
         self.speakers = speakers
         self.save = save
         self.undo = undo
+        self.restructure = restructure
         _text = State(initialValue: context.current.text)
         _speakerID = State(initialValue: context.current.speakerID)
     }
@@ -43,6 +49,11 @@ struct TranscriptCorrectionEditor: View {
             }
             textEditor
             speakerPicker
+            if let structuralContext {
+                TranscriptStructuralCorrectionControls(
+                    context: structuralContext,
+                    perform: restructure)
+            }
             originalEvidence
             history
             if let operationError {
