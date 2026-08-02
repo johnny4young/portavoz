@@ -142,7 +142,12 @@ development finding, not an accepted engine result. Product action items remain
 immutable generated observations. D237 now adds a separate confirmed-only
 commitment aggregate and transport-neutral replay representation in Core and
 Storage, but this benchmark still cannot admit a candidate or write that
-aggregate; no confirmation inbox, Radar read model, or commitment UI exists yet.
+aggregate. D238 derives a transient newest-summary inbox projection from already
+generated action items and stores only source-bound dismiss/defer feedback. It
+adds no IntelligenceKit engine, does not infer a deadline, and can suggest an
+owner only through an exact canonical person already linked to the observed
+speaker. No user-facing confirmation inbox, Radar read model, or commitment UI
+exists yet.
 
 ## Human claim feedback is not model material (D88)
 

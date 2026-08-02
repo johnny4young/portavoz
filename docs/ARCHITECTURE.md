@@ -1073,6 +1073,24 @@ SwiftUI. This keeps generated candidates and the candidate benchmark separate
 from confirmed user truth until a later explicit confirmation surface selects
 an admission policy.
 
+Schema v21 adds only reversible review feedback for generated action-item
+sources. `commitmentReviewDecision` is keyed by the immutable `ActionItem` and
+stores `dismissed` or future-dated `deferred` treatment plus timestamps and a
+tombstone; it never copies generated text, owner, due date, or evidence. One
+bounded read reconciles those rows and any confirmed commitment against the
+newest live summary. The ApplicationKit confirmation-inbox candidate remains a
+transient projection over typed action-item evidence. It can suggest an owner
+only through an exact linked `Speaker.personID`, and it suggests no deadline
+because no production extractor has passed the quality gate.
+
+Local confirmation and exact portable replay tombstone review feedback in the
+same transaction that publishes confirmed continuity. A unique partial source
+index prevents one generated action item from backing multiple commitments.
+Summary regeneration creates fresh action-item identities and therefore does
+not inherit prior feedback. Meeting Detail observes this reconciliation as an
+independent section, but schema v21 adds no confirmation UI, candidate-admission
+engine, Radar query, bundle field, CloudKit transport, CLI, or MCP contract.
+
 The focused correction command is the first product adoption of this durability
 boundary. It validates the complete retained history, treats text and speaker
 attribution as independent lanes that may coexist on one accepted source row,
@@ -1834,8 +1852,11 @@ precision/recall/F1, false-positive rate, exact evidence, and exact/false-
 positive owner and deadline metrics. Comparison reports deltas only; it cannot
 choose an engine or make a product decision. Per-case observations are optional
 owner-only local artifacts, while tracked evidence is aggregate public-fixture
-research. The benchmark still chooses no engine and cannot write schema v20;
-no candidate admission, confirmation inbox, radar read model, or UI exists yet.
+research. The benchmark still chooses no engine and cannot write confirmed
+continuity. The confirmation-inbox foundation derives a transient, newest-
+summary projection from already generated action items and stores only source-
+bound dismiss/defer feedback; it is not a candidate-admission engine. No user-
+facing inbox, deadline extractor, Radar read model, or commitment UI exists yet.
 
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,

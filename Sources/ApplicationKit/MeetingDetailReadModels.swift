@@ -74,6 +74,7 @@ public struct MeetingReviewReadModel: Sendable {
     public let privacyReceipt: PrivacyReceipt?
     public let processingJobs: [ProcessingJob]
     public let notes: MeetingReviewNotes
+    public let commitmentReviewStates: [CommitmentReviewState]
 
     public init(
         core: MeetingReviewCore,
@@ -82,7 +83,8 @@ public struct MeetingReviewReadModel: Sendable {
         companionCorrectionSources: [UUID: TranscriptCorrectionArtifactSource] = [:],
         privacyReceipt: PrivacyReceipt?,
         processingJobs: [ProcessingJob],
-        notes: MeetingReviewNotes = MeetingReviewNotes()
+        notes: MeetingReviewNotes = MeetingReviewNotes(),
+        commitmentReviewStates: [CommitmentReviewState] = []
     ) {
         self.core = core
         self.summary = summary
@@ -91,6 +93,7 @@ public struct MeetingReviewReadModel: Sendable {
         self.privacyReceipt = privacyReceipt
         self.processingJobs = processingJobs
         self.notes = notes
+        self.commitmentReviewStates = commitmentReviewStates
     }
 
     public var meeting: Meeting { core.meeting }
@@ -135,6 +138,7 @@ public enum MeetingReviewSection: CaseIterable, Hashable, Sendable {
     case privacy
     case processing
     case notes
+    case commitments
 }
 
 /// Independent updates emitted by the Meeting Detail read side.
@@ -148,5 +152,6 @@ public enum MeetingReviewUpdate: Sendable {
     case privacyReceipt(PrivacyReceipt?)
     case processingJobs([ProcessingJob])
     case notes(MeetingReviewNotes)
+    case commitmentReviewStates([CommitmentReviewState])
     case failed(MeetingReviewSection)
 }

@@ -1579,6 +1579,39 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Persist only explicitly confirmed commitment continuity"))
     }
 
+    func testCommitmentReviewFeedbackRemainsSourceBoundAndTransient() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/CommitmentReview.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+CommitmentReview.swift")
+        let projection = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingCommitmentInbox.swift")
+        let appComposition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let bundle = try Self.contents(
+            of: "Sources/IntegrationsKit/MeetingBundle.swift")
+        let meetingSync = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SyncAggregate.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains("case dismissed"))
+        XCTAssertTrue(core.contains("case deferred"))
+        XCTAssertTrue(schema.contains("primaryKey(\"actionItemID\""))
+        XCTAssertTrue(schema.contains("references(\"actionItem\""))
+        XCTAssertFalse(schema.contains("title"))
+        XCTAssertFalse(schema.contains("canonicalPersonID"))
+        XCTAssertFalse(schema.contains("suggestedDueAt"))
+        XCTAssertTrue(projection.contains("speaker.personID"))
+        XCTAssertTrue(projection.contains("suggestedDueAt: nil"))
+        XCTAssertTrue(appComposition.contains(
+            "observeCommitmentReviewStates(for: meetingID)"))
+        XCTAssertFalse(bundle.contains("CommitmentReviewDecision"))
+        XCTAssertFalse(meetingSync.contains("CommitmentReviewDecision"))
+        XCTAssertTrue(decisions.contains("## D238"))
+        XCTAssertTrue(decisions.contains(
+            "Keep commitment review feedback source-bound"))
+    }
+
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
         let profile = try Self.contents(
             of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")
@@ -1618,7 +1651,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 20"))
+        XCTAssertTrue(schema.contains("public static let version = 21"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))

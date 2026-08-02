@@ -18,6 +18,13 @@ extension MeetingStore {
                 confirmation,
                 at: timestamp,
                 in: database)
+            if let actionItemID = source.actionItemID,
+               try Self.confirmedCommitment(
+                   actionItemID: actionItemID,
+                   in: database) != nil {
+                throw StorageError.invalidCommitment(
+                    "generated ActionItem is already confirmed")
+            }
             let event = CommitmentEvent(
                 id: confirmation.eventID,
                 commitmentID: confirmation.commitmentID,
@@ -42,6 +49,12 @@ extension MeetingStore {
                     "confirmed identity already exists")
             }
             try Self.insertCommitmentEnvelope(envelope, in: database)
+            if let actionItemID = source.actionItemID {
+                try Self.clearCommitmentReviewDecision(
+                    actionItemID: actionItemID,
+                    at: timestamp,
+                    in: database)
+            }
             return envelope
         }
     }
@@ -121,6 +134,13 @@ extension MeetingStore {
                 return local
             }
             try Self.insertCommitmentEnvelope(envelope, in: database)
+            let timestamp = Self.canonicalCommitmentDate(Date())
+            for actionItemID in envelope.sources.compactMap(\.actionItemID) {
+                try Self.clearCommitmentReviewDecision(
+                    actionItemID: actionItemID,
+                    at: timestamp,
+                    in: database)
+            }
             return envelope
         }
     }
@@ -451,6 +471,11 @@ private extension MeetingStore {
             events: events)
     }
 
+}
+
+extension MeetingStore {
+    /// Commitment persistence uses millisecond precision across continuity and
+    /// review feedback so transaction ordering is stable after a DB round trip.
     static func canonicalCommitmentDate(_ date: Date) -> Date {
         let milliseconds = (date.timeIntervalSince1970 * 1_000).rounded()
         return Date(timeIntervalSince1970: milliseconds / 1_000)

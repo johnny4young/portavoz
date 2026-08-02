@@ -35,6 +35,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
+            .commitmentReviewStates([]),
         ])
         let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
 
@@ -51,6 +52,7 @@ final class MeetingDetailModelTests: XCTestCase {
         let missingClient = MeetingDetailModelClientFake(updates: [
             .core(nil), .summary(nil), .companionCards([]), .privacyReceipt(nil),
             .processingJobs([]), .notes(MeetingReviewNotes()),
+            .commitmentReviewStates([]),
         ])
         let missing = MeetingDetailModel(
             meetingID: fixture.meeting.id,
@@ -91,7 +93,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.readModel?.summary?.version, 1)
         XCTAssertEqual(model.state.readModel?.segments.map(\.id), [fixture.segment.id])
         XCTAssertEqual(model.state.readModel?.companionCards.map(\.id), [fixture.card.id])
-        XCTAssertEqual(model.state.revision, 7)
+        XCTAssertEqual(model.state.revision, 8)
     }
 
     func testCorrectionRevisionMarksGeneratedSummaryAndCompanionTruthfullyStale() throws {
@@ -446,6 +448,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
+            .commitmentReviewStates([]),
         ])
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
         let destination = FileManager.default.temporaryDirectory
@@ -487,6 +490,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
+            .commitmentReviewStates([]),
         ])
         client.playbackCancellationsRemaining = 1
         let model = MeetingDetailModel(meetingID: meeting.id, client: client)
@@ -733,6 +737,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .companionCards([fixture.card]),
             .privacyReceipt(fixture.receipt),
             .processingJobs([]), .notes(MeetingReviewNotes()),
+            .commitmentReviewStates([]),
         ]
     }
 
@@ -800,7 +805,7 @@ private struct MeetingDetailModelFixture {
         [
             .core(core), .summary(summary), .companionCards([card]),
             .privacyReceipt(receipt), .processingJobs([]),
-            .notes(MeetingReviewNotes())
+            .notes(MeetingReviewNotes()), .commitmentReviewStates([])
         ]
     }
 

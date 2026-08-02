@@ -58,6 +58,7 @@ final class MeetingDetailModel {
     private var privacyReceipt: PrivacyReceipt?
     private var processingJobs: [ProcessingJob] = []
     private var notes = MeetingReviewNotes()
+    private var commitmentReviewStates: [CommitmentReviewState] = []
     private var didLoadVoiceSuggestions = false
     private var didCompleteTitleSuggestion = false
     private var didCompleteRecipeSuggestion = false
@@ -641,6 +642,9 @@ private extension MeetingDetailModel {
         case .notes(let value):
             notes = value
             markObserved(.notes)
+        case .commitmentReviewStates(let value):
+            commitmentReviewStates = value
+            markObserved(.commitments)
         case .failed(let section):
             failedSections.insert(section)
             observedSections.remove(section)
@@ -677,7 +681,8 @@ private extension MeetingDetailModel {
             companionCorrectionSources: companionCorrectionSources,
             privacyReceipt: privacyReceipt,
             processingJobs: processingJobs,
-            notes: notes)
+            notes: notes,
+            commitmentReviewStates: commitmentReviewStates)
     }
 
     func refreshPhase() {

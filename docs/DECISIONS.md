@@ -8104,3 +8104,43 @@ replaceable and keeps summary regeneration harmless to longitudinal state.
 Append-only events preserve auditability and future convergence, while exact
 identity/evidence admission prevents aliases or stale generated output from
 silently becoming ownership claims.
+
+## D238 — Keep commitment review feedback source-bound and separate from candidate generation (Aug 2026)
+
+**Context:** D237 provides confirmed continuity, but the confirmation inbox also
+needs reversible dismiss and defer choices before a user-facing surface can be
+built. Persisting generated candidate text, proposed owners, or proposed dates
+would let experimental output become a second mutable truth and could make
+summary regeneration silently inherit decisions from an unrelated fresh action
+item.
+
+**Decision:** add schema v21 with one `commitmentReviewDecision` row keyed to an
+existing generated `ActionItem`. The row may contain only `dismissed`, or
+`deferred` with a revisit date strictly after its update time, plus creation,
+update, and tombstone timestamps. It stores no title, owner, deadline, evidence,
+score, model, or candidate payload. Mutations require the action item to belong
+to the newest live summary for the requested meeting and reject a source that is
+already confirmed.
+
+Build the inbox candidate as a transient ApplicationKit projection over the
+newest immutable summary, typed action-item evidence, current cast, review
+feedback, and confirmed continuity. Evidence remains mandatory. An owner may be
+suggested only when the source speaker already carries an exact live
+`PersonID`; alias and display-name similarity are not admission rules. No due-
+date suggestion is produced until a separately benchmarked extractor is chosen.
+
+Local confirmation and exact format-1 replay tombstone source feedback in the
+same transaction that inserts confirmed continuity. A unique partial index
+prevents one generated action item from backing more than one commitment.
+Meeting Detail observes the reconciliation independently from transcript,
+summary, Apuntador, privacy, processing, and notes. This decision adds no
+candidate engine, visual inbox, Radar query, bundle field, CloudKit transport,
+CLI, or MCP contract.
+
+**Consequences:** dismiss and defer remain explicit, reversible user treatment
+without becoming model material. A regenerated summary creates fresh action-
+item identities and intentionally does not inherit feedback. Exact owner
+identity and absent deadline suggestions can produce a sparse inbox, but the
+system fails closed instead of presenting guesses as durable truth. The later
+visual slice can add confirm, edit, dismiss, defer, and source navigation without
+changing persistence semantics.

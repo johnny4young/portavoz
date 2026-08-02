@@ -30,13 +30,14 @@ extension AppServices: MeetingDetailModelClient {
     func observeMeetingReview(
         _ meetingID: MeetingID
     ) -> AsyncStream<MeetingReviewUpdate> {
-        makeApplicationMeetingReviewStream(
+        makeApplicationMeetingReviewStream(MeetingReviewStreams(
             core: store.observeMeetingReviewCore(meetingID),
             summary: store.observeMeetingReviewSummary(meetingID),
             companion: store.observeMeetingReviewCompanionCards(meetingID),
             privacy: store.observeMeetingReviewPrivacyReceipt(meetingID),
             processing: store.observeMeetingReviewProcessingJobs(meetingID),
-            notes: store.observeMeetingReviewNotes(meetingID))
+            notes: store.observeMeetingReviewNotes(meetingID),
+            commitments: store.observeCommitmentReviewStates(for: meetingID)))
     }
 
     func renameMeetingDetailMeeting(_ meeting: Meeting) async throws {
@@ -103,61 +104,119 @@ extension AppServices: MeetingDetailModelClient {
     }
 }
 
+private struct MeetingReviewStreams: Sendable {
+    let core: AsyncThrowingStream<MeetingStore.MeetingReviewCore?, Error>
+    let summary: AsyncThrowingStream<MeetingStore.MeetingReviewSummarySnapshot?, Error>
+    let companion: AsyncThrowingStream<MeetingStore.MeetingReviewCompanionSnapshot, Error>
+    let privacy: AsyncThrowingStream<PrivacyReceipt?, Error>
+    let processing: AsyncThrowingStream<[ProcessingJob], Error>
+    let notes: AsyncThrowingStream<(items: [ContextItem], enhanced: EnhancedNote?), Error>
+    let commitments: AsyncThrowingStream<[CommitmentReviewState], Error>
+}
+
 private func makeApplicationMeetingReviewStream(
-    core: AsyncThrowingStream<MeetingStore.MeetingReviewCore?, Error>,
-    summary: AsyncThrowingStream<MeetingStore.MeetingReviewSummarySnapshot?, Error>,
-    companion: AsyncThrowingStream<MeetingStore.MeetingReviewCompanionSnapshot, Error>,
-    privacy: AsyncThrowingStream<PrivacyReceipt?, Error>,
-    processing: AsyncThrowingStream<[ProcessingJob], Error>,
-    notes: AsyncThrowingStream<(items: [ContextItem], enhanced: EnhancedNote?), Error>
+    _ streams: MeetingReviewStreams
 ) -> AsyncStream<MeetingReviewUpdate> {
     AsyncStream { continuation in
         let task = Task {
             await withTaskGroup(of: Void.self) { group in
-                group.addTask {
-                    await forwardMeetingReview(core, to: continuation, section: .core) {
-                        .core($0.map(makeApplicationMeetingReviewCore))
-                    }
-                }
-                group.addTask {
-                    await forwardMeetingReview(summary, to: continuation, section: .summary) {
-                        .summary($0.map {
-                            MeetingReviewSummary(
-                                draft: $0.draft,
-                                version: $0.version,
-                                correctionSource: $0.correctionSource)
-                        })
-                    }
-                }
-                group.addTask {
-                    await forwardMeetingReview(companion, to: continuation, section: .companion) {
-                        .companionCards(
-                            $0.cards,
-                            correctionSources: $0.correctionSources)
-                    }
-                }
-                group.addTask {
-                    await forwardMeetingReview(privacy, to: continuation, section: .privacy) {
-                        .privacyReceipt($0)
-                    }
-                }
-                group.addTask {
-                    await forwardMeetingReview(
-                        processing, to: continuation, section: .processing
-                    ) {
-                        .processingJobs($0)
-                    }
-                }
-                group.addTask {
-                    await forwardMeetingReview(notes, to: continuation, section: .notes) {
-                        .notes(MeetingReviewNotes(
-                            contextItems: $0.items, enhanced: $0.enhanced))
-                    }
-                }
+                addMeetingContentReviewTasks(
+                    streams,
+                    to: &group,
+                    continuation: continuation)
+                addMeetingSupportReviewTasks(
+                    streams,
+                    to: &group,
+                    continuation: continuation)
             }
             continuation.finish()
         }
         continuation.onTermination = { _ in task.cancel() }
+    }
+}
+
+private func addMeetingContentReviewTasks(
+    _ streams: MeetingReviewStreams,
+    to group: inout TaskGroup<Void>,
+    continuation: AsyncStream<MeetingReviewUpdate>.Continuation
+) {
+    group.addTask {
+        await forwardMeetingReview(
+            streams.core,
+            to: continuation,
+            section: .core
+        ) {
+            .core($0.map(makeApplicationMeetingReviewCore))
+        }
+    }
+    group.addTask {
+        await forwardMeetingReview(
+            streams.summary,
+            to: continuation,
+            section: .summary
+        ) {
+            .summary($0.map {
+                MeetingReviewSummary(
+                    draft: $0.draft,
+                    version: $0.version,
+                    correctionSource: $0.correctionSource)
+            })
+        }
+    }
+    group.addTask {
+        await forwardMeetingReview(
+            streams.companion,
+            to: continuation,
+            section: .companion
+        ) {
+            .companionCards(
+                $0.cards,
+                correctionSources: $0.correctionSources)
+        }
+    }
+}
+
+private func addMeetingSupportReviewTasks(
+    _ streams: MeetingReviewStreams,
+    to group: inout TaskGroup<Void>,
+    continuation: AsyncStream<MeetingReviewUpdate>.Continuation
+) {
+    group.addTask {
+        await forwardMeetingReview(
+            streams.privacy,
+            to: continuation,
+            section: .privacy
+        ) {
+            .privacyReceipt($0)
+        }
+    }
+    group.addTask {
+        await forwardMeetingReview(
+            streams.processing,
+            to: continuation,
+            section: .processing
+        ) {
+            .processingJobs($0)
+        }
+    }
+    group.addTask {
+        await forwardMeetingReview(
+            streams.notes,
+            to: continuation,
+            section: .notes
+        ) {
+            .notes(MeetingReviewNotes(
+                contextItems: $0.items, enhanced: $0.enhanced))
+        }
+    }
+    group.addTask {
+        await forwardMeetingReview(
+            streams.commitments,
+            to: continuation,
+            section: .commitments
+        ) {
+            .commitmentReviewStates($0)
+        }
     }
 }
 
