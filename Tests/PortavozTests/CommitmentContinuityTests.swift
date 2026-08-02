@@ -81,6 +81,49 @@ final class CommitmentContinuityPolicyTests: XCTestCase {
             from: data), envelope)
     }
 
+    func testDecoderUpgradesLegacyPersonAndUnassignedOwnership() throws {
+        let personID = PersonID()
+        for expectedAssignee in [CommitmentAssignee.person(personID), .unassigned] {
+            let commitmentID = CommitmentID()
+            let source = CommitmentSource(
+                commitmentID: commitmentID,
+                kind: .manual,
+                meetingID: nil,
+                firstSeenAt: baseDate)
+            let confirm = CommitmentEvent(
+                commitmentID: commitmentID,
+                kind: .confirm,
+                assignee: expectedAssignee,
+                occurredAt: baseDate)
+            let commitment = try CommitmentContinuityPolicy.projectedCommitment(
+                id: commitmentID,
+                title: "Ship",
+                events: [confirm])
+            let envelope = try CommitmentContinuityEnvelope(
+                commitment: commitment,
+                sources: [source],
+                events: [confirm])
+            var object = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: JSONEncoder().encode(envelope))
+                    as? [String: Any])
+            object["formatVersion"] = 1
+            var legacyCommitment = try XCTUnwrap(object["commitment"] as? [String: Any])
+            legacyCommitment.removeValue(forKey: "assigneeKind")
+            object["commitment"] = legacyCommitment
+            var legacyEvents = try XCTUnwrap(object["events"] as? [[String: Any]])
+            legacyEvents[0].removeValue(forKey: "assigneeKind")
+            object["events"] = legacyEvents
+
+            let decoded = try JSONDecoder().decode(
+                CommitmentContinuityEnvelope.self,
+                from: JSONSerialization.data(withJSONObject: object))
+
+            XCTAssertEqual(decoded.formatVersion, 1)
+            XCTAssertEqual(decoded.commitment.assignee, expectedAssignee)
+            XCTAssertEqual(decoded.events.first?.assignee, expectedAssignee)
+        }
+    }
+
     func testDecoderRejectsFutureVersionAndNoncanonicalHistory() throws {
         let commitmentID = CommitmentID()
         let source = CommitmentSource(
@@ -126,6 +169,92 @@ final class CommitmentContinuityPolicyTests: XCTestCase {
 
 final class CommitmentContinuityStorageTests: XCTestCase {
     private let baseDate = Date(timeIntervalSince1970: 1_785_600_000)
+
+    func testV21OwnershipMigratesWithoutGuessingTheLocalUser() throws {
+        let database = try DatabaseQueue()
+        let migrator = StorageSchema.migrator()
+        try migrator.migrate(database, upTo: "v21")
+        let unassignedID = CommitmentID().rawValue.uuidString
+        let assignedID = CommitmentID().rawValue.uuidString
+        let personID = PersonID().rawValue.uuidString
+        try database.write { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO person (
+                        id, preferredName, createdAt, updatedAt, deletedAt
+                    ) VALUES (?, 'Ana', ?, ?, NULL)
+                    """,
+                arguments: [personID, baseDate, baseDate])
+            for (commitmentID, ownerID) in [
+                (unassignedID, Optional<String>.none),
+                (assignedID, Optional(personID)),
+            ] {
+                try db.execute(
+                    sql: """
+                        INSERT INTO commitment (
+                            id, canonicalPersonID, title, status, dueAt,
+                            createdAt, updatedAt, deletedAt
+                        ) VALUES (?, ?, 'Ship', 'confirmed', NULL, ?, ?, NULL)
+                        """,
+                    arguments: [commitmentID, ownerID, baseDate, baseDate])
+                try db.execute(
+                    sql: """
+                        INSERT INTO commitmentEvent (
+                            id, commitmentID, kind, canonicalPersonID, dueAt,
+                            sourceMeetingID, occurredAt
+                        ) VALUES (?, ?, 'confirm', ?, NULL, NULL, ?)
+                        """,
+                    arguments: [UUID().uuidString, commitmentID, ownerID, baseDate])
+            }
+        }
+
+        try migrator.migrate(database)
+
+        try database.read { db in
+            let commitments = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id, assigneeKind
+                    FROM commitment
+                    ORDER BY id
+                    """)
+            let kinds = Dictionary(uniqueKeysWithValues: commitments.map {
+                ($0["id"] as String, $0["assigneeKind"] as String)
+            })
+            XCTAssertEqual(kinds[unassignedID], "unassigned")
+            XCTAssertEqual(kinds[assignedID], "person")
+            XCTAssertEqual(
+                try Set(String.fetchAll(
+                    db,
+                    sql: "SELECT assigneeKind FROM commitmentEvent")),
+                ["unassigned", "person"])
+        }
+        try database.write { db in
+            XCTAssertThrowsError(try db.execute(
+                sql: """
+                    UPDATE commitment
+                    SET assigneeKind = 'person', canonicalPersonID = NULL
+                    WHERE id = ?
+                    """,
+                arguments: [unassignedID]))
+            XCTAssertThrowsError(try db.execute(
+                sql: """
+                    INSERT INTO commitmentEvent (
+                        id, commitmentID, kind, assigneeKind, canonicalPersonID,
+                        dueAt, sourceMeetingID, occurredAt
+                    ) VALUES (?, ?, 'confirm', 'person', NULL, NULL, NULL, ?)
+                    """,
+                arguments: [UUID().uuidString, unassignedID, baseDate]))
+            XCTAssertThrowsError(try db.execute(
+                sql: """
+                    INSERT INTO commitmentEvent (
+                        id, commitmentID, kind, assigneeKind, canonicalPersonID,
+                        dueAt, sourceMeetingID, occurredAt
+                    ) VALUES (?, ?, 'complete', 'me', NULL, NULL, NULL, ?)
+                    """,
+                arguments: [UUID().uuidString, unassignedID, baseDate]))
+        }
+    }
 
     func testGeneratedConfirmationRequiresCurrentDirectEvidenceAndExactPerson() async throws {
         let fixture = try await generatedFixture()
@@ -205,6 +334,12 @@ final class CommitmentContinuityStorageTests: XCTestCase {
 
     func testManualAndUserNoteOriginsRemainExplicitUserTruth() async throws {
         let store = try MeetingStore.inMemory()
+        let commitmentColumns = try await store.database.read { database in
+            try database.columns(in: "commitment").map(\.name)
+        }
+        XCTAssertTrue(
+            commitmentColumns.contains("assigneeKind"),
+            "fresh commitment schema columns: \(commitmentColumns)")
         let meeting = Meeting(title: "Planning", startedAt: baseDate)
         let note = ContextItem(
             meetingID: meeting.id,
@@ -252,7 +387,7 @@ final class CommitmentContinuityStorageTests: XCTestCase {
         _ = try await fixture.store.applyCommitmentTransition(
             .reschedule(dueAt), to: commitmentID, at: baseDate.addingTimeInterval(3))
         _ = try await fixture.store.applyCommitmentTransition(
-            .reassign(nil), to: commitmentID, at: baseDate.addingTimeInterval(4))
+            .reassign(.me), to: commitmentID, at: baseDate.addingTimeInterval(4))
         let dismissed = try await fixture.store.applyCommitmentTransition(
             .dismiss,
             to: commitmentID,
@@ -260,6 +395,7 @@ final class CommitmentContinuityStorageTests: XCTestCase {
             at: baseDate.addingTimeInterval(5))
 
         XCTAssertEqual(dismissed.commitment.status, .dismissed)
+        XCTAssertEqual(dismissed.commitment.assignee, .me)
         XCTAssertNil(dismissed.commitment.canonicalPersonID)
         XCTAssertEqual(dismissed.commitment.dueAt, dueAt)
         XCTAssertEqual(
@@ -269,6 +405,25 @@ final class CommitmentContinuityStorageTests: XCTestCase {
         let reloaded = try await fixture.store.commitmentContinuityEnvelope(
             for: commitmentID)
         XCTAssertEqual(reloaded, dismissed)
+    }
+
+    func testMineAssigneeRoundTripsThroughPortableReplay() async throws {
+        let source = try MeetingStore.inMemory()
+        let destination = try MeetingStore.inMemory()
+        let envelope = try await source.confirmCommitment(
+            CommitmentConfirmation(
+                title: "Send the report",
+                assignee: .me,
+                origin: .manual(meetingID: nil)),
+            at: baseDate)
+
+        XCTAssertEqual(envelope.commitment.assignee, .me)
+        XCTAssertEqual(envelope.events.first?.assignee, .me)
+        let imported = try await destination.applyCommitmentContinuityEnvelope(envelope)
+        XCTAssertEqual(imported.commitment.assignee, .me)
+        let reloaded = try await destination.commitmentContinuityEnvelope(
+            for: envelope.commitment.id)
+        XCTAssertEqual(reloaded, imported)
     }
 
     func testInvalidLifecycleRollsBackEventAndProjection() async throws {

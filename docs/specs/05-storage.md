@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints), D182 (crash-safe backup-stage ownership), D183 (process-local destination identity), D184 (durable publication evidence), D185 (strict staged-source adoption), D186 (durable source checkpoints), D187 (pending-publication reconciliation), D188 (durable typed failure outcomes), D189 (launch recovery stage preservation), D230 (typed immutable transcript-correction history), D231 (atomic focused correction batches), D232 (append-only structural correction commands), D233 (correction-aware derived-artifact invalidation and publication fences), D234 (correction replica convergence and conflict fencing), D237 (confirmed-only commitment continuity), D238 (source-bound commitment review feedback).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints), D182 (crash-safe backup-stage ownership), D183 (process-local destination identity), D184 (durable publication evidence), D185 (strict staged-source adoption), D186 (durable source checkpoints), D187 (pending-publication reconciliation), D188 (durable typed failure outcomes), D189 (launch recovery stage preservation), D230 (typed immutable transcript-correction history), D231 (atomic focused correction batches), D232 (append-only structural correction commands), D233 (correction-aware derived-artifact invalidation and publication fences), D234 (correction replica convergence and conflict fencing), D237 (confirmed-only commitment continuity), D238 (source-bound commitment review feedback), D240 (typed commitment ownership).
 
 D190 adds explicit intentional suspension for owner-leased processing jobs.
 D198 adds exact source identity and compare-and-swap publication for semantic
@@ -100,15 +100,19 @@ commitments. Confirmation inserts the current projection, one explicit source,
 and the first `confirm` event atomically. Generated action items qualify only
 when their immutable evidence is nonempty, current-revision, live, and
 meeting-local; user notes and manual entries remain explicitly user-authored
-origins. Canonical ownership accepts only an exact live `PersonID`. Later
-transitions append one validated event and update the current projection in the
-same transaction; invalid lifecycle edges write nothing.
+origins. Ownership accepts the explicit local user, an exact live `PersonID`,
+or an unassigned state. Later transitions append one validated event and update
+the current projection in the same transaction; invalid lifecycle edges write
+nothing.
 
-The format-1 `CommitmentContinuityEnvelope` is a database-record-independent,
-canonically ordered replay representation. Exact replay is idempotent; identity
-reuse with different content fails closed. Imports require referenced meetings,
-notes/action items/evidence, and people to exist locally with exact identities
-before any row is inserted. This slice does not add the envelope to meeting
+The format-2 `CommitmentContinuityEnvelope` is a database-record-independent,
+canonically ordered replay representation with explicit `me`, `person`, and
+`unassigned` ownership. Its decoder accepts format 1 as exact-person or
+unassigned legacy truth and never guesses a local-user assignment. Exact replay
+is idempotent; identity reuse with different content fails closed. Imports
+require referenced meetings, notes/action items/evidence, and people to exist
+locally with exact identities before any row is inserted. This boundary does
+not add the envelope to meeting
 bundles, the CloudKit meeting replica, CLI, MCP, or a user-facing import/export
 surface.
 
@@ -121,14 +125,22 @@ confirmed commitment against action items from the newest live summary in one
 bounded database snapshot; older regenerated sources retain no inherited
 feedback.
 
-Local confirmation and format-1 replay tombstone matching review feedback in
-the same transaction that inserts confirmed continuity. A unique partial index
-on generated-action source identity prevents one action item from confirming
-multiple commitments. The migration deliberately does not deduplicate legacy
-rows: no product confirmation surface existed before v21, so an impossible
-duplicate fails migration rather than being guessed away. Review feedback is
-not yet part of bundles, the meeting CloudKit aggregate, CLI, MCP, or any user-
-facing import/export contract.
+Local confirmation and compatible continuity replay tombstone matching review
+feedback in the same transaction that inserts confirmed continuity. A unique
+partial index on generated-action source identity prevents one action item from
+confirming multiple commitments. The migration deliberately does not
+deduplicate legacy rows: no product confirmation surface existed before v21,
+so an impossible duplicate fails migration rather than being guessed away.
+Review feedback is not yet part of bundles, the meeting CloudKit aggregate,
+CLI, MCP, or any user-facing import/export contract.
+
+Schema v22 adds `assigneeKind` to the current commitment projection and its
+assignment events. Legacy rows with an exact person become `person`; all other
+legacy owners become `unassigned`. The migration performs only that controlled
+backfill before restoring immutable-history enforcement. Insert/update triggers
+then require `person` to carry exactly one canonical ID and require `me` and
+`unassigned` to carry none. The schema does not infer self, add a Radar query,
+or extend any sync/export surface.
 
 `ManageMeetingCommitmentInbox` is the only product command used by the visual
 confirmation surface. Its `MeetingCommitmentReviewRepository` adapter delegates
@@ -136,8 +148,9 @@ to the existing atomic Store operations for confirm, dismiss, defer, and
 restore; SwiftUI never receives a Store or record type. Confirmation therefore
 reuses current-evidence, exact-person, unique-source, and feedback-tombstone
 validation instead of duplicating those rules in presentation. The UI may
-collect edited wording and a user-entered due date, but StorageKit still accepts
-them only through the confirmed aggregate boundary.
+collect edited wording, explicit self/person/unassigned ownership, and a
+user-entered due date, but StorageKit still accepts them only through the
+confirmed aggregate boundary.
 
 `appendTranscriptCorrection` canonicalizes timestamps to persisted
 milliseconds, validates portable history plus current meeting/revision/targets,

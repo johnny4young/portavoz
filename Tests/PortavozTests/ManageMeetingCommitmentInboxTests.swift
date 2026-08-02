@@ -74,6 +74,22 @@ final class ManageMeetingCommitmentInboxTests: XCTestCase {
         let recordedDecisions = await repository.decisions
         XCTAssertEqual(recordedDecisions.count, 3)
     }
+
+    func testConfirmationPreservesExplicitSelfAssignment() async throws {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let repository = CommitmentReviewRepositoryFake()
+        let useCase = ManageMeetingCommitmentInbox(repository: repository, now: { now })
+
+        let commitment = try await useCase.confirm(ConfirmMeetingCommitmentRequest(
+            meetingID: MeetingID(),
+            actionItemID: UUID(),
+            title: "Send the report",
+            assignee: .me))
+
+        let calls = await repository.confirmations
+        XCTAssertEqual(calls.first?.confirmation.assignee, .me)
+        XCTAssertEqual(commitment.assignee, .me)
+    }
 }
 
 private actor CommitmentReviewRepositoryFake: MeetingCommitmentReviewRepository {
@@ -102,7 +118,7 @@ private actor CommitmentReviewRepositoryFake: MeetingCommitmentReviewRepository 
             id: confirmation.eventID,
             commitmentID: confirmation.commitmentID,
             kind: .confirm,
-            canonicalPersonID: confirmation.canonicalPersonID,
+            assignee: confirmation.assignee,
             dueAt: confirmation.dueAt,
             occurredAt: date)
         let commitment = try CommitmentContinuityPolicy.projectedCommitment(

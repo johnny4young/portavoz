@@ -210,7 +210,7 @@
     {
       "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
       "category": "control",
-      "source": "Picker(\"Owner\", selection: $ownerID) {",
+      "source": "Picker(\"Owner\", selection: $assignee) {",
       "occurrences": 1
     },
     {
@@ -229,7 +229,7 @@
       "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(",
-      "occurrences": 1
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
@@ -306,6 +306,18 @@
     {
       "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-owner-me\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-owner-unassigned\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-commitment-inbox\")",
       "occurrences": 1
     },
@@ -336,6 +348,12 @@
     {
       "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
       "category": "state",
+      "source": "@State private var assignee: CommitmentAssignee",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
       "source": "@State private var dueAt: Date",
       "occurrences": 1
     },
@@ -355,12 +373,6 @@
       "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
       "category": "state",
       "source": "@State private var isSaving = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
-      "category": "state",
-      "source": "@State private var ownerID: PersonID?",
       "occurrences": 1
     },
     {
@@ -2271,7 +2283,8 @@
         }
       ],
       "screenshots": [
-        "meeting-detail-commitment-inbox"
+        "meeting-detail-commitment-inbox",
+        "meeting-detail-commitment-self-assignment"
       ]
     },
     {

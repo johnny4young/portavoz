@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,696 cases (16 environment-gated) + 60
+Status: the package inventory contains 1,727 cases (13 environment-gated) + 61
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -12,7 +12,7 @@ the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
 Meeting Detail tests. The latest full English and Spanish release gates each
-cover all 60 cases and retain app-only
+cover all 61 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
 revision-fenced Meeting Detail metadata and explicit name suggestions, claim
@@ -27,7 +27,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 498 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 499 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1330,8 +1330,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,723 XCTest package cases (13
-environment-gated), zero strict-lint violations across 498 Swift
+The current field-reliability inventory is 1,727 XCTest package cases (13
+environment-gated), zero strict-lint violations across 499 Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 61 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package
@@ -1492,7 +1492,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   not substitute for the real-time physical-footprint or route matrix.
 - `make test-meeting-detail-baseline`: verifies the canonical source-derived
   interaction/feature-owner contract and the fail-closed Instruments parser.
-  The contract currently covers 369 interaction signals across 31 source
+  The contract currently covers 371 interaction signals across 31 source
   files, twelve owners, and all 27 Meeting Detail UI journeys; both missing and
   duplicate ownership fail. Architecture ratchets also cap the route
   composition view at 500 lines; reject direct model sends, route bindings,

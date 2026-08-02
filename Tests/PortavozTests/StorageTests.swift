@@ -40,7 +40,7 @@ final class MeetingStoreTests: XCTestCase {
         return (ana, segments)
     }
 
-    // MARK: - Schema v9-v21 evidence, review, sync, corrections, and continuity
+    // MARK: - Schema v9-v22 evidence, review, sync, corrections, and continuity
 
     func testV8MigratesAdditivelyThroughMeetingSyncSchema() throws {
         let database = try DatabaseQueue()
@@ -102,7 +102,7 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 21)
+            XCTAssertEqual(StorageSchema.version, 22)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])
@@ -139,7 +139,7 @@ final class MeetingStoreTests: XCTestCase {
             XCTAssertEqual(
                 try Set(db.columns(in: "commitment").map(\.name)),
                 [
-                    "id", "canonicalPersonID", "title", "status", "dueAt",
+                    "id", "assigneeKind", "canonicalPersonID", "title", "status", "dueAt",
                     "createdAt", "updatedAt", "deletedAt",
                 ])
             XCTAssertEqual(
@@ -154,8 +154,8 @@ final class MeetingStoreTests: XCTestCase {
             XCTAssertEqual(
                 try Set(db.columns(in: "commitmentEvent").map(\.name)),
                 [
-                    "id", "commitmentID", "kind", "canonicalPersonID", "dueAt",
-                    "sourceMeetingID", "occurredAt",
+                    "id", "commitmentID", "kind", "assigneeKind", "canonicalPersonID",
+                    "dueAt", "sourceMeetingID", "occurredAt",
                 ])
             for table in [
                 "commitment", "commitmentSource", "commitmentEvidenceSegment",
@@ -175,6 +175,7 @@ final class MeetingStoreTests: XCTestCase {
             XCTAssertTrue(continuityIndexes.isSuperset(of: [
                 "commitment_on_status_dueAt",
                 "commitment_on_person_status",
+                "commitment_on_assignee_status",
                 "commitmentSource_on_commitment",
                 "commitmentSource_on_meeting",
                 "commitmentSource_on_actionItem",

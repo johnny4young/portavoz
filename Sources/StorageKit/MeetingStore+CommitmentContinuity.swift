@@ -12,7 +12,7 @@ extension MeetingStore {
         let timestamp = Self.canonicalCommitmentDate(proposedDate)
         return try await database.write { database in
             try Self.validateLivePerson(
-                confirmation.canonicalPersonID,
+                confirmation.assignee.canonicalPersonID,
                 in: database)
             let source = try Self.confirmationSource(
                 confirmation,
@@ -29,7 +29,7 @@ extension MeetingStore {
                 id: confirmation.eventID,
                 commitmentID: confirmation.commitmentID,
                 kind: .confirm,
-                canonicalPersonID: confirmation.canonicalPersonID,
+                assignee: confirmation.assignee,
                 dueAt: confirmation.dueAt.map(Self.canonicalCommitmentDate),
                 sourceMeetingID: source.meetingID,
                 occurredAt: timestamp)
@@ -73,8 +73,8 @@ extension MeetingStore {
                 id: commitmentID,
                 in: database)
             try Self.validateLiveMeeting(sourceMeetingID, in: database)
-            if case .reassign(let personID) = transition {
-                try Self.validateLivePerson(personID, in: database)
+            if case .reassign(let assignee) = transition {
+                try Self.validateLivePerson(assignee.canonicalPersonID, in: database)
             }
             let lastDate = current.events.last?.occurredAt ?? current.commitment.updatedAt
             let requested = Self.canonicalCommitmentDate(proposedDate)
@@ -260,12 +260,12 @@ private extension MeetingStore {
         occurredAt: Date
     ) -> CommitmentEvent {
         switch transition {
-        case .reassign(let personID):
+        case .reassign(let assignee):
             return CommitmentEvent(
                 id: id,
                 commitmentID: commitmentID,
                 kind: .reassign,
-                canonicalPersonID: personID,
+                assignee: assignee,
                 sourceMeetingID: sourceMeetingID,
                 occurredAt: occurredAt)
         case .reschedule(let dueAt):
@@ -444,7 +444,7 @@ private extension MeetingStore {
                 id: event.id,
                 commitmentID: event.commitmentID,
                 kind: event.kind,
-                canonicalPersonID: event.canonicalPersonID,
+                assignee: event.assignee,
                 dueAt: event.dueAt.map(canonicalCommitmentDate),
                 sourceMeetingID: event.sourceMeetingID,
                 occurredAt: canonicalCommitmentDate(event.occurredAt))

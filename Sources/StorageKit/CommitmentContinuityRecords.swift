@@ -6,6 +6,7 @@ struct CommitmentRecord: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "commitment"
 
     var id: String
+    var assigneeKind: String
     var canonicalPersonID: String?
     var title: String
     var status: String
@@ -16,6 +17,7 @@ struct CommitmentRecord: Codable, FetchableRecord, PersistableRecord {
 
     init(_ commitment: Commitment) {
         id = commitment.id.rawValue.uuidString
+        assigneeKind = commitment.assignee.kind.rawValue
         canonicalPersonID = commitment.canonicalPersonID?.rawValue.uuidString
         title = commitment.title
         status = commitment.status.rawValue
@@ -33,16 +35,26 @@ struct CommitmentRecord: Codable, FetchableRecord, PersistableRecord {
                     column: "status",
                     value: self.status)
             }
+            guard let kind = CommitmentAssigneeKind(rawValue: assigneeKind),
+                  let assignee = CommitmentAssignee(
+                      kind: kind,
+                      canonicalPersonID: try PersistedIdentity.optional(
+                          canonicalPersonID,
+                          table: Self.databaseTableName,
+                          column: "canonicalPersonID"
+                      ).map { PersonID(rawValue: $0) })
+            else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "assigneeKind",
+                    value: assigneeKind)
+            }
             return Commitment(
                 id: CommitmentID(rawValue: try PersistedIdentity.required(
                     id, table: Self.databaseTableName, column: "id")),
                 title: title,
                 status: status,
-                canonicalPersonID: try PersistedIdentity.optional(
-                    canonicalPersonID,
-                    table: Self.databaseTableName,
-                    column: "canonicalPersonID"
-                ).map { PersonID(rawValue: $0) },
+                assignee: assignee,
                 dueAt: dueAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -148,6 +160,7 @@ struct CommitmentEventRecord: Codable, FetchableRecord, PersistableRecord {
     var id: String
     var commitmentID: String
     var kind: String
+    var assigneeKind: String?
     var canonicalPersonID: String?
     var dueAt: Date?
     var sourceMeetingID: String?
@@ -157,6 +170,7 @@ struct CommitmentEventRecord: Codable, FetchableRecord, PersistableRecord {
         id = event.id.rawValue.uuidString
         commitmentID = event.commitmentID.rawValue.uuidString
         kind = event.kind.rawValue
+        assigneeKind = event.assignee?.kind.rawValue
         canonicalPersonID = event.canonicalPersonID?.rawValue.uuidString
         dueAt = event.dueAt
         sourceMeetingID = event.sourceMeetingID?.rawValue.uuidString
@@ -171,6 +185,33 @@ struct CommitmentEventRecord: Codable, FetchableRecord, PersistableRecord {
                     column: "kind",
                     value: self.kind)
             }
+            let personID = try PersistedIdentity.optional(
+                canonicalPersonID,
+                table: Self.databaseTableName,
+                column: "canonicalPersonID"
+            ).map { PersonID(rawValue: $0) }
+            let assignee: CommitmentAssignee?
+            if let assigneeKind {
+                guard let value = CommitmentAssigneeKind(rawValue: assigneeKind),
+                      let decoded = CommitmentAssignee(
+                          kind: value,
+                          canonicalPersonID: personID)
+                else {
+                    throw StorageError.invalidPersistedValue(
+                        table: Self.databaseTableName,
+                        column: "assigneeKind",
+                        value: assigneeKind)
+                }
+                assignee = decoded
+            } else {
+                guard personID == nil else {
+                    throw StorageError.invalidPersistedValue(
+                        table: Self.databaseTableName,
+                        column: "canonicalPersonID",
+                        value: canonicalPersonID ?? "")
+                }
+                assignee = nil
+            }
             return CommitmentEvent(
                 id: CommitmentEventID(rawValue: try PersistedIdentity.required(
                     id, table: Self.databaseTableName, column: "id")),
@@ -179,11 +220,7 @@ struct CommitmentEventRecord: Codable, FetchableRecord, PersistableRecord {
                     table: Self.databaseTableName,
                     column: "commitmentID")),
                 kind: kind,
-                canonicalPersonID: try PersistedIdentity.optional(
-                    canonicalPersonID,
-                    table: Self.databaseTableName,
-                    column: "canonicalPersonID"
-                ).map { PersonID(rawValue: $0) },
+                assignee: assignee,
                 dueAt: dueAt,
                 sourceMeetingID: try PersistedIdentity.optional(
                     sourceMeetingID,

@@ -8178,3 +8178,32 @@ similarity, aliases, free-text dates, and model scores are not admission rules.
 The visual surface does not select a candidate engine, infer deadlines, create a
 Radar query, or extend bundle, CloudKit, CLI, or MCP contracts. Future read
 models can consume only the confirmed aggregate without depending on this UI.
+
+## D240 — Keep self, participant, and unassigned commitment ownership distinct (Aug 2026)
+
+**Context:** confirmed continuity stored only an optional canonical `PersonID`.
+That value could identify an external participant or be absent, but the
+structural local `Me` speaker is deliberately not a canonical person. Treating
+nil as both self and unassigned would make ownership filters dishonest, while
+creating a person for `Me` would violate the identity boundary.
+
+**Decision:** represent commitment ownership in PortavozCore as exactly one of
+`me`, `person(PersonID)`, or `unassigned`. Schema v22 adds the corresponding
+kind to the current projection and confirm/reassign events. Legacy rows with an
+exact person migrate to `person`; every legacy nil owner migrates to
+`unassigned`. The migration never infers self and restores immutable event
+history before application writes resume. Database triggers reject every
+kind/person mismatch.
+
+The continuity envelope advances to format 2 and writes the typed owner. Its
+decoder accepts format 1 by mapping an exact person to `person` and nil to
+`unassigned`; format 1 cannot represent self. Meeting Detail adds an explicit
+localized `Me` choice beside exact canonical participants and `Unassigned`.
+ApplicationKit carries that typed choice unchanged to the existing confirmed-
+only persistence boundary.
+
+**Consequences:** future read models can distinguish mine, others, and
+unassigned without name matching or synthetic identity. Existing libraries and
+portable format-1 data remain readable without retroactive guesses. This
+decision does not add a Radar query, candidate engine, automatic ownership,
+deadline inference, bundle field, CloudKit transport, CLI, or MCP contract.

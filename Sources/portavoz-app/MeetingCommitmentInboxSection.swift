@@ -11,7 +11,7 @@ struct MeetingCommitmentInboxValues {
 struct MeetingCommitmentInboxActions {
     let focusEvidence: @MainActor (TranscriptSegment) -> Void
     let confirm:
-        @MainActor (CommitmentInboxCandidate, String, PersonID?, Date?) async -> Bool
+        @MainActor (CommitmentInboxCandidate, String, CommitmentAssignee, Date?) async -> Bool
     let dismiss: @MainActor (CommitmentInboxCandidate) async -> Bool
     let deferUntil: @MainActor (CommitmentInboxCandidate, Date) async -> Bool
 }
@@ -51,8 +51,8 @@ struct MeetingCommitmentInboxSection: View {
                     candidate: candidate,
                     ownerChoices: values.ownerChoices,
                     cancel: { editingCandidate = nil },
-                    confirm: { title, ownerID, dueAt in
-                        await actions.confirm(candidate, title, ownerID, dueAt)
+                    confirm: { title, assignee, dueAt in
+                        await actions.confirm(candidate, title, assignee, dueAt)
                     })
             }
         }
@@ -183,10 +183,10 @@ private struct MeetingCommitmentConfirmationSheet: View {
     let candidate: CommitmentInboxCandidate
     let ownerChoices: [CommitmentOwnerSuggestion]
     let cancel: @MainActor () -> Void
-    let confirm: @MainActor (String, PersonID?, Date?) async -> Bool
+    let confirm: @MainActor (String, CommitmentAssignee, Date?) async -> Bool
 
     @State private var title: String
-    @State private var ownerID: PersonID?
+    @State private var assignee: CommitmentAssignee
     @State private var includesDueDate: Bool
     @State private var dueAt: Date
     @State private var isSaving = false
@@ -195,14 +195,16 @@ private struct MeetingCommitmentConfirmationSheet: View {
         candidate: CommitmentInboxCandidate,
         ownerChoices: [CommitmentOwnerSuggestion],
         cancel: @escaping @MainActor () -> Void,
-        confirm: @escaping @MainActor (String, PersonID?, Date?) async -> Bool
+        confirm: @escaping @MainActor (String, CommitmentAssignee, Date?) async -> Bool
     ) {
         self.candidate = candidate
         self.ownerChoices = ownerChoices
         self.cancel = cancel
         self.confirm = confirm
         _title = State(initialValue: candidate.actionItem.text)
-        _ownerID = State(initialValue: candidate.suggestedOwner?.personID)
+        _assignee = State(initialValue: candidate.suggestedOwner.map {
+            CommitmentAssignee.person($0.personID)
+        } ?? .unassigned)
         _includesDueDate = State(initialValue: candidate.suggestedDueAt != nil)
         _dueAt = State(initialValue: candidate.suggestedDueAt
             ?? Date().addingTimeInterval(24 * 60 * 60))
@@ -220,10 +222,18 @@ private struct MeetingCommitmentConfirmationSheet: View {
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("commitment-editor-title")
 
-            Picker("Owner", selection: $ownerID) {
-                Text("Unassigned").tag(nil as PersonID?)
+            Picker("Owner", selection: $assignee) {
+                Text("Me")
+                    .tag(CommitmentAssignee.me)
+                    .accessibilityIdentifier("commitment-owner-me")
+                Text("Unassigned")
+                    .tag(CommitmentAssignee.unassigned)
+                    .accessibilityIdentifier("commitment-owner-unassigned")
                 ForEach(ownerChoices, id: \.personID) { owner in
-                    Text(owner.displayName).tag(owner.personID as PersonID?)
+                    Text(owner.displayName)
+                        .tag(CommitmentAssignee.person(owner.personID))
+                        .accessibilityIdentifier(
+                            "commitment-owner-person-\(owner.personID.rawValue.uuidString)")
                 }
             }
             .accessibilityIdentifier("commitment-editor-owner")
@@ -264,7 +274,7 @@ private struct MeetingCommitmentConfirmationSheet: View {
         Task {
             let saved = await confirm(
                 normalizedTitle,
-                ownerID,
+                assignee,
                 includesDueDate ? dueAt : nil)
             if saved {
                 cancel()

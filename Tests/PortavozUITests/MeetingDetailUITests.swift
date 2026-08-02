@@ -673,6 +673,15 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-editor").waitForExistence(timeout: 5),
             "the user must get one explicit wording, owner, and deadline review boundary")
+        let ownerPicker = app.control(withIdentifier: "commitment-editor-owner")
+        XCTAssertTrue(ownerPicker.waitForExistence(timeout: 5))
+        ownerPicker.click()
+        let me = app.menuItems["commitment-owner-me"]
+        XCTAssertTrue(
+            me.waitForExistence(timeout: 5),
+            "the local user must be distinct from an external person and an unassigned owner")
+        me.click()
+        attachScreenshot(of: app, named: "meeting-detail-commitment-self-assignment")
         app.control(withIdentifier: "commitment-editor-confirm").click()
 
         let removed = expectation(

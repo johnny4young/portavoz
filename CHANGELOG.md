@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 2, 2026
 
+- **🙋 Commitments know when they are yours** — The confirmation editor now distinguishes “Me” from an exact participant and from no owner, so personal work stays explicit across review and future follow-up.
 - **✅ Commitments wait for your confirmation** — Review the exact transcript evidence, edit ownership or deadlines, and confirm, defer, or dismiss a proposed commitment without turning an AI suggestion into user truth.
 - **📤 Corrected words travel safely** — Markdown, PDF, SRT, WebVTT, terminal, and Gist exports now use the corrected reading, can disclose correction provenance on request, and keep every playback time tied to the original recording.
 

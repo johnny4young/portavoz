@@ -6,7 +6,7 @@ extension MeetingDetailCoordinator {
     func confirmCommitment(
         _ candidate: CommitmentInboxCandidate,
         title: String,
-        ownerID: PersonID?,
+        assignee: CommitmentAssignee,
         dueAt: Date?
     ) async -> Bool {
         let effect = await model.send(.confirmCommitment(
@@ -14,7 +14,7 @@ extension MeetingDetailCoordinator {
                 meetingID: meetingID,
                 actionItemID: candidate.actionItem.id,
                 title: title,
-                canonicalPersonID: ownerID,
+                assignee: assignee,
                 dueAt: dueAt)))
         guard case .commitmentConfirmed = effect else { return false }
         return true

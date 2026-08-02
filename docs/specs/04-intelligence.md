@@ -151,8 +151,11 @@ adds no IntelligenceKit engine, does not infer a deadline, and can suggest an
 owner only through an exact canonical person already linked to the observed
 speaker. D239 presents that projection in Meeting Detail and requires exact
 current evidence plus explicit user editing before confirmation. The UI may
-accept a user-entered owner or date, but neither value becomes a model output or
-candidate-quality result. No Radar read model or automatic promotion exists.
+accept an explicit local-user, exact-person, or unassigned owner plus a
+user-entered date, but none becomes a model output or candidate-quality result.
+D240 keeps those three ownership states distinct in continuity storage without
+changing candidate generation. No Radar read model or automatic promotion
+exists.
 
 ## Human claim feedback is not model material (D88)
 

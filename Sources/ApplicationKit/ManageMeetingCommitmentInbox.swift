@@ -23,22 +23,39 @@ public struct ConfirmMeetingCommitmentRequest: Sendable, Equatable {
     public let meetingID: MeetingID
     public let actionItemID: UUID
     public let title: String
-    public let canonicalPersonID: PersonID?
+    public let assignee: CommitmentAssignee
     public let dueAt: Date?
 
     public init(
         meetingID: MeetingID,
         actionItemID: UUID,
         title: String,
-        canonicalPersonID: PersonID? = nil,
+        assignee: CommitmentAssignee = .unassigned,
         dueAt: Date? = nil
     ) {
         self.meetingID = meetingID
         self.actionItemID = actionItemID
         self.title = title
-        self.canonicalPersonID = canonicalPersonID
+        self.assignee = assignee
         self.dueAt = dueAt
     }
+
+    public init(
+        meetingID: MeetingID,
+        actionItemID: UUID,
+        title: String,
+        canonicalPersonID: PersonID?,
+        dueAt: Date? = nil
+    ) {
+        self.init(
+            meetingID: meetingID,
+            actionItemID: actionItemID,
+            title: title,
+            assignee: canonicalPersonID.map(CommitmentAssignee.person) ?? .unassigned,
+            dueAt: dueAt)
+    }
+
+    public var canonicalPersonID: PersonID? { assignee.canonicalPersonID }
 }
 
 public enum ReviewMeetingCommitmentRequest: Sendable, Equatable {
@@ -106,7 +123,7 @@ public struct ManageMeetingCommitmentInbox: ApplicationUseCase {
         let envelope = try await repository.confirmCommitment(
             CommitmentConfirmation(
                 title: title,
-                canonicalPersonID: request.canonicalPersonID,
+                assignee: request.assignee,
                 dueAt: request.dueAt,
                 origin: .generatedActionItem(request.actionItemID)),
             at: timestamp)

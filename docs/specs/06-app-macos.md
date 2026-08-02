@@ -310,7 +310,7 @@ available, durable Undo restores each active lane, structural rows fail closed
 with guidance, and every control has keyboard and accessibility reachability.
 At that decision boundary, search, summaries, exports, and generated evidence
 remained accepted-only. The
-reviewed boundary now covers 369 signals across twelve owners and 27 UI
+reviewed boundary now covers 371 signals across twelve owners and 27 UI
 journeys. D232 keeps structural policy in ApplicationKit: the focused surface
 offers only validated explicit merge neighbors, split inputs and timing, and
 recoverable hide-as-noise. Hidden accepted evidence remains reachable after the
@@ -1798,15 +1798,18 @@ exercises this same production path in the durable-resume XCUITest (D63).
 - **Commitment confirmation (D239):** a separate section renders only pending
   newest-summary candidates with current source evidence. Every candidate has
   its own source seek, dismiss, and bounded defer choices; bulk actions cannot
-  hide evidence. `Review and confirm…` opens an editor for wording, one exact
-  canonical owner or no owner, and an optional user-entered date. The action is
-  disabled for stale or missing evidence. The section owns transient editor and
-  progress state only; its immutable values and explicit intents route through
-  `MeetingDetailModel`, `MeetingDetailCoordinator`, and
+  hide evidence. `Review and confirm…` opens an editor for wording, the local
+  user, one exact canonical participant, or no owner, plus an optional user-
+  entered date. The action is disabled for stale or missing evidence. The
+  section owns transient editor and progress state only; its immutable values
+  and explicit intents route through `MeetingDetailModel`,
+  `MeetingDetailCoordinator`, and
   `ManageMeetingCommitmentInbox`. The UI neither imports StorageKit nor infers a
-  person or deadline. All controls have stable accessibility identifiers and a
-  dedicated disposable `-seed-commitment-inbox` fixture verifies the English
-  and Spanish journey without changing the default seed's identity behavior.
+  person or deadline. The three ownership states remain distinct after
+  persistence and portable replay. All controls have stable accessibility
+  identifiers and a dedicated disposable `-seed-commitment-inbox` fixture
+  verifies the English and Spanish journey without changing the default seed's
+  identity behavior.
 - **Summary sources (D87):** the overview tab renders compact localized
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source

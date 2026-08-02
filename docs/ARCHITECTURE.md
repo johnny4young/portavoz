@@ -988,7 +988,7 @@ or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
 Meeting Detail decomposition is also preceded by a frozen presentation
-boundary. A generated contract inventories 369 interaction signals across
+boundary. A generated contract inventories 371 interaction signals across
 31 source files,
 assigns all 27 detail XCUITest journeys to exactly one of twelve feature owners,
 and digest-binds the reviewed performance harness and evidence. Hidden
@@ -1060,12 +1060,15 @@ complete, reopen, or dismiss transition. The title and creation identity plus
 all history rows are database-immutable. Current owner and due date are derived
 from the event sequence and updated atomically with each appended event. An
 existing action item can cross the boundary only when its immutable evidence is
-nonempty, current-revision, live, and from the same meeting. A canonical owner
-is accepted only by exact live `PersonID`; aliases and display-name similarity
-never assign continuity state.
+nonempty, current-revision, live, and from the same meeting. A participant owner
+is accepted only by exact live `PersonID`; the structural local speaker is
+represented independently as `me`, and an absent owner as `unassigned`.
+Aliases and display-name similarity never assign continuity state.
 
-`PortavozCore` owns the strict lifecycle and a canonical format-1 continuity
-envelope. `StorageKit` exports and replays that representation idempotently,
+`PortavozCore` owns the strict lifecycle and a canonical format-2 continuity
+envelope. Its decoder still accepts format 1, which can represent only an exact
+person or an unassigned owner. `StorageKit` exports and replays the current
+representation idempotently,
 requiring exact local source, meeting, evidence, and person identities before
 writing anything. It is a transport-neutral backup/sync contract, not yet part
 of the per-meeting `.portavoz` bundle, meeting CloudKit replica, CLI, MCP, or
@@ -1089,15 +1092,24 @@ index prevents one generated action item from backing multiple commitments.
 Summary regeneration creates fresh action-item identities and therefore does
 not inherit prior feedback.
 
+Schema v22 types commitment ownership as `me`, `person`, or `unassigned` on
+both the current projection and assignment events. Existing rows migrate to
+`person` only when an exact `PersonID` already exists and otherwise to
+`unassigned`; migration never guesses that a legacy nil owner meant the local
+user. Database triggers reject mismatched kind/person payloads, and the portable
+format-2 envelope preserves explicit self-assignment while retaining format-1
+read compatibility.
+
 Meeting Detail renders that reconciliation as an independent evidence-first
 section. Presentation receives immutable candidates and sends explicit intents
 through `MeetingDetailModel` to `ManageMeetingCommitmentInbox`; SwiftUI never
 opens StorageKit or constructs persistence. Confirmation stays disabled unless
 the source resolves to current live transcript evidence. The editor may change
-wording, choose an exact canonical person or no owner, and add a user-entered
-date; it never infers ownership or a deadline. Dismiss and defer remain
+wording, explicitly choose the local user, choose an exact canonical person,
+leave the owner unassigned, and add a user-entered date; it never infers
+ownership or a deadline. Dismiss and defer remain
 source-bound review feedback, and each candidate keeps its own evidence seek
-before any action. Schema v21 still adds no candidate-admission engine, Radar
+before any action. Schema v22 still adds no candidate-admission engine, Radar
 query, bundle field, CloudKit transport, CLI, or MCP contract.
 
 The focused correction command is the first product adoption of this durability
@@ -2757,14 +2769,14 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,360 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,727 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 411 Swift source files;
-- 55 XCUITest cases define the English and Spanish release gate;
+- strict SwiftLint reports zero violations across 499 Swift source files;
+- 61 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and
