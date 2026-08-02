@@ -71,6 +71,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         justRecorded: Bool = false,
         processingFailure: Bool = false,
         withoutSummary: Bool = false,
+        staleDerived: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
         unnamedSpeaker: Bool = false,
         aiSuggestions: Bool = false,
@@ -83,6 +84,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             seedJustRecorded: justRecorded,
             seedProcessingFailure: processingFailure,
             seedWithoutSummary: withoutSummary,
+            seedStaleDerived: staleDerived,
             simulateSequoiaCapabilities: simulateSequoiaCapabilities)
         if justRecorded {
             app.launchArguments += ["-mirrorAfterMeeting", "true"]
@@ -119,6 +121,36 @@ final class MeetingDetailUITests: PortavozUITestCase {
         wait(for: [settled], timeout: 10)
         meeting.click()
         return app
+    }
+
+    @MainActor
+    func testCorrectedTranscriptMarksDerivedArtifactsStale() {
+        let app = launchOnSeededMeeting(staleDerived: true)
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-stale-summary")
+                .waitForExistence(timeout: 10),
+            "a summary generated before the correction must be labelled stale")
+        XCTAssertTrue(
+            app.buttons["detail-stale-summary-regenerate"].exists,
+            "the stale summary must expose explicit on-demand regeneration")
+        XCTAssertFalse(
+            app.buttons["detail-thin-summary-suggestion"].exists,
+            "a stale summary must not compete with an unrelated thin-summary suggestion")
+        XCTAssertTrue(
+            app.control(
+                withIdentifier:
+                    "apuntador-card-B5F00000-0000-4000-8000-000000000002-stale")
+                .waitForExistence(timeout: 10),
+            "an Apuntador answer generated before the correction must be labelled stale")
+        XCTAssertFalse(
+            app.control(
+                withIdentifier:
+                    "apuntador-card-B5F00000-0000-4000-8000-000000000002-answer-evidence-0")
+                .exists,
+            "stale evidence must not remain an actionable jump")
+        attachScreenshot(of: app, named: "meeting-detail-stale-derived-artifacts")
     }
 
     @MainActor

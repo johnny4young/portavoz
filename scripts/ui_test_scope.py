@@ -124,6 +124,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "MeetingDetailUITests",
             "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence",
         ),
+        test_id(
+            "MeetingDetailUITests",
+            "testCorrectedTranscriptMarksDerivedArtifactsStale",
+        ),
     ),
     "settings-navigation": (
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
@@ -276,7 +280,7 @@ def app_features(filename: str) -> set[str]:
     if "meetingdetailheadersection" in lowered:
         return {"meeting-export", "meeting-naming", "meeting-processing"}
     if "meetinggenerateddocumentsection" in lowered:
-        return {"meeting-evidence", "meeting-summary"}
+        return {"meeting-correction", "meeting-evidence", "meeting-summary"}
     if "meetingdetailtrustsection" in lowered:
         return {"meeting-health", "meeting-processing"}
     if "meetingdetailactionsection" in lowered:
@@ -285,6 +289,7 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-naming"}
     if "meetingdetailcoordinator+documents" in lowered:
         return {
+            "meeting-correction",
             "meeting-evidence",
             "meeting-export",
             "meeting-processing",
@@ -309,7 +314,9 @@ def app_features(filename: str) -> set[str]:
     if "meetingdetailplaybacknavigation" in lowered:
         return {"meeting-audio", "meeting-evidence", "meeting-performance"}
     if "meetingdetailrailsection" in lowered:
-        return {"meeting-evidence", "meeting-health", "meeting-processing"}
+        return {
+            "meeting-correction", "meeting-evidence", "meeting-health", "meeting-processing"
+        }
     if "meetingdetailplayersection" in lowered:
         return {"meeting-audio"}
     if "meetingdetailflowstate" in lowered:
@@ -348,9 +355,12 @@ def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
     if lowered in {
         "sources/applicationkit/correctmeetingtranscript.swift",
+        "sources/applicationkit/meetingtranscriptgenerationmaterial.swift",
         "sources/applicationkit/restructuremeetingtranscript.swift",
         "sources/portavozcore/transcriptcorrection.swift",
+        "sources/portavozcore/transcriptcorrectionrevision.swift",
         "sources/storagekit/meetingstore+transcriptcorrections.swift",
+        "sources/storagekit/meetingstore+transcriptprojection.swift",
         "sources/storagekit/schema+transcriptcorrection.swift",
         "sources/storagekit/transcriptcorrectionrecords.swift",
     }:

@@ -9,6 +9,7 @@ struct MeetingDetailRailValues {
     let segments: [TranscriptSegment]
     let chapters: [MeetingTranscriptContent.Chapter]
     let companionCards: [CompanionCard]
+    let companionFreshness: [UUID: DerivedArtifactFreshness]
     let transcriptRevision: Int
     let hasPlayback: Bool
     let presentation: MeetingDetailPresentation
@@ -65,6 +66,7 @@ struct MeetingDetailRailSection: View {
                         MeetingDetailCompanionSection(
                             values: MeetingDetailCompanionValues(
                                 cards: values.companionCards,
+                                freshnessByCardID: values.companionFreshness,
                                 transcriptRevision: values.transcriptRevision,
                                 segments: values.segments,
                                 hasPlayback: values.hasPlayback,
@@ -87,6 +89,7 @@ struct MeetingDetailRailSection: View {
 
 struct MeetingDetailCompanionValues {
     let cards: [CompanionCard]
+    let freshnessByCardID: [UUID: DerivedArtifactFreshness]
     let transcriptRevision: Int
     let segments: [TranscriptSegment]
     let hasPlayback: Bool
@@ -130,6 +133,14 @@ struct MeetingDetailCompanionSection: View {
     private func cardRow(_ card: CompanionCard) -> some View {
         let tint: Color = card.directed ? .orange : PVDesign.accent
         return VStack(alignment: .leading, spacing: 5) {
+            if values.freshnessByCardID[card.id] == .stale {
+                Label(
+                    "Transcript changed — this answer may be out of date.",
+                    systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("apuntador-card-\(card.id.uuidString)-stale")
+            }
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Button { actions.seekAndPlay(card.askedAt) } label: {
                     Text(values.presentation.clock(card.askedAt, paddedMinutes: true))
@@ -184,17 +195,18 @@ struct MeetingDetailCompanionSection: View {
     @ViewBuilder
     private func evidence(_ card: CompanionCard) -> some View {
         if let evidence = card.evidence {
-            let question = evidence.resolveQuestion(
+            let question = currentResolution(evidence.resolveQuestion(
                 currentTranscriptRevision: values.transcriptRevision,
-                segments: values.segments)
+                segments: values.segments), cardID: card.id)
             VStack(alignment: .leading, spacing: 5) {
                 evidenceRole(
                     L10n.text("Question source"),
                     resolution: question,
                     identifier: "apuntador-card-\(card.id.uuidString)-question")
-                if let answer = evidence.resolveAnswer(
+                if let resolvedAnswer = evidence.resolveAnswer(
                     currentTranscriptRevision: values.transcriptRevision,
                     segments: values.segments) {
+                    let answer = currentResolution(resolvedAnswer, cardID: card.id)
                     evidenceRole(
                         L10n.text("Answer sources"),
                         resolution: answer,
@@ -202,6 +214,15 @@ struct MeetingDetailCompanionSection: View {
                 }
             }
         }
+    }
+
+    private func currentResolution(
+        _ resolution: TranscriptEvidenceResolution,
+        cardID: UUID
+    ) -> TranscriptEvidenceResolution {
+        values.freshnessByCardID[cardID] == .stale
+            ? TranscriptEvidenceResolution(status: .stale)
+            : resolution
     }
 
     private func evidenceRole(

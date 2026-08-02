@@ -56,6 +56,7 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-recap",
             ),
             "Sources/portavoz-app/MeetingDetailRailSection.swift": (
+                "meeting-correction",
                 "meeting-evidence",
                 "meeting-health",
                 "meeting-processing",
@@ -84,6 +85,7 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-naming",
             ),
             "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift": (
+                "meeting-correction",
                 "meeting-evidence",
                 "meeting-export",
                 "meeting-processing",
@@ -247,7 +249,7 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-export", "meeting-naming", "meeting-processing"
             },
             "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift": {
-                "meeting-evidence", "meeting-summary"
+                "meeting-correction", "meeting-evidence", "meeting-summary"
             },
             "Sources/portavoz-app/MeetingDetailTrustSection.swift": {
                 "meeting-health", "meeting-processing"
@@ -287,7 +289,10 @@ class UITestScopeTests(unittest.TestCase):
         expected = FEATURE_TESTS["meeting-correction"]
         for path in [
             "Sources/PortavozCore/TranscriptCorrection.swift",
+            "Sources/PortavozCore/TranscriptCorrectionRevision.swift",
+            "Sources/ApplicationKit/MeetingTranscriptGenerationMaterial.swift",
             "Sources/StorageKit/MeetingStore+TranscriptCorrections.swift",
+            "Sources/StorageKit/MeetingStore+TranscriptProjection.swift",
             "Sources/StorageKit/Schema+TranscriptCorrection.swift",
             "Sources/StorageKit/TranscriptCorrectionRecords.swift",
         ]:

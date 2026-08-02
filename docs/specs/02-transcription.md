@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation).
 
 ## Correction composition contract (D229)
 
@@ -32,9 +32,11 @@ Their lineage carries an explicit accepted/composed projection even when no
 correction is active and both row arrays match. Callers must choose through
 `TranscriptReadingPolicy`; an architecture allowlist admits only the composer
 for direct projection choices. Meeting Detail now composes current-revision text
-and speaker changes through its application read model. Export, search, summary,
-generated evidence, and indexing continue to use accepted material merely
-because corrections were supplied.
+and speaker changes through its application read model. At the D229 boundary,
+export, search, summary, generated evidence, and indexing still used accepted
+material merely because corrections were supplied; D233 adopts composed summary
+generation and correction-aware invalidation without silently extending the
+other consumers.
 
 ## Durable correction history (D230)
 
@@ -76,10 +78,25 @@ with durable restore.
 
 Restore is retained in correction lineage and domain validation but does not
 compose as an active edit or reserve a target lane. A restored accepted row can
-therefore receive a later explicit correction without rewriting history. This
-slice still leaves summaries, search, generated evidence, exports, chapters,
-and indexes on accepted material; their invalidation/adoption is a separate
-contract.
+therefore receive a later explicit correction without rewriting history.
+
+## Correction revision and derived consumers (D233)
+
+`TranscriptCorrectionRevision` identifies the effective overlay for one exact
+accepted transcript revision. It is `accepted` with no active correction and a
+convergent SHA-256 identity over the meeting, accepted revision, and canonical
+effective event IDs otherwise. The identity is not a device-local counter and
+therefore survives sync replay without inventing conflicts.
+
+Summary and metadata generation may explicitly consume composed rows. Generated
+split/merge row identities remain temporary inputs; every persisted evidence
+link is mapped back to the immutable ordered accepted source IDs. Existing
+summary and Apuntador artifacts retain their original transcript/correction
+lineage and become stale instead of being rewritten. Search still has no
+corrected-text projection: affected accepted rows are excluded from exact and
+semantic retrieval until restore, while unaffected rows remain available.
+Exports and automatic Apuntador regeneration remain accepted-only. No correction
+starts model work automatically.
 
 ## Roles and engines (D7)
 

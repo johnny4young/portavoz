@@ -594,6 +594,110 @@ final class TranscriptCorrectionStorageTests: XCTestCase {
             _ = try await fixture.store.transcriptCorrectionHistory(for: fixture.meeting.id)
         }
     }
+
+    func testEffectiveCorrectionCancelsAcceptedOnlyJobsAndHidesSourceRetrieval() async throws {
+        let fixture = try await makeFixture(segmentCount: 2)
+        let futureMaintenanceTimestamp = date(500)
+        try await fixture.store.database.write { database in
+            try database.execute(
+                sql: "UPDATE derivedMaintenanceSource SET updatedAt = ? WHERE kind = ?",
+                arguments: [futureMaintenanceTimestamp, "semantic-corpus"])
+        }
+        _ = try await fixture.store.enqueueProcessingJobs(
+            for: fixture.meeting.id,
+            requests: [
+                ProcessingJobRequest(kind: .transcription, inputFingerprint: "audio-source"),
+                ProcessingJobRequest(kind: .diarization, inputFingerprint: "speaker-source"),
+                ProcessingJobRequest(kind: .summary, inputFingerprint: "summary-source"),
+                ProcessingJobRequest(kind: .index, inputFingerprint: "index-source"),
+            ],
+            at: date(90))
+        let generationBefore = try await semanticSourceGeneration(fixture)
+        let initialHits = try await fixture.store.search("Segment 1")
+        XCTAssertEqual(initialHits.map(\.segmentID), [fixture.segments[0].id])
+
+        let replacement = event(
+            101,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(text: "Corrected source", language: "en"))
+        _ = try await fixture.store.appendTranscriptCorrection(replacement)
+
+        let jobs = try await fixture.store.processingJobs(for: fixture.meeting.id)
+        let states = Dictionary(uniqueKeysWithValues: jobs.map { ($0.kind, $0.state) })
+        XCTAssertEqual(states[.summary], .cancelled)
+        XCTAssertEqual(states[.index], .cancelled)
+        XCTAssertEqual(states[.transcription], .pending)
+        XCTAssertEqual(states[.diarization], .pending)
+        let correctedHits = try await fixture.store.search("Segment 1")
+        let correctedCandidates = try await fixture.store.segmentsNeedingEmbeddings()
+        XCTAssertTrue(correctedHits.isEmpty)
+        XCTAssertEqual(correctedCandidates.map(\.id), [fixture.segments[1].id])
+        let generationAfterCorrection = try await semanticSourceGeneration(fixture)
+        XCTAssertEqual(generationAfterCorrection, generationBefore + 1)
+        let updatedAtAfterCorrection = try await semanticSourceUpdatedAt(fixture)
+        XCTAssertEqual(
+            updatedAtAfterCorrection,
+            futureMaintenanceTimestamp)
+
+        _ = try await fixture.store.appendTranscriptCorrection(replacement)
+        let generationAfterRetry = try await semanticSourceGeneration(fixture)
+        XCTAssertEqual(generationAfterRetry, generationAfterCorrection)
+
+        let restore = event(
+            102,
+            fixture: fixture,
+            targets: replacement.targetSegmentIDs,
+            kind: .restore,
+            supersedes: replacement.id)
+        _ = try await fixture.store.appendTranscriptCorrection(restore)
+
+        let restoredHits = try await fixture.store.search("Segment 1")
+        let generationAfterRestore = try await semanticSourceGeneration(fixture)
+        XCTAssertEqual(restoredHits.map(\.segmentID), [fixture.segments[0].id])
+        XCTAssertEqual(generationAfterRestore, generationAfterCorrection + 1)
+    }
+
+    func testSummaryPublicationRejectsOldCorrectionLineage() async throws {
+        let fixture = try await makeFixture(segmentCount: 1)
+        let correction = event(
+            101,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(text: "Corrected source", language: "en"))
+        _ = try await fixture.store.appendTranscriptCorrection(correction)
+        let revision = try TranscriptCorrectionRevision.current(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            history: [correction])
+        let draft = SummaryDraft(
+            meetingID: fixture.meeting.id,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "## Current summary",
+            actionItems: [])
+
+        do {
+            _ = try await fixture.store.saveSummary(
+                draft,
+                generationRun: summaryRun(fixture: fixture, correctionRevision: .accepted))
+            XCTFail("accepted-only work must not publish after a correction")
+        } catch let error as StorageError {
+            guard case .invalidGenerationRun = error else {
+                return XCTFail("expected invalidGenerationRun, got \(error)")
+            }
+        }
+
+        let version = try await fixture.store.saveSummary(
+            draft,
+            generationRun: summaryRun(fixture: fixture, correctionRevision: revision))
+        let storedRun = try await fixture.store.generationRun(
+            forSummary: fixture.meeting.id)
+        XCTAssertEqual(version, 1)
+        XCTAssertEqual(
+            storedRun?.transcriptCorrectionSource,
+            .revision(revision))
+    }
 }
 
 private extension TranscriptCorrectionStorageTests {
@@ -679,6 +783,45 @@ private extension TranscriptCorrectionStorageTests {
                 sql: "SELECT localGeneration FROM meetingSyncState WHERE meetingID = ?",
                 arguments: [fixture.meeting.id.rawValue.uuidString]))
         }
+    }
+
+    func semanticSourceGeneration(_ fixture: Fixture) async throws -> Int {
+        try await fixture.store.database.read { database in
+            try XCTUnwrap(Int.fetchOne(
+                database,
+                sql: "SELECT sourceGeneration FROM derivedMaintenanceSource WHERE kind = ?",
+                arguments: ["semantic-corpus"]))
+        }
+    }
+
+    func semanticSourceUpdatedAt(_ fixture: Fixture) async throws -> Date {
+        try await fixture.store.database.read { database in
+            try XCTUnwrap(Date.fetchOne(
+                database,
+                sql: "SELECT updatedAt FROM derivedMaintenanceSource WHERE kind = ?",
+                arguments: ["semantic-corpus"]))
+        }
+    }
+
+    func summaryRun(
+        fixture: Fixture,
+        correctionRevision: TranscriptCorrectionRevision
+    ) -> GenerationRun {
+        GenerationRun(
+            meetingID: fixture.meeting.id,
+            kind: .summary,
+            providerID: "test-provider",
+            modelID: "test-model",
+            inputFingerprint: "summary-input",
+            configJSON: """
+                {"sourceCorrectionRevision":"\(correctionRevision.rawValue)",\
+                "sourceTranscriptRevision":\(fixture.meeting.transcriptRevision)}
+                """,
+            outputLanguage: "en",
+            startedAt: date(300),
+            finishedAt: date(301),
+            outcome: .succeeded,
+            metricsJSON: "{}")
     }
 
     func assertInvalidCorrection(

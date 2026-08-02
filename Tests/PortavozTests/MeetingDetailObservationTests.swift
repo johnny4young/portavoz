@@ -250,9 +250,12 @@ private func nextProcessing(
 }
 
 private func nextSummary(
-    _ iterator: inout AsyncThrowingStream<(draft: SummaryDraft, version: Int)?, Error>.Iterator,
-    until predicate: ((draft: SummaryDraft, version: Int)?) -> Bool = { _ in true }
-) async throws -> (draft: SummaryDraft, version: Int)? {
+    _ iterator: inout AsyncThrowingStream<
+        MeetingStore.MeetingReviewSummarySnapshot?,
+        Error
+    >.Iterator,
+    until predicate: (MeetingStore.MeetingReviewSummarySnapshot?) -> Bool = { _ in true }
+) async throws -> MeetingStore.MeetingReviewSummarySnapshot? {
     for _ in 0..<12 {
         let value = try await iterator.next()
         if predicate(value ?? nil) { return value ?? nil }
@@ -261,12 +264,15 @@ private func nextSummary(
 }
 
 private func nextCompanion(
-    _ iterator: inout AsyncThrowingStream<[CompanionCard], Error>.Iterator,
+    _ iterator: inout AsyncThrowingStream<
+        MeetingStore.MeetingReviewCompanionSnapshot,
+        Error
+    >.Iterator,
     until predicate: ([CompanionCard]) -> Bool = { _ in true }
 ) async throws -> [CompanionCard] {
     for _ in 0..<12 {
         let candidate = try await iterator.next()
-        let value = try XCTUnwrap(candidate)
+        let value = try XCTUnwrap(candidate).cards
         if predicate(value) { return value }
     }
     throw MeetingDetailObservationTestError.expectedValue

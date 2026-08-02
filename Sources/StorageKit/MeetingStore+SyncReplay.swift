@@ -158,6 +158,12 @@ extension MeetingStore {
     ) throws {
         let meetingID = aggregate.meeting.value.id
         let key = meetingID.rawValue.uuidString
+        let previousProjection = try MeetingRecord.fetchOne(db, key: key).map { record in
+            try currentCorrectionRevision(
+                meetingID: meetingID,
+                transcriptRevision: record.transcriptRevision,
+                in: db)
+        }
         let local = try meetingSyncLocalState(meetingID: meetingID, in: db)
 
         try validateImmutableRemoteSummaries(
@@ -184,6 +190,17 @@ extension MeetingStore {
         if replacesCorrections {
             try insertRemoteTranscriptCorrections(
                 aggregate.transcriptCorrections,
+                in: db)
+        }
+        if let previousProjection {
+            let currentProjection = try transcriptCorrectionRevision(
+                meetingID: meetingID,
+                in: db)
+            try invalidateAcceptedOnlyDerivedWork(
+                meetingID: meetingID,
+                previous: previousProjection,
+                current: currentProjection,
+                at: aggregate.meeting.updatedAt,
                 in: db)
         }
     }

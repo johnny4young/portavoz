@@ -78,6 +78,7 @@ enum CompanionRefresh {
             let result = await companion.generate(CompanionGenerationRequest(
                 meetingID: meetingID,
                 sourceTranscriptRevision: transcriptRevision,
+                sourceCorrectionRevision: .accepted,
                 workflow: .postRefine,
                 candidate: turn.text,
                 questionSegmentIDs: turn.segmentIDs,

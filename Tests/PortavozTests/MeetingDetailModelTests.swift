@@ -94,6 +94,48 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.revision, 7)
     }
 
+    func testCorrectionRevisionMarksGeneratedSummaryAndCompanionTruthfullyStale() throws {
+        let fixture = MeetingDetailModelFixture()
+        let correction = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.segment.id],
+            kind: .replaceText(text: "Este viernes.", language: "es"),
+            sourceDeviceID: UUID(),
+            createdAt: Date())
+        let revision = try TranscriptCorrectionRevision.current(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            history: [correction])
+        let stale = MeetingReviewReadModel(
+            core: MeetingReviewCore(
+                meeting: fixture.meeting,
+                speakers: [fixture.speaker],
+                segments: [fixture.segment],
+                corrections: [correction]),
+            summary: fixture.summary,
+            companionCards: [fixture.card],
+            privacyReceipt: nil,
+            processingJobs: [])
+
+        XCTAssertEqual(stale.correctionRevision, revision)
+        XCTAssertEqual(stale.summaryFreshness, .stale)
+        XCTAssertEqual(stale.companionFreshness(fixture.card), .stale)
+
+        let current = MeetingReviewReadModel(
+            core: stale.core,
+            summary: MeetingReviewSummary(
+                draft: fixture.summary.draft,
+                version: fixture.summary.version,
+                correctionSource: .revision(revision)),
+            companionCards: [fixture.card],
+            companionCorrectionSources: [fixture.card.id: .revision(revision)],
+            privacyReceipt: nil,
+            processingJobs: [])
+        XCTAssertEqual(current.summaryFreshness, .current)
+        XCTAssertEqual(current.companionFreshness(fixture.card), .current)
+    }
+
     func testMutationActionsOwnPersistenceEffectsAndSearchInvalidation() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [], person: fixture.person)

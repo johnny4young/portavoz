@@ -107,6 +107,7 @@ extension RecordingController {
             CompanionGenerationRequest(
                 meetingID: sourceMeetingID,
                 sourceTranscriptRevision: 0,
+                sourceCorrectionRevision: .accepted,
                 workflow: .liveRecording,
                 candidate: candidate,
                 questionSegmentIDs: [closed.id],

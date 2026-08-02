@@ -988,9 +988,9 @@ or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
 Meeting Detail decomposition is also preceded by a frozen presentation
-boundary. A generated contract inventories 328 interaction signals across
+boundary. A generated contract inventories 332 interaction signals across
 29 source files,
-assigns all 25 detail XCUITest journeys to exactly one of eleven feature owners,
+assigns all 26 detail XCUITest journeys to exactly one of eleven feature owners,
 and digest-binds the reviewed performance harness and evidence. Hidden
 payload-free scroll and seek signposts activate only when a disposable temp
 store, the scale fixture, and the explicit detail-profile flag are present.
@@ -1026,10 +1026,8 @@ keeps direct projection choices constrained to the pure composer. Meeting
 Detail is the first explicit product adopter: its application read-model
 extension composes only corrections for the observed accepted revision and
 falls back to accepted material if the retained history cannot be composed.
-Search, summaries, exports, generated evidence, and their indexes remain on
-accepted material until their own invalidation contracts land. Rows and
-chapters in Meeting Detail derive from the same selected snapshot. Source-ID
-routes focus evidence; timestamp routes from Library, Ask, and Spotlight focus
+Rows and chapters in Meeting Detail derive from the same selected snapshot.
+Source-ID routes focus evidence; timestamp routes from Library, Ask, and Spotlight focus
 the nearest visible row and retain an exact seek until audio is ready. A start-
 time binary search plus maximum-end segment tree keeps
 active-row resolution logarithmic while preserving released overlap and gap
@@ -1087,16 +1085,48 @@ history while the user scrolls.
 
 Meeting Detail observes correction history and composes current-revision text
 and speaker changes. Malformed or stale composition falls back to accepted
-material. Search, summaries, exports, generated evidence, and indexing still
-read accepted material, so this adoption cannot make derived artifacts silently
-current. Correction inserts and tombstones advance the meeting journal exactly
+material. Correction inserts and tombstones advance the meeting journal exactly
 once per logical event. Meeting aggregate format 2 carries the canonically
 ordered typed history; replay rejects immutable rewrites and tombstone
 regression, replaces v2 history atomically, and preserves local corrections when
 a legacy format-1 peer has no correction field. Trigger echoes created while
-replaying the aggregate are acknowledged in the same transaction. Derived
-invalidation and consumer adoption remain separate explicit policies rather
-than side effects of persistence or synchronization.
+replaying the aggregate are acknowledged in the same transaction.
+
+Every accepted transcript projection now has one convergent
+`TranscriptCorrectionRevision`: the literal `accepted` value when no effective
+event is active, otherwise a SHA-256 identity over the meeting, accepted
+transcript revision, and canonically ordered effective correction IDs. Local
+append/tombstone and private-sync replay compare the revision before and after
+their complete transaction. A real change cancels only pending or running
+accepted-only summary/index jobs, advances the independent semantic-corpus
+source generation once, and leaves transcription and diarization work intact.
+The invalidation timestamp is monotonic across the correction event, meeting,
+affected jobs, and existing semantic-maintenance source, so delayed sync replay
+cannot move maintenance metadata backward.
+Late work cannot publish across the boundary: summary and Apuntador generation
+runs carry both transcript and correction revisions, and StorageKit admits the
+artifact only when both still match the current meeting. Summary cache reuse
+also requires a linked run with matching lineage; malformed metadata fails
+closed, while legacy metadata is current only for an uncorrected revision-zero
+meeting.
+
+Accepted-only retrieval uses one shared SQL predicate. A source row with an
+active correction is removed from FTS candidates, semantic reads, embedding
+candidates, and vector publication, while unaffected rows remain searchable.
+Restore makes the accepted row eligible again and the semantic source-generation
+wake lets background maintenance reconsider it. Corrected text is not yet
+materialized into either index, so search never presents stale accepted text but
+does not claim the corrected row is searchable.
+
+Explicit summary regeneration and review-metadata suggestions consume the
+composed transcript. Generated row evidence is projected back to ordered,
+immutable accepted segment IDs before persistence. Existing immutable summaries
+and Apuntador cards are retained but resolve as stale in Meeting Detail; their
+evidence controls are disabled, a stale summary offers an explicit Regenerate
+action, and correction changes clear route-local generated chapter/title/recipe
+suggestions before recomputation. No correction transaction starts model work
+or rewrites an artifact automatically. Exports and automatic Apuntador refresh
+remain accepted-only until their own composed-material adoption contracts land.
 
 The complete docked playback surface enters SwiftUI through
 `MeetingDetailPlayerSection`. The section receives the current application-

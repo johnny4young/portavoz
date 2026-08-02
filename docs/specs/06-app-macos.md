@@ -45,6 +45,13 @@ history, and durable Undo; every other transcript consumer remains
 accepted-only. D232 adds explicit split, pairwise adjacent merge, hide-as-noise,
 hidden evidence review, and durable restore to that same value/action boundary.
 It does not let SwiftUI infer targets or mutate accepted transcript rows.
+D233 carries the effective correction revision through the same application
+snapshot. Meeting Detail marks older summaries and Apuntador cards stale,
+disables their evidence as current proof, clears generated chapter/title/recipe
+suggestions when the overlay changes, and offers an explicit summary Regenerate
+action. Regeneration composes corrected rows and maps evidence back to immutable
+accepted source IDs. The correction action itself starts no model or indexing
+work, and the UI does not pretend corrected text is already searchable.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.
@@ -223,10 +230,10 @@ source ID. Lineage separately records raw/refined base material and the
 accepted/composed projection, including a composed reading with no active edit.
 Stable final base rows, exact split partitions, ordered merge/supersession
 targets, and unique generated row identities fail closed before presentation.
-Neither `MeetingDetailView` nor its row renderer decides which correction wins,
-and the current app has not opted into composed rows yet. Chapters derive from
-the same snapshot as the visible rows, preventing independent projections from
-drifting.
+Neither `MeetingDetailView` nor its row renderer decides which correction wins.
+At the D225 boundary the app had not opted into composed rows yet; D231 later
+adopted them for Meeting Detail. Chapters derive from the same snapshot as the
+visible rows, preventing independent projections from drifting.
 
 `MeetingTranscriptNavigationState` resolves generated evidence through source
 IDs and timestamp-only Library/Ask/Spotlight routes through the visible-row
@@ -281,7 +288,8 @@ presentation only; the application command validates history and atomically
 persists independent lanes. Original evidence and append-only history remain
 available, durable Undo restores each active lane, structural rows fail closed
 with guidance, and every control has keyboard and accessibility reachability.
-Search, summaries, exports, and generated evidence remain accepted-only. The
+At that decision boundary, search, summaries, exports, and generated evidence
+remained accepted-only. The
 reviewed boundary now covers 328 signals across eleven owners and 25 UI
 journeys. D232 keeps structural policy in ApplicationKit: the focused surface
 offers only validated explicit merge neighbors, split inputs and timing, and
@@ -290,6 +298,15 @@ composed row disappears, and restore appends history rather than deleting it.
 One immutable structural projection precomputes row contexts and hidden evidence
 for each observed detail snapshot, avoiding transcript-wide work per rendered
 row.
+
+D233 extends the route projection with derived-artifact freshness rather than
+deleting immutable history. A correction clears route-local generated metadata,
+renders the prior summary and Apuntador cards with localized stale guidance, and
+makes their evidence nonactionable as current proof. The summary action builds
+generation material from composed rows, persists evidence against accepted
+source IDs, and relies on StorageKit's final lineage fence. Accepted-only search
+omits actively corrected rows; corrected search/export and automatic Apuntador
+regeneration remain explicit future adoptions.
 
 ### Resource workload measurement (D148)
 

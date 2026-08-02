@@ -9150,6 +9150,36 @@
           }
         }
       }
+    },
+    "Regenerate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regenerar"
+          }
+        }
+      }
+    },
+    "Transcript changed — regenerate this summary to use your corrections.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción cambió — vuelve a generar este resumen para usar tus correcciones."
+          }
+        }
+      }
+    },
+    "Transcript changed — this answer may be out of date.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción cambió — esta respuesta puede estar desactualizada."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

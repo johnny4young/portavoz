@@ -4682,8 +4682,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/CorrectMeetingTranscript.swift")
         let core = try Self.contents(
             of: "Sources/PortavozCore/TranscriptCorrection.swift")
+        let revision = try Self.contents(
+            of: "Sources/PortavozCore/TranscriptCorrectionRevision.swift")
         let store = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+TranscriptCorrections.swift")
+        let projection = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+TranscriptProjection.swift")
         let schema = try Self.contents(
             of: "Sources/StorageKit/Schema+TranscriptCorrection.swift")
         let syncAggregate = try Self.contents(
@@ -4713,6 +4717,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(core.contains("validateHistory("))
         XCTAssertTrue(core.contains("let sourceDeviceID:"))
         XCTAssertTrue(core.contains("let deletedAt:"))
+        XCTAssertTrue(revision.contains("struct TranscriptCorrectionRevision"))
+        XCTAssertTrue(revision.contains("TranscriptCorrectionArtifactSource"))
+        XCTAssertTrue(revision.contains("effectiveCorrections("))
         XCTAssertTrue(composer.contains("enum TranscriptReadingPolicy"))
         XCTAssertTrue(composer.contains("case accepted"))
         XCTAssertTrue(composer.contains("case composed"))
@@ -4727,6 +4734,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(store.contains("transcriptCorrectionHistory("))
         XCTAssertTrue(store.contains("tombstoneTranscriptCorrection("))
         XCTAssertTrue(store.contains("transcriptCorrectionSyncEnvelope("))
+        XCTAssertTrue(store.contains("invalidateAcceptedOnlyDerivedWork("))
+        XCTAssertTrue(projection.contains("acceptedSegmentHasNoActiveCorrectionSQL"))
+        XCTAssertTrue(projection.contains("kind IN ('summary', 'index')"))
+        XCTAssertFalse(projection.contains("kind IN ('transcription', 'diarization')"))
         for table in [
             "transcriptCorrection", "transcriptCorrectionTarget",
             "transcriptCorrectionPayload", "transcriptCorrectionPart"
@@ -4762,10 +4773,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             "D231 — Adopt focused text and speaker corrections in Meeting Detail"))
         XCTAssertTrue(decisions.contains(
             "D232 — Make structural transcript corrections explicit and recoverable"))
+        XCTAssertTrue(decisions.contains(
+            "D233 — Fence derived artifacts by effective correction lineage"))
         XCTAssertTrue(decisions.contains("all current product paths remain on accepted content"))
         XCTAssertTrue(gaps.contains(
             "Meeting Detail composes current-revision text, speaker, split, explicit adjacent merge"))
-        XCTAssertTrue(gaps.contains("Search, summaries, exports, generated evidence"))
+        XCTAssertTrue(gaps.contains(
+            "Transcript corrections are not yet searchable/exportable as composed material"))
 
         for forbidden in [
             "import SwiftUI", "import StorageKit", "import GRDB",
@@ -5706,7 +5720,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            328)
+            332)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             11)

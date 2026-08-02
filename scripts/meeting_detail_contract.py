@@ -299,10 +299,15 @@ DEFAULT_FEATURE_OWNERSHIP = (
     {
         "feature": "transcript-corrections",
         "tests": [
+            "testCorrectedTranscriptMarksDerivedArtifactsStale",
             "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
             "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence",
         ],
         "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+                "anchor": '"detail-stale-summary-regenerate"',
+            },
             {
                 "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
                 "anchor": '"transcript-correction-original-evidence"',

@@ -52,7 +52,8 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         meetingID: MeetingID,
         inputFingerprint: String,
         language: String = "es",
-        id: GenerationRunID = GenerationRunID()
+        id: GenerationRunID = GenerationRunID(),
+        sourceTranscriptRevision: Int = 0
     ) -> GenerationRun {
         GenerationRun(
             id: id,
@@ -62,7 +63,9 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             modelID: "test-model",
             modelRevision: "test-revision",
             inputFingerprint: inputFingerprint,
-            configJSON: "{}",
+            configJSON: """
+                {"sourceCorrectionRevision":"accepted","sourceTranscriptRevision":\(sourceTranscriptRevision)}
+                """,
             outputLanguage: language,
             startedAt: now,
             finishedAt: now.addingTimeInterval(0.5),
@@ -493,6 +496,73 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         XCTAssertEqual(jobs.first?.state, .running)
     }
 
+    func testCorrectionCancelsAcceptedOnlyJobsAndFencesOwnedSummaryPublication() async throws {
+        let store = try MeetingStore.inMemory()
+        let captured = meeting()
+        try await store.save(captured)
+        let cast = try await seedCast(for: captured.id, in: store)
+        let fingerprint = "summary:accepted-before-correction"
+        let enqueued = try await store.enqueueProcessingJobs(
+            for: captured.id,
+            requests: [
+                ProcessingJobRequest(kind: .summary, inputFingerprint: fingerprint),
+                ProcessingJobRequest(kind: .index, inputFingerprint: "index:accepted"),
+            ],
+            at: now)
+        let claimedValue = try await store.claimNextProcessingJob(
+            kinds: [.summary],
+            owner: "worker-a",
+            leaseDuration: 30,
+            at: now)
+        let claimed = try XCTUnwrap(claimedValue)
+        let correction = TranscriptCorrectionEvent(
+            meetingID: captured.id,
+            baseTranscriptRevision: captured.transcriptRevision,
+            targetSegmentIDs: [cast.segment.id],
+            kind: .replaceText(text: "corrected transcript", language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: now.addingTimeInterval(1))
+
+        _ = try await store.appendTranscriptCorrection(correction)
+
+        let jobs = try await store.processingJobs(for: captured.id)
+        XCTAssertEqual(Set(jobs.map(\.id)), Set(enqueued.map(\.id)))
+        XCTAssertTrue(jobs.allSatisfy { job in
+            job.state == .cancelled
+                && job.errorCode == "processing.input.superseded"
+                && job.leaseOwner == nil
+        })
+        let correctedDetail = try await detail(captured.id, in: store)
+        XCTAssertEqual(correctedDetail.meeting.lifecycleState, .ready)
+
+        do {
+            _ = try await store.completeSummaryJob(
+                claimed.id,
+                owner: "worker-a",
+                artifact: SummaryArtifact(
+                    inputFingerprint: fingerprint,
+                    sourceTranscriptRevision: 0,
+                    draft: SummaryDraft(
+                        meetingID: captured.id,
+                        recipeID: Recipe.general.id,
+                        language: "en",
+                        markdown: "# stale",
+                        actionItems: [],
+                        fingerprint: fingerprint),
+                    generationRun: summaryRun(
+                        meetingID: captured.id,
+                        inputFingerprint: fingerprint)),
+                at: now.addingTimeInterval(2))
+            XCTFail("a cancelled accepted-only lease must not publish")
+        } catch StorageError.processingJobLeaseLost(let id) {
+            XCTAssertEqual(id, claimed.id)
+        }
+        let storedSummary = try await store.summary(captured.id)
+        let storedRuns = try await store.generationRuns(for: captured.id)
+        XCTAssertNil(storedSummary)
+        XCTAssertTrue(storedRuns.isEmpty)
+    }
+
     func testSummaryCompletionWritesOneImmutableVersionWithJob() async throws {
         let store = try MeetingStore.inMemory()
         var captured = meeting()
@@ -524,7 +594,8 @@ final class ProcessingJobPersistenceTests: XCTestCase {
                     draft: draft,
                     generationRun: summaryRun(
                         meetingID: captured.id,
-                        inputFingerprint: "another-operation")),
+                        inputFingerprint: "another-operation",
+                        sourceTranscriptRevision: 2)),
                 at: now.addingTimeInterval(0.75))
             XCTFail("the run must carry the exact job operation fingerprint")
         } catch StorageError.invalidProcessingJob(let reason) {
@@ -538,7 +609,8 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             generationRun: summaryRun(
                 meetingID: captured.id,
                 inputFingerprint: fingerprint,
-                id: runID))
+                id: runID,
+                sourceTranscriptRevision: 2))
 
         let commit = try await store.completeSummaryJob(
             claim.id,

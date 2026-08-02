@@ -93,6 +93,7 @@ final class LiveCompanionWorkCoordinatorTests: XCTestCase {
         CompanionGenerationRequest(
             meetingID: MeetingID(),
             sourceTranscriptRevision: 0,
+            sourceCorrectionRevision: .accepted,
             workflow: .liveRecording,
             candidate: candidate,
             questionSegmentIDs: [UUID()],

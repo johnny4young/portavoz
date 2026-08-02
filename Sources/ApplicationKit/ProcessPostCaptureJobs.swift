@@ -554,6 +554,7 @@ private extension ProcessPostCaptureJobs {
             request: request,
             selection: selection,
             sourceTranscriptRevision: detail.meeting.transcriptRevision,
+            sourceCorrectionRevision: .accepted,
             startedAt: now())
         var draft: SummaryDraft?
         do {

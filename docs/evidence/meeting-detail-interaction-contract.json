@@ -760,6 +760,12 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"apuntador-card-\\(card.id.uuidString)-stale\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-apuntador\")",
       "occurrences": 1
     },
@@ -1006,6 +1012,12 @@
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
+      "source": "Button(\"Regenerate\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
       "source": "Button(clock(segment.startTime)) {",
       "occurrences": 1
     },
@@ -1067,6 +1079,18 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-regenerate-menu\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-stale-summary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-stale-summary-regenerate\")",
       "occurrences": 1
     },
     {
@@ -2238,10 +2262,15 @@
     {
       "feature": "transcript-corrections",
       "tests": [
+        "testCorrectedTranscriptMarksDerivedArtifactsStale",
         "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
         "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence"
       ],
       "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"detail-stale-summary-regenerate\""
+        },
         {
           "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",
           "anchor": "\"transcript-correction-original-evidence\""
@@ -2256,6 +2285,7 @@
         }
       ],
       "screenshots": [
+        "meeting-detail-stale-derived-artifacts",
         "transcript-correction-original-evidence",
         "transcript-structural-correction-evidence",
         "transcript-structural-split-evidence"

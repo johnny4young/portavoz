@@ -176,6 +176,26 @@ public struct TranscriptCorrectionSyncEnvelope: Codable, Sendable, Equatable {
 /// Deterministic validation for correction data that can cross process or
 /// device boundaries. It never consults a database or mutates the events.
 public enum TranscriptCorrectionPolicy {
+    /// Returns the live correction events that currently change one accepted
+    /// transcript revision. Restore events and tombstoned terminals are
+    /// durable history, not visible edits.
+    public static func effectiveCorrections(
+        in events: [TranscriptCorrectionEvent],
+        meetingID: MeetingID,
+        baseTranscriptRevision: Int
+    ) throws -> [TranscriptCorrectionEvent] {
+        try validateHistory(events, meetingID: meetingID)
+        let supersededIDs = Set(events.compactMap(\.supersedesCorrectionID))
+        return events
+            .filter {
+                $0.baseTranscriptRevision == baseTranscriptRevision
+                    && $0.deletedAt == nil
+                    && !supersededIDs.contains($0.id)
+                    && !$0.kind.isRestore
+            }
+            .sorted(by: precedes)
+    }
+
     /// Describes a forbidden rewrite of immutable event material. Tombstone
     /// metadata is validated separately as a monotonic state transition.
     public static func immutableDifference(
@@ -459,5 +479,12 @@ public enum TranscriptCorrectionPolicy {
                 indexedBy: events,
                 visited: visited)
         }
+    }
+}
+
+private extension TranscriptCorrectionKind {
+    var isRestore: Bool {
+        if case .restore = self { return true }
+        return false
     }
 }

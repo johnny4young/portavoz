@@ -31,26 +31,12 @@ extension AppServices {
         let citedSegmentID = UUID(uuidString: "B5B00000-0000-4000-8000-000000000002")!
         let companionQuestionID = UUID(
             uuidString: "B5F00000-0000-4000-8000-000000000001")!
-        let seedSegments = [
-            TranscriptSegment(
-                meetingID: meeting.id, speakerID: me.id, channel: .microphone,
-                text: "Revisemos el presupuesto de transcripción.",
-                startTime: 0, endTime: 3, isFinal: true),
-            TranscriptSegment(
-                id: citedSegmentID,
-                meetingID: meeting.id, speakerID: ana.id, channel: .system,
-                text: "El rollout del modelo queda para el viernes.",
-                startTime: 3, endTime: 6, isFinal: true),
-            TranscriptSegment(
-                id: companionQuestionID,
-                meetingID: meeting.id, speakerID: ana.id, channel: .system,
-                text: "¿Cuándo es el rollout?",
-                startTime: 6, endTime: 8, isFinal: true),
-            TranscriptSegment(
-                meetingID: meeting.id, speakerID: me.id, channel: .microphone,
-                text: "Cerremos con los próximos pasos del rollout.",
-                startTime: 200, endTime: 205, isFinal: true)
-        ]
+        let seedSegments = Self.seedDemoTranscript(
+            meetingID: meeting.id,
+            meID: me.id,
+            remoteID: ana.id,
+            citedSegmentID: citedSegmentID,
+            companionQuestionID: companionQuestionID)
         try? await store.save(seedSegments)
         await seedSummaryIfRequested(
             meetingID: meeting.id,
@@ -63,11 +49,44 @@ extension AppServices {
             meetingID: meeting.id,
             questionSegmentID: companionQuestionID,
             answerSegmentID: citedSegmentID)
+        await seedStaleDerivedArtifactsIfRequested(
+            meetingID: meeting.id,
+            sourceSegmentID: citedSegmentID,
+            transcriptRevision: meeting.transcriptRevision)
         await seedPrivacyReceipt(for: meeting.id)
         await seedProcessingFailureIfRequested(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         requestSearchReconciliation()
+    }
+
+    private static func seedDemoTranscript(
+        meetingID: MeetingID,
+        meID: SpeakerID,
+        remoteID: SpeakerID,
+        citedSegmentID: UUID,
+        companionQuestionID: UUID
+    ) -> [TranscriptSegment] {
+        [
+            TranscriptSegment(
+                meetingID: meetingID, speakerID: meID, channel: .microphone,
+                text: "Revisemos el presupuesto de transcripción.",
+                startTime: 0, endTime: 3, isFinal: true),
+            TranscriptSegment(
+                id: citedSegmentID,
+                meetingID: meetingID, speakerID: remoteID, channel: .system,
+                text: "El rollout del modelo queda para el viernes.",
+                startTime: 3, endTime: 6, isFinal: true),
+            TranscriptSegment(
+                id: companionQuestionID,
+                meetingID: meetingID, speakerID: remoteID, channel: .system,
+                text: "¿Cuándo es el rollout?",
+                startTime: 6, endTime: 8, isFinal: true),
+            TranscriptSegment(
+                meetingID: meetingID, speakerID: meID, channel: .microphone,
+                text: "Cerremos con los próximos pasos del rollout.",
+                startTime: 200, endTime: 205, isFinal: true)
+        ]
     }
 
     private var seedDemoMeetingTitle: String {
@@ -106,6 +125,28 @@ extension AppServices {
                 question: "Ana, ¿te encargas del presupuesto?", answer: "",
                 kind: .context, source: "on-device", directed: true, askedAt: 200)
         ], for: meetingID)
+    }
+
+    private func seedStaleDerivedArtifactsIfRequested(
+        meetingID: MeetingID,
+        sourceSegmentID: UUID,
+        transcriptRevision: Int
+    ) async {
+        guard ProcessInfo.processInfo.arguments.contains("-seed-stale-derived") else {
+            return
+        }
+        let correction = TranscriptCorrectionEvent(
+            id: UUID(uuidString: "B5C00000-0000-4000-8000-000000000001")!,
+            meetingID: meetingID,
+            baseTranscriptRevision: transcriptRevision,
+            targetSegmentIDs: [sourceSegmentID],
+            kind: .replaceText(
+                text: "El rollout corregido queda para el lunes.",
+                language: "es"),
+            sourceDeviceID: UUID(
+                uuidString: "B5C00000-0000-4000-8000-000000000002")!,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_100))
+        _ = try? await store.appendTranscriptCorrection(correction)
     }
 
     private func seedSummaryIfRequested(

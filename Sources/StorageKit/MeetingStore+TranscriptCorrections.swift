@@ -92,6 +92,9 @@ extension MeetingStore {
         }
         let timestamp = Self.canonicalCorrectionDate(proposedTimestamp)
         return try await database.write { database in
+            let previousProjection = try Self.transcriptCorrectionRevision(
+                meetingID: meetingID,
+                in: database)
             guard let existing = try Self.fetchTranscriptCorrection(
                 id: correctionID,
                 in: database),
@@ -118,6 +121,15 @@ extension MeetingStore {
                 throw StorageError.invalidTranscriptCorrection(
                     "tombstoned event could not be reloaded")
             }
+            let currentProjection = try Self.transcriptCorrectionRevision(
+                meetingID: meetingID,
+                in: database)
+            try Self.invalidateAcceptedOnlyDerivedWork(
+                meetingID: meetingID,
+                previous: previousProjection,
+                current: currentProjection,
+                at: timestamp,
+                in: database)
             return tombstone
         }
     }
@@ -129,9 +141,15 @@ private extension MeetingStore {
         in database: Database
     ) throws -> [TranscriptCorrectionEvent] {
         var histories: [MeetingID: [TranscriptCorrectionEvent]] = [:]
+        var originalProjections: [MeetingID: TranscriptCorrectionRevision] = [:]
         var persistedEvents: [TranscriptCorrectionEvent] = []
         for event in events {
             try requireLiveCorrectionMeeting(event, in: database)
+            if originalProjections[event.meetingID] == nil {
+                originalProjections[event.meetingID] = try transcriptCorrectionRevision(
+                    meetingID: event.meetingID,
+                    in: database)
+            }
             if let existing = try fetchTranscriptCorrection(id: event.id, in: database) {
                 guard sameCorrectionForRetry(existing, event) else {
                     throw StorageError.invalidTranscriptCorrection(
@@ -165,6 +183,21 @@ private extension MeetingStore {
             }
             histories[event.meetingID] = history + [persisted]
             persistedEvents.append(persisted)
+        }
+        for (meetingID, previousProjection) in originalProjections {
+            let currentProjection = try transcriptCorrectionRevision(
+                meetingID: meetingID,
+                in: database)
+            let timestamp = persistedEvents
+                .filter { $0.meetingID == meetingID }
+                .map(\.updatedAt)
+                .max() ?? Date()
+            try invalidateAcceptedOnlyDerivedWork(
+                meetingID: meetingID,
+                previous: previousProjection,
+                current: currentProjection,
+                at: timestamp,
+                in: database)
         }
         return persistedEvents
     }

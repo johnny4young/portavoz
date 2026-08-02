@@ -121,6 +121,24 @@ extension MeetingStore {
             throw StorageError.invalidGenerationRun(
                 "summary and run output languages differ")
         }
+        guard let meetingRecord = try MeetingRecord
+            .filter(Column("id") == draft.meetingID.rawValue.uuidString)
+            .filter(Column("deletedAt") == nil)
+            .fetchOne(db)
+        else { throw StorageError.meetingNotFound(draft.meetingID) }
+        let meeting = try meetingRecord.meeting
+        let correctionRevision = try currentCorrectionRevision(
+            meetingID: draft.meetingID,
+            transcriptRevision: meeting.transcriptRevision,
+            in: db)
+        guard generationRun.transcriptRevisionSource.matches(
+            meeting.transcriptRevision,
+            allowsLegacy: correctionRevision.isAccepted && meeting.transcriptRevision == 0),
+            generationRun.transcriptCorrectionSource.matches(correctionRevision)
+        else {
+            throw StorageError.invalidGenerationRun(
+                "summary generation source is stale")
+        }
         try GenerationRunRecord(generationRun).insert(db)
         return try insertSummarySnapshot(
             draft,

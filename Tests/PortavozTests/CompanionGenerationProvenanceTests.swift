@@ -200,6 +200,7 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
         CompanionGenerationRequest(
             meetingID: meetingID,
             sourceTranscriptRevision: 5,
+            sourceCorrectionRevision: .accepted,
             workflow: .postRefine,
             candidate: candidate,
             questionSegmentIDs: questionSegmentIDs ?? [questionSegmentID],

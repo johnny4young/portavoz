@@ -601,6 +601,72 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
         }
     }
 
+    func testCorrectionRevisionTracksOnlyEffectiveOverlay() throws {
+        let source = segment(1, text: "Original", start: 0, end: 4)
+        let first = edit(
+            101,
+            targets: [source.id],
+            kind: .replaceText(text: "Corrected", language: "en"),
+            at: 1)
+        let speaker = edit(
+            102,
+            targets: [source.id],
+            kind: .changeSpeaker(secondSpeaker),
+            at: 2)
+        let restoreText = edit(
+            103,
+            targets: [source.id],
+            kind: .restore,
+            at: 3,
+            supersedes: first.id)
+
+        XCTAssertEqual(
+            try TranscriptCorrectionRevision.current(
+                meetingID: meetingID,
+                baseTranscriptRevision: 7,
+                history: []),
+            .accepted)
+
+        let forward = try TranscriptCorrectionRevision.current(
+            meetingID: meetingID,
+            baseTranscriptRevision: 7,
+            history: [first, speaker])
+        let reverse = try TranscriptCorrectionRevision.current(
+            meetingID: meetingID,
+            baseTranscriptRevision: 7,
+            history: [speaker, first])
+        XCTAssertEqual(forward, reverse)
+        XCTAssertFalse(forward.isAccepted)
+
+        let restoredText = try TranscriptCorrectionRevision.current(
+            meetingID: meetingID,
+            baseTranscriptRevision: 7,
+            history: [restoreText, speaker, first])
+        let speakerOnly = try TranscriptCorrectionRevision.current(
+            meetingID: meetingID,
+            baseTranscriptRevision: 7,
+            history: [speaker])
+        XCTAssertEqual(restoredText, speakerOnly)
+
+        let tombstonedRestore = TranscriptCorrectionEvent(
+            id: restoreText.id,
+            meetingID: restoreText.meetingID,
+            baseTranscriptRevision: restoreText.baseTranscriptRevision,
+            targetSegmentIDs: restoreText.targetSegmentIDs,
+            kind: restoreText.kind,
+            author: restoreText.author,
+            sourceDeviceID: restoreText.sourceDeviceID,
+            createdAt: restoreText.createdAt,
+            updatedAt: date(4),
+            deletedAt: date(4),
+            supersedesCorrectionID: restoreText.supersedesCorrectionID)
+        let terminalTombstone = try TranscriptCorrectionRevision.current(
+            meetingID: meetingID,
+            baseTranscriptRevision: 7,
+            history: [first, tombstonedRestore])
+        XCTAssertEqual(terminalTombstone, .accepted)
+    }
+
     private func compose<S: Sequence, C: Sequence>(
         material: MeetingTranscriptBaseMaterial = .raw,
         segments: S,

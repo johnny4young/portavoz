@@ -1363,6 +1363,55 @@ extension MeetingStoreTests {
         XCTAssertTrue(runs.isEmpty)
     }
 
+    func testGeneratedCompanionReplacementRejectsStaleCorrectionRevision() async throws {
+        let (_, segments) = try await seedMeetingWithTranscript()
+        let correction = TranscriptCorrectionEvent(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            targetSegmentIDs: [segments[0].id],
+            kind: .replaceText(text: "presupuesto corregido", language: "es"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_003_700))
+        _ = try await store.appendTranscriptCorrection(correction)
+        let revision = try TranscriptCorrectionRevision.current(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            history: [correction])
+        let staleCard = CompanionCard(
+            question: "Stale question", answer: "Must not publish",
+            kind: .context, source: "on-device", askedAt: 15)
+
+        do {
+            try await store.replaceCompanionCards(
+                [],
+                generated: [CompanionGenerationArtifact(
+                    card: staleCard,
+                    generationRun: companionRun(card: staleCard, outcome: .succeeded))],
+                for: meeting.id)
+            XCTFail("accepted-only Companion work must not publish after a correction")
+        } catch let error as StorageError {
+            guard case .invalidGenerationRun = error else {
+                return XCTFail("expected invalidGenerationRun, got \(error)")
+            }
+        }
+
+        let currentCard = CompanionCard(
+            question: "Current question", answer: "Publish this",
+            kind: .context, source: "on-device", askedAt: 16)
+        try await store.replaceCompanionCards(
+            [],
+            generated: [CompanionGenerationArtifact(
+                card: currentCard,
+                generationRun: companionRun(
+                    card: currentCard,
+                    outcome: .succeeded,
+                    sourceCorrectionRevision: revision))],
+            for: meeting.id)
+
+        let cards = try await store.companionCards(for: meeting.id)
+        XCTAssertEqual(cards, [currentCard])
+    }
+
     func testCompanionTerminalRunRejectsStaleTranscriptRevision() async throws {
         try await store.save(meeting)
         let card = CompanionCard(
@@ -1393,9 +1442,13 @@ extension MeetingStoreTests {
     private func companionRun(
         card: CompanionCard,
         outcome: GenerationRunOutcome,
-        sourceTranscriptRevision: Int = 0
+        sourceTranscriptRevision: Int = 0,
+        sourceCorrectionRevision: TranscriptCorrectionRevision? = nil
     ) -> GenerationRun {
         let timestamp = meeting.startedAt.addingTimeInterval(card.askedAt)
+        let correctionConfiguration = sourceCorrectionRevision.map {
+            #", "sourceCorrectionRevision":"\#($0.rawValue)""#
+        } ?? ""
         return GenerationRun(
             meetingID: meeting.id,
             kind: .companion,
@@ -1405,7 +1458,7 @@ extension MeetingStoreTests {
             configJSON: """
                 {"operation":"classify-and-answer",\
                 "sourceTranscriptRevision":\(sourceTranscriptRevision),\
-                "workflow":"post-refine"}
+                "workflow":"post-refine"\(correctionConfiguration)}
                 """,
             outputLanguage: "en",
             startedAt: timestamp,

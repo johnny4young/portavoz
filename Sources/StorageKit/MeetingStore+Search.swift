@@ -101,6 +101,7 @@ extension MeetingStore {
                 WHERE segmentSearch MATCH ?
                   AND segment.deletedAt IS NULL
                   AND meeting.deletedAt IS NULL
+                  AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
                 -- FTS5's hidden rank column defaults to bm25(), but unlike
                 -- calling bm25() here it can abandon scoring after LIMIT.
                 ORDER BY rank
@@ -150,6 +151,7 @@ extension MeetingStore {
                         JOIN meeting ON meeting.id = segment.meetingID
                         WHERE segment.deletedAt IS NULL
                           AND meeting.deletedAt IS NULL
+                          AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
                         LIMIT 1
                     )
                     """) ?? false
@@ -175,6 +177,7 @@ extension MeetingStore {
                         JOIN meeting ON meeting.id = segment.meetingID
                         WHERE segment.deletedAt IS NULL
                           AND meeting.deletedAt IS NULL
+                          AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
                           AND (
                               segment.embedding IS NULL
                               OR segment.embeddingFingerprint IS NOT ?
@@ -223,6 +226,7 @@ extension MeetingStore {
                     FROM segment
                     JOIN meeting ON meeting.id = segment.meetingID AND meeting.deletedAt IS NULL
                     WHERE segment.embedding IS NULL AND segment.deletedAt IS NULL
+                      AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
                     ORDER BY segment.createdAt, segment.rowid
                     LIMIT ?
                     """,
@@ -286,6 +290,7 @@ extension MeetingStore {
                                 AND meeting.deletedAt IS NULL
                                 AND meeting.transcriptRevision = ?
                           )
+                          AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
                         """,
                     arguments: [
                         Self.blob(from: vector),
@@ -335,6 +340,7 @@ extension MeetingStore {
                       AND segment.meetingID NOT IN (
                           SELECT meeting.id FROM meeting WHERE meeting.deletedAt IS NOT NULL
                       )
+                      AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
                     ORDER BY segment.rowid ASC
                     """,
                 arguments: [profile.fingerprint])
@@ -406,6 +412,7 @@ extension MeetingStore {
                         AND meeting.deletedAt IS NULL
                     WHERE segment.id IN (\(databaseQuestionMarks(count: segmentKeys.count)))
                       AND segment.deletedAt IS NULL
+                      AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
                     """,
                 arguments: StatementArguments(segmentKeys))
             var current: [UUID: SearchHit] = [:]
@@ -485,6 +492,7 @@ extension MeetingStore {
                     JOIN meeting ON meeting.id = segment.meetingID AND meeting.deletedAt IS NULL
                     WHERE segment.rowid IN (\(databaseQuestionMarks(count: chunk.count)))
                       AND segment.deletedAt IS NULL
+                      AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
                     """,
                 arguments: StatementArguments(chunk))
             for row in rows {

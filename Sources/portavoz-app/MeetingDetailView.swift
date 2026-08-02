@@ -192,6 +192,10 @@ private extension MeetingDetailView {
                 segments: detail.segments,
                 chapters: transcript.chapters,
                 companionCards: detail.companionCards,
+                companionFreshness: Dictionary(
+                    uniqueKeysWithValues: detail.companionCards.map {
+                        ($0.id, detail.companionFreshness($0))
+                    }),
                 transcriptRevision: detail.meeting.transcriptRevision,
                 hasPlayback: player != nil,
                 presentation: presentation),
@@ -244,7 +248,8 @@ private extension MeetingDetailView {
                     detail: detail),
                 regenerating: flow.isRegenerating,
                 alternateEngine: coordinator.alternateEngine,
-                presentation: presentation),
+                presentation: presentation,
+                freshness: detail.summaryFreshness),
             actions: coordinator.generatedDocumentActions(
                 summary: summary,
                 detail: detail,

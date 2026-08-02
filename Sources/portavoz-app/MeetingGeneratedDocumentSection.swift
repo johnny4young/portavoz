@@ -25,6 +25,7 @@ struct MeetingGeneratedDocumentValues {
     let regenerating: Bool
     let alternateEngine: MeetingGeneratedDocumentAlternateEngine?
     let presentation: MeetingDetailPresentation
+    let freshness: DerivedArtifactFreshness
 }
 
 struct MeetingGeneratedDocumentActions {
@@ -59,6 +60,7 @@ struct MeetingGeneratedDocumentSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             documentHeader
+            staleSummaryNotice
             documentTabs
             documentContent
         }
@@ -68,6 +70,27 @@ struct MeetingGeneratedDocumentSection: View {
         .accessibilityIdentifier("detail-generated-document")
         .onChange(of: values.summary.version) { _, _ in
             tabSelection = 0
+        }
+    }
+
+    @ViewBuilder
+    private var staleSummaryNotice: some View {
+        if values.freshness == .stale {
+            HStack(spacing: 8) {
+                Label(
+                    "Transcript changed — regenerate this summary to use your corrections.",
+                    systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                Spacer()
+                Button("Regenerate") {
+                    actions.regenerate(values.summaryLanguage, nil, nil)
+                }
+                .controlSize(.small)
+                .disabled(values.regenerating)
+                .accessibilityIdentifier("detail-stale-summary-regenerate")
+            }
+            .accessibilityIdentifier("detail-stale-summary")
         }
     }
 
@@ -254,9 +277,9 @@ struct MeetingGeneratedDocumentSection: View {
                 .toggleStyle(.checkbox)
                 .accessibilityIdentifier("action-item-\(item.id.uuidString)")
                 if let evidence = evidenceByItem[item.id] {
-                    let resolution = evidence.resolveEvidence(
+                    let resolution = currentResolution(evidence.resolveEvidence(
                         currentTranscriptRevision: values.transcriptRevision,
-                        segments: values.segments)
+                        segments: values.segments))
                     evidenceSources(
                         resolution,
                         sourceIdentifier:
@@ -296,9 +319,9 @@ struct MeetingGeneratedDocumentSection: View {
                     VStack(alignment: .leading, spacing: 6) {
                         MarkdownText(text: bullet)
                         if let evidence = evidenceByBullet[index] {
-                            let resolution = evidence.resolveEvidence(
+                            let resolution = currentResolution(evidence.resolveEvidence(
                                 currentTranscriptRevision: values.transcriptRevision,
-                                segments: values.segments)
+                                segments: values.segments))
                             evidenceSources(
                                 resolution,
                                 sourceIdentifier:
@@ -317,9 +340,9 @@ struct MeetingGeneratedDocumentSection: View {
     @ViewBuilder
     private var overviewEvidence: some View {
         if let claim = values.summary.draft.claims.first(where: { $0.kind == .overview }) {
-            let resolution = claim.resolveEvidence(
+            let resolution = currentResolution(claim.resolveEvidence(
                 currentTranscriptRevision: values.transcriptRevision,
-                segments: values.segments)
+                segments: values.segments))
             VStack(alignment: .leading, spacing: 8) {
                 evidenceSources(
                     resolution,
@@ -347,6 +370,14 @@ struct MeetingGeneratedDocumentSection: View {
             unavailableIdentifier: unavailableIdentifier,
             clock: { values.presentation.clock($0) },
             focus: actions.focusEvidence)
+    }
+
+    private func currentResolution(
+        _ resolution: TranscriptEvidenceResolution
+    ) -> TranscriptEvidenceResolution {
+        values.freshness == .current
+            ? resolution
+            : TranscriptEvidenceResolution(status: .stale)
     }
 
     private var summaryBadge: some View {

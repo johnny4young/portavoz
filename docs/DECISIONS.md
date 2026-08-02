@@ -7860,3 +7860,66 @@ from publishing.
 maps preserve future audio navigation, and recoverable suppression removes
 reading noise without deleting evidence. Keeping invalidation separate avoids
 silently mixing corrected presentation with stale derived artifacts.
+
+## D233 — Fence derived artifacts by effective correction lineage (Aug 2026)
+
+**Context:** D229–D232 make transcript correction composition deterministic,
+durable, synchronized, and editable in Meeting Detail, but deliberately leave
+derived consumers on accepted material. Without one correction identity and an
+atomic invalidation boundary, old summary/index work can publish after an edit,
+fingerprint-identical cache entries can be reused from the wrong transcript
+overlay, and immutable summaries or Apuntador cards can look current while their
+source evidence has changed.
+
+**Decision:** define `TranscriptCorrectionRevision` as the convergent identity
+of the effective correction overlay for one accepted transcript revision. It is
+the literal `accepted` value when no event is active; otherwise it is a SHA-256
+fingerprint over meeting identity, accepted transcript revision, and the
+canonically ordered effective event IDs. Malformed history has no valid
+revision and fails closed.
+
+StorageKit computes that revision in the same database snapshot as correction
+append, tombstone, and format-2 sync replay. Only a before/after change cancels
+pending or running accepted-only `summary` and `index` jobs and advances the
+independent semantic-corpus source generation. Transcription and diarization
+work remain valid. Its timestamp is the maximum of the correction event,
+meeting, affected jobs, and current semantic-maintenance source, preventing an
+older synced event from moving local maintenance metadata backward. No
+correction transaction starts model execution or rewrites an immutable
+generated artifact.
+
+Every accepted-only retrieval path shares one SQL predicate that removes source
+rows with active corrections from FTS candidates, semantic reads, embedding
+candidates, vector publication, and current identity projection. Unaffected rows
+remain searchable. Restore makes an accepted row eligible again and the source-
+generation advance wakes maintenance. Corrected text is not yet materialized in
+an index, so this decision prefers an honest omission over returning stale text.
+
+Summary and Apuntador generation runs carry both accepted transcript revision
+and effective correction revision. Apuntador includes both in its operation
+fingerprint; the summary fingerprint remains content-derived, while cache and
+translation-pivot reuse additionally require a linked run with matching
+lineage. StorageKit rechecks the same lineage inside each artifact publication
+transaction. Legacy provenance is accepted only for an uncorrected
+revision-zero meeting.
+Explicit summary regeneration and review-metadata suggestions use composed rows.
+Generated evidence is projected back to ordered immutable accepted source IDs
+before persistence.
+
+The reviewed Meeting Detail boundary advances to 332 interaction signals,
+eleven owners, and 26 UI journeys, including one deterministic stale-
+artifact journey. Meeting Detail retains old summaries and Apuntador cards
+as immutable history but marks them stale, disables their evidence as
+current proof, offers explicit
+summary regeneration, and clears route-local generated chapter/title/recipe
+suggestions when correction lineage changes. Automatic Apuntador regeneration,
+corrected-text search/index storage, and composed export remain separate future
+adoptions.
+
+**Rationale:** one content-derived correction identity converges across devices
+without a mutable counter. Transactional cancellation plus publication fences
+prevents stale work at both ends of the race. Retaining immutable artifacts with
+truthful freshness preserves auditability, while explicit on-demand generation
+avoids surprising model cost and keeps correction writes fast. Excluding only
+affected accepted rows preserves useful search without pretending the corrected
+projection is already indexed.

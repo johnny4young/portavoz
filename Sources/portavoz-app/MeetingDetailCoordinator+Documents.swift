@@ -92,6 +92,7 @@ extension MeetingDetailCoordinator {
         detail: MeetingReviewReadModel
     ) -> Bool {
         guard !flow.isRegenerating,
+              detail.summaryFreshness == .current,
               sceneValues.summaryEngine != .mlx,
               sceneValues.mlxDownloaded,
               model.state.dismissedThinSummaryVersion != summary.version,
@@ -138,11 +139,23 @@ extension MeetingDetailCoordinator {
         detail: MeetingReviewReadModel,
         summary: MeetingReviewSummary?,
         segments: [TranscriptSegment]? = nil,
-        speakers: [Speaker]? = nil
+        speakers: [Speaker]? = nil,
+        sourceTranscriptRevision: Int? = nil
     ) {
         guard !flow.isRegenerating else { return }
         model.dismissSuggestedRecipe()
-        let sourceSegments = segments ?? detail.segments
+        let material: MeetingTranscriptGenerationMaterial
+        if let segments {
+            material = MeetingTranscriptGenerationMaterial(
+                segments: segments,
+                sourceSegmentIDsByGeneratedID: Dictionary(
+                    uniqueKeysWithValues: segments.map { ($0.id, [$0.id]) }),
+                baseTranscriptRevision: sourceTranscriptRevision
+                    ?? detail.meeting.transcriptRevision,
+                correctionRevision: .accepted)
+        } else {
+            material = detail.transcriptGenerationMaterial()
+        }
         let sourceSpeakers = speakers ?? detail.speakers
         flow.isRegenerating = true
         let activeRecipe = recipe
@@ -152,11 +165,14 @@ extension MeetingDetailCoordinator {
             defer { flow.isRegenerating = false }
             let request = RegenerateSummaryRequest(
                 meetingID: meetingID,
-                segments: sourceSegments,
+                segments: material.segments,
                 speakers: sourceSpeakers,
                 recipe: activeRecipe,
                 targetLanguage: language.identifier,
-                providerOverride: engine)
+                sourceTranscriptRevision: material.baseTranscriptRevision,
+                sourceCorrectionRevision: material.correctionRevision,
+                providerOverride: engine,
+                evidenceSourceIDsByGeneratedID: material.sourceSegmentIDsByGeneratedID)
             await applyRegenerateResult(await sceneActions.regenerateSummary(request))
         }
     }
@@ -219,7 +235,8 @@ extension MeetingDetailCoordinator {
                     detail: detail,
                     summary: summary,
                     segments: draft.segments,
-                    speakers: draft.speakers)
+                    speakers: draft.speakers,
+                    sourceTranscriptRevision: result.transcriptRevision)
             } catch MeetingDetailRefineApplyError.staleDraft {
                 flow.operationError = L10n.text(
                     "The transcript changed while you reviewed this draft. Run refine again.")

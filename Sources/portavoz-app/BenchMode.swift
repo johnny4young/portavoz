@@ -402,6 +402,8 @@ extension BenchMode {
             speakers: fixture.speakers,
             recipe: .general,
             targetLanguage: "en",
+            sourceTranscriptRevision: fixture.meeting.transcriptRevision,
+            sourceCorrectionRevision: .accepted,
             providerOverride: .mlx)
     }
 

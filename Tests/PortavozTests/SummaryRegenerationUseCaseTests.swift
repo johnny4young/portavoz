@@ -60,7 +60,7 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
             })
         XCTAssertEqual(
             runs.first?.configJSON,
-            #"{"operation":"regenerate","recipeID":"standup","reusePolicy":"none","workflow":"manual-regeneration"}"#)
+            #"{"operation":"regenerate","recipeID":"standup","reusePolicy":"none","sourceCorrectionRevision":"accepted","sourceTranscriptRevision":0,"workflow":"manual-regeneration"}"#)
         XCTAssertEqual(
             runs.first?.metricsJSON,
             #"{"actionItemCount":0,"outputUTF8Bytes":8}"#)
@@ -117,7 +117,12 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
         XCTAssertEqual(result, .unchanged(version: 7))
         XCTAssertEqual(
             lookups,
-            [.init(recipeID: Recipe.standup.id, fingerprint: fingerprint, language: "es")])
+            [.init(
+                recipeID: Recipe.standup.id,
+                fingerprint: fingerprint,
+                language: "es",
+                sourceTranscriptRevision: 0,
+                sourceCorrectionRevision: .accepted)])
         XCTAssertTrue(summaryRequests.isEmpty)
         XCTAssertTrue(translations.isEmpty)
         XCTAssertTrue(summaryRuns.isEmpty)
@@ -160,11 +165,15 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
                 .init(
                     recipeID: Recipe.general.id,
                     fingerprint: fingerprint,
-                    language: "es"),
+                    language: "es",
+                    sourceTranscriptRevision: 0,
+                    sourceCorrectionRevision: .accepted),
                 .init(
                     recipeID: Recipe.general.id,
                     fingerprint: fingerprint,
-                    language: nil),
+                    language: nil,
+                    sourceTranscriptRevision: 0,
+                    sourceCorrectionRevision: .accepted),
             ])
         XCTAssertEqual(translations.map(\.targetLanguage), ["es"])
         XCTAssertEqual(translations.first?.glossary, ["API"])
@@ -268,6 +277,138 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
         XCTAssertEqual(requests.first?.contextItems.count, 0)
     }
 
+    func testCorrectedGenerationProjectsEvidenceBackToAcceptedSegments() async throws {
+        let fixture = Fixture()
+        let generatedID = UUID()
+        let secondAcceptedID = UUID()
+        let generated = TranscriptSegment(
+            id: generatedID,
+            meetingID: fixture.meetingID,
+            speakerID: fixture.speaker.id,
+            channel: .system,
+            text: "Corrected material",
+            language: "en",
+            startTime: 0,
+            endTime: 3,
+            isFinal: true)
+        let action = ActionItem(text: "Publish")
+        let providerDraft = SummaryDraft(
+            meetingID: fixture.meetingID,
+            recipeID: Recipe.general.id,
+            language: "en",
+            markdown: "# corrected",
+            actionItems: [action],
+            claims: [SummaryClaim(
+                kind: .overview,
+                evidenceSegmentIDs: [generatedID])],
+            decisionEvidence: [SummaryDecisionEvidence(
+                sectionOrdinal: 0,
+                bulletOrdinal: 0,
+                evidenceSegmentIDs: [generatedID])],
+            actionItemEvidence: [SummaryActionItemEvidence(
+                actionItemID: action.id,
+                evidenceSegmentIDs: [generatedID])])
+        let store = SummaryRegenerationStoreSpy()
+        let provider = SummaryRegenerationProviderSpy(summaryDraft: providerDraft)
+        let correctionRevision = try XCTUnwrap(TranscriptCorrectionRevision(
+            rawValue: String(repeating: "a", count: 64)))
+        let request = RegenerateSummaryRequest(
+            meetingID: fixture.meetingID,
+            segments: [generated],
+            speakers: [fixture.speaker],
+            recipe: .general,
+            targetLanguage: "en",
+            sourceTranscriptRevision: 4,
+            sourceCorrectionRevision: correctionRevision,
+            evidenceSourceIDsByGeneratedID: [
+                generatedID: [fixture.segment.id, secondAcceptedID],
+            ])
+        let useCase = RegenerateSummary(
+            store: store,
+            preferences: SummaryRegenerationPreferencesStub(),
+            providers: SummaryRegenerationProviderResolverSpy(
+                resolution: .available(provider)))
+
+        let result = await useCase.execute(request)
+
+        let recordedDrafts = await store.recordedDrafts()
+        let recordedRuns = await store.recordedSummaryRuns()
+        let saved = try XCTUnwrap(recordedDrafts.first)
+        let run = try XCTUnwrap(recordedRuns.first)
+        XCTAssertEqual(result, .completed(persisted: true))
+        XCTAssertEqual(saved.claims.first?.sourceTranscriptRevision, 4)
+        XCTAssertEqual(
+            saved.claims.first?.evidenceSegmentIDs,
+            [fixture.segment.id, secondAcceptedID])
+        XCTAssertEqual(
+            saved.decisionEvidence.first?.evidenceSegmentIDs,
+            [fixture.segment.id, secondAcceptedID])
+        XCTAssertEqual(
+            saved.actionItemEvidence.first?.evidenceSegmentIDs,
+            [fixture.segment.id, secondAcceptedID])
+        XCTAssertEqual(run.transcriptCorrectionSource, .revision(correctionRevision))
+        XCTAssertEqual(run.transcriptRevisionSource, .revision(4))
+    }
+
+    func testStoreRejectsAcceptedCacheAndPublicationAfterCorrectionChanges() async throws {
+        let fixture = Fixture()
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(id: fixture.meetingID, title: "Corrected", startedAt: Date())
+        try await store.save(meeting)
+        try await store.save([fixture.speaker])
+        try await store.save([fixture.segment])
+        let fingerprint = "stable-input"
+        let acceptedRun = generatedSummaryRun(
+            meetingID: fixture.meetingID,
+            fingerprint: fingerprint,
+            correctionRevision: .accepted)
+        _ = try await store.saveSummary(
+            fixture.draft(fingerprint: fingerprint),
+            generationRun: acceptedRun)
+        let correction = TranscriptCorrectionEvent(
+            meetingID: fixture.meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [fixture.segment.id],
+            kind: .replaceText(text: fixture.segment.text, language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 100))
+        _ = try await store.appendTranscriptCorrection(correction)
+        let currentRevision = try TranscriptCorrectionRevision.current(
+            meetingID: fixture.meetingID,
+            baseTranscriptRevision: 0,
+            history: [correction])
+
+        let cache = try await store.regenerationSummary(
+            fixture.meetingID,
+            recipeID: Recipe.general.id,
+            fingerprint: fingerprint,
+            language: "en",
+            sourceTranscriptRevision: 0,
+            sourceCorrectionRevision: currentRevision)
+        XCTAssertNil(cache)
+
+        do {
+            _ = try await store.saveSummary(
+                fixture.draft(markdown: "# stale publication"),
+                generationRun: generatedSummaryRun(
+                    meetingID: fixture.meetingID,
+                    fingerprint: "stale",
+                    correctionRevision: .accepted))
+            XCTFail("accepted-only generation must not publish over corrected material")
+        } catch StorageError.invalidGenerationRun(let reason) {
+            XCTAssertTrue(reason.contains("stale"))
+        }
+
+        _ = try await store.saveSummary(
+            fixture.draft(markdown: "# corrected publication"),
+            generationRun: generatedSummaryRun(
+                meetingID: fixture.meetingID,
+                fingerprint: "corrected",
+                correctionRevision: currentRevision))
+        let stored = try await store.summary(fixture.meetingID)
+        XCTAssertEqual(stored?.draft.markdown, "# corrected publication")
+    }
+
     func testRealStoreAdapterLoadsNotesAndPersistsSnapshot() async throws {
         let fixture = Fixture()
         let store = try MeetingStore.inMemory()
@@ -299,6 +440,56 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
         XCTAssertEqual(runs.count, 1)
         XCTAssertEqual(linked, runs.first)
         XCTAssertEqual(linked?.outcome, .succeeded)
+    }
+
+    func testRealStoreCacheRequiresMatchingTranscriptAndCorrectionLineage() async throws {
+        let fixture = Fixture()
+        let store = try MeetingStore.inMemory()
+        try await store.save(
+            Meeting(id: fixture.meetingID, title: "Cache lineage", startedAt: Date()))
+        let fingerprint = String(repeating: "f", count: 64)
+        let draft = fixture.draft(fingerprint: fingerprint)
+        let run = GenerationRun(
+            meetingID: fixture.meetingID,
+            kind: .summary,
+            providerID: "apple-test",
+            modelID: "system-language-model",
+            inputFingerprint: fingerprint,
+            configJSON: #"{"sourceCorrectionRevision":"accepted","sourceTranscriptRevision":0}"#,
+            outputLanguage: fixture.targetLanguage,
+            startedAt: Date(timeIntervalSince1970: 10),
+            finishedAt: Date(timeIntervalSince1970: 11),
+            outcome: .succeeded,
+            metricsJSON: "{}")
+        _ = try await store.saveSummary(draft, generationRun: run)
+
+        let matching = try await store.regenerationSummary(
+            fixture.meetingID,
+            recipeID: fixture.recipe.id,
+            fingerprint: fingerprint,
+            language: fixture.targetLanguage,
+            sourceTranscriptRevision: 0,
+            sourceCorrectionRevision: .accepted)
+        let wrongTranscript = try await store.regenerationSummary(
+            fixture.meetingID,
+            recipeID: fixture.recipe.id,
+            fingerprint: fingerprint,
+            language: fixture.targetLanguage,
+            sourceTranscriptRevision: 1,
+            sourceCorrectionRevision: .accepted)
+        let correctedRevision = try XCTUnwrap(
+            TranscriptCorrectionRevision(rawValue: String(repeating: "a", count: 64)))
+        let wrongCorrection = try await store.regenerationSummary(
+            fixture.meetingID,
+            recipeID: fixture.recipe.id,
+            fingerprint: fingerprint,
+            language: fixture.targetLanguage,
+            sourceTranscriptRevision: 0,
+            sourceCorrectionRevision: correctedRevision)
+
+        XCTAssertEqual(matching?.version, 1)
+        XCTAssertNil(wrongTranscript)
+        XCTAssertNil(wrongCorrection)
     }
 
     func testCancellationRecordsCancelledRunWithoutChangingPresentation() async {
@@ -398,6 +589,27 @@ final class SummaryRegenerationUseCaseTests: XCTestCase {
     }
 }
 
+private func generatedSummaryRun(
+    meetingID: MeetingID,
+    fingerprint: String,
+    correctionRevision: TranscriptCorrectionRevision
+) -> GenerationRun {
+    GenerationRun(
+        meetingID: meetingID,
+        kind: .summary,
+        providerID: "test-provider",
+        modelID: "test-model",
+        inputFingerprint: fingerprint,
+        configJSON: """
+            {"sourceCorrectionRevision":"\(correctionRevision.rawValue)","sourceTranscriptRevision":0}
+            """,
+        outputLanguage: "en",
+        startedAt: Date(timeIntervalSince1970: 10),
+        finishedAt: Date(timeIntervalSince1970: 11),
+        outcome: .succeeded,
+        metricsJSON: "{}")
+}
+
 private func terminalRun(
     meetingID: MeetingID,
     outcome: GenerationRunOutcome,
@@ -454,6 +666,8 @@ private struct Fixture {
             speakers: [speaker],
             recipe: recipe,
             targetLanguage: targetLanguage,
+            sourceTranscriptRevision: 0,
+            sourceCorrectionRevision: .accepted,
             providerOverride: override)
     }
 
@@ -590,6 +804,8 @@ private actor SummaryRegenerationStoreSpy: SummaryRegenerationStore {
         let recipeID: String
         let fingerprint: String
         let language: String?
+        let sourceTranscriptRevision: Int
+        let sourceCorrectionRevision: TranscriptCorrectionRevision
     }
 
     private let contextItems: [ContextItem]
@@ -625,10 +841,17 @@ private actor SummaryRegenerationStoreSpy: SummaryRegenerationStore {
         _ meetingID: MeetingID,
         recipeID: String,
         fingerprint: String,
-        language: String?
+        language: String?,
+        sourceTranscriptRevision: Int,
+        sourceCorrectionRevision: TranscriptCorrectionRevision
     ) -> SummaryRegenerationSnapshot? {
         lookups.append(
-            Lookup(recipeID: recipeID, fingerprint: fingerprint, language: language))
+            Lookup(
+                recipeID: recipeID,
+                fingerprint: fingerprint,
+                language: language,
+                sourceTranscriptRevision: sourceTranscriptRevision,
+                sourceCorrectionRevision: sourceCorrectionRevision))
         return language == nil ? pivot : exact
     }
 

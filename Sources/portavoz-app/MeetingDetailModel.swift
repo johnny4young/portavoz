@@ -54,6 +54,7 @@ final class MeetingDetailModel {
     private var core: MeetingReviewCore?
     private var summary: MeetingReviewSummary?
     private var companionCards: [CompanionCard] = []
+    private var companionCorrectionSources: [UUID: TranscriptCorrectionArtifactSource] = [:]
     private var privacyReceipt: PrivacyReceipt?
     private var processingJobs: [ProcessingJob] = []
     private var notes = MeetingReviewNotes()
@@ -454,13 +455,16 @@ private extension MeetingDetailModel {
     func loadMetadataSuggestions() async {
         guard let detail = state.readModel else { return }
         let suggestMeetingTitle = !didCompleteTitleSuggestion
+            && detail.summaryFreshness == .current
             && detail.meeting.title.first?.isNumber == true
             && detail.summary != nil
         let suggestRecipe = !didCompleteRecipeSuggestion
+            && detail.summaryFreshness == .current
             && !detail.segments.isEmpty
             && detail.summary?.draft.recipeID == Recipe.general.id
+        let generatedSegments = detail.transcriptGenerationMaterial().segments
         let chapterStarts = Set(
-            ChapterExtractor.chapters(from: detail.segments).map(\.startTime))
+            ChapterExtractor.chapters(from: generatedSegments).map(\.startTime))
         let titledStarts = Set(state.chapterTitles.keys)
         guard suggestMeetingTitle
                 || suggestRecipe
@@ -605,14 +609,22 @@ private extension MeetingDetailModel {
         metadataRequestID = UUID()
         switch update {
         case .core(let value):
+            if core?.correctionRevision != value?.correctionRevision {
+                state.chapterTitles = [:]
+                state.suggestedTitle = nil
+                state.suggestedRecipe = nil
+                didCompleteTitleSuggestion = false
+                didCompleteRecipeSuggestion = false
+            }
             core = value
             hasCoreSnapshot = true
             markObserved(.core)
         case .summary(let value):
             summary = value
             markObserved(.summary)
-        case .companionCards(let value):
-            companionCards = value
+        case .companionCards(let cards, let correctionSources):
+            companionCards = cards
+            companionCorrectionSources = correctionSources
             markObserved(.companion)
         case .privacyReceipt(let value):
             privacyReceipt = value
@@ -656,6 +668,7 @@ private extension MeetingDetailModel {
             core: core,
             summary: summary,
             companionCards: companionCards,
+            companionCorrectionSources: companionCorrectionSources,
             privacyReceipt: privacyReceipt,
             processingJobs: processingJobs,
             notes: notes)

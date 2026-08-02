@@ -105,8 +105,8 @@ extension AppServices: MeetingDetailModelClient {
 
 private func makeApplicationMeetingReviewStream(
     core: AsyncThrowingStream<MeetingStore.MeetingReviewCore?, Error>,
-    summary: AsyncThrowingStream<(draft: SummaryDraft, version: Int)?, Error>,
-    companion: AsyncThrowingStream<[CompanionCard], Error>,
+    summary: AsyncThrowingStream<MeetingStore.MeetingReviewSummarySnapshot?, Error>,
+    companion: AsyncThrowingStream<MeetingStore.MeetingReviewCompanionSnapshot, Error>,
     privacy: AsyncThrowingStream<PrivacyReceipt?, Error>,
     processing: AsyncThrowingStream<[ProcessingJob], Error>,
     notes: AsyncThrowingStream<(items: [ContextItem], enhanced: EnhancedNote?), Error>
@@ -122,13 +122,18 @@ private func makeApplicationMeetingReviewStream(
                 group.addTask {
                     await forwardMeetingReview(summary, to: continuation, section: .summary) {
                         .summary($0.map {
-                            MeetingReviewSummary(draft: $0.draft, version: $0.version)
+                            MeetingReviewSummary(
+                                draft: $0.draft,
+                                version: $0.version,
+                                correctionSource: $0.correctionSource)
                         })
                     }
                 }
                 group.addTask {
                     await forwardMeetingReview(companion, to: continuation, section: .companion) {
-                        .companionCards($0)
+                        .companionCards(
+                            $0.cards,
+                            correctionSources: $0.correctionSources)
                     }
                 }
                 group.addTask {
@@ -181,6 +186,7 @@ private func makeApplicationMeetingReviewCore(
         speakers: core.speakers,
         segments: core.segments,
         corrections: core.corrections,
+        correctionRevision: core.correctionRevision,
         isRefinedTranscript: core.isRefinedTranscript)
 }
 

@@ -15,6 +15,7 @@ public struct PostCaptureSummaryGenerationAttempt: Sendable {
     private let recipeID: String
     private let outputLanguage: String
     private let sourceTranscriptRevision: Int
+    private let sourceCorrectionRevision: TranscriptCorrectionRevision
     private let startedAt: Date
 
     public init(
@@ -22,6 +23,7 @@ public struct PostCaptureSummaryGenerationAttempt: Sendable {
         request: SummaryRequest,
         selection: PostCaptureSummaryProviderSelection,
         sourceTranscriptRevision: Int,
+        sourceCorrectionRevision: TranscriptCorrectionRevision,
         startedAt: Date = Date()
     ) {
         jobID = job.id
@@ -34,6 +36,7 @@ public struct PostCaptureSummaryGenerationAttempt: Sendable {
         recipeID = request.recipe.id
         outputLanguage = request.targetLanguage
         self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.sourceCorrectionRevision = sourceCorrectionRevision
         self.startedAt = startedAt
     }
 
@@ -56,6 +59,7 @@ public struct PostCaptureSummaryGenerationAttempt: Sendable {
                 jobID: jobID.rawValue.uuidString,
                 operation: "generate",
                 recipeID: recipeID,
+                sourceCorrectionRevision: sourceCorrectionRevision.rawValue,
                 sourceTranscriptRevision: sourceTranscriptRevision,
                 workflow: "post-capture")),
             outputLanguage: outputLanguage,
@@ -83,6 +87,7 @@ public struct PostCaptureSummaryGenerationAttempt: Sendable {
         let jobID: String
         let operation: String
         let recipeID: String
+        let sourceCorrectionRevision: String
         let sourceTranscriptRevision: Int
         let workflow: String
     }

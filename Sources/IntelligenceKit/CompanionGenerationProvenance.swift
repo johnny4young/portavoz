@@ -25,6 +25,7 @@ public struct CompanionExternalProviderIdentity: Equatable, Sendable {
 public struct CompanionGenerationRequest: Sendable {
     public let meetingID: MeetingID
     public let sourceTranscriptRevision: Int
+    public let sourceCorrectionRevision: TranscriptCorrectionRevision
     public let workflow: CompanionGenerationWorkflow
     public let candidate: String
     public let questionSegmentIDs: [UUID]
@@ -36,6 +37,7 @@ public struct CompanionGenerationRequest: Sendable {
     public init(
         meetingID: MeetingID,
         sourceTranscriptRevision: Int,
+        sourceCorrectionRevision: TranscriptCorrectionRevision,
         workflow: CompanionGenerationWorkflow,
         candidate: String,
         questionSegmentIDs: [UUID] = [],
@@ -46,6 +48,7 @@ public struct CompanionGenerationRequest: Sendable {
     ) {
         self.meetingID = meetingID
         self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.sourceCorrectionRevision = sourceCorrectionRevision
         self.workflow = workflow
         self.candidate = candidate
         self.questionSegmentIDs = questionSegmentIDs
@@ -108,6 +111,7 @@ public enum CompanionGenerationOperationFingerprint {
         let components = [
             request.meetingID.rawValue.uuidString,
             String(request.sourceTranscriptRevision),
+            request.sourceCorrectionRevision.rawValue,
             request.workflow.rawValue,
             request.candidate,
             optional("owner", request.ownerName),
@@ -199,6 +203,7 @@ public struct CompanionGenerationAttempt: Sendable {
                 externalTransferOccurred: trace.externalTransferOccurred,
                 externalTransferSucceeded: trace.externalTransferSucceeded,
                 operation: "classify-and-answer",
+                sourceCorrectionRevision: request.sourceCorrectionRevision.rawValue,
                 sourceTranscriptRevision: request.sourceTranscriptRevision,
                 workflow: request.workflow.rawValue)),
             outputLanguage: request.outputLanguage,
@@ -237,6 +242,7 @@ public struct CompanionGenerationAttempt: Sendable {
         let externalTransferOccurred: Bool
         let externalTransferSucceeded: Bool
         let operation: String
+        let sourceCorrectionRevision: String
         let sourceTranscriptRevision: Int
         let workflow: String
     }
