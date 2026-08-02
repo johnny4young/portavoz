@@ -16,6 +16,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-commitment-quality commitment-quality-deterministic \
 	commitment-quality-model commitment-quality-compare \
 	test-correction-composition correction-composition-benchmark \
+	test-commitment-radar-scale commitment-radar-benchmark \
 	test-exact-path-matrix exact-path-matrix \
 	exact-path-mutation-matrix test-exact-path-mutation-host exact-path-mutation-host \
 	test-exact-path-mutation-cross-host exact-path-mutation-cross-host \
@@ -42,6 +43,18 @@ PORTAVOZ_CORRECTION_COMPOSITION_RUNS ?= 5
 correction-composition-benchmark:
 	scripts/run-correction-composition-benchmark.sh \
 		--runs "$(PORTAVOZ_CORRECTION_COMPOSITION_RUNS)"
+
+## Verify the bounded, content-free Commitment Radar scale contract without
+## running the canonical 1,000/10,000-confirmed-commitment Release measurement.
+test-commitment-radar-scale:
+	$(XCODE) swift test --filter CommitmentRadarScaleBenchmarkTests
+
+## Emit one content-free Release observation for the bounded Commitment Radar
+## read over 1,000 and 10,000 synthetic confirmed commitments.
+PORTAVOZ_COMMITMENT_RADAR_RUNS ?= 5
+commitment-radar-benchmark:
+	scripts/run-commitment-radar-benchmark.sh \
+		--runs "$(PORTAVOZ_COMMITMENT_RADAR_RUNS)"
 
 ## Validate the adapter-neutral Ask quality contract and its canonical public
 ## 240-query multilingual fixture without loading models or user data.

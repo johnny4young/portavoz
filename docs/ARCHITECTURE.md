@@ -1147,6 +1147,17 @@ invoke intelligence, hydrate Meeting Detail per row, or promote generated
 action items. Project and topic grouping remain absent because neither has a
 canonical product entity.
 
+The bounded read has a content-free Release scale gate. A fresh synthetic
+store is prepared before timing, one warm read precedes five measured reads,
+and the maximum four-statement shape is exercised with exact canonical-person
+labels. The canonical 1,000- and 10,000-confirmed-commitment corpora return at
+most 100 roots and must remain within a 100 ms nearest-rank p95 budget. On the
+2 Aug 2026 arm64 reference host, p95 measured 4.25 ms and 25.27 ms
+respectively. The runner emits aggregate schema-v1 JSON only; it never opens a
+user library or records commitment, source, event, meeting, text, or path
+identity. This gate measures the StorageKit read, not UI rendering, candidate
+quality, or cross-meeting continuity inference.
+
 The focused correction command is the first product adoption of this durability
 boundary. It validates the complete retained history, treats text and speaker
 attribution as independent lanes that may coexist on one accepted source row,

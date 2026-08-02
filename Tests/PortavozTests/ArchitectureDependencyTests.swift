@@ -1626,6 +1626,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         let composition = try Self.contents(
             of: "Sources/portavoz-app/AppServices+CommitmentRadar.swift")
         let root = try Self.contents(of: "Sources/portavoz-app/ContentView.swift")
+        let scaleBenchmark = try Self.contents(
+            of: "Tests/PortavozTests/CommitmentRadarScaleBenchmarkTests.swift")
+        let scaleRunner = try Self.contents(
+            of: "scripts/run-commitment-radar-benchmark.sh")
+        let makefile = try Self.contents(of: "Makefile")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(core.contains("maximumItemCount = 200"))
@@ -1652,9 +1657,22 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("MeetingStore"))
         XCTAssertFalse(view.contains("SummaryProvider"))
         XCTAssertFalse(view.contains("IntelligenceKit"))
+        XCTAssertTrue(scaleBenchmark.contains(
+            "static let canonicalCorpusSizes = [1_000, 10_000]"))
+        XCTAssertTrue(scaleBenchmark.contains("p95BudgetMilliseconds: 100"))
+        XCTAssertTrue(scaleBenchmark.contains("guard selectCount == 4"))
+        XCTAssertTrue(scaleBenchmark.contains(
+            "PORTAVOZ_COMMITMENT_RADAR_REPORT"))
+        XCTAssertFalse(scaleBenchmark.contains("MeetingStore.defaultDatabaseURL"))
+        XCTAssertTrue(scaleRunner.contains("swift test -c release"))
+        XCTAssertTrue(scaleRunner.contains("--runs must be between 3 and 20"))
+        XCTAssertTrue(makefile.contains("commitment-radar-benchmark:"))
         XCTAssertTrue(decisions.contains("## D241"))
         XCTAssertTrue(decisions.contains(
             "Bound Commitment Radar as a confirmed-only read model"))
+        XCTAssertTrue(decisions.contains("## D242"))
+        XCTAssertTrue(decisions.contains(
+            "Gate Commitment Radar with a content-free Release benchmark"))
     }
 
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {

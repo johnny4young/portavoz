@@ -8247,3 +8247,35 @@ bundle/CloudKit field, CLI, or MCP contract. Project/topic grouping remains
 deferred until a real project/topic entity exists; meeting navigation is source
 evidence, not a project proxy. The canonical 1k/10k Release benchmark remains
 separate quality work.
+
+## D242 — Gate Commitment Radar with a content-free Release benchmark (Aug 2026)
+
+**Context:** D241 bounds the Radar structurally, but query-count assertions do
+not prove that the real StorageKit read remains responsive as confirmed history
+grows. Adding cross-meeting suggestions before measuring the existing read
+would mix baseline cost with new schema and ranking work. Running against a user
+library would also make performance evidence private, unstable, and difficult
+to reproduce safely.
+
+**Decision:** retain a canonical content-free Release benchmark over fresh
+synthetic stores containing 1,000 and 10,000 confirmed commitments. Fixture
+construction occurs outside timing; one warm read precedes three to twenty
+measured reads, with five as the standard observation. Every run requests a
+100-root page, must return stable identities and exact totals, and must execute
+the maximum four-SELECT/WITH query shape. A synthetic exact canonical person
+keeps the optional name lookup active deliberately.
+
+The gate uses nearest-rank p95 with an absolute 100 ms budget. Its runner emits
+one aggregate schema-v1 JSON observation to stdout, keeps build/test progress on
+stderr, never opens a user library, and persists no report. The payload excludes
+commitment, source, event, meeting, text, and database-path identity. On the
+2 Aug 2026 arm64 reference host, five Release reads measured 4.06 ms p50 and
+4.25 ms p95 at 1,000 rows, then 25.10 ms p50 and 25.27 ms p95 at 10,000 rows.
+
+**Consequences:** COMMIT-3 now has reproducible scale evidence before
+cross-meeting continuity work begins. Statement growth, unstable result
+identity, or a p95 budget miss fails the benchmark instead of being accepted as
+incidental host noise. The observation authorizes neither a candidate engine
+nor a storage-engine replacement, and it says nothing about SwiftUI rendering,
+semantic linking quality, reminders, sync, CLI, or MCP latency; those remain
+separate contracts.
