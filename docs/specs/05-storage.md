@@ -17,6 +17,9 @@ D243 adds an explicit append-only cross-meeting source link; it reuses schema
 v20–v22 and adds no migration.
 D244 adds only a storage-independent Core suggestion policy. It neither queries
 nor writes StorageKit and adds no schema, index, migration, or product adapter.
+D245 adds only a public fixture and adapter-neutral evaluator. It reads no
+meeting database, persists no score, and does not change the D243 explicit
+confirmation transaction.
 
 ## Database
 

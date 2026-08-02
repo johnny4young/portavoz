@@ -1963,6 +1963,21 @@ person, and produces no deadline suggestion. The bounded Radar reads only that
 confirmed aggregate and adds no deadline extractor or automatic commitment
 promotion.
 
+Cross-meeting link quality has a separate adapter-neutral authority. Its
+reproducible public fixture contains 36 bounded synthetic cases balanced
+12/12/12 across English, Spanish, and mixed speech, with 18 linkable cases and
+18 required abstentions. Each case labels semantic relevance independently
+from legal link admission, so wrong-person, unknown-owner, same-meeting, done,
+dismissed, and no-overlap failures remain distinguishable. Adapter observations
+are bound to the fixture digest and the serving policy's 20-hit/three-suggestion
+limits. The evaluator reports retrieval, final-link, abstention, and exact
+explanation-support metrics overall and per language/class. Its perfect control
+proves arithmetic only: every scorecard remains review-required and makes no
+engine, threshold, or product decision. No product adapter, StorageKit read,
+application composition, SwiftUI action, or durable mutation invokes this
+authority yet; the explicit confirmation transaction remains the sole
+confirmed write boundary.
+
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
 pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title
@@ -2849,14 +2864,14 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,735 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,753 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 502 Swift source files;
-- 61 XCUITest cases define the English and Spanish release gate;
+- strict SwiftLint reports zero violations across 506 Swift source files;
+- 62 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

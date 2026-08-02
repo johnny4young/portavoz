@@ -15,6 +15,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 .PHONY: build test test-ask-quality ask-quality-pair \
 	test-commitment-quality commitment-quality-deterministic \
 	commitment-quality-model commitment-quality-compare \
+	test-commitment-link-quality commitment-link-quality-control \
 	test-correction-composition correction-composition-benchmark \
 	test-commitment-radar-scale commitment-radar-benchmark \
 	test-exact-path-matrix exact-path-matrix \
@@ -107,6 +108,19 @@ commitment-quality-compare:
 	@python3 scripts/commitment_quality.py compare \
 		--left "$(PORTAVOZ_COMMITMENT_LEFT)" \
 		--right "$(PORTAVOZ_COMMITMENT_RIGHT)"
+
+## Validate the public multilingual cross-meeting link fixture and its
+## adapter-neutral evaluator without querying a model or a meeting library.
+test-commitment-link-quality:
+	python3 -m unittest Tests.Tooling.test_commitment_link_quality
+	python3 scripts/commitment_link_quality.py validate \
+		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json
+
+## Emit the perfect public-fixture control. It proves evaluator arithmetic,
+## not product quality, a threshold, an engine choice, or serving readiness.
+commitment-link-quality-control:
+	@python3 scripts/commitment_link_quality.py control \
+		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json
 
 ## Validate the exact-shaped, content-free host receipt boundary without
 ## running the expensive Release scale harness.

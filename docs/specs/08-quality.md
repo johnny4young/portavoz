@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,741 cases (13 environment-gated) + 62
+Status: the package inventory contains 1,753 cases (13 environment-gated) + 62
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -27,7 +27,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 505 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 506 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1332,8 +1332,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,741 XCTest package cases (13
-environment-gated), zero strict-lint violations across 505 Swift
+The current field-reliability inventory is 1,753 XCTest package cases (13
+environment-gated), zero strict-lint violations across 506 Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 62 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package
@@ -1380,6 +1380,21 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   `docs/evidence/commitment-quality-research-20260802.json`; its local-model
   result remains `review-required` and its product decision remains
   `not-evaluated` (D236).
+- `make test-commitment-link-quality` validates D245's reproducible 36-case
+  cross-meeting fixture and runs twelve evaluator/contract tests without a
+  model, database, or user library. The corpus is balanced across English,
+  Spanish, and mixed speech and across 18 linkable and 18 mandatory-abstention
+  cases. It labels semantic-relevant targets separately from legally linkable
+  targets, including ambiguous, wrong-person, no-overlap, same-meeting,
+  inactive, dismissed, and unknown-owner cases. Observations are fixture-
+  digest-bound and enforce D244's 20-hit/three-suggestion limits. Aggregate
+  scorecards report semantic Hit@1/Recall@20, link precision/recall/F1,
+  Hit@1/Recall@3, abstention accuracy, false-suggestion rate, and exact policy-
+  explanation support overall and per language/class. `make commitment-link-
+  quality-control` emits a perfect synthetic control only to prove evaluator
+  arithmetic; it remains `review-required`, makes no product decision, and
+  selects no threshold or engine. Optional case details are mode `0600`, non-
+  overwriting, and untracked.
 - `make test-ask-quality`: verifies both canonical public-synthetic Ask fixture
   generations and runs 38 deterministic evaluator/comparator/runner cases without
   loading models or user data. Each fixture has exactly 240 judged queries: 60

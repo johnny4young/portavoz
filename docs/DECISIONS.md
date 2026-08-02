@@ -8346,3 +8346,48 @@ future adapter must assemble current bounded targets and semantic identities,
 and a future UI must require the user to confirm through D243. This slice adds
 no schema, storage query, application composition, SwiftUI, automatic merge,
 chronology presentation, sync/export field, reminder, CLI, or MCP contract.
+
+## D245 — Separate semantic relevance from commitment-link legality (Aug 2026)
+
+**Context:** D244 can prove that a suggestion obeys the current exact-person,
+evidence-intersection, lifecycle, and cross-meeting rules, but that does not
+prove the semantic hit was relevant. An irrelevant top-k row from the correct
+person can be policy-valid and still create a false link. Conversely, the same
+obligation can be semantically relevant but illegal to link because it belongs
+to another person, the current meeting, an inactive commitment, or an
+unassigned candidate. Treating those outcomes as one label would hide the most
+important false-positive classes and could let a transparent Core policy be
+mistaken for retrieval-quality evidence.
+
+**Decision:** establish a second adapter-neutral public quality authority for
+cross-meeting links. Its reproducible schema-1 fixture contains exactly 36
+bounded synthetic cases: 12 English, 12 Spanish, and 12 mixed; 18 linkable and
+18 mandatory-abstention cases. It covers ordinary continuation, ambiguous
+multiple targets, local-user ownership, wrong person, no semantic overlap,
+same-meeting evidence, done and dismissed targets, and unknown ownership. Every
+case declares semantic-relevant target identities separately from legally
+linkable target identities and retains only synthetic action, commitment,
+meeting, and evidence material.
+
+An observation is bound to the canonical fixture digest and may contain at
+most the D244 limits of 20 ordered evidence identities and three suggestions.
+Unknown, duplicate, missing, or over-bounded identities fail closed. The
+evaluator reports semantic target Hit@1/Recall@20 separately from link
+precision/recall/F1, Hit@1/Recall@3, abstention accuracy, false-suggestion rate,
+and exact policy-explanation support, overall and by language/class. A
+policy-valid but semantically irrelevant link therefore remains a measured
+false positive. Optional per-case details are owner-only and non-overwriting.
+
+The perfect control exists only to prove fixture and evaluator arithmetic. All
+scorecards remain `review-required`, product decisions remain `not-evaluated`,
+and this slice defines no quality floor, similarity threshold, engine winner,
+runtime adapter, storage read, app composition, UI, mutation, or retained real-
+meeting evidence. A later product-path adapter must emit this exact observation
+contract before any suggestion can become user-visible, and D243 remains the
+only durable confirmation boundary.
+
+**Rationale:** semantic retrieval and domain admission fail for different
+reasons and need different evidence. A public multilingual pack makes both
+failures reproducible without user data, while a digest-bound, bounded,
+review-only evaluator prevents benchmark machinery from silently becoming a
+serving policy.

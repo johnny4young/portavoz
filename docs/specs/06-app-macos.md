@@ -27,7 +27,8 @@ composition adapter can append a later meeting's active evidence to an existing
 open commitment without exposing StorageKit to presentation. No current SwiftUI
 action invokes it. D244 adds only a pure Core suggestion policy; app target
 loading, semantic-query composition, confirmation affordance, and chronology
-presentation remain later COMMIT-4 slices.
+presentation remain unimplemented. D245 adds a public review-only
+quality pack but no app adapter, scene state, UI, or automatic link behavior.
 D201 lets full Ask publish exact citations while semantic refinement and local
 generation continue, with generation-fenced progress and cancellation.
 D222 freezes Meeting Detail interactions and measured behavior before
