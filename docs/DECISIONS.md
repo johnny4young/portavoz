@@ -8391,3 +8391,42 @@ reasons and need different evidence. A public multilingual pack makes both
 failures reproducible without user data, while a digest-bound, bounded,
 review-only evaluator prevents benchmark machinery from silently becoming a
 serving policy.
+
+## D246 — Observe commitment links through bounded product ports (Aug 2026)
+
+**Context:** D245 defines the observation contract for cross-meeting link
+quality, but it deliberately has no product-path adapter. Evaluating only a
+synthetic control would not prove that Portavoz can assemble current confirmed
+targets, use its real semantic query boundary, and apply D244 without creating
+a second engine or accidentally exposing suggestions. The adapter also needs
+to distinguish ordinary runtime unavailability from a legitimate abstention.
+
+**Decision:** add one non-serving ApplicationKit observer over the existing
+semantic-readiness, embedding-runtime, and `SemanticIndexSearching` ports. Its
+typed request carries the new ActionItem identity, meeting, text, and already
+resolved assignee. It trims and bounds the candidate text, requires a compatible
+published corpus, borrows only installed embedding assets with downloads
+disabled, validates one finite query vector, and accepts at most 20 unique
+ordered semantic segment identities. It then delegates legal admission solely
+to D244 and returns semantic hit identities separately from final proposals.
+
+StorageKit supplies one snapshot-consistent target read over open confirmed
+commitments. Roots are bounded to 200; source meetings and evidence identities
+are each bounded to 20 per root. Three set-based queries retrieve roots,
+sources, and evidence, using one extra ranked row to detect and omit malformed
+over-bounded aggregates. Identity decoding is strict. The adapter does not
+score, update, confirm, merge, or create continuity.
+
+Semantic unavailability, invalid candidate text, malformed vectors, and
+duplicate or over-bounded result identities fail through explicit typed errors.
+They are not converted into empty quality observations. The observer is not
+composed into `portavoz-app`, SwiftUI, CLI, or MCP, and cannot call the D243
+mutation boundary.
+
+**Consequences:** Portavoz now has a real, bounded product-path seam for
+collecting retrieval and admission evidence without serving it. D245 can next
+receive observations produced through the same semantic and persistence ports
+used by the product while keeping provider choice, score thresholds, accepted
+quality floors, UI, chronology presentation, and automatic behavior deferred.
+No schema, index, migration, model download, durable write, user-visible
+feature, sync/export field, reminder, or external API is added.

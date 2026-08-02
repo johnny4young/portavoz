@@ -28,7 +28,11 @@ open commitment without exposing StorageKit to presentation. No current SwiftUI
 action invokes it. D244 adds only a pure Core suggestion policy; app target
 loading, semantic-query composition, confirmation affordance, and chronology
 presentation remain unimplemented. D245 adds a public review-only
-quality pack but no app adapter, scene state, UI, or automatic link behavior.
+quality pack. D246 adds a bounded, non-serving ApplicationKit observation
+adapter over installed semantic assets and the existing query port, but the
+`portavoz-app` composition root does not construct or invoke it. There is still
+no scene state, SwiftUI affordance, automatic link, model download, or visible
+commitment-link behavior.
 D201 lets full Ask publish exact citations while semantic refinement and local
 generation continue, with generation-fenced progress and cancellation.
 D222 freezes Meeting Detail interactions and measured behavior before

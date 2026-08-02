@@ -20,6 +20,13 @@ nor writes StorageKit and adds no schema, index, migration, or product adapter.
 D245 adds only a public fixture and adapter-neutral evaluator. It reads no
 meeting database, persists no score, and does not change the D243 explicit
 confirmation transaction.
+D246 adds one read-only target adapter over the existing continuity schema. It
+uses one snapshot and exactly three bounded set-based queries: at most 200 open
+confirmed roots, at most 20 ordered source-meeting identities per root, and at
+most 20 ordered evidence-segment identities per root. Ranked queries fetch one
+extra related row so malformed over-bounded aggregates are omitted instead of
+silently truncated. Persisted identities decode strictly. The adapter adds no
+schema, index, migration, score, lifecycle interpretation, or write path.
 
 ## Database
 

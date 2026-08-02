@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,753 cases (13 environment-gated) + 62
+Status: the package inventory contains 1,759 cases (13 environment-gated) + 62
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -27,7 +27,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 506 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 508 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -38,6 +38,7 @@ documented below.
 | TranscriptCorrectionQualityTests / TranscriptCorrectionScaleBenchmarkTests | Sixty-four seeded permutations of replace/speaker/split/merge/suppress/restore history; stable composed readings independent of arrival order; explicit refined Spanish/English source language, source identity, and lineage preservation; content-free 20,000-segment/400-correction Release measurement; and a 250 ms p95 pure-composition budget over at least three runs |
 | CommitmentRadarQueryTests / CommitmentRadarStorageTests / CommitmentRadarScaleBenchmarkTests | Injected seven-day calendar boundaries; strict root/related-row limits; exact self/person/unassigned ownership plus urgency/activity filters; oldest source and newest history bounds with visible totals; source-meeting navigation; projection/history corruption rejection; an at-most-four-SELECT snapshot read independent of root count; and a content-free 1,000/10,000-confirmed-commitment Release gate with a 100 ms p95 budget |
 | CommitmentRadarModelTests | Complete, empty, and failed presentation phases; exact owner/due/activity mapping; grouping without storage reload; stale-load rejection; retry after failure; and database-free adapter behavior |
+| CommitmentLinkObservationTests / CommitmentSourceLinkArchitectureTests | Exact open-target source/evidence projection; closed and invalid-limit exclusion; installed-assets-only semantic borrowing; existing semantic-port use; separation of semantic relevance from wrong-owner admission; typed unavailable/malformed rejection; fixed 200/20/three bounds; and absence of mutation or app composition |
 | ArchitectureDependencyTests | SwiftPM/XcodeGen dependency ratchets, no capability reverse dependencies, approved application imports, workflow bypass prevention including ApplicationKit-owned durable post-capture, speaker naming, Meeting Detail metadata and Meeting Detail audio coordination, an explicit route-owned Meeting Detail scene/model boundary with a Foundation-only presentation formatter and no `AppServices` in the child view, a platform-free and OSLog-free Core, Core-only PlatformKit, composition-root-only Keychain construction, onboarding permission adapters, bounded ApplicationKit CLI/MCP library reads, product-command ApplicationKit entry with presentation-only command sources, audio/model/release/privacy boundaries, scoped feature ownership including first-run/local-receipt/meeting-preparation owners, explicit canonical-people, typed overview/decision/action-item/Apuntador evidence, private-feedback boundaries, typed immutable transcript-correction history with strict migration/envelope/sync-v2 ratchets, the content-free generation-fenced sync journal, CloudKit ownership limited to the IntegrationsKit codec/state/coordinator/delegate/runtime/platform boundary with domain replay still in StorageKit, a CloudKit-free lifecycle policy outside views, one inert consent-gated container owner, capture-gated bounded existing-library seed composition over the Core maintenance boundary, exact local/Developer-ID entitlement and profile gates, one shared Ask workflow with presentation/CLI/MCP/brief bypass prevention, architecture-document vocabulary rules, no speculative SyncKit bypass, content-free resource-workload descriptors outside audio callbacks, one process residency ledger with complete pinned Whisper, MLX, live-speech, diarization, and semantic-embedding load/use/release adapters plus one pressure-to-policy bridge that dispatches only through concrete owners, one process-shared bounded semantic-index flight and one no-poll signal-driven background owner in both reliability gates, capture-aware Whisper/MLX preparation/publication checks and atomic load-ticket admission, absence of model lifecycle/release operations from AudioCaptureKit callbacks, one persisted-level PCM scan plus a generation-fenced latest-value presentation relay, one signal-driven live-translation wake relay with a one-wake buffer and eight-row framework batches in both reliability gates, one recording-scoped live-summary coordinator with row/character budgets and atomic lifecycle-fenced publication, policy-owned 150-row live-paragraph and 1,024-row talk-balance bounds, local diagnostics/signpost redaction including path/checksum-free audio and aggregate-only transcript evidence, and measured scale source/evidence gates |
 | MeetingDetailPresentationTests | Locale/time-zone-injected meeting dates, bounded duration and segment facts, negative-time clamping, and padded/unpadded transcript clocks without storage or capability access |
 | MeetingSyncStateTests | Empty v13→v14 migration, transactional rollback, portable versus device-local mutation filtering, typed-evidence-only replacement, in-flight N/N+1 acknowledgement, bounded live/deleted initial seed with durable cursor progression and idempotent crash-window replay, delete/restore/purge tombstone behavior, and fail-closed limits/acknowledgements |
@@ -1332,8 +1333,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,753 XCTest package cases (13
-environment-gated), zero strict-lint violations across 506 Swift
+The current field-reliability inventory is 1,759 XCTest package cases (13
+environment-gated), zero strict-lint violations across 508 Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 62 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package
@@ -1395,6 +1396,14 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   arithmetic; it remains `review-required`, makes no product decision, and
   selects no threshold or engine. Optional case details are mode `0600`, non-
   overwriting, and untracked.
+- Eight focused package cases cover D246's non-serving product seam: five
+  observer/storage behaviors and three source-link architecture contracts.
+  The real in-memory Store path proves exact open source/evidence identities,
+  installed-assets-only borrowing, and semantic-hit versus legal-admission
+  separation. Source inspection keeps the observer behind the existing
+  semantic port and Core policy, enforces bounded ranked reads, prohibits the
+  confirmation mutation, and proves no app composition. These tests create no
+  product observation scorecard and accept no quality floor.
 - `make test-ask-quality`: verifies both canonical public-synthetic Ask fixture
   generations and runs 38 deterministic evaluator/comparator/runner cases without
   loading models or user data. Each fixture has exactly 240 judged queries: 60

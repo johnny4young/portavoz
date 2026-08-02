@@ -62,6 +62,29 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
             "Rank commitment links from exact person and evidence identity only"))
     }
 
+    func testObservationAdapterUsesBoundedReadAndSemanticPortsWithoutServing() throws {
+        let observation = try Self.contents(
+            of: "Sources/ApplicationKit/ObserveCommitmentLinkSuggestions.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+CommitmentLinkSuggestions.swift")
+        let appComposition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(observation.contains("allowAssetDownload: false"))
+        XCTAssertTrue(observation.contains("semanticIndex.search("))
+        XCTAssertTrue(observation.contains("CommitmentLinkSuggestionPolicy.suggestions("))
+        XCTAssertTrue(observation.contains("maximumSemanticHitCount"))
+        XCTAssertTrue(observation.contains("maximumTargetCount"))
+        XCTAssertTrue(storage.contains("ROW_NUMBER() OVER"))
+        XCTAssertTrue(storage.contains("relatedRowCount"))
+        XCTAssertFalse(observation.contains("linkCommitmentSource("))
+        XCTAssertFalse(appComposition.contains("ObserveCommitmentLinkSuggestions"))
+        XCTAssertTrue(decisions.contains("## D246"))
+        XCTAssertTrue(decisions.contains(
+            "Observe commitment links through bounded product ports"))
+    }
+
     private static func contents(of relativePath: String) throws -> String {
         try String(
             contentsOf: repoRoot.appendingPathComponent(relativePath),
