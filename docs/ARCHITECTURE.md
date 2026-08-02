@@ -1797,6 +1797,22 @@ names become unassigned rather than visible identity claims.
 Translation pivots carry only evidence and tasks that already passed this
 source-language gate.
 
+Commitment continuity has a benchmark authority before it has a product
+entity. A canonical 48-case public-synthetic fixture balances English,
+Spanish, and mixed speech and explicitly separates commitments from
+suggestions, hypotheticals, status reports, and questions. The fixture starts
+from the existing generated `ActionItem` observation, but a candidate is
+admitted for scoring only when its evidence IDs refer directly to both that
+action item and its transcript turns. Unsupported model output therefore
+fails closed rather than becoming a commitment. One adapter-neutral runner
+scores a transparent deterministic research control and explicitly local
+OpenAI-compatible models against the same fixture, including candidate
+precision/recall/F1, false-positive rate, exact evidence, and exact/false-
+positive owner and deadline metrics. Comparison reports deltas only; it cannot
+choose an engine or make a product decision. Per-case observations are optional
+owner-only local artifacts, while tracked evidence is aggregate public-fixture
+research. No commitment storage, confirmation state, or UI exists yet.
+
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
 pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title

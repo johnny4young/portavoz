@@ -8017,3 +8017,49 @@ semantic invariants better than a few UI examples, while one bounded aggregate
 benchmark prevents a correct overlay from becoming unusable on a large meeting.
 Keeping the harness payload-free and test-only preserves local-first privacy and
 prevents benchmark machinery from becoming a production back door.
+
+## D236 — Benchmark commitment candidates before creating continuity state (Aug 2026)
+
+**Context:** summary providers already emit evidence-linked generated action
+items, but a cross-meeting Commitment Radar needs a stricter meaning: an
+explicit future promise or assigned next step that a user can later confirm,
+reassign, reschedule, complete, reopen, or dismiss. Promoting generated action
+items directly would confuse suggestions, hypotheticals, status reports, and
+questions with commitments and could silently invent owners or deadlines.
+
+**Decision:** establish an adapter-neutral research gate before adding storage
+or UI. The canonical public fixture contains exactly 48 synthetic cases,
+balanced 16/16/16 across English, Spanish, and mixed speech, with 12 explicit
+commitments and nine cases for each negative class: suggestion, hypothetical,
+status report, and question. Each case contains bounded transcript turns, one
+generated action-item observation, and explicit candidate, owner, deadline,
+and evidence truth. A candidate counts only when its nonempty evidence IDs are
+present in both the transcript and generated action item; unsupported output
+fails closed. Scorecards report candidate precision, recall, F1, and false-
+positive rate, exact evidence, exact owner/deadline recovery, and owner/deadline
+false positives overall and by language/class.
+
+One runner supports a transparent deterministic research control and an
+explicit-loopback-IP OpenAI-compatible model adapter over the same public
+fixture. The model endpoint cannot contain credentials or address a nonlocal
+host. Optional per-case details are owner-only and non-overwriting; tracked
+research retains only aggregate public-fixture values. Scorecard comparison
+requires an identical canonical fixture and reports deltas only: quality stays
+`review-required`, the winner stays `not-evaluated`, and no product decision is
+made automatically. The first uncommitted-development observation of local
+`qwen3-coder:latest` produced candidate precision 0.588235, recall 0.833333,
+F1 0.689655, overall false-positive rate 0.194444, owner false-positive rate
+0.179487, and deadline false-positive rate 0.157895. It is explicitly not an
+engine selection or product evidence.
+
+Do not add a commitment entity, confirmation lifecycle, sync envelope, or UI
+in this slice. Generated `ActionItem` remains an immutable model observation;
+future continuity state must be a separate user-confirmed aggregate. A model
+may propose owner or deadline values but cannot confirm ownership, due dates,
+or completion.
+
+**Rationale:** false commitments are more damaging than an empty radar. A
+multilingual, evidence-bound benchmark quantifies that risk before schema and
+UX make it durable, while the adapter-neutral and loopback-only boundary keeps
+local model research replaceable, private, and incapable of silently changing
+product truth.

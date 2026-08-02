@@ -1346,6 +1346,23 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 
 ## Measurement harnesses
 
+- `make test-commitment-quality` validates the canonical 48-case public-
+  synthetic commitment fixture and runs twelve deterministic tooling tests.
+  The corpus is balanced across English, Spanish, and mixed speech and
+  distinguishes 12 commitments from nine suggestions, nine hypotheticals,
+  nine status reports, and nine questions. `make commitment-quality-
+  deterministic` emits the transparent research control;
+  `make commitment-quality-model PORTAVOZ_COMMITMENT_MODEL=<local-model>` uses
+  only an explicit loopback-IP OpenAI-compatible endpoint; and
+  `make commitment-quality-compare` validates two same-fixture scorecards and
+  reports deltas without a winner. Candidates lacking evidence shared by the
+  transcript and generated action item fail closed. Aggregate scorecards
+  measure owner/deadline false positives; optional per-case details are mode
+  `0600`, non-overwriting, and untracked. The initial aggregate development
+  observation is retained in
+  `docs/evidence/commitment-quality-research-20260802.json`; its local-model
+  result remains `review-required` and its product decision remains
+  `not-evaluated` (D236).
 - `make test-ask-quality`: verifies both canonical public-synthetic Ask fixture
   generations and runs 38 deterministic evaluator/comparator/runner cases without
   loading models or user data. Each fixture has exactly 240 judged queries: 60

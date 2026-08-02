@@ -13,6 +13,8 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-ask-quality ask-quality-pair \
+	test-commitment-quality commitment-quality-deterministic \
+	commitment-quality-model commitment-quality-compare \
 	test-correction-composition correction-composition-benchmark \
 	test-exact-path-matrix exact-path-matrix \
 	exact-path-mutation-matrix test-exact-path-mutation-host exact-path-mutation-host \
@@ -50,6 +52,48 @@ test-ask-quality:
 		--fixture Fixtures/AskQuality/public-synthetic-v1.json
 	python3 scripts/ask_quality.py verify-public \
 		--fixture Fixtures/AskQuality/public-synthetic-v2.json
+
+## Validate the public bilingual commitment-candidate benchmark and its
+## deterministic research control without loading a model or user data.
+test-commitment-quality:
+	python3 -m unittest Tests.Tooling.test_commitment_quality
+	python3 scripts/commitment_quality.py validate \
+		--fixture Fixtures/CommitmentQuality/public-synthetic-v1.json
+
+## Emit the research-only deterministic control scorecard. It is a comparison
+## anchor, not a product policy or an engine decision.
+commitment-quality-deterministic:
+	@python3 scripts/commitment_quality.py run \
+		--fixture Fixtures/CommitmentQuality/public-synthetic-v1.json \
+		--adapter deterministic
+
+## Score one explicitly local OpenAI-compatible model over the same public
+## fixture. The endpoint is loopback-only and no meeting library is read.
+PORTAVOZ_COMMITMENT_MODEL_ENDPOINT ?= http://127.0.0.1:11434/v1/chat/completions
+PORTAVOZ_COMMITMENT_MODEL ?=
+PORTAVOZ_COMMITMENT_MODEL_DETAILS ?=
+commitment-quality-model:
+	@test -n "$(PORTAVOZ_COMMITMENT_MODEL)" || \
+		(echo "PORTAVOZ_COMMITMENT_MODEL is required" >&2; exit 64)
+	@python3 scripts/commitment_quality.py run \
+		--fixture Fixtures/CommitmentQuality/public-synthetic-v1.json \
+		--adapter openai-compatible \
+		--endpoint "$(PORTAVOZ_COMMITMENT_MODEL_ENDPOINT)" \
+		--model "$(PORTAVOZ_COMMITMENT_MODEL)" \
+		$(if $(PORTAVOZ_COMMITMENT_MODEL_DETAILS),--details-output "$(PORTAVOZ_COMMITMENT_MODEL_DETAILS)")
+
+## Compare two scorecards from the exact same fixture. The output reports
+## metric deltas and deliberately never declares a winner.
+PORTAVOZ_COMMITMENT_LEFT ?=
+PORTAVOZ_COMMITMENT_RIGHT ?=
+commitment-quality-compare:
+	@test -n "$(PORTAVOZ_COMMITMENT_LEFT)" || \
+		(echo "PORTAVOZ_COMMITMENT_LEFT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_RIGHT)" || \
+		(echo "PORTAVOZ_COMMITMENT_RIGHT is required" >&2; exit 64)
+	@python3 scripts/commitment_quality.py compare \
+		--left "$(PORTAVOZ_COMMITMENT_LEFT)" \
+		--right "$(PORTAVOZ_COMMITMENT_RIGHT)"
 
 ## Validate the exact-shaped, content-free host receipt boundary without
 ## running the expensive Release scale harness.
