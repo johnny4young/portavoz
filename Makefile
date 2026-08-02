@@ -12,7 +12,9 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
-.PHONY: build test test-ask-quality ask-quality-pair test-exact-path-matrix exact-path-matrix \
+.PHONY: build test test-ask-quality ask-quality-pair \
+	test-correction-composition correction-composition-benchmark \
+	test-exact-path-matrix exact-path-matrix \
 	exact-path-mutation-matrix test-exact-path-mutation-host exact-path-mutation-host \
 	test-exact-path-mutation-cross-host exact-path-mutation-cross-host \
 	test-exact-path-mutation-baseline exact-path-mutation-baseline \
@@ -26,6 +28,18 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 ## Unit tests (the package suite).
 test:
 	$(XCODE) swift test
+
+## Verify the content-free correction benchmark contract without running the
+## canonical 20,000-segment Release measurement.
+test-correction-composition:
+	$(XCODE) swift test --filter TranscriptCorrectionScaleBenchmarkTests
+
+## Emit one content-free Release observation for correction composition over
+## 20,000 mixed-language transcript segments.
+PORTAVOZ_CORRECTION_COMPOSITION_RUNS ?= 5
+correction-composition-benchmark:
+	scripts/run-correction-composition-benchmark.sh \
+		--runs "$(PORTAVOZ_CORRECTION_COMPOSITION_RUNS)"
 
 ## Validate the adapter-neutral Ask quality contract and its canonical public
 ## 240-query multilingual fixture without loading models or user data.

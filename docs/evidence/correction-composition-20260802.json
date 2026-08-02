@@ -1,0 +1,26 @@
+{
+    "buildConfiguration": "release",
+    "configuration": {
+        "composedRowCount": 19867,
+        "correctionCount": 400,
+        "correctionInterval": 50,
+        "p95BudgetMilliseconds": 250,
+        "runs": 5,
+        "segmentCount": 20000
+    },
+    "fixtureVersion": "synthetic-correction-composition-v1",
+    "host": {
+        "architecture": "arm64",
+        "operatingSystem": "Version 26.5.2 (Build 25F84)",
+        "physicalMemoryBytes": 38654705664,
+        "processorCount": 14
+    },
+    "measurementPolicyVersion": "prebuilt-input-permutation-v1",
+    "schemaVersion": 1,
+    "timing": {
+        "maximumMilliseconds": 175.199959,
+        "p50Milliseconds": 168.84925,
+        "p95Milliseconds": 175.199959,
+        "sampleCount": 5
+    }
+}

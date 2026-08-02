@@ -9,6 +9,8 @@ D199 adds compatibility-fingerprinted semantic vectors and fail-closed rebuilds
 when the model or vector pipeline changes.
 D200 adds content-free, independently leased scheduling for semantic
 maintenance without changing meeting lifecycle or replacing the vector cursor.
+D235 adds correction transaction and replica-replay recovery gates without a
+schema change.
 
 ## Database
 
@@ -123,6 +125,16 @@ now require exact current accepted-transcript and correction revisions from
 the linked `GenerationRun`. Summary cache lookup applies the same requirement,
 and malformed provenance fails closed. No schema migration is needed: the v19
 history and existing generation/maintenance tables already hold the authority.
+
+D235 proves the correction transaction's crash boundary with an injected
+`BEFORE UPDATE` abort on the semantic-maintenance generation. An append that has
+already inserted its typed event still rolls back the event and children,
+meeting sync generation, accepted-only job changes, FTS eligibility, and
+semantic source generation. The same quality boundary redelivers a blocked
+remote correction before and after transport-state relaunch and requires one
+unchanged deferred payload and one blocked outgoing attempt. Three compatible
+device histories converge under different merge associations; no schema or
+last-writer-wins rule is added.
 
 Schema v6 is an additive foundation (D36). Existing meetings migrate to
 `ready`, revision zero, and no processing error. The migration does not inspect

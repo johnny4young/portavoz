@@ -658,6 +658,59 @@ final class TranscriptCorrectionStorageTests: XCTestCase {
         XCTAssertEqual(generationAfterRestore, generationAfterCorrection + 1)
     }
 
+    func testAppendRollsBackWhenDerivedIndexInvalidationCannotPublish() async throws {
+        let fixture = try await makeFixture(segmentCount: 2)
+        _ = try await fixture.store.enqueueProcessingJobs(
+            for: fixture.meeting.id,
+            requests: [
+                ProcessingJobRequest(kind: .summary, inputFingerprint: "summary-source"),
+                ProcessingJobRequest(kind: .index, inputFingerprint: "index-source"),
+            ],
+            at: date(90))
+        let syncGenerationBefore = try await localSyncGeneration(fixture)
+        let semanticGenerationBefore = try await semanticSourceGeneration(fixture)
+        let searchBefore = try await fixture.store.search("Segment 1")
+        let replacement = event(
+            101,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(text: "Corrected source", language: "en"))
+
+        try await fixture.store.database.write { database in
+            try database.execute(sql: """
+                CREATE TRIGGER fail_correction_semantic_invalidation
+                BEFORE UPDATE OF sourceGeneration ON derivedMaintenanceSource
+                WHEN OLD.kind = 'semantic-corpus'
+                BEGIN
+                    SELECT RAISE(ABORT, 'injected correction invalidation failure');
+                END
+                """)
+        }
+        do {
+            _ = try await fixture.store.appendTranscriptCorrection(replacement)
+            XCTFail("a correction must not commit without derived-index invalidation")
+        } catch {
+            XCTAssertTrue(
+                String(describing: error).contains("injected correction invalidation failure"),
+                "unexpected append failure: \(error)")
+        }
+        try await fixture.store.database.write { database in
+            try database.execute(sql: "DROP TRIGGER fail_correction_semantic_invalidation")
+        }
+
+        let historyAfterFailure = try await fixture.store.transcriptCorrectionHistory(
+            for: fixture.meeting.id)
+        let syncGenerationAfterFailure = try await localSyncGeneration(fixture)
+        let semanticGenerationAfterFailure = try await semanticSourceGeneration(fixture)
+        let searchAfterFailure = try await fixture.store.search("Segment 1")
+        XCTAssertTrue(historyAfterFailure.isEmpty)
+        XCTAssertEqual(syncGenerationAfterFailure, syncGenerationBefore)
+        XCTAssertEqual(semanticGenerationAfterFailure, semanticGenerationBefore)
+        XCTAssertEqual(searchAfterFailure.map(\.segmentID), searchBefore.map(\.segmentID))
+        let jobs = try await fixture.store.processingJobs(for: fixture.meeting.id)
+        XCTAssertTrue(jobs.allSatisfy { $0.state == .pending })
+    }
+
     func testSummaryPublicationRejectsOldCorrectionLineage() async throws {
         let fixture = try await makeFixture(segmentCount: 1)
         let correction = event(

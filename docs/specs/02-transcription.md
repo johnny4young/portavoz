@@ -2,6 +2,8 @@
 
 Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence).
 
+Additional decision: D235 (correction recovery and scale gates).
+
 ## Correction composition contract (D229)
 
 The accepted machine transcript remains immutable. ApplicationKit exposes a
@@ -100,6 +102,22 @@ times and accepted source IDs, omit summaries from a different correction
 revision, and can disclose the overlay through explicit provenance. Automatic
 Apuntador regeneration remains deferred. No correction starts model work
 automatically.
+
+## Correction quality and scale authority (D235)
+
+Composition is characterized across 64 seeded permutations of accepted rows
+and complete correction history. The fixture combines every supported operation
+and requires exactly equivalent accepted/composed values regardless of
+input order. A separate refined bilingual fixture proves that Spanish and
+English remain per-row spoken-language evidence; correction composition is
+never a translation step.
+
+`TranscriptCorrectionScaleBenchmarkTests` owns the payload-free synthetic scale
+fixture. `make test-correction-composition` validates its schema cheaply;
+`make correction-composition-benchmark` measures five Release permutations of
+20,000 rows and 400 corrections, failing above 250 ms p95. The retained Aug 2026
+reference observation is p50 168.85 ms and p95/max 175.20 ms. Search does not
+invoke this composer and corrected text remains intentionally unmaterialized.
 
 ## Roles and engines (D7)
 

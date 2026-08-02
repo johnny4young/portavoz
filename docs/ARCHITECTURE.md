@@ -1155,6 +1155,26 @@ become the user-visible correction conflict. Unrelated database or storage
 failures propagate through the typed storage boundary and roll back instead of
 being misclassified as a competing edit.
 
+Correction quality closes at the same pure and transactional boundaries rather
+than through UI-only examples. Sixty-four seeded input permutations exercise
+text, speaker, split, merge, suppression, restore, refined lineage, and
+Spanish/English preservation without changing the composed result. An injected
+SQLite abort between event insertion and semantic-source invalidation proves
+that correction history, journal generation, accepted-only jobs, FTS
+eligibility, and semantic generation roll back together. Private-sync fixtures
+prove duplicate blocked delivery is idempotent across relaunch and three
+compatible device histories converge independently of merge association.
+
+The test-only Release composition harness owns a synthetic mixed-language
+20,000-segment/400-correction fixture. It prebuilds five deterministic input
+permutations, emits only host/configuration/count/timing aggregates, and fails
+when p95 exceeds 250 ms. The Aug 2026 reference observation records p50
+168.85 ms and p95/max 175.20 ms, with 19,867 visible rows. This is a pure
+composition budget, not a claim about combined Meeting Detail rendering or a
+reason to materialize corrected text in search. Exact and semantic retrieval
+remain unchanged because actively corrected accepted rows still fail closed
+until a later correction-local indexing decision.
+
 The complete docked playback surface enters SwiftUI through
 `MeetingDetailPlayerSection`. The section receives the current application-
 prepared playback session, immutable waveform buckets, compression state, and

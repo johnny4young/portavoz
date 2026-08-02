@@ -212,8 +212,13 @@ final class CloudMeetingSyncCoordinatorTests: XCTestCase {
             result,
             .blockedCorrectionConflict(
                 localGeneration: fixture.localOutgoingEnvelope.generation))
+        let duplicateResult = try await fixture.coordinator.handleFetchedRecord(
+            fixture.remoteRecord,
+            at: now.addingTimeInterval(1))
+        XCTAssertEqual(duplicateResult, .ignoredDuplicate)
         var snapshot = await fixture.transportStore.currentSnapshot()
         XCTAssertEqual(snapshot.deferredReplays.map(\.blocksOutgoing), [true])
+        XCTAssertEqual(snapshot.deferredReplays.count, 1)
         XCTAssertEqual(snapshot.attempts.map(\.phase), [.blocked])
         XCTAssertEqual(snapshot.attempts.map(\.lastFailure), [.serverConflict])
         let conflictMetadata = snapshot.recordMetadata
@@ -251,6 +256,17 @@ final class CloudMeetingSyncCoordinatorTests: XCTestCase {
         let restartedEnvelope = try await restarted.deferredEnvelope(
             for: fixture.meeting.id)
         XCTAssertNotNil(restartedEnvelope)
+        let restartedCoordinator = CloudMeetingSyncCoordinator(
+            meetingStore: fixture.destination,
+            transportStore: restarted,
+            localDeviceID: localDeviceID)
+        let duplicateAfterRestart = try await restartedCoordinator.handleFetchedRecord(
+            fixture.remoteRecord,
+            at: now.addingTimeInterval(2))
+        XCTAssertEqual(duplicateAfterRestart, .ignoredDuplicate)
+        let snapshotAfterRestart = await restarted.currentSnapshot()
+        XCTAssertEqual(snapshotAfterRestart.deferredReplays.count, 1)
+        XCTAssertEqual(snapshotAfterRestart.attempts.count, 1)
     }
 
     func testRestoringLocalCorrectionMergesDeferredReplicaAndReleasesSend() async throws {

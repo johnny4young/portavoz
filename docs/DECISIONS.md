@@ -7976,3 +7976,44 @@ prevents renderer drift, opt-in provenance keeps normal documents clean, and
 immutable source coordinates preserve audit and playback. Set union is safe for
 independent correction lanes, while a durable conflict fence prevents silent
 last-writer-wins loss when two devices edit the same claim.
+
+## D235 — Close correction composition with recovery and scale gates (Aug 2026)
+
+**Context:** D229–D234 define and adopt an immutable correction overlay, but
+examples alone did not prove that arbitrary operation order, mixed-language
+refined material, an interruption during derived-index invalidation, duplicate
+CloudKit delivery, or more than two replicas preserve the same truth. The
+roadmap also required one measured 20,000-segment composition boundary before
+the correction band could close.
+
+**Decision:** retain production policy unchanged and add deterministic quality
+authority at its existing boundaries. A seeded 64-case operation suite shuffles
+accepted rows and correction history while exercising replace, speaker, split,
+merge, suppress, and restore. A separate refined Spanish/English fixture
+requires each row to retain its spoken language, exact text, immutable source
+IDs, and explicit refined lineage. A database trigger aborts semantic-source
+generation after correction insertion; the complete transaction must leave no
+event, journal advance, job cancellation, search exclusion, or generation
+advance. Repeated delivery of one blocked remote correction is ignored before
+and after transport-state relaunch, while three compatible device histories
+must converge under every tested merge association.
+
+Add a test-only, content-free Release benchmark over 20,000 mixed-language
+segments and 400 distributed corrections. Inputs are prebuilt and permuted
+outside measurement; the report contains only fixture version, host shape,
+counts, build configuration, and p50/p95/max timing. The canonical reference
+gate is 250 ms p95. Five runs on the current 14-core arm64, 36 GiB reference Mac
+recorded p50 168.85 ms and p95/max 175.20 ms, producing 19,867 visible rows.
+The raw aggregate is retained in
+`docs/evidence/correction-composition-20260802.json` and the reproducible runner
+is `make correction-composition-benchmark`.
+
+This budget covers pure correction composition only. It does not convert the
+D222 UI baseline into a combined rendering budget, does not authorize corrected
+search materialization, and does not weaken the accepted-only retrieval fence.
+
+**Rationale:** deterministic permutations and injected failure boundaries prove
+semantic invariants better than a few UI examples, while one bounded aggregate
+benchmark prevents a correct overlay from becoming unusable on a large meeting.
+Keeping the harness payload-free and test-only preserves local-first privacy and
+prevents benchmark machinery from becoming a production back door.

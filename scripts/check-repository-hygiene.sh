@@ -83,6 +83,7 @@ bash -n scripts/run-resource-baseline.sh
 bash -n scripts/run-resource-recording-baseline.sh
 bash -n scripts/run-exact-path-mutation-benchmark.sh
 bash -n scripts/run-exact-path-mutation-host-matrix.sh
+bash -n scripts/run-correction-composition-benchmark.sh
 python3 -m unittest Tests.Tooling.test_resource_baseline
 python3 -m unittest Tests.Tooling.test_exact_path_matrix
 python3 -m unittest Tests.Tooling.test_exact_path_mutation_matrix
