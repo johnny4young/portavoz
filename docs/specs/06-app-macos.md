@@ -35,7 +35,10 @@ sections, and one cross-section playback-navigation owner; the compact root
 retains only route projection and observation lifecycle while the scene keeps
 route and preference mutation. D229 adds the pure correction composer behind
 the same ApplicationKit snapshot while keeping current Meeting Detail reads on
-accepted content until durable storage and explicit editing are implemented.
+accepted content. D230 adds typed durable correction history behind that same
+boundary without changing any visible Meeting Detail row, product consumer,
+or correction-editing capability; private meeting aggregate v2 transports the
+history without changing the accepted-only presentation policy.
 
 D147 additionally binds release admission to the content-free reliability
 ledger described below.

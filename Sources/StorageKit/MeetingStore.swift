@@ -10,6 +10,7 @@ public enum StorageError: Error, LocalizedError {
     case invalidRefinedMeeting(String)
     case invalidSemanticEmbedding(String)
     case invalidDerivedMaintenanceJob(String)
+    case invalidTranscriptCorrection(String)
     case staleRefineDraft(meetingID: MeetingID, expected: Int, actual: Int)
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
@@ -42,6 +43,8 @@ public enum StorageError: Error, LocalizedError {
             return "invalid semantic embedding publication: \(reason)"
         case .invalidDerivedMaintenanceJob(let reason):
             return "invalid derived maintenance job: \(reason)"
+        case .invalidTranscriptCorrection(let reason):
+            return "invalid transcript correction: \(reason)"
         case .staleRefineDraft(let meetingID, let expected, let actual):
             return "refine draft for \(meetingID.rawValue.uuidString) expected transcript revision "
                 + "\(expected), current revision is \(actual)"

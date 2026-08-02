@@ -332,6 +332,16 @@ def lower_layer_features(path: str) -> set[str]:
         # architecture tests are the executable evidence until a product
         # consumer is explicitly wired and this mapping is updated.
         return set()
+    if lowered in {
+        "sources/portavozcore/transcriptcorrection.swift",
+        "sources/storagekit/meetingstore+transcriptcorrections.swift",
+        "sources/storagekit/schema+transcriptcorrection.swift",
+        "sources/storagekit/transcriptcorrectionrecords.swift",
+    }:
+        # Durable correction events are not rendered yet. The Library launch
+        # journey is the narrow executable smoke for opening and migrating a
+        # real app store until a correction surface adopts composed content.
+        return {"library"}
     if "meetingtranscriptcontent" in lowered:
         return {
             "meeting-audio", "meeting-evidence", "meeting-health", "meeting-performance"

@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption).
 
 ## Correction composition contract (D229)
 
@@ -29,9 +29,29 @@ Their lineage carries an explicit accepted/composed projection even when no
 correction is active and both row arrays match. Callers must choose through
 `TranscriptReadingPolicy`; an architecture allowlist admits only the composer
 until a later slice intentionally adopts corrected text. No export, search,
-summary, storage adapter, or SwiftUI surface consumes composed content merely
-because corrections were supplied. Durable correction events and user editing
-begin in later slices, so current Meeting Detail behavior is unchanged.
+summary, or SwiftUI surface consumes composed content merely because corrections
+were supplied. Current Meeting Detail behavior is unchanged.
+
+## Durable correction history (D230)
+
+`PortavozCore` owns a versioned portable correction event with meeting and base-
+revision identity, ordered accepted-segment targets, a typed payload, user
+author, source device, timestamps, optional tombstone, and optional superseded
+event. Portable validation rejects malformed metadata, language identifiers,
+operation shapes, duplicate identities, missing/branched/target-changing
+supersession, and overlapping live terminals before either persistence or
+envelope decoding accepts the history.
+
+`StorageKit` persists the same values in normalized schema-v19 tables and
+appends or tombstones them atomically. Undo remains a new restore event, not a
+destructive rewrite. History reads include tombstones; source segment IDs remain
+durable even if later accepted revisions retire those rows. A strict format-1
+correction envelope makes the database layout private. Meeting aggregate format
+2 carries the same ordered typed history through the existing private-sync
+boundary, rejects immutable rewrites and tombstone regression, and preserves
+local history when decoding a legacy aggregate that cannot contain corrections.
+Composition, UI, search, summaries, exports, and generated artifacts continue
+to use accepted text until their own explicit policies land.
 
 ## Roles and engines (D7)
 

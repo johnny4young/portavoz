@@ -146,7 +146,8 @@ private func sameMeetingSyncInstant(_ left: Date, _ right: Date) -> Bool {
 /// every live portable artifact, but never audio, local paths, embeddings,
 /// canonical people, model runs, jobs, receipts, secrets, or voiceprints.
 public struct MeetingSyncAggregate: Codable, Sendable {
-    public static let currentFormatVersion = 1
+    public static let currentFormatVersion = 2
+    public static let supportedFormatVersions = 1...currentFormatVersion
 
     public let formatVersion: Int
     public let meeting: MeetingSyncTimed<Meeting>
@@ -155,6 +156,7 @@ public struct MeetingSyncAggregate: Codable, Sendable {
     public let summaries: [MeetingSyncSummary]
     public let contextItems: [MeetingSyncTimed<ContextItem>]
     public let companionCards: [MeetingSyncTimed<CompanionCard>]
+    public let transcriptCorrections: [TranscriptCorrectionEvent]
 
     public init(
         meeting: MeetingSyncTimed<Meeting>,
@@ -162,7 +164,8 @@ public struct MeetingSyncAggregate: Codable, Sendable {
         segments: [MeetingSyncTimed<TranscriptSegment>],
         summaries: [MeetingSyncSummary],
         contextItems: [MeetingSyncTimed<ContextItem>],
-        companionCards: [MeetingSyncTimed<CompanionCard>]
+        companionCards: [MeetingSyncTimed<CompanionCard>],
+        transcriptCorrections: [TranscriptCorrectionEvent] = []
     ) {
         formatVersion = Self.currentFormatVersion
         self.meeting = meeting
@@ -171,6 +174,72 @@ public struct MeetingSyncAggregate: Codable, Sendable {
         self.summaries = summaries
         self.contextItems = contextItems
         self.companionCards = companionCards
+        self.transcriptCorrections = transcriptCorrections.sorted(
+            by: TranscriptCorrectionPolicy.precedes)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case formatVersion
+        case meeting
+        case speakers
+        case segments
+        case summaries
+        case contextItems
+        case companionCards
+        case transcriptCorrections
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try container.decode(Int.self, forKey: .formatVersion)
+        guard Self.supportedFormatVersions.contains(formatVersion) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .formatVersion,
+                in: container,
+                debugDescription: "Unsupported meeting aggregate format version.")
+        }
+        meeting = try container.decode(
+            MeetingSyncTimed<Meeting>.self,
+            forKey: .meeting)
+        speakers = try container.decode(
+            [MeetingSyncTimed<Speaker>].self,
+            forKey: .speakers)
+        segments = try container.decode(
+            [MeetingSyncTimed<TranscriptSegment>].self,
+            forKey: .segments)
+        summaries = try container.decode(
+            [MeetingSyncSummary].self,
+            forKey: .summaries)
+        contextItems = try container.decode(
+            [MeetingSyncTimed<ContextItem>].self,
+            forKey: .contextItems)
+        companionCards = try container.decode(
+            [MeetingSyncTimed<CompanionCard>].self,
+            forKey: .companionCards)
+        if formatVersion == 1 {
+            let legacyCorrections = try container.decodeIfPresent(
+                [TranscriptCorrectionEvent].self,
+                forKey: .transcriptCorrections) ?? []
+            guard legacyCorrections.isEmpty else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .transcriptCorrections,
+                    in: container,
+                    debugDescription: "Legacy meeting aggregates cannot contain corrections.")
+            }
+            transcriptCorrections = []
+        } else {
+            transcriptCorrections = try container.decode(
+                [TranscriptCorrectionEvent].self,
+                forKey: .transcriptCorrections)
+            guard transcriptCorrections == transcriptCorrections.sorted(
+                by: TranscriptCorrectionPolicy.precedes)
+            else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .transcriptCorrections,
+                    in: container,
+                    debugDescription: "Transcript corrections are not canonically ordered.")
+            }
+        }
     }
 }
 
@@ -330,7 +399,10 @@ extension MeetingStore {
                 meetingKey: key,
                 in: db),
             contextItems: try meetingSyncContextItems(meetingKey: key, in: db),
-            companionCards: try meetingSyncCompanionCards(meetingKey: key, in: db))
+            companionCards: try meetingSyncCompanionCards(meetingKey: key, in: db),
+            transcriptCorrections: try fetchTranscriptCorrectionHistory(
+                meetingID: meetingID,
+                in: db))
     }
 
     private static func meetingSyncSpeakers(

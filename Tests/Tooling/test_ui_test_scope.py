@@ -282,6 +282,18 @@ class UITestScopeTests(unittest.TestCase):
         self.assertTrue(future_consumer.required)
         self.assertEqual(future_consumer.tests, ALL_TESTS)
 
+    def test_durable_correction_storage_selects_only_library_launch(self):
+        expected = tuple(test for test in ALL_TESTS if test in FEATURE_TESTS["library"])
+        for path in [
+            "Sources/PortavozCore/TranscriptCorrection.swift",
+            "Sources/StorageKit/MeetingStore+TranscriptCorrections.swift",
+            "Sources/StorageKit/Schema+TranscriptCorrection.swift",
+            "Sources/StorageKit/TranscriptCorrectionRecords.swift",
+        ]:
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
         selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
         self.assertEqual(

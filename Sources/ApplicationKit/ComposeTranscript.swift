@@ -1,69 +1,6 @@
 import Foundation
 import PortavozCore
 
-/// One stable row produced by a user-requested split.
-public struct TranscriptCorrectionPart: Sendable, Equatable, Identifiable {
-    public let id: UUID
-    public let text: String
-    public let speakerID: SpeakerID?
-    public let language: String?
-    public let startTime: TimeInterval
-    public let endTime: TimeInterval
-
-    public init(
-        id: UUID = UUID(),
-        text: String,
-        speakerID: SpeakerID?,
-        language: String?,
-        startTime: TimeInterval,
-        endTime: TimeInterval
-    ) {
-        self.id = id
-        self.text = text
-        self.speakerID = speakerID
-        self.language = language
-        self.startTime = startTime
-        self.endTime = endTime
-    }
-}
-
-/// A typed transcript edit over immutable accepted segment identities.
-public enum TranscriptCorrectionKind: Sendable, Equatable {
-    case replaceText(text: String, language: String?)
-    case changeSpeaker(SpeakerID?)
-    case split([TranscriptCorrectionPart])
-    case merge(replacementText: String?, language: String?)
-    case suppress
-    case restore
-}
-
-/// One ordered correction event. Persistence is added separately; this value
-/// defines the application-layer composition contract first.
-public struct TranscriptCorrection: Sendable, Equatable, Identifiable {
-    public let id: UUID
-    public let baseTranscriptRevision: Int
-    public let targetSegmentIDs: [UUID]
-    public let kind: TranscriptCorrectionKind
-    public let createdAt: Date
-    public let supersedesCorrectionID: UUID?
-
-    public init(
-        id: UUID = UUID(),
-        baseTranscriptRevision: Int,
-        targetSegmentIDs: [UUID],
-        kind: TranscriptCorrectionKind,
-        createdAt: Date,
-        supersedesCorrectionID: UUID? = nil
-    ) {
-        self.id = id
-        self.baseTranscriptRevision = baseTranscriptRevision
-        self.targetSegmentIDs = targetSegmentIDs
-        self.kind = kind
-        self.createdAt = createdAt
-        self.supersedesCorrectionID = supersedesCorrectionID
-    }
-}
-
 /// Downstream consumers must opt into corrected rows explicitly.
 public enum TranscriptReadingPolicy: Sendable, Equatable {
     case accepted
@@ -97,6 +34,8 @@ public enum ComposeTranscriptError: Error, Equatable, LocalizedError, Sendable {
     case invalidBaseSegments
     case duplicateCorrectionID(UUID)
     case invalidCreatedAt(UUID)
+    case invalidEventMetadata(UUID)
+    case wrongMeeting(UUID)
     case staleCorrection(UUID, expected: Int, actual: Int)
     case invalidTargets(UUID)
     case missingTarget(UUID, UUID)
@@ -122,6 +61,10 @@ public enum ComposeTranscriptError: Error, Equatable, LocalizedError, Sendable {
             "Two transcript corrections use the same identity."
         case .invalidCreatedAt:
             "A transcript correction has an invalid creation time."
+        case .invalidEventMetadata:
+            "A transcript correction has invalid portable metadata."
+        case .wrongMeeting:
+            "A transcript correction belongs to another meeting."
         case .staleCorrection:
             "A transcript correction does not match the accepted revision."
         case .invalidTargets:
@@ -159,7 +102,7 @@ public struct ComposeTranscript: Sendable {
         baseMaterial: MeetingTranscriptBaseMaterial,
         segments: [TranscriptSegment],
         chapterTitles: [TimeInterval: String] = [:],
-        corrections: [TranscriptCorrection]
+        corrections: [TranscriptCorrectionEvent]
     ) throws -> TranscriptComposition {
         guard baseTranscriptRevision >= 0 else {
             throw ComposeTranscriptError.invalidBaseRevision(baseTranscriptRevision)
@@ -220,10 +163,10 @@ private extension ComposeTranscript {
     }
 
     func validatedActiveCorrections(
-        _ corrections: [TranscriptCorrection],
+        _ corrections: [TranscriptCorrectionEvent],
         baseTranscriptRevision: Int,
         segments: [TranscriptSegment]
-    ) throws -> [TranscriptCorrection] {
+    ) throws -> [TranscriptCorrectionEvent] {
         let correctionsByID = try indexCorrections(corrections)
         let sourceIDs = Set(segments.map(\.id))
         let correctionsByIdentity = corrections.sorted {
@@ -232,6 +175,7 @@ private extension ComposeTranscript {
         try validateCorrectionInputs(
             correctionsByIdentity,
             baseTranscriptRevision: baseTranscriptRevision,
+            meetingID: segments.first?.meetingID,
             sourceIDs: sourceIDs)
         let orderedCorrections = corrections.sorted(by: correctionPrecedes)
         let superseded = try supersededCorrectionIDs(
@@ -240,7 +184,7 @@ private extension ComposeTranscript {
         let indexBySourceID = Dictionary(
             uniqueKeysWithValues: segments.enumerated().map { ($0.element.id, $0.offset) })
         let active = orderedCorrections
-            .filter { !superseded.contains($0.id) }
+            .filter { !superseded.contains($0.id) && $0.deletedAt == nil }
             .sorted { lhs, rhs in
                 let lhsIndex = lhs.targetSegmentIDs.compactMap { indexBySourceID[$0] }.min() ?? 0
                 let rhsIndex = rhs.targetSegmentIDs.compactMap { indexBySourceID[$0] }.min() ?? 0
@@ -256,8 +200,8 @@ private extension ComposeTranscript {
     }
 
     func indexCorrections(
-        _ corrections: [TranscriptCorrection]
-    ) throws -> [UUID: TranscriptCorrection] {
+        _ corrections: [TranscriptCorrectionEvent]
+    ) throws -> [UUID: TranscriptCorrectionEvent] {
         let grouped = Dictionary(grouping: corrections, by: \.id)
         let duplicate = grouped
             .filter { $0.value.count > 1 }
@@ -270,13 +214,26 @@ private extension ComposeTranscript {
     }
 
     func validateCorrectionInputs(
-        _ corrections: [TranscriptCorrection],
+        _ corrections: [TranscriptCorrectionEvent],
         baseTranscriptRevision: Int,
+        meetingID: MeetingID?,
         sourceIDs: Set<UUID>
     ) throws {
         for correction in corrections {
             guard correction.createdAt.timeIntervalSinceReferenceDate.isFinite else {
                 throw ComposeTranscriptError.invalidCreatedAt(correction.id)
+            }
+            let deletedAtIsValid = correction.deletedAt.map { deletedAt in
+                deletedAt.timeIntervalSinceReferenceDate.isFinite
+                    && deletedAt >= correction.createdAt
+                    && deletedAt <= correction.updatedAt
+            } ?? true
+            guard correction.updatedAt.timeIntervalSinceReferenceDate.isFinite,
+                  correction.updatedAt >= correction.createdAt,
+                  deletedAtIsValid
+            else { throw ComposeTranscriptError.invalidEventMetadata(correction.id) }
+            if let meetingID, correction.meetingID != meetingID {
+                throw ComposeTranscriptError.wrongMeeting(correction.id)
             }
             guard correction.baseTranscriptRevision == baseTranscriptRevision else {
                 throw ComposeTranscriptError.staleCorrection(
@@ -299,8 +256,8 @@ private extension ComposeTranscript {
     }
 
     func supersededCorrectionIDs(
-        _ corrections: [TranscriptCorrection],
-        correctionsByID: [UUID: TranscriptCorrection]
+        _ corrections: [TranscriptCorrectionEvent],
+        correctionsByID: [UUID: TranscriptCorrectionEvent]
     ) throws -> Set<UUID> {
         var successorByPredecessor: [UUID: UUID] = [:]
         var superseded = Set<UUID>()
@@ -324,7 +281,7 @@ private extension ComposeTranscript {
     }
 
     func validateActiveCorrections(
-        _ active: [TranscriptCorrection],
+        _ active: [TranscriptCorrectionEvent],
         segments: [TranscriptSegment],
         indexBySourceID: [UUID: Int]
     ) throws {
@@ -346,7 +303,7 @@ private extension ComposeTranscript {
     }
 
     func validateKind(
-        _ correction: TranscriptCorrection,
+        _ correction: TranscriptCorrectionEvent,
         segments: [TranscriptSegment],
         indexBySourceID: [UUID: Int]
     ) throws {
@@ -408,7 +365,7 @@ private extension ComposeTranscript {
     }
 
     func validateGeneratedRowIDs(
-        _ corrections: [TranscriptCorrection],
+        _ corrections: [TranscriptCorrectionEvent],
         sourceIDs: Set<UUID>
     ) throws {
         let generatedIDs = corrections.flatMap { correction -> [UUID] in
@@ -436,7 +393,7 @@ private extension ComposeTranscript {
 
     func composeRows(
         segments: [TranscriptSegment],
-        corrections: [TranscriptCorrection]
+        corrections: [TranscriptCorrectionEvent]
     ) -> [MeetingTranscriptContent.Row] {
         let segmentByID = Dictionary(uniqueKeysWithValues: segments.map { ($0.id, $0) })
         let indexByID = Dictionary(
@@ -466,7 +423,7 @@ private extension ComposeTranscript {
     }
 
     func correctedRows(
-        for correction: TranscriptCorrection,
+        for correction: TranscriptCorrectionEvent,
         targetSegments: [TranscriptSegment]
     ) -> [MeetingTranscriptContent.Row] {
         switch correction.kind {
@@ -610,8 +567,8 @@ private extension ComposeTranscript {
     }
 
     func correctionPrecedes(
-        _ lhs: TranscriptCorrection,
-        _ rhs: TranscriptCorrection
+        _ lhs: TranscriptCorrectionEvent,
+        _ rhs: TranscriptCorrectionEvent
     ) -> Bool {
         if lhs.createdAt != rhs.createdAt { return lhs.createdAt < rhs.createdAt }
         return lhs.id.uuidString < rhs.id.uuidString

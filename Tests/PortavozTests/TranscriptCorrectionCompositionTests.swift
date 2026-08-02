@@ -7,6 +7,8 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
     private let meetingID = MeetingID()
     private let firstSpeaker = SpeakerID()
     private let secondSpeaker = SpeakerID()
+    private let sourceDeviceID = UUID(
+        uuidString: "00000000-0000-4000-9000-000000000001")!
     private let composer = ComposeTranscript()
 
     func testReadingPolicyKeepsRawRefinedAndComposedMaterialExplicit() throws {
@@ -88,11 +90,13 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
 
     func testStaleAndMissingTargetsFailClosed() throws {
         let source = segment(1, text: "Source", start: 0, end: 4)
-        let stale = TranscriptCorrection(
+        let stale = TranscriptCorrectionEvent(
             id: id(101),
+            meetingID: meetingID,
             baseTranscriptRevision: 6,
             targetSegmentIDs: [source.id],
             kind: .suppress,
+            sourceDeviceID: sourceDeviceID,
             createdAt: date(1))
         assertComposeError(
             .staleCorrection(stale.id, expected: 7, actual: 6),
@@ -150,6 +154,64 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
         XCTAssertEqual(restored.composed.rows.map(\.text), ["Original"])
         XCTAssertEqual(restored.composed.rows.map(\.id), [source.id])
         XCTAssertEqual(restored.composed.lineage.activeCorrectionIDs, [restore.id])
+    }
+
+    func testTombstonedTerminalEventDoesNotReactivateItsPredecessor() throws {
+        let source = segment(1, text: "Original", start: 0, end: 4)
+        let replacement = edit(
+            101,
+            targets: [source.id],
+            kind: .replaceText(text: "Replacement", language: "en"),
+            at: 1)
+        let tombstonedRestore = TranscriptCorrectionEvent(
+            id: id(102),
+            meetingID: meetingID,
+            baseTranscriptRevision: 7,
+            targetSegmentIDs: [source.id],
+            kind: .restore,
+            sourceDeviceID: sourceDeviceID,
+            createdAt: date(2),
+            updatedAt: date(3),
+            deletedAt: date(3),
+            supersedesCorrectionID: replacement.id)
+
+        let result = try compose(
+            segments: [source],
+            corrections: [replacement, tombstonedRestore])
+
+        XCTAssertEqual(result.composed.rows.map(\.text), ["Original"])
+        XCTAssertTrue(result.composed.lineage.activeCorrectionIDs.isEmpty)
+    }
+
+    func testCorrectionMeetingAndPortableMetadataMustMatchBase() {
+        let source = segment(1, text: "Original", start: 0, end: 4)
+        let wrongMeeting = TranscriptCorrectionEvent(
+            id: id(101),
+            meetingID: MeetingID(),
+            baseTranscriptRevision: 7,
+            targetSegmentIDs: [source.id],
+            kind: .suppress,
+            sourceDeviceID: sourceDeviceID,
+            createdAt: date(1))
+        assertComposeError(
+            .wrongMeeting(wrongMeeting.id),
+            segments: [source],
+            corrections: [wrongMeeting])
+
+        let invalidTombstone = TranscriptCorrectionEvent(
+            id: id(102),
+            meetingID: meetingID,
+            baseTranscriptRevision: 7,
+            targetSegmentIDs: [source.id],
+            kind: .suppress,
+            sourceDeviceID: sourceDeviceID,
+            createdAt: date(3),
+            updatedAt: date(2),
+            deletedAt: date(2))
+        assertComposeError(
+            .invalidEventMetadata(invalidTombstone.id),
+            segments: [source],
+            corrections: [invalidTombstone])
     }
 
     func testInvalidSplitAndNonAdjacentMergeFailClosed() {
@@ -316,17 +378,21 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
 
     func testCorrectionOrderingRequiresFiniteCreationTimes() {
         let source = segment(1, text: "Source", start: 0, end: 4)
-        let firstInvalid = TranscriptCorrection(
+        let firstInvalid = TranscriptCorrectionEvent(
             id: id(101),
+            meetingID: meetingID,
             baseTranscriptRevision: 7,
             targetSegmentIDs: [source.id],
             kind: .suppress,
+            sourceDeviceID: sourceDeviceID,
             createdAt: Date(timeIntervalSinceReferenceDate: .infinity))
-        let secondInvalid = TranscriptCorrection(
+        let secondInvalid = TranscriptCorrectionEvent(
             id: id(102),
+            meetingID: meetingID,
             baseTranscriptRevision: 7,
             targetSegmentIDs: [source.id],
             kind: .suppress,
+            sourceDeviceID: sourceDeviceID,
             createdAt: Date(timeIntervalSinceReferenceDate: -.infinity))
 
         assertComposeError(
@@ -355,11 +421,13 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
     func testGeneratedRowIdentitiesCannotCollide() {
         let first = segment(1, text: "First", start: 0, end: 4)
         let second = segment(2, text: "Second", start: 5, end: 9)
-        let sourceCollision = TranscriptCorrection(
+        let sourceCollision = TranscriptCorrectionEvent(
             id: second.id,
+            meetingID: meetingID,
             baseTranscriptRevision: 7,
             targetSegmentIDs: [first.id],
             kind: .replaceText(text: "Corrected", language: "en"),
+            sourceDeviceID: sourceDeviceID,
             createdAt: date(1))
         assertComposeError(
             .duplicateComposedRowID(second.id),
@@ -414,7 +482,7 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
         segments: S,
         corrections: C
     ) throws -> TranscriptComposition
-    where S.Element == TranscriptSegment, C.Element == TranscriptCorrection {
+    where S.Element == TranscriptSegment, C.Element == TranscriptCorrectionEvent {
         try composer.execute(
             baseTranscriptRevision: 7,
             baseMaterial: material,
@@ -425,7 +493,7 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
     private func assertComposeError(
         _ expected: ComposeTranscriptError,
         segments: [TranscriptSegment],
-        corrections: [TranscriptCorrection],
+        corrections: [TranscriptCorrectionEvent],
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
@@ -466,12 +534,14 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
         kind: TranscriptCorrectionKind,
         at: TimeInterval? = nil,
         supersedes: UUID? = nil
-    ) -> TranscriptCorrection {
-        TranscriptCorrection(
+    ) -> TranscriptCorrectionEvent {
+        TranscriptCorrectionEvent(
             id: id(value),
+            meetingID: meetingID,
             baseTranscriptRevision: 7,
             targetSegmentIDs: targets,
             kind: kind,
+            sourceDeviceID: sourceDeviceID,
             createdAt: date(at ?? Double(value)),
             supersedesCorrectionID: supersedes)
     }

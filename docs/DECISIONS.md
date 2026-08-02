@@ -7718,3 +7718,57 @@ navigation, while fail-closed validation prevents stale or ambiguous edits
 from changing what users read. Deferring consumer adoption preserves every
 released feature until each path has its own correction and invalidation
 contract.
+
+## D230 — Persist and synchronize correction history without product adoption (Aug 2026)
+
+**Context:** D229 defines correction composition independently from storage,
+but process-local values cannot survive relaunch, explain undo, or synchronize
+across an opted-in private library. Letting a database row, opaque JSON payload,
+or transport adapter become the first durable contract would collapse domain
+validation, local persistence, cross-device convergence, and downstream product
+adoption into one risky migration.
+
+**Decision:** move the portable correction event and its typed payloads into
+`PortavozCore`. Each immutable event records the meeting and accepted transcript
+revision, ordered source-segment targets, operation kind, user author, source
+device, creation/update time, optional tombstone, and optional predecessor. A
+strict format-1 transport-neutral envelope canonicalizes order and rejects
+unknown versions, malformed operation shapes, duplicate identities, missing or
+branched predecessors, target-changing supersession, wrong meetings, and
+overlapping live terminal events. Meeting-local accepted targets, speakers,
+split intervals, and merge adjacency remain StorageKit validation because they
+require one current database snapshot.
+
+Add schema v19 with normalized `transcriptCorrection`, ordered target, scalar
+payload, and split-part tables. Parent material and child payload rows are
+immutable. The only update is one monotonic tombstone transition for privacy or
+malformed-event removal; undo is a new restore event that supersedes the current
+terminal event. Appending validates and inserts the complete event atomically,
+and an exact retry is idempotent after timestamps are canonicalized to database
+millisecond precision. History reads include tombstones so removing a terminal
+event cannot reactivate its predecessor. Target rows deliberately omit a
+segment foreign key: a later Refine replacement or source purge may make the
+target unavailable but must not rewrite what the user corrected. Every schema
+v1-v18 library migrates through empty additive tables, and legacy/imported
+meetings receive no synthetic events.
+
+Correction parent inserts and tombstones advance the content-free meeting sync
+journal exactly once; ordered targets and typed payload children never create
+extra generations. Meeting aggregate format 2 transports the canonically
+ordered typed history. Replay rejects immutable identity or payload rewrites and
+tombstone regression before replacing v2 history atomically. A legacy format-1
+aggregate cannot carry corrections and therefore preserves local correction
+history rather than treating absence as deletion. Trigger-generated replay
+work is acknowledged inside the same aggregate transaction.
+
+Persistence and synchronization do not authorize product adoption. Meeting
+Detail, search, summaries, exports, generated evidence, chapters, and playback
+continue to read accepted material. Derived invalidation and editing UI require
+later explicit decisions and characterization boundaries.
+
+**Rationale:** one Core contract lets local persistence and future transports
+share deterministic validation without reversing StorageKit and ApplicationKit
+dependencies. Typed additive tables make migration, corruption, and rollback
+observable; append-only undo and retained tombstones preserve auditability.
+Separating durable convergence from product visibility preserves every released
+feature while the remaining correction policies are implemented incrementally.

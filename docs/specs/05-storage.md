@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints), D182 (crash-safe backup-stage ownership), D183 (process-local destination identity), D184 (durable publication evidence), D185 (strict staged-source adoption), D186 (durable source checkpoints), D187 (pending-publication reconciliation), D188 (durable typed failure outcomes), D189 (launch recovery stage preservation).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact streamed semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints), D182 (crash-safe backup-stage ownership), D183 (process-local destination identity), D184 (durable publication evidence), D185 (strict staged-source adoption), D186 (durable source checkpoints), D187 (pending-publication reconciliation), D188 (durable typed failure outcomes), D189 (launch recovery stage preservation), D230 (typed immutable transcript-correction history).
 
 D190 adds explicit intentional suspension for owner-leased processing jobs.
 D198 adds exact source identity and compare-and-swap publication for semantic
@@ -14,7 +14,7 @@ maintenance without changing meeting lifecycle or replacing the vector cursor.
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v18` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v19` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -50,6 +50,10 @@ Singular camelCase tables, 1:1 with Codable records:
 | `enhancedNote` (v15) | id, meetingID (UNIQUE, FK cascade), markdown, language, inputFingerprint (all checked non-empty), generationRunID (FK `setNull`, device-local), createdAt/updatedAt/deletedAt; ONE regenerable enhanced-notes document per meeting (D135), replaced in place preserving createdAt, portable via v15-registered `enhancedNote_sync_ai/au/ad` triggers over [markdown, language, inputFingerprint, deletedAt] |
 | `derivedMaintenanceSource` (v18) | kind (TEXT PK), sourceGeneration, updatedAt; content-free mutation identity for derived work, never a progress cursor |
 | `derivedMaintenanceJob` (v18) | content-free kind/profile/source operation identity, bounded attempts and scheduling time, lease owner/expiry, stable error code and timestamps; independent from meeting lifecycle |
+| `transcriptCorrection` (v19) | immutable event identity, meeting FK, accepted revision, typed kind, user author, source device, optional unique superseded event, timestamps, and optional tombstone; only one monotonic tombstone transition may update a row |
+| `transcriptCorrectionTarget` (v19) | correction FK plus ordered accepted segment identity; unique per correction, deliberately no segment FK so source replacement cannot erase history |
+| `transcriptCorrectionPayload` (v19) | one typed scalar payload for replace/speaker/merge operations; text, language, and speaker fields are decoded against the parent kind |
+| `transcriptCorrectionPart` (v19) | stable split-row identity plus correction FK, ordinal, text, optional speaker/language, and finite ordered interval |
 
 Schema v16 adds the partial
 `meeting_on_live_startedAt_id(startedAt DESC, id ASC)` index for deterministic
@@ -70,6 +74,28 @@ segment deletion, meeting transcript/tombstone update, and meeting deletion.
 Embedding and fingerprint publication do not advance it. Existing live
 libraries seed generation one; empty libraries seed zero. The migration does
 not rewrite transcript, FTS, vector, profile, meeting lifecycle, or user data.
+
+Schema v19 adds empty normalized transcript-correction tables and immutable
+payload/update triggers. It rewrites no meeting, segment, speaker, accepted
+revision, FTS row, vector, or generated artifact. Every schema v1-v18 database
+migrates through the same additive step, and legacy/imported meetings remain
+valid with no synthetic events. Parent deletion cascades the correction history;
+target identities intentionally outlive source-row retirement because they have
+no segment foreign key.
+
+`appendTranscriptCorrection` canonicalizes timestamps to persisted
+milliseconds, validates portable history plus current meeting/revision/targets,
+meeting-local speakers, complete splits, adjacent same-speaker/channel merges,
+and globally unused generated identities, then inserts the parent, ordered
+targets, and typed payload in one transaction. Repeating the exact event is
+idempotent; identity reuse, stale or overlapping edits, malformed payloads, and
+branched supersession write nothing. `transcriptCorrectionHistory` always
+returns tombstones, and `tombstoneTranscriptCorrection` is the only mutable
+operation. Product undo appends a restore event. The strict transport-neutral
+format-1 envelope exposes domain values rather than database records. Parent-
+only insert/update/delete triggers advance the meeting sync journal once per
+logical correction; child rows are transaction-internal and do not inflate its
+generation.
 
 Schema v6 is an additive foundation (D36). Existing meetings migrate to
 `ready`, revision zero, and no processing error. The migration does not inspect
@@ -177,18 +203,23 @@ Band 6B1 adds no schema migration. `meetingSyncEnvelope(for:sourceDeviceID:)`
 reads one journal row and its complete live portable aggregate in the same
 snapshot, requiring the requested generation to remain the newest pending
 generation. The versioned envelope contains source device, generation, change
-time, and either deletion or text-first aggregate mutation. The aggregate
-contains the root, observed speakers, ordered transcript, every live immutable
-summary version with action items/typed evidence/current claim feedback, notes,
-and Apuntador cards/evidence. It clears the local audio directory and canonical
+time, and either deletion or text-first aggregate mutation. Meeting aggregate
+format 2 contains the root, observed speakers, ordered transcript, every live
+immutable summary version with action items/typed evidence/current claim
+feedback, notes, Apuntador cards/evidence, and complete canonically ordered
+transcript-correction history. It clears the local audio directory and canonical
 person link and has no audio asset, embedding, generation run, job, receipt,
-model, secret, or voiceprint type.
+model, secret, or voiceprint type. Format-1 decoding remains supported and
+cannot carry corrections.
 
 `applyRemoteMeetingSyncEnvelope(_:)` validates format, identity, ownership,
-uniqueness, evidence completeness, and immutable-summary identity before one
-write transaction. With no unsent local generation, it replaces portable rows,
-preserves matching local paths/person links/embeddings/provenance, and advances
-the trigger-created generation to acknowledged before commit. A live remote
+uniqueness, evidence completeness, immutable-summary identity, portable
+correction history, immutable correction material, and monotonic tombstones
+before one write transaction. With no unsent local generation, it replaces
+portable rows and v2 correction history, preserves matching local paths/person
+links/embeddings/provenance, preserves local corrections for a legacy v1
+aggregate, and advances trigger-created generations to acknowledged before
+commit. A live remote
 aggregate returns `localChangePending` without writing when local work is
 unsent. Remote deletion is deliberately privacy-dominant, soft-deletes instead
 of purging, settles the journal, and reports the discarded generation. Invalid

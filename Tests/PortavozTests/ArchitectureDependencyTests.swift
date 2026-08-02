@@ -1587,7 +1587,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 18"))
+        XCTAssertTrue(schema.contains("public static let version = 19"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -4667,17 +4667,37 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/MeetingTranscriptContent.swift")
         let composer = try Self.contents(
             of: "Sources/ApplicationKit/ComposeTranscript.swift")
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/TranscriptCorrection.swift")
+        let store = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+TranscriptCorrections.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+TranscriptCorrection.swift")
+        let syncAggregate = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SyncAggregate.swift")
+        let syncReplay = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SyncReplay.swift")
 
         XCTAssertEqual(
             composer.components(separatedBy: .newlines)
                 .filter { $0.hasPrefix("import ") },
             ["import Foundation", "import PortavozCore"])
+        XCTAssertEqual(
+            core.components(separatedBy: .newlines)
+                .filter { $0.hasPrefix("import ") },
+            ["import Foundation"])
         for correctionKind in [
             "case replaceText", "case changeSpeaker", "case split",
             "case merge", "case suppress", "case restore"
         ] {
-            XCTAssertTrue(composer.contains(correctionKind), correctionKind)
+            XCTAssertTrue(core.contains(correctionKind), correctionKind)
         }
+        XCTAssertTrue(core.contains("struct TranscriptCorrectionEvent"))
+        XCTAssertTrue(core.contains("struct TranscriptCorrectionSyncEnvelope"))
+        XCTAssertTrue(core.contains("enum TranscriptCorrectionPolicy"))
+        XCTAssertTrue(core.contains("validateHistory("))
+        XCTAssertTrue(core.contains("let sourceDeviceID:"))
+        XCTAssertTrue(core.contains("let deletedAt:"))
         XCTAssertTrue(composer.contains("enum TranscriptReadingPolicy"))
         XCTAssertTrue(composer.contains("case accepted"))
         XCTAssertTrue(composer.contains("case composed"))
@@ -4687,6 +4707,22 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(content.contains("MeetingTranscriptProjection"))
         XCTAssertTrue(content.contains("MeetingTranscriptLineage"))
         XCTAssertTrue(content.contains("sourceSegmentIDs"))
+        XCTAssertTrue(store.contains("appendTranscriptCorrection("))
+        XCTAssertTrue(store.contains("transcriptCorrectionHistory("))
+        XCTAssertTrue(store.contains("tombstoneTranscriptCorrection("))
+        XCTAssertTrue(store.contains("transcriptCorrectionSyncEnvelope("))
+        for table in [
+            "transcriptCorrection", "transcriptCorrectionTarget",
+            "transcriptCorrectionPayload", "transcriptCorrectionPart"
+        ] {
+            XCTAssertTrue(schema.contains("\"\(table)\""), table)
+        }
+        XCTAssertTrue(schema.contains("createTranscriptCorrectionSyncTriggers"))
+        XCTAssertTrue(syncAggregate.contains("currentFormatVersion = 2"))
+        XCTAssertTrue(syncAggregate.contains("transcriptCorrections"))
+        XCTAssertTrue(syncReplay.contains("aggregate.formatVersion >= 2"))
+        XCTAssertTrue(syncReplay.contains("includingTranscriptCorrections"))
+        XCTAssertTrue(syncReplay.contains("validateTombstoneTransition"))
 
         XCTAssertEqual(
             try Self.sourceMatches(
@@ -4697,14 +4733,17 @@ final class ArchitectureDependencyTests: XCTestCase {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         let gaps = try Self.contents(of: "docs/GAPS.md")
         XCTAssertTrue(decisions.contains("D229 — Define correction composition before persistence"))
+        XCTAssertTrue(decisions.contains(
+            "D230 — Persist and synchronize correction history without product adoption"))
         XCTAssertTrue(decisions.contains("all current product paths remain on accepted content"))
-        XCTAssertTrue(gaps.contains("Product storage, sync, UI, exports, search, summaries"))
+        XCTAssertTrue(gaps.contains("Product UI, exports, search, summaries"))
 
         for forbidden in [
             "import SwiftUI", "import StorageKit", "import GRDB",
             "AppServices", "MeetingStore", "UserDefaults", "@State", "@Environment"
         ] {
             XCTAssertFalse(composer.contains(forbidden), forbidden)
+            XCTAssertFalse(core.contains(forbidden), forbidden)
         }
     }
 

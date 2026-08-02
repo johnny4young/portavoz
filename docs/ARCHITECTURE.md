@@ -114,7 +114,7 @@ self-contained over system frameworks and carries no module dependency.
 
 | Module | Implemented responsibility |
 |---|---|
-| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
+| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, immutable transcript-correction, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
 | `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots and pure transcript-correction composition, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
@@ -122,7 +122,7 @@ self-contained over system frameworks and carries no module dependency.
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, segment mapping, and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
-| `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
+| `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
@@ -1032,6 +1032,33 @@ active-row resolution logarithmic while preserving released overlap and gap
 semantics. SwiftUI receives only the snapshot and explicit actions; the generic
 focused viewport owns its pure live-versus-playback follow policy, never
 correction authority.
+
+Schema v19 persists that correction contract as immutable typed events instead
+of opaque JSON. `PortavozCore` owns the portable event, payload, canonical
+ordering, strict history validation, and transport-neutral format-1 envelope.
+`StorageKit` owns normalized parent, ordered-target, scalar-payload, and split-
+part tables; one transaction validates the current meeting/revision, accepted
+targets, meeting-local speakers, split partition, merge adjacency, linear
+supersession, and generated identities before appending all rows. Exact retries
+are idempotent after millisecond timestamp canonicalization. Undo appends a
+superseding event; tombstoning is the only allowed parent update and exists for
+privacy or malformed-event removal. Complete history reads retain tombstones so
+removing a terminal event cannot reactivate its predecessor. Target identities
+deliberately have no segment foreign key because later Refine replacement or
+source retirement must not erase what the correction originally addressed.
+Every schema v1-v18 library migrates through the empty additive v19 tables, and
+legacy meetings remain valid without synthetic corrections.
+
+This durability boundary does not make corrections visible. Meeting Detail,
+search, summaries, exports, generated evidence, and chapters still read accepted
+material. Correction inserts and tombstones advance the meeting journal exactly
+once per logical event. Meeting aggregate format 2 carries the canonically
+ordered typed history; replay rejects immutable rewrites and tombstone
+regression, replaces v2 history atomically, and preserves local corrections when
+a legacy format-1 peer has no correction field. Trigger echoes created while
+replaying the aggregate are acknowledged in the same transaction. Derived
+invalidation and consumer adoption remain separate explicit policies rather
+than side effects of persistence or synchronization.
 
 The complete docked playback surface enters SwiftUI through
 `MeetingDetailPlayerSection`. The section receives the current application-

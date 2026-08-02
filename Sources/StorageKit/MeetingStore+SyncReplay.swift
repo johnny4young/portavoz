@@ -9,6 +9,7 @@ struct MeetingSyncLocalState {
     let summariesByID: [String: SummaryRecord]
     let portableSummariesByID: [String: MeetingSyncSummary]
     let cardsByID: [String: CompanionCardRecord]
+    let correctionsByID: [UUID: TranscriptCorrectionEvent]
 }
 
 extension MeetingStore {
@@ -16,7 +17,8 @@ extension MeetingStore {
         _ aggregate: MeetingSyncAggregate,
         meetingID: MeetingID
     ) throws {
-        guard aggregate.formatVersion == MeetingSyncAggregate.currentFormatVersion,
+        guard MeetingSyncAggregate.supportedFormatVersions.contains(
+            aggregate.formatVersion),
               aggregate.meeting.value.id == meetingID,
               aggregate.meeting.value.audioDirectory == nil
         else {
@@ -32,6 +34,14 @@ extension MeetingStore {
             meetingID: meetingID,
             speakerIDs: speakerIDs,
             segmentIDs: segmentIDs)
+        do {
+            try TranscriptCorrectionPolicy.validateHistory(
+                aggregate.transcriptCorrections,
+                meetingID: meetingID)
+        } catch {
+            throw StorageError.invalidSyncState(
+                "remote transcript correction history is invalid: \(error)")
+        }
     }
 
     static func validateRemoteCastAndTranscript(
@@ -153,7 +163,14 @@ extension MeetingStore {
         try validateImmutableRemoteSummaries(
             aggregate.summaries,
             against: local.portableSummariesByID)
-        try deletePortableMeetingChildren(meetingKey: key, in: db)
+        try validateImmutableRemoteCorrections(
+            aggregate.transcriptCorrections,
+            against: local.correctionsByID)
+        let replacesCorrections = aggregate.formatVersion >= 2
+        try deletePortableMeetingChildren(
+            meetingKey: key,
+            includingTranscriptCorrections: replacesCorrections,
+            in: db)
         try insertRemoteMeeting(aggregate.meeting, local: local, in: db)
         try insertRemoteSpeakers(aggregate.speakers, local: local, in: db)
         try insertRemoteSegments(aggregate.segments, local: local, in: db)
@@ -164,6 +181,11 @@ extension MeetingStore {
             meetingID: meetingID,
             local: local,
             in: db)
+        if replacesCorrections {
+            try insertRemoteTranscriptCorrections(
+                aggregate.transcriptCorrections,
+                in: db)
+        }
     }
 
     static func meetingSyncLocalState(
@@ -199,7 +221,11 @@ extension MeetingStore {
                 of: CompanionCardRecord.self,
                 id: { $0.id },
                 meetingKey: meetingKey,
-                in: db))
+                in: db),
+            correctionsByID: Dictionary(uniqueKeysWithValues:
+                try fetchTranscriptCorrectionHistory(
+                    meetingID: meetingID,
+                    in: db).map { ($0.id, $0) }))
     }
 
     static func dictionary<Record: FetchableRecord & TableRecord>(
@@ -216,11 +242,16 @@ extension MeetingStore {
 
     static func deletePortableMeetingChildren(
         meetingKey: String,
+        includingTranscriptCorrections: Bool,
         in db: Database
     ) throws {
-        for table in [
+        var tables = [
             "actionItem", "summary", "contextItem", "companionCard", "segment", "speaker"
-        ] {
+        ]
+        if includingTranscriptCorrections {
+            tables.insert("transcriptCorrection", at: 0)
+        }
+        for table in tables {
             try db.execute(
                 sql: "DELETE FROM \(table) WHERE meetingID = ?",
                 arguments: [meetingKey])
@@ -349,6 +380,38 @@ extension MeetingStore {
                 throw StorageError.invalidSyncState(
                     "remote sync cannot rewrite immutable summary \(difference)")
             }
+        }
+    }
+
+    static func validateImmutableRemoteCorrections(
+        _ corrections: [TranscriptCorrectionEvent],
+        against local: [UUID: TranscriptCorrectionEvent]
+    ) throws {
+        for correction in corrections {
+            guard let existing = local[correction.id] else { continue }
+            if let difference = TranscriptCorrectionPolicy.immutableDifference(
+                existing,
+                correction) {
+                throw StorageError.invalidSyncState(
+                    "remote sync cannot rewrite immutable correction \(difference)")
+            }
+            do {
+                try TranscriptCorrectionPolicy.validateTombstoneTransition(
+                    from: existing,
+                    to: correction)
+            } catch {
+                throw StorageError.invalidSyncState(
+                    "remote sync cannot regress a correction tombstone")
+            }
+        }
+    }
+
+    static func insertRemoteTranscriptCorrections(
+        _ corrections: [TranscriptCorrectionEvent],
+        in db: Database
+    ) throws {
+        for correction in corrections.sorted(by: TranscriptCorrectionPolicy.precedes) {
+            try insertTranscriptCorrection(correction, in: db)
         }
     }
 

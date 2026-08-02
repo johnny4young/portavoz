@@ -190,6 +190,40 @@ final class StorageUpgradeTests: XCTestCase {
         XCTAssertEqual(exactHits.map(\.segmentID), [segment.id])
     }
 
+    func testEverySupportedSchemaMigratesThroughTypedCorrectionStorage() throws {
+        let migrator = StorageSchema.migrator()
+        for version in 1..<StorageSchema.version {
+            let database = try DatabaseQueue()
+            try migrator.migrate(database, upTo: "v\(version)")
+            try migrator.migrate(database)
+
+            try database.read { db in
+                XCTAssertEqual(
+                    try String.fetchAll(
+                        db,
+                        sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"),
+                    Self.expectedMigrations,
+                    "failed to restore schema v\(version)")
+                XCTAssertEqual(
+                    try Int.fetchOne(
+                        db,
+                        sql: """
+                            SELECT COUNT(*) FROM sqlite_master
+                            WHERE type = 'table'
+                              AND name IN (
+                                'transcriptCorrection', 'transcriptCorrectionTarget',
+                                'transcriptCorrectionPayload', 'transcriptCorrectionPart'
+                              )
+                            """),
+                    4,
+                    "missing correction tables after schema v\(version)")
+                XCTAssertTrue(
+                    try Row.fetchAll(db, sql: "PRAGMA foreign_key_check").isEmpty,
+                    "foreign-key failure after schema v\(version)")
+            }
+        }
+    }
+
     private func temporaryRoot(named name: String) throws -> URL {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("portavoz-\(name)-\(UUID().uuidString)")
@@ -259,6 +293,25 @@ final class StorageUpgradeTests: XCTestCase {
                           AND name LIKE 'semanticCorpusGeneration_%'
                         """),
                 5,
+                file: file,
+                line: line)
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: """
+                        SELECT COUNT(*) FROM sqlite_master
+                        WHERE type = 'table'
+                          AND name IN (
+                            'transcriptCorrection', 'transcriptCorrectionTarget',
+                            'transcriptCorrectionPayload', 'transcriptCorrectionPart'
+                          )
+                        """),
+                4,
+                file: file,
+                line: line)
+            XCTAssertEqual(
+                try Int.fetchOne(database, sql: "SELECT COUNT(*) FROM transcriptCorrection"),
+                0,
                 file: file,
                 line: line)
         }
