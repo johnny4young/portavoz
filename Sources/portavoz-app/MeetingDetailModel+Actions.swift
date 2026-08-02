@@ -3,6 +3,11 @@ import Foundation
 import PortavozCore
 
 extension MeetingDetailModel {
+    enum CommitmentAction {
+        case confirm(ConfirmMeetingCommitmentRequest)
+        case review(ReviewMeetingCommitmentRequest)
+    }
+
     enum ContentAction {
         case renameMeeting(Meeting, title: String)
         case acceptNameSuggestion(Speaker, name: String)
@@ -16,6 +21,7 @@ extension MeetingDetailModel {
             source: PersonAliasSource,
             selection: CanonicalPersonSelection)
         case setActionItem(UUID, done: Bool)
+        case commitment(CommitmentAction)
         case setSummaryClaimFeedback(SummaryClaimID, SummaryClaimFeedback?)
         case removeCompanionCard(UUID)
     }
@@ -90,6 +96,18 @@ extension MeetingDetailModel {
             .content(.setActionItem(id, done: done))
         }
 
+        static func confirmCommitment(
+            _ request: ConfirmMeetingCommitmentRequest
+        ) -> Self {
+            .content(.commitment(.confirm(request)))
+        }
+
+        static func reviewCommitment(
+            _ request: ReviewMeetingCommitmentRequest
+        ) -> Self {
+            .content(.commitment(.review(request)))
+        }
+
         static func setSummaryClaimFeedback(
             _ claimID: SummaryClaimID,
             _ feedback: SummaryClaimFeedback?
@@ -150,6 +168,8 @@ extension MeetingDetailModel {
         case transcriptRestructured(RestructureMeetingTranscriptResult)
         case canonicalPeopleFound(Speaker, PersonAliasSource, [Person])
         case canonicalPersonLinked(ConfirmedPersonLink)
+        case commitmentConfirmed(Commitment)
+        case commitmentReviewSaved
         case summaryClaimFeedbackSaved(SummaryClaimID)
         case meetingDeleted(MeetingID)
         case documentPrepared(PreparedMeetingDocument)

@@ -32,6 +32,16 @@ public struct CommitmentInboxCandidate: Sendable, Identifiable {
 }
 
 public extension MeetingReviewReadModel {
+    func commitmentOwnerChoices() -> [CommitmentOwnerSuggestion] {
+        var seen: Set<PersonID> = []
+        return speakers.compactMap { speaker in
+            guard let suggestion = Self.commitmentOwnerSuggestion(speaker),
+                  seen.insert(suggestion.personID).inserted
+            else { return nil }
+            return suggestion
+        }
+    }
+
     func commitmentInboxCandidates(
         at date: Date = Date()
     ) -> [CommitmentInboxCandidate] {

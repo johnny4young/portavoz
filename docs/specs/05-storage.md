@@ -11,6 +11,8 @@ D200 adds content-free, independently leased scheduling for semantic
 maintenance without changing meeting lifecycle or replacing the vector cursor.
 D235 adds correction transaction and replica-replay recovery gates without a
 schema change.
+D239 adopts the existing v21 review and confirmation transactions through a
+narrow ApplicationKit repository; it adds no schema or presentation-owned SQL.
 
 ## Database
 
@@ -127,6 +129,15 @@ rows: no product confirmation surface existed before v21, so an impossible
 duplicate fails migration rather than being guessed away. Review feedback is
 not yet part of bundles, the meeting CloudKit aggregate, CLI, MCP, or any user-
 facing import/export contract.
+
+`ManageMeetingCommitmentInbox` is the only product command used by the visual
+confirmation surface. Its `MeetingCommitmentReviewRepository` adapter delegates
+to the existing atomic Store operations for confirm, dismiss, defer, and
+restore; SwiftUI never receives a Store or record type. Confirmation therefore
+reuses current-evidence, exact-person, unique-source, and feedback-tombstone
+validation instead of duplicating those rules in presentation. The UI may
+collect edited wording and a user-entered due date, but StorageKit still accepts
+them only through the confirmed aggregate boundary.
 
 `appendTranscriptCorrection` canonicalizes timestamps to persisted
 milliseconds, validates portable history plus current meeting/revision/targets,

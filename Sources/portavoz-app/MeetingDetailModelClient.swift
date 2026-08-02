@@ -24,6 +24,12 @@ protocol MeetingDetailModelClient: AnyObject {
         _ request: LinkObservedSpeakerRequest
     ) async throws -> ConfirmedPersonLink
     func setMeetingDetailActionItem(_ id: UUID, done: Bool) async throws
+    func confirmMeetingDetailCommitment(
+        _ request: ConfirmMeetingCommitmentRequest
+    ) async throws -> Commitment
+    func reviewMeetingDetailCommitment(
+        _ request: ReviewMeetingCommitmentRequest
+    ) async throws
     func setMeetingDetailSummaryClaimFeedback(
         _ feedback: SummaryClaimFeedback?,
         for claimID: SummaryClaimID,

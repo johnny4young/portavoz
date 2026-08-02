@@ -103,6 +103,12 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testSummaryFeedbackIsExplicitReversibleAndLocal"),
     ),
+    "meeting-commitments": (
+        test_id(
+            "MeetingDetailUITests",
+            "testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation",
+        ),
+    ),
     "meeting-health": (
         test_id("MeetingDetailUITests", "testRightRailShowsHealthAndChapters"),
         test_id("MeetingDetailUITests", "testFreshQualifyingMeetingShowsThePostMeetingMirror"),
@@ -281,6 +287,8 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-export", "meeting-naming", "meeting-processing"}
     if "meetinggenerateddocumentsection" in lowered:
         return {"meeting-correction", "meeting-evidence", "meeting-summary"}
+    if "meetingcommitmentinbox" in lowered:
+        return {"meeting-commitments"}
     if "meetingdetailtrustsection" in lowered:
         return {"meeting-health", "meeting-processing"}
     if "meetingdetailactionsection" in lowered:
@@ -296,6 +304,8 @@ def app_features(filename: str) -> set[str]:
             "meeting-recap",
             "meeting-summary",
         }
+    if "meetingdetailcoordinator+commitments" in lowered:
+        return {"meeting-commitments"}
     if lowered == "meetingdetailcoordinator.swift":
         return {"meeting-audio", "meeting-evidence", "meeting-processing"}
     if "meetingdetailflowhost" in lowered:
@@ -353,6 +363,11 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if any(token in lowered for token in (
+        "managemeetingcommitmentinbox",
+        "meetingcommitmentinbox",
+    )):
+        return {"meeting-commitments"}
     if lowered in {
         "sources/applicationkit/correctmeetingtranscript.swift",
         "sources/applicationkit/meetingtranscriptgenerationmaterial.swift",

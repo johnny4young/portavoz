@@ -4487,6 +4487,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(model.contains("case linkCanonicalPerson"))
         XCTAssertTrue(model.contains("case setActionItem"))
         XCTAssertTrue(model.contains("case removeCompanionCard"))
+        XCTAssertTrue(model.contains("enum CommitmentAction"))
+        XCTAssertTrue(model.contains("case commitment(CommitmentAction)"))
         XCTAssertTrue(model.contains("case deleteMeeting"))
         XCTAssertTrue(model.contains("case prepareDocument"))
         XCTAssertTrue(model.contains("case publishGist"))
@@ -4499,6 +4501,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("LinkObservedSpeaker(store: store)"))
         XCTAssertTrue(adapter.contains("setMeetingDetailActionItem"))
         XCTAssertTrue(adapter.contains("deleteMeetingDetailCompanionCard"))
+        XCTAssertTrue(adapter.contains("ManageMeetingCommitmentInbox("))
+        XCTAssertTrue(adapter.contains("AppMeetingCommitmentReviewRepository"))
         XCTAssertTrue(adapter.contains("deleteMeetingDetail"))
         XCTAssertTrue(adapter.contains("requestMeetingDetailSearchReindex"))
         XCTAssertTrue(storage.contains(
@@ -4523,6 +4527,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/MeetingDetailHeaderSection.swift")
         let generatedDocument = try Self.contents(
             of: "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift")
+        let commitments = try Self.contents(
+            of: "Sources/portavoz-app/MeetingCommitmentInboxSection.swift")
         let trust = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailTrustSection.swift")
         let transcript = try Self.contents(
@@ -4544,6 +4550,7 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         XCTAssertTrue(view.contains("MeetingDetailHeaderSection("))
         XCTAssertTrue(view.contains("MeetingGeneratedDocumentSection("))
+        XCTAssertTrue(view.contains("MeetingCommitmentInboxSection("))
         XCTAssertTrue(view.contains("MeetingDetailActionSection("))
         XCTAssertTrue(view.contains("MeetingDetailRailSection("))
         XCTAssertTrue(view.contains("MeetingTranscriptSection("))
@@ -4566,6 +4573,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             ("actions", actions),
             ("header", header),
             ("generated document", generatedDocument),
+            ("commitments", commitments),
             ("trust", trust),
             ("transcript", transcript),
             ("player", player),
@@ -4591,6 +4599,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(generatedDocument.contains("SummarySections.parse"))
         XCTAssertFalse(generatedDocument.contains("CustomRecipeStore"))
         XCTAssertTrue(generatedDocument.contains("MeetingEvidenceSources("))
+        XCTAssertTrue(commitments.contains("struct MeetingCommitmentInboxValues"))
+        XCTAssertTrue(commitments.contains("struct MeetingCommitmentInboxActions"))
+        XCTAssertTrue(commitments.contains("MeetingEvidenceSources("))
         XCTAssertTrue(trust.contains("@State private var retryingProcessing"))
         XCTAssertTrue(transcript.contains("struct MeetingTranscriptValues"))
         XCTAssertTrue(transcript.contains("struct MeetingTranscriptActions"))
@@ -5787,10 +5798,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            334)
+            369)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
-            11)
+            12)
 
         let detailZero = try Self.jsonObject(
             at: "docs/evidence/meeting-detail-performance-baseline-20260801.json")

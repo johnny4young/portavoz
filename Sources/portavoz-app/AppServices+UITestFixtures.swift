@@ -28,6 +28,12 @@ extension AppServices {
                 ? nil
                 : "Ana")
         try? await store.save([me, ana])
+        if ProcessInfo.processInfo.arguments.contains("-seed-commitment-inbox") {
+            _ = try? await store.createPersonAndLink(
+                speakerID: ana.id,
+                preferredName: "Ana",
+                source: .manualName)
+        }
         let citedSegmentID = UUID(uuidString: "B5B00000-0000-4000-8000-000000000002")!
         let companionQuestionID = UUID(
             uuidString: "B5F00000-0000-4000-8000-000000000001")!

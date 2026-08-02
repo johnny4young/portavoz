@@ -176,11 +176,22 @@ final class MeetingDetailModel {
         case .setActionItem(let id, let done):
             await setActionItem(id, done: done)
             return nil
+        case .commitment(let commitmentAction):
+            return await sendCommitmentAction(commitmentAction)
         case .setSummaryClaimFeedback(let claimID, let feedback):
             return await setSummaryClaimFeedback(feedback, for: claimID)
         case .removeCompanionCard(let id):
             await removeCompanionCard(id)
             return nil
+        }
+    }
+
+    private func sendCommitmentAction(_ action: CommitmentAction) async -> Effect? {
+        switch action {
+        case .confirm(let request):
+            return await confirmCommitment(request)
+        case .review(let request):
+            return await reviewCommitment(request)
         }
     }
 
@@ -356,6 +367,34 @@ private extension MeetingDetailModel {
     func setActionItem(_ id: UUID, done: Bool) async {
         _ = try? await client.setMeetingDetailActionItem(id, done: done)
         client.requestMeetingDetailSearchReindex()
+    }
+
+    func confirmCommitment(
+        _ request: ConfirmMeetingCommitmentRequest
+    ) async -> Effect? {
+        do {
+            let commitment = try await client.confirmMeetingDetailCommitment(request)
+            state.lastActionError = nil
+            return .commitmentConfirmed(commitment)
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not confirm this commitment. Its source may have changed.")
+            return nil
+        }
+    }
+
+    func reviewCommitment(
+        _ request: ReviewMeetingCommitmentRequest
+    ) async -> Effect? {
+        do {
+            try await client.reviewMeetingDetailCommitment(request)
+            state.lastActionError = nil
+            return .commitmentReviewSaved
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not update this commitment review. Its source may have changed.")
+            return nil
+        }
     }
 
     func setSummaryClaimFeedback(

@@ -201,6 +201,45 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertNil(model.state.lastActionError)
     }
 
+    func testCommitmentAdmissionAndReviewStayBehindTheFeatureOwner() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let confirmation = ConfirmMeetingCommitmentRequest(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.actionItem.id,
+            title: fixture.actionItem.text,
+            canonicalPersonID: fixture.person.id)
+        let review = ReviewMeetingCommitmentRequest.dismiss(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.actionItem.id)
+
+        let confirmationEffect = await model.send(.confirmCommitment(confirmation))
+        let reviewEffect = await model.send(.reviewCommitment(review))
+
+        guard case .commitmentConfirmed(let commitment) = confirmationEffect else {
+            return XCTFail("explicit admission must return confirmed user truth")
+        }
+        XCTAssertEqual(commitment, client.confirmedCommitmentResult)
+        guard case .commitmentReviewSaved = reviewEffect else {
+            return XCTFail("review treatment must return a typed success effect")
+        }
+        XCTAssertEqual(client.calls, [
+            .confirmCommitment(confirmation),
+            .reviewCommitment(review),
+        ])
+        XCTAssertEqual(client.searchReindexRequests, 0)
+        XCTAssertNil(model.state.lastActionError)
+
+        client.failures = [.confirmCommitment, .reviewCommitment]
+        let failedConfirmation = await model.send(.confirmCommitment(confirmation))
+        XCTAssertNil(failedConfirmation)
+        XCTAssertNotNil(model.state.lastActionError)
+        let failedReview = await model.send(.reviewCommitment(review))
+        XCTAssertNil(failedReview)
+        XCTAssertNotNil(model.state.lastActionError)
+    }
+
     func testTranscriptCorrectionReturnsTypedEffectWithoutReindexingAcceptedSearch() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
@@ -834,6 +873,9 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var playbackCancellationsRemaining = 0
     var preparedPlaybackResult: PreparedMeetingPlayback?
     var compressionResult = MeetingAudioCompressionResult(bytesFreed: 1_024)
+    var confirmedCommitmentResult = Commitment(
+        title: "Prepare the rollout",
+        createdAt: Date(timeIntervalSince1970: 1_700_000_000))
     var correctionResult = CorrectMeetingTranscriptResult(events: [])
     var restructureResult = RestructureMeetingTranscriptResult(event:
         TranscriptCorrectionEvent(
@@ -932,6 +974,21 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     func setMeetingDetailActionItem(_ id: UUID, done: Bool) throws {
         calls.append(.setActionItem(id, done))
         try fail(.setActionItem)
+    }
+
+    func confirmMeetingDetailCommitment(
+        _ request: ConfirmMeetingCommitmentRequest
+    ) throws -> Commitment {
+        calls.append(.confirmCommitment(request))
+        try fail(.confirmCommitment)
+        return confirmedCommitmentResult
+    }
+
+    func reviewMeetingDetailCommitment(
+        _ request: ReviewMeetingCommitmentRequest
+    ) throws {
+        calls.append(.reviewCommitment(request))
+        try fail(.reviewCommitment)
     }
 
     func setMeetingDetailSummaryClaimFeedback(
@@ -1075,6 +1132,8 @@ private enum MeetingDetailModelFailure: String, CaseIterable, Error, LocalizedEr
     case findPeople
     case linkPerson
     case setActionItem
+    case confirmCommitment
+    case reviewCommitment
     case setClaimFeedback
     case deleteCompanion
     case deleteMeeting
@@ -1101,6 +1160,8 @@ private enum MeetingDetailModelCall: Equatable {
     case findPeople(String)
     case linkPerson(SpeakerID, PersonID?)
     case setActionItem(UUID, Bool)
+    case confirmCommitment(ConfirmMeetingCommitmentRequest)
+    case reviewCommitment(ReviewMeetingCommitmentRequest)
     case setClaimFeedback(SummaryClaimID, SummaryClaimFeedback?, MeetingID)
     case deleteCompanion(UUID)
     case deleteMeeting(MeetingID)

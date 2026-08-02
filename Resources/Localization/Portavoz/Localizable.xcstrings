@@ -9190,6 +9190,216 @@
           }
         }
       }
+    },
+    "Add due date": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir fecha límite"
+          }
+        }
+      }
+    },
+    "Commitment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromiso"
+          }
+        }
+      }
+    },
+    "Commitments to confirm": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromisos por confirmar"
+          }
+        }
+      }
+    },
+    "Confirm": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmar"
+          }
+        }
+      }
+    },
+    "Confirm commitment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmar compromiso"
+          }
+        }
+      }
+    },
+    "Could not confirm this commitment. Its source may have changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo confirmar este compromiso. Es posible que su fuente haya cambiado."
+          }
+        }
+      }
+    },
+    "Could not update this commitment review. Its source may have changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo actualizar la revisión de este compromiso. Es posible que su fuente haya cambiado."
+          }
+        }
+      }
+    },
+    "Due date": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fecha límite"
+          }
+        }
+      }
+    },
+    "Edit the proposed wording and add only the owner and deadline you know are true.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edita la propuesta y añade únicamente la persona responsable y la fecha límite que sabes que son correctas."
+          }
+        }
+      }
+    },
+    "Next week": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La próxima semana"
+          }
+        }
+      }
+    },
+    "No deadline suggested": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin fecha límite sugerida"
+          }
+        }
+      }
+    },
+    "No owner suggested": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin responsable sugerido"
+          }
+        }
+      }
+    },
+    "Owner": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Responsable"
+          }
+        }
+      }
+    },
+    "Regenerate the summary before confirming this stale source.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve a generar el resumen antes de confirmar esta fuente desactualizada."
+          }
+        }
+      }
+    },
+    "Review and confirm…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar y confirmar…"
+          }
+        }
+      }
+    },
+    "Review later": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar más tarde"
+          }
+        }
+      }
+    },
+    "Review the evidence before adding anything to your commitment list.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa la evidencia antes de añadir algo a tu lista de compromisos."
+          }
+        }
+      }
+    },
+    "Review the wording, owner, deadline, and source before confirming.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa la redacción, la persona responsable, la fecha límite y la fuente antes de confirmar."
+          }
+        }
+      }
+    },
+    "Suggested due date: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fecha límite sugerida: %@"
+          }
+        }
+      }
+    },
+    "Suggested owner: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Responsable sugerido: %@"
+          }
+        }
+      }
+    },
+    "Unassigned": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin asignar"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

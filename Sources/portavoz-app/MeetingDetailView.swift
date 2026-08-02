@@ -96,6 +96,7 @@ private extension MeetingDetailView {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 10) {
                     summaryOrGenerate(detail)
+                    commitmentInboxSection(detail)
                     notesSection(detail)
                     transcriptSection(
                         detail,
@@ -272,6 +273,21 @@ private extension MeetingDetailView {
                         engine: engine,
                         detail: detail)
                 }))
+    }
+
+    private func commitmentInboxSection(
+        _ detail: MeetingReviewReadModel
+    ) -> some View {
+        MeetingCommitmentInboxSection(
+            values: MeetingCommitmentInboxValues(
+                candidates: detail.commitmentInboxCandidates(),
+                ownerChoices: detail.commitmentOwnerChoices(),
+                presentation: presentation),
+            actions: MeetingCommitmentInboxActions(
+                focusEvidence: focusEvidence,
+                confirm: coordinator.confirmCommitment,
+                dismiss: coordinator.dismissCommitment,
+                deferUntil: coordinator.deferCommitment))
     }
 
     private func headerSection(_ detail: MeetingReviewReadModel) -> some View {

@@ -92,6 +92,9 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-recap",
                 "meeting-summary",
             ),
+            "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift": (
+                "meeting-commitments",
+            ),
             "Sources/portavoz-app/MeetingDetailCoordinator.swift": (
                 "meeting-audio",
                 "meeting-evidence",
@@ -110,6 +113,9 @@ class UITestScopeTests(unittest.TestCase):
             ),
             "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift": (
                 "meeting-processing",
+            ),
+            "Sources/portavoz-app/MeetingCommitmentInboxSection.swift": (
+                "meeting-commitments",
             ),
             "Sources/portavoz-app/MeetingDetailPlaybackNavigation.swift": (
                 "meeting-audio",
@@ -295,6 +301,16 @@ class UITestScopeTests(unittest.TestCase):
             "Sources/StorageKit/MeetingStore+TranscriptProjection.swift",
             "Sources/StorageKit/Schema+TranscriptCorrection.swift",
             "Sources/StorageKit/TranscriptCorrectionRecords.swift",
+        ]:
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+
+    def test_commitment_admission_selects_only_the_confirmation_journey(self):
+        expected = FEATURE_TESTS["meeting-commitments"]
+        for path in [
+            "Sources/ApplicationKit/ManageMeetingCommitmentInbox.swift",
+            "Sources/ApplicationKit/MeetingCommitmentInbox.swift",
         ]:
             selection = select_paths([path])
             self.assertEqual(selection.tests, expected, path)

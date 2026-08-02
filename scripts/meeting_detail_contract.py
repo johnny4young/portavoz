@@ -23,7 +23,9 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/AutoSelectTextField.swift",
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
+    "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
     "Sources/portavoz-app/MeetingDetailActionSection.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator.swift",
@@ -109,6 +111,22 @@ EVIDENCE_KEYS = {"path", "sha256"}
 
 
 DEFAULT_FEATURE_OWNERSHIP = (
+    {
+        "feature": "commitment-confirmation",
+        "tests": [
+            "testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation",
+        ],
+        "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+                "anchor": '"detail-commitment-inbox"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
+                "anchor": "func confirmCommitment(",
+            },
+        ],
+    },
     {
         "feature": "detail-scale",
         "tests": [

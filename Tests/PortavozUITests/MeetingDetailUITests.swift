@@ -72,6 +72,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         processingFailure: Bool = false,
         withoutSummary: Bool = false,
         staleDerived: Bool = false,
+        commitmentInbox: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
         unnamedSpeaker: Bool = false,
         aiSuggestions: Bool = false,
@@ -85,6 +86,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             seedProcessingFailure: processingFailure,
             seedWithoutSummary: withoutSummary,
             seedStaleDerived: staleDerived,
+            seedCommitmentInbox: commitmentInbox,
             simulateSequoiaCapabilities: simulateSequoiaCapabilities)
         if justRecorded {
             app.launchArguments += ["-mirrorAfterMeeting", "true"]
@@ -621,6 +623,62 @@ final class MeetingDetailUITests: PortavozUITestCase {
             evaluatedWith: currentTime)
         wait(for: [seeked], timeout: 5)
         attachScreenshot(of: app, named: "meeting-detail-action-item-evidence")
+    }
+
+    @MainActor
+    func testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation() {
+        let app = launchOnSeededMeeting(commitmentInbox: true)
+        defer { app.terminate() }
+
+        let candidateID = "B5E00000-0000-4000-8000-000000000001"
+        let inbox = app.control(withIdentifier: "detail-commitment-inbox")
+        XCTAssertTrue(
+            inbox.waitForExistence(timeout: 10),
+            "an unconfirmed generated action item must enter the review inbox")
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-\(candidateID)-owner-suggestion")
+                .exists,
+            "only an exact canonical participant link may prefill the owner")
+
+        let evidence = app.control(
+            withIdentifier: "commitment-\(candidateID)-evidence-0")
+        XCTAssertTrue(
+            evidence.waitForExistence(timeout: 5),
+            "confirmation must expose its exact transcript evidence")
+        XCTAssertEqual(
+            evidence.value as? String,
+            "El rollout del modelo queda para el viernes.")
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-\(candidateID)-dismiss").exists)
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-\(candidateID)-defer").exists)
+        attachScreenshot(of: app, named: "meeting-detail-commitment-inbox")
+
+        evidence.click()
+        let citedRow = app.control(
+            withIdentifier: "transcript-segment-B5B00000-0000-4000-8000-000000000002")
+        let focused = expectation(
+            for: NSPredicate(format: "isSelected == true"),
+            evaluatedWith: citedRow)
+        wait(for: [focused], timeout: 5)
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 5)
+
+        let review = app.control(withIdentifier: "commitment-\(candidateID)-review")
+        XCTAssertTrue(review.waitForStableFrame(timeout: 5))
+        review.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-editor").waitForExistence(timeout: 5),
+            "the user must get one explicit wording, owner, and deadline review boundary")
+        app.control(withIdentifier: "commitment-editor-confirm").click()
+
+        let removed = expectation(
+            for: NSPredicate(format: "exists == false"),
+            evaluatedWith: inbox)
+        wait(for: [removed], timeout: 10)
     }
 
     @MainActor

@@ -9,7 +9,9 @@
     "Sources/portavoz-app/AutoSelectTextField.swift",
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
+    "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
     "Sources/portavoz-app/MeetingDetailActionSection.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator.swift",
@@ -161,6 +163,216 @@
       "path": "Sources/portavoz-app/CustomStructureSheet.swift",
       "category": "state",
       "source": "@State private var sectionsText: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Cancel\") { cancel() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Confirm\") { save() }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Dismiss\", role: .destructive) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Next week\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Review and confirm…\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Button(\"Tomorrow\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Menu(\"Review later\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Picker(\"Owner\", selection: $ownerID) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "TextField(\"Commitment\", text: $title)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "control",
+      "source": "Toggle(\"Add due date\", isOn: $includesDueDate)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-defer\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-defer-tomorrow\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-defer-week\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-dismiss\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-\\(candidate.id.uuidString)-review\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-candidate-\\(candidate.id.uuidString)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-due-date\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-due-toggle\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-owner\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"commitment-editor-title\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-commitment-inbox\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-commitment-inbox-title\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "presentation",
+      "source": ".sheet(item: $editingCandidate) { candidate in",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var dueAt: Date",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var editingCandidate: CommitmentInboxCandidate?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var includesDueDate: Bool",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var isSaving = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var ownerID: PersonID?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var processingID: UUID?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+      "category": "state",
+      "source": "@State private var title: String",
       "occurrences": 1
     },
     {
@@ -2043,6 +2255,25 @@
     }
   ],
   "featureOwnership": [
+    {
+      "feature": "commitment-confirmation",
+      "tests": [
+        "testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+          "anchor": "\"detail-commitment-inbox\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
+          "anchor": "func confirmCommitment("
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-commitment-inbox"
+      ]
+    },
     {
       "feature": "detail-scale",
       "tests": [

@@ -19,7 +19,9 @@ existing `NULL` cursor.
 D200 adds independent durable semantic-maintenance scheduling, bounded retry,
 and lease-expiry relaunch recovery without changing meeting lifecycle.
 D238 adds an independently observed, source-bound commitment-review projection
-without adding a user-facing confirmation surface.
+without adding a user-facing confirmation surface. D239 adopts that projection
+as a separate evidence-first Meeting Detail confirmation surface routed through
+one ApplicationKit use case and narrow repository.
 D201 lets full Ask publish exact citations while semantic refinement and local
 generation continue, with generation-fenced progress and cancellation.
 D222 freezes Meeting Detail interactions and measured behavior before
@@ -308,7 +310,7 @@ available, durable Undo restores each active lane, structural rows fail closed
 with guidance, and every control has keyboard and accessibility reachability.
 At that decision boundary, search, summaries, exports, and generated evidence
 remained accepted-only. The
-reviewed boundary now covers 328 signals across eleven owners and 25 UI
+reviewed boundary now covers 369 signals across twelve owners and 27 UI
 journeys. D232 keeps structural policy in ApplicationKit: the focused surface
 offers only validated explicit merge neighbors, split inputs and timing, and
 recoverable hide-as-noise. Hidden accepted evidence remains reachable after the
@@ -1793,6 +1795,18 @@ temp-store processing fixture identifies its deterministic provider/model and
 exercises this same production path in the durable-resume XCUITest (D63).
 
 **MeetingDetailView**: header with editable title (pencil), editable speaker pills (capture values on tap — alert-dismiss niled state and rename was lost), chips "Sugerir nombres ✦" with evidence and independent dismiss controls, versioned summary with regenerate (explicit es/en choices persist in the new immutable snapshot), lazy transcript, checkable action items. Summary setup failures are typed: unavailable Apple, missing Ollama selection, missing MLX download, and local-engine failure open an actionable alert whose recovery button opens the native Settings scene at the exact Intelligence category instead of ending in a generic error (D72). The `Recording needs recovery` card states that finalized audio is safe and sends the user to `Refine saved audio`; Refine creates a reviewable draft and never replaces the current transcript until explicit Apply.
+- **Commitment confirmation (D239):** a separate section renders only pending
+  newest-summary candidates with current source evidence. Every candidate has
+  its own source seek, dismiss, and bounded defer choices; bulk actions cannot
+  hide evidence. `Review and confirm…` opens an editor for wording, one exact
+  canonical owner or no owner, and an optional user-entered date. The action is
+  disabled for stale or missing evidence. The section owns transient editor and
+  progress state only; its immutable values and explicit intents route through
+  `MeetingDetailModel`, `MeetingDetailCoordinator`, and
+  `ManageMeetingCommitmentInbox`. The UI neither imports StorageKit nor infers a
+  person or deadline. All controls have stable accessibility identifiers and a
+  dedicated disposable `-seed-commitment-inbox` fixture verifies the English
+  and Spanish journey without changing the default seed's identity behavior.
 - **Summary sources (D87):** the overview tab renders compact localized
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source

@@ -988,9 +988,9 @@ or wait for it. Measurement currently changes no admission, queueing,
 priority, eviction, residency, or concurrency policy.
 
 Meeting Detail decomposition is also preceded by a frozen presentation
-boundary. A generated contract inventories 334 interaction signals across
-29 source files,
-assigns all 26 detail XCUITest journeys to exactly one of eleven feature owners,
+boundary. A generated contract inventories 369 interaction signals across
+31 source files,
+assigns all 27 detail XCUITest journeys to exactly one of twelve feature owners,
 and digest-binds the reviewed performance harness and evidence. Hidden
 payload-free scroll and seek signposts activate only when a disposable temp
 store, the scale fixture, and the explicit detail-profile flag are present.
@@ -1070,8 +1070,8 @@ requiring exact local source, meeting, evidence, and person identities before
 writing anything. It is a transport-neutral backup/sync contract, not yet part
 of the per-meeting `.portavoz` bundle, meeting CloudKit replica, CLI, MCP, or
 SwiftUI. This keeps generated candidates and the candidate benchmark separate
-from confirmed user truth until a later explicit confirmation surface selects
-an admission policy.
+from confirmed user truth; the visual surface crosses the aggregate boundary
+only after explicit evidence review and does not select a candidate engine.
 
 Schema v21 adds only reversible review feedback for generated action-item
 sources. `commitmentReviewDecision` is keyed by the immutable `ActionItem` and
@@ -1087,9 +1087,18 @@ Local confirmation and exact portable replay tombstone review feedback in the
 same transaction that publishes confirmed continuity. A unique partial source
 index prevents one generated action item from backing multiple commitments.
 Summary regeneration creates fresh action-item identities and therefore does
-not inherit prior feedback. Meeting Detail observes this reconciliation as an
-independent section, but schema v21 adds no confirmation UI, candidate-admission
-engine, Radar query, bundle field, CloudKit transport, CLI, or MCP contract.
+not inherit prior feedback.
+
+Meeting Detail renders that reconciliation as an independent evidence-first
+section. Presentation receives immutable candidates and sends explicit intents
+through `MeetingDetailModel` to `ManageMeetingCommitmentInbox`; SwiftUI never
+opens StorageKit or constructs persistence. Confirmation stays disabled unless
+the source resolves to current live transcript evidence. The editor may change
+wording, choose an exact canonical person or no owner, and add a user-entered
+date; it never infers ownership or a deadline. Dismiss and defer remain
+source-bound review feedback, and each candidate keeps its own evidence seek
+before any action. Schema v21 still adds no candidate-admission engine, Radar
+query, bundle field, CloudKit transport, CLI, or MCP contract.
 
 The focused correction command is the first product adoption of this durability
 boundary. It validates the complete retained history, treats text and speaker
@@ -1853,10 +1862,14 @@ positive owner and deadline metrics. Comparison reports deltas only; it cannot
 choose an engine or make a product decision. Per-case observations are optional
 owner-only local artifacts, while tracked evidence is aggregate public-fixture
 research. The benchmark still chooses no engine and cannot write confirmed
-continuity. The confirmation-inbox foundation derives a transient, newest-
-summary projection from already generated action items and stores only source-
-bound dismiss/defer feedback; it is not a candidate-admission engine. No user-
-facing inbox, deadline extractor, Radar read model, or commitment UI exists yet.
+continuity. The confirmation inbox derives a transient, newest-summary
+projection from already generated action items and stores only source-bound
+dismiss/defer feedback until an explicit user confirmation enters the separate
+confirmed aggregate. It is not a candidate-admission engine. The shipped
+Meeting Detail surface requires current evidence, offers exact source seek and
+an editable confirmation sheet, suggests only an already linked canonical
+person, and produces no deadline suggestion. No deadline extractor, Radar read
+model, or automatic commitment promotion exists.
 
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,

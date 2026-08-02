@@ -8142,5 +8142,39 @@ without becoming model material. A regenerated summary creates fresh action-
 item identities and intentionally does not inherit feedback. Exact owner
 identity and absent deadline suggestions can produce a sparse inbox, but the
 system fails closed instead of presenting guesses as durable truth. The later
-visual slice can add confirm, edit, dismiss, defer, and source navigation without
-changing persistence semantics.
+visual adoption may add confirm, edit, dismiss, defer, and source navigation
+without changing persistence semantics; D239 owns that adoption.
+
+## D239 — Make commitment admission evidence-first and explicit (Aug 2026)
+
+**Context:** D237 and D238 created confirmed-only continuity plus reversible
+source review, but users still needed a safe way to decide whether one generated
+action item should become longitudinal truth. Reusing the summary task list or
+adding a one-click confirmation without context would hide the distinction
+between generated observation and user-owned commitment, and could admit stale
+evidence, an inferred person, or a guessed deadline.
+
+**Decision:** render a separate Meeting Detail confirmation inbox from the
+transient ApplicationKit projection. Each pending candidate shows its generated
+wording, exact transcript evidence, exact linked-person suggestion when one
+already exists, and the explicit absence of a deadline suggestion. The evidence
+control uses the established playback-navigation owner to focus the immutable
+source and seek retained audio. Confirmation is unavailable when evidence is
+stale or missing.
+
+The user must open an editor before confirmation. That editor may change the
+title, choose one exact canonical person or leave ownership unassigned, and add
+a date manually. Confirm, dismiss, and defer are routed through
+`ManageMeetingCommitmentInbox`, an ApplicationKit use case backed by the narrow
+`MeetingCommitmentReviewRepository`; presentation receives immutable values and
+never imports StorageKit. Dismiss and defer remain reversible source treatment,
+while confirmation crosses the existing D237 persistence boundary and removes
+the source from the inbox. Each candidate keeps individual evidence and actions;
+there is no bulk operation that can hide evidence.
+
+**Consequences:** generated action items remain visible as generated content and
+cannot silently become continuity state. A sparse inbox is intentional: owner
+similarity, aliases, free-text dates, and model scores are not admission rules.
+The visual surface does not select a candidate engine, infer deadlines, create a
+Radar query, or extend bundle, CloudKit, CLI, or MCP contracts. Future read
+models can consume only the confirmed aggregate without depending on this UI.
