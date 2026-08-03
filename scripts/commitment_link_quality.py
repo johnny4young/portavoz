@@ -19,6 +19,9 @@ FIXTURE_KIND = "commitment-link-quality-fixture"
 PRIVATE_FIXTURE_KIND = "commitment-link-private-quality-fixture"
 OBSERVATION_KIND = "commitment-link-quality-observations"
 SIMILARITY_OBSERVATION_KIND = "commitment-link-similarity-observations"
+PRIVATE_SIMILARITY_OBSERVATION_KIND = (
+    "commitment-link-private-similarity-observations"
+)
 POLICY_REPLAY_KIND = "commitment-link-similarity-policy-replay"
 SCORECARD_KIND = "commitment-link-quality-scorecard"
 POLICY_SWEEP_GENERATION = "observed-equivalence-classes-v1"
@@ -470,21 +473,21 @@ def validate_private_fixture(document):
     return document
 
 
-def validate_private_fixture_path(path):
+def validate_owner_only_private_path(path, label):
     path = Path(path).expanduser()
     if path.is_symlink():
         raise CommitmentLinkQualityError(
-            "private fixture must not be a symbolic link"
+            f"{label} must not be a symbolic link"
         )
     try:
         if not path.is_file() or stat.S_IMODE(path.stat().st_mode) != 0o600:
             raise CommitmentLinkQualityError(
-                "private fixture must be a regular owner-only mode-0600 file"
+                f"{label} must be a regular owner-only mode-0600 file"
             )
         resolved = path.resolve()
     except OSError as error:
         raise CommitmentLinkQualityError(
-            "private fixture metadata could not be inspected"
+            f"{label} metadata could not be inspected"
         ) from error
     try:
         resolved.relative_to(REPOSITORY_ROOT)
@@ -499,11 +502,47 @@ def validate_private_fixture_path(path):
         )
     except OSError as error:
         raise CommitmentLinkQualityError(
-            "private fixture ignore status could not be inspected"
+            f"{label} ignore status could not be inspected"
         ) from error
     if ignored.returncode != 0:
         raise CommitmentLinkQualityError(
-            "repository-local private fixture must be covered by .gitignore"
+            f"repository-local {label} must be covered by .gitignore"
+        )
+    return resolved
+
+
+def validate_private_fixture_path(path):
+    return validate_owner_only_private_path(path, "private fixture")
+
+
+def validate_private_destination_path(path, label):
+    path = Path(path).expanduser()
+    if path.exists() or path.is_symlink():
+        raise CommitmentLinkQualityError(f"{label} already exists")
+    try:
+        resolved = path.resolve()
+    except OSError as error:
+        raise CommitmentLinkQualityError(
+            f"{label} destination could not be inspected"
+        ) from error
+    try:
+        resolved.relative_to(REPOSITORY_ROOT)
+    except ValueError:
+        return resolved
+    try:
+        ignored = subprocess.run(
+            ["git", "check-ignore", "--quiet", str(resolved)],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+        )
+    except OSError as error:
+        raise CommitmentLinkQualityError(
+            f"{label} destination ignore status could not be inspected"
+        ) from error
+    if ignored.returncode != 0:
+        raise CommitmentLinkQualityError(
+            f"repository-local {label} destination must be covered by .gitignore"
         )
     return resolved
 
@@ -745,6 +784,49 @@ def validate_similarity_observations(document, fixture):
         "adapter": document["adapter"],
         "observations": projected_rows,
     }, fixture)
+    return document
+
+
+def validate_private_similarity_observations(document, fixture):
+    fixture = validate_private_fixture(fixture)
+    exact_object(
+        document,
+        "private similarity observations",
+        {
+            "schemaVersion",
+            "kind",
+            "fixtureGeneration",
+            "fixtureSHA256",
+            "contentSource",
+            "anonymization",
+            "adapter",
+            "embeddingProfileFingerprint",
+            "build",
+            "commit",
+            "evaluationStatus",
+            "servingStatus",
+            "observations",
+        },
+    )
+    if document["kind"] != PRIVATE_SIMILARITY_OBSERVATION_KIND:
+        raise CommitmentLinkQualityError(
+            "private similarity observation kind is invalid"
+        )
+    if document["contentSource"] != PRIVATE_SOURCE:
+        raise CommitmentLinkQualityError(
+            "private similarity observation contentSource is invalid"
+        )
+    if document["anonymization"] != fixture["anonymization"]:
+        raise CommitmentLinkQualityError(
+            "private similarity anonymization provenance does not match"
+        )
+    projected = {
+        key: value
+        for key, value in document.items()
+        if key not in {"contentSource", "anonymization"}
+    }
+    projected["kind"] = SIMILARITY_OBSERVATION_KIND
+    validate_similarity_observations(projected, fixture)
     return document
 
 
@@ -1286,9 +1368,18 @@ def parser():
     validate.add_argument("--fixture", required=True)
     validate_private = subparsers.add_parser("validate-private")
     validate_private.add_argument("--fixture", required=True)
+    validate_private_destination = subparsers.add_parser(
+        "validate-private-destination"
+    )
+    validate_private_destination.add_argument("--output", required=True)
     validate_similarity = subparsers.add_parser("validate-similarity")
     validate_similarity.add_argument("--fixture", required=True)
     validate_similarity.add_argument("--observations", required=True)
+    validate_private_similarity = subparsers.add_parser(
+        "validate-private-similarity"
+    )
+    validate_private_similarity.add_argument("--fixture", required=True)
+    validate_private_similarity.add_argument("--observations", required=True)
     replay_similarity = subparsers.add_parser("replay-similarity")
     replay_similarity.add_argument("--fixture", required=True)
     replay_similarity.add_argument("--observations", required=True)
@@ -1326,6 +1417,49 @@ def main(argv=None):
                 "cases": len(fixture["cases"]),
                 "sha256": document_digest(fixture),
                 "reviewStatus": fixture["anonymization"]["reviewStatus"],
+            }, sort_keys=True))
+            return 0
+        if arguments.command == "validate-private-destination":
+            destination = validate_private_destination_path(
+                arguments.output,
+                "private similarity observations",
+            )
+            print(json.dumps({
+                "status": "accepted",
+                "destination": destination.name,
+            }, sort_keys=True))
+            return 0
+        if arguments.command == "validate-private-similarity":
+            fixture_path = validate_private_fixture_path(arguments.fixture)
+            fixture = validate_private_fixture(
+                load_json(fixture_path, "private fixture")
+            )
+            observations_path = validate_owner_only_private_path(
+                arguments.observations,
+                "private similarity observations",
+            )
+            observations = validate_private_similarity_observations(
+                load_json(
+                    observations_path,
+                    "private similarity observations",
+                ),
+                fixture,
+            )
+            print(json.dumps({
+                "kind": observations["kind"],
+                "fixtureSHA256": observations["fixtureSHA256"],
+                "contentSource": observations["contentSource"],
+                "embeddingProfileFingerprint": observations[
+                    "embeddingProfileFingerprint"
+                ],
+                "build": observations["build"],
+                "commit": observations["commit"],
+                "cases": len(observations["observations"]),
+                "reviewStatus": observations["anonymization"][
+                    "reviewStatus"
+                ],
+                "evaluationStatus": observations["evaluationStatus"],
+                "servingStatus": observations["servingStatus"],
             }, sort_keys=True))
             return 0
         fixture = validate_fixture(load_json(arguments.fixture, "fixture"))

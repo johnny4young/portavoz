@@ -2044,9 +2044,18 @@ direct identifiers. Validation also rejects obvious emails, URLs, filesystem
 paths, phone-like values, and UUIDs, but documents that pattern checks cannot
 prove de-identification. Input must be a regular non-symlink mode-`0600` file;
 repository-local input must live under a gitignored path such as `private-
-evidence/`. This boundary validates shape and handling only. The current
-product-path collector still accepts only the canonical public fixture, and no
-private content, score, replay, threshold, or quality floor enters the app.
+evidence/`. This boundary validates shape and handling only. The public
+product-path collector still accepts only the canonical public fixture. A
+separate private CLI command can consume only the owner-only private shape,
+revalidate its exact balance and redaction attestations, and run each case in
+the same isolated scratch product path. Its distinct owner-only receipt binds
+the complete private-fixture digest, content-source and anonymization
+provenance, embedding profile, build, and source commit to anonymized external
+identities, scores, and legal suggestions. It carries no fixture text and is
+validated against the same private file/ignore policy. Public fixture loading
+remains canonical-digest-only. No private content, score, replay, threshold, or
+quality floor enters app composition, persistence, diagnostics, sync, bundles,
+MCP, or SwiftUI.
 
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,

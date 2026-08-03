@@ -146,6 +146,114 @@ final class CommitmentLinkQualityProductBenchmarkTests: XCTestCase {
         }
     }
 
+    func testPrivateFixtureLoaderKeepsPublicAuthoritySeparateAndOwnerOnly() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "commitment-link-private-fixture-\(UUID().uuidString)",
+            isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fixtureURL = try Self.writePrivateFixture(to: root)
+
+        let fixture = try CommitmentLinkPrivateQualityFixture.load(from: fixtureURL)
+
+        XCTAssertEqual(fixture.generation, "private-anonymized-test-v1")
+        XCTAssertEqual(fixture.cases.count, 36)
+        XCTAssertEqual(
+            fixture.productFixture.kind,
+            CommitmentLinkPrivateQualityFixture.kind)
+        XCTAssertEqual(
+            fixture.productFixture.contentSource,
+            CommitmentLinkPrivateQualityFixture.contentSource)
+        XCTAssertThrowsError(
+            try CommitmentLinkQualityFixture.load(from: fixtureURL))
+
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o644],
+            ofItemAtPath: fixtureURL.path)
+        XCTAssertThrowsError(
+            try CommitmentLinkPrivateQualityFixture.load(from: fixtureURL)
+        ) { error in
+            XCTAssertEqual(
+                error as? CommitmentLinkQualityBenchmarkError,
+                .invalidFixture(
+                    "private fixture must be a regular non-symlink mode-0600 file"))
+        }
+    }
+
+    func testPrivateFixtureLoaderRejectsNestedSchemaDrift() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "commitment-link-private-schema-\(UUID().uuidString)",
+            isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fixtureURL = try Self.writePrivateFixture(to: root)
+        var document = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: Data(contentsOf: fixtureURL)) as? [String: Any])
+        var anonymization = try XCTUnwrap(
+            document["anonymization"] as? [String: Any])
+        anonymization["sourceMeeting"] = "must-not-be-ignored"
+        document["anonymization"] = anonymization
+        let drifted = try JSONSerialization.data(
+            withJSONObject: document,
+            options: [.sortedKeys, .withoutEscapingSlashes])
+        try drifted.write(to: fixtureURL, options: .atomic)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o600],
+            ofItemAtPath: fixtureURL.path)
+
+        XCTAssertThrowsError(
+            try CommitmentLinkPrivateQualityFixture.load(from: fixtureURL))
+    }
+
+    func testPrivateScoredRunnerEmitsProvenanceWithoutFixtureText() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "commitment-link-private-runner-\(UUID().uuidString)",
+            isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fixtureURL = try Self.writePrivateFixture(to: root)
+        let fixture = try CommitmentLinkPrivateQualityFixture.load(from: fixtureURL)
+        let profile = SemanticEmbeddingProfile(
+            modelIdentifier: "commitment-link-private-test",
+            modelRevision: 1,
+            vectorDimension: 2,
+            pipelineIdentifier: "constant-test-vector",
+            pipelineRevision: 1,
+            vectorSchemaVersion: 1)
+        let runtime = CommitmentLinkQualityRecordingRuntime(profile: profile)
+
+        let document = try await CommitmentLinkQualityProductBenchmark
+            .runPrivateSimilarity(
+                fixture: fixture,
+                runtime: runtime,
+                build: "0.9.0+1",
+                commit: String(repeating: "c", count: 40))
+        let output = root.appendingPathComponent("private-observations.json")
+        try CommitmentLinkPrivateSimilarityJSONWriter.write(
+            document,
+            to: output)
+
+        XCTAssertEqual(
+            document.kind,
+            "commitment-link-private-similarity-observations")
+        XCTAssertEqual(document.fixtureSHA256, fixture.fixtureSHA256)
+        XCTAssertEqual(
+            document.contentSource,
+            CommitmentLinkPrivateQualityFixture.contentSource)
+        XCTAssertEqual(document.anonymization, fixture.anonymization)
+        XCTAssertEqual(document.embeddingProfileFingerprint, profile.fingerprint)
+        XCTAssertEqual(document.evaluationStatus, "not-evaluated")
+        XCTAssertEqual(document.servingStatus, "not-approved")
+        XCTAssertEqual(document.observations.count, 36)
+
+        let encoded = try String(contentsOf: output, encoding: .utf8)
+        let privateText = try XCTUnwrap(
+            fixture.cases.first?.candidate.text)
+        XCTAssertFalse(encoded.contains(privateText))
+        let mode = try XCTUnwrap(
+            FileManager.default.attributesOfItem(atPath: output.path)[.posixPermissions]
+                as? NSNumber)
+        XCTAssertEqual(mode.intValue, 0o600)
+    }
+
     func testPrivateWriterIncludesNullAssigneeIdentityAndNeverOverwrites() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "commitment-link-quality-writer-\(UUID().uuidString)",
@@ -195,6 +303,41 @@ final class CommitmentLinkQualityProductBenchmarkTests: XCTestCase {
         .deletingLastPathComponent()
         .appendingPathComponent(
             "Fixtures/CommitmentLinkQuality/public-synthetic-v1.json")
+
+    private static func writePrivateFixture(to root: URL) throws -> URL {
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: false,
+            attributes: [.posixPermissions: 0o700])
+        let publicRoot = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: Data(contentsOf: canonicalFixtureURL)) as? [String: Any])
+        let cases = try XCTUnwrap(publicRoot["cases"])
+        let document: [String: Any] = [
+            "schemaVersion": 1,
+            "kind": CommitmentLinkPrivateQualityFixture.kind,
+            "generation": "private-anonymized-test-v1",
+            "contentSource": CommitmentLinkPrivateQualityFixture.contentSource,
+            "anonymization": [
+                "policy": "owner-reviewed-redaction-v1",
+                "reviewStatus": "owner-reviewed",
+                "containsAudio": false,
+                "containsFilePaths": false,
+                "containsAccountIdentifiers": false,
+                "containsDirectIdentifiers": false,
+            ],
+            "cases": cases,
+        ]
+        let url = root.appendingPathComponent("private-pack.json")
+        let data = try JSONSerialization.data(
+            withJSONObject: document,
+            options: [.sortedKeys, .withoutEscapingSlashes])
+        XCTAssertTrue(FileManager.default.createFile(
+            atPath: url.path,
+            contents: data,
+            attributes: [.posixPermissions: 0o600]))
+        return url
+    }
 }
 
 private actor CommitmentLinkQualityRecordingRuntime: SemanticEmbeddingRuntimeClient {

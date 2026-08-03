@@ -71,6 +71,8 @@ struct PortavozCLI {
             await BenchCommitmentLinkQualityCommand.run(arguments)
         case "bench-commitment-link-similarity":
             await BenchCommitmentLinkSimilarityCommand.run(arguments)
+        case "bench-private-commitment-link-similarity":
+            await BenchPrivateCommitmentLinkSimilarityCommand.run(arguments)
         default:
             printUsage()
         }
@@ -105,6 +107,9 @@ struct PortavozCLI {
               portavoz-cli bench-commitment-link-similarity --fixture <json> --output <json>
                                                             --build <id> --commit <sha>
                                                             [--asset-download never|if-needed]
+              portavoz-cli bench-private-commitment-link-similarity --fixture <json> --output <json>
+                                                                    --build <id> --commit <sha>
+                                                                    [--asset-download never|if-needed]
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]

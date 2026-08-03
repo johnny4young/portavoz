@@ -77,6 +77,27 @@ class CommitmentLinkQualityTests(unittest.TestCase):
             "cases": fixture["cases"],
         }
 
+    def private_similarity_observations(self):
+        fixture = self.private_fixture()
+        public = self.similarity_observations()
+        return {
+            "schemaVersion": 1,
+            "kind": quality.PRIVATE_SIMILARITY_OBSERVATION_KIND,
+            "fixtureGeneration": fixture["generation"],
+            "fixtureSHA256": quality.fixture_digest(fixture),
+            "contentSource": quality.PRIVATE_SOURCE,
+            "anonymization": fixture["anonymization"],
+            "adapter": "product-accelerate-exact-private-scored-v1",
+            "embeddingProfileFingerprint": public[
+                "embeddingProfileFingerprint"
+            ],
+            "build": public["build"],
+            "commit": public["commit"],
+            "evaluationStatus": "not-evaluated",
+            "servingStatus": "not-approved",
+            "observations": public["observations"],
+        }
+
     def test_public_corpus_is_bounded_and_rejects_incomplete_languages(self):
         corpus = quality.load_public_corpus(CORPUS)
         self.assertEqual(
@@ -219,6 +240,112 @@ class CommitmentLinkQualityTests(unittest.TestCase):
                 )
         finally:
             repository_path.unlink(missing_ok=True)
+
+    def test_private_similarity_contract_binds_private_provenance(self):
+        fixture = self.private_fixture()
+        observations = self.private_similarity_observations()
+
+        self.assertIs(
+            quality.validate_private_similarity_observations(
+                observations,
+                fixture,
+            ),
+            observations,
+        )
+        self.assertEqual(
+            observations["fixtureSHA256"],
+            quality.fixture_digest(fixture),
+        )
+        self.assertEqual(observations["contentSource"], quality.PRIVATE_SOURCE)
+        self.assertEqual(observations["evaluationStatus"], "not-evaluated")
+        self.assertEqual(observations["servingStatus"], "not-approved")
+
+        for mutate, message in (
+            (
+                lambda value: value.update(
+                    {"contentSource": quality.PUBLIC_SOURCE}
+                ),
+                "contentSource",
+            ),
+            (
+                lambda value: value["anonymization"].update(
+                    {"reviewStatus": "automatic"}
+                ),
+                "anonymization provenance",
+            ),
+            (
+                lambda value: value.update(
+                    {"kind": quality.SIMILARITY_OBSERVATION_KIND}
+                ),
+                "kind",
+            ),
+        ):
+            broken = copy.deepcopy(observations)
+            mutate(broken)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_private_similarity_observations(
+                    broken,
+                    fixture,
+                )
+
+    def test_private_similarity_cli_requires_owner_only_ignored_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture_path = root / "private-pack.json"
+            observation_path = root / "private-similarity.json"
+            fixture_path.write_text(
+                json.dumps(self.private_fixture()),
+                encoding="utf-8",
+            )
+            observation_path.write_text(
+                json.dumps(self.private_similarity_observations()),
+                encoding="utf-8",
+            )
+            fixture_path.chmod(0o600)
+            observation_path.chmod(0o644)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private-similarity",
+                        "--fixture", str(fixture_path),
+                        "--observations", str(observation_path),
+                    ]),
+                    64,
+                )
+            observation_path.chmod(0o600)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private-similarity",
+                        "--fixture", str(fixture_path),
+                        "--observations", str(observation_path),
+                    ]),
+                    0,
+                )
+
+    def test_private_destination_preflight_refuses_repository_leakage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "private-similarity.json"
+            self.assertEqual(
+                quality.validate_private_destination_path(
+                    destination,
+                    "private similarity observations",
+                ),
+                destination.resolve(),
+            )
+
+        repository_destination = ROOT / "private-similarity-unignored.json"
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "covered by .gitignore",
+        ):
+            quality.validate_private_destination_path(
+                repository_destination,
+                "private similarity observations",
+            )
 
     def test_fixture_rejects_link_truth_without_exact_owner(self):
         fixture = self.fixture()

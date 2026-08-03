@@ -138,6 +138,34 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
             "Version scored commitment-link evidence separately from quality observations"))
     }
 
+    func testPrivateSimilarityCollectorCannotBroadenPublicOrAppComposition() throws {
+        let runner = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchCommitmentLinkQuality.swift")
+        let validator = try Self.contents(
+            of: "scripts/commitment_link_quality.py")
+        let appComposition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(runner.contains("BenchPrivateCommitmentLinkSimilarityCommand"))
+        XCTAssertTrue(runner.contains("CommitmentLinkPrivateQualityFixture.load"))
+        XCTAssertTrue(runner.contains(
+            "commitment-link-private-similarity-observations"))
+        XCTAssertTrue(runner.contains(
+            "private fixture must be a regular non-symlink mode-0600 file"))
+        XCTAssertTrue(runner.contains(
+            "try CommitmentLinkQualityFixture.load(from: options.fixture)"))
+        XCTAssertTrue(validator.contains(
+            "validate_private_similarity_observations"))
+        XCTAssertTrue(validator.contains(
+            "repository-local {label} must be covered by .gitignore"))
+        XCTAssertFalse(appComposition.contains(
+            "CommitmentLinkPrivateSimilarityDocument"))
+        XCTAssertTrue(decisions.contains("## D252"))
+        XCTAssertTrue(decisions.contains(
+            "Measure private commitment links without weakening public evidence"))
+    }
+
     private static func contents(of relativePath: String) throws -> String {
         try String(
             contentsOf: repoRoot.appendingPathComponent(relativePath),

@@ -18,6 +18,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-commitment-link-quality commitment-link-quality-control \
 	commitment-link-quality-product commitment-link-similarity-product \
 	commitment-link-similarity-replay validate-commitment-link-private-pack \
+	commitment-link-private-similarity-product \
 	test-correction-composition correction-composition-benchmark \
 	test-commitment-radar-scale commitment-radar-benchmark \
 	test-exact-path-matrix exact-path-matrix \
@@ -190,6 +191,34 @@ validate-commitment-link-private-pack:
 		(echo "PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK is required" >&2; exit 64)
 	@python3 scripts/commitment_link_quality.py validate-private \
 		--fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)"
+
+## Capture score-bearing evidence from one D251-validated private pack through
+## the same isolated non-serving product path. Both the fixture and output must
+## remain owner-only and ignored when repository-local; no policy is replayed.
+PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS ?=
+commitment-link-private-similarity-product:
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_BUILD)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_BUILD is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_COMMIT)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_COMMIT is required" >&2; exit 64)
+	@python3 scripts/commitment_link_quality.py validate-private-destination \
+		--output "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS)"
+	@python3 scripts/commitment_link_quality.py validate-private \
+		--fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)"
+	$(XCODE) swift run -c release portavoz-cli \
+		bench-private-commitment-link-similarity \
+		--fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" \
+		--output "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS)" \
+		--build "$(PORTAVOZ_COMMITMENT_LINK_BUILD)" \
+		--commit "$(PORTAVOZ_COMMITMENT_LINK_COMMIT)" \
+		--asset-download "$(PORTAVOZ_COMMITMENT_LINK_ASSET_DOWNLOAD)"
+	@python3 scripts/commitment_link_quality.py validate-private-similarity \
+		--fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" \
+		--observations "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS)"
 
 ## Validate the exact-shaped, content-free host receipt boundary without
 ## running the expensive Release scale harness.

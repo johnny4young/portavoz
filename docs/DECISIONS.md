@@ -8616,3 +8616,44 @@ It does not yet let the Swift product-path runner ingest a private fixture,
 collect scores, replay policy, retain a baseline, or choose a threshold. It
 adds no app composition, persistence, support diagnostics, sync/export, bundle,
 public CLI/MCP surface, SwiftUI, confirmation, or serving behavior.
+
+## D252 — Measure private commitment links without weakening public evidence (Aug 2026)
+
+**Context:** D251 defines a safe local shape for owner-reviewed field cases,
+but the D247/D249 Swift runner accepts only the reproducible public fixture
+digest. Broadening that command to accept either root would make a private file
+indistinguishable at the composition boundary, and reusing the public receipt
+kind would let field evidence be mistaken for the synthetic authority. A
+private collector must also avoid retaining the anonymized source text merely
+because it needs that text transiently to seed scratch stores.
+
+**Decision:** add a dedicated CLI command and distinct schema-1 private
+similarity receipt. The private loader accepts only a regular non-symlink mode-
+`0600` file with the D251 root, exact 36-case language/class/link/abstention
+balance, literal owner-reviewed redaction attestation, safe bounded identities,
+legal link truth, and the same obvious identifier backstops. The Make target
+runs the Python authority before collection, preflights the destination, and
+validates both the fixture and owner-only output afterward; repository-local
+evidence must remain gitignored.
+
+Every accepted case runs through the existing D247 isolated scratch
+`MeetingStore`, product semantic indexing operation, D246 observer, and D244
+legal admission. The receipt binds the full private fixture digest, content
+source, complete anonymization attestation, embedding-profile fingerprint,
+bounded build, and full source commit. Its rows contain only anonymized external
+case/evidence/commitment/person identities, ordered cosine values, and legal
+suggestions. Candidate, target, and evidence source text is never encoded. The
+receipt remains literally `not-evaluated` and `not-approved`, owner-only,
+atomic, and non-overwriting.
+
+The canonical public commands and digest checks remain unchanged. The private
+collector is absent from app composition and does not open the user library,
+serve or confirm a suggestion, replay a threshold, retain an accepted baseline,
+or enter persistence, diagnostics, sync/export, bundles, MCP, or SwiftUI.
+
+**Consequences:** owner-reviewed field cases can now produce provenance-complete
+scores through the same real product path as the public pack without mixing the
+two evidence authorities or leaking fixture text into the receipt. Human review
+still owns anonymization. Private policy replay, a clean-head profile matrix,
+quality-floor acceptance, and any serving decision remain separate pending
+slices.

@@ -1382,7 +1382,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   result remains `review-required` and its product decision remains
   `not-evaluated` (D236).
 - `make test-commitment-link-quality` validates D245's reproducible 36-case
-  cross-meeting fixture and runs twenty-one evaluator/contract tests without a
+  cross-meeting fixture and runs twenty-four evaluator/contract tests without a
   model, database, or user library. The corpus is balanced across English,
   Spanish, and mixed speech and across 18 linkable and 18 mandatory-abstention
   cases. It labels semantic-relevant targets separately from legally linkable
@@ -1396,9 +1396,9 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   arithmetic; it remains `review-required`, makes no product decision, and
   selects no threshold or engine. Optional case details are mode `0600`, non-
   overwriting, and untracked.
-- Seventeen focused package cases cover D246–D249's non-serving product seam:
-  seven observer/storage behaviors, five source-link architecture contracts,
-  and five product-runner cases.
+- Twenty focused package cases cover D246–D252's non-serving product seam:
+  six observer/storage behaviors, six source-link architecture contracts, and
+  eight product-runner cases.
   The real in-memory Store path proves exact open source/evidence identities,
   installed-assets-only borrowing, and semantic-hit versus legal-admission
   separation. Exact semantic search now proves that it retains profile-local
@@ -1437,8 +1437,20 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   focused cases cover the balanced contract, attestation and distribution
   failure, obvious email/URL/path/phone/UUID rejection, file mode, and symlink
   refusal. These pattern checks are only a backstop and make no automatic de-
-  identification claim; no private fixture is tracked or consumed by the Swift
-  product adapter (D251). The
+  identification claim; no private fixture is tracked (D251). D252 adds a
+  separate `commitment-link-private-similarity-product` target that validates
+  the private pack before collection, runs all 36 cases through isolated
+  scratch stores and the same non-serving observer, and validates a distinct
+  owner-only receipt afterward. Swift independently enforces the private root,
+  exact balance, redaction attestation, obvious-identifier backstops, and
+  regular non-symlink mode-`0600` input. The receipt binds the private fixture,
+  anonymization/content-source, profile, build, and commit while emitting no
+  fixture source text. Three tooling cases cover private receipt provenance,
+  drift, destination preflight, owner-only input/output, and CLI validation;
+  three package cases cover
+  loader separation, isolated scored collection, no-text publication, and the
+  app-composition ratchet. The public product command remains canonical-digest-
+  only, and private policy replay remains pending. The
   `commitment-link-quality-product` target runs the real
   Storage/Application path and immediately validates it with the D245
   evaluator; downloads remain disabled unless the caller explicitly selects
