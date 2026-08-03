@@ -9297,3 +9297,57 @@ schema. The public corpus proves contract mechanics, not real-world quality.
 An owner-reviewed anonymized private pack, correction/rebuild behavior, and
 scale/latency evidence remain required before any longitudinal graph answer is
 served to users.
+
+## D271 — Keep topic identity relational and explicitly confirmed (Aug 2026)
+
+**Context:** the graph query contract needs topic continuity before decision or
+timeline queries can be implemented, but inferred labels are not durable
+identity. The same bilingual alias can describe different subjects, generated
+similarity can be wrong, and transcript correction or deletion can invalidate
+the evidence that originally suggested a link. Persisting generated clusters
+or mutable freshness would silently turn inference into authority and rewrite
+history.
+
+**Decision:** add schema v25 with four narrowly scoped relational tables.
+`topic` owns a UUID and an optional current redirect; `topicAlias` stores an
+immutable normalized presentation candidate that is unique only within one
+topic; `topicMeetingEvidence` stores immutable exact meeting, segment,
+transcript-revision, observed alias, proposal origin, user resolution, and any
+profile-local similarity candidate metadata; and
+`topicIdentityEvent` records every explicit merge or split append-only. Evidence
+source identifiers intentionally have no meeting or segment foreign key so
+physical deletion cannot erase why a link once existed.
+
+Constructing a `TopicLinkProposal`, including one produced by generated
+similarity, has no side effect. Explicit ApplicationKit commands atomically
+create or link a topic only from current exact evidence with no active
+correction. Linking first creates the observed topic and then redirects it to
+the user-selected active root, leaving alias and evidence on the reversible
+child. Alias lookup may return multiple active candidates and resolves merged
+aliases to their active UUID root. Explicit merge and split commands append
+history and update only the current redirect projection. Evidence status is
+derived on read: exact current revision and accepted source is current,
+revision drift is stale, and corrected or missing source material is
+unavailable.
+
+Every confirmation carries caller-supplied stable identities. A retry that
+finds immutable evidence already committed validates that the persisted
+identity and content are exactly the same before replaying it; it does not
+re-authorize that historical write against transcript state that may have
+changed later. The returned evidence still derives its current, stale, or
+unavailable status from present authoritative state. Reusing any proposal or
+identity-event ID with different content fails closed.
+
+This decision adds no proposal model, threshold, global taxonomy, background
+projection, decision continuity, app composition, query-serving adapter,
+specialized graph engine, sync/export format, CLI, or MCP behavior. Those must
+be earned independently against the graph query contract and real private
+evidence.
+
+**Consequences:** Portavoz can retain bilingual topic continuity without
+equating labels with identity or allowing a model to merge user knowledge. All
+identity changes are explicit, reversible as current projection, and auditable
+through immutable events; all links remain inspectable against exact source
+evidence. Historical evidence survives source purge but becomes honestly
+unavailable. The next slice may define decision continuity on this foundation,
+while correction-driven rebuild, scale evidence, UI, and serving remain open.

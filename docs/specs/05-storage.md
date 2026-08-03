@@ -43,7 +43,7 @@ fingerprint held by the Application observer.
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v24` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v25` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -91,6 +91,10 @@ Singular camelCase tables, 1:1 with Codable records:
 | `commitmentReminderEvent` (v23) | immutable predecessor-linked schedule/present/snooze/dismiss/cancel delivery fact with exact commitment and due-date fence |
 | `commitmentReminderState` (v23) | one bounded current scheduled/presented/dismissed/cancelled projection whose latest event belongs to the same commitment |
 | `commitmentFieldPresentation` (v24) | immutable first presentation per generated action item; opaque presentation/source identities, coarse language, optional SHA-256 owner token and suggested due date, and presentation time; deliberately no meeting FK or content |
+| `topic` (v25) | UUID identity, lifecycle timestamps, optional active-topic redirect, and tombstone; labels never define identity |
+| `topicAlias` (v25) | immutable topic-owned normalized presentation alias plus proposal origin; unique only within one topic and deliberately repeatable across topics |
+| `topicMeetingEvidence` (v25) | immutable topic/meeting/segment/revision evidence plus exact observed alias, proposal origin, user resolution, and optional profile-local similarity candidate metadata; source identities deliberately have no meeting or segment FK |
+| `topicIdentityEvent` (v25) | immutable append-only merge/split event with source and target topic UUIDs |
 
 Schema v16 adds the partial
 `meeting_on_live_startedAt_id(startedAt DESC, id ASC)` index for deterministic
@@ -188,6 +192,33 @@ confirmation event. It reads at most 50,001 rows and fails closed above Core's
 confirm event rather than the mutable commitment projection; a retired source
 without terminal review becomes `withdrawn`. This evidence is local-only and
 does not enter CloudKit, portable bundles, diagnostics, CLI, MCP, or exports.
+
+Schema v25 adds relational topic continuity while keeping SQLite authoritative.
+`topic` provides UUID identity and a current redirect projection. Labels live
+only in immutable `topicAlias` candidates; equal normalized aliases may point
+to different topics. `topicMeetingEvidence` retains exact meeting, segment, and
+transcript-revision provenance even after the source is physically removed.
+Availability is derived when read: the exact current accepted source is
+current, a revision mismatch is stale, and an active correction or missing
+meeting/segment makes the evidence unavailable.
+
+Creating or linking a topic validates one exact current proposal and publishes
+topic, alias, evidence, and any explicit merge atomically. Linking creates a
+distinct observed child before redirecting it to the selected active root, so
+its source evidence survives a later split. Merge and split are explicit
+application commands: storage appends one immutable `topicIdentityEvent` and
+changes only the source topic's current redirect. Alias lookup resolves through
+redirects to an active root, while reads over a merged family retain every
+historical evidence row in source chronology. There is no generated proposal
+producer, taxonomy, decision continuity, graph database, background projector,
+sync/export envelope, CLI, or MCP surface in this schema.
+
+Stable proposal and identity-event IDs make confirmation retryable. A newly
+confirmed proposal must reference the exact current accepted segment and
+transcript revision. Once its immutable evidence exists, an exact retry replays
+the persisted identity/content before consulting mutable source state and
+derives the returned availability from the current meeting. Identity reuse with
+different content is rejected atomically.
 
 The format-2 `CommitmentContinuityEnvelope` is a database-record-independent,
 canonically ordered replay representation with explicit `me`, `person`, and

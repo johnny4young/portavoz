@@ -540,7 +540,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 23. It includes:
+The current schema version is 25. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -555,6 +555,10 @@ The current schema version is 23. It includes:
   source/history evidence, and reversible generated-source review treatment;
 - a bounded current commitment-reminder projection plus immutable local
   delivery history, fenced to the confirmed commitment's exact due date;
+- content-free immutable first-presentation evidence for generated commitment
+  review;
+- UUID topic identities, ambiguous presentation aliases, immutable exact
+  meeting evidence, and append-only merge/split identity history;
 - immutable generation-run provenance;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);
@@ -1234,11 +1238,31 @@ authority to create topics, decisions, people, commitments, or edges.
 
 `meeting_memory_graph_quality.py` generates and validates that corpus
 deterministically, rejects drift and incomplete job/language coverage, and
-requires every abstention reason to agree with the source evidence itself. This
-foundation adds no StorageKit migration, projection job, read model, provider,
-model, threshold, app composition, UI, or graph database. SQLite remains the
-authoritative product store. No relational graph projection exists; any future
-projection must preserve this contract and remain derived from source evidence.
+requires every abstention reason to agree with the source evidence itself. The
+corpus itself adds no product storage, provider, model, threshold, app
+composition, UI, or graph database.
+
+A separate relational topic-continuity foundation now establishes the first
+product identity boundary in authoritative SQLite. A topic owns a UUID;
+normalized bilingual labels are deliberately ambiguous presentation aliases,
+never identity. An exact meeting/segment/revision proposal remains inert until
+an explicit ApplicationKit command either creates a topic or links the meeting
+to one selected active topic. The immutable evidence row retains its proposal
+origin, user resolution, and any profile-local similarity candidate metadata.
+A confirmed link first creates an observed child identity, then explicitly
+redirects that child to the selected active topic so its alias and evidence can
+be restored by a later split. Explicit merge and split commands append
+identity-history events and update only the current redirect projection;
+aliases resolve through that projection to the active UUID root. Evidence
+availability is derived at read time from the current meeting revision and
+accepted source segment, so correction or physical deletion makes evidence
+stale or unavailable without rewriting history. Stable proposal IDs make an
+exact retry replay immutable persisted identity before mutable source
+validation; different content under the same ID fails closed, while the replay
+still reports current derived availability. There is still no
+model-generated proposal producer, projection job, query-serving adapter,
+decision continuity, UI, sync/export contract, CLI/MCP surface, global
+taxonomy, or specialized graph engine.
 
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
@@ -3204,13 +3228,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,862 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,876 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 537 first-party Swift source files;
+- strict SwiftLint reports zero violations across 545 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

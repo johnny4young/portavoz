@@ -21,6 +21,30 @@ public struct PersonID: Hashable, Codable, Sendable, RawRepresentable {
     public init() { self.rawValue = UUID() }
 }
 
+public struct TopicID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct TopicAliasID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct TopicMeetingEvidenceID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct TopicIdentityEventID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
 public struct CommitmentID: Hashable, Codable, Sendable, RawRepresentable {
     public let rawValue: UUID
     public init(rawValue: UUID) { self.rawValue = rawValue }

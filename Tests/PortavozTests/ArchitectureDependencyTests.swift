@@ -1820,8 +1820,46 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 24"))
+        XCTAssertTrue(schema.contains("public static let version = 25"))
         XCTAssertTrue(decisions.contains("## D270"))
+    }
+
+    func testTopicContinuityKeepsLabelsAsCandidatesAndMutationsExplicit() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/TopicContinuity.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/TopicContinuity.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+TopicContinuity.swift")
+        let confirmation = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+TopicContinuityConfirmation.swift")
+        let evidence = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+TopicContinuityEvidence.swift")
+        let identity = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+TopicContinuityIdentity.swift")
+        let migration = try Self.contents(
+            of: "Sources/StorageKit/Schema+TopicContinuity.swift")
+        let package = try Self.contents(of: "Package.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains("struct Topic:"))
+        XCTAssertTrue(core.contains("struct TopicLinkProposal:"))
+        XCTAssertTrue(core.contains("case generatedSimilarity"))
+        XCTAssertTrue(core.contains("enum TopicEvidenceAvailability"))
+        XCTAssertTrue(application.contains("protocol TopicContinuityStore"))
+        XCTAssertTrue(application.contains("struct ConfirmTopicLink"))
+        XCTAssertTrue(application.contains("struct ConfirmTopicMerge"))
+        XCTAssertTrue(application.contains("struct ConfirmTopicSplit"))
+        XCTAssertFalse(application.contains("import IntelligenceKit"))
+        XCTAssertTrue(storage.contains("topicIdentityHistory"))
+        XCTAssertTrue(confirmation.contains("source transcript revision is stale"))
+        XCTAssertTrue(evidence.contains("acceptedSegmentHasNoActiveCorrectionSQL"))
+        XCTAssertTrue(identity.contains("topicIdentityEvent"))
+        XCTAssertTrue(migration.contains("registerMigration(\"v25\")"))
+        XCTAssertTrue(migration.contains("topicMeetingEvidence"))
+        XCTAssertTrue(migration.contains("topicIdentityEvent"))
+        XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
+        XCTAssertTrue(decisions.contains("## D271"))
     }
 
     func testCommitmentReminderReconciliationIsBoundedAndAdapterNeutral() throws {
@@ -2128,7 +2166,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 24"))
+        XCTAssertTrue(schema.contains("public static let version = 25"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -2170,7 +2208,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
-        XCTAssertTrue(architecture.contains("current schema version is 23"))
+        XCTAssertTrue(architecture.contains("current schema version is 25"))
         XCTAssertTrue(architecture.contains(
             "Every persisted semantic vector also carries one SHA-256"))
         XCTAssertTrue(decisions.contains("## D199"))

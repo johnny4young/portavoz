@@ -270,10 +270,34 @@ the necessary confirmed truth is absent.
 `scripts/meeting_memory_graph_quality.py` owns deterministic generation,
 validation, and canonical verification. It selects no embedding, language
 model, ranker, threshold, provider, graph engine, or serving behavior. No user
-library, model asset, network service, ApplicationKit composition, or
-StorageKit migration participates in this contract. Future GRAPH adapters must
-produce the typed result/evidence contract first; answer wording remains a
+library, model asset, network service, ApplicationKit composition, or product
+storage participates in the benchmark contract itself. Future graph adapters
+must produce the typed result/evidence contract first; answer wording remains a
 separate presentation concern.
+
+## Topic continuity confirmation boundary (D271)
+
+The first relational continuity slice adds typed topic identities without
+making intelligence authoritative. `TopicLinkProposal` carries exact meeting,
+segment, transcript-revision, alias, and proposal-origin evidence, but creating
+that value writes nothing. Only explicit ApplicationKit confirmation may create
+a topic or link a meeting to an existing active topic. Generated similarity is
+therefore a proposal origin, never a merge, classification, or serving verdict.
+
+Alias normalization is deterministic Core behavior for candidate lookup. An
+alias may belong to multiple topics, and bilingual labels remain presentation
+material rather than identity. No provider produces proposals yet, no
+threshold is selected, and the topic foundation is not composed into Ask, the
+app, summaries, or a background job. Decision continuity and generated graph
+answers remain outside this boundary.
+
+Generated candidates retain their selected topic UUID, profile-local score,
+and compatibility fingerprint only as explanation evidence. Storage validates
+that metadata but Core selects no score threshold. Exact confirmation retries
+replay previously committed immutable identity rather than allowing a later
+transcript correction to turn a successful user action into a second mutation;
+the evidence is still reported unavailable when that correction supersedes its
+source.
 
 ## Human claim feedback is not model material (D88)
 

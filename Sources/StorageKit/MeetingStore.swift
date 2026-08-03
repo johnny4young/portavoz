@@ -19,6 +19,7 @@ public enum StorageError: Error, LocalizedError {
     case invalidDataEgressEvent(String)
     case invalidSyncState(String)
     case invalidPersonLink(String)
+    case invalidTopicContinuity(String)
     case invalidSummaryClaim(String)
     case processingJobNotFound(ProcessingJobID)
     case processingJobLeaseLost(ProcessingJobID)
@@ -63,6 +64,8 @@ public enum StorageError: Error, LocalizedError {
             return "invalid sync state: \(reason)"
         case .invalidPersonLink(let reason):
             return "invalid canonical person link: \(reason)"
+        case .invalidTopicContinuity(let reason):
+            return "invalid topic continuity: \(reason)"
         case .invalidSummaryClaim(let reason):
             return "invalid summary claim: \(reason)"
         case .processingJobNotFound(let id):
