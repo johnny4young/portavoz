@@ -158,6 +158,7 @@ public enum MeetingMemoryGraphQueryAbstention: String, Equatable, Sendable {
     case projectionNotReady = "projection-not-ready"
     case commitmentUnavailable = "commitment-unavailable"
     case personUnavailable = "person-unavailable"
+    case ambiguousPerson = "ambiguous-person"
     case topicUnavailable = "topic-unavailable"
     case projectionInconsistent = "projection-inconsistent"
     case unsupportedCausalLink = "unsupported-causal-link"

@@ -9814,3 +9814,44 @@ exact reassignment provenance, evidence-less reassignment, former-owner
 exclusion, and application delegation. Canonical multilingual mapping, identity
 discovery, cross-lane Ask selection, relational scale budgets, and private field
 evidence remain open.
+
+## D282 — Resolve person aliases once and abstain before factual serving (Aug 2026)
+
+**Context:** D281 deliberately accepted only an exact `PersonID`, while the
+canonical `personCommitments` corpus asks by human name. Five cases name one
+confirmed Mara, but the abstention case contains two deliberately distinct
+people who both have the exact alias Alex. Letting StorageKit choose one
+candidate would invent identity; making callers manually combine candidate
+lookup and fact loading would duplicate fail-closed semantics before Ask can
+compose the lane; and giving the lookup port mutation capabilities would let a
+read path merge people accidentally.
+
+**Decision:** split read-only `CanonicalPersonCandidateReading` from the
+explicitly mutating `CanonicalPeopleStore`. Add
+`LoadPersonCommitmentsByAlias` as a narrow ApplicationKit orchestration over
+that candidate port and the existing exact `PersonCommitmentFactReading` port.
+Its input is a caller-extracted alias plus the existing bounded item limit; it
+does not parse natural language. Blank aliases and invalid limits abstain as an
+invalid query, no exact normalized candidate abstains as person unavailable,
+and more than one distinct candidate abstains as ambiguous person. Only one
+candidate can become a `PersonCommitmentsQuery`, so StorageKit continues to
+receive exact UUID identity and remains unaware of names.
+
+Map all six canonical `personCommitments` cases through fresh in-memory Stores
+using only public meeting, speaker, person create/link, transcript, Summary,
+commitment confirmation/lifecycle, graph-maintenance, and ApplicationKit APIs.
+Persist every forbidden completed or other-person commitment rather than
+removing distractors in the adapter. Derive the lookup alias from fixture
+identity, never by parsing query prose, and map only returned typed commitment
+and transcript identities back to corpus IDs. Require exact ordered result and
+evidence identities, forbidden-result exclusion, and ambiguous-Alex abstention.
+The adapter imports neither GRDB nor IntelligenceKit and performs no direct
+authority write.
+
+**Consequences:** all three implemented source-backed graph fact lanes now
+cross their canonical public product boundaries. Person lookup is reusable,
+read-only, normalized by the existing store, and fail-closed for same-name
+people; it cannot create or merge identities. Ask still does not extract an
+alias, compose this use case, synthesize an answer, or rank graph facts against
+transcript retrieval. The remaining three D270 jobs, relational scale budgets,
+owner-reviewed private evidence, sync/export, CLI, MCP, and UI remain open.

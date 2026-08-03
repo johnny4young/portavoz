@@ -1,10 +1,15 @@
 import PortavozCore
 import StorageKit
 
-/// Narrow identity port. Candidate lookup and mutation are separate so an
-/// adapter cannot turn an alias match into an unconfirmed link.
-public protocol CanonicalPeopleStore: Sendable {
+/// Read-only exact-alias lookup. Duplicate results are intentional and must
+/// remain visible to the caller as ambiguity.
+public protocol CanonicalPersonCandidateReading: Sendable {
     func people(matchingAlias alias: String) async throws -> [Person]
+}
+
+/// Identity mutation stays behind explicit user selection so an alias match
+/// can never merge people by itself.
+public protocol CanonicalPeopleStore: CanonicalPersonCandidateReading {
     func createPersonAndLink(
         speakerID: SpeakerID,
         preferredName: String,
@@ -21,9 +26,9 @@ public protocol CanonicalPeopleStore: Sendable {
 extension MeetingStore: CanonicalPeopleStore {}
 
 public struct FindCanonicalPeople: ApplicationUseCase {
-    private let store: any CanonicalPeopleStore
+    private let store: any CanonicalPersonCandidateReading
 
-    public init(store: any CanonicalPeopleStore) {
+    public init(store: any CanonicalPersonCandidateReading) {
         self.store = store
     }
 

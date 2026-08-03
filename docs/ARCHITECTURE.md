@@ -1392,7 +1392,7 @@ ApplicationKit query boundaries. It maps only returned typed identities and
 exact source segments back to corpus identities. Generated association
 distractors are never persisted, and no model, network, user library, direct
 authority write, Ask composition, CLI, MCP, sync, or UI loads the fixture. The
-other four canonical query jobs and relational scale evidence remain separate
+other three canonical query jobs and relational scale evidence remain separate
 gates.
 
 The second source-backed graph fact query serves **where one exact topic family
@@ -1436,9 +1436,23 @@ its own exact current transcript evidence. That reassignment is the primary
 navigation target and precedes the original promise evidence; an evidence-less
 or stale assignment cannot borrow the former owner's source. Evidence filtering
 happens before the visible limit and overflow is explicit.
-`LoadPersonCommitments` is injected but Ask does not compose it. Name/alias
-resolution, ambiguous-person abstention, canonical corpus mapping, answer
-synthesis, UI, scale evidence, sync/export, CLI, and MCP remain separate gates.
+`LoadPersonCommitments` remains the exact injected boundary. A second narrow
+ApplicationKit workflow, `LoadPersonCommitmentsByAlias`, composes read-only
+exact-normalized-alias candidates with that exact fact reader. Invalid or
+missing aliases and same-name people produce typed abstention before StorageKit
+receives a query; only one candidate can cross as a `PersonID`. Candidate
+reading is a smaller port than the explicit create/link identity authority, so
+the read path cannot merge people.
+
+A package-test adapter maps all six canonical `personCommitments` cases through
+public meeting, speaker, person create/link, transcript, Summary, commitment
+lifecycle, graph-maintenance, and application boundaries. It persists the
+completed and other-person distractors, derives aliases from fixture identity
+rather than query prose, performs no direct database write, and maps only typed
+commitment/evidence identities back to the corpus. The two Alex identities
+therefore abstain without either exact-person query running. Ask does not yet
+compose this workflow; alias extraction, answer synthesis, UI, scale evidence,
+sync/export, CLI, and MCP remain separate gates.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
@@ -3462,7 +3476,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,973 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,978 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

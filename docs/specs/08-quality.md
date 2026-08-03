@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,973 cases (13 environment-gated) + 65
+Status: the package inventory contains 1,978 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1382,7 +1382,7 @@ database writes in the conformance adapter. These nine tests use no model,
 network, user library, SwiftUI, XCUITest, or screenshot. Four D270 product
 mappings, private field evidence, and relational scale budgets remain open.
 
-### Person-commitment query (D281)
+### Person-commitment query and canonical conformance (D281–D282)
 
 Eleven focused cases cover invalid and unready queries, unavailable exact people,
 one current typed fact with exact source navigation, completed-work exclusion,
@@ -1392,13 +1392,22 @@ evidence, bounded newest-first paging, and ApplicationKit delegation. The
 reassignment cases also prove that current ownership cannot borrow only the
 original owner's source.
 
-One architecture ratchet pins exact `PersonID` input, complete current
+Three additional focused cases prove invalid/missing alias rejection,
+same-name ambiguity without a fact read, and exact-person delegation with the
+requested bound. One product conformance case loads all six canonical
+`personCommitments` examples through public meeting, speaker, canonical-person,
+transcript, Summary, commitment lifecycle, graph-maintenance, and ApplicationKit
+boundaries. Five multilingual answer cases require the exact open Mara fact and
+source while excluding completed and other-person work; the two distinct Alex
+identities in the sixth case must abstain before exact factual serving.
+
+Two architecture ratchets pin exact `PersonID` input, complete current
 authority-versus-projection ownership reconciliation, continuity hydration,
-exact source evidence, the injected ApplicationKit boundary, and the absence
-of Ask composition. These twelve tests use no model, network, user library,
-SwiftUI, XCUITest, or screenshot. Canonical identity resolution and corpus
-mapping, the remaining graph jobs, private evidence, and relational scale
-budgets remain open.
+exact source evidence, the read-only alias candidate boundary, public-only
+canonical mapping, and the absence of Ask composition. These seventeen tests
+use no model, network, user library, SwiftUI, XCUITest, or screenshot. The
+remaining graph jobs, private evidence, and relational scale budgets remain
+open.
 
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer

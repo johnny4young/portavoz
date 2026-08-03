@@ -1980,6 +1980,57 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D281"))
     }
 
+    func testCanonicalPersonCommitmentsResolveAmbiguityBeforeStorage() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/MeetingMemoryGraphQuery.swift")
+        let identity = try Self.contents(
+            of: "Sources/ApplicationKit/CanonicalPeople.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/LoadPersonCommitments.swift")
+        let adapter = try Self.contents(
+            of: "Tests/PortavozTests/PersonCommitmentsProductConformanceTests.swift")
+        let fixture = try Self.jsonObject(
+            at: "Fixtures/MeetingMemoryGraph/public-synthetic-v1.json")
+        let cases = try XCTUnwrap(fixture["cases"] as? [[String: Any]])
+        let personCommitmentCases = cases.filter {
+            $0["job"] as? String == "personCommitments"
+        }
+        let askServices = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertEqual(personCommitmentCases.count, 6)
+        XCTAssertTrue(core.contains("case ambiguousPerson"))
+        XCTAssertTrue(identity.contains(
+            "protocol CanonicalPersonCandidateReading"))
+        XCTAssertTrue(identity.contains(
+            "protocol CanonicalPeopleStore: CanonicalPersonCandidateReading"))
+        XCTAssertTrue(application.contains("struct PersonCommitmentsAliasQuery"))
+        XCTAssertTrue(application.contains("struct LoadPersonCommitmentsByAlias"))
+        XCTAssertTrue(application.contains("guard candidates.count == 1"))
+        for boundary in [
+            "createPersonAndLink(",
+            "linkSpeaker(",
+            "saveSummary(",
+            "confirmCommitment(",
+            "applyCommitmentTransition(",
+            "ProjectMeetingMemoryGraph(",
+            "LoadPersonCommitmentsByAlias(",
+        ] {
+            XCTAssertTrue(
+                adapter.contains(boundary),
+                "canonical person-commitment mapping bypasses \(boundary)")
+        }
+        XCTAssertTrue(adapter.contains("public-synthetic-v1.json"))
+        XCTAssertTrue(adapter.contains("ambiguousPerson"))
+        XCTAssertFalse(adapter.contains("import GRDB"))
+        XCTAssertFalse(adapter.contains("@testable"))
+        XCTAssertFalse(adapter.contains("database.write"))
+        XCTAssertFalse(adapter.contains("import IntelligenceKit"))
+        XCTAssertFalse(askServices.contains("LoadPersonCommitmentsByAlias"))
+        XCTAssertTrue(decisions.contains("## D282"))
+    }
+
     func testMeetingMemoryGraphProjectionIsDisposableDurableAndSignalDriven() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/MeetingMemoryGraphProjection.swift")

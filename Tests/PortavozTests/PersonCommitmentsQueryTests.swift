@@ -211,6 +211,70 @@ final class PersonCommitmentsQueryTests: XCTestCase {
         XCTAssertEqual(received, PersonCommitmentsQuery(personID: personID))
     }
 
+    func testAliasLookupRejectsInvalidAndMissingIdentityBeforeFactRead() async throws {
+        let people = PersonCandidateRepositoryStub(candidates: [])
+        let commitments = PersonCommitmentRepositoryStub(
+            result: .abstained(.projectionNotReady))
+        let useCase = LoadPersonCommitmentsByAlias(
+            people: people,
+            commitments: commitments)
+
+        let invalid = try await useCase.execute(PersonCommitmentsAliasQuery(
+            alias: "   "))
+        let missing = try await useCase.execute(PersonCommitmentsAliasQuery(
+            alias: "Unknown"))
+        let receivedAliases = await people.receivedAliases
+        let commitmentCallCount = await commitments.callCount
+
+        XCTAssertEqual(invalid, .abstained(.invalidQuery))
+        XCTAssertEqual(missing, .abstained(.personUnavailable))
+        XCTAssertEqual(receivedAliases, ["Unknown"])
+        XCTAssertEqual(commitmentCallCount, 0)
+    }
+
+    func testAmbiguousAliasAbstainsBeforeExactPersonFactRead() async throws {
+        let people = PersonCandidateRepositoryStub(candidates: [
+            Person(preferredName: "Alex"),
+            Person(preferredName: "Alex"),
+        ])
+        let commitments = PersonCommitmentRepositoryStub(
+            result: .abstained(.projectionNotReady))
+
+        let result = try await LoadPersonCommitmentsByAlias(
+            people: people,
+            commitments: commitments
+        ).execute(PersonCommitmentsAliasQuery(alias: "ÁLEX"))
+        let receivedAliases = await people.receivedAliases
+        let commitmentCallCount = await commitments.callCount
+
+        XCTAssertEqual(result, .abstained(.ambiguousPerson))
+        XCTAssertEqual(receivedAliases, ["ÁLEX"])
+        XCTAssertEqual(commitmentCallCount, 0)
+    }
+
+    func testUniqueAliasDelegatesExactPersonAndLimit() async throws {
+        let person = Person(preferredName: "Mara")
+        let people = PersonCandidateRepositoryStub(candidates: [person])
+        let expected = MeetingMemoryGraphQueryResult.abstained(
+            .noActiveCommitments)
+        let commitments = PersonCommitmentRepositoryStub(result: expected)
+
+        let result = try await LoadPersonCommitmentsByAlias(
+            people: people,
+            commitments: commitments
+        ).execute(PersonCommitmentsAliasQuery(alias: "mára", itemLimit: 7))
+        let receivedAliases = await people.receivedAliases
+        let receivedQuery = await commitments.receivedQuery
+        let commitmentCallCount = await commitments.callCount
+
+        XCTAssertEqual(result, expected)
+        XCTAssertEqual(receivedAliases, ["mára"])
+        XCTAssertEqual(
+            receivedQuery,
+            PersonCommitmentsQuery(personID: person.id, itemLimit: 7))
+        XCTAssertEqual(commitmentCallCount, 1)
+    }
+
     private func personCommitmentFixture(
         commitmentCount: Int
     ) async throws -> PersonCommitmentFixture {
@@ -333,6 +397,7 @@ private struct PersonReassignmentTarget {
 private actor PersonCommitmentRepositoryStub: PersonCommitmentFactReading {
     let result: MeetingMemoryGraphQueryResult
     private(set) var receivedQuery: PersonCommitmentsQuery?
+    private(set) var callCount = 0
 
     init(result: MeetingMemoryGraphQueryResult) {
         self.result = result
@@ -341,8 +406,23 @@ private actor PersonCommitmentRepositoryStub: PersonCommitmentFactReading {
     func personCommitmentFacts(
         _ query: PersonCommitmentsQuery
     ) -> MeetingMemoryGraphQueryResult {
+        callCount += 1
         receivedQuery = query
         return result
+    }
+}
+
+private actor PersonCandidateRepositoryStub: CanonicalPersonCandidateReading {
+    let candidates: [Person]
+    private(set) var receivedAliases: [String] = []
+
+    init(candidates: [Person]) {
+        self.candidates = candidates
+    }
+
+    func people(matchingAlias alias: String) -> [Person] {
+        receivedAliases.append(alias)
+        return candidates
     }
 }
 
