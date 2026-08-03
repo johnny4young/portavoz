@@ -667,6 +667,19 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.control(withIdentifier: "commitment-\(candidateID)-defer").exists)
         attachScreenshot(of: app, named: "meeting-detail-commitment-inbox")
 
+        let artifacts = app.control(withIdentifier: "detail-artifacts-section")
+        XCTAssertTrue(artifacts.waitForExistence(timeout: 5))
+        // The detail artifacts live in a fixed-height vertical viewport. The
+        // evidence link can exist in the accessibility tree below that fold,
+        // where XCUITest's implicit click scrolling incorrectly tries the
+        // horizontal axis. A bounded vertical wheel sequence reaches the
+        // candidate card across the supported test-window sizes.
+        for _ in 0..<10 {
+            artifacts.scroll(byDeltaX: 0, deltaY: -18)
+        }
+        XCTAssertTrue(
+            evidence.waitForStableFrame(timeout: 5),
+            "the review viewport must reveal the exact transcript evidence")
         evidence.click()
         let citedRow = app.control(
             withIdentifier: "transcript-segment-B5B00000-0000-4000-8000-000000000002")
