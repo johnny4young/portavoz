@@ -9211,6 +9211,26 @@
         }
       }
     },
+    "Commitment reminder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recordatorio de compromiso"
+          }
+        }
+      }
+    },
+    "Open Portavoz to review a confirmed commitment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre Portavoz para revisar un compromiso confirmado."
+          }
+        }
+      }
+    },
     "Commitments to confirm": {
       "localizations": {
         "es": {

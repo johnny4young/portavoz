@@ -160,10 +160,13 @@ consume its capacity. A window count makes truncation observable, and the
 application workflow refuses a partial page. Matching schedules require no
 history write. A changed due date
 uses one transaction to append cancel then schedule and save only the final
-projection, avoiding a terminal-state gap. Terminal cancellation accepts a
+projection, avoiding a terminal-state gap. D259 can additionally reconstruct a
+valid schedule/present pair when the content-free platform request was already
+delivered but an earlier persistence attempt was interrupted. Terminal
+cancellation accepts a
 soft-deleted commitment row so stale platform delivery can be retired; initial
 schedule, present, and snooze still require a live confirmed commitment and its
-exact due-date fence. Notification delivery, permission recovery, UI,
+exact due-date fence. The concrete notification adapter, permission recovery, UI,
 sync/export, bundles, CLI, and MCP remain outside StorageKit.
 
 The format-2 `CommitmentContinuityEnvelope` is a database-record-independent,

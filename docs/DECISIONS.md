@@ -8869,3 +8869,43 @@ success when more than 256 relevant roots exist; paging or a larger measured
 bound must be designed rather than silently skipping work. Actual macOS
 notification scheduling, permission recovery, delivery actions, and reminder
 review UI remain explicit separate work.
+
+## D259 — Observe delivered notifications before reminder upsert (Aug 2026)
+
+**Context:** D258's idempotent scheduler model is sufficient while a request is
+pending, but Apple documents different behavior after delivery: adding a new
+request with the same identifier alerts again and replaces the delivered item.
+A relaunch that blindly reasserted every durable schedule could therefore
+duplicate a reminder. Reconciliation also runs outside a user gesture, so it
+must not ask for notification permission, and lock-screen content must not
+expose commitment, person, meeting, or transcript text.
+
+**Decision:** make scheduler upsert return either `scheduled` or one exact
+`alreadyPresented` observation carrying the original scheduled timestamp and
+the system delivery timestamp. ApplicationKit records a `present` transition
+instead of re-adding the request. If a prior attempt reached Notification
+Center but failed before its initial durable schedule write, reconciliation
+reconstructs a valid schedule/present pair from those content-free timestamps.
+Compensating cancellation remains limited to a newly scheduled request; an
+already-observed delivery is never erased because persistence failed again.
+
+The macOS executable implements the port with `UserNotifications`. One stable
+identifier derives from `CommitmentID`. The request stores only that identity,
+the scheduled timestamp, and the exact source due-date fence; visible content
+is generic localized copy. Exact pending requests are no-ops, exact delivered
+requests become presentation outcomes, stale delivered copies are removed
+before replacement, and cancellation removes both pending and delivered
+copies. Authorized, provisional, and ephemeral settings may schedule.
+Not-determined and denied settings fail closed. Permission request is exposed
+as a separate explicit method and is never called by upsert.
+
+The adapter remains outside `AppServices` composition in this slice. No launch
+owner, polling timer, permission UI, notification delegate/action, Radar
+control, sync/export, bundle, CLI, or MCP surface is added.
+
+**Consequences:** Portavoz now has a testable native macOS adapter that can
+converge operating-system delivery without duplicate alerts or sensitive
+notification content, while business eligibility remains in ApplicationKit
+and durable truth remains in StorageKit. Users still receive no commitment
+notification until a later explicit composition and permission-recovery slice
+installs the adapter and gives them control.

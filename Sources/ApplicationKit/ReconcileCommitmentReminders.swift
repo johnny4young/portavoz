@@ -48,12 +48,21 @@ public struct CommitmentReminderDeliverySchedule: Sendable, Equatable {
     }
 }
 
-/// Idempotent local-delivery boundary. `upsert` replaces the stable request for
-/// a commitment; `cancel` succeeds when no request exists.
+/// Outcome from reconciling one stable local-delivery request. A platform
+/// adapter must distinguish a pending request from one already delivered so a
+/// relaunch never re-alerts the user under the same identifier.
+public enum CommitmentReminderDeliveryUpsertOutcome: Sendable, Equatable {
+    case scheduled
+    case alreadyPresented(scheduledFor: Date, deliveredAt: Date)
+}
+
+/// Idempotent local-delivery boundary. `upsert` replaces the stable pending
+/// request for a commitment or reports its exact delivered copy; `cancel`
+/// succeeds when no pending or delivered request exists.
 public protocol CommitmentReminderDeliveryScheduling: Sendable {
     func upsertCommitmentReminder(
         _ schedule: CommitmentReminderDeliverySchedule
-    ) async throws
+    ) async throws -> CommitmentReminderDeliveryUpsertOutcome
 
     func cancelCommitmentReminder(
         for commitmentID: CommitmentID
@@ -77,6 +86,7 @@ public struct ReconcileCommitmentRemindersReport: Sendable, Equatable {
     public let scheduledCount: Int
     public let replacedCount: Int
     public let reassertedCount: Int
+    public let presentedCount: Int
     public let cancelledCount: Int
     public let unchangedCount: Int
 
@@ -84,12 +94,14 @@ public struct ReconcileCommitmentRemindersReport: Sendable, Equatable {
         scheduledCount: Int,
         replacedCount: Int,
         reassertedCount: Int,
+        presentedCount: Int,
         cancelledCount: Int,
         unchangedCount: Int
     ) {
         self.scheduledCount = scheduledCount
         self.replacedCount = replacedCount
         self.reassertedCount = reassertedCount
+        self.presentedCount = presentedCount
         self.cancelledCount = cancelledCount
         self.unchangedCount = unchangedCount
     }
@@ -170,64 +182,159 @@ public struct ReconcileCommitmentReminders: ApplicationUseCase {
     ) async throws {
         let dueAt = try eligibleDueDate(item.commitment)
         guard let reminder = item.reminder else {
-            guard let dueAt else {
-                report.unchangedCount += 1
-                return
-            }
-            try await schedule(
-                commitmentID: item.id,
+            try await reconcileMissingReminder(
+                item,
                 dueAt: dueAt,
                 now: now,
-                minimumDelay: minimumDelay)
-            report.scheduledCount += 1
+                minimumDelay: minimumDelay,
+                report: &report)
             return
         }
 
         switch reminder.status {
         case .scheduled:
-            guard let scheduledFor = reminder.scheduledFor,
-                  let sourceDueAt = reminder.sourceDueAt
-            else {
-                throw ReconcileCommitmentRemindersError.invalidReminderState(item.id)
-            }
-            if sourceDueAt == dueAt {
-                try await scheduler.upsertCommitmentReminder(
-                    CommitmentReminderDeliverySchedule(
-                        commitmentID: item.id,
-                        scheduledFor: scheduledFor,
-                        sourceDueAt: sourceDueAt))
-                report.reassertedCount += 1
-            } else if let dueAt {
-                try await replace(
-                    commitmentID: item.id,
-                    dueAt: dueAt,
-                    now: now,
-                    minimumDelay: minimumDelay)
-                report.replacedCount += 1
-            } else {
-                try await cancel(commitmentID: item.id, at: now)
-                report.cancelledCount += 1
-            }
+            try await reconcileScheduledReminder(
+                item,
+                reminder: reminder,
+                dueAt: dueAt,
+                now: now,
+                minimumDelay: minimumDelay,
+                report: &report)
         case .presented:
-            guard reminder.sourceDueAt != nil else {
-                throw ReconcileCommitmentRemindersError.invalidReminderState(item.id)
-            }
-            if reminder.sourceDueAt == dueAt {
-                report.unchangedCount += 1
-            } else if let dueAt {
-                try await replace(
-                    commitmentID: item.id,
-                    dueAt: dueAt,
-                    now: now,
-                    minimumDelay: minimumDelay)
-                report.replacedCount += 1
-            } else {
-                try await cancel(commitmentID: item.id, at: now)
-                report.cancelledCount += 1
-            }
+            try await reconcilePresentedReminder(
+                item,
+                reminder: reminder,
+                dueAt: dueAt,
+                now: now,
+                minimumDelay: minimumDelay,
+                report: &report)
         case .dismissed, .cancelled:
             // Terminal user intent is never silently rearmed.
             report.unchangedCount += 1
+        }
+    }
+
+    private func reconcileMissingReminder(
+        _ item: CommitmentReminderReconciliationItem,
+        dueAt: Date?,
+        now: Date,
+        minimumDelay: TimeInterval,
+        report: inout MutableReminderReconciliationReport
+    ) async throws {
+        guard let dueAt else {
+            report.unchangedCount += 1
+            return
+        }
+        let outcome = try await schedule(
+            commitmentID: item.id,
+            dueAt: dueAt,
+            persistenceNotBefore: item.commitment.createdAt,
+            now: now,
+            minimumDelay: minimumDelay)
+        report.record(outcome)
+    }
+
+    private func reconcileScheduledReminder(
+        _ item: CommitmentReminderReconciliationItem,
+        reminder: CommitmentReminderState,
+        dueAt: Date?,
+        now: Date,
+        minimumDelay: TimeInterval,
+        report: inout MutableReminderReconciliationReport
+    ) async throws {
+        guard let scheduledFor = reminder.scheduledFor,
+              let sourceDueAt = reminder.sourceDueAt
+        else {
+            throw ReconcileCommitmentRemindersError.invalidReminderState(item.id)
+        }
+        guard sourceDueAt != dueAt else {
+            let outcome = try await scheduler.upsertCommitmentReminder(
+                CommitmentReminderDeliverySchedule(
+                    commitmentID: item.id,
+                    scheduledFor: scheduledFor,
+                    sourceDueAt: sourceDueAt))
+            try await recordReassertion(
+                outcome,
+                item: item,
+                reminder: reminder,
+                now: now,
+                report: &report)
+            return
+        }
+        try await replaceOrCancel(
+            item,
+            reminder: reminder,
+            dueAt: dueAt,
+            now: now,
+            minimumDelay: minimumDelay,
+            report: &report)
+    }
+
+    private func reconcilePresentedReminder(
+        _ item: CommitmentReminderReconciliationItem,
+        reminder: CommitmentReminderState,
+        dueAt: Date?,
+        now: Date,
+        minimumDelay: TimeInterval,
+        report: inout MutableReminderReconciliationReport
+    ) async throws {
+        guard reminder.sourceDueAt != nil else {
+            throw ReconcileCommitmentRemindersError.invalidReminderState(item.id)
+        }
+        guard reminder.sourceDueAt != dueAt else {
+            report.unchangedCount += 1
+            return
+        }
+        try await replaceOrCancel(
+            item,
+            reminder: reminder,
+            dueAt: dueAt,
+            now: now,
+            minimumDelay: minimumDelay,
+            report: &report)
+    }
+
+    private func recordReassertion(
+        _ outcome: CommitmentReminderDeliveryUpsertOutcome,
+        item: CommitmentReminderReconciliationItem,
+        reminder: CommitmentReminderState,
+        now: Date,
+        report: inout MutableReminderReconciliationReport
+    ) async throws {
+        switch outcome {
+        case .scheduled:
+            report.reassertedCount += 1
+        case .alreadyPresented(_, let deliveredAt):
+            try await present(
+                commitmentID: item.id,
+                deliveredAt: deliveredAt,
+                notBefore: max(now, reminder.updatedAt))
+            report.presentedCount += 1
+        }
+    }
+
+    private func replaceOrCancel(
+        _ item: CommitmentReminderReconciliationItem,
+        reminder: CommitmentReminderState,
+        dueAt: Date?,
+        now: Date,
+        minimumDelay: TimeInterval,
+        report: inout MutableReminderReconciliationReport
+    ) async throws {
+        guard let dueAt else {
+            try await cancel(commitmentID: item.id, at: now)
+            report.cancelledCount += 1
+            return
+        }
+        let outcome = try await replace(
+            commitmentID: item.id,
+            dueAt: dueAt,
+            persistenceNotBefore: reminder.updatedAt,
+            now: now,
+            minimumDelay: minimumDelay)
+        report.replacedCount += 1
+        if outcome.isAlreadyPresented {
+            report.presentedCount += 1
         }
     }
 
@@ -257,26 +364,42 @@ public struct ReconcileCommitmentReminders: ApplicationUseCase {
     private func schedule(
         commitmentID: CommitmentID,
         dueAt: Date,
+        persistenceNotBefore: Date,
         now: Date,
         minimumDelay: TimeInterval
-    ) async throws {
-        let scheduledFor = try deliveryDate(
+    ) async throws -> CommitmentReminderDeliveryUpsertOutcome {
+        let intendedSchedule = try deliveryDate(
             dueAt: dueAt,
             now: now,
             minimumDelay: minimumDelay)
-        try await scheduler.upsertCommitmentReminder(
+        let outcome = try await scheduler.upsertCommitmentReminder(
             CommitmentReminderDeliverySchedule(
                 commitmentID: commitmentID,
-                scheduledFor: scheduledFor,
+                scheduledFor: intendedSchedule,
                 sourceDueAt: dueAt))
+        let persistence = try persistenceTiming(
+            intendedSchedule: intendedSchedule,
+            outcome: outcome,
+            notBefore: persistenceNotBefore,
+            now: now,
+            commitmentID: commitmentID)
         do {
-            _ = try await writer.applyCommitmentReminderTransition(
-                .schedule(scheduledFor: scheduledFor, sourceDueAt: dueAt),
+            let state = try await writer.applyCommitmentReminderTransition(
+                .schedule(
+                    scheduledFor: persistence.scheduledFor,
+                    sourceDueAt: dueAt),
                 to: commitmentID,
                 eventID: CommitmentReminderEventID(),
-                at: now)
+                at: persistence.eventAt)
+            try await presentIfNeeded(
+                outcome,
+                commitmentID: commitmentID,
+                notBefore: max(now, state.updatedAt))
+            return outcome
         } catch {
-            try? await scheduler.cancelCommitmentReminder(for: commitmentID)
+            if outcome == .scheduled {
+                try? await scheduler.cancelCommitmentReminder(for: commitmentID)
+            }
             throw error
         }
     }
@@ -284,25 +407,91 @@ public struct ReconcileCommitmentReminders: ApplicationUseCase {
     private func replace(
         commitmentID: CommitmentID,
         dueAt: Date,
+        persistenceNotBefore: Date,
         now: Date,
         minimumDelay: TimeInterval
-    ) async throws {
-        let scheduledFor = try deliveryDate(
+    ) async throws -> CommitmentReminderDeliveryUpsertOutcome {
+        let intendedSchedule = try deliveryDate(
             dueAt: dueAt,
             now: now,
             minimumDelay: minimumDelay)
-        try await scheduler.upsertCommitmentReminder(
+        let outcome = try await scheduler.upsertCommitmentReminder(
             CommitmentReminderDeliverySchedule(
                 commitmentID: commitmentID,
-                scheduledFor: scheduledFor,
+                scheduledFor: intendedSchedule,
                 sourceDueAt: dueAt))
-        _ = try await writer.replaceCommitmentReminderSchedule(
-            scheduledFor: scheduledFor,
+        let persistence = try persistenceTiming(
+            intendedSchedule: intendedSchedule,
+            outcome: outcome,
+            notBefore: persistenceNotBefore,
+            now: now,
+            commitmentID: commitmentID)
+        let state = try await writer.replaceCommitmentReminderSchedule(
+            scheduledFor: persistence.scheduledFor,
             sourceDueAt: dueAt,
             commitmentID: commitmentID,
             cancellationEventID: CommitmentReminderEventID(),
             scheduleEventID: CommitmentReminderEventID(),
-            at: now)
+            at: persistence.eventAt)
+        try await presentIfNeeded(
+            outcome,
+            commitmentID: commitmentID,
+            notBefore: max(now, state.updatedAt))
+        return outcome
+    }
+
+    private func persistenceTiming(
+        intendedSchedule: Date,
+        outcome: CommitmentReminderDeliveryUpsertOutcome,
+        notBefore: Date,
+        now: Date,
+        commitmentID: CommitmentID
+    ) throws -> (scheduledFor: Date, eventAt: Date) {
+        guard case .alreadyPresented(let scheduledFor, let deliveredAt) = outcome else {
+            return (intendedSchedule, now)
+        }
+        guard scheduledFor.timeIntervalSinceReferenceDate.isFinite,
+              deliveredAt.timeIntervalSinceReferenceDate.isFinite,
+              notBefore.timeIntervalSinceReferenceDate.isFinite,
+              deliveredAt <= now,
+              scheduledFor <= deliveredAt
+        else {
+            throw ReconcileCommitmentRemindersError.invalidReminderState(commitmentID)
+        }
+        let eventAt = max(
+            notBefore,
+            scheduledFor.addingTimeInterval(-0.001))
+        guard scheduledFor > eventAt else {
+            throw ReconcileCommitmentRemindersError.invalidReminderState(commitmentID)
+        }
+        return (scheduledFor, eventAt)
+    }
+
+    private func presentIfNeeded(
+        _ outcome: CommitmentReminderDeliveryUpsertOutcome,
+        commitmentID: CommitmentID,
+        notBefore: Date
+    ) async throws {
+        guard case .alreadyPresented(_, let deliveredAt) = outcome else { return }
+        try await present(
+            commitmentID: commitmentID,
+            deliveredAt: deliveredAt,
+            notBefore: notBefore)
+    }
+
+    private func present(
+        commitmentID: CommitmentID,
+        deliveredAt: Date,
+        notBefore: Date
+    ) async throws {
+        guard deliveredAt.timeIntervalSinceReferenceDate.isFinite else {
+            throw ReconcileCommitmentRemindersError.invalidReminderState(commitmentID)
+        }
+        _ = try await writer.applyCommitmentReminderTransition(
+            .present,
+            to: commitmentID,
+            eventID: CommitmentReminderEventID(),
+            at: max(deliveredAt, notBefore))
     }
 
     private func cancel(
@@ -322,15 +511,35 @@ private struct MutableReminderReconciliationReport {
     var scheduledCount = 0
     var replacedCount = 0
     var reassertedCount = 0
+    var presentedCount = 0
     var cancelledCount = 0
     var unchangedCount = 0
+
+    mutating func record(
+        _ outcome: CommitmentReminderDeliveryUpsertOutcome
+    ) {
+        switch outcome {
+        case .scheduled:
+            scheduledCount += 1
+        case .alreadyPresented:
+            presentedCount += 1
+        }
+    }
 
     var value: ReconcileCommitmentRemindersReport {
         ReconcileCommitmentRemindersReport(
             scheduledCount: scheduledCount,
             replacedCount: replacedCount,
             reassertedCount: reassertedCount,
+            presentedCount: presentedCount,
             cancelledCount: cancelledCount,
             unchangedCount: unchangedCount)
+    }
+}
+
+private extension CommitmentReminderDeliveryUpsertOutcome {
+    var isAlreadyPresented: Bool {
+        if case .alreadyPresented = self { return true }
+        return false
     }
 }

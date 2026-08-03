@@ -1844,16 +1844,22 @@ exercises this same production path in the durable-resume XCUITest (D63).
   timestamp, and the append-only transition; SwiftUI never writes StorageKit or
   invents source history. Reminder snooze remains outside this surface because
   it must not alter the commitment due date.
-- **Commitment reminder reconciliation (D257/D258):** the lower layers
+- **Commitment reminder delivery (D257–D259):** the lower layers
   distinguish commitment truth from local delivery state through a due-date-
   fenced current projection and immutable schedule/present/snooze/dismiss/
   cancel history. ApplicationKit now owns one fail-closed reconciliation over
   a complete-count bounded page and a content-free idempotent scheduler port.
   Matching schedules are reasserted after relaunch, stale active delivery is
   cancelled, changed due dates replace the schedule atomically, and terminal
-  user decisions never rearm themselves. The macOS composition root still does
-  not adopt this port: no timer, `UserNotifications` adapter, permission prompt,
-  notification action, banner, or Radar reminder control exists yet.
+  user decisions never rearm themselves. The macOS executable now provides a
+  `UserNotifications` adapter that distinguishes pending from already-delivered
+  requests before upsert, removes both locations on cancellation, uses generic
+  localized copy plus content-free identity/date metadata, and exposes an
+  explicit authorization request without invoking it during reconciliation.
+  Already-delivered requests append durable presentation history rather than
+  alerting again. The composition root still does not adopt the adapter: no
+  launch owner, permission UI, notification delegate/action, banner, or Radar
+  reminder control exists yet.
 - **Summary sources (D87):** the overview tab renders compact localized
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source

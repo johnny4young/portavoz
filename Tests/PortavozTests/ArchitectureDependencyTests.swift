@@ -1751,6 +1751,35 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D258"))
     }
 
+    func testMacOSCommitmentReminderAdapterIsDeliveryAwareAndUncomposed() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/ReconcileCommitmentReminders.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppCommitmentReminderNotificationScheduler.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(workflow.contains(
+            "enum CommitmentReminderDeliveryUpsertOutcome"))
+        XCTAssertTrue(workflow.contains(
+            "case alreadyPresented(scheduledFor: Date, deliveredAt: Date)"))
+        XCTAssertTrue(adapter.contains("import UserNotifications"))
+        XCTAssertTrue(adapter.contains(
+            "portavoz.commitment-reminder."))
+        XCTAssertTrue(adapter.contains(
+            "case .authorized, .provisional, .ephemeral"))
+        XCTAssertTrue(adapter.contains("func requestAuthorization()"))
+        XCTAssertTrue(adapter.contains("removePending(identifier:"))
+        XCTAssertTrue(adapter.contains("removeDelivered(identifier:"))
+        XCTAssertTrue(adapter.contains("L10n.text(\"Commitment reminder\")"))
+        XCTAssertFalse(adapter.contains("Commitment.title"))
+        XCTAssertFalse(adapter.contains("TranscriptSegment"))
+        XCTAssertFalse(services.contains(
+            "AppReminderNotificationScheduler"))
+        XCTAssertTrue(decisions.contains("## D259"))
+    }
+
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
         let profile = try Self.contents(
             of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")

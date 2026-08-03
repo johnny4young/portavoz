@@ -38,6 +38,7 @@ final class CommitmentReminderReconciliationTests: XCTestCase {
         XCTAssertEqual(report.scheduledCount, 2)
         XCTAssertEqual(report.replacedCount, 0)
         XCTAssertEqual(report.reassertedCount, 0)
+        XCTAssertEqual(report.presentedCount, 0)
         XCTAssertEqual(report.cancelledCount, 0)
         let upserts = await scheduler.upsertedSchedules()
         XCTAssertEqual(upserts.count, 2)
@@ -266,6 +267,104 @@ final class CommitmentReminderReconciliationTests: XCTestCase {
         XCTAssertEqual(cancellations, [commitment.id])
     }
 
+    func testDeliveredRequestPersistsPresentationWithoutSchedulingAgain() async throws {
+        let store = try MeetingStore.inMemory()
+        let dueAt = baseDate.addingTimeInterval(60)
+        let deliveredAt = baseDate.addingTimeInterval(90)
+        let commitment = try await confirm(
+            title: "Review delivered reminder",
+            dueAt: dueAt,
+            store: store)
+        let scheduler = RecordingCommitmentReminderScheduler(
+            outcome: .alreadyPresented(
+                scheduledFor: dueAt,
+                deliveredAt: deliveredAt))
+        let now = baseDate.addingTimeInterval(120)
+
+        let report = try await ReconcileCommitmentReminders(
+            reader: store,
+            writer: store,
+            scheduler: scheduler,
+            now: { now }
+        ).execute(ReconcileCommitmentRemindersRequest())
+
+        XCTAssertEqual(report.scheduledCount, 0)
+        XCTAssertEqual(report.presentedCount, 1)
+        let state = try await store.commitmentReminderState(
+            for: commitment.commitment.id)
+        XCTAssertEqual(state?.status, .presented)
+        XCTAssertEqual(state?.scheduledFor, dueAt)
+        XCTAssertEqual(state?.sourceDueAt, dueAt)
+        let history = try await store.commitmentReminderHistory(
+            for: commitment.commitment.id)
+        XCTAssertEqual(history.map(\.kind), [.schedule, .present])
+        let cancellations = await scheduler.cancelledCommitments()
+        XCTAssertTrue(cancellations.isEmpty)
+    }
+
+    func testRelaunchMarksExactDeliveredRequestPresentedInsteadOfRealerting() async throws {
+        let store = try MeetingStore.inMemory()
+        let dueAt = baseDate.addingTimeInterval(600)
+        let commitment = try await confirm(
+            title: "Preserve delivered state",
+            dueAt: dueAt,
+            store: store)
+        _ = try await store.applyCommitmentReminderTransition(
+            .schedule(scheduledFor: dueAt, sourceDueAt: dueAt),
+            to: commitment.commitment.id,
+            at: baseDate.addingTimeInterval(1))
+        let deliveredAt = baseDate.addingTimeInterval(610)
+        let scheduler = RecordingCommitmentReminderScheduler(
+            outcome: .alreadyPresented(
+                scheduledFor: dueAt,
+                deliveredAt: deliveredAt))
+        let now = baseDate.addingTimeInterval(620)
+
+        let report = try await ReconcileCommitmentReminders(
+            reader: store,
+            writer: store,
+            scheduler: scheduler,
+            now: { now }
+        ).execute(ReconcileCommitmentRemindersRequest())
+
+        XCTAssertEqual(report.reassertedCount, 0)
+        XCTAssertEqual(report.presentedCount, 1)
+        let state = try await store.commitmentReminderState(
+            for: commitment.commitment.id)
+        XCTAssertEqual(state?.status, .presented)
+        let history = try await store.commitmentReminderHistory(
+            for: commitment.commitment.id)
+        XCTAssertEqual(history.map(\.kind), [.schedule, .present])
+    }
+
+    func testDeliveredRequestIsNotRemovedWhenInitialPersistenceFails() async throws {
+        let commitment = Commitment(
+            title: "Keep observed delivery",
+            dueAt: baseDate.addingTimeInterval(600),
+            createdAt: baseDate)
+        let reader = StaticReminderReconciliationReader(page:
+            CommitmentReminderReconciliationPage(
+                items: [CommitmentReminderReconciliationItem(
+                    commitment: commitment,
+                    reminder: nil)],
+                totalCount: 1))
+        let scheduler = RecordingCommitmentReminderScheduler(
+            outcome: .alreadyPresented(
+                scheduledFor: commitment.dueAt ?? baseDate,
+                deliveredAt: baseDate.addingTimeInterval(650)))
+        let now = baseDate.addingTimeInterval(700)
+
+        await XCTAssertThrowsErrorAsync(try await ReconcileCommitmentReminders(
+            reader: reader,
+            writer: FailingReminderTransitionWriter(),
+            scheduler: scheduler,
+            now: { now }
+        ).execute(ReconcileCommitmentRemindersRequest()))
+
+        let cancellations = await scheduler.cancelledCommitments()
+        XCTAssertTrue(cancellations.isEmpty)
+    }
+
     private func confirm(
         title: String,
         dueAt: Date?,
@@ -282,13 +381,21 @@ final class CommitmentReminderReconciliationTests: XCTestCase {
 }
 
 private actor RecordingCommitmentReminderScheduler: CommitmentReminderDeliveryScheduling {
+    private let outcome: CommitmentReminderDeliveryUpsertOutcome
     private var upserts: [CommitmentReminderDeliverySchedule] = []
     private var cancellations: [CommitmentID] = []
 
+    init(
+        outcome: CommitmentReminderDeliveryUpsertOutcome = .scheduled
+    ) {
+        self.outcome = outcome
+    }
+
     func upsertCommitmentReminder(
         _ schedule: CommitmentReminderDeliverySchedule
-    ) {
+    ) -> CommitmentReminderDeliveryUpsertOutcome {
         upserts.append(schedule)
+        return outcome
     }
 
     func cancelCommitmentReminder(for commitmentID: CommitmentID) {

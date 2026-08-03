@@ -1176,15 +1176,33 @@ with the complete row count. Terminal projections remain outside this
 operational set. `ReconcileCommitmentReminders` refuses a truncated or duplicate
 snapshot, upserts only content-free stable commitment identities through an
 idempotent local scheduler port, and reasserts matching schedules after
-relaunch. Completed, deleted, or due-less commitments cancel active delivery;
+relaunch. The port distinguishes a pending schedule from an exact request that
+Notification Center already delivered. Reconciliation persists the latter as
+an immutable `present` transition instead of blindly adding the identifier
+again; when durable scheduling was missing after a prior partial failure, it
+reconstructs a valid schedule/present pair from the request's content-free
+scheduled and delivered timestamps. Completed, deleted, or due-less
+commitments cancel active delivery;
 dismissed and cancelled reminders never rearm themselves. A changed due date
 uses one scheduler replacement and one atomic two-event cancel/schedule storage
 transaction, so a retry cannot strand the projection in a terminal state.
 Overdue first delivery receives a small injected future delay rather than an
 invalid past schedule. Scheduler mutation precedes persistence, and an initial
-persistence failure attempts compensating cancellation. No notification-center
-adapter, permission request, timer, SwiftUI, sync/export, bundle, CLI, or MCP
-behavior is composed.
+persistence failure attempts compensating cancellation only for a newly
+scheduled request, never for a notification already observed as delivered.
+
+The macOS executable now owns a delivery-aware `UserNotifications` adapter for
+that port. It checks existing pending and delivered requests under one stable
+identifier per commitment, removes stale copies before replacement, and
+cancels both locations. Request metadata contains only the commitment identity,
+scheduled timestamp, and source due-date fence; the visible title and body are
+generic localized copy, never commitment, person, meeting, or transcript text.
+Authorized, provisional, and ephemeral states may schedule. Not-determined and
+denied states fail closed without prompting; authorization request is a
+separate explicit capability for a later user action. The adapter is tested but
+not yet installed in `AppServices`, so no launch reconciliation, permission
+prompt, timer, notification delegate/action, SwiftUI, sync/export, bundle, CLI,
+or MCP behavior is composed.
 
 The bounded read has a content-free Release scale gate. A fresh synthetic
 store is prepared before timing, one warm read precedes five measured reads,
@@ -3011,13 +3029,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,793 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,803 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 518 Swift source files;
+- strict SwiftLint reports zero violations across 519 Swift source files;
 - 62 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
