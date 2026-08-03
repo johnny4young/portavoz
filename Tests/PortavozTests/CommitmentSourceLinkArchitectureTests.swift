@@ -76,11 +76,15 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
         XCTAssertTrue(observation.contains("CommitmentLinkSuggestionPolicy.suggestions("))
         XCTAssertTrue(observation.contains("maximumSemanticHitCount"))
         XCTAssertTrue(observation.contains("maximumTargetCount"))
+        XCTAssertTrue(observation.contains("semanticProfileFingerprint"))
+        XCTAssertTrue(observation.contains("validatedSemanticHits"))
+        XCTAssertTrue(observation.contains("invalidSemanticSimilarity"))
         XCTAssertTrue(storage.contains("ROW_NUMBER() OVER"))
         XCTAssertTrue(storage.contains("relatedRowCount"))
         XCTAssertFalse(observation.contains("linkCommitmentSource("))
         XCTAssertFalse(appComposition.contains("ObserveCommitmentLinkSuggestions"))
         XCTAssertTrue(decisions.contains("## D246"))
+        XCTAssertTrue(decisions.contains("## D248"))
         XCTAssertTrue(decisions.contains(
             "Observe commitment links through bounded product ports"))
     }

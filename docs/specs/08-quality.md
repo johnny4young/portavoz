@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,764 cases (13 environment-gated) + 62
+Status: the package inventory contains 1,766 cases (13 environment-gated) + 62
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1333,7 +1333,7 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,764 XCTest package cases (13
+The current field-reliability inventory is 1,766 XCTest package cases (13
 environment-gated), zero strict-lint violations across 511 Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 62 XCUITest cases per locale. Release evidence requires the package
@@ -1396,13 +1396,18 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   arithmetic; it remains `review-required`, makes no product decision, and
   selects no threshold or engine. Optional case details are mode `0600`, non-
   overwriting, and untracked.
-- Twelve focused package cases cover D246/D247's non-serving product seam: five
-  observer/storage behaviors and three source-link architecture contracts.
+- Fourteen focused package cases cover D246–D248's non-serving product seam:
+  seven observer/storage behaviors, three source-link architecture contracts,
+  and four product-runner cases.
   The real in-memory Store path proves exact open source/evidence identities,
   installed-assets-only borrowing, and semantic-hit versus legal-admission
-  separation. Source inspection keeps the observer behind the existing
-  semantic port and Core policy, enforces bounded ranked reads, prohibits the
-  confirmation mutation, and proves no app composition. Four runner cases add
+  separation. Exact semantic search now proves that it retains profile-local
+  cosine evidence while lexical search retains none. The observer proves the
+  profile fingerprint and exact score, and rejects missing, non-finite, or
+  ascending similarity evidence before measurement. Source inspection keeps it
+  behind the existing semantic port and Core policy, enforces bounded ranked
+  reads, prohibits the confirmation mutation, and proves no app composition.
+  The runner cases add
   canonical digest parity, strict CLI options, all-36-case isolated scratch
   mapping, installed-assets-only observation, exact external-identity output,
   and owner-only non-overwriting publication. `make commitment-link-quality-

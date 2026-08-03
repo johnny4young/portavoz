@@ -111,7 +111,12 @@ public struct SummaryInfo: Sendable {
     public let createdAt: Date
 }
 
-/// One full-text search hit, newest meeting first.
+/// One authoritative transcript search projection.
+///
+/// Lexical and identity-only projections leave `semanticSimilarity` absent.
+/// Exact semantic search supplies its profile-local cosine value so research
+/// observers can measure retrieval without making Storage the admission-policy
+/// owner.
 public struct SearchHit: Sendable {
     public let meetingID: MeetingID
     public let meetingTitle: String
@@ -124,6 +129,30 @@ public struct SearchHit: Sendable {
     public let startTime: TimeInterval
     /// Revision of the meeting transcript that produced this evidence.
     public let transcriptRevision: Int
+    /// Profile-local cosine evidence produced by exact semantic search only.
+    /// It is not a product relevance threshold and must not be compared across
+    /// embedding profiles.
+    public let semanticSimilarity: Float?
+
+    init(
+        meetingID: MeetingID,
+        meetingTitle: String,
+        segmentID: UUID,
+        text: String,
+        snippet: String,
+        startTime: TimeInterval,
+        transcriptRevision: Int,
+        semanticSimilarity: Float? = nil
+    ) {
+        self.meetingID = meetingID
+        self.meetingTitle = meetingTitle
+        self.segmentID = segmentID
+        self.text = text
+        self.snippet = snippet
+        self.startTime = startTime
+        self.transcriptRevision = transcriptRevision
+        self.semanticSimilarity = semanticSimilarity
+    }
 }
 
 /// The SQLite-backed store (GRDB + FTS5, D4 contract in `StorageSchema`).

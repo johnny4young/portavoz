@@ -513,7 +513,15 @@ extension MeetingStore {
                 throw StorageError.invalidPersistedValue(
                     table: "segment", column: "rowid", value: String(candidate.rowID))
             }
-            return hit
+            return SearchHit(
+                meetingID: hit.meetingID,
+                meetingTitle: hit.meetingTitle,
+                segmentID: hit.segmentID,
+                text: hit.text,
+                snippet: hit.snippet,
+                startTime: hit.startTime,
+                transcriptRevision: hit.transcriptRevision,
+                semanticSimilarity: candidate.score)
         }
     }
 

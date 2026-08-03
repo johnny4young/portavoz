@@ -29,19 +29,38 @@ public struct ObserveCommitmentLinkSuggestionsRequest: Sendable, Equatable {
     }
 }
 
-/// One transient quality observation. It exposes only current semantic segment
-/// identities and explainable Core proposals; it cannot confirm or persist a
+/// One profile-local semantic result retained only for quality measurement.
+/// The score is exact cosine evidence, not an accepted relevance threshold.
+public struct CommitmentLinkSemanticHit: Sendable, Equatable {
+    public let segmentID: UUID
+    public let similarity: Float
+
+    public init(segmentID: UUID, similarity: Float) {
+        self.segmentID = segmentID
+        self.similarity = similarity
+    }
+}
+
+/// One transient quality observation. It exposes profile-bound semantic
+/// evidence and explainable Core proposals; it cannot confirm or persist a
 /// link and is not composed into the app.
 public struct CommitmentLinkSuggestionObservation: Sendable, Equatable {
-    public let semanticHitSegmentIDs: [UUID]
+    public let semanticProfileFingerprint: String
+    public let semanticHits: [CommitmentLinkSemanticHit]
     public let suggestions: [CommitmentLinkSuggestion]
 
     public init(
-        semanticHitSegmentIDs: [UUID],
+        semanticProfileFingerprint: String,
+        semanticHits: [CommitmentLinkSemanticHit],
         suggestions: [CommitmentLinkSuggestion]
     ) {
-        self.semanticHitSegmentIDs = semanticHitSegmentIDs
+        self.semanticProfileFingerprint = semanticProfileFingerprint
+        self.semanticHits = semanticHits
         self.suggestions = suggestions
+    }
+
+    public var semanticHitSegmentIDs: [UUID] {
+        semanticHits.map(\.segmentID)
     }
 }
 
@@ -50,6 +69,7 @@ public enum ObserveCommitmentLinkSuggestionsError: Error, Sendable, Equatable {
     case semanticUnavailable
     case invalidQueryVector
     case invalidSemanticEvidence
+    case invalidSemanticSimilarity
 }
 
 /// Non-serving product-path adapter used to measure cross-meeting retrieval and
@@ -94,14 +114,16 @@ public struct ObserveCommitmentLinkSuggestions: ApplicationUseCase {
         }
         let targets = try await targetReader.commitmentLinkSuggestionTargets(
             limit: CommitmentLinkSuggestionPolicy.maximumTargetCount)
-        let semanticHits = try await semanticHits(for: text)
-        let segmentIDs = semanticHits.map(\.segmentID)
+        let semanticResult = try await semanticHits(for: text)
+        let segmentIDs = semanticResult.hits.map(\.segmentID)
         guard segmentIDs.count <= CommitmentLinkSuggestionPolicy.maximumSemanticHitCount,
               Set(segmentIDs).count == segmentIDs.count
         else { throw ObserveCommitmentLinkSuggestionsError.invalidSemanticEvidence }
+        let scoredHits = try Self.validatedSemanticHits(semanticResult.hits)
 
         return CommitmentLinkSuggestionObservation(
-            semanticHitSegmentIDs: segmentIDs,
+            semanticProfileFingerprint: semanticResult.profileFingerprint,
+            semanticHits: scoredHits,
             suggestions: CommitmentLinkSuggestionPolicy.suggestions(
                 sourceMeetingID: request.sourceMeetingID,
                 actionItemID: request.actionItemID,
@@ -110,7 +132,7 @@ public struct ObserveCommitmentLinkSuggestions: ApplicationUseCase {
                 targets: targets))
     }
 
-    private func semanticHits(for text: String) async throws -> [SearchHit] {
+    private func semanticHits(for text: String) async throws -> SemanticResult {
         try await runtime.withPreparedEmbedding(
             allowAssetDownload: false
         ) { [semanticIndex] embedder in
@@ -120,10 +142,41 @@ public struct ObserveCommitmentLinkSuggestions: ApplicationUseCase {
                   vector.count == profile.vectorDimension,
                   vector.allSatisfy(\.isFinite)
             else { throw ObserveCommitmentLinkSuggestionsError.invalidQueryVector }
-            return try await semanticIndex.search(
+            let hits = try await semanticIndex.search(
                 vector,
                 profile: profile,
                 limit: CommitmentLinkSuggestionPolicy.maximumSemanticHitCount)
+            return SemanticResult(
+                profileFingerprint: profile.fingerprint,
+                hits: hits)
         }
+    }
+
+    private static func validatedSemanticHits(
+        _ hits: [SearchHit]
+    ) throws -> [CommitmentLinkSemanticHit] {
+        var previousSimilarity = Float.infinity
+        return try hits.map { hit in
+            guard let rawSimilarity = hit.semanticSimilarity,
+                  rawSimilarity.isFinite,
+                  rawSimilarity >= -1.0001,
+                  rawSimilarity <= 1.0001
+            else {
+                throw ObserveCommitmentLinkSuggestionsError.invalidSemanticSimilarity
+            }
+            let similarity = min(max(rawSimilarity, -1), 1)
+            guard similarity <= previousSimilarity else {
+                throw ObserveCommitmentLinkSuggestionsError.invalidSemanticSimilarity
+            }
+            previousSimilarity = similarity
+            return CommitmentLinkSemanticHit(
+                segmentID: hit.segmentID,
+                similarity: similarity)
+        }
+    }
+
+    private struct SemanticResult: Sendable {
+        let profileFingerprint: String
+        let hits: [SearchHit]
     }
 }

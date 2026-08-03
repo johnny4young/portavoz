@@ -8473,3 +8473,35 @@ The result is review-required development evidence, not a clean-head baseline
 or product decision. Serving stays blocked pending an ignored anonymized pack,
 clean-head profile matrix, explicit similarity/abstention research, and an
 accepted quality floor.
+
+## D248 — Preserve profile-bound similarity without defining admission (Aug 2026)
+
+**Context:** the product-path link runner proved that exact owner and evidence
+identity are explainable but insufficient: six semantically irrelevant links
+survived legal admission. The exact Accelerate search already computes cosine
+similarity to rank every result, but `SearchHit` discarded that value before
+the non-serving observer could measure it. Choosing a threshold without the
+source score and embedding-profile identity would be irreproducible; applying
+one directly in Core or SwiftUI would turn one dirty-head smoke into policy.
+
+**Decision:** retain an optional profile-local semantic similarity on the
+authoritative transcript search projection. Lexical search and identity-only
+research projections leave it absent; the shipped exact semantic adapter
+attaches the already computed dot-product value without adding another scan or
+persisting it. Existing Ask and Library consumers continue to ignore it.
+
+The non-serving commitment-link observer now returns ordered
+`CommitmentLinkSemanticHit` values plus the exact embedding-profile
+fingerprint. It requires every semantic result to carry a finite cosine value
+within a small floating-point tolerance of `[-1, 1]`, clamps only that tolerance
+drift, and rejects ascending rank order. Missing, non-finite, out-of-range, or
+misordered evidence is a typed measurement failure rather than an abstention.
+The observer still passes only ordered segment identities into D244, so score
+cannot alter legal admission.
+
+**Consequences:** a later offline evaluator can replay explicit
+similarity/abstention candidates against the public and ignored real-meeting
+packs using evidence from the actual exact adapter. Scores remain transient,
+profile-bound, absent from persistence, support diagnostics, sync, bundles,
+MCP, app composition, and SwiftUI. This decision selects no threshold, margin,
+quality floor, engine, or product behavior and creates no user-visible feature.

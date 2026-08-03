@@ -1998,6 +1998,16 @@ non-overwriting JSON. It never opens the user library or enters app
 composition. One unaccepted development smoke exposed six false suggestions,
 so the path remains non-serving and threshold-free.
 
+The exact semantic adapter also carries its already computed cosine value on
+the transient authoritative search projection. Lexical and identity-only
+projections carry no semantic value. The non-serving commitment-link observer
+retains ordered segment identity, bounded cosine similarity, and the exact
+embedding-profile fingerprint, rejecting missing, non-finite, out-of-range, or
+ascending score evidence before measurement. Core admission still receives
+only ordered segment identities. No score is persisted or compared across
+profiles, and no app composition, threshold, or visible suggestion consumes
+this evidence.
+
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
 pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title
@@ -2884,7 +2894,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,764 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,766 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

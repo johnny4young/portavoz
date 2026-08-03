@@ -63,6 +63,14 @@ final class CommitmentLinkObservationTests: XCTestCase {
 
         let observation = try await observer.execute(request)
 
+        XCTAssertEqual(
+            observation.semanticProfileFingerprint,
+            fixture.profile.fingerprint)
+        XCTAssertEqual(
+            observation.semanticHits,
+            [CommitmentLinkSemanticHit(
+                segmentID: fixture.evidenceSegmentID,
+                similarity: 1)])
         XCTAssertEqual(observation.semanticHitSegmentIDs, [fixture.evidenceSegmentID])
         XCTAssertEqual(observation.suggestions.map(\.commitment.id), [fixture.commitmentID])
         XCTAssertEqual(
@@ -113,6 +121,41 @@ final class CommitmentLinkObservationTests: XCTestCase {
                 actionItemID: request.actionItemID,
                 candidateText: "   ",
                 candidateAssignee: request.candidateAssignee))
+        }
+    }
+
+    func testObservationRejectsMissingNonFiniteAndAscendingSemanticSimilarity() async throws {
+        let fixture = try await makeFixture()
+        let baseHit = SearchHit(
+            meetingID: fixture.sourceMeetingID,
+            meetingTitle: "Earlier planning",
+            segmentID: fixture.evidenceSegmentID,
+            text: "Finish the rollout checklist",
+            snippet: "Finish the rollout checklist",
+            startTime: 1,
+            transcriptRevision: 0)
+        let request = ObserveCommitmentLinkSuggestionsRequest(
+            sourceMeetingID: MeetingID(),
+            actionItemID: UUID(),
+            candidateText: "Continue the rollout checklist",
+            candidateAssignee: .person(fixture.personID))
+        let invalidHitSets = [
+            [baseHit],
+            [copy(baseHit, segmentID: UUID(), semanticSimilarity: .nan)],
+            [
+                copy(baseHit, segmentID: UUID(), semanticSimilarity: 0.4),
+                copy(baseHit, segmentID: UUID(), semanticSimilarity: 0.8),
+            ],
+        ]
+
+        for hits in invalidHitSets {
+            let observer = ObserveCommitmentLinkSuggestions(
+                store: fixture.store,
+                runtime: RecordingCommitmentLinkRuntime(profile: fixture.profile),
+                semanticIndex: FixedCommitmentLinkSemanticIndex(hits: hits))
+            await assertCommitmentLinkError(.invalidSemanticSimilarity) {
+                _ = try await observer.execute(request)
+            }
         }
     }
 
@@ -169,6 +212,22 @@ final class CommitmentLinkObservationTests: XCTestCase {
             personID: person.person.id,
             commitmentID: confirmation.commitment.id,
             profile: profile)
+    }
+
+    private func copy(
+        _ hit: SearchHit,
+        segmentID: UUID,
+        semanticSimilarity: Float?
+    ) -> SearchHit {
+        SearchHit(
+            meetingID: hit.meetingID,
+            meetingTitle: hit.meetingTitle,
+            segmentID: segmentID,
+            text: hit.text,
+            snippet: hit.snippet,
+            startTime: hit.startTime,
+            transcriptRevision: hit.transcriptRevision,
+            semanticSimilarity: semanticSimilarity)
     }
 }
 
@@ -232,6 +291,18 @@ private struct UnavailableCommitmentLinkRuntime: SemanticEmbeddingRuntimeClient 
         ) async throws -> Result
     ) async throws -> Result {
         throw ObserveCommitmentLinkSuggestionsError.semanticUnavailable
+    }
+}
+
+private struct FixedCommitmentLinkSemanticIndex: SemanticIndexSearching {
+    let hits: [SearchHit]
+
+    func search(
+        _ query: [Float],
+        profile: SemanticEmbeddingProfile,
+        limit: Int
+    ) async throws -> [SearchHit] {
+        Array(hits.prefix(limit))
     }
 }
 

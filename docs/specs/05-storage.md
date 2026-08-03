@@ -32,6 +32,12 @@ database per case and seeds it only through existing meeting, speaker, segment,
 summary, person-link, confirmation, and lifecycle transactions. Per-case
 isolation prevents fixture evidence leakage, and every database is removed
 after observation; the user's default store is never opened.
+D248 adds one optional transient field to `SearchHit`: exact semantic search
+attaches the cosine value it already computed for ranking, while lexical and
+identity-only projections leave it absent. The value is not stored in SQLite,
+does not alter FTS, projection, ranking, migration, sync, export, or existing
+consumers, and is meaningful only with the matching embedding-profile
+fingerprint held by the Application observer.
 
 ## Database
 

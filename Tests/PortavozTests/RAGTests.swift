@@ -154,6 +154,34 @@ final class SemanticStoreTests: XCTestCase {
         XCTAssertEqual(invalidated.map(\.id), [segments[0].id])
     }
 
+    func testExactSemanticSearchCarriesProfileLocalSimilarityOnly() async throws {
+        let segments = try await seed([
+            "launch plan",
+            "archive context",
+        ])
+        let candidates = try await store.segmentsNeedingEmbeddings()
+        _ = try await store.storeEmbeddings(
+            [
+                segments[0].id: [1, 0],
+                segments[1].id: [0.6, 0.8],
+            ],
+            for: candidates)
+
+        let semanticHits = try await store.searchSemantic([1, 0], limit: 2)
+        let lexicalHits = try await store.search("archive")
+
+        XCTAssertEqual(semanticHits.map(\.segmentID), segments.map(\.id))
+        XCTAssertEqual(
+            try XCTUnwrap(semanticHits[0].semanticSimilarity),
+            1,
+            accuracy: 0.000_001)
+        XCTAssertEqual(
+            try XCTUnwrap(semanticHits[1].semanticSimilarity),
+            0.6,
+            accuracy: 0.000_001)
+        XCTAssertNil(lexicalHits.first?.semanticSimilarity)
+    }
+
     func testProfileFenceKeepsExactSearchAvailableDuringSemanticRebuild() async throws {
         let segments = try await seed([
             "The launch budget remains approved for the autumn release.",
