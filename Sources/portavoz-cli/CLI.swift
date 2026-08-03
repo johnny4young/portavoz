@@ -72,7 +72,7 @@ struct PortavozCLI {
         case "bench-commitment-link-similarity":
             await BenchCommitmentLinkSimilarityCommand.run(arguments)
         case "bench-private-commitment-link-similarity":
-            await BenchPrivateCommitmentLinkSimilarityCommand.run(arguments)
+            await BenchPrivateLinkSimilarityCommand.run(arguments)
         default:
             printUsage()
         }

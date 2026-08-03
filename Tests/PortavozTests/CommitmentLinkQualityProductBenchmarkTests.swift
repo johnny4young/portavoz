@@ -227,7 +227,7 @@ final class CommitmentLinkQualityProductBenchmarkTests: XCTestCase {
                 build: "0.9.0+1",
                 commit: String(repeating: "c", count: 40))
         let output = root.appendingPathComponent("private-observations.json")
-        try CommitmentLinkPrivateSimilarityJSONWriter.write(
+        try CommitmentLinkPrivateSimilarityWriter.write(
             document,
             to: output)
 

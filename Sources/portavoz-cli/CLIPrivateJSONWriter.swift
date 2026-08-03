@@ -106,3 +106,43 @@ enum CLIPrivateJSONWriter {
         }
     }
 }
+
+enum CommitmentLinkQualityPrivateJSONWriter {
+    static func write(
+        _ document: CommitmentLinkQualityObservationDocument,
+        to output: URL
+    ) throws {
+        try writeCommitmentLinkDocument(document, to: output)
+    }
+}
+
+enum CommitmentLinkSimilarityJSONWriter {
+    static func write(
+        _ document: CommitmentLinkSimilarityDocument,
+        to output: URL
+    ) throws {
+        try writeCommitmentLinkDocument(document, to: output)
+    }
+}
+
+enum CommitmentLinkPrivateSimilarityWriter {
+    static func write(
+        _ document: CommitmentLinkPrivateSimilarityDocument,
+        to output: URL
+    ) throws {
+        try writeCommitmentLinkDocument(document, to: output)
+    }
+}
+
+private func writeCommitmentLinkDocument<Document: Encodable>(
+    _ document: Document,
+    to output: URL
+) throws {
+    do {
+        try CLIPrivateJSONWriter.write(document, to: output)
+    } catch CLIPrivateJSONWriterError.outputAlreadyExists {
+        throw CommitmentLinkQualityBenchmarkError.outputAlreadyExists
+    } catch CLIPrivateJSONWriterError.publicationFailed {
+        throw CommitmentLinkQualityBenchmarkError.outputPublicationFailed
+    }
+}

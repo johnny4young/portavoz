@@ -115,6 +115,8 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
     func testScoredObservationContractRemainsOwnerOnlyAndNonServing() throws {
         let runner = try Self.contents(
             of: "Sources/portavoz-cli/CLIBenchCommitmentLinkQuality.swift")
+        let writer = try Self.contents(
+            of: "Sources/portavoz-cli/CLIPrivateJSONWriter.swift")
         let mapping = try Self.contents(
             of: "Sources/portavoz-cli/CLICommitmentLinkQualityCorpusMapping.swift")
         let validator = try Self.contents(
@@ -127,7 +129,8 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
         XCTAssertTrue(runner.contains("embeddingProfileFingerprint"))
         XCTAssertTrue(runner.contains("evaluationStatus = \"not-evaluated\""))
         XCTAssertTrue(runner.contains("servingStatus = \"not-approved\""))
-        XCTAssertTrue(runner.contains("CLIPrivateJSONWriter.write"))
+        XCTAssertTrue(runner.contains("CommitmentLinkSimilarityJSONWriter.write"))
+        XCTAssertTrue(writer.contains("CLIPrivateJSONWriter.write"))
         XCTAssertTrue(mapping.contains("result.semanticHits.map"))
         XCTAssertTrue(validator.contains("validate_similarity_observations"))
         XCTAssertTrue(validator.contains("math.isfinite(similarity)"))
@@ -141,17 +144,19 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
     func testPrivateSimilarityCollectorCannotBroadenPublicOrAppComposition() throws {
         let runner = try Self.contents(
             of: "Sources/portavoz-cli/CLIBenchCommitmentLinkQuality.swift")
+        let fixture = try Self.contents(
+            of: "Sources/portavoz-cli/CLICommitmentLinkQualityFixture.swift")
         let validator = try Self.contents(
             of: "scripts/commitment_link_quality.py")
         let appComposition = try Self.contents(
             of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(runner.contains("BenchPrivateCommitmentLinkSimilarityCommand"))
+        XCTAssertTrue(runner.contains("BenchPrivateLinkSimilarityCommand"))
         XCTAssertTrue(runner.contains("CommitmentLinkPrivateQualityFixture.load"))
         XCTAssertTrue(runner.contains(
             "commitment-link-private-similarity-observations"))
-        XCTAssertTrue(runner.contains(
+        XCTAssertTrue(fixture.contains(
             "private fixture must be a regular non-symlink mode-0600 file"))
         XCTAssertTrue(runner.contains(
             "try CommitmentLinkQualityFixture.load(from: options.fixture)"))

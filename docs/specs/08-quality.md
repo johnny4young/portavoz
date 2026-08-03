@@ -27,7 +27,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 517 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 518 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1334,7 +1334,7 @@ contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
 The current field-reliability inventory is 1,793 XCTest package cases (13
-environment-gated), zero strict-lint violations across 517 Swift
+environment-gated), zero strict-lint violations across 518 Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 62 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package
