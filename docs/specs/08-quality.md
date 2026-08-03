@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,952 cases (13 environment-gated) + 65
+Status: the package inventory contains 1,961 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1355,6 +1355,33 @@ and Ask composition. No model, network, user library, SwiftUI, XCUITest, or
 screenshot participates. The other five D270 product mappings, private field
 evidence, and relational scale budgets remain open.
 
+### First-discussion query and canonical conformance (D280)
+
+Seven focused query cases cover unready projection, unavailable exact topic,
+one typed earliest fact with event time and navigation, merged-child family
+resolution, stale earliest evidence that cannot be replaced by a later current
+mention, unavailable earliest evidence with the same fail-closed rule, a ready
+projection missing its exact authoritative edge, and ApplicationKit delegation.
+Lower-level corruption fixtures may inspect the in-memory database, while the
+stale-evidence regression uses the public meeting replacement boundary.
+
+One product conformance case loads exactly the six canonical
+`firstDiscussion` examples. Five answer cases span English-to-English,
+Spanish-to-Spanish, both cross-language directions, and code switching; one
+case requires `stale-evidence-only`. Each fresh Store receives all confirmed
+topic mentions, including the forbidden distinct-topic distractor, through
+public meeting, segment, create/link confirmation, graph-maintenance, and
+ApplicationKit APIs. Assertions map only typed returned topic-evidence and
+segment identities to the corpus and require exact results, evidence order,
+and forbidden-result exclusion.
+
+One architecture ratchet pins exact-identity input, authoritative earliest-row
+selection, graph-only consistency checking, public-only product mapping, and
+the absence of Ask composition, GRDB, `@testable`, IntelligenceKit, or direct
+database writes in the conformance adapter. These nine tests use no model,
+network, user library, SwiftUI, XCUITest, or screenshot. Four D270 product
+mappings, private field evidence, and relational scale budgets remain open.
+
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
@@ -1444,8 +1471,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,952 XCTest package cases (13
-environment-gated), zero strict-lint violations across 581 first-party Swift
+The current field-reliability inventory is 1,961 XCTest package cases (13
+environment-gated), zero strict-lint violations across 583 first-party Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 65 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package

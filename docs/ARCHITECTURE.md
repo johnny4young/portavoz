@@ -1395,6 +1395,28 @@ authority write, Ask composition, CLI, MCP, sync, or UI loads the fixture. The
 other five canonical query jobs and relational scale evidence remain separate
 gates.
 
+The second source-backed graph fact query serves **where one exact topic family
+was first discussed**. Core accepts a caller-resolved `TopicID`; label or
+natural-language discovery is intentionally outside the contract. StorageKit
+resolves the current family root and asks authoritative `TopicMeetingEvidence`
+for the canonical earliest meeting and segment before consulting the graph. A
+ready meeting-topic projection must contain that exact root/meeting edge, but
+the disposable graph cannot select, reorder, or replace the authority row. The
+same SQLite snapshot hydrates one current accepted source segment and returns a
+typed topic-to-meeting fact with event time and exact navigation.
+
+Chronology fails closed. If the authoritative earliest mention is stale,
+unavailable, corrected, or missing, a later current mention cannot stand in for
+it; a ready projection missing the exact edge reports an inconsistency instead
+of inventing an answer. `LoadTopicFirstDiscussion` is an injected ApplicationKit
+boundary and is not composed by Ask yet. A separate package-test adapter maps
+all six canonical `firstDiscussion` cases through public meeting, transcript,
+topic confirmation, graph maintenance, and application APIs. It persists the
+forbidden distractor as a distinct confirmed topic, performs no direct database
+write, and maps only typed returned identities back to the corpus. This query
+adds no model call, graph authority, topic discovery, answer synthesis, UI,
+sync/export, CLI, or MCP surface.
+
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
 instead of borrowing the commitment's original source. Generated summary,
@@ -3417,13 +3439,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,952 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,961 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 581 first-party Swift source files;
+- strict SwiftLint reports zero violations across 583 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

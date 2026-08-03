@@ -146,7 +146,7 @@ extension MeetingStore {
             ) {
             case .current(let evidence):
                 hydration.facts.append(MeetingMemoryGraphFact(
-                    id: continuity.blocker.id,
+                    id: .blocker(continuity.blocker.id),
                     kind: .decisionBlocksCommitment,
                     subject: .decision(continuity.blocker.decisionID),
                     object: .commitment(continuity.blocker.commitmentID),

@@ -49,7 +49,7 @@ final class MeetingMemoryGraphQueryTests: XCTestCase {
         XCTAssertGreaterThan(page.projectionGeneration, 0)
         XCTAssertEqual(page.omittedStaleCount, 0)
         XCTAssertEqual(page.omittedUnavailableCount, 0)
-        XCTAssertEqual(fact.id, fixture.blockerID)
+        XCTAssertEqual(fact.id, .blocker(fixture.blockerID))
         XCTAssertEqual(fact.kind, .decisionBlocksCommitment)
         XCTAssertEqual(fact.subject, .decision(fixture.decisionID))
         XCTAssertEqual(fact.object, .commitment(fixture.commitmentID))
@@ -132,7 +132,7 @@ final class MeetingMemoryGraphQueryTests: XCTestCase {
             return XCTFail("Expected a bounded fact page, got \(result)")
         }
 
-        XCTAssertEqual(page.facts.map(\.id), [secondBlockerID])
+        XCTAssertEqual(page.facts.map(\.id), [.blocker(secondBlockerID)])
         XCTAssertTrue(page.hasMore)
     }
 
@@ -174,7 +174,7 @@ final class MeetingMemoryGraphQueryTests: XCTestCase {
             return XCTFail("Expected the older current fact, got \(result)")
         }
 
-        XCTAssertEqual(page.facts.map(\.id), [fixture.blockerID])
+        XCTAssertEqual(page.facts.map(\.id), [.blocker(fixture.blockerID)])
         XCTAssertEqual(page.omittedUnavailableCount, 1)
         XCTAssertFalse(page.hasMore)
     }

@@ -23,17 +23,36 @@ public struct CommitmentBlockerQuery: Equatable, Sendable {
     }
 }
 
+/// Finds the earliest explicitly confirmed discussion for one exact topic
+/// identity. Label and natural-language resolution happen before this query.
+public struct TopicFirstDiscussionQuery: Equatable, Sendable {
+    public let topicID: TopicID
+
+    public init(topicID: TopicID) {
+        self.topicID = topicID
+    }
+}
+
+public enum MeetingMemoryGraphFactID: Hashable, Sendable {
+    case blocker(DecisionCommitmentBlockerID)
+    case topicEvidence(TopicMeetingEvidenceID)
+}
+
 public enum MeetingMemoryGraphFactKind: String, Equatable, Sendable {
     case decisionBlocksCommitment = "decision-blocks-commitment"
+    case topicDiscussedInMeeting = "topic-discussed-in-meeting"
 }
 
 public enum MeetingMemoryGraphFactEntity: Hashable, Sendable {
     case decision(DecisionID)
     case commitment(CommitmentID)
+    case topic(TopicID)
+    case meeting(MeetingID)
 }
 
 public enum MeetingMemoryGraphFactStatus: String, Equatable, Sendable {
     case active
+    case confirmed
 }
 
 /// Graph queries and timelines share the same exact current transcript
@@ -42,7 +61,7 @@ public enum MeetingMemoryGraphFactStatus: String, Equatable, Sendable {
 public typealias MeetingMemoryGraphEvidence = MeetingMemoryTimelineEvidence
 
 public struct MeetingMemoryGraphFact: Equatable, Sendable, Identifiable {
-    public let id: DecisionCommitmentBlockerID
+    public let id: MeetingMemoryGraphFactID
     public let kind: MeetingMemoryGraphFactKind
     public let subject: MeetingMemoryGraphFactEntity
     public let object: MeetingMemoryGraphFactEntity
@@ -54,7 +73,7 @@ public struct MeetingMemoryGraphFact: Equatable, Sendable, Identifiable {
     public let primaryEvidenceSegmentID: UUID
 
     public init(
-        id: DecisionCommitmentBlockerID,
+        id: MeetingMemoryGraphFactID,
         kind: MeetingMemoryGraphFactKind,
         subject: MeetingMemoryGraphFactEntity,
         object: MeetingMemoryGraphFactEntity,
@@ -113,6 +132,8 @@ public enum MeetingMemoryGraphQueryAbstention: String, Equatable, Sendable {
     case invalidQuery = "invalid-query"
     case projectionNotReady = "projection-not-ready"
     case commitmentUnavailable = "commitment-unavailable"
+    case topicUnavailable = "topic-unavailable"
+    case projectionInconsistent = "projection-inconsistent"
     case unsupportedCausalLink = "unsupported-causal-link"
     case candidateBudgetExceeded = "candidate-budget-exceeded"
     case staleEvidenceOnly = "stale-evidence-only"

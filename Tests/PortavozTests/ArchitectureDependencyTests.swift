@@ -1894,6 +1894,61 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D279"))
     }
 
+    func testFirstDiscussionQueryKeepsEarliestAuthorityOutsideGraph() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/MeetingMemoryGraphQuery.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+TopicFirstDiscussionQuery.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/LoadTopicFirstDiscussion.swift")
+        let adapter = try Self.contents(
+            of: "Tests/PortavozTests/TopicFirstDiscussionProductConformanceTests.swift")
+        let fixture = try Self.jsonObject(
+            at: "Fixtures/MeetingMemoryGraph/public-synthetic-v1.json")
+        let cases = try XCTUnwrap(fixture["cases"] as? [[String: Any]])
+        let firstDiscussionCases = cases.filter {
+            $0["job"] as? String == "firstDiscussion"
+        }
+        let askServices = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertEqual(firstDiscussionCases.count, 6)
+        XCTAssertFalse(core.contains("import StorageKit"))
+        XCTAssertTrue(core.contains("struct TopicFirstDiscussionQuery"))
+        XCTAssertTrue(core.contains("enum MeetingMemoryGraphFactID"))
+        XCTAssertTrue(core.contains("case topicDiscussedInMeeting"))
+        XCTAssertTrue(core.contains("case projectionInconsistent"))
+        XCTAssertTrue(storage.contains("guard let earliest = try loadTopicEvidence("))
+        XCTAssertTrue(storage.contains("in: database).first"))
+        XCTAssertTrue(storage.contains("switch earliest.availability"))
+        XCTAssertTrue(storage.contains("meetingMemoryGraphMeetingTopic"))
+        XCTAssertTrue(storage.contains("graphContainsTopicMeetingEdge"))
+        XCTAssertTrue(storage.contains("meetingID: earliest.meetingID"))
+        XCTAssertTrue(storage.contains("id: .topicEvidence(earliest.id)"))
+        XCTAssertTrue(storage.contains("timelineEvidence("))
+        XCTAssertTrue(application.contains("protocol TopicFirstDiscussionReading"))
+        XCTAssertTrue(application.contains("struct LoadTopicFirstDiscussion"))
+        for boundary in [
+            "createTopicAndLink(",
+            "linkTopic(",
+            "ProjectMeetingMemoryGraph(",
+            "LoadTopicFirstDiscussion(",
+        ] {
+            XCTAssertTrue(
+                adapter.contains(boundary),
+                "canonical first-discussion mapping bypasses \(boundary)")
+        }
+        XCTAssertTrue(adapter.contains("public-synthetic-v1.json"))
+        XCTAssertTrue(adapter.contains("staleEvidenceOnly"))
+        XCTAssertFalse(adapter.contains("import GRDB"))
+        XCTAssertFalse(adapter.contains("@testable"))
+        XCTAssertFalse(adapter.contains("database.write"))
+        XCTAssertFalse(adapter.contains("import IntelligenceKit"))
+        XCTAssertFalse(askServices.contains("LoadTopicFirstDiscussion"))
+        XCTAssertTrue(decisions.contains("## D280"))
+    }
+
     func testMeetingMemoryGraphProjectionIsDisposableDurableAndSignalDriven() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/MeetingMemoryGraphProjection.swift")

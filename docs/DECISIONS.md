@@ -9722,3 +9722,46 @@ abstention cases using the real local boundaries. This does not make natural-
 language commitment discovery or answer synthesis available, does not validate
 the other five jobs, and supplies no relational scale or private field
 evidence. Those remain later gates.
+
+## D280 — Keep first-discussion chronology authoritative and graph-checked (Aug 2026)
+
+**Context:** D271 made confirmed `TopicMeetingEvidence` the durable authority
+for a topic family's meeting membership, while D273 projected disposable
+meeting-topic topology. The D270 `firstDiscussion` job still had no product
+query. Ordering graph rows would make a rebuildable index decide chronology;
+skipping a stale earliest mention in favor of a later current mention would
+silently change the meaning of "first"; and resolving free-form labels inside
+the query would conflate identity discovery with evidence serving.
+
+**Decision:** add an exact `TopicFirstDiscussionQuery` for one caller-supplied
+`TopicID`. StorageKit resolves that identity to its current topic-family root,
+loads the complete authoritative family evidence in chronological meeting and
+segment order, and selects the canonical earliest row before considering
+freshness. A ready graph projection must contain the matching root-topic to
+meeting edge, but it cannot choose or reorder the result. The same SQLite read
+snapshot then hydrates the exact current accepted transcript segment and emits
+one typed `topic-discussed-in-meeting` fact with canonical topic/meeting UUIDs,
+authoritative labels, event time, exact evidence, and direct navigation.
+
+If the authoritative earliest row is stale, unavailable, corrected, or absent,
+the query abstains rather than substituting a later mention. A ready projection
+that lacks the exact authoritative edge reports `projection-inconsistent`.
+ApplicationKit exposes the injected `LoadTopicFirstDiscussion` boundary;
+natural-language topic discovery, Ask composition, answer generation, and
+cross-lane ranking remain separate work.
+
+Map exactly the six canonical `firstDiscussion` cases through fresh in-memory
+Stores using only public meeting, transcript, topic-confirmation, graph-job,
+and ApplicationKit APIs. Persist the distractor topic as a distinct confirmed
+identity, map returned typed evidence back to corpus IDs, and require exact
+results, exact evidence, forbidden-result exclusion, and the declared stale-
+evidence abstention. The adapter imports no IntelligenceKit or GRDB and cannot
+write authority directly.
+
+**Consequences:** Portavoz can now answer one exact identity-resolved
+first-discussion question without treating graph topology, labels, or generated
+prose as truth. English, Spanish, cross-language, code-switched, distractor,
+and stale cases exercise the real product boundaries. Ask still cannot discover
+or compose this lane, and the other four unimplemented D270 jobs, graph scale
+budgets, owner-reviewed private evidence, sync/export, CLI, MCP, and UI remain
+open.
