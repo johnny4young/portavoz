@@ -20,7 +20,8 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	commitment-link-similarity-replay validate-commitment-link-private-pack \
 	commitment-link-private-similarity-product \
 	commitment-link-private-similarity-replay \
-	commitment-link-profile-matrix \
+	commitment-link-profile-matrix test-commitment-link-policy-review \
+	commitment-link-policy-review \
 	test-correction-composition correction-composition-benchmark \
 	test-commitment-radar-scale commitment-radar-benchmark \
 	test-exact-path-matrix exact-path-matrix \
@@ -258,6 +259,44 @@ commitment-link-profile-matrix:
 		--private-fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" \
 		--output "$(PORTAVOZ_COMMITMENT_LINK_PROFILE_MATRIX)" \
 		--build "$(PORTAVOZ_COMMITMENT_LINK_BUILD)"
+
+## Validate the explicit private calibration-review admission boundary with
+## synthetic no-text evidence. This selects no product or serving policy.
+test-commitment-link-policy-review:
+	python3 -m unittest Tests.Tooling.test_commitment_link_policy_review
+
+## Retain one explicitly reviewed D254 candidate and its observed public/private
+## metrics as a private evaluation floor. Exact matrix digest, source commit,
+## candidate, and acknowledgement are intentionally required rather than
+## defaulted; the receipt grants no product or serving authority.
+PORTAVOZ_COMMITMENT_LINK_POLICY_REVIEW_OUTPUT ?=
+PORTAVOZ_COMMITMENT_LINK_ACCEPTED_MATRIX_SHA256 ?=
+PORTAVOZ_COMMITMENT_LINK_ACCEPTED_SOURCE_COMMIT ?=
+PORTAVOZ_COMMITMENT_LINK_SELECTED_CANDIDATE ?=
+PORTAVOZ_COMMITMENT_LINK_REVIEW_ACKNOWLEDGEMENT ?=
+commitment-link-policy-review:
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_PROFILE_MATRIX)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_PROFILE_MATRIX is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_POLICY_REVIEW_OUTPUT)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_POLICY_REVIEW_OUTPUT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_ACCEPTED_MATRIX_SHA256)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_ACCEPTED_MATRIX_SHA256 is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_ACCEPTED_SOURCE_COMMIT)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_ACCEPTED_SOURCE_COMMIT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_SELECTED_CANDIDATE)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_SELECTED_CANDIDATE is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_REVIEW_ACKNOWLEDGEMENT)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_REVIEW_ACKNOWLEDGEMENT is required" >&2; exit 64)
+	python3 scripts/commitment_link_policy_review.py admit \
+		--bundle "$(PORTAVOZ_COMMITMENT_LINK_PROFILE_MATRIX)" \
+		--private-fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" \
+		--output "$(PORTAVOZ_COMMITMENT_LINK_POLICY_REVIEW_OUTPUT)" \
+		--accept-matrix-sha256 "$(PORTAVOZ_COMMITMENT_LINK_ACCEPTED_MATRIX_SHA256)" \
+		--accept-source-commit "$(PORTAVOZ_COMMITMENT_LINK_ACCEPTED_SOURCE_COMMIT)" \
+		--select-candidate "$(PORTAVOZ_COMMITMENT_LINK_SELECTED_CANDIDATE)" \
+		--accept-review-acknowledgement "$(PORTAVOZ_COMMITMENT_LINK_REVIEW_ACKNOWLEDGEMENT)"
 
 ## Validate the exact-shaped, content-free host receipt boundary without
 ## running the expensive Release scale harness.

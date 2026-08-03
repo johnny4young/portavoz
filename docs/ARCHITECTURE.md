@@ -2075,6 +2075,17 @@ recomputation rejects provenance or metric drift. The bundle remains review-
 required, selects no candidate, accepts no quality floor, and is absent from
 app composition and every serving or data-transfer surface.
 
+An explicit private calibration-review gate now sits after that matrix and
+still outside product composition. It revalidates the owner-reviewed private
+fixture plus all five matrix artifacts, requires a clean checkout at the exact
+matrix source commit, and demands literal maintainer acknowledgement of the
+matrix-file digest, source commit, and one candidate identity. The selected
+candidate's complete public/private aggregate and language/class metrics become
+an owner-only evaluation floor, not a production default. Publication is
+mode-`0600`, atomic, ignored, non-overwriting, and withdrawn if the checkout
+changes. The receipt remains calibration-only, product-not-evaluated, and
+serving-not-approved; app composition cannot read it.
+
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
 pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title

@@ -217,6 +217,31 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
             "Compare public and private commitment-link evidence on one clean profile"))
     }
 
+    func testExplicitPolicyReviewRequiresHumanEvidenceAndCannotServe() throws {
+        let review = try Self.contents(
+            of: "scripts/commitment_link_policy_review.py")
+        let contract = try Self.contents(
+            of: "docs/evidence/commitment-link-policy-review-admission.json")
+        let makefile = try Self.contents(of: "Makefile")
+        let appComposition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(review.contains("--accept-matrix-sha256"))
+        XCTAssertTrue(review.contains("--accept-source-commit"))
+        XCTAssertTrue(review.contains("--select-candidate"))
+        XCTAssertTrue(review.contains("require_source_checkout"))
+        XCTAssertTrue(contract.contains(
+            "selected-candidate-metrics-reviewed-no-serving-approval-v1"))
+        XCTAssertTrue(contract.contains("\"servingStatus\": \"not-approved\""))
+        XCTAssertTrue(makefile.contains("commitment-link-policy-review"))
+        XCTAssertFalse(appComposition.contains(
+            "commitment-link-policy-calibration-review"))
+        XCTAssertTrue(decisions.contains("## D255"))
+        XCTAssertTrue(decisions.contains(
+            "Require an explicit private calibration review before product evaluation"))
+    }
+
     private static func contents(of relativePath: String) throws -> String {
         try String(
             contentsOf: repoRoot.appendingPathComponent(relativePath),

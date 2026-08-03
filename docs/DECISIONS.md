@@ -8731,3 +8731,41 @@ choose a threshold, accept a quality floor, or add app composition, storage,
 diagnostics, sync/export, bundles, MCP, SwiftUI, confirmation, or serving
 behavior. Collecting the real owner-reviewed pack and making an explicit human
 quality decision remain pending field work.
+
+## D255 — Require an explicit private calibration review before product evaluation (Aug 2026)
+
+**Context:** D254 can produce a provenance-complete public/private matrix, but
+the matrix deliberately contains every observed threshold outcome and names no
+winner. Automatically ranking those candidates would turn implementation code
+into an undeclared quality policy. Conversely, recording only a numeric
+threshold would lose the exact public/private, language, and class evidence the
+maintainer reviewed. No real private matrix exists in the repository, so this
+slice must define the decision boundary without fabricating its outcome.
+
+**Decision:** add a separate private calibration-review admission authority.
+It revalidates the owner-reviewed private fixture, the four scored/replay
+artifacts, and the D254 matrix by exact recomputation. Admission requires a
+clean checkout at the matrix's full source commit plus literal maintainer input
+for the exact matrix-file SHA-256, source commit, candidate ID, and fixed
+`selected-candidate-metrics-reviewed-no-serving-approval-v1` acknowledgement.
+The selected candidate must exist exactly once and admit at least one public
+and private suggestion.
+
+The retained schema-1 receipt binds matrix file/document digests, profile,
+build, source commit, both evidence authorities, selected threshold, and the
+candidate's complete public/private aggregate and language/class metrics. Those
+observed metrics are the accepted floor for a future confirmation evaluation;
+they are not a globally configured threshold or automatic model verdict. The
+owner-only output is atomic, non-overwriting, gitignored when repository-local,
+and withdrawn if the checkout changes after publication. Deterministic
+validation recomputes it from the complete private evidence bundle.
+
+**Consequences:** Portavoz now has an auditable capability for the required
+human quality decision without letting synthetic tests or code choose a
+candidate. The receipt is permanently `private-commitment-link-calibration-only`,
+`owner-selected-for-evaluation`, `accepted-for-confirmation-evaluation`,
+product `not-evaluated`, and serving `not-approved`. It does not enter app
+composition, product persistence, diagnostics, sync/export, bundles, MCP,
+SwiftUI, confirmation, or source-link commands. A real owner-reviewed private
+pack and explicit invocation remain mandatory before a tracked product policy
+or confirmation experiment can be designed.

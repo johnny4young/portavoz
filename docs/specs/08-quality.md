@@ -1396,8 +1396,8 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   arithmetic; it remains `review-required`, makes no product decision, and
   selects no threshold or engine. Optional case details are mode `0600`, non-
   overwriting, and untracked.
-- Twenty-two focused package cases cover D246–D254's non-serving product seam:
-  six observer/storage behaviors, eight source-link architecture contracts, and
+- Twenty-three focused package cases cover D246–D255's non-serving product seam:
+  six observer/storage behaviors, nine source-link architecture contracts, and
   eight product-runner cases.
   The real in-memory Store path proves exact open source/evidence identities,
   installed-assets-only borrowing, and semantic-hit versus legal-admission
@@ -1472,7 +1472,19 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   reuse, download prohibition, and staged publication; one package architecture
   ratchet keeps the matrix out of app composition. No real private pack or
   accepted matrix is retained, and every result remains review-required,
-  unselected, non-evaluated, and non-approved. The
+  unselected, non-evaluated, and non-approved. D255 adds the separate
+  `test-commitment-link-policy-review` and `commitment-link-policy-review`
+  targets. Five deterministic tooling cases prove exact candidate/floor
+  retention, matrix/source/acknowledgement/candidate drift rejection,
+  owner-only atomic non-overwriting publication, exact revalidation, contract
+  fail-closure, and withdrawal after a checkout change. One package ratchet
+  requires the explicit inputs and keeps the receipt outside app composition.
+  The admission gate revalidates the private fixture and all five D254
+  artifacts, requires a clean checkout at the matrix commit, and stores the
+  selected candidate's complete public/private metrics only after explicit
+  digest, commit, candidate, and review acknowledgement. Synthetic tests create
+  no real receipt; retained authority remains private calibration-only, product
+  not-evaluated, and serving not-approved. The
   `commitment-link-quality-product` target runs the real
   Storage/Application path and immediately validates it with the D245
   evaluator; downloads remain disabled unless the caller explicitly selects
