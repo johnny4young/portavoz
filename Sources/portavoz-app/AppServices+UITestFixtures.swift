@@ -170,6 +170,27 @@ extension AppServices {
         citedSegmentID: UUID
     ) async {
         guard !ProcessInfo.processInfo.arguments.contains("-seed-without-summary") else { return }
+        let seedsReviewQueue = ProcessInfo.processInfo.arguments.contains(
+            "-seed-commitment-radar")
+        var actionItems = [ActionItem(
+            id: Self.seedActionItemID,
+            text: "Prepare the rollout",
+            ownerSpeakerID: ownerID)]
+        var actionItemEvidence = [SummaryActionItemEvidence(
+            actionItemID: Self.seedActionItemID,
+            evidenceSegmentIDs: [citedSegmentID])]
+        if seedsReviewQueue {
+            actionItems.append(ActionItem(
+                id: Self.seedReviewActionItemID,
+                text: "Send the launch checklist",
+                ownerSpeakerID: ownerID))
+            actionItemEvidence.append(SummaryActionItemEvidence(
+                actionItemID: Self.seedReviewActionItemID,
+                evidenceSegmentIDs: [citedSegmentID]))
+        }
+        let reviewQueueMarkdown = seedsReviewQueue
+            ? "\n- [ ] Send the launch checklist — S1"
+            : ""
         _ = try? await store.saveSummary(
             SummaryDraft(
                 meetingID: meetingID, recipeID: Recipe.general.id, language: "es",
@@ -182,11 +203,9 @@ extension AppServices {
 
                     ## Pendientes
                     - [ ] Prepare the rollout — S1
+                    \(reviewQueueMarkdown)
                     """,
-                actionItems: [ActionItem(
-                    id: Self.seedActionItemID,
-                    text: "Prepare the rollout",
-                    ownerSpeakerID: ownerID)],
+                actionItems: actionItems,
                 claims: [SummaryClaim(
                     kind: .overview,
                     evidenceSegmentIDs: [citedSegmentID])],
@@ -194,9 +213,7 @@ extension AppServices {
                     sectionOrdinal: 0,
                     bulletOrdinal: 0,
                     evidenceSegmentIDs: [citedSegmentID])],
-                actionItemEvidence: [SummaryActionItemEvidence(
-                    actionItemID: Self.seedActionItemID,
-                    evidenceSegmentIDs: [citedSegmentID])]))
+                actionItemEvidence: actionItemEvidence))
         await seedLatestRecipeSummaryIfRequested(for: meetingID)
     }
 
@@ -344,6 +361,8 @@ extension AppServices {
 
     private static let seedActionItemID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000001")!
+    private static let seedReviewActionItemID = UUID(
+        uuidString: "B5E00000-0000-4000-8000-000000000002")!
 
     private static func radarCommitmentID(_ ordinal: Int) -> CommitmentID {
         CommitmentID(rawValue: UUID(uuidString: String(

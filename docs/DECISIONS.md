@@ -9102,3 +9102,29 @@ or creating per-row reads. A future UI must open the exact source meeting for
 review and confirmation, explicitly present truncation, and route dismiss/defer
 through the existing ApplicationKit mutation boundary. Bundle, CloudKit, CLI,
 MCP, reminders, and external task creation remain unchanged.
+
+## D266 — Separate generated review from confirmed Radar truth (Aug 2026)
+
+**Context:** D265 provides one bounded whole-library source of generated work,
+but leaving it uncomposed makes post-meeting review discoverable only one
+meeting at a time. Mixing those candidates into the existing Radar list would
+make an AI suggestion look like a confirmed commitment. Confirming directly
+from a bounded evidence preview would also bypass the complete Meeting Detail
+review contract.
+
+**Decision:** compose the D265 library queue as a separately labeled **To
+review** mode inside Commitment Radar. Confirmed and review modes retain
+independent load, page, request-fence, mutation, and failure state. Review cards
+are visually identified as suggestions and expose only reversible **Dismiss**
+and **Review later** actions plus **Review in meeting**. The latter opens the
+complete source meeting and seeks to the first exact transcript source only
+when evidence is current; stale or unavailable evidence opens the meeting
+without claiming an exact timestamp. The app reuses the existing
+`ManageMeetingCommitmentInbox` mutation boundary, while direct confirmation
+remains exclusively in Meeting Detail.
+
+**Consequences:** users gain one bounded cross-meeting triage queue without
+weakening confirmed continuity, duplicating review policy, or introducing an
+N+1 Meeting Detail read. Confirmed filters, reminders, grouping, and mutation
+state cannot leak into suggestion review. Pre-meeting composition, candidate
+admission, external task creation, sync/export, CLI, and MCP remain unchanged.

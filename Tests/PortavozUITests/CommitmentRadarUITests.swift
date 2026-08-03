@@ -106,4 +106,55 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             "a Radar source must open its exact durable meeting")
         XCTAssertTrue(app.staticTexts["Test meeting"].exists)
     }
+
+    @MainActor
+    func testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedCommitmentRadar: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        let radar = app.buttons["library-commitment-radar-button"]
+        XCTAssertTrue(radar.waitForExistence(timeout: 10))
+        radar.click()
+
+        let reviewMode = app.control(
+            withIdentifier: "commitment-radar-mode-review")
+        XCTAssertTrue(reviewMode.waitForExistence(timeout: 10))
+        reviewMode.click()
+
+        let reviewID = "B5E00000-0000-4000-8000-000000000002"
+        let reviewPage = app.control(withIdentifier: "commitment-review-page")
+        XCTAssertTrue(
+            reviewPage.waitForExistence(timeout: 10),
+            "generated work must appear in the separate review mode")
+        XCTAssertFalse(
+            app.control(withIdentifier: "commitment-radar-owner-filter").exists,
+            "confirmed filters must not leak into generated review")
+        let open = app.control(
+            withIdentifier: "commitment-review-open-\(reviewID)")
+        XCTAssertTrue(
+            open.waitForExistence(timeout: 5),
+            "a suggestion must offer complete evidence review, not confirmation")
+        attachScreenshot(of: app, named: "commitment-review-queue")
+
+        open.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-header-section")
+                .waitForExistence(timeout: 10),
+            "review must reopen the complete source meeting")
+        let citedSegment = app.control(
+            withIdentifier: "transcript-segment-B5B00000-0000-4000-8000-000000000002")
+        XCTAssertTrue(citedSegment.waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            citedSegment.isSelected,
+            "current evidence must focus the exact transcript source")
+        XCTAssertEqual(
+            app.control(withIdentifier: "player-current-time").value as? String,
+            "0:03")
+        attachScreenshot(of: app, named: "commitment-review-exact-source")
+    }
 }

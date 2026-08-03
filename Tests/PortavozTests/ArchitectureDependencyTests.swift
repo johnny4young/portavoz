@@ -1625,6 +1625,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/CommitmentRadarModel.swift")
         let view = try Self.contents(
             of: "Sources/portavoz-app/CommitmentRadarView.swift")
+        let dueDateSheet = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentRadarDueDateSheet.swift")
         let composition = try Self.contents(
             of: "Sources/portavoz-app/AppServices+CommitmentRadar.swift")
         let root = try Self.contents(of: "Sources/portavoz-app/ContentView.swift")
@@ -1653,7 +1655,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("commitmentRadarPersonNames"))
         XCTAssertFalse(storage.contains("meetingDetail"))
         XCTAssertTrue(model.contains("protocol CommitmentRadarModelClient"))
-        XCTAssertTrue(model.contains("private var requestID = UUID()"))
+        XCTAssertTrue(model.contains("private var radarRequestID = UUID()"))
+        XCTAssertTrue(model.contains("private var reviewRequestID = UUID()"))
         XCTAssertTrue(model.contains("case ownerChanged"))
         XCTAssertTrue(model.contains("case groupingChanged"))
         XCTAssertTrue(model.contains("case complete(CommitmentID)"))
@@ -1663,7 +1666,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(composition.contains("ManageCommitmentRadar(repository: store)"))
         XCTAssertTrue(root.contains("@State private var commitmentRadarModel"))
         XCTAssertTrue(root.contains("case .commitments:"))
-        XCTAssertTrue(view.contains("let onOpenMeeting: (MeetingID) -> Void"))
+        XCTAssertTrue(view.contains(
+            "let onOpenMeeting: (MeetingID, TimeInterval?) -> Void"))
         XCTAssertTrue(view.contains("case .owner:"))
         XCTAssertTrue(view.contains("case .meeting:"))
         XCTAssertFalse(view.contains("AppServices"))
@@ -1672,7 +1676,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("IntelligenceKit"))
         XCTAssertTrue(view.contains("commitment-radar-complete-"))
         XCTAssertTrue(view.contains("commitment-radar-reopen-"))
-        XCTAssertTrue(view.contains("commitment-radar-due-editor"))
+        XCTAssertTrue(dueDateSheet.contains("commitment-radar-due-editor"))
         XCTAssertTrue(scaleBenchmark.contains(
             "static let canonicalCorpusSizes = [1_000, 10_000]"))
         XCTAssertTrue(scaleBenchmark.contains("p95BudgetMilliseconds: 100"))
@@ -1910,7 +1914,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D264"))
     }
 
-    func testCommitmentReviewQueueIsBoundedReadOnlyAndNotComposed() throws {
+    func testCommitmentReviewQueueIsBoundedAndComposedAsSeparateReviewTruth() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/CommitmentReviewQueue.swift")
         let application = try Self.contents(
@@ -1923,6 +1927,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+SyncAggregate.swift")
         let composition = try Self.contents(
             of: "Sources/portavoz-app/AppServices+CommitmentRadar.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentRadarModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentReviewQueueView.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(core.contains("case library"))
@@ -1942,8 +1950,18 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(storage.contains("meetingDetail"))
         XCTAssertFalse(bundle.contains("CommitmentReviewQueue"))
         XCTAssertFalse(meetingSync.contains("CommitmentReviewQueue"))
-        XCTAssertFalse(composition.contains("LoadCommitmentReviewQueue"))
+        XCTAssertTrue(composition.contains("LoadCommitmentReviewQueue"))
+        XCTAssertTrue(composition.contains("makeCommitmentInboxManager()"))
+        XCTAssertTrue(composition.contains(".review(request)"))
+        XCTAssertTrue(model.contains("case confirmed"))
+        XCTAssertTrue(model.contains("case review"))
+        XCTAssertTrue(model.contains("reviewRequestID"))
+        XCTAssertTrue(view.contains("Review in meeting"))
+        XCTAssertTrue(view.contains("Dismiss"))
+        XCTAssertTrue(view.contains("Review later"))
+        XCTAssertFalse(view.contains("Confirm commitment"))
         XCTAssertTrue(decisions.contains("## D265"))
+        XCTAssertTrue(decisions.contains("## D266"))
     }
 
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {

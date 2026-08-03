@@ -20,4 +20,16 @@ extension AppServices: CommitmentRadarModelClient {
         _ = try await ManageCommitmentRadar(repository: store).execute(request)
         commitmentReminders.kick()
     }
+
+    func loadCommitmentReviewQueue(
+        _ request: LoadCommitmentReviewQueueRequest
+    ) async throws -> CommitmentReviewQueuePage {
+        try await LoadCommitmentReviewQueue(repository: store).execute(request)
+    }
+
+    func reviewMeetingCommitment(
+        _ request: ReviewMeetingCommitmentRequest
+    ) async throws {
+        _ = try await makeCommitmentInboxManager().execute(.review(request))
+    }
 }

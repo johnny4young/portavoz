@@ -67,6 +67,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "CommitmentRadarUITests",
             "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting",
         ),
+        test_id(
+            "CommitmentRadarUITests",
+            "testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence",
+        ),
     ),
     "main-shell": (
         test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),

@@ -74,7 +74,14 @@ struct ContentView: View {
                     CommitmentRadarView(
                         model: commitmentRadarModel,
                         reminders: services.commitmentReminders,
-                        onOpenMeeting: { route = .meeting($0) })
+                        onOpenMeeting: { meetingID, timestamp in
+                            if let timestamp {
+                                services.requestMeetingSeek(
+                                    meetingID: meetingID,
+                                    timestamp: timestamp)
+                            }
+                            route = .meeting(meetingID)
+                        })
                 case nil:
                     ContentUnavailableView(
                         "Portavoz",

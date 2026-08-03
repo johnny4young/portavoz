@@ -106,6 +106,80 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertFalse(model.state.mutationFailed)
     }
 
+    func testReviewModeLoadsItsOwnPageWithoutReplacingConfirmedState() async {
+        let confirmed = Self.page(title: "Send the rollout brief")
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let client = CommitmentRadarModelClientFake(
+            responses: [.success(confirmed)],
+            mutationResponses: [],
+            reviewResponses: [.success(review)],
+            reviewMutationResponses: [])
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.load)
+        await model.send(.modeChanged(.review))
+
+        XCTAssertEqual(model.state.mode, .review)
+        XCTAssertEqual(model.state.phase, .loaded)
+        XCTAssertEqual(model.state.page?.items.first?.commitment.title,
+                       "Send the rollout brief")
+        XCTAssertEqual(model.state.reviewPhase, .loaded)
+        XCTAssertEqual(model.state.reviewPage?.items.map(\.id),
+                       review.items.map(\.id))
+        XCTAssertEqual(client.requests.count, 1)
+        XCTAssertEqual(client.reviewRequests, [LoadCommitmentReviewQueueRequest()])
+    }
+
+    func testReviewDismissUsesExistingBoundaryAndReloadsOnlyReviewQueue() async throws {
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [
+                .success(review),
+                .success(CommitmentReviewQueuePage(items: [], totalCount: 0)),
+            ],
+            reviewMutationResponses: [.success(())])
+        let model = CommitmentRadarModel(client: client)
+        let item = try XCTUnwrap(review.items.first)
+
+        await model.send(.modeChanged(.review))
+        await model.send(.dismissReview(
+            meetingID: item.meetingID,
+            actionItemID: item.id))
+
+        XCTAssertEqual(client.reviewMutations, [.dismiss(
+            meetingID: item.meetingID,
+            actionItemID: item.id)])
+        XCTAssertEqual(model.state.reviewPhase, .empty)
+        XCTAssertEqual(model.state.reviewPage?.items.count, 0)
+        XCTAssertNil(model.state.reviewingActionItemID)
+        XCTAssertTrue(client.mutations.isEmpty)
+    }
+
+    func testReviewFailureDoesNotReplaceConfirmedFailureState() async throws {
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [.success(review)],
+            reviewMutationResponses: [.failure(.unavailable)])
+        let model = CommitmentRadarModel(client: client)
+        let item = try XCTUnwrap(review.items.first)
+
+        await model.send(.modeChanged(.review))
+        await model.send(.deferReview(
+            meetingID: item.meetingID,
+            actionItemID: item.id,
+            revisitAt: Date(timeIntervalSince1970: 1_900_000_000)))
+
+        XCTAssertTrue(model.state.reviewMutationFailed)
+        XCTAssertFalse(model.state.mutationFailed)
+        XCTAssertEqual(model.state.reviewPage?.items.map(\.id), [item.id])
+        await model.send(.dismissReviewMutationFailure)
+        XCTAssertFalse(model.state.reviewMutationFailed)
+    }
+
     private static func page(
         title: String,
         status: CommitmentStatus = .confirmed,
@@ -126,6 +200,32 @@ final class CommitmentRadarModelTests: XCTestCase {
             historyCount: 0)
         return CommitmentRadarPage(items: [item], totalCount: 1)
     }
+
+    private static func reviewPage(title: String) -> CommitmentReviewQueuePage {
+        let meetingID = MeetingID()
+        let speaker = Speaker(meetingID: meetingID, label: "S1")
+        let segment = TranscriptSegment(
+            meetingID: meetingID,
+            speakerID: speaker.id,
+            channel: .system,
+            text: "I will send the launch checklist.",
+            startTime: 3,
+            endTime: 6,
+            isFinal: true)
+        let item = CommitmentReviewQueueItem(
+            meetingID: meetingID,
+            meetingTitle: "Launch review",
+            meetingStartedAt: Date(timeIntervalSince1970: 1_800_000_000),
+            meetingEndedAt: Date(timeIntervalSince1970: 1_800_000_600),
+            actionItem: ActionItem(text: title, ownerSpeakerID: speaker.id),
+            evidence: TranscriptEvidenceResolution(
+                status: .current,
+                segments: [segment]),
+            evidenceCount: 1,
+            suggestedOwner: nil,
+            reason: .newAfterMeeting)
+        return CommitmentReviewQueuePage(items: [item], totalCount: 1)
+    }
 }
 
 @MainActor
@@ -136,15 +236,23 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
 
     var responses: [Result<CommitmentRadarPage, Failure>]
     var mutationResponses: [Result<Void, Failure>]
+    var reviewResponses: [Result<CommitmentReviewQueuePage, Failure>]
+    var reviewMutationResponses: [Result<Void, Failure>]
     var requests: [LoadCommitmentRadarRequest] = []
     var mutations: [ManageCommitmentRadarRequest] = []
+    var reviewRequests: [LoadCommitmentReviewQueueRequest] = []
+    var reviewMutations: [ReviewMeetingCommitmentRequest] = []
 
     init(
         responses: [Result<CommitmentRadarPage, Failure>],
-        mutationResponses: [Result<Void, Failure>]
+        mutationResponses: [Result<Void, Failure>],
+        reviewResponses: [Result<CommitmentReviewQueuePage, Failure>] = [],
+        reviewMutationResponses: [Result<Void, Failure>] = []
     ) {
         self.responses = responses
         self.mutationResponses = mutationResponses
+        self.reviewResponses = reviewResponses
+        self.reviewMutationResponses = reviewMutationResponses
     }
 
     func loadCommitmentRadar(
@@ -159,5 +267,19 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     ) async throws {
         mutations.append(request)
         return try mutationResponses.removeFirst().get()
+    }
+
+    func loadCommitmentReviewQueue(
+        _ request: LoadCommitmentReviewQueueRequest
+    ) async throws -> CommitmentReviewQueuePage {
+        reviewRequests.append(request)
+        return try reviewResponses.removeFirst().get()
+    }
+
+    func reviewMeetingCommitment(
+        _ request: ReviewMeetingCommitmentRequest
+    ) async throws {
+        reviewMutations.append(request)
+        return try reviewMutationResponses.removeFirst().get()
     }
 }

@@ -9561,6 +9561,186 @@
         }
       }
     },
+    "Commitment view": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista de compromisos"
+          }
+        }
+      }
+    },
+    "To review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por revisar"
+          }
+        }
+      }
+    },
+    "Generated suggestions waiting for your decision.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerencias generadas que esperan tu decisión."
+          }
+        }
+      }
+    },
+    "Suggestions, not commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerencias, no compromisos"
+          }
+        }
+      }
+    },
+    "Couldn’t update review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo actualizar la revisión"
+          }
+        }
+      }
+    },
+    "The suggestion is still safe on this Mac. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sugerencia sigue segura en este Mac. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "Loading suggestions to review…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando sugerencias por revisar…"
+          }
+        }
+      }
+    },
+    "Couldn’t load suggestions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar las sugerencias"
+          }
+        }
+      }
+    },
+    "Nothing was confirmed or changed. Your meeting evidence is still safe.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se confirmó ni cambió nada. La evidencia de tu reunión sigue segura."
+          }
+        }
+      }
+    },
+    "Nothing to review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada por revisar"
+          }
+        }
+      }
+    },
+    "New evidence-backed suggestions and due deferrals will appear here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las nuevas sugerencias respaldadas por evidencia y las revisiones pospuestas que ya vencieron aparecerán aquí."
+          }
+        }
+      }
+    },
+    "Showing %d of %d suggestions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrando %d de %d sugerencias"
+          }
+        }
+      }
+    },
+    "Only the newest suggestions are shown.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo se muestran las sugerencias más recientes."
+          }
+        }
+      }
+    },
+    "Review in meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar en la reunión"
+          }
+        }
+      }
+    },
+    "Open the complete meeting evidence before confirming.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre la evidencia completa de la reunión antes de confirmar."
+          }
+        }
+      }
+    },
+    "Showing %d of %d evidence excerpts": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrando %d de %d fragmentos de evidencia"
+          }
+        }
+      }
+    },
+    "New after meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nueva después de la reunión"
+          }
+        }
+      }
+    },
+    "Ready to review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lista para revisar"
+          }
+        }
+      }
+    },
     "Commitment Radar": {
       "localizations": {
         "es": {

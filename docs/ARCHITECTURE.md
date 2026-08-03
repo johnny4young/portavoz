@@ -1147,8 +1147,14 @@ present only when the generated owner speaker has an exact live canonical
 person; the queue never infers a deadline. Evidence freshness describes the
 complete source, while returned segments are an explicitly bounded preview
 with total/truncation metadata. The read model cannot confirm, schedule, sync,
-or export work: exact review and confirmation still reopen Meeting Detail.
-There is not yet a composed global or pre-meeting queue surface.
+or export work. The macOS app composes the whole-library projection as a
+distinct **To review** mode inside Commitment Radar. Its load, page, mutation,
+and failure state remain independent from the confirmed Radar page. Cards can
+only dismiss, defer, or reopen the complete source meeting. Current evidence
+requests the exact transcript time; stale or unavailable evidence opens the
+meeting without claiming exact focus. Direct confirmation remains exclusively
+in Meeting Detail, so a bounded preview cannot become commitment truth. There
+is not yet a pre-meeting queue surface.
 
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
@@ -1172,15 +1178,18 @@ read instead of publishing misleading activity. Every item carries bounded
 source and history rows plus source-meeting navigation metadata; deleted or
 dismissed commitments never enter the result.
 
-The macOS app adopts that read through a window-owned `CommitmentRadarModel`
-and one narrow `AppServices` adapter at the composition root. A dedicated
-Library route renders confirmed work only, maps owner, due-date, and activity
-choices to the ApplicationKit query, and groups the resulting immutable page by
-canonical owner or exact source meeting. Selecting a source opens that durable
-meeting through the shared typed route. SwiftUI does not import StorageKit,
-invoke intelligence, hydrate Meeting Detail per row, or promote generated
-action items. Project and topic grouping remain absent because neither has a
-canonical product entity.
+The macOS app adopts both bounded reads through a window-owned
+`CommitmentRadarModel` and narrow `AppServices` adapters at the composition
+root. A dedicated Library route keeps confirmed work and generated review in
+explicitly labeled segmented modes. The confirmed mode maps owner, due-date,
+and activity choices to the Radar query and groups the resulting immutable page
+by canonical owner or exact source meeting. The review mode uses the existing
+ApplicationKit inbox manager for reversible dismiss/defer mutations and reloads
+only its own page. Selecting a confirmed source opens its durable meeting;
+reviewing a current generated source additionally seeks to the exact evidence
+time. SwiftUI does not import StorageKit, invoke intelligence, hydrate Meeting
+Detail per row, or promote generated action items. Project and topic grouping
+remain absent because neither has a canonical product entity.
 
 Radar lifecycle changes cross a separate `ManageCommitmentRadar` application
 boundary. The view can request only complete, reopen, or due-date reschedule;
@@ -3111,14 +3120,14 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,810 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,839 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 522 Swift source files;
-- 62 XCUITest cases define the English and Spanish release gate;
+- strict SwiftLint reports zero violations across 531 first-party Swift source files;
+- 64 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

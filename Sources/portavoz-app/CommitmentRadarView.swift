@@ -1,12 +1,12 @@
 import PortavozCore
 import SwiftUI
 
-/// Global, confirmed-only continuity. Generated candidates stay in Meeting
-/// Detail until the user explicitly promotes them to commitment truth.
+/// One global review destination with two explicitly separated truth stages.
+/// Generated candidates never inherit confirmed Radar semantics.
 struct CommitmentRadarView: View {
     let model: CommitmentRadarModel
     let reminders: CommitmentReminderModel
-    let onOpenMeeting: (MeetingID) -> Void
+    let onOpenMeeting: (MeetingID, TimeInterval?) -> Void
 
     @State private var expandedItems: Set<CommitmentID> = []
     @State private var rescheduleItem: CommitmentRadarItem?
@@ -17,9 +17,16 @@ struct CommitmentRadarView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
-                CommitmentReminderStatusCard(model: reminders)
-                filters
-                content
+                modePicker
+                if state.mode == .confirmed {
+                    CommitmentReminderStatusCard(model: reminders)
+                    filters
+                    confirmedContent
+                } else {
+                    CommitmentReviewQueueView(
+                        model: model,
+                        onOpenMeeting: onOpenMeeting)
+                }
             }
             .padding(24)
             .frame(maxWidth: 980, alignment: .leading)
@@ -44,6 +51,17 @@ struct CommitmentRadarView: View {
             }
             .accessibilityIdentifier("commitment-radar-mutation-error-dismiss")
         }
+        .alert(
+            "Couldn’t update review",
+            isPresented: reviewMutationFailureBinding
+        ) {
+            Button("OK") {
+                Task { await model.send(.dismissReviewMutationFailure) }
+            }
+            .accessibilityIdentifier("commitment-review-mutation-error-dismiss")
+        } message: {
+            Text("The suggestion is still safe on this Mac. Try again.")
+        }
     }
 }
 
@@ -54,14 +72,28 @@ private extension CommitmentRadarView {
                 Text("Commitment Radar")
                     .font(.largeTitle.bold())
                     .accessibilityIdentifier("commitment-radar-title")
-                Text("Confirmed work, with its source and history.")
+                Text(headerDescription)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Label("Local and confirmed by you", systemImage: "checkmark.shield.fill")
+            Label(headerBadge, systemImage: headerBadgeIcon)
                 .font(.caption)
-                .foregroundStyle(.green)
+                .foregroundStyle(state.mode == .confirmed ? .green : PVDesign.accent)
         }
+    }
+
+    var modePicker: some View {
+        Picker("Commitment view", selection: modeBinding) {
+            Text("Confirmed")
+                .tag(CommitmentRadarModel.Mode.confirmed)
+                .accessibilityIdentifier("commitment-radar-mode-confirmed")
+            Text("To review")
+                .tag(CommitmentRadarModel.Mode.review)
+                .accessibilityIdentifier("commitment-radar-mode-review")
+        }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 360)
+        .accessibilityIdentifier("commitment-radar-mode")
     }
 
     var filters: some View {
@@ -184,7 +216,7 @@ private extension CommitmentRadarView {
             .accessibilityIdentifier(identifier)
     }
 
-    @ViewBuilder var content: some View {
+    @ViewBuilder var confirmedContent: some View {
         switch state.phase {
         case .idle, .loading:
             HStack(spacing: 10) {
@@ -331,7 +363,7 @@ private extension CommitmentRadarView {
            let meetingID = source.meetingID,
            source.isMeetingAvailable {
             Button {
-                onOpenMeeting(meetingID)
+                onOpenMeeting(meetingID, nil)
             } label: {
                 Label(
                     source.meetingTitle ?? L10n.text("Source meeting"),
@@ -386,7 +418,7 @@ private extension CommitmentRadarView {
         VStack(alignment: .leading, spacing: 2) {
             if let meetingID = source.meetingID, source.isMeetingAvailable {
                 Button(source.meetingTitle ?? L10n.text("Source meeting")) {
-                    onOpenMeeting(meetingID)
+                    onOpenMeeting(meetingID, nil)
                 }
                 .buttonStyle(.link)
             } else {
@@ -408,7 +440,7 @@ private extension CommitmentRadarView {
                    event.isSourceMeetingAvailable {
                     Text("·")
                     Button(event.sourceMeetingTitle ?? L10n.text("Source meeting")) {
-                        onOpenMeeting(meetingID)
+                        onOpenMeeting(meetingID, nil)
                     }
                     .buttonStyle(.link)
                 }
@@ -431,6 +463,37 @@ private extension CommitmentRadarView {
 }
 
 private extension CommitmentRadarView {
+    var headerDescription: LocalizedStringKey {
+        switch state.mode {
+        case .confirmed:
+            "Confirmed work, with its source and history."
+        case .review:
+            "Generated suggestions waiting for your decision."
+        }
+    }
+
+    var headerBadge: LocalizedStringKey {
+        switch state.mode {
+        case .confirmed:
+            "Local and confirmed by you"
+        case .review:
+            "Suggestions, not commitments"
+        }
+    }
+
+    var headerBadgeIcon: String {
+        switch state.mode {
+        case .confirmed: "checkmark.shield.fill"
+        case .review: "sparkles.rectangle.stack"
+        }
+    }
+
+    var modeBinding: Binding<CommitmentRadarModel.Mode> {
+        Binding(
+            get: { state.mode },
+            set: { mode in Task { await model.send(.modeChanged(mode)) } })
+    }
+
     var ownerSelectionTitle: String {
         switch state.owner {
         case .all: L10n.text("All")
@@ -615,75 +678,20 @@ private extension CommitmentRadarView {
                 }
             })
     }
+
+    var reviewMutationFailureBinding: Binding<Bool> {
+        Binding(
+            get: { state.reviewMutationFailed },
+            set: { visible in
+                if !visible {
+                    Task { await model.send(.dismissReviewMutationFailure) }
+                }
+            })
+    }
 }
 
 private struct CommitmentRadarGroup: Identifiable {
     let id: String
     let title: String
     var items: [CommitmentRadarItem]
-}
-
-private struct CommitmentRadarDueDateSheet: View {
-    let item: CommitmentRadarItem
-    let cancel: @MainActor () -> Void
-    let save: @MainActor (Date?) async -> Void
-
-    @State private var includesDueDate: Bool
-    @State private var dueAt: Date
-    @State private var isSaving = false
-
-    init(
-        item: CommitmentRadarItem,
-        cancel: @escaping @MainActor () -> Void,
-        save: @escaping @MainActor (Date?) async -> Void
-    ) {
-        self.item = item
-        self.cancel = cancel
-        self.save = save
-        _includesDueDate = State(initialValue: item.commitment.dueAt != nil)
-        _dueAt = State(initialValue: item.commitment.dueAt
-            ?? Date().addingTimeInterval(24 * 60 * 60))
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Due date")
-                .font(.title3.weight(.semibold))
-            Text(verbatim: item.commitment.title)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-
-            Toggle("Add due date", isOn: $includesDueDate)
-                .accessibilityIdentifier("commitment-radar-due-toggle")
-            if includesDueDate {
-                DatePicker(
-                    "Due date",
-                    selection: $dueAt,
-                    displayedComponents: [.date])
-                    .accessibilityIdentifier("commitment-radar-due-date")
-            }
-
-            HStack {
-                Spacer()
-                Button("Cancel", action: cancel)
-                    .keyboardShortcut(.cancelAction)
-                    .accessibilityIdentifier("commitment-radar-due-cancel")
-                Button("Save") {
-                    isSaving = true
-                    Task {
-                        await save(includesDueDate ? dueAt : nil)
-                        isSaving = false
-                    }
-                }
-                .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
-                .disabled(isSaving)
-                .accessibilityIdentifier("commitment-radar-due-save")
-            }
-        }
-        .padding(20)
-        .frame(width: 430)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("commitment-radar-due-editor")
-    }
 }

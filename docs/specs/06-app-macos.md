@@ -1835,18 +1835,25 @@ exercises this same production path in the durable-resume XCUITest (D63).
   identifiers and a dedicated disposable `-seed-commitment-inbox` fixture
   verifies the English and Spanish journey without changing the default seed's
   identity behavior.
-- **Global Commitment Radar (D241):** Library exposes one dedicated Radar route
-  for confirmed continuity only. A per-window `CommitmentRadarModel` maps owner,
+- **Global Commitment Radar (D241/D266):** Library exposes one dedicated Radar
+  route with explicitly separate **Confirmed** and **To review** modes. A
+  per-window `CommitmentRadarModel` maps owner,
   due-date, and activity filters to a narrow ApplicationKit client, fences stale
   async responses, and switches presentation-only grouping between canonical
   owner and exact source meeting without reloading. Cards expose bounded source
   and lifecycle counts, optional details, and the first exact meeting link; the
-  shared typed route opens that durable source. Generated candidates remain in
-  Meeting Detail until explicit confirmation. The view imports neither
-  StorageKit nor Intelligence, and project/topic grouping is unavailable until
-  a canonical entity exists. Stable identifiers and the disposable
+  shared typed route opens that durable source. Generated candidates remain
+  suggestions until explicit confirmation in Meeting Detail; the separate
+  **To review** mode only adds a bounded library-wide route back to that source.
+  The view imports neither StorageKit nor Intelligence, and project/topic
+  grouping is unavailable until a canonical entity exists. Stable identifiers
+  and the disposable
   `-seed-commitment-radar` fixture verify filtering and exact source navigation
-  in English and Spanish.
+  in English and Spanish. D266 preserves that confirmed page while loading the
+  D265 generated-work queue into independent state. Suggestion cards can only
+  dismiss, defer, or reopen the complete source meeting; current evidence seeks
+  to its exact transcript time, while stale/unavailable evidence opens without
+  a false exact-focus claim. Direct confirmation remains in Meeting Detail.
 - **Durable Radar actions (D256):** each confirmed card can change its due date
   or be completed, and each completed card can be restored. The window model
   serializes one mutation, preserves the visible page on failure, and reloads
@@ -1854,14 +1861,15 @@ exercises this same production path in the durable-resume XCUITest (D63).
   timestamp, and the append-only transition; SwiftUI never writes StorageKit or
   invents source history. Reminder snooze remains outside this surface because
   it must not alter the commitment due date.
-- **Commitment review queue foundation (D265):** ApplicationKit now exposes one
+- **Commitment review queue (D265–D266):** ApplicationKit exposes one
   read-only, clock-sampled request for either the whole library or an exact
   bounded meeting set. It returns only pending evidence-backed generated work,
   carries explicit root/evidence truncation, and may suggest an owner only from
   an exact canonical person link. This is not a second confirmation surface:
   the evidence rows are a preview, direct confirmation remains in Meeting
-  Detail, and no queue model, route, card, pre-meeting composition, reminder,
-  sync, or export action is installed yet.
+  Detail. The whole-library read is composed only in Radar's visually distinct
+  **To review** mode through the existing inbox mutation manager; it does not
+  add pre-meeting composition, reminders, sync, export, CLI, or MCP behavior.
 - **Commitment reminder delivery (D257–D264):** the lower layers
   distinguish commitment truth from local delivery state through a due-date-
   fenced current projection and immutable schedule/present/snooze/dismiss/
@@ -1899,8 +1907,8 @@ exercises this same production path in the durable-resume XCUITest (D63).
   ApplicationKit records its exact delivery plus terminal dismiss while the
   schedule and due-date fences still match, so relaunch cannot silently rearm
   it; the delegate neither activates Portavoz nor accesses StorageKit. Review
-  The D265 lower-layer queue remains uncomposed; external-sync mutation signals
-  remain absent.
+  queue composition is limited to post-meeting global review; external-sync
+  mutation signals remain absent.
 - **Summary sources (D87):** the overview tab renders compact localized
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source

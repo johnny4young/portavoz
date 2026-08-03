@@ -14,11 +14,26 @@ protocol CommitmentRadarModelClient: AnyObject {
     func mutateCommitmentRadar(
         _ request: ManageCommitmentRadarRequest
     ) async throws
+
+    func loadCommitmentReviewQueue(
+        _ request: LoadCommitmentReviewQueueRequest
+    ) async throws -> CommitmentReviewQueuePage
+
+    func reviewMeetingCommitment(
+        _ request: ReviewMeetingCommitmentRequest
+    ) async throws
 }
 
 @MainActor
 @Observable
 final class CommitmentRadarModel {
+    enum Mode: String, CaseIterable, Identifiable {
+        case confirmed
+        case review
+
+        var id: String { rawValue }
+    }
+
     enum LoadPhase: Equatable {
         case idle
         case loading
@@ -91,6 +106,7 @@ final class CommitmentRadarModel {
     }
 
     struct State {
+        fileprivate(set) var mode: Mode = .confirmed
         fileprivate(set) var phase: LoadPhase = .idle
         fileprivate(set) var owner: OwnerSelection = .all
         fileprivate(set) var due: DueSelection = .all
@@ -99,10 +115,15 @@ final class CommitmentRadarModel {
         fileprivate(set) var page: CommitmentRadarPage?
         fileprivate(set) var mutatingCommitmentID: CommitmentID?
         fileprivate(set) var mutationFailed = false
+        fileprivate(set) var reviewPhase: LoadPhase = .idle
+        fileprivate(set) var reviewPage: CommitmentReviewQueuePage?
+        fileprivate(set) var reviewingActionItemID: UUID?
+        fileprivate(set) var reviewMutationFailed = false
     }
 
     enum Action {
         case load
+        case modeChanged(Mode)
         case ownerChanged(OwnerSelection)
         case dueChanged(DueSelection)
         case activityChanged(ActivitySelection)
@@ -111,30 +132,55 @@ final class CommitmentRadarModel {
         case reopen(CommitmentID)
         case reschedule(CommitmentID, Date?)
         case dismissMutationFailure
+        case dismissReview(meetingID: MeetingID, actionItemID: UUID)
+        case deferReview(meetingID: MeetingID, actionItemID: UUID, revisitAt: Date)
+        case dismissReviewMutationFailure
     }
 
     private(set) var state = State()
 
     private let client: any CommitmentRadarModelClient
-    private var requestID = UUID()
+    private var radarRequestID = UUID()
+    private var reviewRequestID = UUID()
 
     init(client: any CommitmentRadarModelClient) {
         self.client = client
     }
 
     func send(_ action: Action) async {
+        if await handleRouteAction(action) { return }
+        if await handleConfirmedAction(action) { return }
+        await handleReviewAction(action)
+    }
+}
+
+private extension CommitmentRadarModel {
+    func handleRouteAction(_ action: Action) async -> Bool {
         switch action {
         case .load:
-            await load()
+            await loadCurrentMode()
+            return true
+        case .modeChanged(let mode):
+            guard state.mode != mode else { return true }
+            state.mode = mode
+            await loadCurrentMode()
+            return true
+        default:
+            return false
+        }
+    }
+
+    func handleConfirmedAction(_ action: Action) async -> Bool {
+        switch action {
         case .ownerChanged(let owner):
             state.owner = owner
-            await load()
+            await loadRadar()
         case .dueChanged(let due):
             state.due = due
-            await load()
+            await loadRadar()
         case .activityChanged(let activity):
             state.activity = activity
-            await load()
+            await loadRadar()
         case .groupingChanged(let grouping):
             state.grouping = grouping
         case .complete(let commitmentID):
@@ -145,27 +191,61 @@ final class CommitmentRadarModel {
             await mutate(commitmentID, mutation: .reschedule(dueAt))
         case .dismissMutationFailure:
             state.mutationFailed = false
+        default:
+            return false
+        }
+        return true
+    }
+
+    func handleReviewAction(_ action: Action) async {
+        switch action {
+        case .dismissReview(let meetingID, let actionItemID):
+            await mutateReview(
+                actionItemID,
+                request: .dismiss(
+                    meetingID: meetingID,
+                    actionItemID: actionItemID))
+        case .deferReview(let meetingID, let actionItemID, let revisitAt):
+            await mutateReview(
+                actionItemID,
+                request: .deferUntil(
+                    meetingID: meetingID,
+                    actionItemID: actionItemID,
+                    revisitAt: revisitAt))
+        case .dismissReviewMutationFailure:
+            state.reviewMutationFailed = false
+        default:
+            assertionFailure("Unhandled Commitment Radar action")
         }
     }
 }
 
 private extension CommitmentRadarModel {
-    func load(showProgress: Bool = true) async {
+    func loadCurrentMode() async {
+        switch state.mode {
+        case .confirmed:
+            await loadRadar()
+        case .review:
+            await loadReviewQueue()
+        }
+    }
+
+    func loadRadar(showProgress: Bool = true) async {
         let currentRequestID = UUID()
-        requestID = currentRequestID
+        radarRequestID = currentRequestID
         if showProgress { state.phase = .loading }
         do {
             let page = try await client.loadCommitmentRadar(LoadCommitmentRadarRequest(
                 owner: state.owner.filter,
                 due: state.due.filter,
                 activity: state.activity.filter))
-            guard requestID == currentRequestID, !Task.isCancelled else { return }
+            guard radarRequestID == currentRequestID, !Task.isCancelled else { return }
             state.page = page
             state.phase = page.items.isEmpty ? .empty : .loaded
         } catch is CancellationError {
             // A newer route/filter task owns presentation now.
         } catch {
-            guard requestID == currentRequestID, !Task.isCancelled else { return }
+            guard radarRequestID == currentRequestID, !Task.isCancelled else { return }
             state.page = nil
             state.phase = .failed
         }
@@ -183,11 +263,52 @@ private extension CommitmentRadarModel {
             try await client.mutateCommitmentRadar(ManageCommitmentRadarRequest(
                 commitmentID: commitmentID,
                 mutation: mutation))
-            await load(showProgress: false)
+            await loadRadar(showProgress: false)
         } catch is CancellationError {
             // Route teardown owns cancellation; no failure banner is useful.
         } catch {
             state.mutationFailed = true
+        }
+    }
+
+    func loadReviewQueue(showProgress: Bool = true) async {
+        let currentRequestID = UUID()
+        reviewRequestID = currentRequestID
+        if showProgress { state.reviewPhase = .loading }
+        do {
+            let page = try await client.loadCommitmentReviewQueue(
+                LoadCommitmentReviewQueueRequest())
+            guard reviewRequestID == currentRequestID, !Task.isCancelled else {
+                return
+            }
+            state.reviewPage = page
+            state.reviewPhase = page.items.isEmpty ? .empty : .loaded
+        } catch is CancellationError {
+            // A newer route or mode task owns presentation now.
+        } catch {
+            guard reviewRequestID == currentRequestID, !Task.isCancelled else {
+                return
+            }
+            state.reviewPage = nil
+            state.reviewPhase = .failed
+        }
+    }
+
+    func mutateReview(
+        _ actionItemID: UUID,
+        request: ReviewMeetingCommitmentRequest
+    ) async {
+        guard state.reviewingActionItemID == nil else { return }
+        state.reviewingActionItemID = actionItemID
+        state.reviewMutationFailed = false
+        defer { state.reviewingActionItemID = nil }
+        do {
+            try await client.reviewMeetingCommitment(request)
+            await loadReviewQueue(showProgress: false)
+        } catch is CancellationError {
+            // Route teardown owns cancellation; no failure banner is useful.
+        } catch {
+            state.reviewMutationFailed = true
         }
     }
 }
