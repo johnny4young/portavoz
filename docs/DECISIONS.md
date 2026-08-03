@@ -9688,3 +9688,37 @@ behavior fails closed, and a missing exact commitment source is disclosed
 rather than silently weakened. Ask integration, person/topic/date/status
 filters, cross-lane selection, corpus mapping, private field evidence, and
 relational scale budgets remain separate GRAPH-5/GRAPH-6 gates.
+
+## D279 — Map canonical blocker cases through public product boundaries (Aug 2026)
+
+**Context:** D278 characterized its exact query with focused hand-built Store
+fixtures, while D270's six multilingual `commitmentBlockers` oracle cases still
+ran only in an adapter-neutral Python evaluator. Passing both independently did
+not prove that product persistence, projection, ApplicationKit orchestration,
+and canonical expected identities agreed. Importing oracle facts directly into
+runtime storage would make the test fixture appear authoritative and could hide
+missing confirmation boundaries.
+
+**Decision:** add a test-only product conformance adapter for exactly the six
+canonical blocker cases. Every case receives a fresh in-memory `MeetingStore`
+and deterministic local identities. The adapter saves exact transcript and
+Summary evidence, confirms the generated-action commitment, confirms the
+decision observation, confirms a blocker only when the corpus contains one
+explicit confirmed `blocks` relation, runs leased graph projection, and invokes
+`LoadCommitmentBlockers`. It maps only returned typed decision and transcript
+identities back to external corpus IDs, then requires exact ordered results,
+exact ordered evidence, exclusion of every forbidden result, and the declared
+unsupported-causality abstention.
+
+Generated `associatedWith` distractors are deliberately not persisted. The
+adapter cannot write authority directly through GRDB, imports no
+IntelligenceKit provider, reads no user library, and is absent from app, Ask,
+CLI, MCP, sync, and UI composition. The corpus remains a test oracle rather
+than a product data source.
+
+**Consequences:** the first named D270 product query now proves end-to-end
+conformance across English, Spanish, cross-language, code-switched, and
+abstention cases using the real local boundaries. This does not make natural-
+language commitment discovery or answer synthesis available, does not validate
+the other five jobs, and supplies no relational scale or private field
+evidence. Those remain later gates.

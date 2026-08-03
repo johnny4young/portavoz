@@ -1860,6 +1860,40 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D278"))
     }
 
+    func testCanonicalBlockerCorpusTraversesPublicProductBoundaries() throws {
+        let adapter = try Self.contents(
+            of: "Tests/PortavozTests/MeetingMemoryGraphProductConformanceTests.swift")
+        let fixture = try Self.jsonObject(
+            at: "Fixtures/MeetingMemoryGraph/public-synthetic-v1.json")
+        let cases = try XCTUnwrap(fixture["cases"] as? [[String: Any]])
+        let blockerCases = cases.filter {
+            $0["job"] as? String == "commitmentBlockers"
+        }
+        let askServices = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertEqual(blockerCases.count, 6)
+        for boundary in [
+            "saveSummary(",
+            "confirmCommitment(",
+            "confirmDecision(",
+            "confirmDecisionCommitmentBlocker(",
+            "ProjectMeetingMemoryGraph(",
+            "LoadCommitmentBlockers(",
+        ] {
+            XCTAssertTrue(
+                adapter.contains(boundary),
+                "canonical blocker mapping bypasses \(boundary)")
+        }
+        XCTAssertTrue(adapter.contains("public-synthetic-v1.json"))
+        XCTAssertTrue(adapter.contains("unsupportedCausalLink"))
+        XCTAssertFalse(adapter.contains("import IntelligenceKit"))
+        XCTAssertFalse(adapter.contains("database.write"))
+        XCTAssertFalse(askServices.contains("LoadCommitmentBlockers"))
+        XCTAssertTrue(decisions.contains("## D279"))
+    }
+
     func testMeetingMemoryGraphProjectionIsDisposableDurableAndSignalDriven() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/MeetingMemoryGraphProjection.swift")

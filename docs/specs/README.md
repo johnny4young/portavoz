@@ -27,7 +27,7 @@ Portavoz **as-built** documentation: it describes what the code does TODAY, veri
 
 ## Related documents (outside specs/)
 
-- [../DECISIONS.md](../DECISIONS.md) — binding decisions D1–D278 and their rationale. The specs cite them by number.
+- [../DECISIONS.md](../DECISIONS.md) — binding decisions D1–D279 and their rationale. The specs cite them by number.
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) — high-level engineering and design rules.
 - [../PRODUCT.md](../PRODUCT.md) — vision, competitive map, FREE/PRO.
 - [../IOS.md](../IOS.md) — technical breakdown of the iOS phase.

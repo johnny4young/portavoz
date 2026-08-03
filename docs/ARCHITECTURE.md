@@ -1385,6 +1385,16 @@ causes abstention rather than a weakly sourced answer. Ask does not compose this
 use case yet: natural-language identity discovery, cross-lane ranking, answer
 synthesis, UI, scale budgets, and private field evidence remain later gates.
 
+The canonical public corpus is not runtime authority. A test-only conformance
+adapter maps its six commitment-blocker cases into isolated in-memory Stores
+through public Summary, commitment, decision, blocker, graph-maintenance, and
+ApplicationKit query boundaries. It maps only returned typed identities and
+exact source segments back to corpus identities. Generated association
+distractors are never persisted, and no model, network, user library, direct
+authority write, Ask composition, CLI, MCP, sync, or UI loads the fixture. The
+other five canonical query jobs and relational scale evidence remain separate
+gates.
+
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
 instead of borrowing the commitment's original source. Generated summary,
@@ -3407,7 +3417,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,950 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,952 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

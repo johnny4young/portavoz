@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,950 cases (13 environment-gated) + 65
+Status: the package inventory contains 1,952 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1338,6 +1338,23 @@ network, user library, SwiftUI, XCUITest, or screenshot evidence participates.
 The remaining five D270 adapters, corpus mapping, private field evidence, and
 scale budgets are intentionally not claimed.
 
+### Canonical blocker product conformance (D279)
+
+One deterministic package case loads exactly the six canonical
+`commitmentBlockers` examples and runs each in an isolated in-memory Store.
+Five answer cases cover English-to-English, Spanish-to-Spanish,
+English-to-Spanish, Spanish-to-English, and code-switched relationships. The
+sixth case confirms both endpoint authorities but no causal relationship and
+must return `unsupported-causal-link`.
+
+Every case uses public Summary, commitment, decision, blocker, graph
+maintenance, and ApplicationKit query boundaries. Assertions require exact
+ordered result and evidence identities and reject every forbidden distractor.
+The architecture ratchet prohibits IntelligenceKit, direct authority writes,
+and Ask composition. No model, network, user library, SwiftUI, XCUITest, or
+screenshot participates. The other five D270 product mappings, private field
+evidence, and relational scale budgets remain open.
+
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
@@ -1427,7 +1444,7 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,950 XCTest package cases (13
+The current field-reliability inventory is 1,952 XCTest package cases (13
 environment-gated), zero strict-lint violations across 581 first-party Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 65 XCUITest cases per locale. Release evidence requires the package
