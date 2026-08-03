@@ -1221,6 +1221,25 @@ advisory; it owns no threshold and cannot confirm, dismiss, remind, or automate
 anything. No private fixture receipt, accepted quality floor,
 diagnostic/bundle/sync/export surface, CLI, or MCP exposure is implemented yet.
 
+Meeting Memory Graph work begins with a query contract rather than a storage
+shape. The canonical public-synthetic corpus contains 36 isolated cases:
+six user jobs crossed with English-to-English, Spanish-to-Spanish,
+English-to-Spanish, Spanish-to-English, code-switched, and mandatory-abstention
+relationships. Each case names its expected typed result identities and exact
+supporting evidence identities; it also names tempting but forbidden results so
+an adapter cannot receive credit for plausible unsupported output. Source facts
+carry explicit generated/confirmed state, revision, and freshness. The fixture's
+typed facts are evaluator oracle material only, not a product schema or an
+authority to create topics, decisions, people, commitments, or edges.
+
+`meeting_memory_graph_quality.py` generates and validates that corpus
+deterministically, rejects drift and incomplete job/language coverage, and
+requires every abstention reason to agree with the source evidence itself. This
+foundation adds no StorageKit migration, projection job, read model, provider,
+model, threshold, app composition, UI, or graph database. SQLite remains the
+authoritative product store. No relational graph projection exists; any future
+projection must preserve this contract and remain derived from source evidence.
+
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
 clock that define start-of-day, the seven-day due-soon interval, and the
@@ -3185,7 +3204,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,861 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,862 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

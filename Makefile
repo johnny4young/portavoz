@@ -80,6 +80,14 @@ test-commitment-quality:
 	python3 scripts/commitment_quality.py validate \
 		--fixture Fixtures/CommitmentQuality/public-synthetic-v1.json
 
+## Validate the query-first Meeting Memory Graph contract. This public synthetic
+## corpus defines expected identities, exact evidence, and abstention before any
+## product graph schema, database, model, or serving policy exists.
+test-meeting-memory-graph-quality:
+	python3 -m unittest Tests.Tooling.test_meeting_memory_graph_quality
+	python3 scripts/meeting_memory_graph_quality.py verify-public \
+		--fixture Fixtures/MeetingMemoryGraph/public-synthetic-v1.json
+
 ## Emit the research-only deterministic control scorecard. It is a comparison
 ## anchor, not a product policy or an engine decision.
 commitment-quality-deterministic:

@@ -117,6 +117,11 @@ final class EnglishSourceTests: XCTestCase {
             return line.contains("f\"") || line.contains(".replace(\"")
                 || line.contains("owners = [")
         }
+        if relative == "scripts/meeting_memory_graph_quality.py" {
+            // The canonical Meeting Memory Graph generator carries literal
+            // Spanish question/evidence fixture data. Explanatory prose stays English.
+            return line.contains("\"")
+        }
         if relative == "Sources/ApplicationKit/BilingualSearchQueryExpander.swift" {
             // The explicit EN/ES search lexicon is runtime data, not public
             // source prose. Its comments and API documentation remain English.

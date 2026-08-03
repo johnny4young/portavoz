@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,861 cases (13 environment-gated) + 65
+Status: the package inventory contains 1,862 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1337,7 +1337,7 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,861 XCTest package cases (13
+The current field-reliability inventory is 1,862 XCTest package cases (13
 environment-gated), zero strict-lint violations across 537 first-party Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 65 XCUITest cases per locale. Release evidence requires the package
@@ -1487,6 +1487,17 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 
 ## Measurement harnesses
 
+- `make test-meeting-memory-graph-quality` runs thirteen deterministic tooling
+  tests and canonical verification over D270's 36-case public-synthetic query
+  corpus. The fixture is the exact cross-product of six longitudinal jobs and
+  six English, Spanish, cross-language, code-switched, or abstention
+  relationships. Every answer names typed result and exact evidence identities;
+  every abstention has a job-specific reason, isolated evidence, and forbidden
+  temptations. Validation rejects schema/provenance drift, duplicate or unknown
+  identities, stale/generated required truth, wrong evidence ownership,
+  incomplete distribution, language-relation drift, and source/oracle
+  disagreement. The harness invokes no model, database, network, user library,
+  or product graph and chooses no engine or serving threshold.
 - `make test-commitment-quality` validates the canonical 48-case public-
   synthetic commitment fixture and runs twelve deterministic tooling tests.
   The corpus is balanced across English, Spanish, and mixed speech and

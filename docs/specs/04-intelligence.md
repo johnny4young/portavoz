@@ -249,6 +249,32 @@ and applies only D244 to one bounded StorageKit target snapshot. Runtime errors
 remain typed failures rather than abstentions. The observer is not composed
 into the app and accepts no quality floor, threshold, or engine choice.
 
+## Meeting Memory Graph query contract (D270)
+
+Meeting Memory Graph intelligence begins with observable question/evidence
+behavior, not generated graph prose or a database choice. The canonical
+`Fixtures/MeetingMemoryGraph/public-synthetic-v1.json` corpus isolates 36 cases:
+six longitudinal jobs crossed with English-to-English, Spanish-to-Spanish,
+English-to-Spanish, Spanish-to-English, code-switched, and abstention
+relationships. Expected outcomes are typed result identities plus exact source
+evidence identities. Forbidden temptations make unsupported but plausible
+answers explicit.
+
+Facts inside this corpus are oracle-only labels. They carry generated or
+confirmed state, source revision, and freshness so the validator can prove that
+required results are current, confirmed, and evidence-backed. They are not a
+product `Topic`, `Decision`, or graph-edge schema. Each abstention case has one
+job-specific reason and an isolated source set whose visible text agrees that
+the necessary confirmed truth is absent.
+
+`scripts/meeting_memory_graph_quality.py` owns deterministic generation,
+validation, and canonical verification. It selects no embedding, language
+model, ranker, threshold, provider, graph engine, or serving behavior. No user
+library, model asset, network service, ApplicationKit composition, or
+StorageKit migration participates in this contract. Future GRAPH adapters must
+produce the typed result/evidence contract first; answer wording remains a
+separate presentation concern.
+
 ## Human claim feedback is not model material (D88)
 
 `SummaryClaimFeedback` belongs to Core/Storage/UI, not an Intelligence provider.

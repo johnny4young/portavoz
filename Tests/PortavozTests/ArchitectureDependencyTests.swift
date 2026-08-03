@@ -1792,6 +1792,38 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D269"))
     }
 
+    func testMeetingMemoryGraphStartsWithQueriesEvidenceAndAbstention() throws {
+        let harness = try Self.contents(
+            of: "scripts/meeting_memory_graph_quality.py")
+        let fixture = try Self.jsonObject(
+            at: "Fixtures/MeetingMemoryGraph/public-synthetic-v1.json")
+        let cases = try XCTUnwrap(fixture["cases"] as? [[String: Any]])
+        let makefile = try Self.contents(of: "Makefile")
+        let hygiene = try Self.contents(
+            of: "scripts/check-repository-hygiene.sh")
+        let package = try Self.contents(of: "Package.swift")
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertEqual(cases.count, 36)
+        for required in [
+            "decisionHistory", "changeSince", "personCommitments",
+            "commitmentBlockers", "firstDiscussion", "decisionConflicts",
+            "current confirmed/manual truth", "ABSTENTION_REASON_BY_JOB",
+        ] {
+            XCTAssertTrue(
+                harness.contains(required),
+                "Meeting Memory Graph query contract is missing \(required)")
+        }
+        XCTAssertTrue(makefile.contains("test-meeting-memory-graph-quality:"))
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_meeting_memory_graph_quality"))
+        XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
+        XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
+        XCTAssertTrue(schema.contains("public static let version = 24"))
+        XCTAssertTrue(decisions.contains("## D270"))
+    }
+
     func testCommitmentReminderReconciliationIsBoundedAndAdapterNeutral() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/CommitmentReminder.swift")

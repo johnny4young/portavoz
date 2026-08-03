@@ -9258,3 +9258,42 @@ nonblocking, a failed write can make the advisory cohort incomplete; it must not
 be described as an exhaustive audit. Owner-reviewed anonymized evidence and an
 accepted quality floor remain prerequisites for any future release gate or
 serving threshold.
+
+## D270 — Define Meeting Memory Graph questions before schema (Aug 2026)
+
+**Context:** a graph schema chosen from entity names alone would encode an
+unproven product shape before Portavoz can state which longitudinal questions
+must be answered, which evidence makes an answer valid, and when the correct
+behavior is to abstain. A synthetic corpus that shares unrelated truth across
+cases can also make an invalid adapter appear correct by leaking an answer that
+the isolated question did not support.
+
+**Decision:** define one adapter-neutral query contract before adding product
+storage. The canonical public-synthetic corpus contains the six named jobs:
+decision history, change since a prior meeting, one person's commitments,
+commitment blockers, first discussion, and contradictory or superseding
+decisions. Each job is exercised through English-to-English,
+Spanish-to-Spanish, English-to-Spanish, Spanish-to-English, code-switched, and
+mandatory-abstention cases for an exact 36-case cross-product.
+
+Every case owns an isolated meeting/evidence set, source facts with explicit
+generated/confirmed state, revision and freshness, expected typed result IDs,
+exact evidence IDs, and forbidden temptations. Expected answers are identities
+and evidence rather than generated prose. Abstentions use one typed reason per
+job and are valid only when both source text and typed oracle lack the required
+confirmed/current truth. The fixture's typed facts are evaluator-only oracle
+material; they do not choose a database model or become product entities.
+
+The generator and validator enforce canonical distribution, duplicate-key and
+identity safety, current confirmed answer truth, exact evidence ownership,
+language relationship, and abstention semantics. This slice adds no migration,
+topic/decision projection, background job, model, provider, UI, threshold, or
+graph engine. SQLite remains authoritative and a specialized graph remains
+unjustified until named product queries miss measured relational budgets.
+
+**Consequences:** GRAPH-1 and later adapters inherit a stable, bilingual,
+source-backed oracle and cannot silently redefine correctness around their own
+schema. The public corpus proves contract mechanics, not real-world quality.
+An owner-reviewed anonymized private pack, correction/rebuild behavior, and
+scale/latency evidence remain required before any longitudinal graph answer is
+served to users.
