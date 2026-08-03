@@ -1368,6 +1368,23 @@ multiple sources exist in the same meeting, current evidence wins over stale or
 unavailable historical material. Candidate reads and output are bounded and
 ordered newest first; limit overflow is explicit.
 
+The first **source-backed graph fact query** is an exact commitment-to-active-
+blockers read. Core owns a typed query, fact, page, and abstention
+contract. ApplicationKit owns one injected loading use case. StorageKit uses
+the ready decision-commitment-blocker graph edge only to select a bounded,
+newest-first candidate window, then rehydrates blocker, decision, commitment,
+and current accepted transcript authority in the same SQLite snapshot. The
+fact exposes current authoritative endpoint wording, the exact commitment and
+causal-relation evidence, and navigation to the blocker-confirmation segment.
+It never returns a graph row as evidence.
+
+Evidence freshness is evaluated before the caller's visible result limit, so a
+newer corrected candidate cannot hide an older current fact. Candidate-window
+overflow is explicit, and a commitment without exact transcript provenance
+causes abstention rather than a weakly sourced answer. Ask does not compose this
+use case yet: natural-language identity discovery, cross-lane ranking, answer
+synthesis, UI, scale budgets, and private field evidence remain later gates.
+
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
 instead of borrowing the commitment's original source. Generated summary,
@@ -3390,13 +3407,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,937 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,950 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 578 first-party Swift source files;
+- strict SwiftLint reports zero violations across 581 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

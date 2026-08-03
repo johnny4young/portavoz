@@ -1825,6 +1825,41 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
+    func testBlockerQueryUsesGraphTopologyButRehydratesAuthority() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/MeetingMemoryGraphQuery.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingMemoryGraphQuery.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/LoadCommitmentBlockers.swift")
+        let askServices = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertFalse(core.contains("import StorageKit"))
+        XCTAssertTrue(core.contains("decisionBlocksCommitment"))
+        XCTAssertTrue(core.contains("unsupportedCausalLink"))
+        XCTAssertTrue(core.contains("candidateBudgetExceeded"))
+        XCTAssertTrue(storage.contains(
+            "meetingMemoryGraphDecisionCommitmentBlocker"))
+        XCTAssertTrue(storage.contains(
+            "loadDecisionCommitmentBlockerContinuity"))
+        XCTAssertTrue(storage.contains("loadCommitmentContinuity"))
+        XCTAssertTrue(storage.contains("timelineEvidence("))
+        XCTAssertTrue(storage.contains(
+            "blocker.decisionID = edge.decisionID"))
+        XCTAssertTrue(storage.contains(
+            "blocker.commitmentID = edge.commitmentID"))
+        XCTAssertTrue(storage.contains("keys: Array(keys.prefix(limit))"))
+        XCTAssertTrue(storage.contains(
+            "facts: Array(hydration.facts.prefix(query.itemLimit))"))
+        XCTAssertTrue(application.contains(
+            "protocol CommitmentBlockerFactReading"))
+        XCTAssertTrue(application.contains("struct LoadCommitmentBlockers"))
+        XCTAssertFalse(askServices.contains("LoadCommitmentBlockers"))
+        XCTAssertTrue(decisions.contains("## D278"))
+    }
+
     func testMeetingMemoryGraphProjectionIsDisposableDurableAndSignalDriven() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/MeetingMemoryGraphProjection.swift")

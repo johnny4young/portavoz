@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,937 cases (13 environment-gated) + 65
+Status: the package inventory contains 1,950 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1314,6 +1314,30 @@ anonymized field evidence, Ask
 composition, and graph scale budgets remain separate gates rather than implied
 by these focused tests.
 
+### Source-backed blocker query (D278)
+
+Twelve deterministic query cases cover invalid limits, unready projection,
+unavailable commitment identity, one typed active blocker fact with exact
+commitment/relation evidence and causal navigation, explicit clear/absent-link
+abstention, correction-driven evidence failure without a topology rebuild,
+deterministic newest-first pagination, an unavailable newer candidate followed
+by a current older fact, explicit bounded-candidate exhaustion, missing exact
+commitment provenance, preference for a later current commitment source over
+corrected historical provenance, rejection of graph edges whose endpoints
+disagree with blocker authority, and ApplicationKit port delegation. The
+candidate-hydration regressions prove the visible limit is applied only after
+freshness filtering and that a truncated unusable window cannot claim there are
+no blockers.
+
+One architecture ratchet keeps the query contract in Core, graph selection and
+authority hydration in StorageKit, orchestration in ApplicationKit, and Ask
+composition absent. It also pins the decision record and bounded candidate
+policy. The
+tests use in-memory SQLite and exact synthetic transcript rows; no model,
+network, user library, SwiftUI, XCUITest, or screenshot evidence participates.
+The remaining five D270 adapters, corpus mapping, private field evidence, and
+scale budgets are intentionally not claimed.
+
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
@@ -1403,8 +1427,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,937 XCTest package cases (13
-environment-gated), zero strict-lint violations across 578 first-party Swift
+The current field-reliability inventory is 1,950 XCTest package cases (13
+environment-gated), zero strict-lint violations across 581 first-party Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 65 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package

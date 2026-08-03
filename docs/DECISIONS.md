@@ -9644,3 +9644,47 @@ without turning generated language into authority or deleting cleared history.
 The graph remains disposable and status-independent while current serving stays
 strict. The remaining D270 gates are the corpus-to-product adapter, relational
 scale budgets, owner-reviewed field evidence, and eventual Ask/UI composition.
+
+## D278 — Serve explicit blocker facts without promoting graph topology (Aug 2026)
+
+**Context:** D277 established authoritative blocker continuity and disposable
+graph edges, but the D270 `commitmentBlockers` job still had no product query.
+Returning graph rows directly would make an acceleration structure appear
+authoritative. Hydrating every related record before bounding candidates would
+make one exact question unbounded, while applying the visible result limit
+before evidence validation could let a newer stale candidate hide an older
+current fact.
+
+**Decision:** add the first exact graph-fact query for one caller-supplied live
+`CommitmentID`. The public Core contract accepts only a 1...100 result limit
+and returns typed active `decision-blocks-commitment` facts or a typed
+abstention. StorageKit first requires a ready current graph projection, then
+uses only decision-commitment-blocker topology to select a deterministic
+bounded candidate window. It rehydrates blocker, decision, and commitment
+authority in the same SQLite read snapshot and requires the blocker to remain
+active plus both endpoints to remain confirmed and live.
+
+The exact fact evidence is the current accepted commitment source followed by
+the explicit blocker-confirmation source, with duplicate segments removed.
+The blocker evidence is the primary navigation target. Historical decision
+confirmation evidence is not appended merely because the decision is an
+endpoint: the D270 oracle requires the commitment and causal-relation sources,
+not unrelated provenance. Active corrections, transcript revision drift,
+missing/non-final segments, or a commitment without exact transcript evidence
+cannot become a fact. Unusable candidates are filtered before the visible
+result limit; bounded overflow remains explicit through `hasMore` or
+`candidate-budget-exceeded`, never a fabricated complete answer.
+
+ApplicationKit exposes one injected `LoadCommitmentBlockers` use case that
+returns typed facts and evidence only. The macOS Ask composition root does not
+adopt it in this slice. No natural-language commitment discovery, answer
+synthesis, UI, provider/model call, graph database, sync/export envelope, CLI,
+or MCP surface is added.
+
+**Consequences:** one named D270 job now has a source-backed product adapter
+whose graph is only a candidate index and whose facts remain explainable from
+authoritative local records. Query cost and output are bounded, correction
+behavior fails closed, and a missing exact commitment source is disclosed
+rather than silently weakened. Ask integration, person/topic/date/status
+filters, cross-lane selection, corpus mapping, private field evidence, and
+relational scale budgets remain separate GRAPH-5/GRAPH-6 gates.
