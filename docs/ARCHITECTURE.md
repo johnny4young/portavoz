@@ -122,7 +122,7 @@ self-contained over system frameworks and carries no module dependency.
 | `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, segment mapping, and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
-| `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
+| `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends, explicit topic and decision continuity with immutable evidence and append-only relationship history, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
@@ -153,6 +153,10 @@ The implemented application workflows include:
   owner leases, heartbeats, exact input fingerprints, dependency admission,
   bounded retries, supersession cancellation, and scheduled wakes;
 - canonical-person lookup and explicit speaker-to-person linking;
+- explicit topic creation/link confirmation plus reversible topic merge/split
+  identity history;
+- explicit decision confirmation, later evidence-source confirmation, and
+  named supersede/reverse relationship history;
 - instant Ask search, hybrid evidence retrieval, and optional local answer
   generation with evidence-preserving degradation;
 - first-run eligibility without model or permission prerequisites;
@@ -1261,8 +1265,30 @@ exact retry replay immutable persisted identity before mutable source
 validation; different content under the same ID fails closed, while the replay
 still reports current derived availability. There is still no
 model-generated proposal producer, projection job, query-serving adapter,
-decision continuity, UI, sync/export contract, CLI/MCP surface, global
-taxonomy, or specialized graph engine.
+UI, sync/export contract, CLI/MCP surface, global taxonomy, or specialized
+graph engine.
+
+Decision continuity is a second, separate relational boundary. Existing
+immutable `SummaryDecisionEvidence` remains a generated observation and grants
+no durable authority merely by being loaded or retrieved. An explicit
+ApplicationKit confirmation promotes one current, complete, correction-free
+observation into a stable decision UUID, immutable source snapshot, exact
+ordered segment identities, and the first `confirm` event in one transaction.
+Later observations from other meetings may be linked only through another
+explicit command and never rewrite the confirmed statement. A newer confirmed
+decision may explicitly supersede or reverse an older still-confirmed decision;
+the target receives one terminal event that names the successor, while the
+successor remains current.
+
+The current projection permits only `confirmed`, `superseded`, or `reversed`;
+`observed` exists only on the read-only candidate. Source meeting, summary,
+generated-decision, and segment identities deliberately outlive physical
+source purge, with current/stale/unavailable evidence derived on read. Exact
+command retries replay persisted identity and current availability; identity
+reuse with different content fails closed. This foundation has no automatic
+candidate promotion, semantic relationship authority, background projection,
+timeline, Ask integration, app composition, sync/export format, CLI/MCP
+surface, or graph-engine dependency.
 
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
@@ -3228,13 +3254,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,876 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,892 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 545 first-party Swift source files;
+- strict SwiftLint reports zero violations across 553 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

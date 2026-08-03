@@ -9351,3 +9351,51 @@ through immutable events; all links remain inspectable against exact source
 evidence. Historical evidence survives source purge but becomes honestly
 unavailable. The next slice may define decision continuity on this foundation,
 while correction-driven rebuild, scale evidence, UI, and serving remain open.
+
+## D272 — Promote generated decisions only through explicit confirmation (Aug 2026)
+
+**Context:** immutable summary decision evidence identifies exact generated
+bullets and transcript support, but generation is not user truth. A later
+meeting may restate, replace, or contradict an earlier decision; corrections or
+physical deletion may invalidate the source; and semantic similarity cannot be
+allowed to confirm a relationship. Reusing generated summary coordinates as a
+mutable cross-meeting identity would let regeneration rewrite history.
+
+**Decision:** add schema v26 beside the existing generated evidence. A
+`DecisionObservation` is read-only, uses the existing `SummaryDecisionID`, and
+always has status `observed`. It resolves the exact rendered bullet, summary,
+meeting, transcript revision, and ordered segment evidence. Loading or ranking
+that observation performs no mutation. Only an explicit ApplicationKit command
+may atomically create a separate stable decision UUID, immutable source
+snapshot, ordered durable segment identities, and initial `confirm` event from
+complete current accepted evidence with no active correction.
+
+The persisted current projection permits `confirmed`, `superseded`, or
+`reversed`; generated `observed` state is never inserted there. Additional
+meetings may support the same decision only through an explicit source-link
+command. The original confirmed statement remains stable while every accepted
+source retains its own exact observed wording, meeting, summary, generated
+decision, revision, and segment order. These source identities intentionally
+have no ownership foreign key to meeting, summary, or segment rows, so source
+purge changes derived availability to unavailable without erasing why the user
+confirmed the decision.
+
+Supersession and reversal are explicit relations between two current confirmed
+decision UUIDs. One terminal event is appended to the older target and names
+the newer successor; the target projection changes atomically while the
+successor remains confirmed. Self-relations, terminal-to-terminal rewrites,
+foreign confirmation sources, invalid lifecycle history, and identity reuse
+with different content fail closed. Exact retries validate persisted identity
+before mutable source state and return current derived availability.
+
+No provider, similarity threshold, automatic promotion, projection job,
+timeline, Ask lane, UI, sync/export envelope, CLI, MCP surface, or graph engine
+is added. Those boundaries must be earned separately against D270's query and
+evidence contract.
+
+**Consequences:** Portavoz can preserve decision history across meetings
+without treating model output as authority. Confirmed truth is explainable,
+source-backed, correction-aware, idempotent, and explicit about which newer
+decision superseded or reversed an older one. Decision discovery, bounded
+rebuilds, chronology presentation, and serving remain open slices rather than
+implicit side effects of this storage foundation.

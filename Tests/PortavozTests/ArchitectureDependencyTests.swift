@@ -1820,7 +1820,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 25"))
+        XCTAssertTrue(schema.contains("public static let version = 26"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -1860,6 +1860,48 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(migration.contains("topicIdentityEvent"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
         XCTAssertTrue(decisions.contains("## D271"))
+    }
+
+    func testDecisionContinuityPromotesOnlyExplicitCurrentEvidence() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/DecisionContinuity.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/DecisionContinuity.swift")
+        let observation = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+DecisionObservation.swift")
+        let confirmation = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+DecisionConfirmation.swift")
+        let relationship = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+DecisionRelationship.swift")
+        let migration = try Self.contents(
+            of: "Sources/StorageKit/Schema+DecisionContinuity.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains("case observed"))
+        XCTAssertTrue(core.contains("case confirmed"))
+        XCTAssertTrue(core.contains("case superseded"))
+        XCTAssertTrue(core.contains("case reversed"))
+        XCTAssertTrue(core.contains("struct DecisionObservation:"))
+        XCTAssertTrue(core.contains("struct DecisionSource:"))
+        XCTAssertTrue(application.contains("struct ConfirmObservedDecision"))
+        XCTAssertTrue(application.contains("struct ConfirmDecisionSource"))
+        XCTAssertTrue(application.contains("struct ConfirmDecisionRelationship"))
+        XCTAssertFalse(application.contains("import IntelligenceKit"))
+        XCTAssertTrue(observation.contains("acceptedSegmentHasNoActiveCorrectionSQL"))
+        XCTAssertTrue(confirmation.contains("decisionObservationForConfirmation"))
+        XCTAssertTrue(confirmation.contains("replayDecisionConfirmation"))
+        XCTAssertTrue(relationship.contains("both relationship decisions must still be confirmed"))
+        XCTAssertTrue(migration.contains("registerMigration(\"v26\")"))
+        XCTAssertTrue(migration.contains("decisionContinuitySource"))
+        XCTAssertTrue(migration.contains("decisionContinuityEvent"))
+        XCTAssertTrue(migration.contains("summaryDecisionID"))
+        XCTAssertTrue(migration.contains("segmentID"))
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"ConfirmObservedDecision|ConfirmDecisionRelationship"#),
+            [])
+        XCTAssertTrue(decisions.contains("## D272"))
     }
 
     func testCommitmentReminderReconciliationIsBoundedAndAdapterNeutral() throws {
@@ -2166,7 +2208,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 25"))
+        XCTAssertTrue(schema.contains("public static let version = 26"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))

@@ -61,6 +61,25 @@ public struct SummaryMarkdownOutline: Sendable, Equatable {
             sections: sections)
     }
 
+    /// Returns the exact rendered decision text without its Markdown marker.
+    /// Coordinates remain the identity of generated output; callers must not
+    /// substitute a normalized or regenerated sentence at confirmation time.
+    public func bulletText(
+        sectionOrdinal: Int,
+        bulletOrdinal: Int
+    ) -> String? {
+        guard sections.indices.contains(sectionOrdinal),
+              sections[sectionOrdinal].bulletLines.indices.contains(bulletOrdinal)
+        else { return nil }
+        let line = sections[sectionOrdinal].bulletLines[bulletOrdinal]
+            .trimmingCharacters(in: .whitespaces)
+        guard let marker = ["- ", "* ", "· ", "▸ "].first(where: line.hasPrefix)
+        else { return nil }
+        let text = String(line.dropFirst(marker.count))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
     private static func isBulletLine(_ line: String) -> Bool {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         return ["- ", "* ", "· ", "▸ "].contains(where: trimmed.hasPrefix)

@@ -45,6 +45,24 @@ public struct TopicIdentityEventID: Hashable, Codable, Sendable, RawRepresentabl
     public init() { self.rawValue = UUID() }
 }
 
+public struct DecisionID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct DecisionSourceID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct DecisionEventID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
 public struct CommitmentID: Hashable, Codable, Sendable, RawRepresentable {
     public let rawValue: UUID
     public init(rawValue: UUID) { self.rawValue = rawValue }
