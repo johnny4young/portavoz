@@ -8797,3 +8797,35 @@ from its global review surface while every change remains durable and auditable.
 The existing projection/event consistency checks and bounded Radar query remain
 authoritative. Delivery schedules, notification permission recovery, review
 queues, and snooze still require later COMMIT-5 slices.
+
+## D257 — Persist commitment reminder delivery separately from due dates (Aug 2026)
+
+**Context:** D256 intentionally refused to model reminder snooze as a
+commitment reschedule. A process-local timer or notification identifier alone
+would lose delivery state across relaunch, while reusing the generic outbox
+would conflate local user attention with publication/sync delivery. A reminder
+also must never be created from an unconfirmed generated ActionItem or continue
+silently after the confirmed commitment changes.
+
+**Decision:** add schema v23 with one `commitmentReminderState` projection per
+commitment and an immutable `commitmentReminderEvent` ledger. The typed state
+machine accepts schedule, present, snooze, dismiss, and cancel. Every change
+appends one predecessor-linked event and updates the projection atomically.
+Schedule and active delivery transitions require an existing open confirmed
+commitment whose current due date exactly matches the cycle's captured
+`sourceDueAt`. Snooze preserves that fence and changes only `scheduledFor`;
+cancel remains available to retire a stale active cycle after completion or
+reschedule.
+
+The migration creates empty tables and no synthetic reminders. Event payload
+checks, a unique predecessor, a same-commitment predecessor trigger, immutable
+history, a composite latest-event foreign key, and monotonic projection time
+make malformed or branched persistence fail closed. D257 adds no
+UserNotifications adapter, permission request, scheduler, SwiftUI, sync/export,
+bundle, CLI, or MCP surface.
+
+**Consequences:** Portavoz now has a relaunch-safe local foundation for
+confirmed-only reminders and honest snooze history without weakening durable
+commitment truth. Later COMMIT-5 slices can resolve due deliveries and add
+permission-aware local presentation against one bounded projection. Until
+then, no new reminder is scheduled or shown to users.

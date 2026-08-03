@@ -1694,6 +1694,35 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Route Radar lifecycle actions through append-only continuity"))
     }
 
+    func testCommitmentReminderHistoryIsDurableAndSeparateFromDueDate() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/CommitmentReminder.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+CommitmentReminder.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+CommitmentReminder.swift")
+        let radar = try Self.contents(
+            of: "Sources/ApplicationKit/ManageCommitmentRadar.swift")
+        let app = try Self.contents(
+            of: "Sources/portavoz-app/ContentView.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains("enum CommitmentReminderTransition"))
+        XCTAssertTrue(core.contains("case snooze(until: Date)"))
+        XCTAssertTrue(core.contains("case cancel"))
+        XCTAssertTrue(core.contains("previousEventID"))
+        XCTAssertTrue(schema.contains("registerMigration(\"v23\")"))
+        XCTAssertTrue(schema.contains("commitmentReminderEvent_immutable_bu"))
+        XCTAssertTrue(schema.contains("commitmentReminderState_on_due"))
+        XCTAssertTrue(storage.contains("database.write"))
+        XCTAssertTrue(storage.contains("CommitmentReminderPolicy.applying"))
+        XCTAssertTrue(storage.contains("commitment.status == .confirmed"))
+        XCTAssertTrue(storage.contains("commitment.dueAt == sourceDueAt"))
+        XCTAssertFalse(radar.contains("case snooze"))
+        XCTAssertFalse(app.contains("CommitmentReminderTransition"))
+        XCTAssertTrue(decisions.contains("## D257"))
+    }
+
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
         let profile = try Self.contents(
             of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")
@@ -1733,7 +1762,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 22"))
+        XCTAssertTrue(schema.contains("public static let version = 23"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -1775,7 +1804,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
-        XCTAssertTrue(architecture.contains("current schema version is 22"))
+        XCTAssertTrue(architecture.contains("current schema version is 23"))
         XCTAssertTrue(architecture.contains(
             "Every persisted semantic vector also carries one SHA-256"))
         XCTAssertTrue(decisions.contains("## D199"))

@@ -540,7 +540,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 22. It includes:
+The current schema version is 23. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -553,6 +553,8 @@ The current schema version is 22. It includes:
 - reversible current-claim feedback stored separately from generated output;
 - explicitly confirmed commitment continuity, typed ownership, immutable
   source/history evidence, and reversible generated-source review treatment;
+- a bounded current commitment-reminder projection plus immutable local
+  delivery history, fenced to the confirmed commitment's exact due date;
 - immutable generation-run provenance;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);
@@ -1156,6 +1158,20 @@ same bounded query after success. StorageKit atomically appends the event and
 updates its current projection. Reminder snooze is intentionally not a Radar
 mutation because it belongs to future reminder-delivery history and must not
 rewrite the commitment's due date.
+
+Schema v23 establishes that separate history without composing notifications.
+`commitmentReminderState` is one bounded current projection per confirmed
+commitment; `commitmentReminderEvent` is its immutable schedule, present,
+snooze, dismiss, and cancel ledger. A transaction appends one event and updates
+the projection atomically. Initial schedule and active delivery transitions
+require the commitment to remain open and retain the exact due date captured by
+the reminder cycle. Snooze changes only the next delivery time; the commitment
+deadline and continuity event stream remain untouched. The latest-event
+composite foreign key, no-branch predecessor chain, immutable-history trigger,
+and monotonic projection guard fail closed on malformed persistence. This
+lower-layer contract adds no notification-center adapter, timer, SwiftUI,
+sync/export, bundle, CLI, or MCP behavior; application workflows will consume
+the boundary.
 
 The bounded read has a content-free Release scale gate. A fresh synthetic
 store is prepared before timing, one warm read precedes five measured reads,
