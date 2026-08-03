@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,914 cases (13 environment-gated) + 65
+Status: the package inventory contains 1,919 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1271,24 +1271,28 @@ schema-migration suites now require v27 without dropping any historical
 migration. GRAPH-3 changes no SwiftUI surface, so scoped XCUITest and screenshot
 evidence are intentionally not applicable to this slice.
 
-### Evidence-backed memory timeline (D274)
+### Evidence-backed memory timeline (D274–D275)
 
-Eight deterministic XCTest cases currently characterize the first GRAPH-4 read
-slice over in-memory SQLite. They prove exact topic decision/commitment facts,
+Nine deterministic timeline XCTest cases characterize the bounded read over
+in-memory SQLite. They prove exact topic decision/commitment facts,
 explicit supersession evidence from both meetings, direct segment navigation,
 current-owner-only person commitments without decision attribution, projection
 readiness, exact-anchor and temporal-baseline abstention, correction-revision
 staleness, current same-meeting evidence preference, deterministic newest-first
-limiting and overflow, refusal to attach unrelated source evidence to
-commitment lifecycle changes, explicit unsupported
-fact disclosure, and the narrow ApplicationKit delegation seam.
+limiting and overflow, exact-evidenced typed reschedule output, refusal to
+attach unrelated source evidence to legacy commitment lifecycle changes,
+explicit unsupported fact disclosure, and the narrow ApplicationKit delegation
+seam. Continuity coverage separately proves the additive v28 migration,
+format-3 JSON round-trip, ordered persistence, stale/missing/duplicate/corrected
+evidence rollback, trigger-level current-evidence enforcement, immutable event
+evidence, and legacy history loading without evidence invention.
 The fixture uses only public synthetic English material and language-neutral
 identity/evidence rules; it invokes no model, network, user library, or
 generated narrative. D270's separate canonical corpus remains the bilingual
 query-quality authority.
 
-GRAPH-4 does not change SwiftUI, so XCUITest and screenshot evidence remain not
-applicable to this slice. Authoritative unresolved-question/blocker continuity,
+This backend change does not alter SwiftUI, so XCUITest and screenshot evidence
+remain not applicable. Authoritative unresolved-question/blocker continuity,
 D270 corpus-to-product adapter coverage, private anonymized field evidence, Ask
 composition, and graph scale budgets remain separate gates rather than implied
 by these focused tests.
@@ -1382,8 +1386,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,914 XCTest package cases (13
-environment-gated), zero strict-lint violations across 558 first-party Swift
+The current field-reliability inventory is 1,919 XCTest package cases (13
+environment-gated), zero strict-lint violations across 562 first-party Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 65 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package

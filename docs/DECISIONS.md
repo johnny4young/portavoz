@@ -9509,3 +9509,41 @@ current timeline from unsupported fact classes and typed evidence failure.
 Broader longitudinal answers cannot claim completeness until unresolved
 questions/blockers and the remaining D270 jobs earn their own authority and
 quality evidence.
+
+## D275 — Bind commitment lifecycle changes to exact transcript evidence (Aug 2026)
+
+**Context:** D274 could prove a newly confirmed commitment from its exact
+source, but append-only reassignment, reschedule, completion, reopen, and
+dismissal events carried at most a meeting UUID. Borrowing the original promise
+or a nearby segment would misrepresent why a later state changed. Existing
+libraries can also contain valid user-authored lifecycle history that predates
+event-level evidence and must remain readable without being upgraded by guess.
+
+**Decision:** extend non-confirm `CommitmentEvent` values with optional exact
+authority: one source meeting UUID, that meeting's transcript revision, and an
+ordered non-empty set of unique segment UUIDs. Core format 3 validates that the
+event and evidence meeting agree; formats 1 and 2 remain decodable. Storage
+schema v28 persists the revision on the event and ordered segment identities in
+an immutable child table. The child intentionally has no segment foreign key,
+so transcript purge makes evidence unavailable instead of mutating history.
+
+The transition write validates one live matching meeting revision and final
+accepted segments without active corrections, then inserts event evidence and
+updates the commitment projection in one transaction. A SQLite insert trigger
+repeats the freshness boundary. Portable replay requires the same exact local
+evidence before mutation. The memory timeline rehydrates evidence again in its
+read snapshot and emits a typed state change rather than generated prose.
+Missing, stale, corrected, deleted, or non-final evidence is omitted honestly.
+Legacy lifecycle events remain loadable; when a query encounters one, its fact
+kind is reported as unsupported instead of attaching unrelated evidence.
+
+This decision changes no SwiftUI, model, ranking, Ask, graph topology,
+sync/export, CLI, or MCP surface. Commitment Radar actions performed outside a
+meeting continue to append valid user truth without transcript evidence and are
+therefore not evidence-backed chronology items.
+
+**Consequences:** later commitment state can participate in longitudinal memory
+only when Portavoz can navigate to the exact current words that authorized the
+change. Existing user history remains compatible, and the read model preserves
+the distinction between known state and provable meeting chronology. The next
+authority gap remains explicit unresolved-question and blocker continuity.

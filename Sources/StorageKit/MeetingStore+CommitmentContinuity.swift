@@ -136,13 +136,22 @@ extension MeetingStore {
         to commitmentID: CommitmentID,
         eventID: CommitmentEventID = CommitmentEventID(),
         sourceMeetingID: MeetingID? = nil,
+        evidence: CommitmentEventEvidence? = nil,
         at proposedDate: Date = Date()
     ) async throws -> CommitmentContinuityEnvelope {
         try await database.write { database in
             let current = try Self.commitmentEnvelope(
                 id: commitmentID,
                 in: database)
-            try Self.validateLiveMeeting(sourceMeetingID, in: database)
+            if let sourceMeetingID, let evidence,
+               sourceMeetingID != evidence.meetingID {
+                throw StorageError.invalidCommitment(
+                    "commitment transition evidence belongs to another meeting")
+            }
+            try Self.validateCommitmentEventEvidence(evidence, in: database)
+            if evidence == nil {
+                try Self.validateLiveMeeting(sourceMeetingID, in: database)
+            }
             if case .reassign(let assignee) = transition {
                 try Self.validateLivePerson(assignee.canonicalPersonID, in: database)
             }
@@ -156,6 +165,7 @@ extension MeetingStore {
                 commitmentID: commitmentID,
                 transition: transition,
                 sourceMeetingID: sourceMeetingID,
+                evidence: evidence,
                 occurredAt: timestamp)
             do {
                 let events = current.events + [event]
@@ -167,7 +177,7 @@ extension MeetingStore {
                     commitment: commitment,
                     sources: current.sources,
                     events: events)
-                try CommitmentEventRecord(event).insert(database)
+                try Self.insertCommitmentEvent(event, in: database)
                 try CommitmentRecord(commitment).update(database)
                 return envelope
             } catch let error as CommitmentContinuityValidationError {
@@ -336,8 +346,10 @@ private extension MeetingStore {
         commitmentID: CommitmentID,
         transition: CommitmentTransition,
         sourceMeetingID: MeetingID?,
+        evidence: CommitmentEventEvidence?,
         occurredAt: Date
     ) -> CommitmentEvent {
+        let eventMeetingID = evidence?.meetingID ?? sourceMeetingID
         switch transition {
         case .reassign(let assignee):
             return CommitmentEvent(
@@ -345,7 +357,8 @@ private extension MeetingStore {
                 commitmentID: commitmentID,
                 kind: .reassign,
                 assignee: assignee,
-                sourceMeetingID: sourceMeetingID,
+                sourceMeetingID: eventMeetingID,
+                evidence: evidence,
                 occurredAt: occurredAt)
         case .reschedule(let dueAt):
             return CommitmentEvent(
@@ -353,28 +366,32 @@ private extension MeetingStore {
                 commitmentID: commitmentID,
                 kind: .reschedule,
                 dueAt: dueAt.map(canonicalCommitmentDate),
-                sourceMeetingID: sourceMeetingID,
+                sourceMeetingID: eventMeetingID,
+                evidence: evidence,
                 occurredAt: occurredAt)
         case .complete:
             return CommitmentEvent(
                 id: id,
                 commitmentID: commitmentID,
                 kind: .complete,
-                sourceMeetingID: sourceMeetingID,
+                sourceMeetingID: eventMeetingID,
+                evidence: evidence,
                 occurredAt: occurredAt)
         case .reopen:
             return CommitmentEvent(
                 id: id,
                 commitmentID: commitmentID,
                 kind: .reopen,
-                sourceMeetingID: sourceMeetingID,
+                sourceMeetingID: eventMeetingID,
+                evidence: evidence,
                 occurredAt: occurredAt)
         case .dismiss:
             return CommitmentEvent(
                 id: id,
                 commitmentID: commitmentID,
                 kind: .dismiss,
-                sourceMeetingID: sourceMeetingID,
+                sourceMeetingID: eventMeetingID,
+                evidence: evidence,
                 occurredAt: occurredAt)
         }
     }
@@ -399,11 +416,18 @@ private extension MeetingStore {
                 .map { try $0.evidence }
             return try sourceRecord.source(evidence: evidence)
         }
-        let events = try CommitmentEventRecord
+        let eventRecords = try CommitmentEventRecord
             .filter(Column("commitmentID") == key)
             .order(Column("occurredAt"), Column("id"))
             .fetchAll(database)
-            .map { try $0.event }
+        let events = try eventRecords.map { eventRecord in
+            let evidenceSegmentIDs = try CommitmentEventEvidenceSegmentRecord
+                .filter(Column("eventID") == eventRecord.id)
+                .order(Column("ordinal"))
+                .fetchAll(database)
+                .map { try $0.persistedSegmentID }
+            return try eventRecord.event(evidenceSegmentIDs: evidenceSegmentIDs)
+        }
         do {
             return try CommitmentContinuityEnvelope(
                 commitment: record.commitment,
@@ -431,7 +455,7 @@ private extension MeetingStore {
                 }
             }
             for event in envelope.events {
-                try CommitmentEventRecord(event).insert(database)
+                try insertCommitmentEvent(event, in: database)
             }
         } catch let error as CommitmentContinuityValidationError {
             throw StorageError.invalidCommitment(String(describing: error))
@@ -483,8 +507,12 @@ private extension MeetingStore {
                 try validateLiveMeeting(source.meetingID, in: database)
             }
         }
-        for meetingID in envelope.events.compactMap(\.sourceMeetingID) {
-            try validateLiveMeeting(meetingID, in: database)
+        for event in envelope.events {
+            if let evidence = event.evidence {
+                try validateCommitmentEventEvidence(evidence, in: database)
+            } else {
+                try validateLiveMeeting(event.sourceMeetingID, in: database)
+            }
         }
     }
 
@@ -526,6 +554,7 @@ private extension MeetingStore {
                 assignee: event.assignee,
                 dueAt: event.dueAt.map(canonicalCommitmentDate),
                 sourceMeetingID: event.sourceMeetingID,
+                evidence: event.evidence,
                 occurredAt: canonicalCommitmentDate(event.occurredAt))
         }
         let commitment = try CommitmentContinuityPolicy.projectedCommitment(
@@ -548,6 +577,58 @@ private extension MeetingStore {
             commitment: commitment,
             sources: sources,
             events: events)
+    }
+
+    static func insertCommitmentEvent(
+        _ event: CommitmentEvent,
+        in database: Database
+    ) throws {
+        try CommitmentEventRecord(event).insert(database)
+        for (ordinal, segmentID) in (event.evidence?.segmentIDs ?? []).enumerated() {
+            try CommitmentEventEvidenceSegmentRecord(
+                eventID: event.id,
+                segmentID: segmentID,
+                ordinal: ordinal)
+                .insert(database)
+        }
+    }
+
+    static func validateCommitmentEventEvidence(
+        _ evidence: CommitmentEventEvidence?,
+        in database: Database
+    ) throws {
+        guard let evidence else { return }
+        guard evidence.sourceTranscriptRevision >= 0,
+              !evidence.segmentIDs.isEmpty,
+              Set(evidence.segmentIDs).count == evidence.segmentIDs.count,
+              let meeting = try MeetingRecord.fetchOne(
+                  database,
+                  key: evidence.meetingID.rawValue.uuidString),
+              meeting.deletedAt == nil,
+              meeting.transcriptRevision == evidence.sourceTranscriptRevision
+        else {
+            throw StorageError.invalidCommitment(
+                "commitment transition evidence is stale or unavailable")
+        }
+        let keys = evidence.segmentIDs.map(\.uuidString)
+        let placeholders = Array(repeating: "?", count: keys.count).joined(separator: ",")
+        let count = try Int.fetchOne(
+            database,
+            sql: """
+                SELECT COUNT(*)
+                FROM segment
+                WHERE id IN (\(placeholders))
+                  AND meetingID = ?
+                  AND deletedAt IS NULL
+                  AND isFinal = 1
+                  AND \(acceptedSegmentHasNoActiveCorrectionSQL)
+                """,
+            arguments: StatementArguments(
+                keys + [evidence.meetingID.rawValue.uuidString])) ?? 0
+        guard count == keys.count else {
+            throw StorageError.invalidCommitment(
+                "commitment transition evidence is stale or unavailable")
+        }
     }
 
 }

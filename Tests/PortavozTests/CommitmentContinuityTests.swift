@@ -44,6 +44,8 @@ final class CommitmentContinuityPolicyTests: XCTestCase {
 
     func testEnvelopeCanonicalizesRowsAndRoundTrips() throws {
         let commitmentID = CommitmentID()
+        let evidenceMeetingID = MeetingID()
+        let evidenceSegmentIDs = [UUID(), UUID()]
         let earlySource = CommitmentSource(
             commitmentID: commitmentID,
             kind: .manual,
@@ -61,6 +63,11 @@ final class CommitmentContinuityPolicyTests: XCTestCase {
         let complete = CommitmentEvent(
             commitmentID: commitmentID,
             kind: .complete,
+            sourceMeetingID: evidenceMeetingID,
+            evidence: CommitmentEventEvidence(
+                meetingID: evidenceMeetingID,
+                sourceTranscriptRevision: 4,
+                segmentIDs: evidenceSegmentIDs),
             occurredAt: baseDate.addingTimeInterval(2))
         let commitment = try CommitmentContinuityPolicy.projectedCommitment(
             id: commitmentID,
@@ -74,6 +81,8 @@ final class CommitmentContinuityPolicyTests: XCTestCase {
         XCTAssertEqual(envelope.commitment.title, "Ship the rollout")
         XCTAssertEqual(envelope.sources.map(\.id), [earlySource.id, lateSource.id])
         XCTAssertEqual(envelope.events.map(\.id), [confirm.id, complete.id])
+        XCTAssertEqual(envelope.formatVersion, 3)
+        XCTAssertEqual(envelope.events.last?.evidence?.segmentIDs, evidenceSegmentIDs)
 
         let data = try JSONEncoder().encode(envelope)
         XCTAssertEqual(try JSONDecoder().decode(
@@ -165,6 +174,51 @@ final class CommitmentContinuityPolicyTests: XCTestCase {
             CommitmentContinuityEnvelope.self,
             from: unorderedData))
     }
+
+    func testEventEvidenceRequiresOneMatchingNonconfirmAuthority() throws {
+        let commitmentID = CommitmentID()
+        let meetingID = MeetingID()
+        let segmentID = UUID()
+        let confirm = CommitmentEvent(
+            commitmentID: commitmentID,
+            kind: .confirm,
+            occurredAt: baseDate)
+        let validComplete = CommitmentEvent(
+            commitmentID: commitmentID,
+            kind: .complete,
+            sourceMeetingID: meetingID,
+            occurredAt: baseDate.addingTimeInterval(1))
+        let commitment = try CommitmentContinuityPolicy.projectedCommitment(
+            id: commitmentID,
+            title: "Ship",
+            events: [confirm, validComplete])
+
+        for event in [
+            CommitmentEvent(
+                commitmentID: commitmentID,
+                kind: .complete,
+                sourceMeetingID: MeetingID(),
+                evidence: CommitmentEventEvidence(
+                    meetingID: meetingID,
+                    sourceTranscriptRevision: 0,
+                    segmentIDs: [segmentID]),
+                occurredAt: baseDate.addingTimeInterval(1)),
+            CommitmentEvent(
+                commitmentID: commitmentID,
+                kind: .complete,
+                sourceMeetingID: meetingID,
+                evidence: CommitmentEventEvidence(
+                    meetingID: meetingID,
+                    sourceTranscriptRevision: 0,
+                    segmentIDs: [segmentID, segmentID]),
+                occurredAt: baseDate.addingTimeInterval(1)),
+        ] {
+            XCTAssertThrowsError(try CommitmentContinuityEnvelope(
+                commitment: commitment,
+                sources: [],
+                events: [confirm, event]))
+        }
+    }
 }
 
 final class CommitmentContinuityStorageTests: XCTestCase {
@@ -253,6 +307,74 @@ final class CommitmentContinuityStorageTests: XCTestCase {
                     ) VALUES (?, ?, 'complete', 'me', NULL, NULL, NULL, ?)
                     """,
                 arguments: [UUID().uuidString, unassignedID, baseDate]))
+        }
+    }
+
+    func testV28AddsExactEventEvidenceWithoutRewritingLegacyHistory() throws {
+        let database = try DatabaseQueue()
+        let migrator = StorageSchema.migrator()
+        try migrator.migrate(database, upTo: "v27")
+        let commitmentID = CommitmentID().rawValue.uuidString
+        let sourceMeetingID = MeetingID().rawValue.uuidString
+        let confirmID = CommitmentEventID().rawValue.uuidString
+        let rescheduleID = CommitmentEventID().rawValue.uuidString
+        try database.write { db in
+            try db.execute(
+                sql: """
+                    INSERT INTO commitment (
+                        id, assigneeKind, canonicalPersonID, title, status, dueAt,
+                        createdAt, updatedAt, deletedAt
+                    ) VALUES (?, 'unassigned', NULL, 'Ship', 'confirmed', NULL, ?, ?, NULL)
+                    """,
+                arguments: [commitmentID, baseDate, baseDate])
+            try db.execute(
+                sql: """
+                    INSERT INTO commitmentEvent (
+                        id, commitmentID, kind, assigneeKind, canonicalPersonID,
+                        dueAt, sourceMeetingID, occurredAt
+                    ) VALUES (?, ?, 'confirm', 'unassigned', NULL, NULL, NULL, ?)
+                    """,
+                arguments: [confirmID, commitmentID, baseDate])
+            try db.execute(
+                sql: """
+                    INSERT INTO commitmentEvent (
+                        id, commitmentID, kind, assigneeKind, canonicalPersonID,
+                        dueAt, sourceMeetingID, occurredAt
+                    ) VALUES (?, ?, 'reschedule', NULL, NULL, ?, ?, ?)
+                    """,
+                arguments: [
+                    rescheduleID,
+                    commitmentID,
+                    baseDate.addingTimeInterval(86_400),
+                    sourceMeetingID,
+                    baseDate.addingTimeInterval(1),
+                ])
+        }
+
+        try migrator.migrate(database)
+
+        try database.read { db in
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitmentEvent").map(\.name)),
+                [
+                    "id", "commitmentID", "kind", "assigneeKind", "canonicalPersonID",
+                    "dueAt", "sourceMeetingID", "sourceTranscriptRevision", "occurredAt",
+                ])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitmentEventEvidenceSegment").map(\.name)),
+                ["eventID", "segmentID", "ordinal"])
+            let record = try XCTUnwrap(CommitmentEventRecord.fetchOne(db, key: rescheduleID))
+            let event = try record.event(evidenceSegmentIDs: [])
+            XCTAssertEqual(event.sourceMeetingID?.rawValue.uuidString, sourceMeetingID)
+            XCTAssertNil(event.evidence)
+        }
+        try database.write { db in
+            XCTAssertThrowsError(try db.execute(
+                sql: """
+                    INSERT INTO commitmentEventEvidenceSegment (eventID, segmentID, ordinal)
+                    VALUES (?, ?, 0)
+                    """,
+                arguments: [rescheduleID, UUID().uuidString]))
         }
     }
 
@@ -407,6 +529,124 @@ final class CommitmentContinuityStorageTests: XCTestCase {
         XCTAssertEqual(reloaded, dismissed)
     }
 
+    func testLifecycleEvidenceRoundTripsAndRejectsNoncurrentSourcesAtomically() async throws {
+        let fixture = try await generatedFixture()
+        let initial = try await fixture.store.confirmCommitment(
+            CommitmentConfirmation(
+                title: "Prepare the rollout",
+                origin: .generatedActionItem(fixture.actionItemID)),
+            at: baseDate)
+        let exactEvidence = CommitmentEventEvidence(
+            meetingID: fixture.meeting.id,
+            sourceTranscriptRevision: fixture.meeting.transcriptRevision,
+            segmentIDs: [fixture.evidenceSegmentID])
+        let dueAt = baseDate.addingTimeInterval(86_400)
+        let updated = try await fixture.store.applyCommitmentTransition(
+            .reschedule(dueAt),
+            to: initial.commitment.id,
+            evidence: exactEvidence,
+            at: baseDate.addingTimeInterval(1))
+
+        XCTAssertEqual(updated.events.last?.evidence, exactEvidence)
+        let reloaded = try await fixture.store.commitmentContinuityEnvelope(
+            for: initial.commitment.id)
+        XCTAssertEqual(reloaded, updated)
+        let persistedSegments = try await fixture.store.database.read { database in
+            try CommitmentEventEvidenceSegmentRecord
+                .order(Column("ordinal"))
+                .fetchAll(database)
+                .map { try $0.persistedSegmentID }
+        }
+        XCTAssertEqual(persistedSegments, [fixture.evidenceSegmentID])
+        let evidenceCount = try await commitmentEventEvidenceCount(in: fixture.store)
+        XCTAssertEqual(evidenceCount, 1)
+        XCTAssertEqual(
+            try JSONDecoder().decode(
+                CommitmentContinuityEnvelope.self,
+                from: JSONEncoder().encode(reloaded)),
+            updated)
+
+        let invalidEvidence = [
+            CommitmentEventEvidence(
+                meetingID: fixture.meeting.id,
+                sourceTranscriptRevision: fixture.meeting.transcriptRevision + 1,
+                segmentIDs: [fixture.evidenceSegmentID]),
+            CommitmentEventEvidence(
+                meetingID: fixture.meeting.id,
+                sourceTranscriptRevision: fixture.meeting.transcriptRevision,
+                segmentIDs: [UUID()]),
+            CommitmentEventEvidence(
+                meetingID: fixture.meeting.id,
+                sourceTranscriptRevision: fixture.meeting.transcriptRevision,
+                segmentIDs: [fixture.evidenceSegmentID, fixture.evidenceSegmentID]),
+        ]
+        for evidence in invalidEvidence {
+            await assertThrows {
+                _ = try await fixture.store.applyCommitmentTransition(
+                    .reschedule(self.baseDate.addingTimeInterval(172_800)),
+                    to: initial.commitment.id,
+                    evidence: evidence,
+                    at: self.baseDate.addingTimeInterval(2))
+            }
+        }
+
+        _ = try await fixture.store.appendTranscriptCorrection(TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.evidenceSegmentID],
+            kind: .replaceText(text: "I will prepare the launch by Friday.", language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: baseDate.addingTimeInterval(3)))
+        await assertThrows {
+            _ = try await fixture.store.applyCommitmentTransition(
+                .complete,
+                to: initial.commitment.id,
+                evidence: exactEvidence,
+                at: self.baseDate.addingTimeInterval(4))
+        }
+
+        let afterFailures = try await fixture.store.commitmentContinuityEnvelope(
+            for: initial.commitment.id)
+        XCTAssertEqual(afterFailures, updated)
+    }
+
+    func testDatabaseTriggerRejectsStaleLifecycleEvidenceAtomically() async throws {
+        let fixture = try await generatedFixture()
+        let initial = try await fixture.store.confirmCommitment(
+            CommitmentConfirmation(
+                title: "Prepare the rollout",
+                origin: .generatedActionItem(fixture.actionItemID)),
+            at: baseDate)
+        var changedMeeting = fixture.meeting
+        changedMeeting.transcriptRevision += 1
+        try await fixture.store.save(changedMeeting)
+        let event = CommitmentEvent(
+            commitmentID: initial.commitment.id,
+            kind: .complete,
+            sourceMeetingID: fixture.meeting.id,
+            evidence: CommitmentEventEvidence(
+                meetingID: fixture.meeting.id,
+                sourceTranscriptRevision: fixture.meeting.transcriptRevision,
+                segmentIDs: [fixture.evidenceSegmentID]),
+            occurredAt: baseDate.addingTimeInterval(1))
+
+        await assertThrows {
+            try await fixture.store.database.write { database in
+                try CommitmentEventRecord(event).insert(database)
+                try CommitmentEventEvidenceSegmentRecord(
+                    eventID: event.id,
+                    segmentID: fixture.evidenceSegmentID,
+                    ordinal: 0)
+                    .insert(database)
+            }
+        }
+
+        let counts = try await continuityCounts(in: fixture.store)
+        let evidenceCount = try await commitmentEventEvidenceCount(in: fixture.store)
+        XCTAssertEqual(counts, [1, 1, 1, 1])
+        XCTAssertEqual(evidenceCount, 0)
+    }
+
     func testMineAssigneeRoundTripsThroughPortableReplay() async throws {
         let source = try MeetingStore.inMemory()
         let destination = try MeetingStore.inMemory()
@@ -514,7 +754,15 @@ final class CommitmentContinuityStorageTests: XCTestCase {
                 origin: .generatedActionItem(fixture.actionItemID)),
             at: baseDate)
         let sourceID = try XCTUnwrap(envelope.sources.first?.id)
-        let eventID = try XCTUnwrap(envelope.events.first?.id)
+        let transitioned = try await fixture.store.applyCommitmentTransition(
+            .reschedule(baseDate.addingTimeInterval(86_400)),
+            to: envelope.commitment.id,
+            evidence: CommitmentEventEvidence(
+                meetingID: fixture.meeting.id,
+                sourceTranscriptRevision: fixture.meeting.transcriptRevision,
+                segmentIDs: [fixture.evidenceSegmentID]),
+            at: baseDate.addingTimeInterval(1))
+        let eventID = try XCTUnwrap(transitioned.events.last?.id)
         let changedDate = baseDate.addingTimeInterval(1)
 
         try await fixture.store.database.write { database in
@@ -530,10 +778,17 @@ final class CommitmentContinuityStorageTests: XCTestCase {
             XCTAssertThrowsError(try database.execute(
                 sql: "UPDATE commitmentEvent SET occurredAt = ? WHERE id = ?",
                 arguments: [changedDate, eventID.rawValue.uuidString]))
+            XCTAssertThrowsError(try database.execute(
+                sql: """
+                    UPDATE commitmentEventEvidenceSegment
+                    SET ordinal = 1
+                    WHERE eventID = ?
+                    """,
+                arguments: [eventID.rawValue.uuidString]))
         }
         let reloaded = try await fixture.store.commitmentContinuityEnvelope(
             for: envelope.commitment.id)
-        XCTAssertEqual(reloaded, envelope)
+        XCTAssertEqual(reloaded, transitioned)
     }
 
     func testConfirmedSourceHistorySurvivesMeetingPurge() async throws {
@@ -544,13 +799,24 @@ final class CommitmentContinuityStorageTests: XCTestCase {
                 canonicalPersonID: fixture.personID,
                 origin: .generatedActionItem(fixture.actionItemID)),
             at: baseDate)
+        let transitioned = try await fixture.store.applyCommitmentTransition(
+            .reschedule(baseDate.addingTimeInterval(86_400)),
+            to: envelope.commitment.id,
+            evidence: CommitmentEventEvidence(
+                meetingID: fixture.meeting.id,
+                sourceTranscriptRevision: fixture.meeting.transcriptRevision,
+                segmentIDs: [fixture.evidenceSegmentID]),
+            at: baseDate.addingTimeInterval(1))
 
         try await fixture.store.delete(fixture.meeting.id)
         try await fixture.store.purge(fixture.meeting.id)
 
         let retained = try await fixture.store.commitmentContinuityEnvelope(
             for: envelope.commitment.id)
-        XCTAssertEqual(retained, envelope)
+        XCTAssertEqual(retained, transitioned)
+        XCTAssertEqual(
+            retained.events.last?.evidence?.segmentIDs,
+            [fixture.evidenceSegmentID])
         let foreignKeyFailures = try fixture.store.database.read { database in
             try Row.fetchAll(database, sql: "PRAGMA foreign_key_check")
         }
@@ -617,6 +883,14 @@ private func continuityCounts(in store: MeetingStore) async throws -> [Int] {
         ].map { table in
             try Int.fetchOne(database, sql: "SELECT COUNT(*) FROM \(table)") ?? -1
         }
+    }
+}
+
+private func commitmentEventEvidenceCount(in store: MeetingStore) async throws -> Int {
+    try await store.database.read { database in
+        try Int.fetchOne(
+            database,
+            sql: "SELECT COUNT(*) FROM commitmentEventEvidenceSegment") ?? -1
     }
 }
 

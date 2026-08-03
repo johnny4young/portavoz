@@ -1094,9 +1094,10 @@ is accepted only by exact live `PersonID`; the structural local speaker is
 represented independently as `me`, and an absent owner as `unassigned`.
 Aliases and display-name similarity never assign continuity state.
 
-`PortavozCore` owns the strict lifecycle and a canonical format-2 continuity
-envelope. Its decoder still accepts format 1, which can represent only an exact
-person or an unassigned owner. `StorageKit` exports and replays the current
+`PortavozCore` owns the strict lifecycle and a canonical format-3 continuity
+envelope. Its decoder still accepts formats 1 and 2; format 1 can represent only
+an exact person or an unassigned owner, while neither legacy format requires
+event-level segment evidence. `StorageKit` exports and replays the current
 representation idempotently,
 requiring exact local source, meeting, evidence, and person identities before
 writing anything. It is a transport-neutral backup/sync contract, not yet part
@@ -1128,6 +1129,15 @@ both the current projection and assignment events. Existing rows migrate to
 user. Database triggers reject mismatched kind/person payloads, and the portable
 format-2 envelope preserves explicit self-assignment while retaining format-1
 read compatibility.
+
+Schema v28 adds exact optional evidence to later commitment lifecycle events:
+the event owns one source transcript revision and an immutable ordered set of
+accepted segment identities. Application validation and a SQLite trigger both
+require the same live meeting revision, final segments, and no active
+correction before event, evidence, and current projection commit atomically.
+The evidence child has no segment foreign key, so transcript purge makes it
+unavailable without rewriting user-authored history. Legacy lifecycle events
+remain valid state but cannot become evidence-backed chronology by inference.
 
 Meeting Detail renders that reconciliation as an independent evidence-first
 section. Presentation receives immutable candidates and sends explicit intents
@@ -1331,8 +1341,11 @@ meeting as the temporal baseline, and executes topology lookup, continuity
 rehydration, freshness checks, and result assembly in one SQLite read snapshot.
 
 Topic timelines can return confirmed decisions, explicit supersession or
-reversal, and newly confirmed commitments connected through the meeting
-topology. Person timelines deliberately return only commitments whose
+reversal, newly confirmed commitments connected through the meeting topology,
+and later commitment changes whose append-only event owns exact accepted
+transcript evidence. Lifecycle output remains typed as reassignment,
+reschedule, completion, reopen, or dismissal rather than encoded in generated
+display prose. Person timelines deliberately return only commitments whose
 **current canonical owner** is that person; meeting participation never implies
 ownership of a decision. Every item keeps authoritative wording plus ordered
 current final segments and an exact meeting/segment/time navigation target.
@@ -1343,13 +1356,22 @@ multiple sources exist in the same meeting, current evidence wins over stale or
 unavailable historical material. Candidate reads and output are bounded and
 ordered newest first; limit overflow is explicit.
 
-There is still no exact evidence identity for later commitment lifecycle
-changes, authoritative unresolved-question lifecycle, or blocker relationship.
-The page advertises those fact classes as unsupported instead of attaching a
-nearby source that does not prove the change or turning generated Apuntador text
-into memory. This path adds no generated
+Commitment lifecycle events created before exact event evidence remain
+loadable, but a timeline reports their encountered fact kind as unsupported
+instead of borrowing the commitment's original source. There is still no
+authoritative unresolved-question lifecycle or blocker relationship; generated
+Apuntador text cannot become memory authority. This path adds no generated
 narrative, Ask lane, SwiftUI, model, threshold, graph database, sync/export,
 CLI, or MCP behavior.
+
+Schema v28 stores optional non-confirm commitment-event authority as one source
+meeting, its current transcript revision, and immutable ordered segment
+identities. The write transaction and a database trigger independently require
+unique final accepted segments from that meeting with no active correction.
+Portable commitment format 3 carries the same evidence while continuing to
+decode evidence-less formats 1 and 2. Segment ownership is deliberately absent:
+source purge preserves why the event existed, while timeline hydration reports
+the evidence unavailable.
 
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
@@ -3315,13 +3337,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,914 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,919 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 558 first-party Swift source files;
+- strict SwiftLint reports zero violations across 562 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

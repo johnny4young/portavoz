@@ -164,6 +164,7 @@ struct CommitmentEventRecord: Codable, FetchableRecord, PersistableRecord {
     var canonicalPersonID: String?
     var dueAt: Date?
     var sourceMeetingID: String?
+    var sourceTranscriptRevision: Int?
     var occurredAt: Date
 
     init(_ event: CommitmentEvent) {
@@ -174,60 +175,124 @@ struct CommitmentEventRecord: Codable, FetchableRecord, PersistableRecord {
         canonicalPersonID = event.canonicalPersonID?.rawValue.uuidString
         dueAt = event.dueAt
         sourceMeetingID = event.sourceMeetingID?.rawValue.uuidString
+        sourceTranscriptRevision = event.evidence?.sourceTranscriptRevision
         occurredAt = event.occurredAt
     }
 
-    var event: CommitmentEvent {
-        get throws {
-            guard let kind = CommitmentEventKind(rawValue: kind) else {
+    func event(evidenceSegmentIDs: [UUID]) throws -> CommitmentEvent {
+        guard let kind = CommitmentEventKind(rawValue: kind) else {
+            throw StorageError.invalidPersistedValue(
+                table: Self.databaseTableName,
+                column: "kind",
+                value: self.kind)
+        }
+        let assignee = try persistedAssignee()
+        let sourceMeetingID = try PersistedIdentity.optional(
+            sourceMeetingID,
+            table: Self.databaseTableName,
+            column: "sourceMeetingID"
+        ).map { MeetingID(rawValue: $0) }
+        let evidence = try persistedEvidence(
+            meetingID: sourceMeetingID,
+            segmentIDs: evidenceSegmentIDs)
+        return CommitmentEvent(
+            id: CommitmentEventID(rawValue: try PersistedIdentity.required(
+                id, table: Self.databaseTableName, column: "id")),
+            commitmentID: CommitmentID(rawValue: try PersistedIdentity.required(
+                commitmentID,
+                table: Self.databaseTableName,
+                column: "commitmentID")),
+            kind: kind,
+            assignee: assignee,
+            dueAt: dueAt,
+            sourceMeetingID: sourceMeetingID,
+            evidence: evidence,
+            occurredAt: occurredAt)
+    }
+
+    private func persistedAssignee() throws -> CommitmentAssignee? {
+        let personID = try PersistedIdentity.optional(
+            canonicalPersonID,
+            table: Self.databaseTableName,
+            column: "canonicalPersonID"
+        ).map { PersonID(rawValue: $0) }
+        let assignee: CommitmentAssignee?
+        if let assigneeKind {
+            guard let value = CommitmentAssigneeKind(rawValue: assigneeKind),
+                  let decoded = CommitmentAssignee(
+                      kind: value,
+                      canonicalPersonID: personID)
+            else {
                 throw StorageError.invalidPersistedValue(
                     table: Self.databaseTableName,
-                    column: "kind",
-                    value: self.kind)
+                    column: "assigneeKind",
+                    value: assigneeKind)
             }
-            let personID = try PersistedIdentity.optional(
-                canonicalPersonID,
+            assignee = decoded
+        } else {
+            guard personID == nil else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "canonicalPersonID",
+                    value: canonicalPersonID ?? "")
+            }
+            assignee = nil
+        }
+        return assignee
+    }
+
+    private func persistedEvidence(
+        meetingID: MeetingID?,
+        segmentIDs: [UUID]
+    ) throws -> CommitmentEventEvidence? {
+        let evidence: CommitmentEventEvidence?
+        if let sourceTranscriptRevision {
+            guard let meetingID else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "sourceTranscriptRevision",
+                    value: String(sourceTranscriptRevision))
+            }
+            evidence = CommitmentEventEvidence(
+                meetingID: meetingID,
+                sourceTranscriptRevision: sourceTranscriptRevision,
+                segmentIDs: segmentIDs)
+        } else {
+            guard segmentIDs.isEmpty else {
+                throw StorageError.invalidPersistedValue(
+                    table: Self.databaseTableName,
+                    column: "sourceTranscriptRevision",
+                    value: "missing")
+            }
+            evidence = nil
+        }
+        return evidence
+    }
+}
+
+struct CommitmentEventEvidenceSegmentRecord: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "commitmentEventEvidenceSegment"
+
+    var eventID: String
+    var segmentID: String
+    var ordinal: Int
+
+    init(
+        eventID: CommitmentEventID,
+        segmentID: UUID,
+        ordinal: Int
+    ) {
+        self.eventID = eventID.rawValue.uuidString
+        self.segmentID = segmentID.uuidString
+        self.ordinal = ordinal
+    }
+
+    var persistedSegmentID: UUID {
+        get throws {
+            try PersistedIdentity.required(
+                segmentID,
                 table: Self.databaseTableName,
-                column: "canonicalPersonID"
-            ).map { PersonID(rawValue: $0) }
-            let assignee: CommitmentAssignee?
-            if let assigneeKind {
-                guard let value = CommitmentAssigneeKind(rawValue: assigneeKind),
-                      let decoded = CommitmentAssignee(
-                          kind: value,
-                          canonicalPersonID: personID)
-                else {
-                    throw StorageError.invalidPersistedValue(
-                        table: Self.databaseTableName,
-                        column: "assigneeKind",
-                        value: assigneeKind)
-                }
-                assignee = decoded
-            } else {
-                guard personID == nil else {
-                    throw StorageError.invalidPersistedValue(
-                        table: Self.databaseTableName,
-                        column: "canonicalPersonID",
-                        value: canonicalPersonID ?? "")
-                }
-                assignee = nil
-            }
-            return CommitmentEvent(
-                id: CommitmentEventID(rawValue: try PersistedIdentity.required(
-                    id, table: Self.databaseTableName, column: "id")),
-                commitmentID: CommitmentID(rawValue: try PersistedIdentity.required(
-                    commitmentID,
-                    table: Self.databaseTableName,
-                    column: "commitmentID")),
-                kind: kind,
-                assignee: assignee,
-                dueAt: dueAt,
-                sourceMeetingID: try PersistedIdentity.optional(
-                    sourceMeetingID,
-                    table: Self.databaseTableName,
-                    column: "sourceMeetingID"
-                ).map { MeetingID(rawValue: $0) },
-                occurredAt: occurredAt)
+                column: "segmentID")
         }
     }
 }

@@ -41,14 +41,7 @@ final class MeetingMemoryTimelineTests: XCTestCase {
         ])
         XCTAssertEqual(page.omittedStaleCount, 0)
         XCTAssertEqual(page.omittedUnavailableCount, 0)
-        XCTAssertEqual(page.unsupportedKinds, [
-            .commitmentReassigned,
-            .commitmentRescheduled,
-            .commitmentCompleted,
-            .commitmentReopened,
-            .commitmentDismissed,
-            .unresolvedQuestion,
-        ])
+        XCTAssertEqual(page.unsupportedKinds, [.unresolvedQuestion])
         XCTAssertFalse(page.hasMore)
         XCTAssertGreaterThan(page.projectionGeneration, 0)
     }
@@ -73,7 +66,55 @@ final class MeetingMemoryTimelineTests: XCTestCase {
         }))
     }
 
-    func testTimelineDoesNotInventEvidenceForMeetingScopedCommitmentChanges() async throws {
+    func testTimelineServesOnlyExactEvidenceForMeetingScopedCommitmentChanges() async throws {
+        let fixture = try await seededTimelineFixture(projectGraph: true)
+        let dueAt = Self.baseDate.addingTimeInterval(172_800)
+        _ = try await fixture.store.applyCommitmentTransition(
+            .reschedule(dueAt),
+            to: fixture.commitmentID,
+            evidence: CommitmentEventEvidence(
+                meetingID: fixture.through.id,
+                sourceTranscriptRevision: fixture.through.transcriptRevision,
+                segmentIDs: [fixture.commitmentChangeSegment.id]),
+            at: fixture.through.startedAt.addingTimeInterval(50))
+
+        let result = try await fixture.store.meetingMemoryTimeline(
+            MeetingMemoryTimelineQuery(
+                subject: .topic(fixture.topicID),
+                throughMeetingID: fixture.through.id))
+        guard case .timeline(let page) = result else {
+            return XCTFail("Expected a source-backed commitment change, got \(result)")
+        }
+
+        let item = try XCTUnwrap(page.items.first(where: {
+            $0.kind == .commitmentRescheduled
+        }))
+        XCTAssertEqual(item.commitmentChange, .rescheduled(dueAt))
+        XCTAssertEqual(item.navigation?.segmentID, fixture.commitmentChangeSegment.id)
+        XCTAssertFalse(page.unsupportedKinds.contains(.commitmentRescheduled))
+
+        _ = try await fixture.store.appendTranscriptCorrection(TranscriptCorrectionEvent(
+            meetingID: fixture.through.id,
+            baseTranscriptRevision: fixture.through.transcriptRevision,
+            targetSegmentIDs: [fixture.commitmentChangeSegment.id],
+            kind: .replaceText(text: "Move the release notes deadline to Monday.", language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: fixture.through.startedAt.addingTimeInterval(60)))
+        let correctedResult = try await fixture.store.meetingMemoryTimeline(
+            MeetingMemoryTimelineQuery(
+                subject: .topic(fixture.topicID),
+                throughMeetingID: fixture.through.id))
+        guard case .timeline(let correctedPage) = correctedResult else {
+            return XCTFail("Expected remaining current facts, got \(correctedResult)")
+        }
+        XCTAssertFalse(correctedPage.items.contains(where: {
+            $0.kind == .commitmentRescheduled
+        }))
+        XCTAssertGreaterThan(correctedPage.omittedUnavailableCount, 0)
+    }
+
+    func testTimelineReportsLegacyCommitmentChangesWithoutExactEvidenceAsUnsupported()
+        async throws {
         let fixture = try await seededTimelineFixture(projectGraph: true)
         _ = try await fixture.store.applyCommitmentTransition(
             .reschedule(Self.baseDate.addingTimeInterval(172_800)),
@@ -86,7 +127,7 @@ final class MeetingMemoryTimelineTests: XCTestCase {
                 subject: .topic(fixture.topicID),
                 throughMeetingID: fixture.through.id))
         guard case .timeline(let page) = result else {
-            return XCTFail("Expected a source-backed commitment change, got \(result)")
+            return XCTFail("Expected an honest partial timeline, got \(result)")
         }
 
         XCTAssertFalse(page.items.contains(where: {
@@ -228,6 +269,7 @@ final class MeetingMemoryTimelineTests: XCTestCase {
         let baselineDecisionSegment: TranscriptSegment
         let throughDecisionSegment: TranscriptSegment
         let commitmentSegment: TranscriptSegment
+        let commitmentChangeSegment: TranscriptSegment
     }
 
     private func seededTimelineFixture(
@@ -267,6 +309,15 @@ final class MeetingMemoryTimelineTests: XCTestCase {
             startTime: 10,
             endTime: 13,
             isFinal: true)
+        let commitmentChangeSegment = TranscriptSegment(
+            meetingID: through.id,
+            speakerID: throughSpeaker.id,
+            channel: .system,
+            text: "Move the release notes deadline to Friday.",
+            language: "en",
+            startTime: 14,
+            endTime: 17,
+            isFinal: true)
 
         try await store.save(baseline)
         try await store.save(through)
@@ -275,6 +326,7 @@ final class MeetingMemoryTimelineTests: XCTestCase {
             baselineDecisionSegment,
             throughDecisionSegment,
             commitmentSegment,
+            commitmentChangeSegment
         ])
         let person = try await store.createPersonAndLink(
             speakerID: baselineSpeaker.id,
@@ -388,7 +440,8 @@ final class MeetingMemoryTimelineTests: XCTestCase {
             commitmentID: commitmentID,
             baselineDecisionSegment: baselineDecisionSegment,
             throughDecisionSegment: throughDecisionSegment,
-            commitmentSegment: commitmentSegment)
+            commitmentSegment: commitmentSegment,
+            commitmentChangeSegment: commitmentChangeSegment)
     }
 
     private static func insertDecision(

@@ -399,8 +399,10 @@ private actor CommitmentRadarMutationRepositoryFake: CommitmentRadarMutating {
         to commitmentID: CommitmentID,
         eventID: CommitmentEventID,
         sourceMeetingID: MeetingID?,
+        evidence: CommitmentEventEvidence?,
         at proposedDate: Date
     ) async throws -> CommitmentContinuityEnvelope {
+        XCTAssertNil(evidence)
         calls.append(Call(
             transition: transition,
             commitmentID: commitmentID,

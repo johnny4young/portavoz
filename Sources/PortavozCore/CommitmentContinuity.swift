@@ -241,6 +241,25 @@ public enum CommitmentEventKind: String, Codable, CaseIterable, Sendable, Equata
     case dismiss
 }
 
+/// Exact accepted-transcript authority for one later commitment transition.
+/// The ordered segment identities remain immutable while current availability
+/// is re-evaluated by the serving read model.
+public struct CommitmentEventEvidence: Codable, Sendable, Equatable {
+    public let meetingID: MeetingID
+    public let sourceTranscriptRevision: Int
+    public let segmentIDs: [UUID]
+
+    public init(
+        meetingID: MeetingID,
+        sourceTranscriptRevision: Int,
+        segmentIDs: [UUID]
+    ) {
+        self.meetingID = meetingID
+        self.sourceTranscriptRevision = sourceTranscriptRevision
+        self.segmentIDs = segmentIDs
+    }
+}
+
 /// One append-only user-truth transition. Kind-specific payload validation is
 /// owned by CommitmentContinuityPolicy, not by callers or transport adapters.
 public struct CommitmentEvent: Sendable, Equatable, Identifiable {
@@ -250,6 +269,7 @@ public struct CommitmentEvent: Sendable, Equatable, Identifiable {
     public let assignee: CommitmentAssignee?
     public let dueAt: Date?
     public let sourceMeetingID: MeetingID?
+    public let evidence: CommitmentEventEvidence?
     public let occurredAt: Date
 
     public init(
@@ -259,6 +279,7 @@ public struct CommitmentEvent: Sendable, Equatable, Identifiable {
         assignee: CommitmentAssignee? = nil,
         dueAt: Date? = nil,
         sourceMeetingID: MeetingID? = nil,
+        evidence: CommitmentEventEvidence? = nil,
         occurredAt: Date
     ) {
         self.id = id
@@ -271,6 +292,7 @@ public struct CommitmentEvent: Sendable, Equatable, Identifiable {
         }
         self.dueAt = dueAt
         self.sourceMeetingID = sourceMeetingID
+        self.evidence = evidence
         self.occurredAt = occurredAt
     }
 
@@ -281,6 +303,7 @@ public struct CommitmentEvent: Sendable, Equatable, Identifiable {
         canonicalPersonID: PersonID?,
         dueAt: Date? = nil,
         sourceMeetingID: MeetingID? = nil,
+        evidence: CommitmentEventEvidence? = nil,
         occurredAt: Date
     ) {
         self.init(
@@ -292,6 +315,7 @@ public struct CommitmentEvent: Sendable, Equatable, Identifiable {
                 : nil,
             dueAt: dueAt,
             sourceMeetingID: sourceMeetingID,
+            evidence: evidence,
             occurredAt: occurredAt)
     }
 
@@ -307,6 +331,7 @@ extension CommitmentEvent: Codable {
         case canonicalPersonID
         case dueAt
         case sourceMeetingID
+        case evidence
         case occurredAt
     }
 
@@ -353,6 +378,9 @@ extension CommitmentEvent: Codable {
             sourceMeetingID: try container.decodeIfPresent(
                 MeetingID.self,
                 forKey: .sourceMeetingID),
+            evidence: try container.decodeIfPresent(
+                CommitmentEventEvidence.self,
+                forKey: .evidence),
             occurredAt: try container.decode(Date.self, forKey: .occurredAt))
     }
 
@@ -369,6 +397,7 @@ extension CommitmentEvent: Codable {
         }
         try container.encodeIfPresent(dueAt, forKey: .dueAt)
         try container.encodeIfPresent(sourceMeetingID, forKey: .sourceMeetingID)
+        try container.encodeIfPresent(evidence, forKey: .evidence)
         try container.encode(occurredAt, forKey: .occurredAt)
     }
 }
@@ -474,7 +503,7 @@ public enum CommitmentContinuityValidationError: Error, Equatable, Sendable {
 /// Versioned, transport-neutral representation for backup/import and future
 /// private sync. Persistence records never become the wire contract.
 public struct CommitmentContinuityEnvelope: Codable, Sendable, Equatable {
-    public static let currentFormatVersion = 2
+    public static let currentFormatVersion = 3
 
     public let formatVersion: Int
     public let commitment: Commitment
@@ -673,7 +702,8 @@ public enum CommitmentContinuityPolicy {
 
     private static func validPayload(_ event: CommitmentEvent) -> Bool {
         guard event.occurredAt.timeIntervalSinceReferenceDate.isFinite,
-              event.dueAt?.timeIntervalSinceReferenceDate.isFinite ?? true
+              event.dueAt?.timeIntervalSinceReferenceDate.isFinite ?? true,
+              validEvidence(event)
         else { return false }
         switch event.kind {
         case .confirm:
@@ -685,6 +715,15 @@ public enum CommitmentContinuityPolicy {
         case .complete, .reopen, .dismiss:
             return event.assignee == nil && event.dueAt == nil
         }
+    }
+
+    private static func validEvidence(_ event: CommitmentEvent) -> Bool {
+        guard let evidence = event.evidence else { return true }
+        return event.kind != .confirm
+            && event.sourceMeetingID == evidence.meetingID
+            && evidence.sourceTranscriptRevision >= 0
+            && !evidence.segmentIDs.isEmpty
+            && Set(evidence.segmentIDs).count == evidence.segmentIDs.count
     }
 
     private static func apply(

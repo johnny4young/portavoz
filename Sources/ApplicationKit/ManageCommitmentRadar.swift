@@ -8,6 +8,7 @@ public protocol CommitmentRadarMutating: Sendable {
         to commitmentID: CommitmentID,
         eventID: CommitmentEventID,
         sourceMeetingID: MeetingID?,
+        evidence: CommitmentEventEvidence?,
         at proposedDate: Date
     ) async throws -> CommitmentContinuityEnvelope
 }
@@ -62,6 +63,7 @@ public struct ManageCommitmentRadar: ApplicationUseCase {
             to: request.commitmentID,
             eventID: makeEventID(),
             sourceMeetingID: nil,
+            evidence: nil,
             at: now())
     }
 

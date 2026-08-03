@@ -45,7 +45,7 @@ public struct MeetingMemoryTimelineMeeting: Equatable, Sendable, Identifiable {
     }
 }
 
-public enum MeetingMemoryTimelineItemKind: String, CaseIterable, Sendable {
+public enum MeetingMemoryTimelineItemKind: String, CaseIterable, Hashable, Sendable {
     case decisionConfirmed = "decision-confirmed"
     case decisionSuperseded = "decision-superseded"
     case decisionReversed = "decision-reversed"
@@ -65,6 +65,16 @@ public enum MeetingMemoryTimelineOrigin: String, Sendable {
 public enum MeetingMemoryTimelineEntity: Hashable, Sendable {
     case decision(DecisionID)
     case commitment(CommitmentID)
+}
+
+/// Structured commitment state carried by a source-backed timeline item.
+/// Consumers never need to parse a generated sentence to recover the change.
+public enum MeetingMemoryTimelineCommitmentChange: Equatable, Sendable {
+    case reassigned(CommitmentAssignee)
+    case rescheduled(Date?)
+    case completed
+    case reopened
+    case dismissed
 }
 
 /// Current accepted transcript material that supports one timeline fact.
@@ -127,6 +137,7 @@ public struct MeetingMemoryTimelineItem: Equatable, Sendable, Identifiable {
     public let relatedEntity: MeetingMemoryTimelineEntity?
     public let text: String
     public let relatedText: String?
+    public let commitmentChange: MeetingMemoryTimelineCommitmentChange?
     public let origin: MeetingMemoryTimelineOrigin
     public let occurredAt: Date
     public let evidence: [MeetingMemoryTimelineEvidence]
@@ -138,6 +149,7 @@ public struct MeetingMemoryTimelineItem: Equatable, Sendable, Identifiable {
         relatedEntity: MeetingMemoryTimelineEntity? = nil,
         text: String,
         relatedText: String? = nil,
+        commitmentChange: MeetingMemoryTimelineCommitmentChange? = nil,
         origin: MeetingMemoryTimelineOrigin,
         occurredAt: Date,
         evidence: [MeetingMemoryTimelineEvidence]
@@ -148,6 +160,7 @@ public struct MeetingMemoryTimelineItem: Equatable, Sendable, Identifiable {
         self.relatedEntity = relatedEntity
         self.text = text
         self.relatedText = relatedText
+        self.commitmentChange = commitmentChange
         self.origin = origin
         self.occurredAt = occurredAt
         self.evidence = evidence

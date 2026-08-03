@@ -40,7 +40,7 @@ final class MeetingStoreTests: XCTestCase {
         return (ana, segments)
     }
 
-    // MARK: - Schema v9-v24 evidence, review, sync, corrections, and continuity
+    // MARK: - Schema v9-v28 evidence, review, sync, corrections, and continuity
 
     func testV8MigratesAdditivelyThroughMeetingSyncSchema() throws {
         let database = try DatabaseQueue()
@@ -102,7 +102,7 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 27)
+            XCTAssertEqual(StorageSchema.version, 28)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])
@@ -155,11 +155,14 @@ final class MeetingStoreTests: XCTestCase {
                 try Set(db.columns(in: "commitmentEvent").map(\.name)),
                 [
                     "id", "commitmentID", "kind", "assigneeKind", "canonicalPersonID",
-                    "dueAt", "sourceMeetingID", "occurredAt",
+                    "dueAt", "sourceMeetingID", "sourceTranscriptRevision", "occurredAt",
                 ])
+            XCTAssertEqual(
+                try Set(db.columns(in: "commitmentEventEvidenceSegment").map(\.name)),
+                ["eventID", "segmentID", "ordinal"])
             for table in [
                 "commitment", "commitmentSource", "commitmentEvidenceSegment",
-                "commitmentEvent",
+                "commitmentEvent", "commitmentEventEvidenceSegment",
             ] {
                 XCTAssertEqual(
                     try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM \(table)"),
@@ -183,6 +186,7 @@ final class MeetingStoreTests: XCTestCase {
                 "commitmentEvidenceSegment_on_segment",
                 "commitmentEvent_on_history",
                 "commitmentEvent_on_sourceMeeting",
+                "commitmentEventEvidenceSegment_on_segment",
             ]))
             XCTAssertEqual(
                 Set(try db.foreignKeys(on: "commitment").map(\.destinationTable)),
@@ -197,6 +201,10 @@ final class MeetingStoreTests: XCTestCase {
             XCTAssertEqual(
                 Set(try db.foreignKeys(on: "commitmentEvent").map(\.destinationTable)),
                 ["commitment", "person"])
+            XCTAssertEqual(
+                Set(try db.foreignKeys(on: "commitmentEventEvidenceSegment")
+                    .map(\.destinationTable)),
+                ["commitmentEvent"])
             XCTAssertEqual(
                 try String.fetchOne(
                     db, sql: "SELECT markdown FROM summary WHERE id = ?",
