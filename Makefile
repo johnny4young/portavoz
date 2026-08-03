@@ -19,6 +19,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	commitment-link-quality-product commitment-link-similarity-product \
 	commitment-link-similarity-replay validate-commitment-link-private-pack \
 	commitment-link-private-similarity-product \
+	commitment-link-private-similarity-replay \
 	test-correction-composition correction-composition-benchmark \
 	test-commitment-radar-scale commitment-radar-benchmark \
 	test-exact-path-matrix exact-path-matrix \
@@ -219,6 +220,27 @@ commitment-link-private-similarity-product:
 	@python3 scripts/commitment_link_quality.py validate-private-similarity \
 		--fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" \
 		--observations "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS)"
+
+## Replay every observed private similarity outcome without selecting or
+## approving a candidate. All three artifacts remain owner-only and ignored.
+PORTAVOZ_COMMITMENT_LINK_PRIVATE_POLICY_REPLAY ?=
+commitment-link-private-similarity-replay:
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_POLICY_REPLAY)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_PRIVATE_POLICY_REPLAY is required" >&2; exit 64)
+	@python3 scripts/commitment_link_quality.py validate-private-replay-destination \
+		--output "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_POLICY_REPLAY)"
+	@python3 scripts/commitment_link_quality.py replay-private-similarity \
+		--fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" \
+		--observations "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS)" \
+		--output "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_POLICY_REPLAY)"
+	@python3 scripts/commitment_link_quality.py validate-private-policy-replay \
+		--fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" \
+		--observations "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS)" \
+		--replay "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_POLICY_REPLAY)"
 
 ## Validate the exact-shaped, content-free host receipt boundary without
 ## running the expensive Release scale harness.

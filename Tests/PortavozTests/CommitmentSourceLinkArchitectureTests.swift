@@ -166,6 +166,31 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
             "Measure private commitment links without weakening public evidence"))
     }
 
+    func testPrivatePolicyReplayRemainsSeparateAndOutsideAppComposition() throws {
+        let validator = try Self.contents(
+            of: "scripts/commitment_link_quality.py")
+        let makefile = try Self.contents(of: "Makefile")
+        let appComposition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(validator.contains(
+            "commitment-link-private-similarity-policy-replay"))
+        XCTAssertTrue(validator.contains(
+            "replay_private_similarity_policies"))
+        XCTAssertTrue(validator.contains(
+            "validate_private_policy_replay"))
+        XCTAssertTrue(makefile.contains(
+            "commitment-link-private-similarity-replay"))
+        XCTAssertFalse(appComposition.contains(
+            "PRIVATE_POLICY_REPLAY_KIND"))
+        XCTAssertFalse(appComposition.contains(
+            "replay_private_similarity_policies"))
+        XCTAssertTrue(decisions.contains("## D253"))
+        XCTAssertTrue(decisions.contains(
+            "Replay private commitment-link evidence without selecting policy"))
+    }
+
     private static func contents(of relativePath: String) throws -> String {
         try String(
             contentsOf: repoRoot.appendingPathComponent(relativePath),

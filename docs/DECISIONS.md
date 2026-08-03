@@ -8657,3 +8657,38 @@ two evidence authorities or leaking fixture text into the receipt. Human review
 still owns anonymization. Private policy replay, a clean-head profile matrix,
 quality-floor acceptance, and any serving decision remain separate pending
 slices.
+
+## D253 — Replay private commitment-link evidence without selecting policy (Aug 2026)
+
+**Context:** D252 produces field-derived similarity evidence, but the D250
+replay accepts only the canonical public receipt. Reusing the public command or
+receipt kind for private evidence would erase its owner-reviewed provenance and
+make a field candidate matrix look like synthetic authority. Duplicating the
+candidate arithmetic would create a second threshold policy that could drift
+silently.
+
+**Decision:** add a distinct private replay and validation path around one
+shared deterministic candidate core. The private path accepts only the D251
+mode-`0600` fixture and D252 mode-`0600` scored receipt, revalidates their exact
+fixture/anonymization/profile/build/commit relationship, and preflights an
+owner-only non-overwriting output that must be gitignored when repository-
+local. The output has its own `commitment-link-private-similarity-policy-replay`
+kind and binds both the complete fixture digest and complete scored-receipt
+digest plus the original provenance.
+
+For both authorities, retrieval stays fixed and only already legal D244
+suggestions are filtered. One inclusive threshold represents every distinct
+observed admission outcome; unsupported baseline suggestions fail closed. The
+private candidate matrix carries only aggregate counts and language/class
+metrics, never fixture text. Exact recomputation rejects changed candidates,
+ordering, source evidence, or review state. Its statuses remain literally
+`review-required`, `not-selected`, `not-evaluated`, and `not-approved`.
+
+**Consequences:** public and private runs now produce comparable candidate
+arithmetic without sharing evidence identity or choosing a winner. The shared
+core reduces policy drift, while separate validators and envelopes prevent
+private evidence from weakening the canonical public boundary. This slice does
+not retain a baseline, accept a quality floor, select a similarity threshold,
+or add app composition, persistence, diagnostics, sync/export, bundles, MCP,
+SwiftUI, confirmation, or serving behavior. A clean-head profile matrix and
+explicit human review remain pending.

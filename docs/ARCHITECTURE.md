@@ -2053,9 +2053,15 @@ the complete private-fixture digest, content-source and anonymization
 provenance, embedding profile, build, and source commit to anonymized external
 identities, scores, and legal suggestions. It carries no fixture text and is
 validated against the same private file/ignore policy. Public fixture loading
-remains canonical-digest-only. No private content, score, replay, threshold, or
-quality floor enters app composition, persistence, diagnostics, sync, bundles,
-MCP, or SwiftUI.
+remains canonical-digest-only. A separate private replay validates all three
+owner-only artifacts, preserves exact fixture/anonymization/profile/build/
+commit provenance, and deterministically enumerates the same inclusive
+similarity-admission outcomes as the public authority under a distinct private
+receipt kind. It is exactly recomputable, carries no fixture text, selects no
+candidate, and remains review-required, not product-evaluated, and not approved
+for serving. No private content, replay result, threshold, or quality floor
+enters app composition, persistence, diagnostics, sync, bundles, MCP, or
+SwiftUI.
 
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,

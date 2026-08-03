@@ -347,6 +347,137 @@ class CommitmentLinkQualityTests(unittest.TestCase):
                 "private similarity observations",
             )
 
+    def test_private_policy_replay_is_distinct_deterministic_and_non_serving(self):
+        fixture = self.private_fixture()
+        observations = self.private_similarity_observations()
+
+        first = quality.replay_private_similarity_policies(
+            fixture,
+            observations,
+        )
+        second = quality.replay_private_similarity_policies(
+            fixture,
+            observations,
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["kind"], quality.PRIVATE_POLICY_REPLAY_KIND)
+        self.assertEqual(first["fixtureSHA256"], quality.fixture_digest(fixture))
+        self.assertEqual(
+            first["sourceObservationSHA256"],
+            quality.document_digest(observations),
+        )
+        self.assertEqual(first["contentSource"], quality.PRIVATE_SOURCE)
+        self.assertEqual(first["anonymization"], fixture["anonymization"])
+        self.assertEqual(first["candidateCount"], 3)
+        self.assertEqual(
+            [row["minimumSimilarity"] for row in first["candidates"]],
+            [-1.0, 0.85, 0.95],
+        )
+        self.assertEqual(first["evaluationStatus"], "review-required")
+        self.assertEqual(first["selectionStatus"], "not-selected")
+        self.assertEqual(first["productDecision"], "not-evaluated")
+        self.assertEqual(first["servingStatus"], "not-approved")
+        with self.assertRaises(quality.CommitmentLinkQualityError):
+            quality.replay_similarity_policies(fixture, observations)
+
+    def test_private_policy_replay_rejects_tampering_and_source_drift(self):
+        fixture = self.private_fixture()
+        observations = self.private_similarity_observations()
+        replay = quality.replay_private_similarity_policies(
+            fixture,
+            observations,
+        )
+
+        self.assertIs(
+            quality.validate_private_policy_replay(
+                replay,
+                fixture,
+                observations,
+            ),
+            replay,
+        )
+        for mutate in (
+            lambda value: value.update({"selectionStatus": "selected"}),
+            lambda value: value["anonymization"].update(
+                {"reviewStatus": "automatic"}
+            ),
+            lambda value: value["candidates"][0]["metrics"].update(
+                {"linkPrecision": 0.123}
+            ),
+        ):
+            broken = copy.deepcopy(replay)
+            mutate(broken)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                "deterministic recomputation",
+            ):
+                quality.validate_private_policy_replay(
+                    broken,
+                    fixture,
+                    observations,
+                )
+
+        drifted = copy.deepcopy(observations)
+        drifted["build"] = "0.9.0+2"
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "deterministic recomputation",
+        ):
+            quality.validate_private_policy_replay(
+                replay,
+                fixture,
+                drifted,
+            )
+
+    def test_private_policy_replay_cli_keeps_all_artifacts_owner_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture_path = root / "private-pack.json"
+            observations_path = root / "private-similarity.json"
+            replay_path = root / "private-policy-replay.json"
+            fixture_path.write_text(
+                json.dumps(self.private_fixture()),
+                encoding="utf-8",
+            )
+            observations_path.write_text(
+                json.dumps(self.private_similarity_observations()),
+                encoding="utf-8",
+            )
+            fixture_path.chmod(0o600)
+            observations_path.chmod(0o600)
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "replay-private-similarity",
+                        "--fixture", str(fixture_path),
+                        "--observations", str(observations_path),
+                        "--output", str(replay_path),
+                    ]),
+                    0,
+                )
+                self.assertEqual(
+                    quality.main([
+                        "validate-private-policy-replay",
+                        "--fixture", str(fixture_path),
+                        "--observations", str(observations_path),
+                        "--replay", str(replay_path),
+                    ]),
+                    0,
+                )
+            self.assertEqual(stat.S_IMODE(replay_path.stat().st_mode), 0o600)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "replay-private-similarity",
+                        "--fixture", str(fixture_path),
+                        "--observations", str(observations_path),
+                        "--output", str(replay_path),
+                    ]),
+                    64,
+                )
+
     def test_fixture_rejects_link_truth_without_exact_owner(self):
         fixture = self.fixture()
         broken = copy.deepcopy(fixture)

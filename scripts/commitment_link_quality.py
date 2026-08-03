@@ -23,6 +23,9 @@ PRIVATE_SIMILARITY_OBSERVATION_KIND = (
     "commitment-link-private-similarity-observations"
 )
 POLICY_REPLAY_KIND = "commitment-link-similarity-policy-replay"
+PRIVATE_POLICY_REPLAY_KIND = (
+    "commitment-link-private-similarity-policy-replay"
+)
 SCORECARD_KIND = "commitment-link-quality-scorecard"
 POLICY_SWEEP_GENERATION = "observed-equivalence-classes-v1"
 POLICY_RULE = "best-matched-evidence-similarity-at-least"
@@ -930,9 +933,7 @@ def grouped_metrics(details, field, names):
     return groups
 
 
-def evaluate(fixture, observation_document):
-    fixture = validate_fixture(fixture)
-    observation_document = validate_observations(observation_document, fixture)
+def _evaluate_validated(fixture, observation_document, content_source):
     observations = {
         row["caseID"]: row for row in observation_document["observations"]
     }
@@ -958,7 +959,7 @@ def evaluate(fixture, observation_document):
         "fixtureGeneration": fixture["generation"],
         "fixtureSHA256": fixture_digest(fixture),
         "adapter": observation_document["adapter"],
-        "contentSource": PUBLIC_SOURCE,
+        "contentSource": content_source,
         "counts": {
             "cases": len(details),
             "semanticRelevantCases": len(semantic_rows),
@@ -997,6 +998,12 @@ def evaluate(fixture, observation_document):
         "productDecision": "not-evaluated",
     }
     return scorecard, details
+
+
+def evaluate(fixture, observation_document):
+    fixture = validate_fixture(fixture)
+    observation_document = validate_observations(observation_document, fixture)
+    return _evaluate_validated(fixture, observation_document, PUBLIC_SOURCE)
 
 
 def unscored_similarity_projection(document):
@@ -1039,12 +1046,7 @@ def representative_similarity_thresholds(similarities):
     return thresholds
 
 
-def replay_similarity_policies(fixture, similarity_document):
-    fixture = validate_fixture(fixture)
-    similarity_document = validate_similarity_observations(
-        similarity_document,
-        fixture,
-    )
+def _replay_similarity_candidates(fixture, similarity_document):
     unscored = unscored_similarity_projection(similarity_document)
     validate_observations(unscored, fixture)
     cases = {case["id"]: case for case in fixture["cases"]}
@@ -1102,7 +1104,11 @@ def replay_similarity_policies(fixture, similarity_document):
             **{key: value for key, value in unscored.items() if key != "observations"},
             "observations": candidate_rows,
         }
-        scorecard, _ = evaluate(fixture, candidate_document)
+        scorecard, _ = _evaluate_validated(
+            fixture,
+            candidate_document,
+            fixture["contentSource"],
+        )
         admitted = scorecard["counts"]["suggestions"]
         candidates.append({
             "candidateID": f"candidate-{ordinal:03d}",
@@ -1116,9 +1122,19 @@ def replay_similarity_policies(fixture, similarity_document):
             "byClass": scorecard["byClass"],
         })
 
-    return {
+    return candidates
+
+
+def _policy_replay_document(
+    kind,
+    fixture,
+    similarity_document,
+    candidates,
+    anonymization=None,
+):
+    document = {
         "schemaVersion": SCHEMA_VERSION,
-        "kind": POLICY_REPLAY_KIND,
+        "kind": kind,
         "fixtureGeneration": fixture["generation"],
         "fixtureSHA256": fixture_digest(fixture),
         "sourceObservationSHA256": document_digest(similarity_document),
@@ -1138,6 +1154,38 @@ def replay_similarity_policies(fixture, similarity_document):
         "productDecision": "not-evaluated",
         "servingStatus": "not-approved",
     }
+    if anonymization is not None:
+        document["anonymization"] = anonymization
+    return document
+
+
+def replay_similarity_policies(fixture, similarity_document):
+    fixture = validate_fixture(fixture)
+    similarity_document = validate_similarity_observations(
+        similarity_document,
+        fixture,
+    )
+    return _policy_replay_document(
+        POLICY_REPLAY_KIND,
+        fixture,
+        similarity_document,
+        _replay_similarity_candidates(fixture, similarity_document),
+    )
+
+
+def replay_private_similarity_policies(fixture, similarity_document):
+    fixture = validate_private_fixture(fixture)
+    similarity_document = validate_private_similarity_observations(
+        similarity_document,
+        fixture,
+    )
+    return _policy_replay_document(
+        PRIVATE_POLICY_REPLAY_KIND,
+        fixture,
+        similarity_document,
+        _replay_similarity_candidates(fixture, similarity_document),
+        anonymization=fixture["anonymization"],
+    )
 
 
 def validate_policy_replay(document, fixture, similarity_document):
@@ -1145,6 +1193,18 @@ def validate_policy_replay(document, fixture, similarity_document):
     if document != expected:
         raise CommitmentLinkQualityError(
             "policy replay does not match deterministic recomputation"
+        )
+    return document
+
+
+def validate_private_policy_replay(document, fixture, similarity_document):
+    expected = replay_private_similarity_policies(
+        fixture,
+        similarity_document,
+    )
+    if document != expected:
+        raise CommitmentLinkQualityError(
+            "private policy replay does not match deterministic recomputation"
         )
     return document
 
@@ -1372,6 +1432,10 @@ def parser():
         "validate-private-destination"
     )
     validate_private_destination.add_argument("--output", required=True)
+    validate_private_replay_destination = subparsers.add_parser(
+        "validate-private-replay-destination"
+    )
+    validate_private_replay_destination.add_argument("--output", required=True)
     validate_similarity = subparsers.add_parser("validate-similarity")
     validate_similarity.add_argument("--fixture", required=True)
     validate_similarity.add_argument("--observations", required=True)
@@ -1380,6 +1444,18 @@ def parser():
     )
     validate_private_similarity.add_argument("--fixture", required=True)
     validate_private_similarity.add_argument("--observations", required=True)
+    replay_private_similarity = subparsers.add_parser(
+        "replay-private-similarity"
+    )
+    replay_private_similarity.add_argument("--fixture", required=True)
+    replay_private_similarity.add_argument("--observations", required=True)
+    replay_private_similarity.add_argument("--output", required=True)
+    validate_private_replay = subparsers.add_parser(
+        "validate-private-policy-replay"
+    )
+    validate_private_replay.add_argument("--fixture", required=True)
+    validate_private_replay.add_argument("--observations", required=True)
+    validate_private_replay.add_argument("--replay", required=True)
     replay_similarity = subparsers.add_parser("replay-similarity")
     replay_similarity.add_argument("--fixture", required=True)
     replay_similarity.add_argument("--observations", required=True)
@@ -1429,6 +1505,16 @@ def main(argv=None):
                 "destination": destination.name,
             }, sort_keys=True))
             return 0
+        if arguments.command == "validate-private-replay-destination":
+            destination = validate_private_destination_path(
+                arguments.output,
+                "private policy replay",
+            )
+            print(json.dumps({
+                "status": "accepted",
+                "destination": destination.name,
+            }, sort_keys=True))
+            return 0
         if arguments.command == "validate-private-similarity":
             fixture_path = validate_private_fixture_path(arguments.fixture)
             fixture = validate_private_fixture(
@@ -1460,6 +1546,59 @@ def main(argv=None):
                 ],
                 "evaluationStatus": observations["evaluationStatus"],
                 "servingStatus": observations["servingStatus"],
+            }, sort_keys=True))
+            return 0
+        if arguments.command in {
+            "replay-private-similarity",
+            "validate-private-policy-replay",
+        }:
+            fixture_path = validate_private_fixture_path(arguments.fixture)
+            fixture = validate_private_fixture(
+                load_json(fixture_path, "private fixture")
+            )
+            observations_path = validate_owner_only_private_path(
+                arguments.observations,
+                "private similarity observations",
+            )
+            observations = validate_private_similarity_observations(
+                load_json(
+                    observations_path,
+                    "private similarity observations",
+                ),
+                fixture,
+            )
+            if arguments.command == "replay-private-similarity":
+                output = validate_private_destination_path(
+                    arguments.output,
+                    "private policy replay",
+                )
+                replay = replay_private_similarity_policies(
+                    fixture,
+                    observations,
+                )
+                write_json(output, replay, owner_only=True)
+            else:
+                replay_path = validate_owner_only_private_path(
+                    arguments.replay,
+                    "private policy replay",
+                )
+                replay = validate_private_policy_replay(
+                    load_json(replay_path, "private policy replay"),
+                    fixture,
+                    observations,
+                )
+            print(json.dumps({
+                "kind": replay["kind"],
+                "fixtureSHA256": replay["fixtureSHA256"],
+                "sourceObservationSHA256": replay[
+                    "sourceObservationSHA256"
+                ],
+                "candidateCount": replay["candidateCount"],
+                "reviewStatus": replay["anonymization"]["reviewStatus"],
+                "evaluationStatus": replay["evaluationStatus"],
+                "selectionStatus": replay["selectionStatus"],
+                "productDecision": replay["productDecision"],
+                "servingStatus": replay["servingStatus"],
             }, sort_keys=True))
             return 0
         fixture = validate_fixture(load_json(arguments.fixture, "fixture"))

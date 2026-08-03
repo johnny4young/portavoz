@@ -1382,7 +1382,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   result remains `review-required` and its product decision remains
   `not-evaluated` (D236).
 - `make test-commitment-link-quality` validates D245's reproducible 36-case
-  cross-meeting fixture and runs twenty-four evaluator/contract tests without a
+  cross-meeting fixture and runs twenty-seven evaluator/contract tests without a
   model, database, or user library. The corpus is balanced across English,
   Spanish, and mixed speech and across 18 linkable and 18 mandatory-abstention
   cases. It labels semantic-relevant targets separately from legally linkable
@@ -1396,8 +1396,8 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   arithmetic; it remains `review-required`, makes no product decision, and
   selects no threshold or engine. Optional case details are mode `0600`, non-
   overwriting, and untracked.
-- Twenty focused package cases cover D246–D252's non-serving product seam:
-  six observer/storage behaviors, six source-link architecture contracts, and
+- Twenty-one focused package cases cover D246–D253's non-serving product seam:
+  six observer/storage behaviors, seven source-link architecture contracts, and
   eight product-runner cases.
   The real in-memory Store path proves exact open source/evidence identities,
   installed-assets-only borrowing, and semantic-hit versus legal-admission
@@ -1447,10 +1447,20 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   anonymization/content-source, profile, build, and commit while emitting no
   fixture source text. Three tooling cases cover private receipt provenance,
   drift, destination preflight, owner-only input/output, and CLI validation;
-  three package cases cover
+  four package cases cover
   loader separation, isolated scored collection, no-text publication, and the
   app-composition ratchet. The public product command remains canonical-digest-
-  only, and private policy replay remains pending. The
+  only. D253 adds the separate `commitment-link-private-similarity-replay`
+  target. It validates owner-only fixture and scored inputs, preflights an
+  owner-only ignored output, and emits a distinct private candidate matrix
+  bound to fixture, anonymization, scored-observation, profile, build, and
+  commit provenance. The candidate arithmetic is shared with the public replay
+  but exact recomputation cannot confuse the two receipt kinds. Three focused
+  tooling cases prove deterministic private outcomes, public/private
+  separation, tamper and source-drift rejection, CLI validation, and mode-
+  `0600` non-overwriting publication; one package architecture ratchet keeps
+  the private replay out of app composition. No candidate is selected and no threshold
+  is product-evaluated or serving-approved. The
   `commitment-link-quality-product` target runs the real
   Storage/Application path and immediately validates it with the D245
   evaluator; downloads remain disabled unless the caller explicitly selects
