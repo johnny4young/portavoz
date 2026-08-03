@@ -59,6 +59,24 @@ class CommitmentLinkQualityTests(unittest.TestCase):
             ],
         }
 
+    def private_fixture(self):
+        fixture = self.fixture()
+        return {
+            "schemaVersion": 1,
+            "kind": quality.PRIVATE_FIXTURE_KIND,
+            "generation": "private-anonymized-v1",
+            "contentSource": quality.PRIVATE_SOURCE,
+            "anonymization": {
+                "policy": quality.PRIVATE_ANONYMIZATION_POLICY,
+                "reviewStatus": quality.PRIVATE_REVIEW_STATUS,
+                "containsAudio": False,
+                "containsFilePaths": False,
+                "containsAccountIdentifiers": False,
+                "containsDirectIdentifiers": False,
+            },
+            "cases": fixture["cases"],
+        }
+
     def test_public_corpus_is_bounded_and_rejects_incomplete_languages(self):
         corpus = quality.load_public_corpus(CORPUS)
         self.assertEqual(
@@ -96,6 +114,111 @@ class CommitmentLinkQualityTests(unittest.TestCase):
             for case in fixture["cases"]
             for target in case["targets"]
         ))
+
+    def test_private_fixture_reuses_balance_and_requires_owner_attestation(self):
+        fixture = self.private_fixture()
+
+        self.assertIs(quality.validate_private_fixture(fixture), fixture)
+        self.assertEqual(len(fixture["cases"]), 36)
+        self.assertEqual(
+            Counter(case["language"] for case in fixture["cases"]),
+            Counter({"en": 12, "es": 12, "mixed": 12}),
+        )
+
+        for mutate, message in (
+            (
+                lambda value: value["anonymization"].update(
+                    {"reviewStatus": "automatic"}
+                ),
+                "owner-reviewed",
+            ),
+            (
+                lambda value: value["anonymization"].update(
+                    {"containsDirectIdentifiers": True}
+                ),
+                "containsDirectIdentifiers",
+            ),
+            (lambda value: value["cases"].pop(), "exactly 36"),
+        ):
+            broken = copy.deepcopy(fixture)
+            mutate(broken)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_private_fixture(broken)
+
+    def test_private_fixture_rejects_obvious_identifier_patterns(self):
+        fixture = self.private_fixture()
+        for text, message in (
+            ("Contact person@example.com", "email address"),
+            ("Open https://example.com/private", "URL"),
+            ("Read /Users/person/meeting.txt", "filesystem path"),
+            ("Call +1 (555) 123-4567", "phone-like number"),
+            ("Raw 123e4567-e89b-12d3-a456-426614174000", "UUID"),
+        ):
+            broken = copy.deepcopy(fixture)
+            broken["cases"][0]["candidate"]["text"] = text
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_private_fixture(broken)
+
+    def test_private_fixture_cli_requires_owner_only_regular_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "private-pack.json"
+            path.write_text(
+                json.dumps(self.private_fixture()),
+                encoding="utf-8",
+            )
+            path.chmod(0o644)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private",
+                        "--fixture", str(path),
+                    ]),
+                    64,
+                )
+            path.chmod(0o600)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private",
+                        "--fixture", str(path),
+                    ]),
+                    0,
+                )
+
+            link = Path(directory) / "private-pack-link.json"
+            link.symlink_to(path)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private",
+                        "--fixture", str(link),
+                    ]),
+                    64,
+                )
+
+        repository_path = ROOT / "private-pack-unignored-test.json"
+        try:
+            repository_path.write_text(
+                json.dumps(self.private_fixture()),
+                encoding="utf-8",
+            )
+            repository_path.chmod(0o600)
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(
+                    quality.main([
+                        "validate-private",
+                        "--fixture", str(repository_path),
+                    ]),
+                    64,
+                )
+        finally:
+            repository_path.unlink(missing_ok=True)
 
     def test_fixture_rejects_link_truth_without_exact_owner(self):
         fixture = self.fixture()

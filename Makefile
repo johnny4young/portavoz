@@ -17,7 +17,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	commitment-quality-model commitment-quality-compare \
 	test-commitment-link-quality commitment-link-quality-control \
 	commitment-link-quality-product commitment-link-similarity-product \
-	commitment-link-similarity-replay \
+	commitment-link-similarity-replay validate-commitment-link-private-pack \
 	test-correction-composition correction-composition-benchmark \
 	test-commitment-radar-scale commitment-radar-benchmark \
 	test-exact-path-matrix exact-path-matrix \
@@ -180,6 +180,16 @@ commitment-link-similarity-replay:
 		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json \
 		--observations "$(PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS)" \
 		--replay "$(PORTAVOZ_COMMITMENT_LINK_POLICY_REPLAY)"
+
+## Validate one owner-reviewed private companion pack without retaining it.
+## Repository-local packs must live under an ignored path such as
+## private-evidence/commitment-link/ and remain mode 0600.
+PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK ?=
+validate-commitment-link-private-pack:
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK is required" >&2; exit 64)
+	@python3 scripts/commitment_link_quality.py validate-private \
+		--fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)"
 
 ## Validate the exact-shaped, content-free host receipt boundary without
 ## running the expensive Release scale harness.

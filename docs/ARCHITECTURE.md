@@ -2034,6 +2034,20 @@ and abstention metrics, but the document remains review-required, not selected,
 not evaluated as a product decision, and not approved for serving. The tool is
 absent from runtime composition and does not set a quality floor.
 
+Real-meeting calibration has a separate local-only fixture contract; no private
+pack is tracked. A private companion pack must preserve the public authority's
+exact 36-case English/Spanish/mixed, class, linkable, and abstention balance so
+metric denominators stay comparable, while declaring a distinct private-
+anonymized generation and content source. The schema requires literal owner
+review plus negative attestations for audio, paths, account identifiers, and
+direct identifiers. Validation also rejects obvious emails, URLs, filesystem
+paths, phone-like values, and UUIDs, but documents that pattern checks cannot
+prove de-identification. Input must be a regular non-symlink mode-`0600` file;
+repository-local input must live under a gitignored path such as `private-
+evidence/`. This boundary validates shape and handling only. The current
+product-path collector still accepts only the canonical public fixture, and no
+private content, score, replay, threshold, or quality floor enters the app.
+
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
 pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title

@@ -8,6 +8,7 @@ import math
 import os
 import re
 import stat
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -15,6 +16,7 @@ from pathlib import Path
 
 SCHEMA_VERSION = 1
 FIXTURE_KIND = "commitment-link-quality-fixture"
+PRIVATE_FIXTURE_KIND = "commitment-link-private-quality-fixture"
 OBSERVATION_KIND = "commitment-link-quality-observations"
 SIMILARITY_OBSERVATION_KIND = "commitment-link-similarity-observations"
 POLICY_REPLAY_KIND = "commitment-link-similarity-policy-replay"
@@ -23,6 +25,9 @@ POLICY_SWEEP_GENERATION = "observed-equivalence-classes-v1"
 POLICY_RULE = "best-matched-evidence-similarity-at-least"
 PUBLIC_GENERATION = "public-synthetic-v1"
 PUBLIC_SOURCE = "public-synthetic-only"
+PRIVATE_SOURCE = "private-anonymized-local"
+PRIVATE_ANONYMIZATION_POLICY = "owner-reviewed-redaction-v1"
+PRIVATE_REVIEW_STATUS = "owner-reviewed"
 PUBLIC_CORPUS_KIND = "commitment-link-quality-corpus"
 PUBLIC_CORPUS_PATH = (
     Path(__file__).resolve().parents[1]
@@ -54,6 +59,18 @@ MAXIMUM_TARGETS = 200
 MAXIMUM_RELATED_ROWS = 20
 MAXIMUM_SEMANTIC_HITS = 20
 MAXIMUM_SUGGESTIONS = 3
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+PRIVATE_TEXT_PATTERNS = (
+    ("email address", re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)),
+    ("URL", re.compile(r"(?:https?://|\bwww\.)", re.I)),
+    ("filesystem path", re.compile(r"(?:/Users/|/home/|[A-Z]:\\)", re.I)),
+    ("UUID", re.compile(
+        r"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-"
+        r"[89ab][0-9a-f]{3}-[0-9a-f]{12}\b",
+        re.I,
+    )),
+    ("phone-like number", re.compile(r"(?<!\w)(?:\+?\d[\s().-]*){8,}(?!\w)")),
+)
 
 
 class CommitmentLinkQualityError(ValueError):
@@ -357,6 +374,138 @@ def validate_fixture(document):
     if linkable_count != 18 or abstention_count != 18:
         raise CommitmentLinkQualityError("fixture link/abstention distribution is invalid")
     return document
+
+
+def private_text_rows(document):
+    for case_index, case in enumerate(document["cases"]):
+        yield (
+            f"cases[{case_index}].candidate.text",
+            case["candidate"]["text"],
+        )
+        for target_index, target_value in enumerate(case["targets"]):
+            yield (
+                f"cases[{case_index}].targets[{target_index}].title",
+                target_value["title"],
+            )
+            for evidence_index, evidence in enumerate(target_value["evidence"]):
+                yield (
+                    f"cases[{case_index}].targets[{target_index}]"
+                    f".evidence[{evidence_index}].text",
+                    evidence["text"],
+                )
+
+
+def validate_private_fixture(document):
+    exact_object(
+        document,
+        "private fixture",
+        {
+            "schemaVersion",
+            "kind",
+            "generation",
+            "contentSource",
+            "anonymization",
+            "cases",
+        },
+    )
+    if document["schemaVersion"] != SCHEMA_VERSION:
+        raise CommitmentLinkQualityError(
+            "private fixture schemaVersion is unsupported"
+        )
+    if document["kind"] != PRIVATE_FIXTURE_KIND:
+        raise CommitmentLinkQualityError("private fixture kind is invalid")
+    generation = safe_id(document["generation"], "private fixture.generation")
+    if not generation.startswith("private-anonymized-"):
+        raise CommitmentLinkQualityError(
+            "private fixture generation must start with private-anonymized-"
+        )
+    if document["contentSource"] != PRIVATE_SOURCE:
+        raise CommitmentLinkQualityError(
+            "private fixture contentSource is invalid"
+        )
+    anonymization = exact_object(
+        document["anonymization"],
+        "private fixture.anonymization",
+        {
+            "policy",
+            "reviewStatus",
+            "containsAudio",
+            "containsFilePaths",
+            "containsAccountIdentifiers",
+            "containsDirectIdentifiers",
+        },
+    )
+    if anonymization["policy"] != PRIVATE_ANONYMIZATION_POLICY:
+        raise CommitmentLinkQualityError(
+            "private fixture anonymization policy is invalid"
+        )
+    if anonymization["reviewStatus"] != PRIVATE_REVIEW_STATUS:
+        raise CommitmentLinkQualityError(
+            "private fixture must be explicitly owner-reviewed"
+        )
+    for field in (
+        "containsAudio",
+        "containsFilePaths",
+        "containsAccountIdentifiers",
+        "containsDirectIdentifiers",
+    ):
+        if anonymization[field] is not False:
+            raise CommitmentLinkQualityError(
+                f"private fixture anonymization.{field} must be false"
+            )
+
+    validate_fixture({
+        "schemaVersion": SCHEMA_VERSION,
+        "kind": FIXTURE_KIND,
+        "generation": PUBLIC_GENERATION,
+        "contentSource": PUBLIC_SOURCE,
+        "cases": document["cases"],
+    })
+    for path, value in private_text_rows(document):
+        for label, pattern in PRIVATE_TEXT_PATTERNS:
+            if pattern.search(value):
+                raise CommitmentLinkQualityError(
+                    f"{path} contains an obvious {label}"
+                )
+    return document
+
+
+def validate_private_fixture_path(path):
+    path = Path(path).expanduser()
+    if path.is_symlink():
+        raise CommitmentLinkQualityError(
+            "private fixture must not be a symbolic link"
+        )
+    try:
+        if not path.is_file() or stat.S_IMODE(path.stat().st_mode) != 0o600:
+            raise CommitmentLinkQualityError(
+                "private fixture must be a regular owner-only mode-0600 file"
+            )
+        resolved = path.resolve()
+    except OSError as error:
+        raise CommitmentLinkQualityError(
+            "private fixture metadata could not be inspected"
+        ) from error
+    try:
+        resolved.relative_to(REPOSITORY_ROOT)
+    except ValueError:
+        return resolved
+    try:
+        ignored = subprocess.run(
+            ["git", "check-ignore", "--quiet", str(resolved)],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+        )
+    except OSError as error:
+        raise CommitmentLinkQualityError(
+            "private fixture ignore status could not be inspected"
+        ) from error
+    if ignored.returncode != 0:
+        raise CommitmentLinkQualityError(
+            "repository-local private fixture must be covered by .gitignore"
+        )
+    return resolved
 
 
 def fixture_digest(document):
@@ -1135,6 +1284,8 @@ def parser():
     generate.add_argument("--output", required=True)
     validate = subparsers.add_parser("validate")
     validate.add_argument("--fixture", required=True)
+    validate_private = subparsers.add_parser("validate-private")
+    validate_private.add_argument("--fixture", required=True)
     validate_similarity = subparsers.add_parser("validate-similarity")
     validate_similarity.add_argument("--fixture", required=True)
     validate_similarity.add_argument("--observations", required=True)
@@ -1162,6 +1313,20 @@ def main(argv=None):
         if arguments.command == "generate-public":
             fixture = validate_fixture(public_fixture())
             write_json(arguments.output, fixture)
+            return 0
+        if arguments.command == "validate-private":
+            fixture_path = validate_private_fixture_path(arguments.fixture)
+            fixture = validate_private_fixture(
+                load_json(fixture_path, "private fixture")
+            )
+            print(json.dumps({
+                "kind": fixture["kind"],
+                "generation": fixture["generation"],
+                "contentSource": fixture["contentSource"],
+                "cases": len(fixture["cases"]),
+                "sha256": document_digest(fixture),
+                "reviewStatus": fixture["anonymization"]["reviewStatus"],
+            }, sort_keys=True))
             return 0
         fixture = validate_fixture(load_json(arguments.fixture, "fixture"))
         if fixture != public_fixture():

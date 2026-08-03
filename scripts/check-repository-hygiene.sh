@@ -63,6 +63,7 @@ ignore_probes=(
   HANDOFF.md
   reports/local-audit.md
   scratch/notes.md
+  private-evidence/commitment-link/private-pack.json
   artifacts/ui/result.txt
   screenshots/local-smoke.png
   test-results/run.json

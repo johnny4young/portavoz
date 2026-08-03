@@ -1382,7 +1382,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   result remains `review-required` and its product decision remains
   `not-evaluated` (D236).
 - `make test-commitment-link-quality` validates D245's reproducible 36-case
-  cross-meeting fixture and runs eighteen evaluator/contract tests without a
+  cross-meeting fixture and runs twenty-one evaluator/contract tests without a
   model, database, or user library. The corpus is balanced across English,
   Spanish, and mixed speech and across 18 linkable and 18 mandatory-abstention
   cases. It labels semantic-relevant targets separately from legally linkable
@@ -1429,6 +1429,16 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   rejection, and literal
   review-required/not-selected/not-approved states. No candidate is selected
   and no product quality floor or serving policy is created (D250). The
+  separate `validate-commitment-link-private-pack` target accepts one regular
+  non-symlink mode-`0600` private companion pack. It requires the same exact
+  36-case language/class/link balance as the public authority, a literal owner-
+  reviewed redaction attestation, negative audio/path/account/direct-identifier
+  claims, and gitignored storage when the file is repository-local. Three
+  focused cases cover the balanced contract, attestation and distribution
+  failure, obvious email/URL/path/phone/UUID rejection, file mode, and symlink
+  refusal. These pattern checks are only a backstop and make no automatic de-
+  identification claim; no private fixture is tracked or consumed by the Swift
+  product adapter (D251). The
   `commitment-link-quality-product` target runs the real
   Storage/Application path and immediately validates it with the D245
   evaluator; downloads remain disabled unless the caller explicitly selects

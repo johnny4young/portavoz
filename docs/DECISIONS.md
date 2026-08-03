@@ -8580,3 +8580,39 @@ persistence, application composition, SwiftUI, confirmation, sync/export,
 diagnostics, public product CLI/MCP surface, or serving behavior. An ignored real-
 meeting contract, clean-head profile matrix, explicit human review, and an
 accepted multilingual quality floor remain mandatory before product wiring.
+
+## D251 — Keep real-meeting link calibration private, balanced, and owner-reviewed (Aug 2026)
+
+**Context:** D250 can enumerate public-fixture policy outcomes, but a synthetic
+pack cannot establish field precision. Retaining raw meetings, identities,
+paths, or account material in Git would violate Portavoz's local-first boundary.
+Conversely, an unconstrained private pack could change class or language
+denominators and make its metrics incomparable with the public authority.
+Automated pattern matching can catch obvious identifiers but cannot honestly
+certify that free text has been anonymized.
+
+**Decision:** define a separate schema-1 private companion fixture. It reuses
+the exact public 36-case structural and distribution contract: 12 English, 12
+Spanish, 12 mixed; the same nine class counts; 18 linkable and 18 mandatory-
+abstention cases; and identical candidate, target, evidence, assignee, and truth
+rules. Its root instead requires a `private-anonymized-*` generation, literal
+`private-anonymized-local` content source, and `owner-reviewed-redaction-v1`
+attestation. The owner must explicitly state that the pack contains no audio,
+filesystem paths, account identifiers, or direct identifiers.
+
+The validator rejects obvious email addresses, URLs, user/home filesystem
+paths, phone-like numbers, and UUIDs in candidate, target-title, and evidence
+text. Those checks are a fail-closed backstop, not a claim of automatic
+de-identification. CLI validation accepts only a regular non-symlink mode-
+`0600` file. If the file is under the repository root, `git check-ignore` must
+prove that it is ignored; `/private-evidence/` is the canonical local location
+and repository hygiene asserts that boundary. No private fixture is committed.
+
+**Consequences:** a future collector can receive field cases with the same
+metric shape as the public pack without weakening or mutating the canonical
+public fixture. This slice validates metadata, balance, structure, path safety,
+and obvious identifier patterns only; human owner review remains authoritative.
+It does not yet let the Swift product-path runner ingest a private fixture,
+collect scores, replay policy, retain a baseline, or choose a threshold. It
+adds no app composition, persistence, support diagnostics, sync/export, bundle,
+public CLI/MCP surface, SwiftUI, confirmation, or serving behavior.

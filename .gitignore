@@ -38,6 +38,7 @@ xcuserdata/
 /reports/
 /scratch/
 /tmp/
+/private-evidence/
 
 # Local test evidence and generated diagnostics. Curated product screenshots
 # stay under assets/screenshots and docs/evidence and remain reviewable.
