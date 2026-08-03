@@ -8505,3 +8505,37 @@ packs using evidence from the actual exact adapter. Scores remain transient,
 profile-bound, absent from persistence, support diagnostics, sync, bundles,
 MCP, app composition, and SwiftUI. This decision selects no threshold, margin,
 quality floor, engine, or product behavior and creates no user-visible feature.
+
+## D249 — Version scored commitment-link evidence separately from quality observations (Aug 2026)
+
+**Context:** D248 makes exact profile-local similarity observable, but D245's
+schema-1 quality document intentionally contains only external hit identities
+and legal suggestions. Adding scores in place would invalidate retained
+observations and couple the accepted adapter-neutral evaluator to an unfinished
+admission experiment. Publishing an unscored and a scored file from one command
+would also allow a second-file failure to leave an ambiguous partial run.
+
+**Decision:** add a separate schema-1, owner-only similarity-observation
+contract and a dedicated CLI command over the same isolated D247 product path.
+Each document binds the canonical fixture generation and digest, the full
+embedding-profile fingerprint, a bounded receipt-safe build identifier, and
+one full lowercase source commit. Every canonical case contains ordered
+external evidence identities with finite cosine scores in `[-1, 1]` plus the
+unchanged D244 suggestion rows needed for later policy replay. It carries
+literal `not-evaluated` and `not-approved` states.
+
+The adapter-neutral validator requires an exact schema, one unique row per
+fixture case, only known and unique evidence/target identities, D244's 20-hit
+and three-suggestion bounds, descending score order, exact provenance shapes,
+and the non-serving states. Owner-only atomic publication never overwrites an
+earlier receipt. D245's fixture, unscored observation schema, evaluator, and
+product command remain unchanged.
+
+**Consequences:** a later deterministic evaluator can sweep explicit
+similarity and abstention candidates from one provenance-complete artifact
+without rerunning retrieval or inferring scores from rank. This slice still
+selects no threshold, margin, quality floor, or winner; does not read a user
+library; and adds no app composition, persistence, diagnostics, sync, bundle,
+MCP, SwiftUI, confirmation, or serving behavior. A clean-head local-profile
+matrix and ignored anonymized real-meeting evidence remain required before any
+policy can be accepted.

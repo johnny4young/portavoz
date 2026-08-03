@@ -112,6 +112,32 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
             "Measure commitment links through isolated product-path fixtures"))
     }
 
+    func testScoredObservationContractRemainsOwnerOnlyAndNonServing() throws {
+        let runner = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchCommitmentLinkQuality.swift")
+        let mapping = try Self.contents(
+            of: "Sources/portavoz-cli/CLICommitmentLinkQualityCorpusMapping.swift")
+        let validator = try Self.contents(
+            of: "scripts/commitment_link_quality.py")
+        let appComposition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(runner.contains("commitment-link-similarity-observations"))
+        XCTAssertTrue(runner.contains("embeddingProfileFingerprint"))
+        XCTAssertTrue(runner.contains("evaluationStatus = \"not-evaluated\""))
+        XCTAssertTrue(runner.contains("servingStatus = \"not-approved\""))
+        XCTAssertTrue(runner.contains("CLIPrivateJSONWriter.write"))
+        XCTAssertTrue(mapping.contains("result.semanticHits.map"))
+        XCTAssertTrue(validator.contains("validate_similarity_observations"))
+        XCTAssertTrue(validator.contains("math.isfinite(similarity)"))
+        XCTAssertTrue(validator.contains("descending similarity"))
+        XCTAssertFalse(appComposition.contains("CommitmentLinkSimilarityObservation"))
+        XCTAssertTrue(decisions.contains("## D249"))
+        XCTAssertTrue(decisions.contains(
+            "Version scored commitment-link evidence separately from quality observations"))
+    }
+
     private static func contents(of relativePath: String) throws -> String {
         try String(
             contentsOf: repoRoot.appendingPathComponent(relativePath),

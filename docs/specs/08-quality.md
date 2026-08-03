@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,766 cases (13 environment-gated) + 62
+Status: the package inventory contains 1,768 cases (13 environment-gated) + 62
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1333,7 +1333,7 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,766 XCTest package cases (13
+The current field-reliability inventory is 1,768 XCTest package cases (13
 environment-gated), zero strict-lint violations across 511 Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 62 XCUITest cases per locale. Release evidence requires the package
@@ -1382,7 +1382,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   result remains `review-required` and its product decision remains
   `not-evaluated` (D236).
 - `make test-commitment-link-quality` validates D245's reproducible 36-case
-  cross-meeting fixture and runs twelve evaluator/contract tests without a
+  cross-meeting fixture and runs fourteen evaluator/contract tests without a
   model, database, or user library. The corpus is balanced across English,
   Spanish, and mixed speech and across 18 linkable and 18 mandatory-abstention
   cases. It labels semantic-relevant targets separately from legally linkable
@@ -1396,9 +1396,9 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   arithmetic; it remains `review-required`, makes no product decision, and
   selects no threshold or engine. Optional case details are mode `0600`, non-
   overwriting, and untracked.
-- Fourteen focused package cases cover D246–D248's non-serving product seam:
-  seven observer/storage behaviors, three source-link architecture contracts,
-  and four product-runner cases.
+- Seventeen focused package cases cover D246–D249's non-serving product seam:
+  seven observer/storage behaviors, five source-link architecture contracts,
+  and five product-runner cases.
   The real in-memory Store path proves exact open source/evidence identities,
   installed-assets-only borrowing, and semantic-hit versus legal-admission
   separation. Exact semantic search now proves that it retains profile-local
@@ -1410,8 +1410,16 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   The runner cases add
   canonical digest parity, strict CLI options, all-36-case isolated scratch
   mapping, installed-assets-only observation, exact external-identity output,
-  and owner-only non-overwriting publication. `make commitment-link-quality-
-  product PORTAVOZ_COMMITMENT_LINK_OBSERVATIONS=<ignored-path>` runs the real
+  and owner-only non-overwriting publication. D249 additionally proves a
+  separate score-bearing document with exact fixture, full profile, build, and
+  source-commit provenance; known external identities; bounded descending
+  cosine values; and literal non-evaluated/non-approved states. The Python
+  authority rejects schema drift, unsafe provenance, unknown/duplicate rows,
+  non-finite or out-of-range scores, and rank inversion. The
+  `commitment-link-similarity-product` target requires an ignored output path,
+  build identity, and full source commit; it captures and validates that owner-
+  only receipt without evaluating or serving it. The
+  `commitment-link-quality-product` target runs the real
   Storage/Application path and immediately validates it with the D245
   evaluator; downloads remain disabled unless the caller explicitly selects
   `if-needed`. One dirty-head development smoke over the installed Apple

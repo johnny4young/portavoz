@@ -90,16 +90,18 @@ struct CommitmentLinkQualityCorpusMapping: Sendable {
                 personIDByExternalID: personIDByExternalID))
     }
 
-    func observation(
+    func observations(
         caseID: String,
         result: CommitmentLinkSuggestionObservation
-    ) throws -> CommitmentLinkQualityCaseObservation {
-        let semanticIDs = try result.semanticHitSegmentIDs.map { segmentID in
-            guard let externalID = externalEvidenceIDByUUID[segmentID] else {
+    ) throws -> CommitmentLinkProductCaseObservation {
+        let semanticHits = try result.semanticHits.map { hit in
+            guard let externalID = externalEvidenceIDByUUID[hit.segmentID] else {
                 throw CommitmentLinkQualityBenchmarkError.invalidObservation(
                     "semantic result references unknown evidence")
             }
-            return externalID
+            return CommitmentLinkSimilarityHitRow(
+                evidenceSegmentID: externalID,
+                similarity: hit.similarity)
         }
         let suggestions = try result.suggestions.map { suggestion in
             guard let commitmentID = externalCommitmentIDByDomainID[suggestion.id] else {
@@ -118,10 +120,15 @@ struct CommitmentLinkQualityCorpusMapping: Sendable {
                 },
                 bestSemanticRank: suggestion.bestSemanticRank)
         }
-        return CommitmentLinkQualityCaseObservation(
-            caseID: caseID,
-            semanticHitSegmentIDs: semanticIDs,
-            suggestions: suggestions)
+        return CommitmentLinkProductCaseObservation(
+            quality: CommitmentLinkQualityCaseObservation(
+                caseID: caseID,
+                semanticHitSegmentIDs: semanticHits.map(\.evidenceSegmentID),
+                suggestions: suggestions),
+            similarity: CommitmentLinkSimilarityCaseObservation(
+                caseID: caseID,
+                semanticHits: semanticHits,
+                suggestions: suggestions))
     }
 
     private func externalAssignee(

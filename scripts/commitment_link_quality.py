@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 import re
 import stat
@@ -15,6 +16,7 @@ from pathlib import Path
 SCHEMA_VERSION = 1
 FIXTURE_KIND = "commitment-link-quality-fixture"
 OBSERVATION_KIND = "commitment-link-quality-observations"
+SIMILARITY_OBSERVATION_KIND = "commitment-link-similarity-observations"
 SCORECARD_KIND = "commitment-link-quality-scorecard"
 PUBLIC_GENERATION = "public-synthetic-v1"
 PUBLIC_SOURCE = "public-synthetic-only"
@@ -39,6 +41,9 @@ CLASSES = (
 )
 SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,95}$")
 SAFE_ADAPTER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,119}$")
+SAFE_BUILD = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.+_-]{0,79}$")
+FULL_COMMIT = re.compile(r"^[0-9a-f]{40}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
 ASSIGNEE_KINDS = {"person", "me", "unassigned"}
 TARGET_STATUSES = {"confirmed", "done", "dismissed"}
 MAXIMUM_CASES = 100
@@ -456,6 +461,137 @@ def validate_observations(document, fixture):
     return document
 
 
+def validate_similarity_observations(document, fixture):
+    exact_object(
+        document,
+        "similarity observations",
+        {
+            "schemaVersion",
+            "kind",
+            "fixtureGeneration",
+            "fixtureSHA256",
+            "adapter",
+            "embeddingProfileFingerprint",
+            "build",
+            "commit",
+            "evaluationStatus",
+            "servingStatus",
+            "observations",
+        },
+    )
+    if document["schemaVersion"] != SCHEMA_VERSION:
+        raise CommitmentLinkQualityError(
+            "similarity observation schemaVersion is unsupported"
+        )
+    if document["kind"] != SIMILARITY_OBSERVATION_KIND:
+        raise CommitmentLinkQualityError("similarity observation kind is invalid")
+    if document["fixtureGeneration"] != fixture["generation"]:
+        raise CommitmentLinkQualityError(
+            "similarity observation fixture generation does not match"
+        )
+    if document["fixtureSHA256"] != fixture_digest(fixture):
+        raise CommitmentLinkQualityError(
+            "similarity observation fixture digest does not match"
+        )
+    if (
+        not isinstance(document["adapter"], str)
+        or SAFE_ADAPTER.fullmatch(document["adapter"]) is None
+    ):
+        raise CommitmentLinkQualityError("similarity observation adapter is invalid")
+    if (
+        not isinstance(document["embeddingProfileFingerprint"], str)
+        or SHA256.fullmatch(document["embeddingProfileFingerprint"]) is None
+    ):
+        raise CommitmentLinkQualityError(
+            "similarity observation embedding profile fingerprint is invalid"
+        )
+    if (
+        not isinstance(document["build"], str)
+        or SAFE_BUILD.fullmatch(document["build"]) is None
+    ):
+        raise CommitmentLinkQualityError("similarity observation build is invalid")
+    if (
+        not isinstance(document["commit"], str)
+        or FULL_COMMIT.fullmatch(document["commit"]) is None
+    ):
+        raise CommitmentLinkQualityError("similarity observation commit is invalid")
+    if document["evaluationStatus"] != "not-evaluated":
+        raise CommitmentLinkQualityError(
+            "similarity observations must remain not-evaluated"
+        )
+    if document["servingStatus"] != "not-approved":
+        raise CommitmentLinkQualityError(
+            "similarity observations must remain not-approved"
+        )
+
+    raw_observations = document["observations"]
+    if not isinstance(raw_observations, list):
+        raise CommitmentLinkQualityError(
+            "similarity observations must contain an array"
+        )
+    projected_rows = []
+    fixture_cases = {case["id"]: case for case in fixture["cases"]}
+    for index, observation in enumerate(raw_observations):
+        path = f"similarity observations[{index}]"
+        exact_object(observation, path, {"caseID", "semanticHits", "suggestions"})
+        case_id = safe_id(observation["caseID"], f"{path}.caseID")
+        if case_id not in fixture_cases:
+            raise CommitmentLinkQualityError(f"{path}.caseID is unknown")
+        hits = observation["semanticHits"]
+        if not isinstance(hits, list) or len(hits) > MAXIMUM_SEMANTIC_HITS:
+            raise CommitmentLinkQualityError(
+                f"{path}.semanticHits must be bounded to {MAXIMUM_SEMANTIC_HITS}"
+            )
+        known_evidence = evidence_by_id(fixture_cases[case_id])
+        seen_evidence = set()
+        previous_similarity = math.inf
+        projected_ids = []
+        for hit_index, hit in enumerate(hits):
+            hit_path = f"{path}.semanticHits[{hit_index}]"
+            exact_object(hit, hit_path, {"evidenceSegmentID", "similarity"})
+            evidence_id = safe_id(
+                hit["evidenceSegmentID"], f"{hit_path}.evidenceSegmentID"
+            )
+            if evidence_id not in known_evidence:
+                raise CommitmentLinkQualityError(
+                    f"{hit_path}.evidenceSegmentID is unknown"
+                )
+            if evidence_id in seen_evidence:
+                raise CommitmentLinkQualityError(f"{path}.semanticHits contains duplicates")
+            seen_evidence.add(evidence_id)
+            similarity = hit["similarity"]
+            if (
+                isinstance(similarity, bool)
+                or not isinstance(similarity, (int, float))
+                or not math.isfinite(similarity)
+                or not -1 <= similarity <= 1
+            ):
+                raise CommitmentLinkQualityError(
+                    f"{hit_path}.similarity must be a finite cosine value"
+                )
+            if similarity > previous_similarity:
+                raise CommitmentLinkQualityError(
+                    f"{path}.semanticHits must be ordered by descending similarity"
+                )
+            previous_similarity = similarity
+            projected_ids.append(evidence_id)
+        projected_rows.append({
+            "caseID": case_id,
+            "semanticHitSegmentIDs": projected_ids,
+            "suggestions": observation["suggestions"],
+        })
+
+    validate_observations({
+        "schemaVersion": SCHEMA_VERSION,
+        "kind": OBSERVATION_KIND,
+        "fixtureGeneration": document["fixtureGeneration"],
+        "fixtureSHA256": document["fixtureSHA256"],
+        "adapter": document["adapter"],
+        "observations": projected_rows,
+    }, fixture)
+    return document
+
+
 def ratio(numerator, denominator):
     return round(numerator / denominator, 6) if denominator else None
 
@@ -842,6 +978,9 @@ def parser():
     generate.add_argument("--output", required=True)
     validate = subparsers.add_parser("validate")
     validate.add_argument("--fixture", required=True)
+    validate_similarity = subparsers.add_parser("validate-similarity")
+    validate_similarity.add_argument("--fixture", required=True)
+    validate_similarity.add_argument("--observations", required=True)
     control = subparsers.add_parser("control")
     control.add_argument("--fixture", required=True)
     control.add_argument("--details-output")
@@ -870,6 +1009,24 @@ def main(argv=None):
                 "generation": fixture["generation"],
                 "cases": len(fixture["cases"]),
                 "sha256": fixture_digest(fixture),
+            }, sort_keys=True))
+            return 0
+        if arguments.command == "validate-similarity":
+            observations = validate_similarity_observations(
+                load_json(arguments.observations, "similarity observations"),
+                fixture,
+            )
+            print(json.dumps({
+                "kind": observations["kind"],
+                "fixtureSHA256": observations["fixtureSHA256"],
+                "embeddingProfileFingerprint": observations[
+                    "embeddingProfileFingerprint"
+                ],
+                "build": observations["build"],
+                "commit": observations["commit"],
+                "cases": len(observations["observations"]),
+                "evaluationStatus": observations["evaluationStatus"],
+                "servingStatus": observations["servingStatus"],
             }, sort_keys=True))
             return 0
         observations = (

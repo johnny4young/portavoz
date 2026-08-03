@@ -25,6 +25,36 @@ enum BenchCommitmentLinkQualityCommand {
     }
 }
 
+/// Captures score-bearing product-path evidence for offline policy research.
+/// This command is deliberately separate from the stable unscored observation
+/// schema: it cannot evaluate, approve, or serve a link suggestion.
+enum BenchCommitmentLinkSimilarityCommand {
+    static func run(_ arguments: [String]) async {
+        do {
+            let options = try CommitmentLinkSimilarityBenchmarkOptions(
+                arguments: arguments)
+            let fixture = try CommitmentLinkQualityFixture.load(from: options.fixture)
+            let observations = try await CommitmentLinkQualityProductBenchmark
+                .runSimilarity(
+                    fixture: fixture,
+                    runtime: CLISemanticEmbeddingRuntime(),
+                    build: options.build,
+                    commit: options.commit,
+                    allowAssetDownload: options.allowAssetDownload)
+            try CommitmentLinkSimilarityJSONWriter.write(
+                observations,
+                to: options.output)
+            print("Commitment-link similarity observations: \(options.output.path)")
+        } catch {
+            FileHandle.standardError.write(
+                Data(
+                    "bench-commitment-link-similarity error: \(error.localizedDescription)\n"
+                        .utf8))
+            Foundation.exit(64)
+        }
+    }
+}
+
 struct CommitmentLinkQualityBenchmarkOptions: Equatable {
     let fixture: URL
     let output: URL
@@ -73,11 +103,77 @@ struct CommitmentLinkQualityBenchmarkOptions: Equatable {
     }
 }
 
+struct CommitmentLinkSimilarityBenchmarkOptions: Equatable {
+    let fixture: URL
+    let output: URL
+    let build: String
+    let commit: String
+    let allowAssetDownload: Bool
+
+    init(arguments: [String]) throws {
+        let values = try Self.parse(arguments)
+        guard let fixture = values["--fixture"], !fixture.isEmpty else {
+            throw CommitmentLinkQualityBenchmarkError.missingOption("--fixture")
+        }
+        guard let output = values["--output"], !output.isEmpty else {
+            throw CommitmentLinkQualityBenchmarkError.missingOption("--output")
+        }
+        guard let build = values["--build"],
+              CommitmentLinkBenchmarkIdentity.isSafeBuild(build)
+        else {
+            throw CommitmentLinkQualityBenchmarkError.invalidBuild
+        }
+        guard let commit = values["--commit"],
+              CommitmentLinkBenchmarkIdentity.isCommit(commit)
+        else {
+            throw CommitmentLinkQualityBenchmarkError.invalidCommit
+        }
+        let downloadPolicy = values["--asset-download"] ?? "never"
+        guard ["never", "if-needed"].contains(downloadPolicy) else {
+            throw CommitmentLinkQualityBenchmarkError.invalidAssetDownloadPolicy(
+                downloadPolicy)
+        }
+        self.fixture = URL(fileURLWithPath: fixture).standardizedFileURL
+        self.output = URL(fileURLWithPath: output).standardizedFileURL
+        self.build = build
+        self.commit = commit
+        allowAssetDownload = downloadPolicy == "if-needed"
+        guard self.fixture != self.output else {
+            throw CommitmentLinkQualityBenchmarkError.outputMatchesFixture
+        }
+    }
+
+    private static func parse(_ arguments: [String]) throws -> [String: String] {
+        let allowed = Set([
+            "--fixture", "--output", "--build", "--commit", "--asset-download"
+        ])
+        var values: [String: String] = [:]
+        var index = 0
+        while index < arguments.count {
+            let option = arguments[index]
+            guard allowed.contains(option) else {
+                throw CommitmentLinkQualityBenchmarkError.unknownOption(option)
+            }
+            index += 1
+            guard arguments.indices.contains(index) else {
+                throw CommitmentLinkQualityBenchmarkError.missingOptionValue(option)
+            }
+            guard values.updateValue(arguments[index], forKey: option) == nil else {
+                throw CommitmentLinkQualityBenchmarkError.duplicateOption(option)
+            }
+            index += 1
+        }
+        return values
+    }
+}
+
 enum CommitmentLinkQualityBenchmarkError: Error, Equatable, LocalizedError {
     case unknownOption(String)
     case duplicateOption(String)
     case missingOptionValue(String)
     case missingOption(String)
+    case invalidBuild
+    case invalidCommit
     case invalidAssetDownloadPolicy(String)
     case outputMatchesFixture
     case invalidFixture(String)
@@ -91,6 +187,8 @@ enum CommitmentLinkQualityBenchmarkError: Error, Equatable, LocalizedError {
         case .duplicateOption(let option): "duplicate option: \(option)"
         case .missingOptionValue(let option): "missing value for option: \(option)"
         case .missingOption(let option): "missing required option: \(option)"
+        case .invalidBuild: "build must be a bounded receipt-safe identifier"
+        case .invalidCommit: "commit must be one full lowercase SHA"
         case .invalidAssetDownloadPolicy(let policy):
             "invalid asset download policy: \(policy)"
         case .outputMatchesFixture: "output must not replace the fixture"
@@ -98,6 +196,21 @@ enum CommitmentLinkQualityBenchmarkError: Error, Equatable, LocalizedError {
         case .invalidObservation(let reason): "invalid observation: \(reason)"
         case .outputAlreadyExists: "output already exists"
         case .outputPublicationFailed: "output publication failed"
+        }
+    }
+}
+
+private enum CommitmentLinkBenchmarkIdentity {
+    static func isSafeBuild(_ value: String) -> Bool {
+        guard (1...80).contains(value.count) else { return false }
+        return value.allSatisfy {
+            $0.isLetter || $0.isNumber || ".+_-".contains($0)
+        }
+    }
+
+    static func isCommit(_ value: String) -> Bool {
+        value.utf8.count == 40 && value.utf8.allSatisfy {
+            (48...57).contains($0) || (97...102).contains($0)
         }
     }
 }
@@ -325,12 +438,92 @@ struct CommitmentLinkSuggestionRow: Encodable, Sendable {
     let bestSemanticRank: Int
 }
 
+/// Owner-only score evidence for deterministic offline policy replay. The
+/// document is intentionally distinct from the stable unscored contract.
+struct CommitmentLinkSimilarityDocument: Encodable, Sendable {
+    let schemaVersion = 1
+    let kind = "commitment-link-similarity-observations"
+    let fixtureGeneration: String
+    let fixtureSHA256: String
+    let adapter: String
+    let embeddingProfileFingerprint: String
+    let build: String
+    let commit: String
+    let evaluationStatus = "not-evaluated"
+    let servingStatus = "not-approved"
+    let observations: [CommitmentLinkSimilarityCaseObservation]
+}
+
+struct CommitmentLinkSimilarityCaseObservation: Encodable, Sendable {
+    let caseID: String
+    let semanticHits: [CommitmentLinkSimilarityHitRow]
+    let suggestions: [CommitmentLinkSuggestionRow]
+}
+
+struct CommitmentLinkSimilarityHitRow: Encodable, Sendable, Equatable {
+    let evidenceSegmentID: String
+    let similarity: Float
+}
+
+private struct CommitmentLinkProductObservationRun: Sendable {
+    let profileFingerprint: String
+    let rows: [CommitmentLinkProductCaseObservation]
+}
+
+struct CommitmentLinkProductCaseObservation: Sendable {
+    let quality: CommitmentLinkQualityCaseObservation
+    let similarity: CommitmentLinkSimilarityCaseObservation
+}
+
 enum CommitmentLinkQualityProductBenchmark {
     static func run(
         fixture: CommitmentLinkQualityFixture,
         runtime: any SemanticEmbeddingRuntimeClient,
         allowAssetDownload: Bool = false
     ) async throws -> CommitmentLinkQualityObservationDocument {
+        let productRun = try await observeProductPath(
+            fixture: fixture,
+            runtime: runtime,
+            allowAssetDownload: allowAssetDownload)
+        return CommitmentLinkQualityObservationDocument(
+            fixtureGeneration: fixture.generation,
+            fixtureSHA256: fixture.fixtureSHA256,
+            adapter: "product-accelerate-exact-\(productRun.profileFingerprint.prefix(16))-v1",
+            observations: productRun.rows.map(\.quality))
+    }
+
+    static func runSimilarity(
+        fixture: CommitmentLinkQualityFixture,
+        runtime: any SemanticEmbeddingRuntimeClient,
+        build: String,
+        commit: String,
+        allowAssetDownload: Bool = false
+    ) async throws -> CommitmentLinkSimilarityDocument {
+        guard CommitmentLinkBenchmarkIdentity.isSafeBuild(build) else {
+            throw CommitmentLinkQualityBenchmarkError.invalidBuild
+        }
+        guard CommitmentLinkBenchmarkIdentity.isCommit(commit) else {
+            throw CommitmentLinkQualityBenchmarkError.invalidCommit
+        }
+        let productRun = try await observeProductPath(
+            fixture: fixture,
+            runtime: runtime,
+            allowAssetDownload: allowAssetDownload)
+        return CommitmentLinkSimilarityDocument(
+            fixtureGeneration: fixture.generation,
+            fixtureSHA256: fixture.fixtureSHA256,
+            adapter: "product-accelerate-exact-scored-v1",
+            embeddingProfileFingerprint: productRun.profileFingerprint,
+            build: build,
+            commit: commit,
+            observations: productRun.rows.map(\.similarity))
+    }
+
+    private static func observeProductPath(
+        fixture: CommitmentLinkQualityFixture,
+        runtime: any SemanticEmbeddingRuntimeClient,
+        allowAssetDownload: Bool
+    ) async throws -> CommitmentLinkProductObservationRun {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "portavoz-commitment-link-quality-\(UUID().uuidString)",
             isDirectory: true)
@@ -340,7 +533,7 @@ enum CommitmentLinkQualityProductBenchmark {
             attributes: [.posixPermissions: 0o700])
         defer { try? FileManager.default.removeItem(at: root) }
 
-        var rows: [CommitmentLinkQualityCaseObservation] = []
+        var rows: [CommitmentLinkProductCaseObservation] = []
         var profileFingerprint: String?
         rows.reserveCapacity(fixture.cases.count)
         for (index, fixtureCase) in fixture.cases.enumerated() {
@@ -373,7 +566,7 @@ enum CommitmentLinkQualityProductBenchmark {
                 runtime: runtime)
             let observation = try await observer.execute(
                 mapping.request(for: fixtureCase.candidate))
-            rows.append(try mapping.observation(
+            rows.append(try mapping.observations(
                 caseID: fixtureCase.id,
                 result: observation))
         }
@@ -381,17 +574,30 @@ enum CommitmentLinkQualityProductBenchmark {
             throw CommitmentLinkQualityBenchmarkError.invalidObservation(
                 "fixture produced no observations")
         }
-        return CommitmentLinkQualityObservationDocument(
-            fixtureGeneration: fixture.generation,
-            fixtureSHA256: fixture.fixtureSHA256,
-            adapter: "product-accelerate-exact-\(profileFingerprint.prefix(16))-v1",
-            observations: rows)
+        return CommitmentLinkProductObservationRun(
+            profileFingerprint: profileFingerprint,
+            rows: rows)
     }
 }
 
 enum CommitmentLinkQualityPrivateJSONWriter {
     static func write(
         _ document: CommitmentLinkQualityObservationDocument,
+        to output: URL
+    ) throws {
+        do {
+            try CLIPrivateJSONWriter.write(document, to: output)
+        } catch CLIPrivateJSONWriterError.outputAlreadyExists {
+            throw CommitmentLinkQualityBenchmarkError.outputAlreadyExists
+        } catch CLIPrivateJSONWriterError.publicationFailed {
+            throw CommitmentLinkQualityBenchmarkError.outputPublicationFailed
+        }
+    }
+}
+
+enum CommitmentLinkSimilarityJSONWriter {
+    static func write(
+        _ document: CommitmentLinkSimilarityDocument,
         to output: URL
     ) throws {
         do {

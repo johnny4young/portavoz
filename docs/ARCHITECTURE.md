@@ -2008,6 +2008,18 @@ only ordered segment identities. No score is persisted or compared across
 profiles, and no app composition, threshold, or visible suggestion consumes
 this evidence.
 
+Score-bearing commitment-link evidence has its own versioned owner-only
+contract rather than extending the stable unscored quality schema in place.
+The dedicated CLI command reuses the isolated product-path runner and emits
+only canonical external identities, ordered cosine values, legal suggestion
+rows, the full embedding-profile fingerprint, and bounded build/source-commit
+provenance. Its strict adapter-neutral validator requires one row per canonical
+case, known unique evidence, finite `[-1, 1]` values in descending order, and
+literal non-evaluated/non-approved states. Publication is mode `0600`, atomic,
+and non-overwriting. The artifact is sufficient for later deterministic policy
+replay but is absent from app composition, persistence, diagnostics, sync,
+bundles, MCP, and SwiftUI; it does not define or approve a serving threshold.
+
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
 pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title
@@ -2894,7 +2906,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,766 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,768 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

@@ -16,7 +16,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-commitment-quality commitment-quality-deterministic \
 	commitment-quality-model commitment-quality-compare \
 	test-commitment-link-quality commitment-link-quality-control \
-	commitment-link-quality-product \
+	commitment-link-quality-product commitment-link-similarity-product \
 	test-correction-composition correction-composition-benchmark \
 	test-commitment-radar-scale commitment-radar-benchmark \
 	test-exact-path-matrix exact-path-matrix \
@@ -138,6 +138,29 @@ commitment-link-quality-product:
 	@python3 scripts/commitment_link_quality.py evaluate \
 		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json \
 		--observations "$(PORTAVOZ_COMMITMENT_LINK_OBSERVATIONS)"
+
+## Capture score-bearing evidence through the same isolated product path.
+## The owner-only artifact is validation input only: it approves no threshold
+## and cannot be served by the app.
+PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS ?=
+PORTAVOZ_COMMITMENT_LINK_BUILD ?=
+PORTAVOZ_COMMITMENT_LINK_COMMIT ?=
+commitment-link-similarity-product:
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_BUILD)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_BUILD is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_COMMIT)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_COMMIT is required" >&2; exit 64)
+	$(XCODE) swift run -c release portavoz-cli bench-commitment-link-similarity \
+		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json \
+		--output "$(PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS)" \
+		--build "$(PORTAVOZ_COMMITMENT_LINK_BUILD)" \
+		--commit "$(PORTAVOZ_COMMITMENT_LINK_COMMIT)" \
+		--asset-download "$(PORTAVOZ_COMMITMENT_LINK_ASSET_DOWNLOAD)"
+	@python3 scripts/commitment_link_quality.py validate-similarity \
+		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json \
+		--observations "$(PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS)"
 
 ## Validate the exact-shaped, content-free host receipt boundary without
 ## running the expensive Release scale harness.

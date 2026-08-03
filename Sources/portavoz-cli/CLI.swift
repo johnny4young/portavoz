@@ -9,9 +9,8 @@ import Foundation
 /// behalf of the terminal.
 @main
 struct PortavozCLI {
-    // CLI de desarrollo: el dispatcher de subcomandos es un switch
-    // inherentemente largo (una rama por comando).
-    // swiftlint:disable:next cyclomatic_complexity
+    // The development dispatcher is inherently one branch per subcommand.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func main() async {
         let platform = CLIPlatformDependencies()
         var arguments = Array(CommandLine.arguments.dropFirst())
@@ -70,6 +69,8 @@ struct PortavozCLI {
             await BenchAskQualityCommand.run(arguments)
         case "bench-commitment-link-quality":
             await BenchCommitmentLinkQualityCommand.run(arguments)
+        case "bench-commitment-link-similarity":
+            await BenchCommitmentLinkSimilarityCommand.run(arguments)
         default:
             printUsage()
         }
@@ -101,6 +102,9 @@ struct PortavozCLI {
                                               [--asset-download never|if-needed]
               portavoz-cli bench-commitment-link-quality --fixture <json> --output <json>
                                                          [--asset-download never|if-needed]
+              portavoz-cli bench-commitment-link-similarity --fixture <json> --output <json>
+                                                            --build <id> --commit <sha>
+                                                            [--asset-download never|if-needed]
               portavoz-cli diarize --file <wav> [--attribute] [--language es] [--models-dir <dir>]
               portavoz-cli summarize --file <wav> [--out-language es] [--glossary a,b,c]
                                      [--byok <endpoint> --byok-model <model>] [--save] [--db <path>]

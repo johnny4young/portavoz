@@ -27,6 +27,38 @@ class CommitmentLinkQualityTests(unittest.TestCase):
     def observations(self):
         return quality.control_observations(self.fixture())
 
+    def similarity_observations(self):
+        fixture = self.fixture()
+        control = quality.control_observations(fixture)
+        return {
+            "schemaVersion": 1,
+            "kind": quality.SIMILARITY_OBSERVATION_KIND,
+            "fixtureGeneration": fixture["generation"],
+            "fixtureSHA256": quality.fixture_digest(fixture),
+            "adapter": "product-accelerate-exact-scored-v1",
+            "embeddingProfileFingerprint": "a" * 64,
+            "build": "0.9.0+1",
+            "commit": "b" * 40,
+            "evaluationStatus": "not-evaluated",
+            "servingStatus": "not-approved",
+            "observations": [
+                {
+                    "caseID": row["caseID"],
+                    "semanticHits": [
+                        {
+                            "evidenceSegmentID": evidence_id,
+                            "similarity": round(1 - rank * 0.01, 6),
+                        }
+                        for rank, evidence_id in enumerate(
+                            row["semanticHitSegmentIDs"]
+                        )
+                    ],
+                    "suggestions": row["suggestions"],
+                }
+                for row in control["observations"]
+            ],
+        }
+
     def test_public_corpus_is_bounded_and_rejects_incomplete_languages(self):
         corpus = quality.load_public_corpus(CORPUS)
         self.assertEqual(
@@ -220,6 +252,102 @@ class CommitmentLinkQualityTests(unittest.TestCase):
         ):
             quality.validate_observations(drifted, fixture)
 
+    def test_similarity_contract_binds_profile_provenance_and_stays_non_serving(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+
+        self.assertIs(
+            quality.validate_similarity_observations(observations, fixture),
+            observations,
+        )
+        self.assertEqual(observations["evaluationStatus"], "not-evaluated")
+        self.assertEqual(observations["servingStatus"], "not-approved")
+        self.assertEqual(len(observations["observations"]), 36)
+
+        for key, value, message in (
+            ("embeddingProfileFingerprint", "short", "fingerprint"),
+            ("build", "invalid build", "build"),
+            ("commit", "ABC", "commit"),
+            ("evaluationStatus", "accepted", "not-evaluated"),
+            ("servingStatus", "approved", "not-approved"),
+        ):
+            broken = copy.deepcopy(observations)
+            broken[key] = value
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_similarity_observations(broken, fixture)
+
+    def test_similarity_contract_rejects_unknown_duplicate_and_misordered_scores(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+        row_index, row = next(
+            (index, item)
+            for index, item in enumerate(observations["observations"])
+            if len(item["semanticHits"]) >= 2
+        )
+
+        for mutate, message in (
+            (
+                lambda value: value["observations"][0].update(
+                    {"unexpected": True}
+                ),
+                "exactly",
+            ),
+            (
+                lambda value: value["observations"][row_index]["semanticHits"][0].update(
+                    {"evidenceSegmentID": "evidence-unknown"}
+                ),
+                "unknown",
+            ),
+            (
+                lambda value: value["observations"][row_index]["semanticHits"].append(
+                    copy.deepcopy(
+                        value["observations"][row_index]["semanticHits"][0]
+                    )
+                ),
+                "duplicates",
+            ),
+        ):
+            broken = copy.deepcopy(observations)
+            mutate(broken)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_similarity_observations(broken, fixture)
+
+        case_id = row["caseID"]
+        for similarity, message in (
+            (float("nan"), "finite cosine"),
+            (1.1, "finite cosine"),
+        ):
+            broken = copy.deepcopy(observations)
+            broken_row = next(
+                item for item in broken["observations"]
+                if item["caseID"] == case_id
+            )
+            broken_row["semanticHits"][0]["similarity"] = similarity
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                message,
+            ):
+                quality.validate_similarity_observations(broken, fixture)
+
+        broken = copy.deepcopy(observations)
+        broken_row = next(
+            item for item in broken["observations"]
+            if item["caseID"] == case_id
+        )
+        broken_row["semanticHits"][0]["similarity"] = 0.1
+        broken_row["semanticHits"][1]["similarity"] = 0.9
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "descending similarity",
+        ):
+            quality.validate_similarity_observations(broken, fixture)
+
     def test_details_output_is_owner_only_and_non_overwriting(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "details.json"
@@ -240,6 +368,11 @@ class CommitmentLinkQualityTests(unittest.TestCase):
                 json.dumps(quality.control_observations(fixture)),
                 encoding="utf-8",
             )
+            similarity_path = Path(directory) / "similarity.json"
+            similarity_path.write_text(
+                json.dumps(self.similarity_observations()),
+                encoding="utf-8",
+            )
             details_path = Path(directory) / "details.json"
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(
@@ -248,6 +381,14 @@ class CommitmentLinkQualityTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     quality.main(["control", "--fixture", str(FIXTURE)]),
+                    0,
+                )
+                self.assertEqual(
+                    quality.main([
+                        "validate-similarity",
+                        "--fixture", str(FIXTURE),
+                        "--observations", str(similarity_path),
+                    ]),
                     0,
                 )
                 self.assertEqual(

@@ -35,6 +35,25 @@ final class CommitmentLinkQualityProductBenchmarkTests: XCTestCase {
                 error as? CommitmentLinkQualityBenchmarkError,
                 .outputMatchesFixture)
         }
+
+        let similarity = try CommitmentLinkSimilarityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/similarity.json",
+            "--build", "0.9.0+1",
+            "--commit", String(repeating: "a", count: 40),
+        ])
+        XCTAssertFalse(similarity.allowAssetDownload)
+        XCTAssertEqual(similarity.build, "0.9.0+1")
+        XCTAssertThrowsError(try CommitmentLinkSimilarityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/similarity.json",
+            "--build", "invalid build",
+            "--commit", String(repeating: "a", count: 40),
+        ])) { error in
+            XCTAssertEqual(
+                error as? CommitmentLinkQualityBenchmarkError,
+                .invalidBuild)
+        }
     }
 
     func testCanonicalFixtureDigestMatchesAdapterNeutralAuthority() throws {
@@ -88,6 +107,43 @@ final class CommitmentLinkQualityProductBenchmarkTests: XCTestCase {
         let requests = await runtime.assetDownloadRequests
         XCTAssertEqual(requests.count, fixture.cases.count * 2)
         XCTAssertTrue(requests.allSatisfy { !$0 })
+    }
+
+    func testScoredRunnerBindsExactProfileProvenanceAndExternalScores() async throws {
+        let fixture = try CommitmentLinkQualityFixture.load(
+            from: Self.canonicalFixtureURL)
+        let profile = SemanticEmbeddingProfile(
+            modelIdentifier: "commitment-link-similarity-test",
+            modelRevision: 1,
+            vectorDimension: 2,
+            pipelineIdentifier: "constant-test-vector",
+            pipelineRevision: 1,
+            vectorSchemaVersion: 1)
+        let runtime = CommitmentLinkQualityRecordingRuntime(profile: profile)
+        let commit = String(repeating: "b", count: 40)
+
+        let document = try await CommitmentLinkQualityProductBenchmark.runSimilarity(
+            fixture: fixture,
+            runtime: runtime,
+            build: "0.9.0+1",
+            commit: commit)
+
+        XCTAssertEqual(document.fixtureGeneration, fixture.generation)
+        XCTAssertEqual(document.fixtureSHA256, fixture.fixtureSHA256)
+        XCTAssertEqual(document.embeddingProfileFingerprint, profile.fingerprint)
+        XCTAssertEqual(document.build, "0.9.0+1")
+        XCTAssertEqual(document.commit, commit)
+        XCTAssertEqual(document.evaluationStatus, "not-evaluated")
+        XCTAssertEqual(document.servingStatus, "not-approved")
+        XCTAssertEqual(document.observations.count, 36)
+        for (fixtureCase, observation) in zip(fixture.cases, document.observations) {
+            let evidenceIDs = Set(fixtureCase.targets.flatMap { $0.evidence.map(\.id) })
+            XCTAssertEqual(observation.caseID, fixtureCase.id)
+            XCTAssertTrue(
+                Set(observation.semanticHits.map(\.evidenceSegmentID))
+                    .isSubset(of: evidenceIDs))
+            XCTAssertTrue(observation.semanticHits.allSatisfy { $0.similarity == 1 })
+        }
     }
 
     func testPrivateWriterIncludesNullAssigneeIdentityAndNeverOverwrites() throws {
