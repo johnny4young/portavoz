@@ -1910,6 +1910,42 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D264"))
     }
 
+    func testCommitmentReviewQueueIsBoundedReadOnlyAndNotComposed() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/CommitmentReviewQueue.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/LoadCommitmentReviewQueue.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+CommitmentReviewQueue.swift")
+        let bundle = try Self.contents(
+            of: "Sources/IntegrationsKit/MeetingBundle.swift")
+        let meetingSync = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SyncAggregate.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+CommitmentRadar.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains("case library"))
+        XCTAssertTrue(core.contains("case meetings([MeetingID])"))
+        XCTAssertTrue(core.contains("maximumItemCount = 100"))
+        XCTAssertTrue(core.contains("maximumEvidenceCount = 20"))
+        XCTAssertTrue(core.contains("maximumMeetingScopeCount = 50"))
+        XCTAssertTrue(core.contains("Confirmation must therefore reopen"))
+        XCTAssertTrue(application.contains("reviewAt: now()"))
+        XCTAssertFalse(application.contains("confirmCommitment"))
+        XCTAssertFalse(application.contains("setCommitmentReviewDecision"))
+        XCTAssertTrue(storage.contains("database.read"))
+        XCTAssertTrue(storage.contains("COUNT(*) OVER () AS totalCount"))
+        XCTAssertTrue(storage.contains("ROW_NUMBER() OVER"))
+        XCTAssertTrue(storage.contains("HAVING COUNT(link.id) > 0"))
+        XCTAssertTrue(storage.contains("ORDER BY newest.createdAt DESC"))
+        XCTAssertFalse(storage.contains("meetingDetail"))
+        XCTAssertFalse(bundle.contains("CommitmentReviewQueue"))
+        XCTAssertFalse(meetingSync.contains("CommitmentReviewQueue"))
+        XCTAssertFalse(composition.contains("LoadCommitmentReviewQueue"))
+        XCTAssertTrue(decisions.contains("## D265"))
+    }
+
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
         let profile = try Self.contents(
             of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")

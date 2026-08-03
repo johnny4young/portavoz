@@ -1440,6 +1440,17 @@ callbacks accept only an exact already-persisted winner and append one present
 fact. No additional XCUITest is required because Notification Center owns the
 gesture and the callback remains below SwiftUI.
 
+D265 adds five focused query/application/storage cases plus one architecture
+ratchet. They prove invalid date and bound rejection, one sampled review time,
+duplicate-free exact meeting scope, newest-summary selection across recipes,
+confirmed/dismissed/future-deferred exclusion, due-before-new ordering, exact
+canonical-owner suggestions, fail-closed stale evidence, bounded evidence and
+root truncation metadata, empty-scope short-circuiting, and a fixed two-SELECT
+shape independent of root count. The source guard keeps confirmation mutations,
+per-row Meeting Detail hydration, app composition, bundle, and meeting-sync
+contracts outside this foundation. No XCUITest or screenshot is added because
+D265 installs no app-window presentation.
+
 Meeting Detail layout characterization keeps generated artifacts in a
 noncollapsible bounded scroll region, the synchronized transcript in its actual
 clipped viewport, and playback in a separate dock. Correction controls must

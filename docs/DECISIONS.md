@@ -9064,3 +9064,41 @@ cannot be silently undone on relaunch. Platform code remains a content-free
 adapter, while ApplicationKit owns chronology and stale-delivery policy. The
 pre/post-meeting review queue and calendar/Shortcuts preview remain later
 COMMIT-5 work.
+
+## D265 — Bound generated-work review before composing new surfaces (Aug 2026)
+
+**Context:** Meeting Detail already offers exact evidence-first confirmation
+for one meeting, and Commitment Radar deliberately contains only confirmed
+truth. Pre-meeting preparation and post-meeting review still need a shared view
+of generated work that requires attention. Hydrating Meeting Detail once per
+candidate would create an unbounded N+1 read, while reusing Radar rows would
+blur generated suggestions into confirmed continuity. Presentation must also
+not read the clock, guess an owner or deadline, or confirm from a truncated
+evidence preview.
+
+**Decision:** add a storage-independent `CommitmentReviewQueueQuery` for either
+the whole library or an exact duplicate-free set of at most 50 meetings.
+ApplicationKit samples one concrete review time and caps each page at 100 roots
+and each evidence preview at 20 segments. StorageKit resolves the request in one
+snapshot with at most two set-based SELECT statements: roots plus ranked
+evidence. Each meeting contributes only open action items from its newest live
+summary across all recipes. Eligible roots require an ended live meeting and
+nonempty typed evidence, and exclude any confirmed source, dismissed review,
+or deferred review whose revisit time is still in the future. Due deferrals
+sort before new post-meeting work.
+
+Exact canonical owner hints may be returned only from a live linked speaker;
+no due date is inferred. Evidence status describes the complete source, while
+the returned segments are an explicitly bounded preview with exact count and
+truncation metadata. Stale or partially unavailable source evidence returns no
+preview rows. The queue is read-only and cannot confirm, remind, sync, export,
+or hydrate Meeting Detail. Exact confirmation remains on the existing
+per-meeting editor, and no app route or pre-meeting composition is added in this
+slice.
+
+**Consequences:** future pre- and post-meeting surfaces can share one honest,
+bounded source of review candidates without weakening the confirmed-only Radar
+or creating per-row reads. A future UI must open the exact source meeting for
+review and confirmation, explicitly present truncation, and route dismiss/defer
+through the existing ApplicationKit mutation boundary. Bundle, CloudKit, CLI,
+MCP, reminders, and external task creation remain unchanged.

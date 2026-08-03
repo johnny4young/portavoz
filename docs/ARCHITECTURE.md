@@ -1129,6 +1129,27 @@ source-bound review feedback, and each candidate keeps its own evidence seek
 before any action. Confirmation still adds no candidate-admission engine,
 bundle field, CloudKit transport, CLI, or MCP contract.
 
+A reusable commitment-review queue now exists below presentation for future
+pre- and post-meeting review. `LoadCommitmentReviewQueue` samples the review
+clock once and requests either the whole library or an exact, duplicate-free
+set of at most 50 meetings. The query returns at most 100 generated action-item
+roots and at most 20 evidence rows per root. StorageKit performs one
+snapshot-consistent read with at most two set-based SELECT statements: one root
+query and one ranked evidence-preview query, never one Meeting Detail hydration
+per candidate.
+
+Each meeting contributes action items only from its newest live summary across
+all recipes. A root must belong to an ended, live meeting, remain open, retain
+nonempty typed transcript evidence, and be pending at the Application-owned
+review time. Confirmed, dismissed, and not-yet-due deferred sources are
+excluded. Due deferred work sorts before new post-meeting work. An owner hint is
+present only when the generated owner speaker has an exact live canonical
+person; the queue never infers a deadline. Evidence freshness describes the
+complete source, while returned segments are an explicitly bounded preview
+with total/truncation metadata. The read model cannot confirm, schedule, sync,
+or export work: exact review and confirmation still reopen Meeting Detail.
+There is not yet a composed global or pre-meeting queue surface.
+
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
 clock that define start-of-day, the seven-day due-soon interval, and the
@@ -1259,10 +1280,11 @@ identity fences after an append race, so concurrent foreground delivery and
 response callbacks converge on one persisted `present` fact instead of losing
 the later snooze or dismiss command.
 
-There is still no review queue, external-sync mutation signal, sync/export
-field, bundle, CLI, or MCP surface. Denied permission remains visible in Radar
-and may be checked again after the user changes macOS settings; no undocumented
-Settings URL is used.
+The lower-layer review-queue read is still absent from app composition. There
+is also no external-sync mutation signal, sync/export field, bundle, CLI, or
+MCP surface. Denied permission remains visible in Radar and may be checked
+again after the user changes macOS settings; no undocumented Settings URL is
+used.
 
 The bounded read has a content-free Release scale gate. A fresh synthetic
 store is prepared before timing, one warm read precedes five measured reads,

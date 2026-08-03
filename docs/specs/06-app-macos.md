@@ -1854,6 +1854,14 @@ exercises this same production path in the durable-resume XCUITest (D63).
   timestamp, and the append-only transition; SwiftUI never writes StorageKit or
   invents source history. Reminder snooze remains outside this surface because
   it must not alter the commitment due date.
+- **Commitment review queue foundation (D265):** ApplicationKit now exposes one
+  read-only, clock-sampled request for either the whole library or an exact
+  bounded meeting set. It returns only pending evidence-backed generated work,
+  carries explicit root/evidence truncation, and may suggest an owner only from
+  an exact canonical person link. This is not a second confirmation surface:
+  the evidence rows are a preview, direct confirmation remains in Meeting
+  Detail, and no queue model, route, card, pre-meeting composition, reminder,
+  sync, or export action is installed yet.
 - **Commitment reminder delivery (D257–D264):** the lower layers
   distinguish commitment truth from local delivery state through a due-date-
   fenced current projection and immutable schedule/present/snooze/dismiss/
@@ -1891,7 +1899,8 @@ exercises this same production path in the durable-resume XCUITest (D63).
   ApplicationKit records its exact delivery plus terminal dismiss while the
   schedule and due-date fences still match, so relaunch cannot silently rearm
   it; the delegate neither activates Portavoz nor accesses StorageKit. Review
-  queues and external-sync mutation signals remain absent.
+  The D265 lower-layer queue remains uncomposed; external-sync mutation signals
+  remain absent.
 - **Summary sources (D87):** the overview tab renders compact localized
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source
