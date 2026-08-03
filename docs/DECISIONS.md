@@ -8539,3 +8539,44 @@ library; and adds no app composition, persistence, diagnostics, sync, bundle,
 MCP, SwiftUI, confirmation, or serving behavior. A clean-head local-profile
 matrix and ignored anonymized real-meeting evidence remain required before any
 policy can be accepted.
+
+## D250 — Replay every distinct similarity-admission outcome without choosing one (Aug 2026)
+
+**Context:** D249 preserves exact product-path scores, but a fixed hand-written
+threshold grid could miss a behavior change or encode an arbitrary preference.
+Applying a threshold to raw semantic hits would also alter retrieval evidence,
+while allowing it to mask an unsupported legal suggestion could make a broken
+adapter appear safer than it is. Policy research therefore needs a deterministic
+boundary that separates retrieval from admission and can be recomputed exactly.
+
+**Decision:** add an adapter-neutral offline replay over one validated D249
+artifact and the canonical D245 fixture. Every baseline suggestion must first
+pass the existing exact legal/explanation check. For each suggestion, the replay
+uses the greatest similarity among its matched evidence, which is the first
+matched row in the validated descending semantic result. Raw semantic hits stay
+unchanged. Candidate admission applies only the inclusive rule `best matched
+evidence similarity >= minimum similarity`.
+
+The sweep sorts the unique baseline suggestion scores and derives one stable
+representative threshold for every distinct admission outcome: `-1.0` retains
+the complete legal baseline, midpoints between adjacent values represent each
+subsequent equivalence class, and a midpoint between the maximum and `1.0`
+represents full abstention when that interval exists. It therefore neither
+misses an observed behavior transition nor invents a coarse product grid.
+
+The schema-1 replay binds the exact source-observation digest plus fixture,
+adapter, embedding profile, build, and source commit. It records admitted and
+rejected suggestion counts, changed cases, full aggregate quality metrics, and
+language/class slices for every candidate. Validation recomputes the complete
+document rather than trusting supplied metrics or order. Output is owner-only,
+atomic, and non-overwriting, with literal `review-required`, `not-selected`,
+`not-evaluated`, and `not-approved` states.
+
+**Consequences:** reviewers can inspect the complete public-fixture precision,
+recall, and abstention frontier without rerunning embeddings or allowing the
+tool to name a winner. This decision selects no threshold, margin, quality
+floor, model, or engine and changes no product retrieval, Core policy,
+persistence, application composition, SwiftUI, confirmation, sync/export,
+diagnostics, public product CLI/MCP surface, or serving behavior. An ignored real-
+meeting contract, clean-head profile matrix, explicit human review, and an
+accepted multilingual quality floor remain mandatory before product wiring.

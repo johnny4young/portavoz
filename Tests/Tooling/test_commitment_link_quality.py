@@ -47,7 +47,7 @@ class CommitmentLinkQualityTests(unittest.TestCase):
                     "semanticHits": [
                         {
                             "evidenceSegmentID": evidence_id,
-                            "similarity": round(1 - rank * 0.01, 6),
+                            "similarity": round(0.9 - rank * 0.1, 6),
                         }
                         for rank, evidence_id in enumerate(
                             row["semanticHitSegmentIDs"]
@@ -348,6 +348,94 @@ class CommitmentLinkQualityTests(unittest.TestCase):
         ):
             quality.validate_similarity_observations(broken, fixture)
 
+    def test_policy_replay_enumerates_distinct_outcomes_without_selecting_one(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+
+        first = quality.replay_similarity_policies(fixture, observations)
+        second = quality.replay_similarity_policies(fixture, observations)
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["kind"], quality.POLICY_REPLAY_KIND)
+        self.assertEqual(first["sourceObservationSHA256"], quality.document_digest(
+            observations
+        ))
+        self.assertEqual(first["sweepGeneration"], quality.POLICY_SWEEP_GENERATION)
+        self.assertEqual(first["policyRule"], quality.POLICY_RULE)
+        self.assertEqual(first["candidateCount"], 3)
+        self.assertEqual(
+            [row["minimumSimilarity"] for row in first["candidates"]],
+            [-1.0, 0.85, 0.95],
+        )
+        self.assertEqual(first["candidates"][0]["admittedSuggestions"], 21)
+        self.assertEqual(first["candidates"][-1]["admittedSuggestions"], 0)
+        self.assertEqual(first["candidates"][-1]["rejectedSuggestions"], 21)
+        self.assertEqual(first["evaluationStatus"], "review-required")
+        self.assertEqual(first["selectionStatus"], "not-selected")
+        self.assertEqual(first["productDecision"], "not-evaluated")
+        self.assertEqual(first["servingStatus"], "not-approved")
+
+    def test_policy_replay_rejects_unsupported_baseline_suggestions(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+        suggestion = next(
+            row["suggestions"][0]
+            for row in observations["observations"]
+            if row["suggestions"]
+        )
+        suggestion["bestSemanticRank"] += 1
+
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "unsupported legal suggestion",
+        ):
+            quality.replay_similarity_policies(fixture, observations)
+
+    def test_policy_replay_keeps_one_candidate_for_an_all_abstaining_adapter(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+        for row in observations["observations"]:
+            row["suggestions"] = []
+
+        replay = quality.replay_similarity_policies(fixture, observations)
+
+        self.assertEqual(replay["candidateCount"], 1)
+        self.assertEqual(replay["candidates"][0]["minimumSimilarity"], -1.0)
+        self.assertEqual(replay["candidates"][0]["admittedSuggestions"], 0)
+        self.assertEqual(replay["candidates"][0]["rejectedSuggestions"], 0)
+
+    def test_policy_replay_validation_rejects_tampering_and_source_drift(self):
+        fixture = self.fixture()
+        observations = self.similarity_observations()
+        replay = quality.replay_similarity_policies(fixture, observations)
+
+        self.assertIs(
+            quality.validate_policy_replay(replay, fixture, observations),
+            replay,
+        )
+        for mutate in (
+            lambda value: value.update({"selectionStatus": "selected"}),
+            lambda value: value["candidates"][0]["metrics"].update(
+                {"linkPrecision": 0.123}
+            ),
+            lambda value: value["candidates"].reverse(),
+        ):
+            broken = copy.deepcopy(replay)
+            mutate(broken)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                "deterministic recomputation",
+            ):
+                quality.validate_policy_replay(broken, fixture, observations)
+
+        drifted = copy.deepcopy(observations)
+        drifted["build"] = "0.9.0+2"
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "deterministic recomputation",
+        ):
+            quality.validate_policy_replay(replay, fixture, drifted)
+
     def test_details_output_is_owner_only_and_non_overwriting(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "details.json"
@@ -374,6 +462,7 @@ class CommitmentLinkQualityTests(unittest.TestCase):
                 encoding="utf-8",
             )
             details_path = Path(directory) / "details.json"
+            replay_path = Path(directory) / "policy-replay.json"
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(
                     quality.main(["validate", "--fixture", str(FIXTURE)]),
@@ -393,6 +482,24 @@ class CommitmentLinkQualityTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     quality.main([
+                        "replay-similarity",
+                        "--fixture", str(FIXTURE),
+                        "--observations", str(similarity_path),
+                        "--output", str(replay_path),
+                    ]),
+                    0,
+                )
+                self.assertEqual(
+                    quality.main([
+                        "validate-policy-replay",
+                        "--fixture", str(FIXTURE),
+                        "--observations", str(similarity_path),
+                        "--replay", str(replay_path),
+                    ]),
+                    0,
+                )
+                self.assertEqual(
+                    quality.main([
                         "evaluate",
                         "--fixture", str(FIXTURE),
                         "--observations", str(observations_path),
@@ -402,6 +509,8 @@ class CommitmentLinkQualityTests(unittest.TestCase):
                 )
             self.assertTrue(details_path.is_file())
             self.assertEqual(stat.S_IMODE(details_path.stat().st_mode), 0o600)
+            self.assertTrue(replay_path.is_file())
+            self.assertEqual(stat.S_IMODE(replay_path.stat().st_mode), 0o600)
 
     def test_make_target_emits_one_review_only_scorecard(self):
         result = subprocess.run(

@@ -2020,6 +2020,20 @@ and non-overwriting. The artifact is sufficient for later deterministic policy
 replay but is absent from app composition, persistence, diagnostics, sync,
 bundles, MCP, and SwiftUI; it does not define or approve a serving threshold.
 
+Offline similarity-policy replay is a separate deterministic research boundary.
+It first revalidates the exact scored receipt and refuses to replay any baseline
+suggestion that no longer satisfies the legal explanation contract. The sweep
+keeps raw semantic hits fixed, derives one representative inclusive threshold
+for every behaviorally distinct admission outcome between observed best-
+matched-evidence scores, and filters only the already legal suggestions. This
+avoids both an arbitrary numeric grid and any threshold-induced repair of an
+invalid adapter result. The owner-only, non-overwriting replay binds the exact
+source-observation digest and repeats its fixture, profile, build, commit, and
+adapter identity. Candidate scorecards retain overall and language/class link
+and abstention metrics, but the document remains review-required, not selected,
+not evaluated as a product decision, and not approved for serving. The tool is
+absent from runtime composition and does not set a quality floor.
+
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
 pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title

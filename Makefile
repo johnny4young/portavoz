@@ -17,6 +17,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	commitment-quality-model commitment-quality-compare \
 	test-commitment-link-quality commitment-link-quality-control \
 	commitment-link-quality-product commitment-link-similarity-product \
+	commitment-link-similarity-replay \
 	test-correction-composition correction-composition-benchmark \
 	test-commitment-radar-scale commitment-radar-benchmark \
 	test-exact-path-matrix exact-path-matrix \
@@ -161,6 +162,24 @@ commitment-link-similarity-product:
 	@python3 scripts/commitment_link_quality.py validate-similarity \
 		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json \
 		--observations "$(PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS)"
+
+## Replay every behaviorally distinct inclusive similarity threshold against
+## one validated scored receipt. The owner-only result selects no candidate and
+## cannot become a serving policy.
+PORTAVOZ_COMMITMENT_LINK_POLICY_REPLAY ?=
+commitment-link-similarity-replay:
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_POLICY_REPLAY)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_POLICY_REPLAY is required" >&2; exit 64)
+	@python3 scripts/commitment_link_quality.py replay-similarity \
+		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json \
+		--observations "$(PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS)" \
+		--output "$(PORTAVOZ_COMMITMENT_LINK_POLICY_REPLAY)"
+	@python3 scripts/commitment_link_quality.py validate-policy-replay \
+		--fixture Fixtures/CommitmentLinkQuality/public-synthetic-v1.json \
+		--observations "$(PORTAVOZ_COMMITMENT_LINK_SIMILARITY_OBSERVATIONS)" \
+		--replay "$(PORTAVOZ_COMMITMENT_LINK_POLICY_REPLAY)"
 
 ## Validate the exact-shaped, content-free host receipt boundary without
 ## running the expensive Release scale harness.

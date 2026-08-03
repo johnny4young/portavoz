@@ -17,7 +17,10 @@ SCHEMA_VERSION = 1
 FIXTURE_KIND = "commitment-link-quality-fixture"
 OBSERVATION_KIND = "commitment-link-quality-observations"
 SIMILARITY_OBSERVATION_KIND = "commitment-link-similarity-observations"
+POLICY_REPLAY_KIND = "commitment-link-similarity-policy-replay"
 SCORECARD_KIND = "commitment-link-quality-scorecard"
+POLICY_SWEEP_GENERATION = "observed-equivalence-classes-v1"
+POLICY_RULE = "best-matched-evidence-similarity-at-least"
 PUBLIC_GENERATION = "public-synthetic-v1"
 PUBLIC_SOURCE = "public-synthetic-only"
 PUBLIC_CORPUS_KIND = "commitment-link-quality-corpus"
@@ -357,6 +360,10 @@ def validate_fixture(document):
 
 
 def fixture_digest(document):
+    return document_digest(document)
+
+
+def document_digest(document):
     encoded = json.dumps(
         document,
         ensure_ascii=False,
@@ -761,6 +768,156 @@ def evaluate(fixture, observation_document):
     return scorecard, details
 
 
+def unscored_similarity_projection(document):
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "kind": OBSERVATION_KIND,
+        "fixtureGeneration": document["fixtureGeneration"],
+        "fixtureSHA256": document["fixtureSHA256"],
+        "adapter": document["adapter"],
+        "observations": [
+            {
+                "caseID": row["caseID"],
+                "semanticHitSegmentIDs": [
+                    hit["evidenceSegmentID"] for hit in row["semanticHits"]
+                ],
+                "suggestions": row["suggestions"],
+            }
+            for row in document["observations"]
+        ],
+    }
+
+
+def representative_similarity_thresholds(similarities):
+    """Return one deterministic threshold for every distinct admission outcome."""
+    unique = sorted(set(similarities))
+    if not unique:
+        return [-1.0]
+    thresholds = [-1.0]
+    for lower, upper in zip(unique, unique[1:]):
+        midpoint = round((lower + upper) / 2, 12)
+        thresholds.append(
+            upper if midpoint <= lower or midpoint > upper else midpoint
+        )
+    maximum = unique[-1]
+    if maximum < 1:
+        midpoint = round((maximum + 1) / 2, 12)
+        thresholds.append(
+            1.0 if midpoint <= maximum or midpoint > 1 else midpoint
+        )
+    return thresholds
+
+
+def replay_similarity_policies(fixture, similarity_document):
+    fixture = validate_fixture(fixture)
+    similarity_document = validate_similarity_observations(
+        similarity_document,
+        fixture,
+    )
+    unscored = unscored_similarity_projection(similarity_document)
+    validate_observations(unscored, fixture)
+    cases = {case["id"]: case for case in fixture["cases"]}
+    scored_rows = {
+        row["caseID"]: row for row in similarity_document["observations"]
+    }
+    unscored_rows = {
+        row["caseID"]: row for row in unscored["observations"]
+    }
+    suggestion_scores = {}
+    similarities = []
+    baseline_suggestions = 0
+    for case_id, observation in unscored_rows.items():
+        case = cases[case_id]
+        scores = {
+            hit["evidenceSegmentID"]: hit["similarity"]
+            for hit in scored_rows[case_id]["semanticHits"]
+        }
+        for suggestion in observation["suggestions"]:
+            if not suggestion_is_supported(case, observation, suggestion):
+                raise CommitmentLinkQualityError(
+                    f"case {case_id} contains an unsupported legal suggestion"
+                )
+            best_similarity = max(
+                scores[evidence_id]
+                for evidence_id in suggestion["matchedEvidenceSegmentIDs"]
+            )
+            key = (case_id, suggestion["commitmentID"])
+            suggestion_scores[key] = best_similarity
+            similarities.append(best_similarity)
+            baseline_suggestions += 1
+
+    candidates = []
+    for ordinal, threshold in enumerate(
+        representative_similarity_thresholds(similarities),
+        start=1,
+    ):
+        candidate_rows = []
+        changed_cases = 0
+        for row in unscored["observations"]:
+            filtered = [
+                suggestion
+                for suggestion in row["suggestions"]
+                if suggestion_scores[(row["caseID"], suggestion["commitmentID"])]
+                >= threshold
+            ]
+            if len(filtered) != len(row["suggestions"]):
+                changed_cases += 1
+            candidate_rows.append({
+                "caseID": row["caseID"],
+                "semanticHitSegmentIDs": row["semanticHitSegmentIDs"],
+                "suggestions": filtered,
+            })
+        candidate_document = {
+            **{key: value for key, value in unscored.items() if key != "observations"},
+            "observations": candidate_rows,
+        }
+        scorecard, _ = evaluate(fixture, candidate_document)
+        admitted = scorecard["counts"]["suggestions"]
+        candidates.append({
+            "candidateID": f"candidate-{ordinal:03d}",
+            "minimumSimilarity": threshold,
+            "changedCases": changed_cases,
+            "admittedSuggestions": admitted,
+            "rejectedSuggestions": baseline_suggestions - admitted,
+            "counts": scorecard["counts"],
+            "metrics": scorecard["metrics"],
+            "byLanguage": scorecard["byLanguage"],
+            "byClass": scorecard["byClass"],
+        })
+
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "kind": POLICY_REPLAY_KIND,
+        "fixtureGeneration": fixture["generation"],
+        "fixtureSHA256": fixture_digest(fixture),
+        "sourceObservationSHA256": document_digest(similarity_document),
+        "adapter": similarity_document["adapter"],
+        "embeddingProfileFingerprint": similarity_document[
+            "embeddingProfileFingerprint"
+        ],
+        "build": similarity_document["build"],
+        "commit": similarity_document["commit"],
+        "contentSource": fixture["contentSource"],
+        "sweepGeneration": POLICY_SWEEP_GENERATION,
+        "policyRule": POLICY_RULE,
+        "candidateCount": len(candidates),
+        "candidates": candidates,
+        "evaluationStatus": "review-required",
+        "selectionStatus": "not-selected",
+        "productDecision": "not-evaluated",
+        "servingStatus": "not-approved",
+    }
+
+
+def validate_policy_replay(document, fixture, similarity_document):
+    expected = replay_similarity_policies(fixture, similarity_document)
+    if document != expected:
+        raise CommitmentLinkQualityError(
+            "policy replay does not match deterministic recomputation"
+        )
+    return document
+
+
 def owner(kind, identifier=None):
     return {"kind": kind, "id": identifier}
 
@@ -981,6 +1138,14 @@ def parser():
     validate_similarity = subparsers.add_parser("validate-similarity")
     validate_similarity.add_argument("--fixture", required=True)
     validate_similarity.add_argument("--observations", required=True)
+    replay_similarity = subparsers.add_parser("replay-similarity")
+    replay_similarity.add_argument("--fixture", required=True)
+    replay_similarity.add_argument("--observations", required=True)
+    replay_similarity.add_argument("--output", required=True)
+    validate_replay = subparsers.add_parser("validate-policy-replay")
+    validate_replay.add_argument("--fixture", required=True)
+    validate_replay.add_argument("--observations", required=True)
+    validate_replay.add_argument("--replay", required=True)
     control = subparsers.add_parser("control")
     control.add_argument("--fixture", required=True)
     control.add_argument("--details-output")
@@ -1027,6 +1192,30 @@ def main(argv=None):
                 "cases": len(observations["observations"]),
                 "evaluationStatus": observations["evaluationStatus"],
                 "servingStatus": observations["servingStatus"],
+            }, sort_keys=True))
+            return 0
+        if arguments.command in {"replay-similarity", "validate-policy-replay"}:
+            observations = validate_similarity_observations(
+                load_json(arguments.observations, "similarity observations"),
+                fixture,
+            )
+            if arguments.command == "replay-similarity":
+                replay = replay_similarity_policies(fixture, observations)
+                write_json(arguments.output, replay, owner_only=True)
+            else:
+                replay = validate_policy_replay(
+                    load_json(arguments.replay, "policy replay"),
+                    fixture,
+                    observations,
+                )
+            print(json.dumps({
+                "kind": replay["kind"],
+                "sourceObservationSHA256": replay["sourceObservationSHA256"],
+                "candidateCount": replay["candidateCount"],
+                "evaluationStatus": replay["evaluationStatus"],
+                "selectionStatus": replay["selectionStatus"],
+                "productDecision": replay["productDecision"],
+                "servingStatus": replay["servingStatus"],
             }, sort_keys=True))
             return 0
         observations = (

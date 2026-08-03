@@ -1382,7 +1382,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   result remains `review-required` and its product decision remains
   `not-evaluated` (D236).
 - `make test-commitment-link-quality` validates D245's reproducible 36-case
-  cross-meeting fixture and runs fourteen evaluator/contract tests without a
+  cross-meeting fixture and runs eighteen evaluator/contract tests without a
   model, database, or user library. The corpus is balanced across English,
   Spanish, and mixed speech and across 18 linkable and 18 mandatory-abstention
   cases. It labels semantic-relevant targets separately from legally linkable
@@ -1419,6 +1419,16 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   `commitment-link-similarity-product` target requires an ignored output path,
   build identity, and full source commit; it captures and validates that owner-
   only receipt without evaluating or serving it. The
+  `commitment-link-similarity-replay` target then derives one inclusive
+  threshold representative for every behaviorally distinct admission outcome
+  present in that receipt. It keeps semantic hits fixed, refuses unsupported
+  baseline proposals, binds the exact scored-input digest and provenance, and
+  writes one owner-only non-overwriting candidate matrix. Four focused tooling
+  cases prove deterministic outcome enumeration, fail-closed legal support,
+  all-abstaining input, exact recomputation, tamper rejection, source-drift
+  rejection, and literal
+  review-required/not-selected/not-approved states. No candidate is selected
+  and no product quality floor or serving policy is created (D250). The
   `commitment-link-quality-product` target runs the real
   Storage/Application path and immediately validates it with the D245
   evaluator; downloads remain disabled unless the caller explicitly selects
