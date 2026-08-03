@@ -1728,6 +1728,37 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D257"))
     }
 
+    func testCommitmentFieldQualityPersistenceIsContentFreeAndBounded() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/CommitmentFieldQuality.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+CommitmentFieldQuality.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+CommitmentFieldQuality.swift")
+        let bundle = try Self.contents(
+            of: "Sources/IntegrationsKit/MeetingBundle.swift")
+        let meetingSync = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SyncAggregate.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains("case withdrawn"))
+        XCTAssertTrue(core.contains("case otherOrUnknown"))
+        XCTAssertTrue(schema.contains("registerMigration(\"v24\")"))
+        XCTAssertTrue(schema.contains("commitmentFieldPresentation_immutable_bu"))
+        XCTAssertFalse(schema.contains("column(\"meetingID\""))
+        XCTAssertFalse(schema.contains("column(\"text\""))
+        XCTAssertFalse(schema.contains("column(\"title\""))
+        XCTAssertFalse(schema.contains("column(\"provider"))
+        XCTAssertTrue(storage.contains("SHA256.hash"))
+        XCTAssertTrue(storage.contains(
+            "CommitmentFieldQualityEvaluator.maximumObservationCount + 1"))
+        XCTAssertTrue(storage.contains("firstConfirmation.occurredAt"))
+        XCTAssertTrue(storage.contains("THEN 'withdrawn'"))
+        XCTAssertFalse(bundle.contains("CommitmentFieldPresentation"))
+        XCTAssertFalse(meetingSync.contains("commitmentFieldPresentation"))
+        XCTAssertTrue(decisions.contains("## D268"))
+    }
+
     func testCommitmentReminderReconciliationIsBoundedAndAdapterNeutral() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/CommitmentReminder.swift")
@@ -2032,7 +2063,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 23"))
+        XCTAssertTrue(schema.contains("public static let version = 24"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))

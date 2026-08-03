@@ -6,6 +6,7 @@ public enum CommitmentFieldQualityLanguage: String, Codable, CaseIterable, Senda
     case english
     case spanish
     case mixed
+    case otherOrUnknown = "other-or-unknown"
 }
 
 /// The latest human disposition for one generated commitment source.
@@ -13,6 +14,7 @@ public enum CommitmentFieldQualityLanguage: String, Codable, CaseIterable, Senda
 public enum CommitmentFieldQualityOutcome: String, Codable, CaseIterable, Sendable {
     case pending
     case deferred
+    case withdrawn
     case dismissed
     case confirmed
 }
@@ -73,6 +75,7 @@ public struct CommitmentFieldQualityMetrics: Codable, Equatable, Sendable {
     public let observationCount: Int
     public let pendingCount: Int
     public let deferredCount: Int
+    public let withdrawnCount: Int
     public let dismissedCount: Int
     public let confirmedCount: Int
     public let terminalReviewCount: Int
@@ -167,7 +170,7 @@ private extension CommitmentFieldQualityEvaluator {
         else { return false }
 
         switch observation.outcome {
-        case .pending, .deferred:
+        case .pending, .deferred, .withdrawn:
             return observation.reviewedAt == nil
                 && observation.confirmedOwnerToken == nil
                 && observation.confirmedDueAt == nil
@@ -197,6 +200,7 @@ private extension CommitmentFieldQualityEvaluator {
     ) -> CommitmentFieldQualityMetrics {
         let pendingCount = observations.count { $0.outcome == .pending }
         let deferredCount = observations.count { $0.outcome == .deferred }
+        let withdrawnCount = observations.count { $0.outcome == .withdrawn }
         let dismissed = observations.filter { $0.outcome == .dismissed }
         let confirmed = observations.filter { $0.outcome == .confirmed }
         let terminal = dismissed + confirmed
@@ -222,6 +226,7 @@ private extension CommitmentFieldQualityEvaluator {
             observationCount: observations.count,
             pendingCount: pendingCount,
             deferredCount: deferredCount,
+            withdrawnCount: withdrawnCount,
             dismissedCount: dismissed.count,
             confirmedCount: confirmed.count,
             terminalReviewCount: terminal.count,

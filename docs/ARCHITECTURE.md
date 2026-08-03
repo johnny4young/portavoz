@@ -1156,27 +1156,50 @@ meeting without claiming exact focus. Direct confirmation remains exclusively
 in Meeting Detail, so a bounded preview cannot become commitment truth. There
 is not yet a pre-meeting queue surface.
 
-Commitment field quality has a separate, storage-independent authority before
-any production thresholds or dashboards. `CommitmentFieldQualityEvaluator`
-scores one bounded rolling 90-day commitment field cohort of at most 50,000
-content-free observations. Observations carry only a coarse English, Spanish,
-or mixed bucket; timestamps; review state; opaque fixture- or installation-local
-owner UUIDs; optional due dates; and the confirmation basis. They never carry
-transcript text, names, meeting titles, paths, or provider material.
+Commitment field quality has a separate Core authority before any production
+thresholds or dashboards. `CommitmentFieldQualityEvaluator` scores one bounded
+rolling 90-day commitment field cohort of at most 50,000 content-free
+observations. Observations carry only a coarse English, Spanish, mixed, or
+other/unknown bucket; timestamps; review state; opaque fixture- or
+installation-local owner UUIDs; optional due dates; and the confirmation
+basis. They never carry transcript text, names, meeting titles, paths, or
+provider material.
 
 The scorecard reports the human-review false-positive proxy, exact owner and
 due-date claim precision, confirmation evidence coverage, and nearest-rank
 confirmation-latency p50/p95 overall and by language. Only confirmed and
-dismissed observations form a terminal-review denominator; pending and deferred
-work remains visible in cohort counts but cannot improve or damage precision.
+dismissed observations form a terminal-review denominator; pending, deferred,
+and withdrawn work remains visible in cohort counts but cannot improve or
+damage precision. Withdrawal means the generated source disappeared before a
+terminal review, rather than pretending that regeneration was a user judgment.
 A dismissal makes every attached owner/date claim incorrect, while confirmation
 requires an exact opaque-owner or millisecond date match. Generated direct
 evidence, a user note, and an explicit manual origin satisfy confirmation
 coverage; a representable `missing` basis keeps invalid history measurable
 instead of dropping it. The canonical content-free public fixture spans the
-complete 90-day window and proves arithmetic only. No storage assembler,
-private anonymized receipt, quality floor, application composition, or UI is
-implemented yet.
+complete 90-day window and proves arithmetic only.
+
+Schema v24 supplies the first production evidence adapter without retaining
+meeting content. `commitmentFieldPresentation` records exactly one immutable,
+idempotent first presentation per generated action item: an opaque presentation
+identity, the source action-item identity, coarse language, an optional
+domain-separated SHA-256 owner token, an intentionally absent due-date claim,
+and presentation time. It has no meeting foreign key, text, person name, path,
+or provider metadata, so source retirement cannot erase the observation or
+turn it into another content store. Presentation is admitted only while the
+action item belongs to an ended meeting's newest live summary, remains open,
+and retains complete current direct evidence. A replay returns the original
+record even after the source is retired.
+
+One bounded StorageKit SELECT assembles the current 90-day observation state
+from those immutable presentations, current review decisions, source activity,
+and the first immutable confirmation event. It fetches at most 50,001 rows and
+fails closed above the evaluator limit. Initial confirmed owner/date truth is
+read from the first confirmation event rather than mutable current commitment
+state; dismissed, deferred, pending, and withdrawn remain distinct. The query
+is deliberately a current rolling read, not arbitrary historical
+reconstruction. No private anonymized receipt, quality floor, application
+composition, diagnostic/bundle/sync/export surface, or UI is implemented yet.
 
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
@@ -3142,13 +3165,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,845 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,853 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 532 first-party Swift source files;
+- strict SwiftLint reports zero violations across 535 first-party Swift source files;
 - 64 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

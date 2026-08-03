@@ -9172,3 +9172,47 @@ inflate quality. Dismissal remains a field proxy rather than labeled model
 ground truth. A later slice must define the storage projection, anonymization
 and owner-only retention boundary, real fixture protocol, and explicit release
 gates before any metric can block or approve product behavior.
+
+## D268 — Persist content-free commitment presentation evidence (Aug 2026)
+
+**Context:** D267 defines score arithmetic but intentionally cannot observe the
+product. Generation time is not presentation time, current review decisions are
+mutable, and a confirmed commitment's current owner or due date can change
+after the user's first decision. Reconstructing field truth from current rows
+would therefore move the denominator, erase corrected mistakes, and silently
+lose unreviewed candidates when regeneration retires their source.
+
+**Decision:** add schema v24 with one immutable, idempotent
+`commitmentFieldPresentation` row per generated action item at its first real
+presentation. The row stores only an opaque presentation UUID, source
+action-item UUID, coarse English/Spanish/mixed/other-or-unknown language,
+optional domain-separated SHA-256 owner token, optional suggested due date, and
+first-presentation time. It stores no meeting identity, text, name, path,
+provider material, or foreign key that could delete the field record when the
+source is retired. Today's generated inbox infers no deadline, so the persisted
+due-date suggestion is intentionally absent.
+
+Presentation capture is allowed only for an open action item from an ended
+meeting's newest live summary with complete current direct evidence. Exact
+canonical-person suggestions receive an installation-local owner token;
+unassigned or ambiguous suggestions do not. Replays return the first record,
+including after source retirement, so presentation retries cannot rewrite the
+cohort.
+
+StorageKit assembles the current rolling 90-day cohort with one bounded SELECT
+of at most 50,001 rows and fails closed above D267's 50,000-observation limit.
+The first immutable confirmation event supplies confirmed owner/date/time truth
+instead of the mutable current projection. Current dismissal and defer state
+remain distinct; a source that disappears before terminal review becomes
+`withdrawn`, which stays visible but outside terminal precision. This is a
+current rolling observation query, not arbitrary historical reconstruction.
+
+**Consequences:** the product can measure first-presented generated commitment
+quality without retaining meeting content or letting later edits rewrite first
+confirmation truth. The ledger and query remain local-only and are absent from
+CloudKit, bundles, diagnostics, CLI, MCP, export, and application presentation.
+Manual and user-note commitments are representable in D267's evaluator but are
+not yet emitted by this generated-candidate adapter. A later slice must compose
+presentation recording and score display, define owner-reviewed anonymized
+evidence and an accepted floor, and keep every metric advisory until that gate
+exists.

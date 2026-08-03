@@ -35,6 +35,7 @@ final class CommitmentFieldQualityTests: XCTestCase {
         XCTAssertEqual(metrics.observationCount, 12)
         XCTAssertEqual(metrics.pendingCount, 2)
         XCTAssertEqual(metrics.deferredCount, 1)
+        XCTAssertEqual(metrics.withdrawnCount, 0)
         XCTAssertEqual(metrics.dismissedCount, 3)
         XCTAssertEqual(metrics.confirmedCount, 6)
         XCTAssertEqual(metrics.terminalReviewCount, 9)
@@ -90,7 +91,26 @@ final class CommitmentFieldQualityTests: XCTestCase {
         XCTAssertNil(scorecard.overall.evidenceCoverage)
         XCTAssertNil(scorecard.overall.confirmationLatencyP50)
         XCTAssertNil(scorecard.overall.confirmationLatencyP95)
-        XCTAssertEqual(scorecard.byLanguage.count, 3)
+        XCTAssertEqual(scorecard.byLanguage.count, 4)
+    }
+
+    func testWithdrawnSourcesRemainVisibleWithoutAffectingReviewPrecision() throws {
+        let endingAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let withdrawn = CommitmentFieldQualityObservation(
+            language: .otherOrUnknown,
+            firstPresentedAt: endingAt.addingTimeInterval(-60),
+            outcome: .withdrawn,
+            suggestedOwnerToken: UUID())
+
+        let scorecard = try CommitmentFieldQualityEvaluator.evaluate(
+            [withdrawn],
+            endingAt: endingAt)
+
+        XCTAssertEqual(scorecard.overall.observationCount, 1)
+        XCTAssertEqual(scorecard.overall.withdrawnCount, 1)
+        XCTAssertEqual(scorecard.overall.terminalReviewCount, 0)
+        XCTAssertNil(scorecard.overall.reviewFalsePositiveRate)
+        XCTAssertNil(scorecard.overall.ownerPrecision)
     }
 
     func testEvaluatorRejectsDuplicateOutOfWindowAndInconsistentObservations() throws {
