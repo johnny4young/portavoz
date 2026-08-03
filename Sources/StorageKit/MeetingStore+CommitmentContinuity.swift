@@ -214,6 +214,15 @@ extension MeetingStore {
             return envelope
         }
     }
+
+    /// Internal snapshot loader shared by bounded read models. Mutation still
+    /// enters through the public confirmation/transition operations above.
+    static func loadCommitmentContinuity(
+        _ commitmentID: CommitmentID,
+        in database: Database
+    ) throws -> CommitmentContinuityEnvelope {
+        try commitmentEnvelope(id: commitmentID, in: database)
+    }
 }
 
 private extension MeetingStore {

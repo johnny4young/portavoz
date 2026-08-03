@@ -1320,8 +1320,36 @@ a model runtime, coalesces burst signals, and resumes from committed cursor
 state after lease expiry or relaunch. Launch, post-capture reconciliation,
 explicit person/commitment changes, and successful Commitment Radar mutations
 wake the owner; SQLite triggers persist work but never poll. The projection is
-not yet a query-serving authority: GRAPH-4 must add bounded evidence-preserving
-reads and freshness filtering before Ask or another UI can consume it.
+not evidence authority.
+
+The evidence-preserving **memory timeline** read path consumes graph topology
+without making the projection authoritative. Core accepts only an exact live
+`PersonID` or `TopicID`, an optional exact through-meeting anchor, and a 1...100
+item limit. ApplicationKit exposes one narrow use case; StorageKit resolves a
+merged topic to its current root, chooses the immediately preceding related
+meeting as the temporal baseline, and executes topology lookup, continuity
+rehydration, freshness checks, and result assembly in one SQLite read snapshot.
+
+Topic timelines can return confirmed decisions, explicit supersession or
+reversal, and newly confirmed commitments connected through the meeting
+topology. Person timelines deliberately return only commitments whose
+**current canonical owner** is that person; meeting participation never implies
+ownership of a decision. Every item keeps authoritative wording plus ordered
+current final segments and an exact meeting/segment/time navigation target.
+Active corrections, revision drift, deleted/non-final/missing rows, an
+incomplete graph generation, an unrelated anchor, or a missing prior meeting
+fail closed through typed abstention or explicit omitted-evidence counts. When
+multiple sources exist in the same meeting, current evidence wins over stale or
+unavailable historical material. Candidate reads and output are bounded and
+ordered newest first; limit overflow is explicit.
+
+There is still no exact evidence identity for later commitment lifecycle
+changes, authoritative unresolved-question lifecycle, or blocker relationship.
+The page advertises those fact classes as unsupported instead of attaching a
+nearby source that does not prove the change or turning generated Apuntador text
+into memory. This path adds no generated
+narrative, Ask lane, SwiftUI, model, threshold, graph database, sync/export,
+CLI, or MCP behavior.
 
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
@@ -3287,7 +3315,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,906 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,914 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

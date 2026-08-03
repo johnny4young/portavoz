@@ -9457,3 +9457,55 @@ profile evolution converge by replay from source truth. The projection can be
 discarded and rebuilt at any time, while partial or incompatible state is never
 servable. Query semantics and evidence freshness remain explicit future work
 rather than hidden projection policy.
+
+## D274 — Rehydrate memory timelines from current authority (Aug 2026)
+
+**Context:** D273 deliberately stores disposable topology without evidence
+freshness or answer text. Serving those edges directly would let a corrected,
+deleted, partial, or profile-incompatible projection look like current truth.
+The first longitudinal product read also needs a precise meaning for “since
+last time” and must not infer that every decision in a meeting belongs to every
+participant. Portavoz still has no confirmed unresolved-question lifecycle;
+Apuntador cards are generated assistance, not durable user truth.
+
+**Decision:** add a bounded `MeetingMemoryTimelineQuery` for one exact current
+topic or person UUID. An optional exact related meeting is the through anchor;
+otherwise the latest related meeting is used. Its immediate prior related
+meeting is the baseline. No baseline, stale graph generation, incompatible
+profile, pending invalidation, missing subject, unrelated anchor, or invalid
+limit returns a typed abstention rather than a partial chronology.
+
+StorageKit executes topology lookup, continuity loading, evidence hydration,
+and result assembly in one SQLite read snapshot. Graph edges select candidate
+identities only. Every returned decision or commitment event is rehydrated from
+its current authoritative continuity record and exact ordered final accepted
+segments with no active correction and the matching meeting revision. Current
+same-meeting evidence wins over stale or unavailable older sources; otherwise
+omissions remain explicit. Output is newest-first, UUID-stable on ties, bounded
+to 1...100 items, and carries honest overflow plus stale/unavailable counts.
+Each item owns direct meeting, segment, and timestamp navigation.
+
+Topic timelines may expose confirmed decisions, explicit supersession or
+reversal, and newly confirmed commitments connected through that meeting's
+typed topology. Person timelines expose only commitments whose **current
+canonical owner** is that person. Participant topology establishes chronology
+but cannot attribute meeting decisions or historical commitments to a person.
+The read emits only confirmed authority wording and no generated narrative.
+Later commitment lifecycle changes are reported as unsupported until their
+events own exact source-segment identity; a nearby commitment source does not
+prove a reassignment, reschedule, completion, reopen, or dismissal. Unresolved
+questions are likewise unsupported until a separate explicit lifecycle exists;
+generated question text cannot substitute for it.
+
+ApplicationKit owns one narrow loading use case. This decision adds no schema,
+cache, answer synthesis, Ask lane, UI, model, threshold, graph engine,
+sync/export, CLI, or MCP contract. D270 corpus mapping, blocker authority, scale
+budgets, and private field evidence remain later gates.
+
+**Consequences:** Portavoz can now compare two related meetings with exact,
+correction-aware evidence while preserving SQLite as the source of truth and
+the graph as discardable acceleration. Consumers can distinguish an empty
+current timeline from unsupported fact classes and typed evidence failure.
+Broader longitudinal answers cannot claim completeness until unresolved
+questions/blockers and the remaining D270 jobs earn their own authority and
+quality evidence.

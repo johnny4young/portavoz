@@ -229,7 +229,7 @@ extension MeetingStore {
         let generation: Int
     }
 
-    private static func meetingMemoryGraphProjectionIsReady(
+    static func meetingMemoryGraphProjectionIsReady(
         in database: Database
     ) throws -> Bool {
         try Bool.fetchOne(
