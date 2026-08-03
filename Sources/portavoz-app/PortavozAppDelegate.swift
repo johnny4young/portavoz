@@ -158,6 +158,13 @@ final class PortavozAppDelegate:
                     record,
                     handledAt: handledAt)
             }
+        case .dismiss:
+            let handledAt = Date()
+            Task { @MainActor in
+                await Self.dismissCommitmentReminder(
+                    record,
+                    handledAt: handledAt)
+            }
         case .ignore:
             break
         }
@@ -197,6 +204,16 @@ private extension PortavozAppDelegate {
             handledAt: handledAt,
             until: handledAt.addingTimeInterval(
                 AppReminderNotificationMetadata.snoozeInterval))
+    }
+
+    @MainActor
+    static func dismissCommitmentReminder(
+        _ record: AppReminderNotificationRecord,
+        handledAt: Date
+    ) async {
+        await services?.commitmentReminders.dismiss(
+            record,
+            handledAt: handledAt)
     }
 
     @MainActor

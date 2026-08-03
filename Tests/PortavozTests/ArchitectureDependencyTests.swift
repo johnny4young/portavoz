@@ -1883,6 +1883,33 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D263"))
     }
 
+    func testReminderDismissalPersistsNativeClearingAsTerminalIntent() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/DismissCommitmentReminder.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppCommitmentReminderNotificationScheduler.swift")
+        let delegate = try Self.contents(
+            of: "Sources/portavoz-app/PortavozAppDelegate.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentReminderModel.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(workflow.contains("struct DismissCommitmentReminder"))
+        XCTAssertTrue(workflow.contains(
+            "RecordCommitmentReminderPresentation"))
+        XCTAssertTrue(workflow.contains(
+            "state.sourceDueAt == request.sourceDueAt"))
+        XCTAssertTrue(workflow.contains(".dismiss,"))
+        XCTAssertFalse(workflow.contains("CommitmentRadarMutation"))
+        XCTAssertFalse(workflow.contains("UserNotifications"))
+        XCTAssertTrue(adapter.contains(".customDismissAction"))
+        XCTAssertTrue(adapter.contains(
+            "case UNNotificationDismissActionIdentifier:"))
+        XCTAssertTrue(delegate.contains("case .dismiss:"))
+        XCTAssertTrue(model.contains("func dismiss("))
+        XCTAssertTrue(decisions.contains("## D264"))
+    }
+
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
         let profile = try Self.contents(
             of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")

@@ -148,7 +148,7 @@ final class CommitmentReminderNotificationSchedulerTests: XCTestCase {
             deliveredAt: expected.deliveredAt))
     }
 
-    func testCategoryOffersPrivateBackgroundSnoozeAction() {
+    func testCategoryOffersPrivateBackgroundActions() {
         let category = AppReminderNotificationMetadata.category
 
         XCTAssertEqual(
@@ -163,6 +163,7 @@ final class CommitmentReminderNotificationSchedulerTests: XCTestCase {
             L10n.text("Remind me in 15 minutes"))
         XCTAssertFalse(
             category.actions.first?.options.contains(.foreground) ?? true)
+        XCTAssertTrue(category.options.contains(.customDismissAction))
         XCTAssertEqual(
             AppReminderNotificationMetadata.snoozeInterval,
             15 * 60)
@@ -177,6 +178,10 @@ final class CommitmentReminderNotificationSchedulerTests: XCTestCase {
         XCTAssertEqual(
             AppReminderNotificationMetadata.responseAction(
                 for: UNNotificationDismissActionIdentifier),
+            .dismiss)
+        XCTAssertEqual(
+            AppReminderNotificationMetadata.responseAction(
+                for: "portavoz.unknown-action"),
             .ignore)
     }
 

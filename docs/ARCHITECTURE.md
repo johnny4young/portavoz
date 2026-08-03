@@ -1236,8 +1236,9 @@ activates the app. No notification payload becomes commitment truth, and no
 delegate callback reaches StorageKit directly.
 
 The notification category also owns one non-foreground **Remind me in 15
-minutes** action. The native delegate classifies only the registered action
-identifier and forwards the same opaque identity/date record to
+minutes** action and opts into the native custom-dismiss callback. The native
+delegate classifies only the registered response identifier and forwards the
+same opaque identity/date record to
 `SnoozeCommitmentReminder`. ApplicationKit first records the exact delivery,
 then appends `snooze` only while the current presentation retains the same
 scheduled time and source due-date fence. The process reminder owner performs
@@ -1246,10 +1247,22 @@ generic schedule. The commitment deadline and continuity history remain
 untouched, stale or repeated responses are no-ops, and the action neither opens
 Portavoz nor lets the delegate access StorageKit.
 
-There is still no dismiss command, review queue, external-sync mutation
-signal, sync/export field, bundle, CLI, or MCP surface. Denied permission
-remains visible in Radar and may be checked again after the user changes macOS
-settings; no undocumented Settings URL is used.
+Clearing the alert yields `UNNotificationDismissActionIdentifier` through the
+same classifier. `DismissCommitmentReminder` records exact presentation before
+appending the terminal dismiss event while the delivery identity still matches.
+The commitment and due date remain unchanged; repeated, replaced, and malformed
+responses cannot revive or mutate work. Because dismissed projections are
+terminal and excluded from reconciliation, relaunch cannot silently rearm the
+alert. This background callback does not activate Portavoz or reach StorageKit
+from the native delegate. Exact-presentation recording also re-reads the same
+identity fences after an append race, so concurrent foreground delivery and
+response callbacks converge on one persisted `present` fact instead of losing
+the later snooze or dismiss command.
+
+There is still no review queue, external-sync mutation signal, sync/export
+field, bundle, CLI, or MCP surface. Denied permission remains visible in Radar
+and may be checked again after the user changes macOS settings; no undocumented
+Settings URL is used.
 
 The bounded read has a content-free Release scale gate. A fresh synthetic
 store is prepared before timing, one warm read precedes five measured reads,

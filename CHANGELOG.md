@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 2, 2026
 
+- **🧹 Clearing a reminder now sticks** — Dismiss a private commitment alert from Notification Center and Portavoz remembers that choice instead of silently scheduling it again.
 - **⏰ Snooze without moving the deadline** — A private commitment alert can remind you again in 15 minutes while its confirmed due date and local history remain intact.
 - **📝 Meeting review stays clickable** — Long summaries, notes, and commitment reviews now scroll above the transcript, while transcript corrections and the playback dock keep separate, reliable pointer targets.
 - **🔔 Reminder alerts return to Radar** — Tap a generic local due-date alert to open the private Commitment Radar; exact delivery is recorded once without exposing commitment text or reviving stale work.

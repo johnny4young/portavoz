@@ -9020,3 +9020,47 @@ minutes without weakening business truth or privacy. Snooze survives relaunch,
 duplicate notification responses are idempotent, and platform code remains an
 adapter rather than a policy owner. Explicit dismissal and pre/post-meeting
 review remain later COMMIT-5 slices.
+
+## D264 — Treat clearing a native alert as durable dismissal (Aug 2026)
+
+**Context:** D263 lets users defer a delivered alert, while the domain and
+storage already support a terminal reminder dismissal. The macOS category did
+not request dismissal callbacks, however, so clearing an alert in Notification
+Center left the durable projection presented. Although current reconciliation
+does not immediately rearm a matching presentation, a platform-visible choice
+should be captured explicitly rather than inferred from a missing delivered
+request. The native delegate must not own storage or commitment policy.
+
+**Decision:** opt the content-free reminder category into
+`customDismissAction`, classify `UNNotificationDismissActionIdentifier` as a
+closed response action, and forward the existing opaque commitment identity,
+scheduled time, source due date, delivery time, and callback handling time to
+ApplicationKit. The callback completes before asynchronous policy work and does
+not activate Portavoz.
+
+`DismissCommitmentReminder` validates finite monotonic chronology, records the
+exact presentation through D261's use case, re-reads the projection, and appends
+`dismiss` only while status, scheduled time, and source due date still match.
+The resulting projection is terminal and therefore excluded from process
+reconciliation. The confirmed commitment, its `dueAt`, and continuity history
+remain unchanged. Replaced, repeated, missing, terminal, and malformed
+responses are fail-closed no-ops.
+
+Foreground presentation and dismissal can arrive close enough to race across
+the ApplicationKit read/append boundary. If a present append loses that race,
+the presentation workflow re-reads the projection and accepts success only
+when the exact scheduled time and source due-date fences are already presented;
+every other failure remains visible. This allows the later dismiss transition
+to proceed without masking replacement or storage errors.
+
+No new schema, Radar mutation, permission request, reconciliation kick, polling
+timer, app-window UI, external-sync signal, sync/export field, bundle, CLI, MCP,
+or review queue is added. Deterministic tests characterize the native category,
+classifier, ApplicationKit workflow, storage timeline, and architecture
+boundary; Notification Center interaction remains a later field check.
+
+**Consequences:** clearing a generic private alert now has durable semantics and
+cannot be silently undone on relaunch. Platform code remains a content-free
+adapter, while ApplicationKit owns chronology and stale-delivery policy. The
+pre/post-meeting review queue and calendar/Shortcuts preview remain later
+COMMIT-5 work.

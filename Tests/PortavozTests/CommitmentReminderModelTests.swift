@@ -127,6 +127,29 @@ final class CommitmentReminderModelTests: XCTestCase {
         XCTAssertEqual(client.authorizationRequests, 0)
     }
 
+    func testDismissalPersistsWithoutPromptingOrReconciliation() async {
+        let client = RecordingReminderModelClient(permission: .enabled)
+        let model = CommitmentReminderModel(client: client)
+        let commitmentID = CommitmentID()
+        let scheduledFor = Date(timeIntervalSinceReferenceDate: 1_000)
+
+        await model.dismiss(
+            AppReminderNotificationRecord(
+                identifier: AppReminderNotificationScheduler.identifier(
+                    for: commitmentID),
+                commitmentID: commitmentID,
+                scheduledFor: scheduledFor,
+                sourceDueAt: scheduledFor,
+                deliveredAt: scheduledFor.addingTimeInterval(1)),
+            handledAt: scheduledFor.addingTimeInterval(2))
+
+        XCTAssertEqual(client.dismissalCount, 1)
+        XCTAssertEqual(client.reconciliationCount, 0)
+        XCTAssertEqual(client.authorizationRequests, 0)
+        XCTAssertEqual(model.state.permission, .unknown)
+        XCTAssertEqual(model.state.phase, .idle)
+    }
+
     private func waitUntil(
         timeout: Duration = .seconds(1),
         condition: @escaping @MainActor () -> Bool
@@ -147,6 +170,7 @@ private final class RecordingReminderModelClient: CommitmentReminderModelClient 
     private(set) var reconciliationCount = 0
     private(set) var presentationCount = 0
     private(set) var snoozeCount = 0
+    private(set) var dismissalCount = 0
 
     private var permission: CommitmentReminderPermission
     private let requestedPermission: CommitmentReminderPermission
@@ -206,6 +230,13 @@ private final class RecordingReminderModelClient: CommitmentReminderModelClient 
     ) -> ReminderSnoozeOutcome {
         snoozeCount += 1
         return .snoozed(until: request.snoozeUntil)
+    }
+
+    func dismissCommitmentReminder(
+        _: ReminderDismissalRequest
+    ) -> ReminderDismissalOutcome {
+        dismissalCount += 1
+        return .dismissed
     }
 
     func resumeFirstReconciliation() {

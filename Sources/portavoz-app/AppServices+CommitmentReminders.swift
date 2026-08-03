@@ -82,6 +82,14 @@ private struct AppCommitmentReminderClient: CommitmentReminderModelClient {
             repository: store
         ).execute(request)
     }
+
+    func dismissCommitmentReminder(
+        _ request: ReminderDismissalRequest
+    ) async throws -> ReminderDismissalOutcome {
+        try await DismissCommitmentReminder(
+            repository: store
+        ).execute(request)
+    }
 }
 
 private struct AppMeetingCommitmentReviewRepository: MeetingCommitmentReviewRepository {

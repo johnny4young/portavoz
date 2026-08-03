@@ -1854,7 +1854,7 @@ exercises this same production path in the durable-resume XCUITest (D63).
   timestamp, and the append-only transition; SwiftUI never writes StorageKit or
   invents source history. Reminder snooze remains outside this surface because
   it must not alter the commitment due date.
-- **Commitment reminder delivery (D257–D263):** the lower layers
+- **Commitment reminder delivery (D257–D264):** the lower layers
   distinguish commitment truth from local delivery state through a due-date-
   fenced current projection and immutable schedule/present/snooze/dismiss/
   cancel history. ApplicationKit now owns one fail-closed reconciliation over
@@ -1886,8 +1886,12 @@ exercises this same production path in the durable-resume XCUITest (D63).
   **Remind me in 15 minutes** action. It forwards only the same opaque metadata
   to an ApplicationKit workflow, which records exact presentation plus snooze,
   preserves the confirmed due date, ignores stale/repeated responses, and
-  signals process-owned reconciliation without opening the app. Dismiss
-  commands, review queues, and external-sync mutation signals remain absent.
+  signals process-owned reconciliation without opening the app. Clearing a
+  native alert is also observed through the category's custom-dismiss callback.
+  ApplicationKit records its exact delivery plus terminal dismiss while the
+  schedule and due-date fences still match, so relaunch cannot silently rearm
+  it; the delegate neither activates Portavoz nor accesses StorageKit. Review
+  queues and external-sync mutation signals remain absent.
 - **Summary sources (D87):** the overview tab renders compact localized
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source

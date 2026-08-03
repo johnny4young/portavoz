@@ -84,12 +84,24 @@ public struct RecordCommitmentReminderPresentation: ApplicationUseCase {
         case .presented:
             return .alreadyRecorded
         case .scheduled:
-            _ = try await repository.applyCommitmentReminderTransition(
-                .present,
-                to: request.commitmentID,
-                eventID: eventID(),
-                at: max(request.deliveredAt, state.updatedAt))
-            return .recorded
+            do {
+                _ = try await repository.applyCommitmentReminderTransition(
+                    .present,
+                    to: request.commitmentID,
+                    eventID: eventID(),
+                    at: max(request.deliveredAt, state.updatedAt))
+                return .recorded
+            } catch {
+                guard let recovered = try? await repository.commitmentReminderState(
+                    for: request.commitmentID),
+                      recovered.status == .presented,
+                      recovered.scheduledFor == request.scheduledFor,
+                      recovered.sourceDueAt == request.sourceDueAt
+                else {
+                    throw error
+                }
+                return .alreadyRecorded
+            }
         case .dismissed, .cancelled:
             return .ignoredStaleDelivery
         }

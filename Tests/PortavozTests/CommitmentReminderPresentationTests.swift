@@ -66,6 +66,25 @@ final class CommitmentReminderPresentationTests: XCTestCase {
                 .invalidDelivery)
         }
     }
+
+    func testConcurrentPresentationRecoversFromThePersistedWinner() async throws {
+        let fixture = try await scheduledFixture()
+        let repository = PresentationRaceRepository(store: fixture.store)
+
+        let outcome = try await RecordCommitmentReminderPresentation(
+            repository: repository
+        ).execute(request(
+            fixture,
+            deliveredAt: fixture.scheduledFor.addingTimeInterval(2)))
+
+        XCTAssertEqual(outcome, .alreadyRecorded)
+        let state = try await fixture.store.commitmentReminderState(
+            for: fixture.commitmentID)
+        XCTAssertEqual(state?.status, .presented)
+        let history = try await fixture.store.commitmentReminderHistory(
+            for: fixture.commitmentID)
+        XCTAssertEqual(history.map(\.kind), [.schedule, .present])
+    }
 }
 
 private extension CommitmentReminderPresentationTests {
@@ -110,4 +129,42 @@ private extension CommitmentReminderPresentationTests {
             sourceDueAt: fixture.sourceDueAt,
             deliveredAt: deliveredAt)
     }
+}
+
+private actor PresentationRaceRepository:
+    CommitmentReminderPresentationRepository {
+    private let store: MeetingStore
+    private var simulatesConcurrentWinner = true
+
+    init(store: MeetingStore) {
+        self.store = store
+    }
+
+    func commitmentReminderState(
+        for commitmentID: CommitmentID
+    ) async throws -> CommitmentReminderState? {
+        try await store.commitmentReminderState(for: commitmentID)
+    }
+
+    func applyCommitmentReminderTransition(
+        _ transition: CommitmentReminderTransition,
+        to commitmentID: CommitmentID,
+        eventID: CommitmentReminderEventID,
+        at proposedDate: Date
+    ) async throws -> CommitmentReminderState {
+        let state = try await store.applyCommitmentReminderTransition(
+            transition,
+            to: commitmentID,
+            eventID: eventID,
+            at: proposedDate)
+        if simulatesConcurrentWinner {
+            simulatesConcurrentWinner = false
+            throw PresentationRaceError.concurrentWriterWon
+        }
+        return state
+    }
+}
+
+private enum PresentationRaceError: Error {
+    case concurrentWriterWon
 }

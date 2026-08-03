@@ -40,6 +40,7 @@ struct AppReminderNotificationSnapshot: Sendable, Equatable {
 enum AppReminderResponseAction: Sendable, Equatable {
     case openRadar
     case snooze
+    case dismiss
     case ignore
 }
 
@@ -64,7 +65,7 @@ enum AppReminderNotificationMetadata {
             identifier: categoryIdentifier,
             actions: [snoozeAction],
             intentIdentifiers: [],
-            options: [])
+            options: [.customDismissAction])
     }
 
     static func responseAction(
@@ -75,6 +76,8 @@ enum AppReminderNotificationMetadata {
             .openRadar
         case snoozeActionIdentifier:
             .snooze
+        case UNNotificationDismissActionIdentifier:
+            .dismiss
         default:
             .ignore
         }

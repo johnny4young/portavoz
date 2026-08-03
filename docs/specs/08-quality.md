@@ -1429,6 +1429,17 @@ successful background action signals the existing reconciliation owner without
 requesting authorization. No additional XCUITest is required because D263 adds
 no app-window UI and the platform callback is characterized below SwiftUI.
 
+D264 adds four focused dismissal workflow/storage cases, one process-model
+case, extends the native-category classifier case, and adds one architecture
+ratchet. They prove that clearing a delivered alert appends exact presentation
+plus terminal dismiss once, preserves commitment `dueAt`, rejects repeated,
+replaced, and malformed responses, opts the category into the documented macOS
+custom-dismiss callback, and neither prompts, reconciles, nor opens an app
+window. A presentation-race case also proves that concurrent delivery/response
+callbacks accept only an exact already-persisted winner and append one present
+fact. No additional XCUITest is required because Notification Center owns the
+gesture and the callback remains below SwiftUI.
+
 Meeting Detail layout characterization keeps generated artifacts in a
 noncollapsible bounded scroll region, the synchronized transcript in its actual
 clipped viewport, and playback in a separate dock. Correction controls must

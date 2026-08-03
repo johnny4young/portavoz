@@ -22,6 +22,9 @@ protocol CommitmentReminderModelClient: Sendable {
     func snoozeCommitmentReminder(
         _ request: ReminderSnoozeRequest
     ) async throws -> ReminderSnoozeOutcome
+    func dismissCommitmentReminder(
+        _ request: ReminderDismissalRequest
+    ) async throws -> ReminderDismissalOutcome
 }
 
 /// Process-owned reminder permission and reconciliation state. Launch and
@@ -135,6 +138,26 @@ final class CommitmentReminderModel {
             } else {
                 kick()
             }
+        } catch is CancellationError {
+            return
+        } catch {
+            state.phase = .failed
+        }
+    }
+
+    func dismiss(
+        _ record: AppReminderNotificationRecord,
+        handledAt: Date
+    ) async {
+        guard let deliveredAt = record.deliveredAt else { return }
+        do {
+            _ = try await client.dismissCommitmentReminder(
+                ReminderDismissalRequest(
+                    commitmentID: record.commitmentID,
+                    scheduledFor: record.scheduledFor,
+                    sourceDueAt: record.sourceDueAt,
+                    deliveredAt: deliveredAt,
+                    handledAt: handledAt))
         } catch is CancellationError {
             return
         } catch {
