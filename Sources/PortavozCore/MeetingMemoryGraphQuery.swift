@@ -33,19 +33,44 @@ public struct TopicFirstDiscussionQuery: Equatable, Sendable {
     }
 }
 
+/// Finds current source-backed commitments for one exact canonical person.
+/// Name and alias resolution happen before this query.
+public struct PersonCommitmentsQuery: Equatable, Sendable {
+    public static let defaultItemLimit = 20
+    public static let maximumItemLimit = 100
+
+    public let personID: PersonID
+    public let itemLimit: Int
+
+    public init(
+        personID: PersonID,
+        itemLimit: Int = defaultItemLimit
+    ) {
+        self.personID = personID
+        self.itemLimit = itemLimit
+    }
+
+    public var isValid: Bool {
+        (1...Self.maximumItemLimit).contains(itemLimit)
+    }
+}
+
 public enum MeetingMemoryGraphFactID: Hashable, Sendable {
     case blocker(DecisionCommitmentBlockerID)
     case topicEvidence(TopicMeetingEvidenceID)
+    case commitment(CommitmentID)
 }
 
 public enum MeetingMemoryGraphFactKind: String, Equatable, Sendable {
     case decisionBlocksCommitment = "decision-blocks-commitment"
     case topicDiscussedInMeeting = "topic-discussed-in-meeting"
+    case personCommittedTo = "person-committed-to"
 }
 
 public enum MeetingMemoryGraphFactEntity: Hashable, Sendable {
     case decision(DecisionID)
     case commitment(CommitmentID)
+    case person(PersonID)
     case topic(TopicID)
     case meeting(MeetingID)
 }
@@ -132,9 +157,11 @@ public enum MeetingMemoryGraphQueryAbstention: String, Equatable, Sendable {
     case invalidQuery = "invalid-query"
     case projectionNotReady = "projection-not-ready"
     case commitmentUnavailable = "commitment-unavailable"
+    case personUnavailable = "person-unavailable"
     case topicUnavailable = "topic-unavailable"
     case projectionInconsistent = "projection-inconsistent"
     case unsupportedCausalLink = "unsupported-causal-link"
+    case noActiveCommitments = "no-active-commitments"
     case candidateBudgetExceeded = "candidate-budget-exceeded"
     case staleEvidenceOnly = "stale-evidence-only"
     case evidenceUnavailable = "evidence-unavailable"

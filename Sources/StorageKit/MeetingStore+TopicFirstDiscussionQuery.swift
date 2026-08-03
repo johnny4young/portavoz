@@ -94,7 +94,7 @@ extension MeetingStore {
             arguments: [topicID, meetingID.rawValue.uuidString]) ?? false
     }
 
-    private static func meetingMemoryGraphProjectionGeneration(
+    static func meetingMemoryGraphProjectionGeneration(
         in database: Database
     ) throws -> Int {
         try Int.fetchOne(

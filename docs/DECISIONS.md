@@ -9765,3 +9765,52 @@ and stale cases exercise the real product boundaries. Ask still cannot discover
 or compose this lane, and the other four unimplemented D270 jobs, graph scale
 budgets, owner-reviewed private evidence, sync/export, CLI, MCP, and UI remain
 open.
+
+## D281 — Keep person commitments exact, current, and source-backed (Aug 2026)
+
+**Context:** the D270 `personCommitments` job had authoritative confirmed
+commitments, explicit `me`/person/unassigned ownership, and disposable
+commitment-person topology, but no exact graph-fact query. Reading graph edges
+as ownership could return stale or corrupted assignments; reusing Commitment
+Radar would hydrate presentation/history that this fact lane does not need; and
+accepting a display name in StorageKit would conflate ambiguous identity
+discovery with factual serving.
+
+**Decision:** add a bounded `PersonCommitmentsQuery` for one caller-supplied
+live `PersonID`. StorageKit first counts authoritative open confirmed
+commitments whose current assignee is exactly that person and requires the
+ready graph projection to contain the same complete active ownership set.
+Missing or partial commitment-person topology returns
+`projection-inconsistent`; no current work returns `no-active-commitments`.
+Only a matching projection may select a deterministic bounded newest-first
+candidate window.
+
+Every candidate is rehydrated from its complete commitment continuity envelope
+in the same SQLite read snapshot. Current status, exact typed assignee, wording,
+and source order remain authoritative. At least one current accepted transcript
+source is mandatory. If any reassignment exists, the latest reassign event must
+agree with the current assignee and carry its own exact current transcript
+evidence. The reassignment evidence is primary, followed by deduplicated
+original-promise evidence, and its event time becomes the fact time. An
+evidence-less or stale reassignment fails closed instead of borrowing the former
+owner's source. Other stale, unavailable, corrected, non-final, missing, or
+manual evidence without an exact segment also fails closed. Evidence validation
+precedes the visible result limit, candidate overflow stays explicit, and each
+typed `person-committed-to` fact carries current wording plus exact navigation.
+Completed, dismissed, `me`, unassigned, and other-person work is excluded.
+
+ApplicationKit exposes only an injected `LoadPersonCommitments` use case. Ask
+does not compose it, and free-form name/alias resolution remains outside the
+storage contract. The canonical ambiguous-Alex abstention therefore belongs to
+a later identity-resolution/product-conformance slice rather than a display-name
+parameter here. No model, answer synthesis, UI, graph database, sync/export,
+CLI, or MCP surface is added.
+
+**Consequences:** Portavoz now has an exact person/status fact lane that cannot
+let graph popularity, proximity, or labels invent ownership and cannot present
+completed work as current. Focused tests cover lifecycle exclusion, partial
+projection corruption, bounded ordering, stale evidence, unavailable identity,
+exact reassignment provenance, evidence-less reassignment, former-owner
+exclusion, and application delegation. Canonical multilingual mapping, identity
+discovery, cross-lane Ask selection, relational scale budgets, and private field
+evidence remain open.

@@ -86,10 +86,10 @@ extension MeetingStore {
         in database: Database
     ) throws -> BlockerFactCandidates {
         let limit = min(
-            GraphQueryBudget.maximumCandidateCount,
+            MeetingMemoryGraphQueryBudget.maximumCandidateCount,
             max(
-                GraphQueryBudget.minimumCandidateCount,
-                query.itemLimit * GraphQueryBudget.candidateMultiplier))
+                MeetingMemoryGraphQueryBudget.minimumCandidateCount,
+                query.itemLimit * MeetingMemoryGraphQueryBudget.candidateMultiplier))
         let keys = try String.fetchAll(
             database,
             sql: """
@@ -223,9 +223,8 @@ private struct GraphEvidenceKey: Hashable {
     }
 }
 
-private enum GraphQueryBudget {
+enum MeetingMemoryGraphQueryBudget {
     static let minimumCandidateCount = 32
     static let candidateMultiplier = 4
-    static let maximumCandidateCount =
-        CommitmentBlockerQuery.maximumItemLimit * 8
+    static let maximumCandidateCount = 800
 }

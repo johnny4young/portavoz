@@ -1392,7 +1392,7 @@ ApplicationKit query boundaries. It maps only returned typed identities and
 exact source segments back to corpus identities. Generated association
 distractors are never persisted, and no model, network, user library, direct
 authority write, Ask composition, CLI, MCP, sync, or UI loads the fixture. The
-other five canonical query jobs and relational scale evidence remain separate
+other four canonical query jobs and relational scale evidence remain separate
 gates.
 
 The second source-backed graph fact query serves **where one exact topic family
@@ -1416,6 +1416,29 @@ forbidden distractor as a distinct confirmed topic, performs no direct database
 write, and maps only typed returned identities back to the corpus. This query
 adds no model call, graph authority, topic discovery, answer synthesis, UI,
 sync/export, CLI, or MCP surface.
+
+The third source-backed graph fact query serves **current commitments for one
+exact canonical person**. Core accepts a caller-resolved `PersonID` and a
+bounded result limit. StorageKit first proves the person is live, counts the
+current confirmed commitments whose authoritative assignee is exactly that
+person, and requires the ready commitment-person projection to represent the
+same complete set. Missing or partial derived ownership is a projection
+inconsistency, not a smaller answer.
+
+Only then does the graph select a bounded newest-first candidate window. Each
+candidate is rehydrated from `CommitmentContinuityEnvelope`; current status,
+exact person ownership, title, and accepted transcript source decide whether a
+typed person-to-commitment fact can be emitted. Completed, dismissed,
+unassigned, self-owned, other-person, manual-without-segment, stale, corrected,
+or unavailable material cannot become current work. If ownership changed, the
+latest explicit reassign event must agree with the current assignee and carry
+its own exact current transcript evidence. That reassignment is the primary
+navigation target and precedes the original promise evidence; an evidence-less
+or stale assignment cannot borrow the former owner's source. Evidence filtering
+happens before the visible limit and overflow is explicit.
+`LoadPersonCommitments` is injected but Ask does not compose it. Name/alias
+resolution, ambiguous-person abstention, canonical corpus mapping, answer
+synthesis, UI, scale evidence, sync/export, CLI, and MCP remain separate gates.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
@@ -3439,13 +3462,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,961 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,973 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 583 first-party Swift source files;
+- strict SwiftLint reports zero violations across 585 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

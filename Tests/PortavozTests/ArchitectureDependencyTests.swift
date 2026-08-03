@@ -1949,6 +1949,37 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D280"))
     }
 
+    func testPersonCommitmentFactsRequireExactCurrentOwnership() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/MeetingMemoryGraphQuery.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+PersonCommitmentsQuery.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/LoadPersonCommitments.swift")
+        let askServices = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertFalse(core.contains("import StorageKit"))
+        XCTAssertTrue(core.contains("struct PersonCommitmentsQuery"))
+        XCTAssertTrue(core.contains("case personCommittedTo"))
+        XCTAssertTrue(core.contains("case personUnavailable"))
+        XCTAssertTrue(core.contains("case noActiveCommitments"))
+        XCTAssertTrue(storage.contains("meetingMemoryGraphCommitmentPerson"))
+        XCTAssertTrue(storage.contains(
+            "commitment.canonicalPersonID = edge.personID"))
+        XCTAssertTrue(storage.contains("activeCommitmentCount"))
+        XCTAssertTrue(storage.contains("loadCommitmentContinuity"))
+        XCTAssertTrue(storage.contains("latestReassignment"))
+        XCTAssertTrue(storage.contains("reassignmentEvidence + sourceEvidence"))
+        XCTAssertTrue(storage.contains("timelineEvidence(for:"))
+        XCTAssertTrue(storage.contains("projectionInconsistent"))
+        XCTAssertTrue(application.contains("protocol PersonCommitmentFactReading"))
+        XCTAssertTrue(application.contains("struct LoadPersonCommitments"))
+        XCTAssertFalse(askServices.contains("LoadPersonCommitments"))
+        XCTAssertTrue(decisions.contains("## D281"))
+    }
+
     func testMeetingMemoryGraphProjectionIsDisposableDurableAndSignalDriven() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/MeetingMemoryGraphProjection.swift")

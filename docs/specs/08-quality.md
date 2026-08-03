@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,961 cases (13 environment-gated) + 65
+Status: the package inventory contains 1,973 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -27,7 +27,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 545 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 585 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1382,6 +1382,24 @@ database writes in the conformance adapter. These nine tests use no model,
 network, user library, SwiftUI, XCUITest, or screenshot. Four D270 product
 mappings, private field evidence, and relational scale budgets remain open.
 
+### Person-commitment query (D281)
+
+Eleven focused cases cover invalid and unready queries, unavailable exact people,
+one current typed fact with exact source navigation, completed-work exclusion,
+evidenced reassignment with the assignment event as primary source, missing or
+stale reassignment evidence, partial derived-ownership loss, stale original
+evidence, bounded newest-first paging, and ApplicationKit delegation. The
+reassignment cases also prove that current ownership cannot borrow only the
+original owner's source.
+
+One architecture ratchet pins exact `PersonID` input, complete current
+authority-versus-projection ownership reconciliation, continuity hydration,
+exact source evidence, the injected ApplicationKit boundary, and the absence
+of Ask composition. These twelve tests use no model, network, user library,
+SwiftUI, XCUITest, or screenshot. Canonical identity resolution and corpus
+mapping, the remaining graph jobs, private evidence, and relational scale
+budgets remain open.
+
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
@@ -1471,8 +1489,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,961 XCTest package cases (13
-environment-gated), zero strict-lint violations across 583 first-party Swift
+The current field-reliability inventory is 1,973 XCTest package cases (13
+environment-gated), zero strict-lint violations across 585 first-party Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 65 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package
