@@ -9216,3 +9216,45 @@ not yet emitted by this generated-candidate adapter. A later slice must compose
 presentation recording and score display, define owner-reviewed anonymized
 evidence and an accepted floor, and keep every metric advisory until that gate
 exists.
+
+## D269 — Keep commitment field quality private and advisory (Aug 2026)
+
+**Context:** D268 persists the minimum content-free evidence but deliberately
+does not observe product presentation or expose quality to the user. Generation
+cannot stand in for a card that the user actually saw, a review mutation may
+retire its source before delayed instrumentation runs, and small local cohorts
+can look authoritative even though no accepted product floor exists. SwiftUI
+must not receive opaque owner tokens, presentation identities, or raw field
+observations merely to render a scorecard.
+
+**Decision:** ApplicationKit owns two narrow use cases. The presentation writer
+creates the observation identity and samples its clock when a review card first
+appears; idempotent StorageKit persistence preserves the original first-seen
+record across view retries. A review mutation makes its own best-effort
+presentation attempt before dismissing or deferring so source retirement cannot
+win the normal path. Process-local in-flight coalescing collapses concurrent
+appearance/review attempts, while persistent idempotency remains authoritative.
+Instrumentation failure never blocks the user's review and the visible card may
+retry later.
+
+The reader samples one rolling-window endpoint, evaluates the bounded cohort,
+and returns only `CommitmentFieldQualityScorecard`. Commitment Radar gives this
+read an independent **Quality** mode, request fence, loading/empty/failure state,
+and bilingual view. Every mode change invalidates all three request lanes so a
+late result cannot publish into an inactive surface. Presentation receives
+aggregate rates, counts, latency, and
+language buckets only. The surface explicitly says that the local rolling
+90-day numbers are private and advisory; it has no threshold, release verdict,
+automatic mutation, reminder action, or candidate decision authority.
+
+This field evidence remains absent from sync, export, diagnostics, bundles,
+CLI, MCP, and notifications. The scorecard does not become a Settings toggle or
+a background poll: it is loaded only when its Radar mode is selected.
+
+**Consequences:** real card exposure and explicit local reviews can now improve
+the user's understanding of suggestion quality without storing meeting content
+or turning an immature metric into policy. Because observation is intentionally
+nonblocking, a failed write can make the advisory cohort incomplete; it must not
+be described as an exhaustive audit. Owner-reviewed anonymized evidence and an
+accepted quality floor remain prerequisites for any future release gate or
+serving threshold.

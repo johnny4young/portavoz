@@ -157,4 +157,63 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             "0:03")
         attachScreenshot(of: app, named: "commitment-review-exact-source")
     }
+
+    @MainActor
+    func testFieldQualityObservesARealReviewWithoutAutomatingDecisions() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedCommitmentRadar: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        let radar = app.buttons["library-commitment-radar-button"]
+        XCTAssertTrue(radar.waitForExistence(timeout: 10))
+        radar.click()
+
+        let reviewMode = app.control(
+            withIdentifier: "commitment-radar-mode-review")
+        XCTAssertTrue(reviewMode.waitForExistence(timeout: 10))
+        reviewMode.click()
+
+        let reviewID = "B5E00000-0000-4000-8000-000000000002"
+        let dismiss = app.control(
+            withIdentifier: "commitment-review-dismiss-\(reviewID)")
+        XCTAssertTrue(
+            dismiss.waitForExistence(timeout: 10),
+            "the card must be visibly presented before field evidence is recorded")
+        dismiss.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-review-empty")
+                .waitForExistence(timeout: 10),
+            "review remains the user's explicit decision")
+
+        let qualityMode = app.control(
+            withIdentifier: "commitment-radar-mode-quality")
+        XCTAssertTrue(qualityMode.waitForExistence(timeout: 5))
+        qualityMode.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-quality-scorecard")
+                .waitForExistence(timeout: 10))
+        let keptValue = app.control(withIdentifier: "commitment-quality-kept").value
+            as? String
+        XCTAssertTrue(
+            keptValue?.contains("0%") == true,
+            "the dismissed suggestion must not count as kept")
+        let ownerValue = app.control(withIdentifier: "commitment-quality-owner").value
+            as? String
+        XCTAssertTrue(
+            ownerValue?.contains("0%") == true,
+            "the dismissed suggestion must not count as owner-accurate")
+        let advisoryNotice = app.control(withIdentifier: "commitment-quality-advisory")
+        XCTAssertTrue(advisoryNotice.exists, "field quality must stay visibly advisory")
+        XCTAssertTrue(
+            [
+                "Advisory only — no threshold or automation uses these numbers.",
+                "Solo orientativo: ningún umbral ni automatización usa estas cifras.",
+            ].contains(advisoryNotice.label),
+            "quality advisory must stay exact and visible in the active locale")
+        attachScreenshot(of: app, named: "commitment-field-quality")
+    }
 }

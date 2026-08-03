@@ -22,10 +22,12 @@ struct CommitmentRadarView: View {
                     CommitmentReminderStatusCard(model: reminders)
                     filters
                     confirmedContent
-                } else {
+                } else if state.mode == .review {
                     CommitmentReviewQueueView(
                         model: model,
                         onOpenMeeting: onOpenMeeting)
+                } else {
+                    CommitmentFieldQualityView(model: model)
                 }
             }
             .padding(24)
@@ -90,9 +92,12 @@ private extension CommitmentRadarView {
             Text("To review")
                 .tag(CommitmentRadarModel.Mode.review)
                 .accessibilityIdentifier("commitment-radar-mode-review")
+            Text("Quality")
+                .tag(CommitmentRadarModel.Mode.quality)
+                .accessibilityIdentifier("commitment-radar-mode-quality")
         }
         .pickerStyle(.segmented)
-        .frame(maxWidth: 360)
+        .frame(maxWidth: 480)
         .accessibilityIdentifier("commitment-radar-mode")
     }
 
@@ -469,6 +474,8 @@ private extension CommitmentRadarView {
             "Confirmed work, with its source and history."
         case .review:
             "Generated suggestions waiting for your decision."
+        case .quality:
+            "Private signals from the suggestions you reviewed."
         }
     }
 
@@ -478,6 +485,8 @@ private extension CommitmentRadarView {
             "Local and confirmed by you"
         case .review:
             "Suggestions, not commitments"
+        case .quality:
+            "Local and advisory only"
         }
     }
 
@@ -485,6 +494,7 @@ private extension CommitmentRadarView {
         switch state.mode {
         case .confirmed: "checkmark.shield.fill"
         case .review: "sparkles.rectangle.stack"
+        case .quality: "chart.bar.xaxis"
         }
     }
 

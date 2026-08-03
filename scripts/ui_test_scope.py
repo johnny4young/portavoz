@@ -71,6 +71,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "CommitmentRadarUITests",
             "testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence",
         ),
+        test_id(
+            "CommitmentRadarUITests",
+            "testFieldQualityObservesARealReviewWithoutAutomatingDecisions",
+        ),
     ),
     "main-shell": (
         test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
@@ -271,7 +275,7 @@ def app_features(filename: str) -> set[str]:
         return {"main-shell"}
     if "commitmentreminder" in lowered:
         return {"commitment-radar", "meeting-commitments"}
-    if "commitmentradar" in lowered:
+    if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:
         return {"commitment-radar"}
     if any(token in lowered for token in ("l10n", "applanguage")):
         return set(ALL_FEATURES)
@@ -407,7 +411,7 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
-    if "commitmentradar" in lowered:
+    if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:
         return {"commitment-radar"}
     if any(token in lowered for token in (
         "managemeetingcommitmentinbox",

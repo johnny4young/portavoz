@@ -180,6 +180,140 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertFalse(model.state.reviewMutationFailed)
     }
 
+    func testQualityModeLoadsAnIndependentAdvisoryScorecard() async throws {
+        let confirmed = Self.page(title: "Send the rollout brief")
+        let scorecard = try Self.qualityScorecard()
+        let client = CommitmentRadarModelClientFake(
+            responses: [.success(confirmed)],
+            mutationResponses: [],
+            qualityResponses: [.success(scorecard)])
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.load)
+        await model.send(.modeChanged(.quality))
+
+        XCTAssertEqual(model.state.mode, .quality)
+        XCTAssertEqual(model.state.phase, .loaded)
+        XCTAssertEqual(model.state.page, confirmed)
+        XCTAssertEqual(model.state.qualityPhase, .loaded)
+        XCTAssertEqual(model.state.qualityScorecard, scorecard)
+        XCTAssertEqual(client.qualityRequestCount, 1)
+    }
+
+    func testVisibleCandidateRecordsOnlyItsFirstSuccessfulPresentation() async throws {
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let item = try XCTUnwrap(review.items.first)
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [.success(review)],
+            presentationResponses: [.success(())])
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.modeChanged(.review))
+        await model.send(.reviewCandidatePresented(
+            meetingID: item.meetingID,
+            actionItemID: item.id))
+        await model.send(.reviewCandidatePresented(
+            meetingID: item.meetingID,
+            actionItemID: item.id))
+
+        XCTAssertEqual(client.presentationRequests, [
+            RecordCommitmentFieldPresentationRequest(
+                meetingID: item.meetingID,
+                actionItemID: item.id),
+        ])
+        XCTAssertEqual(model.state.recordedPresentationIDs, [item.id])
+    }
+
+    func testReviewRetriesObservationFirstWithoutBlockingTheUserOnFailure() async throws {
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let item = try XCTUnwrap(review.items.first)
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [
+                .success(review),
+                .success(CommitmentReviewQueuePage(items: [], totalCount: 0)),
+            ],
+            reviewMutationResponses: [.success(())],
+            presentationResponses: [.failure(.unavailable)])
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.modeChanged(.review))
+        await model.send(.dismissReview(
+            meetingID: item.meetingID,
+            actionItemID: item.id))
+
+        XCTAssertEqual(client.events, [
+            "load-review",
+            "record-presentation",
+            "review",
+            "load-review",
+        ])
+        XCTAssertEqual(model.state.reviewPhase, .empty)
+        XCTAssertFalse(model.state.reviewMutationFailed)
+        XCTAssertTrue(model.state.recordedPresentationIDs.isEmpty)
+    }
+
+    func testConcurrentAppearanceAndReviewShareOnePresentationWrite() async throws {
+        let review = Self.reviewPage(title: "Send the launch checklist")
+        let item = try XCTUnwrap(review.items.first)
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [],
+            reviewResponses: [
+                .success(review),
+                .success(CommitmentReviewQueuePage(items: [], totalCount: 0)),
+            ],
+            reviewMutationResponses: [.success(())],
+            presentationResponses: [.success(())],
+            presentationResponseDelay: .milliseconds(30))
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.modeChanged(.review))
+        async let appearance: Void = model.send(.reviewCandidatePresented(
+            meetingID: item.meetingID,
+            actionItemID: item.id))
+        try await Task.sleep(for: .milliseconds(5))
+        async let reviewAction: Void = model.send(.dismissReview(
+            meetingID: item.meetingID,
+            actionItemID: item.id))
+        _ = await (appearance, reviewAction)
+
+        XCTAssertEqual(client.presentationRequests.count, 1)
+        XCTAssertEqual(client.events, [
+            "load-review",
+            "record-presentation",
+            "review",
+            "load-review",
+        ])
+        XCTAssertTrue(model.state.recordedPresentationIDs.isEmpty)
+        XCTAssertEqual(model.state.reviewPhase, .empty)
+    }
+
+    func testLateQualityResponseCannotPublishAfterLeavingQualityMode() async throws {
+        let scorecard = try Self.qualityScorecard()
+        let confirmed = Self.page(title: "Send the rollout brief")
+        let client = CommitmentRadarModelClientFake(
+            responses: [.success(confirmed)],
+            mutationResponses: [],
+            qualityResponses: [.success(scorecard)],
+            qualityResponseDelay: .milliseconds(30))
+        let model = CommitmentRadarModel(client: client)
+
+        async let qualityLoad: Void = model.send(.modeChanged(.quality))
+        try await Task.sleep(for: .milliseconds(5))
+        await model.send(.modeChanged(.confirmed))
+        await qualityLoad
+
+        XCTAssertEqual(model.state.mode, .confirmed)
+        XCTAssertEqual(model.state.phase, .loaded)
+        XCTAssertEqual(model.state.page, confirmed)
+        XCTAssertNil(model.state.qualityScorecard)
+        XCTAssertNotEqual(model.state.qualityPhase, .loaded)
+    }
+
     private static func page(
         title: String,
         status: CommitmentStatus = .confirmed,
@@ -226,6 +360,17 @@ final class CommitmentRadarModelTests: XCTestCase {
             reason: .newAfterMeeting)
         return CommitmentReviewQueuePage(items: [item], totalCount: 1)
     }
+
+    private static func qualityScorecard() throws -> CommitmentFieldQualityScorecard {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        return try CommitmentFieldQualityEvaluator.evaluate([
+            CommitmentFieldQualityObservation(
+                language: .english,
+                firstPresentedAt: now.addingTimeInterval(-120),
+                outcome: .dismissed,
+                reviewedAt: now.addingTimeInterval(-60)),
+        ], endingAt: now)
+    }
 }
 
 @MainActor
@@ -238,21 +383,36 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     var mutationResponses: [Result<Void, Failure>]
     var reviewResponses: [Result<CommitmentReviewQueuePage, Failure>]
     var reviewMutationResponses: [Result<Void, Failure>]
+    var qualityResponses: [Result<CommitmentFieldQualityScorecard, Failure>]
+    var presentationResponses: [Result<Void, Failure>]
     var requests: [LoadCommitmentRadarRequest] = []
     var mutations: [ManageCommitmentRadarRequest] = []
     var reviewRequests: [LoadCommitmentReviewQueueRequest] = []
     var reviewMutations: [ReviewMeetingCommitmentRequest] = []
+    var qualityRequestCount = 0
+    var presentationRequests: [RecordCommitmentFieldPresentationRequest] = []
+    var events: [String] = []
+    let presentationResponseDelay: Duration
+    let qualityResponseDelay: Duration
 
     init(
         responses: [Result<CommitmentRadarPage, Failure>],
         mutationResponses: [Result<Void, Failure>],
         reviewResponses: [Result<CommitmentReviewQueuePage, Failure>] = [],
-        reviewMutationResponses: [Result<Void, Failure>] = []
+        reviewMutationResponses: [Result<Void, Failure>] = [],
+        qualityResponses: [Result<CommitmentFieldQualityScorecard, Failure>] = [],
+        presentationResponses: [Result<Void, Failure>] = [],
+        presentationResponseDelay: Duration = .zero,
+        qualityResponseDelay: Duration = .zero
     ) {
         self.responses = responses
         self.mutationResponses = mutationResponses
         self.reviewResponses = reviewResponses
         self.reviewMutationResponses = reviewMutationResponses
+        self.qualityResponses = qualityResponses
+        self.presentationResponses = presentationResponses
+        self.presentationResponseDelay = presentationResponseDelay
+        self.qualityResponseDelay = qualityResponseDelay
     }
 
     func loadCommitmentRadar(
@@ -273,6 +433,7 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
         _ request: LoadCommitmentReviewQueueRequest
     ) async throws -> CommitmentReviewQueuePage {
         reviewRequests.append(request)
+        events.append("load-review")
         return try reviewResponses.removeFirst().get()
     }
 
@@ -280,6 +441,27 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
         _ request: ReviewMeetingCommitmentRequest
     ) async throws {
         reviewMutations.append(request)
+        events.append("review")
         return try reviewMutationResponses.removeFirst().get()
+    }
+
+    func recordCommitmentFieldPresentation(
+        _ request: RecordCommitmentFieldPresentationRequest
+    ) async throws {
+        presentationRequests.append(request)
+        events.append("record-presentation")
+        if presentationResponseDelay > .zero {
+            try await Task.sleep(for: presentationResponseDelay)
+        }
+        guard !presentationResponses.isEmpty else { return }
+        return try presentationResponses.removeFirst().get()
+    }
+
+    func loadCommitmentFieldQuality() async throws -> CommitmentFieldQualityScorecard {
+        qualityRequestCount += 1
+        if qualityResponseDelay > .zero {
+            try await Task.sleep(for: qualityResponseDelay)
+        }
+        return try qualityResponses.removeFirst().get()
     }
 }

@@ -65,8 +65,10 @@ private extension CommitmentReviewQueueView {
                 }
             }
 
-            ForEach(page.items) { item in
-                reviewCard(item)
+            LazyVStack(alignment: .leading, spacing: 14) {
+                ForEach(page.items) { item in
+                    reviewCard(item)
+                }
             }
         }
         .accessibilityIdentifier("commitment-review-page")
@@ -88,6 +90,13 @@ private extension CommitmentReviewQueueView {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("commitment-review-item-\(item.id.uuidString)")
+        .onAppear {
+            Task {
+                await model.send(.reviewCandidatePresented(
+                    meetingID: item.meetingID,
+                    actionItemID: item.id))
+            }
+        }
     }
 
     func reviewHeader(_ item: CommitmentReviewQueueItem) -> some View {

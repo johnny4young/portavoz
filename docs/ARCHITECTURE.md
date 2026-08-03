@@ -1198,8 +1198,28 @@ fails closed above the evaluator limit. Initial confirmed owner/date truth is
 read from the first confirmation event rather than mutable current commitment
 state; dismissed, deferred, pending, and withdrawn remain distinct. The query
 is deliberately a current rolling read, not arbitrary historical
-reconstruction. No private anonymized receipt, quality floor, application
-composition, diagnostic/bundle/sync/export surface, or UI is implemented yet.
+reconstruction.
+
+ApplicationKit exposes two narrow, clock-owned use cases over that adapter.
+`RecordCommitmentFieldPresentation` owns the observation identity and first
+presentation time, while `LoadCommitmentFieldQuality` returns only the aggregate
+scorecard: presentation code never receives owner tokens or observation/source
+identities. A generated-review card records its first real SwiftUI appearance
+idempotently and retries that best-effort write immediately before dismiss or
+defer. Process-local in-flight coalescing prevents an appearance and immediate
+review from issuing parallel writes, while storage idempotency remains the
+durable boundary. Observation failure never blocks the user's review decision.
+
+Commitment Radar has an independent **Quality** mode beside **Confirmed** and
+**To review**. Its model fences scorecard requests separately from both
+operational modes and rejects late responses after every mode change. The view
+renders kept-suggestion rate, exact-owner
+precision, confirmation-evidence coverage, median confirmation latency, cohort
+counts, and non-empty language buckets. Empty, failed, and loaded states are
+explicit. The UI labels every number local, private, rolling 90-day, and
+advisory; it owns no threshold and cannot confirm, dismiss, remind, or automate
+anything. No private fixture receipt, accepted quality floor,
+diagnostic/bundle/sync/export surface, CLI, or MCP exposure is implemented yet.
 
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
@@ -3165,14 +3185,14 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,853 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,861 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 535 first-party Swift source files;
-- 64 XCUITest cases define the English and Spanish release gate;
+- strict SwiftLint reports zero violations across 537 first-party Swift source files;
+- 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

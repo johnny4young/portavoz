@@ -1759,6 +1759,39 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D268"))
     }
 
+    func testCommitmentFieldQualityCompositionIsAggregateAndAdvisory() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/CommitmentFieldQuality.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+CommitmentRadar.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentRadarModel.swift")
+        let review = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentReviewQueueView.swift")
+        let quality = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentFieldQualityView.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(workflow.contains("struct LoadCommitmentFieldQuality"))
+        XCTAssertTrue(workflow.contains("struct RecordCommitmentFieldPresentation"))
+        XCTAssertTrue(workflow.contains("CommitmentFieldQualityEvaluator.evaluate"))
+        XCTAssertTrue(composition.contains("LoadCommitmentFieldQuality"))
+        XCTAssertTrue(composition.contains("RecordCommitmentFieldPresentation"))
+        XCTAssertTrue(model.contains("case quality"))
+        XCTAssertTrue(model.contains("qualityRequestID"))
+        XCTAssertTrue(model.contains("state.mode == .quality"))
+        XCTAssertTrue(model.contains("presentationTasks"))
+        XCTAssertTrue(model.contains("reviewCandidatePresented"))
+        XCTAssertTrue(review.contains("reviewCandidatePresented"))
+        XCTAssertTrue(review.contains(".onAppear"))
+        XCTAssertFalse(review.contains(".task(id: item.id)"))
+        XCTAssertTrue(quality.contains("Advisory only"))
+        XCTAssertFalse(quality.contains("suggestedOwnerToken"))
+        XCTAssertFalse(quality.contains("CommitmentFieldQualityObservation"))
+        XCTAssertFalse(quality.contains("import StorageKit"))
+        XCTAssertTrue(decisions.contains("## D269"))
+    }
+
     func testCommitmentReminderReconciliationIsBoundedAndAdapterNeutral() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/CommitmentReminder.swift")

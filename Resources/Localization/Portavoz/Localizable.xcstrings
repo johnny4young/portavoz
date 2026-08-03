@@ -9601,6 +9601,326 @@
         }
       }
     },
+    "Quality": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calidad"
+          }
+        }
+      }
+    },
+    "Private signals from the suggestions you reviewed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Señales privadas de las sugerencias que revisaste."
+          }
+        }
+      }
+    },
+    "Local and advisory only": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local y solo orientativo"
+          }
+        }
+      }
+    },
+    "Loading private quality signals…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando señales privadas de calidad…"
+          }
+        }
+      }
+    },
+    "Couldn’t load quality signals": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar las señales de calidad"
+          }
+        }
+      }
+    },
+    "Your reviews are still safe on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus revisiones siguen seguras en este Mac."
+          }
+        }
+      }
+    },
+    "No quality history yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay historial de calidad"
+          }
+        }
+      }
+    },
+    "Review generated suggestions to build a private 90-day signal.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa las sugerencias generadas para crear una señal privada de 90 días."
+          }
+        }
+      }
+    },
+    "Private quality check": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Control de calidad privado"
+          }
+        }
+      }
+    },
+    "Rolling 90-day evidence from suggestions you actually reviewed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidencia acumulada de 90 días de las sugerencias que realmente revisaste."
+          }
+        }
+      }
+    },
+    "Advisory only — no threshold or automation uses these numbers.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo orientativo: ningún umbral ni automatización usa estas cifras."
+          }
+        }
+      }
+    },
+    "Suggestions kept": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerencias conservadas"
+          }
+        }
+      }
+    },
+    "Owner accuracy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Precisión del responsable"
+          }
+        }
+      }
+    },
+    "Evidence coverage": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cobertura de evidencia"
+          }
+        }
+      }
+    },
+    "Median time to confirm": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiempo mediano hasta confirmar"
+          }
+        }
+      }
+    },
+    "%d presented": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d presentadas"
+          }
+        }
+      }
+    },
+    "%d reviewed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d revisadas"
+          }
+        }
+      }
+    },
+    "%d awaiting review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d por revisar"
+          }
+        }
+      }
+    },
+    "%d withdrawn": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d retiradas"
+          }
+        }
+      }
+    },
+    "By spoken language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por idioma hablado"
+          }
+        }
+      }
+    },
+    "%d%%": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d%%"
+          }
+        }
+      }
+    },
+    "Not measured yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún sin medir"
+          }
+        }
+      }
+    },
+    "%d of %d reviewed suggestions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d de %d sugerencias revisadas"
+          }
+        }
+      }
+    },
+    "No owner suggestions measured": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se han medido sugerencias de responsable"
+          }
+        }
+      }
+    },
+    "%d of %d owner suggestions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d de %d sugerencias de responsable"
+          }
+        }
+      }
+    },
+    "No confirmations measured": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se han medido confirmaciones"
+          }
+        }
+      }
+    },
+    "%d of %d confirmations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d de %d confirmaciones"
+          }
+        }
+      }
+    },
+    "Across %d confirmations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En %d confirmaciones"
+          }
+        }
+      }
+    },
+    "Other or unknown": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otro o desconocido"
+          }
+        }
+      }
+    },
+    "Mixed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mixto"
+          }
+        }
+      }
+    },
+    "Awaiting review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por revisar"
+          }
+        }
+      }
+    },
+    "%@ kept": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ conservadas"
+          }
+        }
+      }
+    },
     "Couldn’t update review": {
       "localizations": {
         "es": {

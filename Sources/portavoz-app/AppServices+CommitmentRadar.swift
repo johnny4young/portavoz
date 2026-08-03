@@ -32,4 +32,15 @@ extension AppServices: CommitmentRadarModelClient {
     ) async throws {
         _ = try await makeCommitmentInboxManager().execute(.review(request))
     }
+
+    func recordCommitmentFieldPresentation(
+        _ request: RecordCommitmentFieldPresentationRequest
+    ) async throws {
+        _ = try await RecordCommitmentFieldPresentation(repository: store)
+            .execute(request)
+    }
+
+    func loadCommitmentFieldQuality() async throws -> CommitmentFieldQualityScorecard {
+        try await LoadCommitmentFieldQuality(repository: store).execute(())
+    }
 }

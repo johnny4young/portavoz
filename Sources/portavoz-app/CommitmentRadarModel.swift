@@ -22,6 +22,12 @@ protocol CommitmentRadarModelClient: AnyObject {
     func reviewMeetingCommitment(
         _ request: ReviewMeetingCommitmentRequest
     ) async throws
+
+    func recordCommitmentFieldPresentation(
+        _ request: RecordCommitmentFieldPresentationRequest
+    ) async throws
+
+    func loadCommitmentFieldQuality() async throws -> CommitmentFieldQualityScorecard
 }
 
 @MainActor
@@ -30,6 +36,7 @@ final class CommitmentRadarModel {
     enum Mode: String, CaseIterable, Identifiable {
         case confirmed
         case review
+        case quality
 
         var id: String { rawValue }
     }
@@ -119,6 +126,9 @@ final class CommitmentRadarModel {
         fileprivate(set) var reviewPage: CommitmentReviewQueuePage?
         fileprivate(set) var reviewingActionItemID: UUID?
         fileprivate(set) var reviewMutationFailed = false
+        fileprivate(set) var recordedPresentationIDs: Set<UUID> = []
+        fileprivate(set) var qualityPhase: LoadPhase = .idle
+        fileprivate(set) var qualityScorecard: CommitmentFieldQualityScorecard?
     }
 
     enum Action {
@@ -135,6 +145,7 @@ final class CommitmentRadarModel {
         case dismissReview(meetingID: MeetingID, actionItemID: UUID)
         case deferReview(meetingID: MeetingID, actionItemID: UUID, revisitAt: Date)
         case dismissReviewMutationFailure
+        case reviewCandidatePresented(meetingID: MeetingID, actionItemID: UUID)
     }
 
     private(set) var state = State()
@@ -142,6 +153,8 @@ final class CommitmentRadarModel {
     private let client: any CommitmentRadarModelClient
     private var radarRequestID = UUID()
     private var reviewRequestID = UUID()
+    private var qualityRequestID = UUID()
+    private var presentationTasks: [UUID: Task<Bool, Never>] = [:]
 
     init(client: any CommitmentRadarModelClient) {
         self.client = client
@@ -162,6 +175,9 @@ private extension CommitmentRadarModel {
             return true
         case .modeChanged(let mode):
             guard state.mode != mode else { return true }
+            radarRequestID = UUID()
+            reviewRequestID = UUID()
+            qualityRequestID = UUID()
             state.mode = mode
             await loadCurrentMode()
             return true
@@ -202,18 +218,24 @@ private extension CommitmentRadarModel {
         case .dismissReview(let meetingID, let actionItemID):
             await mutateReview(
                 actionItemID,
+                meetingID: meetingID,
                 request: .dismiss(
                     meetingID: meetingID,
                     actionItemID: actionItemID))
         case .deferReview(let meetingID, let actionItemID, let revisitAt):
             await mutateReview(
                 actionItemID,
+                meetingID: meetingID,
                 request: .deferUntil(
                     meetingID: meetingID,
                     actionItemID: actionItemID,
                     revisitAt: revisitAt))
         case .dismissReviewMutationFailure:
             state.reviewMutationFailed = false
+        case .reviewCandidatePresented(let meetingID, let actionItemID):
+            await recordPresentation(
+                meetingID: meetingID,
+                actionItemID: actionItemID)
         default:
             assertionFailure("Unhandled Commitment Radar action")
         }
@@ -227,6 +249,8 @@ private extension CommitmentRadarModel {
             await loadRadar()
         case .review:
             await loadReviewQueue()
+        case .quality:
+            await loadFieldQuality()
         }
     }
 
@@ -239,13 +263,19 @@ private extension CommitmentRadarModel {
                 owner: state.owner.filter,
                 due: state.due.filter,
                 activity: state.activity.filter))
-            guard radarRequestID == currentRequestID, !Task.isCancelled else { return }
+            guard radarRequestID == currentRequestID,
+                  state.mode == .confirmed,
+                  !Task.isCancelled
+            else { return }
             state.page = page
             state.phase = page.items.isEmpty ? .empty : .loaded
         } catch is CancellationError {
             // A newer route/filter task owns presentation now.
         } catch {
-            guard radarRequestID == currentRequestID, !Task.isCancelled else { return }
+            guard radarRequestID == currentRequestID,
+                  state.mode == .confirmed,
+                  !Task.isCancelled
+            else { return }
             state.page = nil
             state.phase = .failed
         }
@@ -278,15 +308,22 @@ private extension CommitmentRadarModel {
         do {
             let page = try await client.loadCommitmentReviewQueue(
                 LoadCommitmentReviewQueueRequest())
-            guard reviewRequestID == currentRequestID, !Task.isCancelled else {
+            guard reviewRequestID == currentRequestID,
+                  state.mode == .review,
+                  !Task.isCancelled
+            else {
                 return
             }
+            state.recordedPresentationIDs.formIntersection(page.items.map(\.id))
             state.reviewPage = page
             state.reviewPhase = page.items.isEmpty ? .empty : .loaded
         } catch is CancellationError {
             // A newer route or mode task owns presentation now.
         } catch {
-            guard reviewRequestID == currentRequestID, !Task.isCancelled else {
+            guard reviewRequestID == currentRequestID,
+                  state.mode == .review,
+                  !Task.isCancelled
+            else {
                 return
             }
             state.reviewPage = nil
@@ -296,6 +333,7 @@ private extension CommitmentRadarModel {
 
     func mutateReview(
         _ actionItemID: UUID,
+        meetingID: MeetingID,
         request: ReviewMeetingCommitmentRequest
     ) async {
         guard state.reviewingActionItemID == nil else { return }
@@ -303,12 +341,82 @@ private extension CommitmentRadarModel {
         state.reviewMutationFailed = false
         defer { state.reviewingActionItemID = nil }
         do {
+            await recordPresentation(
+                meetingID: meetingID,
+                actionItemID: actionItemID)
             try await client.reviewMeetingCommitment(request)
             await loadReviewQueue(showProgress: false)
         } catch is CancellationError {
             // Route teardown owns cancellation; no failure banner is useful.
         } catch {
             state.reviewMutationFailed = true
+        }
+    }
+
+    func recordPresentation(
+        meetingID: MeetingID,
+        actionItemID: UUID
+    ) async {
+        guard reviewContains(actionItemID),
+              !state.recordedPresentationIDs.contains(actionItemID)
+        else { return }
+        if let task = presentationTasks[actionItemID] {
+            if await task.value, reviewContains(actionItemID) {
+                state.recordedPresentationIDs.insert(actionItemID)
+            }
+            return
+        }
+
+        let task = Task { [client] in
+            do {
+                try await client.recordCommitmentFieldPresentation(
+                    RecordCommitmentFieldPresentationRequest(
+                        meetingID: meetingID,
+                        actionItemID: actionItemID))
+                return true
+            } catch {
+                return false
+            }
+        }
+        presentationTasks[actionItemID] = task
+        let succeeded = await task.value
+        presentationTasks[actionItemID] = nil
+        if succeeded, reviewContains(actionItemID) {
+            state.recordedPresentationIDs.insert(actionItemID)
+        }
+    }
+
+    func reviewContains(_ actionItemID: UUID) -> Bool {
+        state.reviewPage?.items.contains(where: { $0.id == actionItemID }) == true
+    }
+
+    func loadFieldQuality(showProgress: Bool = true) async {
+        let currentRequestID = UUID()
+        qualityRequestID = currentRequestID
+        if showProgress { state.qualityPhase = .loading }
+        do {
+            let scorecard = try await client.loadCommitmentFieldQuality()
+            guard qualityRequestID == currentRequestID,
+                  state.mode == .quality,
+                  !Task.isCancelled
+            else {
+                return
+            }
+            state.qualityScorecard = scorecard
+            state.qualityPhase = scorecard.overall.observationCount == 0
+                ? .empty
+                : .loaded
+        } catch is CancellationError {
+            // A newer route owns presentation now.
+        } catch {
+            guard qualityRequestID == currentRequestID,
+                  state.mode == .quality,
+                  !Task.isCancelled
+            else {
+                return
+            }
+            state.qualityScorecard = nil
+            state.qualityPhase = .failed
         }
     }
 }

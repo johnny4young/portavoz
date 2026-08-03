@@ -1835,8 +1835,9 @@ exercises this same production path in the durable-resume XCUITest (D63).
   identifiers and a dedicated disposable `-seed-commitment-inbox` fixture
   verifies the English and Spanish journey without changing the default seed's
   identity behavior.
-- **Global Commitment Radar (D241/D266):** Library exposes one dedicated Radar
-  route with explicitly separate **Confirmed** and **To review** modes. A
+- **Global Commitment Radar (D241/D266/D269):** Library exposes one dedicated
+  Radar route with explicitly separate **Confirmed**, **To review**, and
+  **Quality** modes. A
   per-window `CommitmentRadarModel` maps owner,
   due-date, and activity filters to a narrow ApplicationKit client, fences stale
   async responses, and switches presentation-only grouping between canonical
@@ -1854,6 +1855,13 @@ exercises this same production path in the durable-resume XCUITest (D63).
   dismiss, defer, or reopen the complete source meeting; current evidence seeks
   to its exact transcript time, while stale/unavailable evidence opens without
   a false exact-focus claim. Direct confirmation remains in Meeting Detail.
+  D269 observes the first real review-card appearance through an idempotent
+  ApplicationKit use case; dismiss/defer retries that observation first, but a
+  failed advisory write never blocks review. The independent Quality request
+  returns only aggregate rolling 90-day scorecard values to SwiftUI—never owner
+  tokens, observation identities, source IDs, or meeting content—and explicitly
+  labels them private and advisory. No metric can mutate a candidate, schedule
+  a reminder, automate a decision, or approve a serving threshold.
 - **Durable Radar actions (D256):** each confirmed card can change its due date
   or be completed, and each completed card can be restored. The window model
   serializes one mutation, preserves the visible page on failure, and reloads
