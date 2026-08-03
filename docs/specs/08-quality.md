@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,839 cases (13 environment-gated) + 64
+Status: the package inventory contains 1,845 cases (13 environment-gated) + 64
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -37,6 +37,7 @@ documented below.
 | RestructureMeetingTranscriptTests / MeetingTranscriptContentTests / TranscriptCorrectionCompositionTests / TranscriptCorrectionRevisionTests / MeetingTranscriptGenerationMaterialTests / TranscriptCorrectionStorageTests / TranscriptCorrectionReplicaMergeTests | Exact accepted-snapshot structural commands; explicit adjacent same-speaker/channel/time-monotonic merges; complete split partitions; collision-safe generated and historical part identities; recoverable suppression; restore that releases active ownership without erasing lineage; precomputed 20k-row editor projection; timestamp-aware bidirectional split-source navigation and export-to-original-audio seeking; deterministic typed replace/speaker/split/merge/suppress/restore composition; convergent effective correction revisions and disjoint replica-lane union; immutable rewrite, divergent tombstone, competing-lane, wrong-meeting, stale, overlapping, branched, malformed, and tombstoned-terminal rejection; fail-closed artifact and document provenance; generated-to-accepted evidence projection; strict portable-envelope decoding; idempotent atomic append; source retirement; schema immutability; monotonic semantic-maintenance invalidation; accepted-only search/index exclusion and restore; summary publication fences; one journal generation per logical correction; injected semantic-generation failure proving atomic rollback; and three-device replica convergence |
 | TranscriptCorrectionQualityTests / TranscriptCorrectionScaleBenchmarkTests | Sixty-four seeded permutations of replace/speaker/split/merge/suppress/restore history; stable composed readings independent of arrival order; explicit refined Spanish/English source language, source identity, and lineage preservation; content-free 20,000-segment/400-correction Release measurement; and a 250 ms p95 pure-composition budget over at least three runs |
 | CommitmentRadarQueryTests / CommitmentRadarStorageTests / CommitmentRadarScaleBenchmarkTests | Injected seven-day calendar boundaries; strict root/related-row limits; exact self/person/unassigned ownership plus urgency/activity filters; oldest source and newest history bounds with visible totals; source-meeting navigation; projection/history corruption rejection; an at-most-four-SELECT snapshot read independent of root count; and a content-free 1,000/10,000-confirmed-commitment Release gate with a 100 ms p95 budget |
+| CommitmentFieldQualityTests | Content-free rolling 90-day cohort evaluation bounded to 50,000 observations; explicit pending/deferred versus terminal-review denominators; dismissal-based field false-positive proxy; exact opaque-owner and millisecond due-date precision; generated-evidence, user-note, manual-origin, and intentionally missing confirmation coverage; nearest-rank confirmation-latency p50/p95; English/Spanish/mixed breakdowns; and duplicate, out-of-window, inconsistent, and empty-cohort failure semantics over the canonical 12-observation public synthetic fixture |
 | CommitmentRadarModelTests | Complete, empty, and failed presentation phases; exact owner/due/activity mapping; grouping without storage reload; stale-load rejection; retry after failure; and database-free adapter behavior |
 | CommitmentReminderModelTests | Launch authorization inspection without prompting; explicit opt-in before reconciliation; denied-state inactivity; one-active-plus-one-rerun burst coalescing; and explicit retry after a typed failure |
 | CommitmentLinkObservationTests / CommitmentSourceLinkArchitectureTests | Exact open-target source/evidence projection; closed and invalid-limit exclusion; installed-assets-only semantic borrowing; existing semantic-port use; separation of semantic relevance from wrong-owner admission; typed unavailable/malformed rejection; fixed 200/20/three bounds; and absence of mutation or app composition |
@@ -1334,8 +1335,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,839 XCTest package cases (13
-environment-gated), zero strict-lint violations across 531 first-party Swift
+The current field-reliability inventory is 1,845 XCTest package cases (13
+environment-gated), zero strict-lint violations across 532 first-party Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 64 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package

@@ -9128,3 +9128,47 @@ weakening confirmed continuity, duplicating review policy, or introducing an
 N+1 Meeting Detail read. Confirmed filters, reminders, grouping, and mutation
 state cannot leak into suggestion review. Pre-meeting composition, candidate
 admission, external task creation, sync/export, CLI, and MCP remain unchanged.
+
+## D267 — Measure commitment field quality without retaining meeting content (Aug 2026)
+
+**Context:** the candidate and continuity quality packs measure synthetic model
+and linkage behavior, but COMMIT-6 also needs to quantify what users actually
+confirm or reject over time. Reusing raw transcript, action-item, person, or
+meeting records in a scorecard would create a second sensitive-data surface.
+Counting pending or deferred work as correct would also make precision improve
+without a human judgment, while dropping invalid confirmed evidence would hide
+the most important invariant failure.
+
+**Decision:** introduce one pure PortavozCore evaluator over a rolling 90-day
+cohort capped at 50,000 content-free observations. An observation contains only
+a UUID, an English/Spanish/mixed bucket, first-presentation and optional review
+timestamps, pending/deferred/dismissed/confirmed state, optional opaque local
+owner UUIDs and due dates, and one confirmation basis. It contains no text,
+name, title, path, meeting identity, model material, or provider metadata.
+
+Confirmed and dismissed observations alone form the terminal-review
+denominator. The field false-positive proxy is dismissals divided by terminal
+reviews. Owner and due-date precision include only claims that reached a
+terminal review: a dismissal is incorrect, while a confirmation must exactly
+match the opaque owner token or millisecond date. Evidence coverage includes
+confirmed generated direct evidence, user notes, and explicit manual origins;
+`missing` remains a valid input category that fails coverage. Confirmation
+latency uses deterministic nearest-rank p50/p95. The evaluator reports the same
+metrics overall and in stable language order, leaves zero-denominator rates
+undefined, rejects duplicate/malformed/out-of-window observations, and makes no
+threshold or product decision.
+
+The canonical public fixture contains twelve content-free synthetic
+observations across the exact 90-day window and intentionally exercises pending,
+deferred, dismissed, confirmed, corrected owner/date claims, manual evidence,
+and one missing-evidence failure. It proves evaluator arithmetic only. This
+slice adds no database query, persisted field observation, private fixture,
+diagnostic export, quality floor, application adapter, Settings surface, or
+notification recovery behavior.
+
+**Consequences:** future field evidence can be assembled behind a narrow port
+and compared without exposing meeting content or allowing incomplete reviews to
+inflate quality. Dismissal remains a field proxy rather than labeled model
+ground truth. A later slice must define the storage projection, anonymization
+and owner-only retention boundary, real fixture protocol, and explicit release
+gates before any metric can block or approve product behavior.

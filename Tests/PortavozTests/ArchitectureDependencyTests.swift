@@ -1964,6 +1964,35 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D266"))
     }
 
+    func testCommitmentFieldQualityIsContentFreeBoundedAndDecisionNeutral() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/CommitmentFieldQuality.swift")
+        let fixture = try Self.contents(
+            of: "Fixtures/CommitmentFieldQuality/public-synthetic-v1.json")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains("windowDayCount = 90"))
+        XCTAssertTrue(core.contains("maximumObservationCount = 50_000"))
+        XCTAssertTrue(core.contains("reviewFalsePositiveRate"))
+        XCTAssertTrue(core.contains("ownerPrecision"))
+        XCTAssertTrue(core.contains("dueDatePrecision"))
+        XCTAssertTrue(core.contains("evidenceCoverage"))
+        XCTAssertTrue(core.contains("confirmationLatencyP95"))
+        XCTAssertTrue(core.contains("case missing"))
+        XCTAssertTrue(core.contains("suggestedOwnerToken: UUID?"))
+        XCTAssertFalse(core.contains("StorageKit"))
+        XCTAssertFalse(core.contains("ApplicationKit"))
+        XCTAssertFalse(core.contains("SwiftUI"))
+        XCTAssertFalse(core.contains("meetingTitle"))
+        XCTAssertFalse(core.contains("transcriptText"))
+        XCTAssertTrue(fixture.contains(#""contentSource": "synthetic-only""#))
+        XCTAssertFalse(fixture.contains(#""text":"#))
+        XCTAssertFalse(fixture.contains(#""meetingTitle":"#))
+        XCTAssertTrue(architecture.contains("rolling 90-day commitment field cohort"))
+        XCTAssertTrue(decisions.contains("## D267"))
+    }
+
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
         let profile = try Self.contents(
             of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")
