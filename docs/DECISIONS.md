@@ -8948,3 +8948,37 @@ converge through one observable process owner, and deterministic tests can
 exercise the complete flow without changing machine notification state.
 Notification actions, snooze controls, review queues, and signals for mutations
 arriving from another device remain later slices.
+
+## D261 — Treat reminder presentation as an exact durable input (Aug 2026)
+
+**Context:** D260 can schedule generic alerts, but foreground delivery and a
+Notification Center tap were not observed by Portavoz. Relaunch reconciliation
+eventually discovers delivered requests, yet a selected alert had no product
+destination, and letting the delegate mutate storage would duplicate due-date
+and terminal-state policy. Old Notification Center items can also outlive a
+replaced schedule.
+
+**Decision:** register the content-free reminder category and install the native
+notification-center delegate before application launch finishes. Both
+foreground delivery and the default alert response decode only the stable
+commitment identifier, scheduled time, source due-date fence, and system
+delivery time. They call `RecordCommitmentReminderPresentation`, an
+ApplicationKit use case that appends `present` only when the current durable
+reminder is still scheduled for the exact same time and exact same source due
+date. An already-presented delivery is idempotent; missing, replaced, terminal,
+malformed, or chronologically impossible input is ignored or rejected without
+reviving work.
+
+The default alert response then routes the process to Commitment Radar and
+activates the app. The delegate does not read StorageKit, does not carry
+commitment, person, meeting, or transcript text, and does not reinterpret
+eligibility. Foreground presentation remains a generic banner and sound. Custom
+action buttons, snooze/dismiss commands, review queues, external-sync mutation
+signals, and sync/export surfaces remain deferred.
+
+**Consequences:** selecting a private due alert now returns the user to the one
+confirmed-work review surface, while delivery history converges immediately and
+exactly once. Stale Notification Center items cannot restore cancelled work or
+block a later snoozed schedule. Relaunch recovery remains a fallback rather than
+the only presentation observer. Scoped bilingual XCUITest proves the route
+without touching host notification state.

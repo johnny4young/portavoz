@@ -37,6 +37,59 @@ struct AppReminderNotificationSnapshot: Sendable, Equatable {
     let delivered: AppReminderNotificationRecord?
 }
 
+enum AppReminderNotificationMetadata {
+    static let categoryIdentifier = "portavoz.commitment-reminder"
+
+    private enum Key {
+        static let commitmentID = "portavoz.commitment-id"
+        static let scheduledFor = "portavoz.scheduled-for"
+        static let sourceDueAt = "portavoz.source-due-at"
+    }
+
+    static var category: UNNotificationCategory {
+        UNNotificationCategory(
+            identifier: categoryIdentifier,
+            actions: [],
+            intentIdentifiers: [],
+            options: [])
+    }
+
+    static func userInfo(
+        for record: AppReminderNotificationRecord
+    ) -> [AnyHashable: Any] {
+        [
+            Key.commitmentID:
+                record.commitmentID.rawValue.uuidString.lowercased(),
+            Key.scheduledFor:
+                record.scheduledFor.timeIntervalSinceReferenceDate,
+            Key.sourceDueAt:
+                record.sourceDueAt.timeIntervalSinceReferenceDate
+        ]
+    }
+
+    static func record(
+        identifier: String,
+        userInfo: [AnyHashable: Any],
+        deliveredAt: Date?
+    ) -> AppReminderNotificationRecord? {
+        guard let rawCommitmentID = userInfo[Key.commitmentID] as? String,
+              let uuid = UUID(uuidString: rawCommitmentID),
+              let scheduledFor = userInfo[Key.scheduledFor] as? Double,
+              let sourceDueAt = userInfo[Key.sourceDueAt] as? Double
+        else { return nil }
+        let commitmentID = CommitmentID(rawValue: uuid)
+        guard identifier == AppReminderNotificationScheduler.identifier(
+            for: commitmentID)
+        else { return nil }
+        return AppReminderNotificationRecord(
+            identifier: identifier,
+            commitmentID: commitmentID,
+            scheduledFor: Date(timeIntervalSinceReferenceDate: scheduledFor),
+            sourceDueAt: Date(timeIntervalSinceReferenceDate: sourceDueAt),
+            deliveredAt: deliveredAt)
+    }
+}
+
 protocol AppReminderNotificationCenter: Sendable {
     func authorizationStatus() async -> AppReminderAuthorization
     func requestAuthorization() async throws -> Bool
@@ -161,6 +214,7 @@ actor AppReminderNotificationScheduler: CommitmentReminderDeliveryScheduling {
     ) -> Bool {
         record.identifier == identifier
             && record.commitmentID == schedule.commitmentID
+            && record.scheduledFor == schedule.scheduledFor
             && record.sourceDueAt == schedule.sourceDueAt
     }
 
@@ -178,12 +232,6 @@ actor AppReminderNotificationScheduler: CommitmentReminderDeliveryScheduling {
 }
 
 private actor SystemReminderNotificationCenter: AppReminderNotificationCenter {
-    private enum MetadataKey {
-        static let commitmentID = "portavoz.commitment-id"
-        static let scheduledFor = "portavoz.scheduled-for"
-        static let sourceDueAt = "portavoz.source-due-at"
-    }
-
     private let center: UNUserNotificationCenter
 
     init(center: UNUserNotificationCenter = .current()) {
@@ -237,14 +285,10 @@ private actor SystemReminderNotificationCenter: AppReminderNotificationCenter {
         content.title = request.title
         content.body = request.body
         content.sound = .default
-        content.userInfo = [
-            MetadataKey.commitmentID:
-                request.record.commitmentID.rawValue.uuidString.lowercased(),
-            MetadataKey.scheduledFor:
-                request.record.scheduledFor.timeIntervalSinceReferenceDate,
-            MetadataKey.sourceDueAt:
-                request.record.sourceDueAt.timeIntervalSinceReferenceDate
-        ]
+        content.categoryIdentifier =
+            AppReminderNotificationMetadata.categoryIdentifier
+        content.userInfo = AppReminderNotificationMetadata.userInfo(
+            for: request.record)
         let delay = max(
             1,
             request.record.scheduledFor.timeIntervalSinceNow)
@@ -269,17 +313,9 @@ private actor SystemReminderNotificationCenter: AppReminderNotificationCenter {
         request: UNNotificationRequest,
         deliveredAt: Date?
     ) -> AppReminderNotificationRecord? {
-        let metadata = request.content.userInfo
-        guard let rawCommitmentID = metadata[MetadataKey.commitmentID] as? String,
-              let uuid = UUID(uuidString: rawCommitmentID),
-              let scheduledFor = metadata[MetadataKey.scheduledFor] as? Double,
-              let sourceDueAt = metadata[MetadataKey.sourceDueAt] as? Double
-        else { return nil }
-        return AppReminderNotificationRecord(
+        AppReminderNotificationMetadata.record(
             identifier: request.identifier,
-            commitmentID: CommitmentID(rawValue: uuid),
-            scheduledFor: Date(timeIntervalSinceReferenceDate: scheduledFor),
-            sourceDueAt: Date(timeIntervalSinceReferenceDate: sourceDueAt),
+            userInfo: request.content.userInfo,
             deliveredAt: deliveredAt)
     }
 }

@@ -61,6 +61,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "commitment-radar": (
         test_id(
             "CommitmentRadarUITests",
+            "testReminderAlertOpensCommitmentRadar",
+        ),
+        test_id(
+            "CommitmentRadarUITests",
             "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting",
         ),
     ),
@@ -250,6 +254,11 @@ def app_features(filename: str) -> set[str]:
         # deterministic canary per route is sufficient; do not rerun all
         # feature permutations merely because a route was added or wired.
         return {"main-shell"}
+    if lowered == "portavozappdelegate.swift":
+        # The delegate owns external entry routes. Exercise the automation
+        # handoff and the exact reminder-to-Radar path without expanding an
+        # isolated routing change to every destination behind ContentView.
+        return {"automation-entry", "commitment-radar"}
     if lowered == "appservices+meetingsync.swift":
         return {"settings-data"}
     if lowered in {"appservices.swift", "portavozapp.swift"}:

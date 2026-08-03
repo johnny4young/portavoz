@@ -1212,10 +1212,22 @@ StorageKit. Disposable UI-test stores receive an in-memory notification center
 that grants permission only through the same explicit action and never touches
 the host.
 
-There is still no notification delegate/action, reminder snooze UI, review
-queue, external-sync mutation signal, sync/export field, bundle, CLI, or MCP
-surface. Denied permission remains visible in Radar and may be checked again
-after the user changes macOS settings; no undocumented Settings URL is used.
+The native category and `UNUserNotificationCenterDelegate` are installed before
+application launch finishes. Foreground delivery and the default Notification
+Center tap first decode content-free identity/date metadata, then
+`RecordCommitmentReminderPresentation` accepts only an exact active
+`scheduledFor` plus `sourceDueAt` fence. The first observation appends the
+immutable `present` transition; repeats are idempotent, while replaced,
+terminal, missing, or malformed requests are stale no-ops. Selecting the
+generic alert routes through the shared process route to Commitment Radar and
+activates the app. No notification payload becomes commitment truth, and no
+delegate callback reaches StorageKit directly.
+
+There are still no custom notification action buttons, reminder snooze UI,
+review queue, external-sync mutation signal, sync/export field, bundle, CLI,
+or MCP surface. Denied permission remains visible in Radar and may be checked
+again after the user changes macOS settings; no undocumented Settings URL is
+used.
 
 The bounded read has a content-free Release scale gate. A fresh synthetic
 store is prepared before timing, one warm read precedes five measured reads,

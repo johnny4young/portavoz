@@ -1818,6 +1818,37 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D260"))
     }
 
+    func testReminderPresentationIsDurableAndDefaultTapRoutesToRadar() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/RecordCommitmentReminderPresentation.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppCommitmentReminderNotificationScheduler.swift")
+        let delegate = try Self.contents(
+            of: "Sources/portavoz-app/PortavozAppDelegate.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(workflow.contains(
+            "protocol CommitmentReminderPresentationRepository"))
+        XCTAssertTrue(workflow.contains(
+            "state.scheduledFor == request.scheduledFor"))
+        XCTAssertTrue(workflow.contains(
+            "state.sourceDueAt == request.sourceDueAt"))
+        XCTAssertTrue(workflow.contains("case .presented:"))
+        XCTAssertTrue(workflow.contains(".ignoredStaleDelivery"))
+        XCTAssertFalse(workflow.contains("UserNotifications"))
+        XCTAssertTrue(adapter.contains(
+            "categoryIdentifier = \"portavoz.commitment-reminder\""))
+        XCTAssertTrue(adapter.contains("static func record("))
+        XCTAssertTrue(adapter.contains("deliveredAt: Date?"))
+        XCTAssertTrue(delegate.contains(
+            "func applicationWillFinishLaunching"))
+        XCTAssertTrue(delegate.contains("center.delegate = self"))
+        XCTAssertTrue(delegate.contains(
+            "response.actionIdentifier == UNNotificationDefaultActionIdentifier"))
+        XCTAssertTrue(delegate.contains("pendingRoute = .commitments"))
+        XCTAssertTrue(decisions.contains("## D261"))
+    }
+
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
         let profile = try Self.contents(
             of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")

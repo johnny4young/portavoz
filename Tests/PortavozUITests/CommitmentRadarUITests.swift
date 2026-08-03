@@ -2,6 +2,23 @@ import XCTest
 
 final class CommitmentRadarUITests: PortavozUITestCase {
     @MainActor
+    func testReminderAlertOpensCommitmentRadar() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedCommitmentRadar: true)
+        app.launchArguments.append("-simulate-reminder-open")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-radar-title")
+                .waitForExistence(timeout: 10),
+            "opening a commitment reminder must route to the private Radar")
+        attachScreenshot(of: app, named: "commitment-reminder-open-radar")
+    }
+
+    @MainActor
     func testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting() {
         let app = XCUIApplication.portavoz(
             seedDemo: true,

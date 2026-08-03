@@ -1,6 +1,7 @@
 import AppKit
 import CoreSpotlight
 import PortavozCore
+import UserNotifications
 
 /// AppKit delegate for the plumbing SwiftUI does not deliver reliably on
 /// macOS: a Spotlight hit's user activity arrives HERE (field bug: the
@@ -8,10 +9,22 @@ import PortavozCore
 /// activated the app). Navigation goes through `AppServices.pendingRoute`,
 /// the same channel the pre-meeting banner uses from outside the window
 /// hierarchy.
-final class PortavozAppDelegate: NSObject, NSApplicationDelegate {
+final class PortavozAppDelegate:
+    NSObject,
+    NSApplicationDelegate,
+    UNUserNotificationCenterDelegate {
     /// Wired by `PortavozApp.init` — the delegate is instantiated by the
     /// adaptor before any scene exists.
     @MainActor static weak var services: AppServices?
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        _ = notification
+        let center = UNUserNotificationCenter.current()
+        center.delegate = self
+        center.setNotificationCategories([
+            AppReminderNotificationMetadata.category
+        ])
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         _ = notification
@@ -22,6 +35,7 @@ final class PortavozAppDelegate: NSObject, NSApplicationDelegate {
             object: nil)
         MainActor.assumeIsolated {
             routePendingStartRecordingIntent()
+            routeSimulatedReminderIfRequested()
         }
     }
 
@@ -98,6 +112,85 @@ final class PortavozAppDelegate: NSObject, NSApplicationDelegate {
         _ = userInfo
         MainActor.assumeIsolated {
             Self.services?.meetingSync.remoteChangeReceived()
+        }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (
+            UNNotificationPresentationOptions
+        ) -> Void
+    ) {
+        _ = center
+        guard let record = reminderRecord(from: notification) else {
+            completionHandler([.banner, .sound])
+            return
+        }
+        completionHandler([.banner, .sound])
+        Task { @MainActor in
+            await Self.services?.commitmentReminders.recordPresentation(record)
+        }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        _ = center
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+              let record = reminderRecord(from: response.notification)
+        else {
+            completionHandler()
+            return
+        }
+        completionHandler()
+        Task { @MainActor in
+            await Self.routeCommitmentReminder(record)
+        }
+    }
+}
+
+private extension PortavozAppDelegate {
+    func reminderRecord(
+        from notification: UNNotification
+    ) -> AppReminderNotificationRecord? {
+        let request = notification.request
+        guard request.content.categoryIdentifier ==
+                AppReminderNotificationMetadata.categoryIdentifier
+        else { return nil }
+        return AppReminderNotificationMetadata.record(
+            identifier: request.identifier,
+            userInfo: request.content.userInfo,
+            deliveredAt: notification.date)
+    }
+
+    @MainActor
+    static func routeCommitmentReminder(
+        _ record: AppReminderNotificationRecord
+    ) async {
+        await services?.commitmentReminders.recordPresentation(record)
+        services?.pendingRoute = .commitments
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @MainActor
+    func routeSimulatedReminderIfRequested() {
+        let process = ProcessInfo.processInfo
+        guard process.arguments.contains("-use-temp-store"),
+              process.arguments.contains("-simulate-reminder-open")
+        else { return }
+        let commitmentID = CommitmentID()
+        let deliveredAt = Date()
+        Task { @MainActor in
+            await Self.routeCommitmentReminder(AppReminderNotificationRecord(
+                identifier: AppReminderNotificationScheduler.identifier(
+                    for: commitmentID),
+                commitmentID: commitmentID,
+                scheduledFor: deliveredAt,
+                sourceDueAt: deliveredAt,
+                deliveredAt: deliveredAt))
         }
     }
 }

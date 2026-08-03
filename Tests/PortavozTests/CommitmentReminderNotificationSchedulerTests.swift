@@ -102,8 +102,8 @@ final class CommitmentReminderNotificationSchedulerTests: XCTestCase {
             for: schedule.commitmentID)
         let staleSchedule = CommitmentReminderDeliverySchedule(
             commitmentID: schedule.commitmentID,
-            scheduledFor: schedule.scheduledFor,
-            sourceDueAt: schedule.sourceDueAt.addingTimeInterval(-60))
+            scheduledFor: schedule.scheduledFor.addingTimeInterval(-60),
+            sourceDueAt: schedule.sourceDueAt)
         let center = RecordingCommitmentNotificationCenter(
             authorization: .ephemeral,
             snapshot: AppReminderNotificationSnapshot(
@@ -125,6 +125,26 @@ final class CommitmentReminderNotificationSchedulerTests: XCTestCase {
         XCTAssertEqual(added[0].record.sourceDueAt, schedule.sourceDueAt)
         XCTAssertEqual(added[0].title, "Private reminder")
         XCTAssertEqual(added[0].body, "Open Portavoz")
+    }
+
+    func testMetadataRoundTripRejectsACommitmentIdentifierMismatch() {
+        let schedule = schedule()
+        let expectedIdentifier = AppReminderNotificationScheduler.identifier(
+            for: schedule.commitmentID)
+        let expected = record(
+            schedule: schedule,
+            identifier: expectedIdentifier,
+            deliveredAt: baseDate.addingTimeInterval(130))
+        let userInfo = AppReminderNotificationMetadata.userInfo(for: expected)
+
+        XCTAssertEqual(AppReminderNotificationMetadata.record(
+            identifier: expectedIdentifier,
+            userInfo: userInfo,
+            deliveredAt: expected.deliveredAt), expected)
+        XCTAssertNil(AppReminderNotificationMetadata.record(
+            identifier: "portavoz.commitment-reminder.invalid",
+            userInfo: userInfo,
+            deliveredAt: expected.deliveredAt))
     }
 
     func testCancellationRemovesPendingAndDeliveredCopies() async {

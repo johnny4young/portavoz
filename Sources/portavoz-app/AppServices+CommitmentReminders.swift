@@ -66,6 +66,14 @@ private struct AppCommitmentReminderClient: CommitmentReminderModelClient {
             scheduler: scheduler
         ).execute(ReconcileCommitmentRemindersRequest())
     }
+
+    func recordCommitmentReminderPresentation(
+        _ request: ReminderPresentationRequest
+    ) async throws -> ReminderPresentationOutcome {
+        try await RecordCommitmentReminderPresentation(
+            repository: store
+        ).execute(request)
+    }
 }
 
 private struct AppMeetingCommitmentReviewRepository: MeetingCommitmentReviewRepository {

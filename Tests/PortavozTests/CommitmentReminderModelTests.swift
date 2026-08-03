@@ -1,5 +1,6 @@
 import ApplicationKit
 import Foundation
+import PortavozCore
 @testable import portavoz_app
 import XCTest
 
@@ -82,6 +83,25 @@ final class CommitmentReminderModelTests: XCTestCase {
         XCTAssertEqual(model.state.permission, .enabled)
     }
 
+    func testDeliveredNotificationRecordsPresentationWithoutPermissionChange() async {
+        let client = RecordingReminderModelClient(permission: .enabled)
+        let model = CommitmentReminderModel(client: client)
+        let commitmentID = CommitmentID()
+        let scheduledFor = Date(timeIntervalSinceReferenceDate: 1_000)
+
+        await model.recordPresentation(AppReminderNotificationRecord(
+            identifier: AppReminderNotificationScheduler.identifier(
+                for: commitmentID),
+            commitmentID: commitmentID,
+            scheduledFor: scheduledFor,
+            sourceDueAt: scheduledFor,
+            deliveredAt: scheduledFor.addingTimeInterval(1)))
+
+        XCTAssertEqual(client.presentationCount, 1)
+        XCTAssertEqual(model.state.permission, .unknown)
+        XCTAssertEqual(model.state.phase, .idle)
+    }
+
     private func waitUntil(
         timeout: Duration = .seconds(1),
         condition: @escaping @MainActor () -> Bool
@@ -100,6 +120,7 @@ private final class RecordingReminderModelClient: CommitmentReminderModelClient 
     var reconciliationFails: Bool
     private(set) var authorizationRequests = 0
     private(set) var reconciliationCount = 0
+    private(set) var presentationCount = 0
 
     private var permission: CommitmentReminderPermission
     private let requestedPermission: CommitmentReminderPermission
@@ -145,6 +166,13 @@ private final class RecordingReminderModelClient: CommitmentReminderModelClient 
             presentedCount: 0,
             cancelledCount: 0,
             unchangedCount: 0)
+    }
+
+    func recordCommitmentReminderPresentation(
+        _: ReminderPresentationRequest
+    ) -> ReminderPresentationOutcome {
+        presentationCount += 1
+        return .recorded
     }
 
     func resumeFirstReconciliation() {

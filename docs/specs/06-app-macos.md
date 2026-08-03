@@ -1844,7 +1844,7 @@ exercises this same production path in the durable-resume XCUITest (D63).
   timestamp, and the append-only transition; SwiftUI never writes StorageKit or
   invents source history. Reminder snooze remains outside this surface because
   it must not alter the commitment due date.
-- **Commitment reminder delivery (D257–D260):** the lower layers
+- **Commitment reminder delivery (D257–D261):** the lower layers
   distinguish commitment truth from local delivery state through a due-date-
   fenced current projection and immutable schedule/present/snooze/dismiss/
   cancel history. ApplicationKit now owns one fail-closed reconciliation over
@@ -1865,8 +1865,15 @@ exercises this same production path in the durable-resume XCUITest (D63).
   polling timer. Radar presents not-determined, denied, active, reconciling, and
   failed/retry states. Disposable UI-test stores use an in-memory notification
   center, so the real Mac permission and Notification Center remain untouched.
-  Notification actions, snooze controls, review queues, and external-sync
-  mutation signals remain absent.
+  The native notification category and delegate are installed before launch
+  finishes. Foreground delivery and a default alert tap decode only stable
+  identity/date metadata and call an ApplicationKit workflow that records one
+  `present` transition only when both the active scheduled time and source due
+  date still match. Repeated delivery is idempotent; replaced, terminal,
+  missing, malformed, and chronologically impossible input cannot revive work.
+  A default alert tap then follows the shared process route to Commitment Radar
+  and activates Portavoz. Custom action buttons, snooze controls, review queues,
+  and external-sync mutation signals remain absent.
 - **Summary sources (D87):** the overview tab renders compact localized
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source
