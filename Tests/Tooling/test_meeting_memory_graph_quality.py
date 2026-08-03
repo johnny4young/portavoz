@@ -168,7 +168,64 @@ class MeetingMemoryGraphQualityTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             quality.MeetingMemoryGraphQualityError,
-            "must support the required results",
+            "must exactly support the required results",
+        ):
+            quality.validate_fixture(document)
+
+    def test_fixture_rejects_incomplete_exact_evidence(self):
+        document = quality.public_fixture()
+        case = next(
+            item
+            for item in document["cases"]
+            if item["job"] == "changeSince"
+            and item["relationship"] == "englishToEnglish"
+        )
+        case["expected"]["evidenceIDs"].pop()
+
+        with self.assertRaisesRegex(
+            quality.MeetingMemoryGraphQualityError,
+            "must exactly support the required results",
+        ):
+            quality.validate_fixture(document)
+
+    def test_fixture_rejects_noncurrent_required_status(self):
+        document = quality.public_fixture()
+        case = document["cases"][0]
+        result_id = case["expected"]["resultIDs"][0]
+        fact = next(
+            item for item in case["corpus"]["facts"] if item["id"] == result_id
+        )
+        fact["status"] = "superseded"
+
+        with self.assertRaisesRegex(
+            quality.MeetingMemoryGraphQualityError,
+            "current confirmed/manual truth",
+        ):
+            quality.validate_fixture(document)
+
+    def test_fixture_requires_forbidden_temptations(self):
+        document = quality.public_fixture()
+        document["cases"][0]["expected"]["forbiddenResultIDs"] = []
+
+        with self.assertRaisesRegex(
+            quality.MeetingMemoryGraphQualityError,
+            "must name unsupported temptations",
+        ):
+            quality.validate_fixture(document)
+
+    def test_fixture_rejects_cross_case_identity_reuse(self):
+        document = quality.public_fixture()
+        first_meeting_id = document["cases"][0]["corpus"]["meetings"][0]["id"]
+        second = document["cases"][1]["corpus"]
+        replaced_id = second["meetings"][0]["id"]
+        second["meetings"][0]["id"] = first_meeting_id
+        for evidence in second["evidence"]:
+            if evidence["meetingID"] == replaced_id:
+                evidence["meetingID"] = first_meeting_id
+
+        with self.assertRaisesRegex(
+            quality.MeetingMemoryGraphQualityError,
+            "must keep meeting IDs isolated across cases",
         ):
             quality.validate_fixture(document)
 

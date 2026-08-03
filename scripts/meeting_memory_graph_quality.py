@@ -61,6 +61,12 @@ STATUSES = {
     "reversed",
 }
 ORIGINS = {"generated", "confirmed", "manual"}
+CURRENT_RESULT_STATUSES = {
+    "decision": {"confirmed"},
+    "commitment": {"open", "completed"},
+    "topicMention": {"confirmed"},
+    "relation": {"confirmed"},
+}
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$")
 SAFE_GENERATION = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
 
@@ -730,6 +736,10 @@ def validate_expected(raw_expected, job, facts, evidence, path):
         raise MeetingMemoryGraphQualityError(
             f"{path} cannot require and forbid the same result"
         )
+    if not forbidden_ids:
+        raise MeetingMemoryGraphQualityError(
+            f"{path}.forbiddenResultIDs must name unsupported temptations"
+        )
     if policy == "answer":
         if not result_ids or not evidence_ids:
             raise MeetingMemoryGraphQualityError(
@@ -750,7 +760,11 @@ def validate_expected(raw_expected, job, facts, evidence, path):
                 raise MeetingMemoryGraphQualityError(
                     f"{path}.resultIDs contain a kind outside the job contract"
                 )
-            if fact["stale"] or fact["origin"] == "generated":
+            if (
+                fact["stale"]
+                or fact["origin"] == "generated"
+                or fact["status"] not in CURRENT_RESULT_STATUSES[fact["kind"]]
+            ):
                 raise MeetingMemoryGraphQualityError(
                     f"{path}.resultIDs must be current confirmed/manual truth"
                 )
@@ -759,12 +773,12 @@ def validate_expected(raw_expected, job, facts, evidence, path):
             for identifier in result_ids
             for evidence_id in facts[identifier]["evidenceIDs"]
         }
-        if not set(evidence_ids).issubset(supported_evidence):
+        if set(evidence_ids) != supported_evidence:
             raise MeetingMemoryGraphQualityError(
-                f"{path}.evidenceIDs must support the required results"
+                f"{path}.evidenceIDs must exactly support the required results"
             )
     else:
-        if result_ids or evidence_ids or not forbidden_ids:
+        if result_ids or evidence_ids:
             raise MeetingMemoryGraphQualityError(
                 f"{path} abstention cases require only forbidden temptations"
             )
@@ -871,6 +885,9 @@ def validate_fixture(document, exact_distribution=True):
         raise MeetingMemoryGraphQualityError("fixture.cases exceeds the bound")
 
     case_ids = set()
+    meeting_ids = set()
+    evidence_ids = set()
+    fact_ids = set()
     job_counts = {job: 0 for job in JOBS}
     relationship_counts = {relationship: 0 for relationship in RELATIONSHIPS}
     abstention_counts = {reason: 0 for reason in ABSTENTION_REASONS}
@@ -900,6 +917,16 @@ def validate_fixture(document, exact_distribution=True):
             corpus["evidence"], meetings, f"{path}.corpus.evidence"
         )
         facts = validate_facts(corpus["facts"], evidence, f"{path}.corpus.facts")
+        for label, identifiers, seen in (
+            ("meeting", set(meetings), meeting_ids),
+            ("evidence", set(evidence), evidence_ids),
+            ("fact", set(facts), fact_ids),
+        ):
+            if seen & identifiers:
+                raise MeetingMemoryGraphQualityError(
+                    f"{path} must keep {label} IDs isolated across cases"
+                )
+            seen.update(identifiers)
         validate_expected(case["expected"], job, facts, evidence, f"{path}.expected")
         validate_abstention_semantics(job, case["expected"], meetings, facts, path)
         validate_relationship(case, evidence, path)

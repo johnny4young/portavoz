@@ -12,7 +12,7 @@ the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
 Meeting Detail tests. The latest full English and Spanish release gates each
-cover all 64 cases and retain app-only
+cover all 65 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
 revision-fenced Meeting Detail metadata and explicit name suggestions, claim
@@ -1487,7 +1487,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
 
 ## Measurement harnesses
 
-- `make test-meeting-memory-graph-quality` runs thirteen deterministic tooling
+- `make test-meeting-memory-graph-quality` runs seventeen deterministic tooling
   tests and canonical verification over D270's 36-case public-synthetic query
   corpus. The fixture is the exact cross-product of six longitudinal jobs and
   six English, Spanish, cross-language, code-switched, or abstention

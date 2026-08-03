@@ -120,7 +120,11 @@ final class EnglishSourceTests: XCTestCase {
         if relative == "scripts/meeting_memory_graph_quality.py" {
             // The canonical Meeting Memory Graph generator carries literal
             // Spanish question/evidence fixture data. Explanatory prose stays English.
-            return line.contains("\"")
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            return line.contains("\"questionSpanish\":")
+                || trimmed.hasPrefix("f\"")
+                || trimmed.hasPrefix("\"")
+                || trimmed.hasPrefix("return f\"")
         }
         if relative == "Sources/ApplicationKit/BilingualSearchQueryExpander.swift" {
             // The explicit EN/ES search lexicon is runtime data, not public
