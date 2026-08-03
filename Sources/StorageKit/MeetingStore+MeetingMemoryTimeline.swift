@@ -87,7 +87,7 @@ extension MeetingStore {
                 WHERE id = 'current'
                 """) ?? 0
         let unsupportedKinds = MeetingMemoryTimelineItemKind.allCases.filter {
-            $0 == .commitmentBlocked || accumulator.unsupportedKinds.contains($0)
+            accumulator.unsupportedKinds.contains($0)
         }
         return .timeline(MeetingMemoryTimelinePage(
             subject: resolvedSubject,
@@ -123,6 +123,12 @@ extension MeetingStore {
                 in: database)
         }
         try appendCommitmentTimelineItems(
+            subject: subject,
+            through: window.through,
+            candidateLimit: candidateLimit,
+            accumulator: &accumulator,
+            in: database)
+        try appendDecisionCommitmentBlockerTimelineItems(
             subject: subject,
             through: window.through,
             candidateLimit: candidateLimit,
@@ -237,60 +243,7 @@ extension MeetingStore {
         for resolved: TimelineResolvedSubject,
         in database: Database
     ) throws -> [MeetingMemoryTimelineMeeting] {
-        let rows: [Row]
-        switch resolved.subject {
-        case .topic:
-            rows = try Row.fetchAll(
-                database,
-                sql: """
-                    WITH related(meetingID) AS (
-                        SELECT meetingID
-                        FROM meetingMemoryGraphMeetingTopic
-                        WHERE topicID = ?
-                        UNION
-                        SELECT meetingEdge.meetingID
-                        FROM meetingMemoryGraphTopicQuestion AS topicEdge
-                        JOIN meetingMemoryGraphMeetingQuestion AS meetingEdge
-                          ON meetingEdge.questionID = topicEdge.questionID
-                        WHERE topicEdge.topicID = ?
-                    )
-                    SELECT meeting.id, meeting.title, meeting.startedAt
-                    FROM related
-                    JOIN meeting ON meeting.id = related.meetingID
-                    WHERE meeting.deletedAt IS NULL
-                    ORDER BY meeting.startedAt, meeting.id
-                    """,
-                arguments: [resolved.key, resolved.key])
-        case .person:
-            rows = try Row.fetchAll(
-                database,
-                sql: """
-                    WITH related(meetingID) AS (
-                        SELECT meetingID
-                        FROM meetingMemoryGraphMeetingPerson
-                        WHERE personID = ?
-                        UNION
-                        SELECT meetingEdge.meetingID
-                        FROM meetingMemoryGraphCommitmentPerson AS ownerEdge
-                        JOIN meetingMemoryGraphMeetingCommitment AS meetingEdge
-                          ON meetingEdge.commitmentID = ownerEdge.commitmentID
-                        WHERE ownerEdge.personID = ?
-                        UNION
-                        SELECT event.sourceMeetingID
-                        FROM meetingMemoryGraphCommitmentPerson AS ownerEdge
-                        JOIN commitmentEvent AS event
-                          ON event.commitmentID = ownerEdge.commitmentID
-                        WHERE ownerEdge.personID = ?
-                          AND event.sourceMeetingID IS NOT NULL
-                    )
-                    SELECT meeting.id, meeting.title, meeting.startedAt
-                    FROM related
-                    JOIN meeting ON meeting.id = related.meetingID
-                    WHERE meeting.deletedAt IS NULL
-                    ORDER BY meeting.startedAt, meeting.id
-                    """,
-                arguments: [resolved.key, resolved.key, resolved.key])
-        }
+        let rows = try timelineMeetingRows(for: resolved, in: database)
         return try rows.map { row in
             MeetingMemoryTimelineMeeting(
                 id: MeetingID(rawValue: try requiredTimelineUUID(row["id"])),

@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (ApplicationKit durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence), D206 (injected semantic-index query port with exact control retained), D207–D217 (governed non-serving semantic shadows, exact-path evidence, and research-only baseline retention), D233 (correction-aware generation lineage and stale artifacts), D236 (commitment-candidate benchmark before continuity state), D245 (adapter-neutral cross-meeting link quality), D246 (bounded non-serving product observation), D247 (isolated product-path quality adapter), D248 (profile-bound non-serving similarity evidence), D249 (versioned scored evidence contract), D250 (deterministic non-serving similarity-policy replay), D251 (private anonymized calibration-pack boundary), D252 (isolated private product-path evidence collection), D253 (deterministic private policy replay), D254 (clean-head public/private profile matrix), D255 (explicit private calibration review gate), D270 (query contract before graph schema), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (disposable typed graph projection), D274 (authoritative memory timeline hydration), D275 (exact commitment-change evidence), D276 (explicit topic-scoped question continuity).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (ApplicationKit durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence), D206 (injected semantic-index query port with exact control retained), D207–D217 (governed non-serving semantic shadows, exact-path evidence, and research-only baseline retention), D233 (correction-aware generation lineage and stale artifacts), D236 (commitment-candidate benchmark before continuity state), D245 (adapter-neutral cross-meeting link quality), D246 (bounded non-serving product observation), D247 (isolated product-path quality adapter), D248 (profile-bound non-serving similarity evidence), D249 (versioned scored evidence contract), D250 (deterministic non-serving similarity-policy replay), D251 (private anonymized calibration-pack boundary), D252 (isolated private product-path evidence collection), D253 (deterministic private policy replay), D254 (clean-head public/private profile matrix), D255 (explicit private calibration review gate), D270 (query contract before graph schema), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (disposable typed graph projection), D274 (authoritative memory timeline hydration), D275 (exact commitment-change evidence), D276 (explicit topic-scoped question continuity), D277 (explicit decision-to-commitment blocker continuity).
 
 D239 additionally owns explicit evidence-first commitment admission in Meeting
 Detail. D243 adds an explicit Application/Storage link boundary for a later
@@ -321,11 +321,13 @@ does not rank, infer, or serve a decision.
 ## Disposable Meeting Memory Graph projection (D273)
 
 The first product graph is a model-free derived topology, not an intelligence
-provider. Its versioned Core v2 profile names exactly seven typed relationships:
+provider. Its versioned Core v3 profile names exactly nine typed relationships:
 meeting-person, meeting-topic, meeting-decision, meeting-commitment,
-commitment-person, meeting-question, and topic-question. Storage rebuilds them
-from confirmed people, explicit topic identity, explicit decision continuity,
-confirmed commitment sources, and explicitly confirmed question authority.
+commitment-person, meeting-question, topic-question, meeting-blocker, and
+decision-commitment-blocker. Storage rebuilds them from confirmed people,
+explicit topic identity, explicit decision continuity, confirmed commitment
+sources, explicitly confirmed question authority, and explicit blocker
+authority.
 Generated summary bullets, Apuntador cards, semantic similarity, aliases, model
 scores, and answer text cannot create an edge.
 
@@ -340,7 +342,7 @@ The compiled profile fingerprint is the compatibility boundary. A changed
 topology contract clears and rebuilds only derived edges. No graph database,
 embedding, provider runtime, quality threshold, Ask lane, or UI is selected.
 
-## Evidence-backed memory timeline (D274–D276)
+## Evidence-backed memory timeline (D274–D277)
 
 `MeetingMemoryTimelineQuery` is the first query-serving adapter over ready graph
 topology. It accepts an exact current topic/person identity, an optional exact
@@ -352,12 +354,14 @@ Apuntador cards are not facts in this path.
 
 For topics, the timeline emits confirmed decisions, explicit supersession or
 reversal, newly confirmed commitments from the through meeting, and explicit
-question opening, resolution, reopening, or dismissal. For a person, it emits
-only commitments whose current canonical owner is that person; mere attendance
-does not authorize decision or question attribution. Every item retains an exact
-entity UUID, authoritative wording, event time, ordered segment evidence, and
-direct meeting/segment/time navigation. Results are newest-first, bounded, and
-expose overflow plus omitted stale/unavailable counts.
+question opening, resolution, reopening, or dismissal. It also emits explicit
+decision-to-commitment blocker confirmation, clearing, and reopening. For a
+person, it emits only commitments whose current canonical owner is that person;
+mere attendance does not authorize decision, question, or blocker attribution.
+Every item retains exact entity UUIDs, authoritative wording, event time,
+ordered segment evidence, and direct meeting/segment/time navigation. Results
+are newest-first, bounded, and expose overflow plus omitted stale/unavailable
+counts.
 
 Exact-evidenced reassignment, reschedule, completion, reopen, and dismissal
 events are emitted as typed commitment changes. Legacy lifecycle events without
@@ -372,11 +376,18 @@ without an explicit confirmation command. The question has no inferred person
 owner. Graph edges select only its UUID; the timeline rehydrates current exact
 authority before presentation.
 
+Blocker authority is another explicit Core/Application/Storage boundary. One
+stable UUID relates one confirmed decision to one confirmed commitment and owns
+exact opening evidence. Clear and reopen append their own exact evidence. Graph
+profile v3 preserves that relationship and every live evidence meeting after a
+clear; current active serving instead requires the blocker and both endpoints
+to remain current. Generated summary, Companion, Apuntador, proximity, and
+semantic similarity cannot confirm or transition a blocker.
+
 Projection readiness, identity availability, temporal baseline, anchor
 membership, current transcript revision, final accepted segments, and active
-correction exclusion all fail closed. Blocker relationships remain explicitly
-unsupported. The read adds no answer synthesis, Ask composition, UI, model call,
-or claim that every D270 job is now servable.
+correction exclusion all fail closed. The read adds no answer synthesis, Ask
+composition, UI, model call, or claim that every D270 job is now servable.
 
 ## Human claim feedback is not model material (D88)
 

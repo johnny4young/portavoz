@@ -14,7 +14,7 @@ public enum MeetingMemoryGraphScopeKind: String, CaseIterable, Codable, Sendable
 /// operation and rebuilds every typed edge from authoritative local records.
 public enum MeetingMemoryGraphProjectionProfile {
     public static let fingerprint = OperationFingerprint.make(
-        version: "meeting-memory-graph-projection-v2",
+        version: "meeting-memory-graph-projection-v3",
         components: [
             "meeting-person-v1",
             "meeting-topic-v1",
@@ -22,7 +22,9 @@ public enum MeetingMemoryGraphProjectionProfile {
             "meeting-commitment-v1",
             "commitment-person-v1",
             "meeting-question-v1",
-            "topic-question-v1"
+            "topic-question-v1",
+            "meeting-blocker-v1",
+            "decision-commitment-blocker-v1"
         ])
 }
 
@@ -137,6 +139,32 @@ public struct MeetingMemoryGraphProjectionSnapshot: Equatable, Sendable {
         }
     }
 
+    public struct DecisionCommitmentBlockerEdge: Hashable, Sendable {
+        public let blockerID: DecisionCommitmentBlockerID
+        public let decisionID: DecisionID
+        public let commitmentID: CommitmentID
+
+        public init(
+            blockerID: DecisionCommitmentBlockerID,
+            decisionID: DecisionID,
+            commitmentID: CommitmentID
+        ) {
+            self.blockerID = blockerID
+            self.decisionID = decisionID
+            self.commitmentID = commitmentID
+        }
+    }
+
+    public struct MeetingBlockerEdge: Hashable, Sendable {
+        public let meetingID: MeetingID
+        public let blockerID: DecisionCommitmentBlockerID
+
+        public init(meetingID: MeetingID, blockerID: DecisionCommitmentBlockerID) {
+            self.meetingID = meetingID
+            self.blockerID = blockerID
+        }
+    }
+
     public let meetingPeople: [MeetingPersonEdge]
     public let meetingTopics: [MeetingTopicEdge]
     public let meetingDecisions: [MeetingDecisionEdge]
@@ -144,6 +172,8 @@ public struct MeetingMemoryGraphProjectionSnapshot: Equatable, Sendable {
     public let commitmentPeople: [CommitmentPersonEdge]
     public let meetingQuestions: [MeetingQuestionEdge]
     public let topicQuestions: [TopicQuestionEdge]
+    public let meetingBlockers: [MeetingBlockerEdge]
+    public let decisionCommitmentBlockers: [DecisionCommitmentBlockerEdge]
 
     public init(
         meetingPeople: [MeetingPersonEdge],
@@ -152,7 +182,9 @@ public struct MeetingMemoryGraphProjectionSnapshot: Equatable, Sendable {
         meetingCommitments: [MeetingCommitmentEdge],
         commitmentPeople: [CommitmentPersonEdge],
         meetingQuestions: [MeetingQuestionEdge],
-        topicQuestions: [TopicQuestionEdge]
+        topicQuestions: [TopicQuestionEdge],
+        meetingBlockers: [MeetingBlockerEdge] = [],
+        decisionCommitmentBlockers: [DecisionCommitmentBlockerEdge] = []
     ) {
         self.meetingPeople = meetingPeople
         self.meetingTopics = meetingTopics
@@ -161,5 +193,7 @@ public struct MeetingMemoryGraphProjectionSnapshot: Equatable, Sendable {
         self.commitmentPeople = commitmentPeople
         self.meetingQuestions = meetingQuestions
         self.topicQuestions = topicQuestions
+        self.meetingBlockers = meetingBlockers
+        self.decisionCommitmentBlockers = decisionCommitmentBlockers
     }
 }

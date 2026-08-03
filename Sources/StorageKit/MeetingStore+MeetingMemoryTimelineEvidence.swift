@@ -174,6 +174,17 @@ extension MeetingStore {
     }
 
     static func timelineEvidence(
+        for source: DecisionCommitmentBlockerEvidence,
+        in database: Database
+    ) throws -> TimelineEvidenceStatus {
+        try timelineEvidence(
+            meetingID: source.meetingID,
+            transcriptRevision: source.sourceTranscriptRevision,
+            segmentIDs: source.segmentIDs,
+            in: database)
+    }
+
+    static func timelineEvidence(
         for sources: [DecisionSource],
         meetingID: MeetingID,
         in database: Database

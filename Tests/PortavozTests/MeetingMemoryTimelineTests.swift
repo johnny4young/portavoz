@@ -41,7 +41,7 @@ final class MeetingMemoryTimelineTests: XCTestCase {
         ])
         XCTAssertEqual(page.omittedStaleCount, 0)
         XCTAssertEqual(page.omittedUnavailableCount, 0)
-        XCTAssertEqual(page.unsupportedKinds, [.commitmentBlocked])
+        XCTAssertTrue(page.unsupportedKinds.isEmpty)
         XCTAssertFalse(page.hasMore)
         XCTAssertGreaterThan(page.projectionGeneration, 0)
     }
@@ -159,7 +159,87 @@ final class MeetingMemoryTimelineTests: XCTestCase {
             questionItems.map { $0.navigation?.segmentID },
             [fixture.commitmentChangeSegment.id, fixture.throughDecisionSegment.id])
         XCTAssertFalse(page.unsupportedKinds.contains(.unresolvedQuestion))
-        XCTAssertTrue(page.unsupportedKinds.contains(.commitmentBlocked))
+        XCTAssertFalse(page.unsupportedKinds.contains(.commitmentBlocked))
+    }
+
+    func testTimelineServesExplicitBlockerLifecycleWithExactNavigation() async throws {
+        let fixture = try await seededTimelineFixture(projectGraph: false)
+        let blockerID = DecisionCommitmentBlockerID()
+        _ = try await fixture.store.confirmDecisionCommitmentBlocker(
+            DecisionCommitmentBlockerConfirmation(
+                blockerID: blockerID,
+                decisionID: fixture.newDecisionID,
+                commitmentID: fixture.commitmentID,
+                evidence: DecisionCommitmentBlockerEvidence(
+                    meetingID: fixture.through.id,
+                    sourceTranscriptRevision: fixture.through.transcriptRevision,
+                    segmentIDs: [fixture.throughDecisionSegment.id]),
+                confirmedAt: fixture.through.startedAt.addingTimeInterval(70)))
+        _ = try await fixture.store.applyDecisionCommitmentBlockerTransition(
+            DecisionBlockerTransitionConfirmation(
+                blockerID: blockerID,
+                transition: .clear,
+                evidence: DecisionCommitmentBlockerEvidence(
+                    meetingID: fixture.through.id,
+                    sourceTranscriptRevision: fixture.through.transcriptRevision,
+                    segmentIDs: [fixture.commitmentChangeSegment.id]),
+                confirmedAt: fixture.through.startedAt.addingTimeInterval(71)))
+        _ = try await fixture.store.applyDecisionCommitmentBlockerTransition(
+            DecisionBlockerTransitionConfirmation(
+                blockerID: blockerID,
+                transition: .reopen,
+                evidence: DecisionCommitmentBlockerEvidence(
+                    meetingID: fixture.through.id,
+                    sourceTranscriptRevision: fixture.through.transcriptRevision,
+                    segmentIDs: [fixture.commitmentSegment.id]),
+                confirmedAt: fixture.through.startedAt.addingTimeInterval(72)))
+        try await projectAll(in: fixture.store)
+
+        let result = try await fixture.store.meetingMemoryTimeline(
+            MeetingMemoryTimelineQuery(
+                subject: .topic(fixture.topicID),
+                throughMeetingID: fixture.through.id))
+        guard case .timeline(let page) = result else {
+            return XCTFail("Expected blocker lifecycle facts, got \(result)")
+        }
+        let blockerItems = page.items.filter { $0.blockerChange != nil }
+        XCTAssertEqual(blockerItems.map(\.kind), [
+            .commitmentBlockerReopened,
+            .commitmentUnblocked,
+            .commitmentBlocked
+        ])
+        XCTAssertEqual(blockerItems.map(\.blockerChange), [
+            .reopened,
+            .cleared,
+            .blocked
+        ])
+        XCTAssertEqual(
+            blockerItems.map { $0.navigation?.segmentID },
+            [
+                fixture.commitmentSegment.id,
+                fixture.commitmentChangeSegment.id,
+                fixture.throughDecisionSegment.id
+            ])
+        XCTAssertTrue(blockerItems.allSatisfy {
+            $0.entity == .commitment(fixture.commitmentID)
+                && $0.relatedEntity == .decision(fixture.newDecisionID)
+        })
+        XCTAssertFalse(page.unsupportedKinds.contains(.commitmentBlocked))
+        XCTAssertFalse(page.unsupportedKinds.contains(.commitmentUnblocked))
+        XCTAssertFalse(page.unsupportedKinds.contains(.commitmentBlockerReopened))
+
+        let personResult = try await fixture.store.meetingMemoryTimeline(
+            MeetingMemoryTimelineQuery(
+                subject: .person(fixture.personID),
+                throughMeetingID: fixture.through.id))
+        guard case .timeline(let personPage) = personResult else {
+            return XCTFail("Expected person blocker lifecycle facts, got \(personResult)")
+        }
+        let personBlockerItems = personPage.items.filter { $0.blockerChange != nil }
+        XCTAssertEqual(personBlockerItems.map(\.kind), blockerItems.map(\.kind))
+        XCTAssertEqual(
+            personBlockerItems.map { $0.navigation?.segmentID },
+            blockerItems.map { $0.navigation?.segmentID })
     }
 
     func testTimelineReportsLegacyCommitmentChangesWithoutExactEvidenceAsUnsupported()
@@ -314,6 +394,7 @@ final class MeetingMemoryTimelineTests: XCTestCase {
         let personID: PersonID
         let topicID: TopicID
         let oldDecisionID: DecisionID
+        let newDecisionID: DecisionID
         let commitmentID: CommitmentID
         let baselineDecisionSegment: TranscriptSegment
         let throughDecisionSegment: TranscriptSegment
@@ -486,6 +567,7 @@ final class MeetingMemoryTimelineTests: XCTestCase {
             personID: person.person.id,
             topicID: topic.topic.id,
             oldDecisionID: oldDecisionID,
+            newDecisionID: newDecisionID,
             commitmentID: commitmentID,
             baselineDecisionSegment: baselineDecisionSegment,
             throughDecisionSegment: throughDecisionSegment,

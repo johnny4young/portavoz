@@ -9597,3 +9597,50 @@ guessing who owns the question. Every lifecycle claim is independently
 navigable and correction-aware, and graph rebuilds remain disposable. The next
 authority slice is an explicit decision-to-commitment blocker relationship;
 broader D270 product serving still requires adapter and scale evidence.
+
+## D277 — Preserve explicit decision-to-commitment blocker continuity (Aug 2026)
+
+**Context:** the D270 `commitmentBlockers` job still had no authoritative
+relationship to serve. A decision appearing near a commitment, or generated
+Summary, Companion, and Apuntador prose saying that one blocks the other, is
+not durable user truth. A current active flag alone would also erase why a
+blocker was cleared and later reopened. Finally, a commitment can become
+unblocked while the decision-to-commitment relationship remains part of the
+meeting history, so graph topology and current serving state cannot be the same
+projection.
+
+**Decision:** add schema v30 with one explicit stable blocker UUID relating one
+confirmed live decision to one confirmed live commitment. Initial confirmation
+requires an exact current transcript revision and an ordered nonempty set of
+unique final accepted segments without active corrections. The relationship
+starts active. Clear and reopen are the only lifecycle transitions; each
+appends an immutable event with its own exact accepted-transcript evidence and
+strictly increasing time. Reopen additionally requires both endpoints to remain
+confirmed and live. Exact retries are idempotent, while reuse of a blocker or
+event identity with different content fails closed. Storage transactions and
+SQLite triggers independently enforce endpoint, evidence, transition,
+projection, and immutable-history constraints.
+
+Meeting Memory Graph profile v3 adds disposable `meeting-blocker` and
+`decision-commitment-blocker` topology. Every live opening and transition
+evidence meeting remains connected after a clear, and the stable relationship
+remains projected while its endpoints are live. Lifecycle status therefore
+does not invalidate or filter topology; deletion and relationship/evidence
+membership do. The topic timeline uses graph rows only to select candidate
+blocker UUIDs, then rehydrates authoritative opening or transition records and
+current exact evidence in the same SQLite snapshot. It emits typed blocked,
+cleared, and reopened facts with direct segment navigation. Active-blocker
+serving is a separate bounded read and requires the blocker and both endpoints
+to be currently active/confirmed/live.
+
+Generated summary, Companion, Apuntador, proximity, semantic similarity, and
+model output cannot call the confirmation or transition boundaries. No app UI,
+Ask synthesis, automatic candidate promotion, model threshold, graph database,
+sync/export envelope, CLI, or MCP contract is added by this slice.
+
+**Consequences:** Portavoz can now explain that a confirmed decision blocked a
+confirmed commitment, why that blocker changed, and where each claim was said,
+without turning generated language into authority or deleting cleared history.
+The graph remains disposable and status-independent while current serving stays
+strict. The remaining D270 gates are the corpus-to-product adapter, relational
+scale budgets, owner-reviewed field evidence, and eventual Ask/UI composition.

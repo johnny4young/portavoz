@@ -544,7 +544,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 29. It includes:
+The current schema version is 30. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -567,6 +567,8 @@ The current schema version is 29. It includes:
   sources and append-only confirm/supersede/reverse history;
 - explicitly confirmed topic-scoped questions with immutable ordered opening
   evidence and append-only resolve/reopen/dismiss history;
+- explicit decision-to-commitment blockers with immutable ordered confirmation
+  evidence and append-only clear/reopen history;
 - a disposable typed Meeting Memory Graph projection with a versioned profile,
   bounded invalidation cursor, and independently leased maintenance ownership;
 - immutable generation-run provenance;
@@ -1308,14 +1310,15 @@ remain absent.
 
 Schema v27 adds a **disposable typed Meeting Memory Graph projection** over the
 authoritative meeting, confirmed-person, topic, decision, and commitment
-records. Schema v29 extends the compiled v2 topology with meeting-question and
-topic-question edges sourced only from explicitly confirmed question authority.
-The remaining edge families are meeting-person, meeting-topic,
-meeting-decision, meeting-commitment, and commitment-person. Topic edges resolve
-reversible observed identities to the current live topic-family root; the
-projection never rewrites immutable topic or question evidence. No provider,
-model, embedding, score, generated label, or answer text participates in
-projection.
+records. Schema v29 added meeting-question and topic-question topology sourced
+only from explicitly confirmed question authority. Schema v30 compiles graph
+profile v3 and adds meeting-blocker plus decision-commitment-blocker topology
+from explicit blocker authority. The other edge families are meeting-person,
+meeting-topic, meeting-decision, meeting-commitment, and commitment-person.
+Topic edges resolve reversible observed identities to the current live
+topic-family root; the projection never rewrites immutable topic, question, or
+blocker evidence. No provider, model, embedding, score, generated label, or
+answer text participates in projection.
 
 Authoritative SQLite mutations advance one content-free source generation and
 upsert a bounded invalidation cursor by typed scope. A versioned projection
@@ -1348,7 +1351,8 @@ rehydration, freshness checks, and result assembly in one SQLite read snapshot.
 Topic timelines can return confirmed decisions, explicit supersession or
 reversal, newly confirmed commitments connected through the meeting topology,
 later commitment changes whose append-only event owns exact accepted transcript
-evidence, and explicit question opening, resolution, reopening, or dismissal.
+evidence, explicit question opening, resolution, reopening, or dismissal, and
+explicit decision-to-commitment blocker confirmation, clearing, or reopening.
 Commitment lifecycle output remains typed as reassignment, reschedule,
 completion, reopen, or dismissal rather than encoded in generated display
 prose. Question wording is stable user-reviewed authority; each state change
@@ -1367,10 +1371,9 @@ ordered newest first; limit overflow is explicit.
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
 instead of borrowing the commitment's original source. Generated summary,
-Companion, and Apuntador text cannot create a question identity or lifecycle
-event. There is still no authoritative blocker relationship. This path adds no
-generated narrative, Ask lane, SwiftUI, model, threshold, graph database,
-sync/export, CLI, or MCP behavior.
+Companion, and Apuntador text cannot create a question or blocker identity or
+lifecycle event. This path adds no generated narrative, Ask lane, SwiftUI,
+model, threshold, graph database, sync/export, CLI, or MCP behavior.
 
 Schema v28 stores optional non-confirm commitment-event authority as one source
 meeting, its current transcript revision, and immutable ordered segment
@@ -1403,6 +1406,25 @@ queries use those disposable edges only to find candidate UUIDs, then rehydrate
 question authority and exact current evidence from SQLite in the same read
 snapshot. Question authority is currently topic-only: person timelines report
 the question fact kinds as unsupported rather than guessing an owner.
+
+Schema v30 stores **explicit decision-to-commitment blocker continuity**. One
+stable blocker UUID relates one confirmed decision to one confirmed commitment,
+owns immutable opening meeting/revision/ordered segment evidence, and begins
+active. Clear and reopen append immutable events with separate exact evidence;
+Core and SQLite enforce legal chronological transitions. Confirmation and
+reopen require both endpoints to remain confirmed and live. Exact retries are
+idempotent, identity conflicts fail closed, and source identities deliberately
+survive transcript purge so missing evidence can be disclosed honestly.
+
+Graph profile v3 publishes one decision-commitment-blocker edge plus a
+meeting-blocker edge for every live opening or transition evidence meeting.
+Clearing a blocker does not erase this historical topology and therefore does
+not schedule a topology rebuild. Deletion or endpoint deletion does. Topic
+timeline queries use graph rows only to select blocker UUIDs and then rehydrate
+the authoritative opening or transition plus current exact evidence in the same
+snapshot. They emit typed blocked, cleared, and reopened facts. A separate
+bounded active-blocker read filters current state and requires an active blocker
+with confirmed live endpoints; topology never substitutes for serving state.
 
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
@@ -3368,13 +3390,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,928 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,937 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 569 first-party Swift source files;
+- strict SwiftLint reports zero violations across 578 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

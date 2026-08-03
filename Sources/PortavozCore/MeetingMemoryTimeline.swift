@@ -60,6 +60,8 @@ public enum MeetingMemoryTimelineItemKind: String, CaseIterable, Hashable, Senda
     case questionReopened = "question-reopened"
     case questionDismissed = "question-dismissed"
     case commitmentBlocked = "commitment-blocked"
+    case commitmentUnblocked = "commitment-unblocked"
+    case commitmentBlockerReopened = "commitment-blocker-reopened"
 }
 
 public enum MeetingMemoryTimelineOrigin: String, Sendable {
@@ -87,6 +89,12 @@ public enum MeetingMemoryTimelineQuestionChange: Equatable, Sendable {
     case resolved
     case reopened
     case dismissed
+}
+
+public enum MeetingMemoryTimelineBlockerChange: Equatable, Sendable {
+    case blocked
+    case cleared
+    case reopened
 }
 
 /// Current accepted transcript material that supports one timeline fact.
@@ -151,6 +159,7 @@ public struct MeetingMemoryTimelineItem: Equatable, Sendable, Identifiable {
     public let relatedText: String?
     public let commitmentChange: MeetingMemoryTimelineCommitmentChange?
     public let questionChange: MeetingMemoryTimelineQuestionChange?
+    public let blockerChange: MeetingMemoryTimelineBlockerChange?
     public let origin: MeetingMemoryTimelineOrigin
     public let occurredAt: Date
     public let evidence: [MeetingMemoryTimelineEvidence]
@@ -164,6 +173,7 @@ public struct MeetingMemoryTimelineItem: Equatable, Sendable, Identifiable {
         relatedText: String? = nil,
         commitmentChange: MeetingMemoryTimelineCommitmentChange? = nil,
         questionChange: MeetingMemoryTimelineQuestionChange? = nil,
+        blockerChange: MeetingMemoryTimelineBlockerChange? = nil,
         origin: MeetingMemoryTimelineOrigin,
         occurredAt: Date,
         evidence: [MeetingMemoryTimelineEvidence]
@@ -176,6 +186,7 @@ public struct MeetingMemoryTimelineItem: Equatable, Sendable, Identifiable {
         self.relatedText = relatedText
         self.commitmentChange = commitmentChange
         self.questionChange = questionChange
+        self.blockerChange = blockerChange
         self.origin = origin
         self.occurredAt = occurredAt
         self.evidence = evidence

@@ -128,7 +128,7 @@ final class CommitmentReminderStorageTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 29)
+            XCTAssertEqual(StorageSchema.version, 30)
             XCTAssertEqual(
                 try Set(database.columns(in: "commitmentReminderEvent").map(\.name)),
                 Set([

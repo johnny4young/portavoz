@@ -254,7 +254,9 @@ extension MeetingStore {
             "meetingMemoryGraphMeetingCommitment",
             "meetingMemoryGraphCommitmentPerson",
             "meetingMemoryGraphMeetingQuestion",
-            "meetingMemoryGraphTopicQuestion"
+            "meetingMemoryGraphTopicQuestion",
+            "meetingMemoryGraphMeetingBlocker",
+            "meetingMemoryGraphDecisionCommitmentBlocker"
         ] {
             try database.execute(sql: "DELETE FROM \(table)")
         }
@@ -362,6 +364,7 @@ extension MeetingStore {
             + rebuildMeetingMemoryGraphDecisions(meetingID: meetingID, in: database)
             + rebuildMeetingMemoryGraphCommitments(meetingID: meetingID, in: database)
             + rebuildMeetingMemoryGraphQuestions(meetingID: meetingID, in: database)
+            + rebuildMeetingMemoryGraphBlockers(meetingID: meetingID, in: database)
     }
 
     private static func clearMeetingMemoryGraphEdges(
@@ -373,7 +376,8 @@ extension MeetingStore {
             "meetingMemoryGraphMeetingTopic",
             "meetingMemoryGraphMeetingDecision",
             "meetingMemoryGraphMeetingCommitment",
-            "meetingMemoryGraphMeetingQuestion"
+            "meetingMemoryGraphMeetingQuestion",
+            "meetingMemoryGraphMeetingBlocker"
         ] {
             try database.execute(
                 sql: "DELETE FROM \(table) WHERE meetingID = ?",
@@ -604,6 +608,12 @@ extension MeetingStore {
             arguments: [decisionID])
         try database.execute(
             sql: """
+                DELETE FROM meetingMemoryGraphDecisionCommitmentBlocker
+                WHERE decisionID = ?
+                """,
+            arguments: [decisionID])
+        try database.execute(
+            sql: """
                 INSERT INTO meetingMemoryGraphMeetingDecision (meetingID, decisionID)
                 SELECT DISTINCT source.meetingID, source.decisionID
                 FROM decisionContinuitySource AS source
@@ -614,7 +624,23 @@ extension MeetingStore {
                   AND decision.deletedAt IS NULL
                 """,
             arguments: [decisionID])
-        return database.changesCount
+        let meetingEdges = database.changesCount
+        try database.execute(
+            sql: """
+                INSERT OR IGNORE INTO meetingMemoryGraphDecisionCommitmentBlocker (
+                    blockerID, decisionID, commitmentID
+                )
+                SELECT blocker.id, blocker.decisionID, blocker.commitmentID
+                FROM decisionCommitmentBlocker AS blocker
+                JOIN decisionContinuity AS decision ON decision.id = blocker.decisionID
+                JOIN commitment ON commitment.id = blocker.commitmentID
+                WHERE blocker.decisionID = ?
+                  AND blocker.deletedAt IS NULL
+                  AND decision.deletedAt IS NULL
+                  AND commitment.deletedAt IS NULL
+                """,
+            arguments: [decisionID])
+        return meetingEdges + database.changesCount
     }
 
     private static func rebuildMeetingMemoryGraphCommitment(
@@ -626,6 +652,12 @@ extension MeetingStore {
             arguments: [commitmentID])
         try database.execute(
             sql: "DELETE FROM meetingMemoryGraphCommitmentPerson WHERE commitmentID = ?",
+            arguments: [commitmentID])
+        try database.execute(
+            sql: """
+                DELETE FROM meetingMemoryGraphDecisionCommitmentBlocker
+                WHERE commitmentID = ?
+                """,
             arguments: [commitmentID])
         try database.execute(
             sql: """
@@ -652,7 +684,23 @@ extension MeetingStore {
                   AND person.deletedAt IS NULL
                 """,
             arguments: [commitmentID])
-        return meetingEdges + database.changesCount
+        let personEdges = database.changesCount
+        try database.execute(
+            sql: """
+                INSERT OR IGNORE INTO meetingMemoryGraphDecisionCommitmentBlocker (
+                    blockerID, decisionID, commitmentID
+                )
+                SELECT blocker.id, blocker.decisionID, blocker.commitmentID
+                FROM decisionCommitmentBlocker AS blocker
+                JOIN decisionContinuity AS decision ON decision.id = blocker.decisionID
+                JOIN commitment ON commitment.id = blocker.commitmentID
+                WHERE blocker.commitmentID = ?
+                  AND blocker.deletedAt IS NULL
+                  AND decision.deletedAt IS NULL
+                  AND commitment.deletedAt IS NULL
+                """,
+            arguments: [commitmentID])
+        return meetingEdges + personEdges + database.changesCount
     }
 
 }

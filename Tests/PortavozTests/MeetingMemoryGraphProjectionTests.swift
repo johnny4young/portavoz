@@ -66,12 +66,12 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 29)
+            XCTAssertEqual(StorageSchema.version, 30)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v29")
+                "v30")
             XCTAssertEqual(
                 try Set(database.columns(in: "meetingMemoryGraphProjectionState").map(\.name)),
                 ["id", "profileFingerprint", "sourceGeneration", "updatedAt"])
@@ -145,6 +145,86 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
             [.init(topicID: fixture.rootTopicID, questionID: fixture.questionID)])
         XCTAssertEqual(pending, 0)
         XCTAssertFalse(requiresMaintenance)
+    }
+
+    func testBlockerProjectionPreservesClearedHistoryAndRemovesDeletedEndpoints()
+        async throws
+    {
+        let fixture = try await seededGraphFixture()
+        let blockerID = DecisionCommitmentBlockerID()
+        _ = try await fixture.store.confirmDecisionCommitmentBlocker(
+            DecisionCommitmentBlockerConfirmation(
+                blockerID: blockerID,
+                decisionID: fixture.decisionID,
+                commitmentID: fixture.commitmentID,
+                evidence: DecisionCommitmentBlockerEvidence(
+                    meetingID: fixture.meeting.id,
+                    sourceTranscriptRevision: fixture.meeting.transcriptRevision,
+                    segmentIDs: [fixture.segmentIDs[0]]),
+                confirmedAt: Self.baseDate.addingTimeInterval(30)))
+        _ = try await projectAll(in: fixture.store)
+
+        let opened = try await fixture.store.meetingMemoryGraphProjectionSnapshot()
+        XCTAssertEqual(
+            opened.meetingBlockers,
+            [.init(meetingID: fixture.meeting.id, blockerID: blockerID)])
+        XCTAssertEqual(
+            opened.decisionCommitmentBlockers,
+            [.init(
+                blockerID: blockerID,
+                decisionID: fixture.decisionID,
+                commitmentID: fixture.commitmentID)])
+
+        let clearMeeting = Meeting(
+            title: "Security clearance",
+            startedAt: Self.baseDate.addingTimeInterval(100))
+        let clearSegment = TranscriptSegment(
+            meetingID: clearMeeting.id,
+            channel: .system,
+            text: "Security cleared the launch blocker.",
+            language: "en",
+            startTime: 0,
+            endTime: 3,
+            isFinal: true)
+        try await fixture.store.save(clearMeeting)
+        try await fixture.store.save([clearSegment])
+        _ = try await fixture.store.applyDecisionCommitmentBlockerTransition(
+            DecisionBlockerTransitionConfirmation(
+                blockerID: blockerID,
+                transition: .clear,
+                evidence: DecisionCommitmentBlockerEvidence(
+                    meetingID: clearMeeting.id,
+                    sourceTranscriptRevision: clearMeeting.transcriptRevision,
+                    segmentIDs: [clearSegment.id]),
+                confirmedAt: clearMeeting.startedAt.addingTimeInterval(4)))
+        _ = try await projectAll(in: fixture.store)
+
+        let cleared = try await fixture.store.meetingMemoryGraphProjectionSnapshot()
+        XCTAssertEqual(
+            Set(cleared.meetingBlockers),
+            [
+                .init(meetingID: fixture.meeting.id, blockerID: blockerID),
+                .init(meetingID: clearMeeting.id, blockerID: blockerID)
+            ])
+        XCTAssertEqual(cleared.decisionCommitmentBlockers, opened.decisionCommitmentBlockers)
+        let active = try await fixture.store.activeDecisionCommitmentBlockers(
+            for: fixture.commitmentID)
+        XCTAssertTrue(active.isEmpty)
+
+        try await fixture.store.database.write { database in
+            try database.execute(
+                sql: "UPDATE commitment SET deletedAt = ? WHERE id = ?",
+                arguments: [
+                    Self.baseDate.addingTimeInterval(200),
+                    fixture.commitmentID.rawValue.uuidString
+                ])
+        }
+        _ = try await projectAll(in: fixture.store)
+
+        let deletedEndpoint = try await fixture.store
+            .meetingMemoryGraphProjectionSnapshot()
+        XCTAssertTrue(deletedEndpoint.meetingBlockers.isEmpty)
+        XCTAssertTrue(deletedEndpoint.decisionCommitmentBlockers.isEmpty)
     }
 
     func testPartialBatchDoesNotAdvanceHighWaterAndBoundedChangesRemoveEdges() async throws {
@@ -537,6 +617,7 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         let decisionID: DecisionID
         let commitmentID: CommitmentID
         let questionID: MeetingQuestionID
+        let segmentIDs: [UUID]
     }
 
     private func seededGraphFixture() async throws -> GraphFixture {
@@ -664,7 +745,8 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
             observedTopicID: observedTopic.observedTopic.id,
             decisionID: decisionID,
             commitmentID: commitment.commitment.id,
-            questionID: question.question.id)
+            questionID: question.question.id,
+            segmentIDs: segments.map(\.id))
     }
 
     private func sourceGeneration(in store: MeetingStore) async throws -> Int {

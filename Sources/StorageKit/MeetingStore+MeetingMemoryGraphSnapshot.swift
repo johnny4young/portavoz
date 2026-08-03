@@ -17,7 +17,10 @@ extension MeetingStore {
                 meetingCommitments: try Self.meetingCommitmentEdges(in: database),
                 commitmentPeople: try Self.commitmentPersonEdges(in: database),
                 meetingQuestions: try Self.meetingQuestionEdges(in: database),
-                topicQuestions: try Self.topicQuestionEdges(in: database))
+                topicQuestions: try Self.topicQuestionEdges(in: database),
+                meetingBlockers: try Self.meetingBlockerEdges(in: database),
+                decisionCommitmentBlockers: try Self.decisionCommitmentBlockerEdges(
+                    in: database))
         }
     }
 
@@ -132,6 +135,45 @@ extension MeetingStore {
                     topicID: TopicID(rawValue: try requiredUUID($0["topicID"])),
                     questionID: MeetingQuestionID(
                         rawValue: try requiredUUID($0["questionID"])))
+            }
+    }
+
+    private static func decisionCommitmentBlockerEdges(
+        in database: Database
+    ) throws -> [MeetingMemoryGraphProjectionSnapshot.DecisionCommitmentBlockerEdge] {
+        try Row.fetchAll(
+            database,
+            sql: """
+                SELECT blockerID, decisionID, commitmentID
+                FROM meetingMemoryGraphDecisionCommitmentBlocker
+                ORDER BY blockerID
+                """)
+            .map {
+                .init(
+                    blockerID: DecisionCommitmentBlockerID(
+                        rawValue: try requiredUUID($0["blockerID"])),
+                    decisionID: DecisionID(
+                        rawValue: try requiredUUID($0["decisionID"])),
+                    commitmentID: CommitmentID(
+                        rawValue: try requiredUUID($0["commitmentID"])))
+            }
+    }
+
+    private static func meetingBlockerEdges(
+        in database: Database
+    ) throws -> [MeetingMemoryGraphProjectionSnapshot.MeetingBlockerEdge] {
+        try Row.fetchAll(
+            database,
+            sql: """
+                SELECT meetingID, blockerID
+                FROM meetingMemoryGraphMeetingBlocker
+                ORDER BY meetingID, blockerID
+                """)
+            .map {
+                .init(
+                    meetingID: MeetingID(rawValue: try requiredUUID($0["meetingID"])),
+                    blockerID: DecisionCommitmentBlockerID(
+                        rawValue: try requiredUUID($0["blockerID"])))
             }
     }
 
