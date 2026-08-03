@@ -4906,7 +4906,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         ] {
             XCTAssertFalse(transcriptContent.contains(forbidden), forbidden)
         }
-        XCTAssertTrue(focusedTranscript.contains("FocusedTranscriptView<Item: Identifiable"))
+        XCTAssertTrue(focusedTranscript.contains("struct FocusedTranscriptView<"))
+        XCTAssertTrue(focusedTranscript.contains("Accessory: View"))
+        XCTAssertTrue(focusedTranscript.contains("accessory(segment, isActive)"))
         XCTAssertTrue(focusedTranscript.contains("TranscriptFollowOwnershipPolicy"))
         XCTAssertFalse(focusedTranscript.contains("import PortavozCore"))
 
@@ -4925,6 +4927,8 @@ final class ArchitectureDependencyTests: XCTestCase {
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {
         let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
+        let artifacts = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailArtifactsSection.swift")
         let flowHost = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailFlowHost.swift")
         let playbackNavigation = try Self.contents(
@@ -4938,6 +4942,10 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         XCTAssertTrue(view.contains("MeetingDetailFlowHost("))
         XCTAssertTrue(view.contains("MeetingDetailPlaybackNavigation()"))
+        XCTAssertTrue(view.contains("MeetingDetailArtifactsSection"))
+        XCTAssertTrue(artifacts.contains(
+            ".frame(minHeight: 180, idealHeight: 240, maxHeight: 240)"))
+        XCTAssertTrue(view.contains(".layoutPriority(1)"))
         XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))
         for obsoletePresentation in [
             "private func notesHeader(", "private func notesContent(",

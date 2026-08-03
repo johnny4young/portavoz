@@ -3,7 +3,6 @@ import IntelligenceKit
 import PortavozCore
 import SwiftUI
 import TranscriptionKit
-
 private struct MeetingDetailRefinePresentation {
     let status: String?
     let error: String?
@@ -31,7 +30,6 @@ struct MeetingDetailView: View {
     let sceneActions: MeetingDetailSceneActions
 
     @State private var playbackNavigation = MeetingDetailPlaybackNavigation()
-
     private var detail: MeetingReviewReadModel? { model.state.readModel }
     private var summary: MeetingReviewSummary? { detail?.summary }
     private var player: MeetingPlaybackSession? { model.state.playback?.session }
@@ -48,7 +46,6 @@ struct MeetingDetailView: View {
     private var refine: MeetingDetailRefinePresentation {
         MeetingDetailRefinePresentation(sceneValues.refinePhase)
     }
-
     var body: some View {
         Group {
             if let detail {
@@ -95,13 +92,16 @@ private extension MeetingDetailView {
                 error: refine.error ?? flow.operationError ?? model.state.lastActionError)
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 10) {
-                    summaryOrGenerate(detail)
-                    commitmentInboxSection(detail)
-                    notesSection(detail)
+                    MeetingDetailArtifactsSection {
+                        summaryOrGenerate(detail)
+                        commitmentInboxSection(detail)
+                        notesSection(detail)
+                    }
                     transcriptSection(
                         detail,
                         content: transcript,
                         structureProjection: structureProjection)
+                        .layoutPriority(1)
                     playerSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

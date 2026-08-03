@@ -1015,6 +1015,18 @@ performance fixture while adding stable section identifiers. Scene/presentation
 changes conservatively select all Meeting Detail journeys; each section and its
 pure ApplicationKit projection select only the feature journeys they own.
 
+The primary Meeting Detail column keeps generated material, synchronized
+transcript, and playback as three independent layout regions. Summary,
+commitment-review, and note content has a bounded 180-to-240-point vertical
+scroll region; the transcript receives the remaining flexible height and clips
+its focused viewport to the geometry SwiftUI actually allocated; and the
+playback dock retains its intrinsic size below that viewport. Focused-row visual
+effects transform only transcript presentation. Correction controls remain
+external 28-point accessories, so blur or scale cannot move their hit targets
+under the playback dock. This preserves source seeking and correction access
+without allowing long generated content to collapse to zero or cover another
+interaction owner.
+
 Meeting Detail reads transcript presentation through one immutable
 `MeetingTranscriptContent` snapshot. Stable visible rows retain ordered
 source-segment identities plus speaker, channel, spoken language, timing,

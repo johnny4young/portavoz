@@ -36,6 +36,8 @@ struct TranscriptSegmentsView: View {
                 height: carouselHeight
             ) { row, isActive in
                 transcriptRow(row, isActive: isActive)
+            } accessory: { row, _ in
+                correctionAction(for: row)
             }
         } else {
             textOnlyTranscript
@@ -47,7 +49,9 @@ struct TranscriptSegmentsView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 3) {
                     ForEach(content.rows) { row in
-                        transcriptRow(row, isActive: row.id == focusedRowID)
+                        transcriptRowContainer(
+                            row,
+                            isActive: row.id == focusedRowID)
                             .id(row.id)
                     }
                 }
@@ -106,9 +110,38 @@ struct TranscriptSegmentsView: View {
             canSeek: player != nil,
             onSeek: onSeek,
             onRenameTap: onRenameTap,
-            canCorrect: canCorrect,
-            onCorrect: onCorrect,
-            correctionIdentifier: correctionIdentifier(for: row))
+            reservesCorrectionSpace: canCorrect(row))
+    }
+
+    private func transcriptRowContainer(
+        _ row: MeetingTranscriptContent.Row,
+        isActive: Bool
+    ) -> some View {
+        ZStack(alignment: .trailing) {
+            transcriptRow(row, isActive: isActive)
+            correctionAction(for: row)
+        }
+    }
+
+    @ViewBuilder
+    private func correctionAction(
+        for row: MeetingTranscriptContent.Row
+    ) -> some View {
+        if canCorrect(row) {
+            Button {
+                onCorrect(row)
+            } label: {
+                Image(systemName: "pencil")
+                    .imageScale(.small)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .help("Correct transcript line")
+            .accessibilityLabel("Correct transcript row")
+            .accessibilityIdentifier(correctionIdentifier(for: row))
+            .padding(.trailing, 8)
+        }
     }
 
     private func correctionIdentifier(
@@ -137,9 +170,7 @@ private struct MeetingTranscriptRowView: View {
     let canSeek: Bool
     let onSeek: (TimeInterval) -> Void
     let onRenameTap: (Speaker) -> Void
-    let canCorrect: (MeetingTranscriptContent.Row) -> Bool
-    let onCorrect: (MeetingTranscriptContent.Row) -> Void
-    let correctionIdentifier: String
+    let reservesCorrectionSpace: Bool
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -163,21 +194,10 @@ private struct MeetingTranscriptRowView: View {
                 .font(.callout)
                 .textSelection(.enabled)
             Spacer(minLength: 0)
-            if canCorrect(row) {
-                Button {
-                    onCorrect(row)
-                } label: {
-                    Image(systemName: "pencil")
-                        .imageScale(.small)
-                }
-                .buttonStyle(.borderless)
-                .help("Correct transcript line")
-                .accessibilityLabel("Correct transcript row")
-                .accessibilityIdentifier(correctionIdentifier)
-            }
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 8)
+        .padding(.trailing, reservesCorrectionSpace ? 36 : 0)
         .background(
             isActive ? PVDesign.accent.opacity(0.12) : Color.clear,
             in: RoundedRectangle(cornerRadius: 6))

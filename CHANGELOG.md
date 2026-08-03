@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 2, 2026
 
+- **📝 Meeting review stays clickable** — Long summaries, notes, and commitment reviews now scroll above the transcript, while transcript corrections and the playback dock keep separate, reliable pointer targets.
 - **🔔 Reminder alerts return to Radar** — Tap a generic local due-date alert to open the private Commitment Radar; exact delivery is recorded once without exposing commitment text or reviving stale work.
 - **🔔 Private reminders wait for your permission** — Enable generic local alerts only for confirmed due commitments from Radar; normal launch never asks or polls in the background.
 - **✅ Radar actions keep history** — Complete, restore, or change a confirmed commitment's due date directly from Commitment Radar while Portavoz keeps every change local and traceable.

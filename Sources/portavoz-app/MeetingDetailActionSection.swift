@@ -91,20 +91,24 @@ struct MeetingDetailActionSection: View {
                 .accessibilityIdentifier("detail-export-srt")
             Button("Export subtitles (VTT)…") { actions.export(.vtt) }
                 .accessibilityIdentifier("detail-export-vtt")
-            Button {
-                actions.setIncludeCorrectionProvenance(
-                    !values.includeCorrectionProvenance)
-            } label: {
-                if values.includeCorrectionProvenance {
-                    Label("Include correction provenance", systemImage: "checkmark")
-                } else {
-                    Text("Include correction provenance")
-                }
-            }
+            Toggle(
+                "Include correction provenance",
+                isOn: Binding(
+                    get: { values.includeCorrectionProvenance },
+                    set: { include in
+                        actions.setIncludeCorrectionProvenance(include)
+                    }))
                 .disabled(!values.hasCorrections)
-                .accessibilityIdentifier("detail-export-correction-provenance")
-                .accessibilityAddTraits(
-                    values.includeCorrectionProvenance ? .isSelected : [])
+                .accessibilityIdentifier(
+                    values.includeCorrectionProvenance
+                        ? "detail-export-correction-provenance-on"
+                        : "detail-export-correction-provenance-off")
+                .accessibilityLabel(
+                    Text("Include correction provenance")
+                        + Text(verbatim: ", ")
+                        + (values.includeCorrectionProvenance
+                            ? Text("On")
+                            : Text("Off")))
             Button("Export meeting file (.portavoz)…") {
                 actions.export(.meetingBundle(includeAudio: false))
             }

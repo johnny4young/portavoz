@@ -135,7 +135,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistence(timeout: 10),
             "a summary generated before the correction must be labelled stale")
         XCTAssertTrue(
-            app.buttons["detail-stale-summary-regenerate"].exists,
+            app.control(withIdentifier: "detail-stale-summary-regenerate")
+                .waitForExistence(timeout: 5),
             "the stale summary must expose explicit on-demand regeneration")
         XCTAssertFalse(
             app.buttons["detail-thin-summary-suggestion"].exists,
@@ -165,6 +166,17 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             correct.waitForExistence(timeout: 10),
             "a stable accepted source row must expose its correction action")
+        XCTAssertTrue(
+            correct.waitForStableFrame(timeout: 5),
+            "the correction action must settle before activation")
+        XCTAssertGreaterThanOrEqual(
+            correct.frame.width,
+            28,
+            "the correction action must expose a usable pointer target")
+        XCTAssertGreaterThanOrEqual(
+            correct.frame.height,
+            28,
+            "the correction action must expose a usable pointer target")
         correct.click()
 
         let editor = app.control(withIdentifier: "transcript-correction-editor")
@@ -225,6 +237,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let neighborID = "B5F00000-0000-4000-8000-000000000001"
         let correct = app.buttons["transcript-correct-\(sourceID)"]
         XCTAssertTrue(correct.waitForExistence(timeout: 10))
+        XCTAssertTrue(correct.waitForStableFrame(timeout: 5))
         correct.click()
 
         let split = app.buttons["transcript-structure-split"]
@@ -995,20 +1008,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.menuItems["detail-export-vtt"].waitForExistence(timeout: 5),
             "the diarized transcript must export as VTT")
-        let provenance = app.menuItems["detail-export-correction-provenance"]
+        let provenance = app.menuItems["detail-export-correction-provenance-off"]
         XCTAssertTrue(
             provenance.waitForExistence(timeout: 5),
             "the export menu must disclose the opt-in correction provenance control")
         XCTAssertTrue(provenance.isEnabled)
-        XCTAssertFalse(provenance.isSelected)
         provenance.click()
 
         menu.click()
-        let included = app.menuItems["detail-export-correction-provenance"]
+        let included = app.menuItems["detail-export-correction-provenance-on"]
         XCTAssertTrue(included.waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            included.isSelected,
-            "correction provenance must be an explicit persistent export option")
         attachScreenshot(of: app, named: "meeting-detail-correction-aware-export")
         // Close the menu without exporting — the save panel is native UI.
         app.typeKey(.escape, modifierFlags: [])

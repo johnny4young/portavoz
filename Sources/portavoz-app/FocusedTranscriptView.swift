@@ -78,21 +78,50 @@ enum TranscriptFollowOwnershipPolicy {
 /// the others carousel past. Playback always follows its active line. Live
 /// recording follows the newest caption until the user scrolls, then yields
 /// ownership until they explicitly choose "Jump to live".
-struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID: Hashable {
+struct FocusedTranscriptView<
+    Item: Identifiable,
+    Row: View,
+    Accessory: View
+>: View where Item.ID: Hashable {
     let segments: [Item]
     let activeID: Item.ID?
-    var height: CGFloat = 440
+    var height: CGFloat
     /// Where the focused line sits. `.center` for playback (past + future
     /// around it); lower (e.g. y ≈ 0.82) for live recording, where the new
     /// line is the frontier and older lines rise above it.
-    var anchor: UnitPoint = .center
+    var anchor: UnitPoint
     /// A value that changes when the active line GROWS without changing id.
-    var followSignal: Double = 0
-    var mode = FocusedTranscriptMode.playback
+    var followSignal: Double
+    var mode: FocusedTranscriptMode
     var scrollAccessibilityIdentifier: String?
     @ViewBuilder var row: (Item, Bool) -> Row
+    /// Interactive row chrome stays outside the presentation-only focus
+    /// transform so hit testing continues to use the control's real frame.
+    @ViewBuilder var accessory: (Item, Bool) -> Accessory
 
     @State private var isFollowing = true
+
+    init(
+        segments: [Item],
+        activeID: Item.ID?,
+        height: CGFloat = 440,
+        anchor: UnitPoint = .center,
+        followSignal: Double = 0,
+        mode: FocusedTranscriptMode = .playback,
+        scrollAccessibilityIdentifier: String? = nil,
+        @ViewBuilder row: @escaping (Item, Bool) -> Row,
+        @ViewBuilder accessory: @escaping (Item, Bool) -> Accessory
+    ) {
+        self.segments = segments
+        self.activeID = activeID
+        self.height = height
+        self.anchor = anchor
+        self.followSignal = followSignal
+        self.mode = mode
+        self.scrollAccessibilityIdentifier = scrollAccessibilityIdentifier
+        self.row = row
+        self.accessory = accessory
+    }
 
     var body: some View {
         let focusY = anchor.y * height
@@ -105,22 +134,26 @@ struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID:
                     ScrollView(.vertical, showsIndicators: false) {
                         LazyVStack(spacing: 6) {
                             ForEach(segments) { segment in
-                                row(segment, segment.id == activeID)
-                                    .id(segment.id)
-                                    .visualEffect { content, geometry in
-                                        let midY = geometry.frame(
-                                            in: .scrollView(axis: .vertical)
-                                        ).midY
-                                        let style = TranscriptFocusVisualPolicy.style(
-                                            distance: abs(midY - focusY),
-                                            reach: reach,
-                                            mode: visualMode,
-                                            isFollowing: following)
-                                        return content
-                                            .opacity(style.opacity)
-                                            .scaleEffect(style.scale, anchor: .center)
-                                            .blur(radius: style.blurRadius)
-                                    }
+                                let isActive = segment.id == activeID
+                                ZStack(alignment: .trailing) {
+                                    row(segment, isActive)
+                                        .visualEffect { content, geometry in
+                                            let midY = geometry.frame(
+                                                in: .scrollView(axis: .vertical)
+                                            ).midY
+                                            let style = TranscriptFocusVisualPolicy.style(
+                                                distance: abs(midY - focusY),
+                                                reach: reach,
+                                                mode: visualMode,
+                                                isFollowing: following)
+                                            return content
+                                                .opacity(style.opacity)
+                                                .scaleEffect(style.scale, anchor: .center)
+                                                .blur(radius: style.blurRadius)
+                                        }
+                                    accessory(segment, isActive)
+                                }
+                                .id(segment.id)
                             }
                         }
                         // Pad so the first and last lines can reach the focus line.
@@ -215,5 +248,29 @@ struct FocusedTranscriptView<Item: Identifiable, Row: View>: View where Item.ID:
         } else {
             proxy.scrollTo(id, anchor: anchor)
         }
+    }
+}
+
+extension FocusedTranscriptView where Accessory == EmptyView {
+    init(
+        segments: [Item],
+        activeID: Item.ID?,
+        height: CGFloat = 440,
+        anchor: UnitPoint = .center,
+        followSignal: Double = 0,
+        mode: FocusedTranscriptMode = .playback,
+        scrollAccessibilityIdentifier: String? = nil,
+        @ViewBuilder row: @escaping (Item, Bool) -> Row
+    ) {
+        self.init(
+            segments: segments,
+            activeID: activeID,
+            height: height,
+            anchor: anchor,
+            followSignal: followSignal,
+            mode: mode,
+            scrollAccessibilityIdentifier: scrollAccessibilityIdentifier,
+            row: row,
+            accessory: { _, _ in EmptyView() })
     }
 }

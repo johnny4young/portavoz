@@ -82,6 +82,7 @@ struct MeetingGeneratedDocumentSection: View {
                     systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.orange)
+                    .accessibilityIdentifier("detail-stale-summary")
                 Spacer()
                 Button("Regenerate") {
                     actions.regenerate(values.summaryLanguage, nil, nil)
@@ -90,7 +91,6 @@ struct MeetingGeneratedDocumentSection: View {
                 .disabled(values.regenerating)
                 .accessibilityIdentifier("detail-stale-summary-regenerate")
             }
-            .accessibilityIdentifier("detail-stale-summary")
         }
     }
 

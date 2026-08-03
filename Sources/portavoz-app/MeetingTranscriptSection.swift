@@ -41,6 +41,7 @@ struct MeetingTranscriptSection: View {
             transcriptHeader
             transcriptArea
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .clipped()
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-transcript-section")
@@ -86,7 +87,7 @@ struct MeetingTranscriptSection: View {
     private var transcriptArea: some View {
         if values.player != nil {
             GeometryReader { geometry in
-                transcriptViewport(carouselHeight: max(180, geometry.size.height))
+                transcriptViewport(carouselHeight: max(1, geometry.size.height))
             }
         } else {
             transcriptViewport(carouselHeight: 440)

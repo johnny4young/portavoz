@@ -224,8 +224,9 @@ Suggested ownership exists only for an exact linked `Speaker.personID`, and the
 due-date suggestion is empty until a production extractor passes its quality
 gate. The section is present in the route model so confirmation, dismiss, defer,
 and evidence-seek actions can arrive without widening the core transcript or
-summary observations. No child view renders this inbox yet, so this is a
-nonvisual foundation rather than a released control.
+summary observations. Meeting Detail renders the inbox as an independent,
+evidence-first review section; generated candidates still cannot enter Radar or
+notification scheduling until the user confirms them.
 
 Meeting Detail routing enters `MeetingDetailScene` (D223). The scene owns the
 route's observable `MeetingDetailModel`, is keyed by `MeetingID`, and is the
@@ -314,6 +315,15 @@ focus and pending seeks across transcript and player sections but receives an
 already prepared session and cannot resolve audio or storage. Architecture
 tests keep the root at 500 lines or fewer and reject model effects or broad
 composition dependencies in presentation children.
+
+The composed primary column assigns generated material to a bounded
+180-to-240-point scroll region, gives the transcript the remaining flexible
+height, clips its focused viewport to that exact allocation, and keeps the
+player as a separate dock below it. Transcript correction buttons are
+28-point accessories outside focus blur and scale effects. Long summaries,
+notes, or commitment review can therefore scroll without collapsing their own
+controls, covering transcript corrections, or allowing the player to intercept
+transcript input.
 
 D231 adds the first correction adopter without reopening that composition
 boundary. Meeting Detail observes correction history and asks an ApplicationKit
