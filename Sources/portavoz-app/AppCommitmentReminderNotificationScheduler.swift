@@ -37,8 +37,17 @@ struct AppReminderNotificationSnapshot: Sendable, Equatable {
     let delivered: AppReminderNotificationRecord?
 }
 
+enum AppReminderResponseAction: Sendable, Equatable {
+    case openRadar
+    case snooze
+    case ignore
+}
+
 enum AppReminderNotificationMetadata {
     static let categoryIdentifier = "portavoz.commitment-reminder"
+    static let snoozeActionIdentifier =
+        "portavoz.commitment-reminder.snooze-15-minutes"
+    static let snoozeInterval: TimeInterval = 15 * 60
 
     private enum Key {
         static let commitmentID = "portavoz.commitment-id"
@@ -47,11 +56,28 @@ enum AppReminderNotificationMetadata {
     }
 
     static var category: UNNotificationCategory {
-        UNNotificationCategory(
+        let snoozeAction = UNNotificationAction(
+            identifier: snoozeActionIdentifier,
+            title: L10n.text("Remind me in 15 minutes"),
+            options: [])
+        return UNNotificationCategory(
             identifier: categoryIdentifier,
-            actions: [],
+            actions: [snoozeAction],
             intentIdentifiers: [],
             options: [])
+    }
+
+    static func responseAction(
+        for identifier: String
+    ) -> AppReminderResponseAction {
+        switch identifier {
+        case UNNotificationDefaultActionIdentifier:
+            .openRadar
+        case snoozeActionIdentifier:
+            .snooze
+        default:
+            .ignore
+        }
     }
 
     static func userInfo(

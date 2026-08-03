@@ -8982,3 +8982,41 @@ exactly once. Stale Notification Center items cannot restore cancelled work or
 block a later snoozed schedule. Relaunch recovery remains a fallback rather than
 the only presentation observer. Scoped bilingual XCUITest proves the route
 without touching host notification state.
+
+## D263 — Snooze a private alert without moving commitment truth (Aug 2026)
+
+**Context:** D257 already models reminder snooze separately from a commitment
+deadline, and D261 observes an exact native delivery, but users still cannot
+defer that alert. Reusing Radar's due-date editor would falsely change the
+business commitment. Letting the notification delegate append storage events
+or schedule a new request would duplicate ApplicationKit eligibility and
+reconciliation policy. A custom action also must not reveal private work or
+unnecessarily open the app.
+
+**Decision:** register one non-foreground **Remind me in 15 minutes** action on
+the existing content-free category. The native delegate classifies its stable
+identifier, decodes the same commitment identity and date fences as default
+delivery, completes the platform callback, and forwards a typed request to the
+process reminder model. It never reads StorageKit, embeds commitment text, or
+activates the app for snooze.
+
+`SnoozeCommitmentReminder` owns the durable transition. It first records the
+exact presentation through D261's use case, re-reads the resulting projection,
+and appends `snooze` only while status, original scheduled time, and source due
+date still match. The request requires finite monotonic delivery, handling, and
+next-alert times. Replaced, terminal, repeated, missing, and malformed inputs
+cannot rearm work. A successful mutation signals D260's process-wide
+reconciler, which removes the old delivered request and schedules the generic
+replacement. The confirmed commitment's `dueAt` and append-only continuity
+history remain unchanged.
+
+No dismiss command, Radar due-date mutation, new schema, polling timer,
+external-sync signal, sync/export field, bundle, CLI, MCP, or review queue is
+added. Deterministic tests exercise the workflow and native action metadata;
+there is no new app-window UI to justify an XCUITest.
+
+**Consequences:** users can defer a generic confirmed-work alert for fifteen
+minutes without weakening business truth or privacy. Snooze survives relaunch,
+duplicate notification responses are idempotent, and platform code remains an
+adapter rather than a policy owner. Explicit dismissal and pre/post-meeting
+review remain later COMMIT-5 slices.

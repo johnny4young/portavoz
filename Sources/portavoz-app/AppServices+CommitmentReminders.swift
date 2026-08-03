@@ -74,6 +74,14 @@ private struct AppCommitmentReminderClient: CommitmentReminderModelClient {
             repository: store
         ).execute(request)
     }
+
+    func snoozeCommitmentReminder(
+        _ request: ReminderSnoozeRequest
+    ) async throws -> ReminderSnoozeOutcome {
+        try await SnoozeCommitmentReminder(
+            repository: store
+        ).execute(request)
+    }
 }
 
 private struct AppMeetingCommitmentReviewRepository: MeetingCommitmentReviewRepository {

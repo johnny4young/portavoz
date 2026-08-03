@@ -1235,11 +1235,21 @@ generic alert routes through the shared process route to Commitment Radar and
 activates the app. No notification payload becomes commitment truth, and no
 delegate callback reaches StorageKit directly.
 
-There are still no custom notification action buttons, reminder snooze UI,
-review queue, external-sync mutation signal, sync/export field, bundle, CLI,
-or MCP surface. Denied permission remains visible in Radar and may be checked
-again after the user changes macOS settings; no undocumented Settings URL is
-used.
+The notification category also owns one non-foreground **Remind me in 15
+minutes** action. The native delegate classifies only the registered action
+identifier and forwards the same opaque identity/date record to
+`SnoozeCommitmentReminder`. ApplicationKit first records the exact delivery,
+then appends `snooze` only while the current presentation retains the same
+scheduled time and source due-date fence. The process reminder owner performs
+the subsequent reconciliation, replacing the delivered request with its new
+generic schedule. The commitment deadline and continuity history remain
+untouched, stale or repeated responses are no-ops, and the action neither opens
+Portavoz nor lets the delegate access StorageKit.
+
+There is still no dismiss command, review queue, external-sync mutation
+signal, sync/export field, bundle, CLI, or MCP surface. Denied permission
+remains visible in Radar and may be checked again after the user changes macOS
+settings; no undocumented Settings URL is used.
 
 The bounded read has a content-free Release scale gate. A fresh synthetic
 store is prepared before timing, one warm read precedes five measured reads,

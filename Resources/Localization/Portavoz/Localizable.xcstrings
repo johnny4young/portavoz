@@ -9221,6 +9221,16 @@
         }
       }
     },
+    "Remind me in 15 minutes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recordarme en 15 minutos"
+          }
+        }
+      }
+    },
     "Open Portavoz to review a confirmed commitment.": {
       "localizations": {
         "es": {

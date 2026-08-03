@@ -1843,10 +1843,44 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(delegate.contains(
             "func applicationWillFinishLaunching"))
         XCTAssertTrue(delegate.contains("center.delegate = self"))
-        XCTAssertTrue(delegate.contains(
-            "response.actionIdentifier == UNNotificationDefaultActionIdentifier"))
+        XCTAssertTrue(adapter.contains(
+            "case UNNotificationDefaultActionIdentifier:"))
+        XCTAssertTrue(adapter.contains(".openRadar"))
+        XCTAssertTrue(delegate.contains("case .openRadar:"))
         XCTAssertTrue(delegate.contains("pendingRoute = .commitments"))
         XCTAssertTrue(decisions.contains("## D261"))
+    }
+
+    func testReminderSnoozeIsDurablePrivateAndDoesNotRewriteDueDate() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/SnoozeCommitmentReminder.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppCommitmentReminderNotificationScheduler.swift")
+        let delegate = try Self.contents(
+            of: "Sources/portavoz-app/PortavozAppDelegate.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentReminderModel.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(workflow.contains("struct SnoozeCommitmentReminder"))
+        XCTAssertTrue(workflow.contains(
+            "RecordCommitmentReminderPresentation"))
+        XCTAssertTrue(workflow.contains(
+            "state.sourceDueAt == request.sourceDueAt"))
+        XCTAssertTrue(workflow.contains(
+            ".snooze(until: request.snoozeUntil)"))
+        XCTAssertFalse(workflow.contains("CommitmentRadarMutation"))
+        XCTAssertFalse(workflow.contains("UserNotifications"))
+        XCTAssertTrue(adapter.contains(
+            "snooze-15-minutes"))
+        XCTAssertTrue(adapter.contains(
+            "options: []"))
+        XCTAssertTrue(delegate.contains(
+            "AppReminderNotificationMetadata.responseAction"))
+        XCTAssertTrue(delegate.contains("case .snooze:"))
+        XCTAssertTrue(model.contains("func snooze("))
+        XCTAssertTrue(model.contains("await refreshPermission()"))
+        XCTAssertTrue(decisions.contains("## D263"))
     }
 
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {

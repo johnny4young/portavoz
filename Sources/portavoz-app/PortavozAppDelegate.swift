@@ -139,15 +139,27 @@ final class PortavozAppDelegate:
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         _ = center
-        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier,
-              let record = reminderRecord(from: response.notification)
-        else {
+        guard let record = reminderRecord(from: response.notification) else {
             completionHandler()
             return
         }
+        let action = AppReminderNotificationMetadata.responseAction(
+            for: response.actionIdentifier)
         completionHandler()
-        Task { @MainActor in
-            await Self.routeCommitmentReminder(record)
+        switch action {
+        case .openRadar:
+            Task { @MainActor in
+                await Self.routeCommitmentReminder(record)
+            }
+        case .snooze:
+            let handledAt = Date()
+            Task { @MainActor in
+                await Self.snoozeCommitmentReminder(
+                    record,
+                    handledAt: handledAt)
+            }
+        case .ignore:
+            break
         }
     }
 }
@@ -173,6 +185,18 @@ private extension PortavozAppDelegate {
         await services?.commitmentReminders.recordPresentation(record)
         services?.pendingRoute = .commitments
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @MainActor
+    static func snoozeCommitmentReminder(
+        _ record: AppReminderNotificationRecord,
+        handledAt: Date
+    ) async {
+        await services?.commitmentReminders.snooze(
+            record,
+            handledAt: handledAt,
+            until: handledAt.addingTimeInterval(
+                AppReminderNotificationMetadata.snoozeInterval))
     }
 
     @MainActor

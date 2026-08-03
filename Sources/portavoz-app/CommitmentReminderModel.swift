@@ -19,6 +19,9 @@ protocol CommitmentReminderModelClient: Sendable {
     func recordCommitmentReminderPresentation(
         _ request: ReminderPresentationRequest
     ) async throws -> ReminderPresentationOutcome
+    func snoozeCommitmentReminder(
+        _ request: ReminderSnoozeRequest
+    ) async throws -> ReminderSnoozeOutcome
 }
 
 /// Process-owned reminder permission and reconciliation state. Launch and
@@ -104,6 +107,34 @@ final class CommitmentReminderModel {
                     scheduledFor: record.scheduledFor,
                     sourceDueAt: record.sourceDueAt,
                     deliveredAt: deliveredAt))
+        } catch is CancellationError {
+            return
+        } catch {
+            state.phase = .failed
+        }
+    }
+
+    func snooze(
+        _ record: AppReminderNotificationRecord,
+        handledAt: Date,
+        until snoozeUntil: Date
+    ) async {
+        guard let deliveredAt = record.deliveredAt else { return }
+        do {
+            let outcome = try await client.snoozeCommitmentReminder(
+                ReminderSnoozeRequest(
+                    commitmentID: record.commitmentID,
+                    scheduledFor: record.scheduledFor,
+                    sourceDueAt: record.sourceDueAt,
+                    deliveredAt: deliveredAt,
+                    handledAt: handledAt,
+                    snoozeUntil: snoozeUntil))
+            guard case .snoozed = outcome else { return }
+            if state.permission == .unknown {
+                await refreshPermission()
+            } else {
+                kick()
+            }
         } catch is CancellationError {
             return
         } catch {

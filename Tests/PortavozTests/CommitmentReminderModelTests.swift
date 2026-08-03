@@ -102,6 +102,31 @@ final class CommitmentReminderModelTests: XCTestCase {
         XCTAssertEqual(model.state.phase, .idle)
     }
 
+    func testSnoozeRefreshesPermissionAndSignalsReconciliation() async {
+        let client = RecordingReminderModelClient(permission: .enabled)
+        let model = CommitmentReminderModel(client: client)
+        let commitmentID = CommitmentID()
+        let scheduledFor = Date(timeIntervalSinceReferenceDate: 1_000)
+        let handledAt = scheduledFor.addingTimeInterval(2)
+
+        await model.snooze(
+            AppReminderNotificationRecord(
+                identifier: AppReminderNotificationScheduler.identifier(
+                    for: commitmentID),
+                commitmentID: commitmentID,
+                scheduledFor: scheduledFor,
+                sourceDueAt: scheduledFor,
+                deliveredAt: scheduledFor.addingTimeInterval(1)),
+            handledAt: handledAt,
+            until: handledAt.addingTimeInterval(900))
+        await waitUntil { client.reconciliationCount == 1 }
+        await waitUntil { model.state.phase == .idle }
+
+        XCTAssertEqual(client.snoozeCount, 1)
+        XCTAssertEqual(model.state.permission, .enabled)
+        XCTAssertEqual(client.authorizationRequests, 0)
+    }
+
     private func waitUntil(
         timeout: Duration = .seconds(1),
         condition: @escaping @MainActor () -> Bool
@@ -121,6 +146,7 @@ private final class RecordingReminderModelClient: CommitmentReminderModelClient 
     private(set) var authorizationRequests = 0
     private(set) var reconciliationCount = 0
     private(set) var presentationCount = 0
+    private(set) var snoozeCount = 0
 
     private var permission: CommitmentReminderPermission
     private let requestedPermission: CommitmentReminderPermission
@@ -173,6 +199,13 @@ private final class RecordingReminderModelClient: CommitmentReminderModelClient 
     ) -> ReminderPresentationOutcome {
         presentationCount += 1
         return .recorded
+    }
+
+    func snoozeCommitmentReminder(
+        _ request: ReminderSnoozeRequest
+    ) -> ReminderSnoozeOutcome {
+        snoozeCount += 1
+        return .snoozed(until: request.snoozeUntil)
     }
 
     func resumeFirstReconciliation() {

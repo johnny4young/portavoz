@@ -1420,6 +1420,15 @@ attachment. The source guard requires early delegate registration,
 ApplicationKit ownership, content-free metadata, and default-tap routing to
 Radar.
 
+D263 adds four focused workflow/storage cases, one process-model case, one
+native-category classification case, and one architecture ratchet. They prove
+that exact delivery and snooze append once, the confirmed commitment due date
+does not change, repeated/replaced responses are stale no-ops, malformed
+chronology fails closed, the custom action has no foreground option, and a
+successful background action signals the existing reconciliation owner without
+requesting authorization. No additional XCUITest is required because D263 adds
+no app-window UI and the platform callback is characterized below SwiftUI.
+
 Meeting Detail layout characterization keeps generated artifacts in a
 noncollapsible bounded scroll region, the synchronized transcript in its actual
 clipped viewport, and playback in a separate dock. Correction controls must

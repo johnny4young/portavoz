@@ -3,6 +3,7 @@ import Foundation
 import PortavozCore
 import StorageKit
 @testable import portavoz_app
+import UserNotifications
 import XCTest
 
 final class CommitmentReminderNotificationSchedulerTests: XCTestCase {
@@ -145,6 +146,38 @@ final class CommitmentReminderNotificationSchedulerTests: XCTestCase {
             identifier: "portavoz.commitment-reminder.invalid",
             userInfo: userInfo,
             deliveredAt: expected.deliveredAt))
+    }
+
+    func testCategoryOffersPrivateBackgroundSnoozeAction() {
+        let category = AppReminderNotificationMetadata.category
+
+        XCTAssertEqual(
+            category.identifier,
+            AppReminderNotificationMetadata.categoryIdentifier)
+        XCTAssertEqual(category.actions.count, 1)
+        XCTAssertEqual(
+            category.actions.first?.identifier,
+            AppReminderNotificationMetadata.snoozeActionIdentifier)
+        XCTAssertEqual(
+            category.actions.first?.title,
+            L10n.text("Remind me in 15 minutes"))
+        XCTAssertFalse(
+            category.actions.first?.options.contains(.foreground) ?? true)
+        XCTAssertEqual(
+            AppReminderNotificationMetadata.snoozeInterval,
+            15 * 60)
+        XCTAssertEqual(
+            AppReminderNotificationMetadata.responseAction(
+                for: UNNotificationDefaultActionIdentifier),
+            .openRadar)
+        XCTAssertEqual(
+            AppReminderNotificationMetadata.responseAction(
+                for: AppReminderNotificationMetadata.snoozeActionIdentifier),
+            .snooze)
+        XCTAssertEqual(
+            AppReminderNotificationMetadata.responseAction(
+                for: UNNotificationDismissActionIdentifier),
+            .ignore)
     }
 
     func testCancellationRemovesPendingAndDeliveredCopies() async {
