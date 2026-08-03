@@ -1,6 +1,6 @@
 # Spec 05 — Persistence (StorageKit)
 
-Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints), D182 (crash-safe backup-stage ownership), D183 (process-local destination identity), D184 (durable publication evidence), D185 (strict staged-source adoption), D186 (durable source checkpoints), D187 (pending-publication reconciliation), D188 (durable typed failure outcomes), D189 (launch recovery stage preservation), D230 (typed immutable transcript-correction history), D231 (atomic focused correction batches), D232 (append-only structural correction commands), D233 (correction-aware derived-artifact invalidation and publication fences), D234 (correction replica convergence and conflict fencing), D237 (confirmed-only commitment continuity), D238 (source-bound commitment review feedback), D240 (typed commitment ownership), D241 (bounded commitment Radar read model), D242 (content-free Radar scale gate), D256 (append-only Radar lifecycle actions), D257 (durable local reminder delivery history), D258 (bounded reminder reconciliation and atomic schedule replacement), D265 (bounded generated-work review queue), D268 (immutable content-free commitment presentation evidence), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (lease-fenced typed memory-graph projection), D274 (snapshot-consistent authoritative memory-timeline hydration), D275 (immutable commitment-event evidence).
+Status: implemented and in production (the user's DB survived a real incident thanks to tombstones). Decisions: D4 (frozen contract), D19 (GRDB+FTS5), D36 (additive v6 durability foundation), D37 (provisional recording rollback), D38 (captured Unit of Work), D39 (durable job leases and idempotency), D40 (evidence-first launch recovery), D41 (atomic generated-artifact completion), D42 (process-scoped exact execution), D43 (atomic Stop handoff), D44 (application dependency ratchet), D45 (newest immutable detail snapshot), D46 (atomic imported aggregate), D47 (revision-fenced refined aggregate), D48/D49 (application-owned Stop/Start policy), D50 (application-owned launch reconciliation), D51 (complete bundle aggregate Unit of Work), D52 (read-consistent bundle export), D54 (scoped Library observations), D58/D59 (scoped Insights/Meeting Detail observations), D62–D67 (atomic summary, accepted Refine transcript, Apuntador-card provenance, and content-free destination scope), D70 (durable first-pass transcript recovery), D75 (immutable egress attempts and honest receipt coverage), D76 (atomic redacted support snapshot and bounded durable retry), D79 (measured scale gates before storage complexity), D80 (prefix-evidenced interruption scan), D81 (safe rank top-k and integration-owned lexical candidates), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D86 (explicit canonical people and aliases), D87 (typed summary evidence), D88 (current claim feedback), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D92 (content-free generation-fenced meeting change journal), D93 (exact portable aggregate projection and replay), D99 (read-consistent whole-library Markdown backup), D103 (coherent terminal product workflows), D104 (ApplicationKit durable-workflow ownership), D115 (durable private-iCloud receipt disclosure), D122 (accepted Refine lexical integrity), D123 (content-free capture-shape diagnostics), D127 (audio-priority Stop and same-pass shell recovery), D179 (bounded idempotent existing-library sync checkpoints), D180 (capture-safe whole-library backup admission), D181 (staged whole-library backup checkpoints), D182 (crash-safe backup-stage ownership), D183 (process-local destination identity), D184 (durable publication evidence), D185 (strict staged-source adoption), D186 (durable source checkpoints), D187 (pending-publication reconciliation), D188 (durable typed failure outcomes), D189 (launch recovery stage preservation), D230 (typed immutable transcript-correction history), D231 (atomic focused correction batches), D232 (append-only structural correction commands), D233 (correction-aware derived-artifact invalidation and publication fences), D234 (correction replica convergence and conflict fencing), D237 (confirmed-only commitment continuity), D238 (source-bound commitment review feedback), D240 (typed commitment ownership), D241 (bounded commitment Radar read model), D242 (content-free Radar scale gate), D256 (append-only Radar lifecycle actions), D257 (durable local reminder delivery history), D258 (bounded reminder reconciliation and atomic schedule replacement), D265 (bounded generated-work review queue), D268 (immutable content-free commitment presentation evidence), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (lease-fenced typed memory-graph projection), D274 (snapshot-consistent authoritative memory-timeline hydration), D275 (immutable commitment-event evidence), D276 (explicit topic-scoped question continuity).
 
 D190 adds explicit intentional suspension for owner-leased processing jobs.
 D198 adds exact source identity and compare-and-swap publication for semantic
@@ -43,7 +43,7 @@ fingerprint held by the Application observer.
 
 GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
 
-### Schema (`v1`–`v27` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v29` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -103,6 +103,11 @@ Singular camelCase tables, 1:1 with Codable records:
 | `meetingMemoryGraphProjectionState` (v27) | singleton active profile fingerprint, completely published source generation, and update time; readers require exact current readiness |
 | `meetingMemoryGraphInvalidation` (v27) | one coalesced replay cursor per meeting/person/topic/decision/commitment scope; newer authoritative mutations replace generation instead of appending derived history |
 | `meetingMemoryGraphMeetingPerson` / `meetingMemoryGraphMeetingTopic` / `meetingMemoryGraphMeetingDecision` / `meetingMemoryGraphMeetingCommitment` / `meetingMemoryGraphCommitmentPerson` (v27) | disposable typed adjacency with symmetric traversal indexes; every edge is rebuilt from authoritative source tables and owns no provenance |
+| `meetingQuestion` (v29) | stable topic-scoped UUID, immutable reviewed wording and opening meeting/revision/primary segment, current open/resolved/dismissed projection, latest event identity, timestamps, and tombstone |
+| `meetingQuestionEvidenceSegment` (v29) | question FK plus immutable ordered opening segment identity; exact identity has no segment FK so purge does not rewrite history |
+| `meetingQuestionEvent` (v29) | immutable resolve/reopen/dismiss event with question FK, exact source meeting/revision/primary segment, and strictly increasing occurrence time |
+| `meetingQuestionEventEvidenceSegment` (v29) | event FK plus immutable ordered exact segment identity without a segment FK |
+| `meetingMemoryGraphMeetingQuestion` / `meetingMemoryGraphTopicQuestion` (v29) | disposable question topology from live explicit authority; status remains outside the graph |
 
 Schema v16 adds the partial
 `meeting_on_live_startedAt_id(startedAt DESC, id ASC)` index for deterministic
@@ -262,7 +267,7 @@ mutation count. Segment writes do not invalidate the graph: relationship
 topology comes from speaker, topic, decision, and commitment authority, while a
 meeting revision change remains the correction boundary.
 
-Profile changes clear only the five disposable edge tables and coalesce a full
+Profile changes clear only the disposable edge tables and coalesce a full
 scope rebuild without deleting a newer cursor. Every bounded batch validates
 the exact graph job kind, lease owner, unexpired lease, profile, and claimed
 source generation inside the same transaction that replaces edges and settles
@@ -278,12 +283,12 @@ source generation, and empty invalidation cursor to agree, then performs the
 complete read in one SQLite snapshot. Topic UUIDs resolve to their current live
 root. Related meetings are deterministic by start time and UUID; the requested
 or latest through meeting must have one immediate prior related meeting.
-Candidate decision and commitment identities are SQL-bounded, result overflow
-is explicit, and all presentation items are sorted newest first with UUID tie
-breaking.
+Candidate decision, commitment, and question identities are SQL-bounded,
+result overflow is explicit, and all presentation items are sorted newest first
+with UUID tie breaking.
 
-Graph rows supply identity joins only. Decision and commitment continuity are
-loaded from their authoritative tables; every candidate source is checked
+Graph rows supply identity joins only. Decision, commitment, and question
+continuity are loaded from their authoritative tables; every candidate source is checked
 against the current live meeting revision and exact final accepted segments
 with no active correction. When several same-meeting sources exist, current
 evidence is selected before stale or unavailable alternatives. Missing or
@@ -316,6 +321,31 @@ locally with exact identities before any row is inserted. This boundary does
 not add the envelope to meeting
 bundles, the CloudKit meeting replica, CLI, MCP, or a user-facing import/export
 surface.
+
+Schema v29 adds explicit question authority without copying generated
+open-question or Apuntador material. `meetingQuestion` stores one stable
+user-reviewed wording, current root topic, exact opening meeting/revision and
+primary segment, current projection, and latest event identity. Ordered opening
+evidence lives in `meetingQuestionEvidenceSegment`. Resolve, reopen, and dismiss
+append one immutable `meetingQuestionEvent` with its own exact source revision
+and ordered `meetingQuestionEventEvidenceSegment` rows. Core and SQLite enforce
+legal chronological transitions; the event trigger projects status atomically.
+Opening and event evidence must be unique current final accepted segments with
+no active correction. Exact source identities intentionally survive source
+purge and then hydrate as unavailable.
+
+The same migration extends the graph v2 profile with disposable
+meeting-question and topic-question edges. Opening or tombstoning a question
+invalidates its source meeting and topic. Event insertion invalidates only that
+event's evidence meeting because a state transition cannot change topic
+membership. Status-only parent projection updates schedule no graph work. A
+meeting edge exists only while its source meeting remains live; the topic edge
+resolves to the current root. Topic timelines use those edges only for bounded
+candidate identity and rehydrate every opening or transition from authoritative
+question rows plus exact current evidence in the same snapshot. Person
+timelines expose question kinds as unsupported rather than deriving an owner.
+This schema adds no blocker relation, generated promotion, bundle/CloudKit
+format, UI, Ask, CLI, or MCP surface.
 
 Schema v21 adds an empty `commitmentReviewDecision` table keyed to the existing
 immutable generated `ActionItem`. It persists only reversible user treatment:

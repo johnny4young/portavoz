@@ -87,6 +87,18 @@ public struct CommitmentReminderEventID: Hashable, Codable, Sendable, RawReprese
     public init() { self.rawValue = UUID() }
 }
 
+public struct MeetingQuestionID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
+public struct MeetingQuestionEventID: Hashable, Codable, Sendable, RawRepresentable {
+    public let rawValue: UUID
+    public init(rawValue: UUID) { self.rawValue = rawValue }
+    public init() { self.rawValue = UUID() }
+}
+
 public struct SummaryID: Hashable, Codable, Sendable, RawRepresentable {
     public let rawValue: UUID
     public init(rawValue: UUID) { self.rawValue = rawValue }

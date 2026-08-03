@@ -14,13 +14,15 @@ public enum MeetingMemoryGraphScopeKind: String, CaseIterable, Codable, Sendable
 /// operation and rebuilds every typed edge from authoritative local records.
 public enum MeetingMemoryGraphProjectionProfile {
     public static let fingerprint = OperationFingerprint.make(
-        version: "meeting-memory-graph-projection-v1",
+        version: "meeting-memory-graph-projection-v2",
         components: [
             "meeting-person-v1",
             "meeting-topic-v1",
             "meeting-decision-v1",
             "meeting-commitment-v1",
-            "commitment-person-v1"
+            "commitment-person-v1",
+            "meeting-question-v1",
+            "topic-question-v1"
         ])
 }
 
@@ -115,23 +117,49 @@ public struct MeetingMemoryGraphProjectionSnapshot: Equatable, Sendable {
         }
     }
 
+    public struct MeetingQuestionEdge: Hashable, Sendable {
+        public let meetingID: MeetingID
+        public let questionID: MeetingQuestionID
+
+        public init(meetingID: MeetingID, questionID: MeetingQuestionID) {
+            self.meetingID = meetingID
+            self.questionID = questionID
+        }
+    }
+
+    public struct TopicQuestionEdge: Hashable, Sendable {
+        public let topicID: TopicID
+        public let questionID: MeetingQuestionID
+
+        public init(topicID: TopicID, questionID: MeetingQuestionID) {
+            self.topicID = topicID
+            self.questionID = questionID
+        }
+    }
+
     public let meetingPeople: [MeetingPersonEdge]
     public let meetingTopics: [MeetingTopicEdge]
     public let meetingDecisions: [MeetingDecisionEdge]
     public let meetingCommitments: [MeetingCommitmentEdge]
     public let commitmentPeople: [CommitmentPersonEdge]
+    public let meetingQuestions: [MeetingQuestionEdge]
+    public let topicQuestions: [TopicQuestionEdge]
 
     public init(
         meetingPeople: [MeetingPersonEdge],
         meetingTopics: [MeetingTopicEdge],
         meetingDecisions: [MeetingDecisionEdge],
         meetingCommitments: [MeetingCommitmentEdge],
-        commitmentPeople: [CommitmentPersonEdge]
+        commitmentPeople: [CommitmentPersonEdge],
+        meetingQuestions: [MeetingQuestionEdge],
+        topicQuestions: [TopicQuestionEdge]
     ) {
         self.meetingPeople = meetingPeople
         self.meetingTopics = meetingTopics
         self.meetingDecisions = meetingDecisions
         self.meetingCommitments = meetingCommitments
         self.commitmentPeople = commitmentPeople
+        self.meetingQuestions = meetingQuestions
+        self.topicQuestions = topicQuestions
     }
 }

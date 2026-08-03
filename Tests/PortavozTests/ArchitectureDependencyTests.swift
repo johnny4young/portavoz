@@ -1821,7 +1821,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 28"))
+        XCTAssertTrue(schema.contains("public static let version = 29"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -1831,6 +1831,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
         let migration = try Self.contents(
             of: "Sources/StorageKit/Schema+MeetingMemoryGraph.swift")
+        let questionMigration = try Self.contents(
+            of: "Sources/StorageKit/Schema+MeetingQuestionContinuity.swift")
         let storage = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+MeetingMemoryGraph.swift")
         let projector = try Self.contents(
@@ -1845,7 +1847,7 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         XCTAssertFalse(core.contains("import StorageKit"))
         XCTAssertFalse(core.contains("import ApplicationKit"))
-        XCTAssertTrue(core.contains("meeting-memory-graph-projection-v1"))
+        XCTAssertTrue(core.contains("meeting-memory-graph-projection-v2"))
         XCTAssertTrue(schema.contains(
             "registerMeetingMemoryGraphMigration(in: &migrator)"))
         XCTAssertTrue(migration.contains("registerMigration(\"v27\")"))
@@ -1858,6 +1860,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meetingMemoryGraphCommitmentPerson",
         ] {
             XCTAssertTrue(migration.contains(table), table)
+        }
+        for table in [
+            "meetingMemoryGraphMeetingQuestion",
+            "meetingMemoryGraphTopicQuestion",
+        ] {
+            XCTAssertTrue(questionMigration.contains(table), table)
         }
         XCTAssertTrue(storage.contains(
             "validateOwnedDerivedMaintenancePublication"))
@@ -1894,6 +1902,41 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Durable Meeting Memory Graph projection (D273)"))
         XCTAssertTrue(appSpec.contains(
             "### Signal-driven Meeting Memory Graph projection (D273)"))
+    }
+
+    func testQuestionContinuityRequiresExplicitExactAuthority() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/MeetingQuestionContinuity.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingQuestionContinuity.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingQuestionContinuity.swift")
+        let migration = try Self.contents(
+            of: "Sources/StorageKit/Schema+MeetingQuestionContinuity.swift")
+        let timeline = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingMemoryTimeline.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains("enum MeetingQuestionStatus"))
+        XCTAssertTrue(core.contains("struct MeetingQuestionEvidence"))
+        XCTAssertTrue(core.contains("case resolve"))
+        XCTAssertTrue(core.contains("case reopen"))
+        XCTAssertTrue(core.contains("case dismiss"))
+        XCTAssertTrue(application.contains("struct ConfirmMeetingQuestion"))
+        XCTAssertTrue(application.contains("struct ManageMeetingQuestion"))
+        XCTAssertFalse(application.contains("import IntelligenceKit"))
+        XCTAssertTrue(storage.contains("validateMeetingQuestionEvidence"))
+        XCTAssertTrue(storage.contains("acceptedSegmentHasNoActiveCorrectionSQL"))
+        XCTAssertFalse(storage.contains("CompanionCard"))
+        XCTAssertTrue(migration.contains("registerMigration(\"v29\")"))
+        XCTAssertTrue(migration.contains("meetingQuestionEvent_project_ai"))
+        XCTAssertTrue(timeline.contains("appendQuestionTimelineItems"))
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/portavoz-app",
+                pattern: #"ConfirmMeetingQuestion|ManageMeetingQuestion"#),
+            [])
+        XCTAssertTrue(decisions.contains("## D276"))
     }
 
     func testTopicContinuityKeepsLabelsAsCandidatesAndMutationsExplicit() throws {
@@ -2280,7 +2323,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 28"))
+        XCTAssertTrue(schema.contains("public static let version = 29"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -2322,7 +2365,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
-        XCTAssertTrue(architecture.contains("current schema version is 27"))
+        XCTAssertTrue(architecture.contains("current schema version is 29"))
         XCTAssertTrue(architecture.contains(
             "Every persisted semantic vector also carries one SHA-256"))
         XCTAssertTrue(decisions.contains("## D199"))

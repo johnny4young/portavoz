@@ -28,17 +28,15 @@ extension MeetingStore {
             query.subject,
             in: database
         ) else { return .abstained(.subjectUnavailable) }
-        let relatedMeetings = try timelineMeetings(
-            for: resolved.subject,
-            subjectKey: resolved.key,
-            in: database)
+        let relatedMeetings = try timelineMeetings(for: resolved, in: database)
         guard !relatedMeetings.isEmpty else {
             return .abstained(.subjectUnavailable)
         }
         let window: TimelineWindow
         switch timelineWindow(
             among: relatedMeetings,
-            throughMeetingID: query.throughMeetingID
+            throughMeetingID: query.throughMeetingID,
+            topicFamilyIDs: resolved.topicFamilyIDs
         ) {
         case .ready(let value):
             window = value
@@ -62,22 +60,12 @@ extension MeetingStore {
             MeetingMemoryTimelineQuery.maximumItemLimit * 8,
             max(32, query.itemLimit * 4))
         var accumulator = TimelineAccumulator()
-
-        if case .topic = resolvedSubject {
-            try appendDecisionTimelineItems(
-                baseline: window.baseline,
-                through: window.through,
-                candidateLimit: candidateLimit,
-                accumulator: &accumulator,
-                in: database)
-        }
-        try appendCommitmentTimelineItems(
+        try populateTimelineAccumulator(
+            &accumulator,
             subject: resolvedSubject,
-            through: window.through,
+            window: window,
             candidateLimit: candidateLimit,
-            accumulator: &accumulator,
             in: database)
-
         accumulator.items.sort(by: timelineItemPrecedes)
         let hasMore = accumulator.candidateOverflow
             || accumulator.items.count > query.itemLimit
@@ -99,7 +87,7 @@ extension MeetingStore {
                 WHERE id = 'current'
                 """) ?? 0
         let unsupportedKinds = MeetingMemoryTimelineItemKind.allCases.filter {
-            $0 == .unresolvedQuestion || accumulator.unsupportedKinds.contains($0)
+            $0 == .commitmentBlocked || accumulator.unsupportedKinds.contains($0)
         }
         return .timeline(MeetingMemoryTimelinePage(
             subject: resolvedSubject,
@@ -112,17 +100,56 @@ extension MeetingStore {
             omittedUnavailableCount: accumulator.unavailableCount,
             unsupportedKinds: unsupportedKinds))
     }
+
+    private static func populateTimelineAccumulator(
+        _ accumulator: inout TimelineAccumulator,
+        subject: MeetingMemoryTimelineSubject,
+        window: TimelineWindow,
+        candidateLimit: Int,
+        in database: Database
+    ) throws {
+        if case .topic = subject {
+            try appendDecisionTimelineItems(
+                baseline: window.baseline,
+                through: window.through,
+                candidateLimit: candidateLimit,
+                accumulator: &accumulator,
+                in: database)
+            try appendQuestionTimelineItems(
+                topicIDs: window.topicFamilyIDs,
+                through: window.through,
+                candidateLimit: candidateLimit,
+                accumulator: &accumulator,
+                in: database)
+        }
+        try appendCommitmentTimelineItems(
+            subject: subject,
+            through: window.through,
+            candidateLimit: candidateLimit,
+            accumulator: &accumulator,
+            in: database)
+        if case .person = subject {
+            accumulator.unsupportedKinds.formUnion([
+                .unresolvedQuestion,
+                .questionResolved,
+                .questionReopened,
+                .questionDismissed
+            ])
+        }
+    }
 }
 
-private extension MeetingStore {
+extension MeetingStore {
     struct TimelineResolvedSubject {
         let subject: MeetingMemoryTimelineSubject
         let key: String
+        let topicFamilyIDs: [String]
     }
 
     struct TimelineWindow {
         let baseline: MeetingMemoryTimelineMeeting
         let through: MeetingMemoryTimelineMeeting
+        let topicFamilyIDs: [String]
     }
 
     enum TimelineWindowResolution {
@@ -163,19 +190,30 @@ private extension MeetingStore {
                 key: personID.rawValue.uuidString),
                   person.deletedAt == nil
             else { return nil }
-            return TimelineResolvedSubject(subject: .person(personID), key: person.id)
+            return TimelineResolvedSubject(
+                subject: .person(personID),
+                key: person.id,
+                topicFamilyIDs: [])
         case .topic(let topicID):
             let topics = try liveTopicRecords(in: database)
             guard topics[topicID.rawValue.uuidString] != nil else { return nil }
             let root = try topicRoot(topicID.rawValue.uuidString, among: topics)
             let rootID = TopicID(rawValue: try requiredTimelineUUID(root.id))
-            return TimelineResolvedSubject(subject: .topic(rootID), key: root.id)
+            let familyIDs = try topics.values
+                .filter { try topicRoot($0.id, among: topics).id == root.id }
+                .map(\.id)
+                .sorted()
+            return TimelineResolvedSubject(
+                subject: .topic(rootID),
+                key: root.id,
+                topicFamilyIDs: familyIDs)
         }
     }
 
     static func timelineWindow(
         among meetings: [MeetingMemoryTimelineMeeting],
-        throughMeetingID: MeetingID?
+        throughMeetingID: MeetingID?,
+        topicFamilyIDs: [String] = []
     ) -> TimelineWindowResolution {
         let throughIndex: Int
         if let throughMeetingID {
@@ -191,28 +229,38 @@ private extension MeetingStore {
         }
         return .ready(TimelineWindow(
             baseline: meetings[meetings.index(before: throughIndex)],
-            through: meetings[throughIndex]))
+            through: meetings[throughIndex],
+            topicFamilyIDs: topicFamilyIDs))
     }
 
     static func timelineMeetings(
-        for subject: MeetingMemoryTimelineSubject,
-        subjectKey: String,
+        for resolved: TimelineResolvedSubject,
         in database: Database
     ) throws -> [MeetingMemoryTimelineMeeting] {
         let rows: [Row]
-        switch subject {
+        switch resolved.subject {
         case .topic:
             rows = try Row.fetchAll(
                 database,
                 sql: """
+                    WITH related(meetingID) AS (
+                        SELECT meetingID
+                        FROM meetingMemoryGraphMeetingTopic
+                        WHERE topicID = ?
+                        UNION
+                        SELECT meetingEdge.meetingID
+                        FROM meetingMemoryGraphTopicQuestion AS topicEdge
+                        JOIN meetingMemoryGraphMeetingQuestion AS meetingEdge
+                          ON meetingEdge.questionID = topicEdge.questionID
+                        WHERE topicEdge.topicID = ?
+                    )
                     SELECT meeting.id, meeting.title, meeting.startedAt
-                    FROM meetingMemoryGraphMeetingTopic AS edge
-                    JOIN meeting ON meeting.id = edge.meetingID
-                    WHERE edge.topicID = ?
-                      AND meeting.deletedAt IS NULL
+                    FROM related
+                    JOIN meeting ON meeting.id = related.meetingID
+                    WHERE meeting.deletedAt IS NULL
                     ORDER BY meeting.startedAt, meeting.id
                     """,
-                arguments: [subjectKey])
+                arguments: [resolved.key, resolved.key])
         case .person:
             rows = try Row.fetchAll(
                 database,
@@ -241,7 +289,7 @@ private extension MeetingStore {
                     WHERE meeting.deletedAt IS NULL
                     ORDER BY meeting.startedAt, meeting.id
                     """,
-                arguments: [subjectKey, subjectKey, subjectKey])
+                arguments: [resolved.key, resolved.key, resolved.key])
         }
         return try rows.map { row in
             MeetingMemoryTimelineMeeting(
@@ -564,138 +612,6 @@ private extension MeetingStore {
         case .unavailable:
             accumulator.omit(.unavailable)
         }
-    }
-    static func timelineEvidence(
-        for source: DecisionSource,
-        in database: Database
-    ) throws -> TimelineEvidenceStatus {
-        switch source.availability {
-        case .stale: return .stale
-        case .unavailable: return .unavailable
-        case .current:
-            return try timelineEvidence(
-                meetingID: source.meetingID,
-                transcriptRevision: source.sourceTranscriptRevision,
-                segmentIDs: source.evidence.map(\.segmentID),
-                in: database)
-        }
-    }
-
-    static func timelineEvidence(
-        for source: CommitmentSource,
-        in database: Database
-    ) throws -> TimelineEvidenceStatus {
-        guard let meetingID = source.meetingID,
-              let revision = source.transcriptRevision,
-              !source.evidence.isEmpty,
-              source.evidence.allSatisfy({ $0.segmentID != nil })
-        else { return .unavailable }
-        return try timelineEvidence(
-            meetingID: meetingID,
-            transcriptRevision: revision,
-            segmentIDs: source.evidence.compactMap(\.segmentID),
-            in: database)
-    }
-
-    static func timelineEvidence(
-        for source: CommitmentEventEvidence,
-        in database: Database
-    ) throws -> TimelineEvidenceStatus {
-        try timelineEvidence(
-            meetingID: source.meetingID,
-            transcriptRevision: source.sourceTranscriptRevision,
-            segmentIDs: source.segmentIDs,
-            in: database)
-    }
-
-    static func timelineEvidence(
-        for sources: [DecisionSource],
-        meetingID: MeetingID,
-        in database: Database
-    ) throws -> TimelineEvidenceStatus {
-        let statuses = try sources
-            .filter { $0.meetingID == meetingID }
-            .map { try timelineEvidence(for: $0, in: database) }
-        return bestTimelineEvidence(statuses)
-    }
-
-    static func timelineEvidence(
-        for sources: [CommitmentSource],
-        meetingID: MeetingID,
-        in database: Database
-    ) throws -> TimelineEvidenceStatus {
-        let statuses = try sources
-            .filter { $0.meetingID == meetingID }
-            .map { try timelineEvidence(for: $0, in: database) }
-        return bestTimelineEvidence(statuses)
-    }
-
-    static func bestTimelineEvidence<S: Sequence>(
-        _ statuses: S
-    ) -> TimelineEvidenceStatus where S.Element == TimelineEvidenceStatus {
-        var sawStale = false
-        var sawUnavailable = false
-        for status in statuses {
-            switch status {
-            case .current:
-                return status
-            case .stale:
-                sawStale = true
-            case .unavailable:
-                sawUnavailable = true
-            }
-        }
-        if sawUnavailable { return .unavailable }
-        if sawStale { return .stale }
-        return .unavailable
-    }
-
-    static func timelineEvidence(
-        meetingID: MeetingID,
-        transcriptRevision: Int,
-        segmentIDs: [UUID],
-        in database: Database
-    ) throws -> TimelineEvidenceStatus {
-        let meetingKey = meetingID.rawValue.uuidString
-        guard !segmentIDs.isEmpty,
-              Set(segmentIDs).count == segmentIDs.count,
-              let meeting = try MeetingRecord.fetchOne(database, key: meetingKey),
-              meeting.deletedAt == nil
-        else { return .unavailable }
-        let segmentKeys = segmentIDs.map(\.uuidString)
-        let records = try SegmentRecord.fetchAll(
-            database,
-            sql: """
-                SELECT *
-                FROM segment
-                WHERE id IN (\(timelinePlaceholders(segmentKeys.count)))
-                  AND meetingID = ?
-                  AND deletedAt IS NULL
-                  AND isFinal = 1
-                  AND \(acceptedSegmentHasNoActiveCorrectionSQL)
-                """,
-            arguments: StatementArguments(segmentKeys + [meetingKey]))
-        let recordsByID = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) })
-        guard recordsByID.count == segmentKeys.count else { return .unavailable }
-        guard meeting.transcriptRevision == transcriptRevision else { return .stale }
-        let evidence = try segmentKeys.map { segmentKey -> MeetingMemoryTimelineEvidence in
-            guard let record = recordsByID[segmentKey] else {
-                throw StorageError.invalidDerivedMaintenanceJob(
-                    "memory timeline evidence changed during one SQLite snapshot")
-            }
-            let segment = try record.segment
-            return MeetingMemoryTimelineEvidence(
-                meetingID: meetingID,
-                meetingTitle: meeting.title,
-                meetingStartedAt: meeting.startedAt,
-                transcriptRevision: transcriptRevision,
-                segmentID: segment.id,
-                startTime: segment.startTime,
-                endTime: segment.endTime,
-                text: segment.text,
-                language: segment.language)
-        }
-        return .current(evidence)
     }
 
     static func combinedEvidenceStatus(

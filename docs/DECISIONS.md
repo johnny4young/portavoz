@@ -9547,3 +9547,53 @@ only when Portavoz can navigate to the exact current words that authorized the
 change. Existing user history remains compatible, and the read model preserves
 the distinction between known state and provable meeting chronology. The next
 authority gap remains explicit unresolved-question and blocker continuity.
+
+## D276 — Confirm topic-scoped questions before longitudinal serving (Aug 2026)
+
+**Context:** D274 can disclose unresolved questions as unsupported but cannot
+serve them because Apuntador cards, summary open-question bullets, and Companion
+answers are generated artifacts. Promoting any of those outputs would turn a
+model guess into durable meeting truth. A question also has no safe person owner
+by default: the speaker who voiced it, the participant expected to answer it,
+and the person accountable for follow-up may all differ. Finally, opening a
+question does not prove why it was later resolved, reopened, or dismissed.
+
+**Decision:** add schema v29 with an explicit, topic-scoped question authority.
+A confirmation command requires one stable question UUID, one exact current
+root topic UUID, user-reviewed nonempty wording, and an exact current transcript
+revision with a nonempty ordered set of unique final accepted segments that have
+no active correction. The opening evidence and wording are immutable. Generated
+summary, Companion, and Apuntador records have no path to this boundary without
+a separate explicit user confirmation.
+
+Each resolve, reopen, or dismiss command appends one immutable event with its
+own exact meeting revision and ordered segment identities. Core permits only
+open-to-resolved, resolved-to-open, and open-or-resolved-to-dismissed
+transitions in strictly increasing event time. Storage validates the same
+current evidence before mutation, repeats the boundary in SQLite triggers, and
+updates the current projection atomically from the inserted event. Exact command
+retries return persisted authority; reuse of a question or event identity with
+different content fails closed. Evidence identities have no meeting or segment
+ownership foreign key, so source purge preserves the historical explanation
+while later reads report it unavailable.
+
+The Meeting Memory Graph v2 profile adds only meeting-question and
+topic-question topology. Opening/tombstone changes invalidate the source
+meeting and topic; lifecycle events invalidate only their evidence meeting
+because status does not change topic membership. Topic timelines select
+question UUIDs through those disposable edges and rehydrate the opening or
+transition from authoritative SQLite rows plus current exact evidence in the
+same snapshot. They emit typed opened, resolved, reopened, or dismissed facts
+with direct navigation. Person timelines report these kinds unsupported rather
+than inferring ownership.
+
+This decision adds no blocker relation, generated candidate promotion, UI,
+Ask synthesis, model, semantic threshold, graph database, sync/export envelope,
+CLI, or MCP contract. Those remain separate gates.
+
+**Consequences:** Portavoz can now preserve and revisit explicit unresolved
+questions across meetings without confusing generated assistance with truth or
+guessing who owns the question. Every lifecycle claim is independently
+navigable and correction-aware, and graph rebuilds remain disposable. The next
+authority slice is an explicit decision-to-commitment blocker relationship;
+broader D270 product serving still requires adapter and scale evidence.

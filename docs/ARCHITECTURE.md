@@ -544,7 +544,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 27. It includes:
+The current schema version is 29. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -565,6 +565,8 @@ The current schema version is 27. It includes:
   meeting evidence, and append-only merge/split identity history;
 - explicitly confirmed decision continuity with immutable ordered multi-meeting
   sources and append-only confirm/supersede/reverse history;
+- explicitly confirmed topic-scoped questions with immutable ordered opening
+  evidence and append-only resolve/reopen/dismiss history;
 - a disposable typed Meeting Memory Graph projection with a versioned profile,
   bounded invalidation cursor, and independently leased maintenance ownership;
 - immutable generation-run provenance;
@@ -1306,11 +1308,14 @@ remain absent.
 
 Schema v27 adds a **disposable typed Meeting Memory Graph projection** over the
 authoritative meeting, confirmed-person, topic, decision, and commitment
-records. Its v1 topology contains only meeting-person, meeting-topic,
-meeting-decision, meeting-commitment, and commitment-person edges. Topic edges
-resolve reversible observed identities to the current live topic-family root;
-the projection never rewrites immutable topic evidence. No provider, model,
-embedding, score, generated label, or answer text participates in projection.
+records. Schema v29 extends the compiled v2 topology with meeting-question and
+topic-question edges sourced only from explicitly confirmed question authority.
+The remaining edge families are meeting-person, meeting-topic,
+meeting-decision, meeting-commitment, and commitment-person. Topic edges resolve
+reversible observed identities to the current live topic-family root; the
+projection never rewrites immutable topic or question evidence. No provider,
+model, embedding, score, generated label, or answer text participates in
+projection.
 
 Authoritative SQLite mutations advance one content-free source generation and
 upsert a bounded invalidation cursor by typed scope. A versioned projection
@@ -1342,13 +1347,16 @@ rehydration, freshness checks, and result assembly in one SQLite read snapshot.
 
 Topic timelines can return confirmed decisions, explicit supersession or
 reversal, newly confirmed commitments connected through the meeting topology,
-and later commitment changes whose append-only event owns exact accepted
-transcript evidence. Lifecycle output remains typed as reassignment,
-reschedule, completion, reopen, or dismissal rather than encoded in generated
-display prose. Person timelines deliberately return only commitments whose
-**current canonical owner** is that person; meeting participation never implies
-ownership of a decision. Every item keeps authoritative wording plus ordered
-current final segments and an exact meeting/segment/time navigation target.
+later commitment changes whose append-only event owns exact accepted transcript
+evidence, and explicit question opening, resolution, reopening, or dismissal.
+Commitment lifecycle output remains typed as reassignment, reschedule,
+completion, reopen, or dismissal rather than encoded in generated display
+prose. Question wording is stable user-reviewed authority; each state change
+owns its own exact evidence. Person timelines deliberately return only
+commitments whose **current canonical owner** is that person; meeting
+participation never implies ownership of a decision or question. Every item
+keeps authoritative wording plus ordered current final segments and an exact
+meeting/segment/time navigation target.
 Active corrections, revision drift, deleted/non-final/missing rows, an
 incomplete graph generation, an unrelated anchor, or a missing prior meeting
 fail closed through typed abstention or explicit omitted-evidence counts. When
@@ -1358,11 +1366,11 @@ ordered newest first; limit overflow is explicit.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
-instead of borrowing the commitment's original source. There is still no
-authoritative unresolved-question lifecycle or blocker relationship; generated
-Apuntador text cannot become memory authority. This path adds no generated
-narrative, Ask lane, SwiftUI, model, threshold, graph database, sync/export,
-CLI, or MCP behavior.
+instead of borrowing the commitment's original source. Generated summary,
+Companion, and Apuntador text cannot create a question identity or lifecycle
+event. There is still no authoritative blocker relationship. This path adds no
+generated narrative, Ask lane, SwiftUI, model, threshold, graph database,
+sync/export, CLI, or MCP behavior.
 
 Schema v28 stores optional non-confirm commitment-event authority as one source
 meeting, its current transcript revision, and immutable ordered segment
@@ -1372,6 +1380,29 @@ Portable commitment format 3 carries the same evidence while continuing to
 decode evidence-less formats 1 and 2. Segment ownership is deliberately absent:
 source purge preserves why the event existed, while timeline hydration reports
 the evidence unavailable.
+
+Schema v29 stores **explicit topic-scoped question continuity**. One stable
+question UUID owns reviewed wording, an exact current root topic, immutable
+opening meeting/revision/ordered segment identities, and a current
+open/resolved/dismissed projection. Resolve, reopen, and dismiss are append-only
+events; each event owns a separate meeting revision and ordered exact segment
+set. Core validates strict state transitions and chronological projection.
+Storage repeats current live meeting revision, final accepted segment, active
+correction exclusion, and current-root topic checks in the write transaction
+and SQLite triggers. Exact retries are idempotent; identity reuse with different
+content fails closed. Event insertion and parent projection update are atomic,
+while immutable source identities deliberately survive physical transcript
+purge so reads can report evidence unavailable instead of rewriting history.
+
+Question writes invalidate only topology-bearing graph scopes. Opening or
+tombstoning a question schedules its source meeting and topic; a lifecycle
+event schedules only its evidence meeting because status does not alter the
+topic-question relation. The v2 projection publishes meeting-question edges for
+every live source meeting and one current-root topic-question edge. Timeline
+queries use those disposable edges only to find candidate UUIDs, then rehydrate
+question authority and exact current evidence from SQLite in the same read
+snapshot. Question authority is currently topic-only: person timelines report
+the question fact kinds as unsupported rather than guessing an owner.
 
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
@@ -3337,13 +3368,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,919 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,928 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 562 first-party Swift source files;
+- strict SwiftLint reports zero violations across 569 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

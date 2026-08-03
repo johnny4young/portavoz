@@ -66,12 +66,12 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 28)
+            XCTAssertEqual(StorageSchema.version, 29)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v28")
+                "v29")
             XCTAssertEqual(
                 try Set(database.columns(in: "meetingMemoryGraphProjectionState").map(\.name)),
                 ["id", "profileFingerprint", "sourceGeneration", "updatedAt"])
@@ -117,7 +117,7 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
             .meetingMemoryGraphRequiresMaintenance()
 
         XCTAssertTrue(result.resetProjection)
-        XCTAssertGreaterThanOrEqual(result.publishedEdges, 5)
+        XCTAssertGreaterThanOrEqual(result.publishedEdges, 7)
         XCTAssertFalse(result.pausedByPolicy)
         XCTAssertEqual(
             snapshot.meetingPeople,
@@ -137,6 +137,12 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         XCTAssertEqual(
             snapshot.commitmentPeople,
             [.init(commitmentID: fixture.commitmentID, personID: fixture.personID)])
+        XCTAssertEqual(
+            snapshot.meetingQuestions,
+            [.init(meetingID: fixture.meeting.id, questionID: fixture.questionID)])
+        XCTAssertEqual(
+            snapshot.topicQuestions,
+            [.init(topicID: fixture.rootTopicID, questionID: fixture.questionID)])
         XCTAssertEqual(pending, 0)
         XCTAssertFalse(requiresMaintenance)
     }
@@ -227,7 +233,9 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         XCTAssertTrue(afterDeletion.meetingTopics.isEmpty)
         XCTAssertTrue(afterDeletion.meetingDecisions.isEmpty)
         XCTAssertTrue(afterDeletion.meetingCommitments.isEmpty)
+        XCTAssertTrue(afterDeletion.meetingQuestions.isEmpty)
         XCTAssertEqual(afterDeletion.commitmentPeople.count, 1)
+        XCTAssertEqual(afterDeletion.topicQuestions.count, 1)
     }
 
     func testNonTopologyLifecycleChangesDoNotScheduleProjectionWork() async throws {
@@ -272,6 +280,77 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         XCTAssertTrue(scopes.isEmpty)
     }
 
+    func testQuestionTransitionAddsOnlyItsEvidenceMeetingEdge() async throws {
+        let fixture = try await seededGraphFixture()
+        _ = try await projectAll(in: fixture.store)
+        let followUp = Meeting(
+            title: "Question follow-up",
+            startedAt: Self.baseDate.addingTimeInterval(3_600))
+        let evidence = TranscriptSegment(
+            meetingID: followUp.id,
+            channel: .system,
+            text: "Legal confirmed the release window.",
+            language: "en",
+            startTime: 2,
+            endTime: 5,
+            isFinal: true)
+        try await fixture.store.save(followUp)
+        try await fixture.store.save([evidence])
+
+        _ = try await fixture.store.applyMeetingQuestionTransition(
+            MeetingQuestionTransitionConfirmation(
+                questionID: fixture.questionID,
+                transition: .resolve,
+                evidence: MeetingQuestionEvidence(
+                    meetingID: followUp.id,
+                    sourceTranscriptRevision: followUp.transcriptRevision,
+                    segmentIDs: [evidence.id]),
+                confirmedAt: followUp.startedAt.addingTimeInterval(10)))
+
+        let transitionScopes = try await pendingScopes(in: fixture.store)
+        XCTAssertEqual(
+            transitionScopes,
+            ["meeting:\(followUp.id.rawValue.uuidString)"])
+        _ = try await projectAll(in: fixture.store)
+        let snapshot = try await fixture.store.meetingMemoryGraphProjectionSnapshot()
+        XCTAssertEqual(
+            Set(snapshot.meetingQuestions),
+            Set([
+                .init(meetingID: fixture.meeting.id, questionID: fixture.questionID),
+                .init(meetingID: followUp.id, questionID: fixture.questionID),
+            ]))
+        XCTAssertEqual(
+            snapshot.topicQuestions,
+            [.init(topicID: fixture.rootTopicID, questionID: fixture.questionID)])
+    }
+
+    func testSoftDeletedTopicRemovesItsQuestionProjectionEdge() async throws {
+        let fixture = try await seededGraphFixture()
+        _ = try await projectAll(in: fixture.store)
+
+        try await fixture.store.database.write { database in
+            try database.execute(
+                sql: "UPDATE topic SET deletedAt = ? WHERE id = ?",
+                arguments: [
+                    Self.baseDate.addingTimeInterval(120),
+                    fixture.rootTopicID.rawValue.uuidString,
+                ])
+        }
+
+        let scopes = try await pendingScopes(in: fixture.store)
+        XCTAssertEqual(
+            scopes,
+            ["topic:\(fixture.rootTopicID.rawValue.uuidString)"])
+        _ = try await projectAll(in: fixture.store)
+        let snapshot = try await fixture.store.meetingMemoryGraphProjectionSnapshot()
+
+        XCTAssertTrue(snapshot.meetingTopics.isEmpty)
+        XCTAssertTrue(snapshot.topicQuestions.isEmpty)
+        XCTAssertEqual(
+            snapshot.meetingQuestions,
+            [.init(meetingID: fixture.meeting.id, questionID: fixture.questionID)])
+    }
+
     func testProfileChangeRebuildsEveryScopeWithoutTouchingAuthority() async throws {
         let fixture = try await seededGraphFixture()
         _ = try await projectAll(in: fixture.store)
@@ -294,7 +373,7 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         XCTAssertTrue(rebuilt.resetProjection)
         XCTAssertGreaterThanOrEqual(rebuilt.rebuiltScopes, 5)
         XCTAssertEqual(storedFingerprint, alternateFingerprint)
-        XCTAssertEqual(counts, [1, 1, 1, 1, 1])
+        XCTAssertEqual(counts, [1, 1, 1, 1, 1, 1, 1])
         XCTAssertTrue(requiresDefaultProfile)
         do {
             _ = try await fixture.store.meetingMemoryGraphProjectionSnapshot()
@@ -397,6 +476,8 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         XCTAssertEqual(snapshot.meetingDecisions.count, 1)
         XCTAssertEqual(snapshot.meetingCommitments.count, 1)
         XCTAssertEqual(snapshot.commitmentPeople.count, 1)
+        XCTAssertEqual(snapshot.meetingQuestions.count, 1)
+        XCTAssertEqual(snapshot.topicQuestions.count, 1)
     }
 
     func testCaptureDeniesDurableAdmission() async throws {
@@ -455,6 +536,7 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         let observedTopicID: TopicID
         let decisionID: DecisionID
         let commitmentID: CommitmentID
+        let questionID: MeetingQuestionID
     }
 
     private func seededGraphFixture() async throws -> GraphFixture {
@@ -515,6 +597,15 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
                 assignee: .person(person.person.id),
                 origin: .manual(meetingID: meeting.id)),
             at: baseDate.addingTimeInterval(20))
+        let question = try await store.confirmMeetingQuestion(
+            MeetingQuestionConfirmation(
+                topicID: rootTopic.topic.id,
+                text: "Which release window remains open?",
+                evidence: MeetingQuestionEvidence(
+                    meetingID: meeting.id,
+                    sourceTranscriptRevision: meeting.transcriptRevision,
+                    segmentIDs: [segments[1].id]),
+                confirmedAt: baseDate.addingTimeInterval(21)))
         let decisionID = DecisionID()
         let decisionSourceID = DecisionSourceID()
         try await store.database.write { database in
@@ -572,7 +663,8 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
             rootTopicID: rootTopic.topic.id,
             observedTopicID: observedTopic.observedTopic.id,
             decisionID: decisionID,
-            commitmentID: commitment.commitment.id)
+            commitmentID: commitment.commitment.id,
+            questionID: question.question.id)
     }
 
     private func sourceGeneration(in store: MeetingStore) async throws -> Int {
@@ -637,7 +729,8 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
             owner: owner,
             leaseDuration: 120,
             at: timestamp)
-        return try XCTUnwrap(claimed)
+        let jobs = try await store.derivedMaintenanceJobs(kind: .meetingMemoryGraph)
+        return try XCTUnwrap(claimed, "Graph jobs: \(jobs)")
     }
 
     @discardableResult
@@ -647,7 +740,9 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         batchSize: Int = 128
     ) async throws -> MeetingMemoryGraphProjectionResult {
         let owner = "graph-test-owner-\(UUID().uuidString)"
-        let timestamp = Date()
+        let generation = try await sourceGeneration(in: store)
+        let timestamp = Self.baseDate.addingTimeInterval(
+            TimeInterval(10_000 + generation))
         let job = try await claimGraphJob(
             in: store,
             owner: owner,
@@ -674,6 +769,8 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
                 "meetingMemoryGraphMeetingDecision",
                 "meetingMemoryGraphMeetingCommitment",
                 "meetingMemoryGraphCommitmentPerson",
+                "meetingMemoryGraphMeetingQuestion",
+                "meetingMemoryGraphTopicQuestion",
             ].map { table in
                 try Int.fetchOne(database, sql: "SELECT COUNT(*) FROM \(table)") ?? 0
             }

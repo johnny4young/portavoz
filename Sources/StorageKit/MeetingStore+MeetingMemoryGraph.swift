@@ -207,22 +207,6 @@ extension MeetingStore {
         }
     }
 
-    public func meetingMemoryGraphProjectionSnapshot() async throws
-        -> MeetingMemoryGraphProjectionSnapshot {
-        try await database.read { database in
-            guard try Self.meetingMemoryGraphProjectionIsReady(in: database) else {
-                throw StorageError.invalidDerivedMaintenanceJob(
-                    "memory graph projection is not ready")
-            }
-            return MeetingMemoryGraphProjectionSnapshot(
-                meetingPeople: try Self.meetingPersonEdges(in: database),
-                meetingTopics: try Self.meetingTopicEdges(in: database),
-                meetingDecisions: try Self.meetingDecisionEdges(in: database),
-                meetingCommitments: try Self.meetingCommitmentEdges(in: database),
-                commitmentPeople: try Self.commitmentPersonEdges(in: database))
-        }
-    }
-
     private struct PendingMemoryGraphScope {
         let kind: MeetingMemoryGraphScopeKind
         let id: String
@@ -268,7 +252,9 @@ extension MeetingStore {
             "meetingMemoryGraphMeetingTopic",
             "meetingMemoryGraphMeetingDecision",
             "meetingMemoryGraphMeetingCommitment",
-            "meetingMemoryGraphCommitmentPerson"
+            "meetingMemoryGraphCommitmentPerson",
+            "meetingMemoryGraphMeetingQuestion",
+            "meetingMemoryGraphTopicQuestion"
         ] {
             try database.execute(sql: "DELETE FROM \(table)")
         }
@@ -370,17 +356,35 @@ extension MeetingStore {
         _ meetingID: String,
         in database: Database
     ) throws -> Int {
+        try clearMeetingMemoryGraphEdges(meetingID: meetingID, in: database)
+        return try rebuildMeetingMemoryGraphPeople(meetingID: meetingID, in: database)
+            + rebuildMeetingMemoryGraphTopics(forMeetingID: meetingID, in: database)
+            + rebuildMeetingMemoryGraphDecisions(meetingID: meetingID, in: database)
+            + rebuildMeetingMemoryGraphCommitments(meetingID: meetingID, in: database)
+            + rebuildMeetingMemoryGraphQuestions(meetingID: meetingID, in: database)
+    }
+
+    private static func clearMeetingMemoryGraphEdges(
+        meetingID: String,
+        in database: Database
+    ) throws {
         for table in [
             "meetingMemoryGraphMeetingPerson",
             "meetingMemoryGraphMeetingTopic",
             "meetingMemoryGraphMeetingDecision",
-            "meetingMemoryGraphMeetingCommitment"
+            "meetingMemoryGraphMeetingCommitment",
+            "meetingMemoryGraphMeetingQuestion"
         ] {
             try database.execute(
                 sql: "DELETE FROM \(table) WHERE meetingID = ?",
                 arguments: [meetingID])
         }
-        var published = 0
+    }
+
+    private static func rebuildMeetingMemoryGraphPeople(
+        meetingID: String,
+        in database: Database
+    ) throws -> Int {
         try database.execute(
             sql: """
                 INSERT INTO meetingMemoryGraphMeetingPerson (meetingID, personID)
@@ -394,10 +398,13 @@ extension MeetingStore {
                   AND person.deletedAt IS NULL
                 """,
             arguments: [meetingID])
-        published += database.changesCount
-        published += try rebuildMeetingMemoryGraphTopics(
-            forMeetingID: meetingID,
-            in: database)
+        return database.changesCount
+    }
+
+    private static func rebuildMeetingMemoryGraphDecisions(
+        meetingID: String,
+        in database: Database
+    ) throws -> Int {
         try database.execute(
             sql: """
                 INSERT INTO meetingMemoryGraphMeetingDecision (meetingID, decisionID)
@@ -410,7 +417,13 @@ extension MeetingStore {
                   AND decision.deletedAt IS NULL
                 """,
             arguments: [meetingID])
-        published += database.changesCount
+        return database.changesCount
+    }
+
+    private static func rebuildMeetingMemoryGraphCommitments(
+        meetingID: String,
+        in database: Database
+    ) throws -> Int {
         try database.execute(
             sql: """
                 INSERT INTO meetingMemoryGraphMeetingCommitment (meetingID, commitmentID)
@@ -423,7 +436,33 @@ extension MeetingStore {
                   AND commitment.deletedAt IS NULL
                 """,
             arguments: [meetingID])
-        return published + database.changesCount
+        return database.changesCount
+    }
+
+    private static func rebuildMeetingMemoryGraphQuestions(
+        meetingID: String,
+        in database: Database
+    ) throws -> Int {
+        try database.execute(
+            sql: """
+                INSERT INTO meetingMemoryGraphMeetingQuestion (meetingID, questionID)
+                SELECT DISTINCT question.sourceMeetingID, question.id
+                FROM meetingQuestion AS question
+                JOIN meeting ON meeting.id = question.sourceMeetingID
+                WHERE question.sourceMeetingID = ?
+                  AND question.deletedAt IS NULL
+                  AND meeting.deletedAt IS NULL
+                UNION
+                SELECT DISTINCT event.sourceMeetingID, event.questionID
+                FROM meetingQuestionEvent AS event
+                JOIN meetingQuestion AS question ON question.id = event.questionID
+                JOIN meeting ON meeting.id = event.sourceMeetingID
+                WHERE event.sourceMeetingID = ?
+                  AND question.deletedAt IS NULL
+                  AND meeting.deletedAt IS NULL
+                """,
+            arguments: [meetingID, meetingID])
+        return database.changesCount
     }
 
     private static func rebuildMeetingMemoryGraphPerson(
@@ -474,6 +513,9 @@ extension MeetingStore {
             try database.execute(
                 sql: "DELETE FROM meetingMemoryGraphMeetingTopic WHERE topicID = ?",
                 arguments: [topicID])
+            try database.execute(
+                sql: "DELETE FROM meetingMemoryGraphTopicQuestion WHERE topicID = ?",
+                arguments: [topicID])
             return 0
         }
         let root = try topicRoot(topicID, among: topics)
@@ -490,6 +532,12 @@ extension MeetingStore {
             arguments: StatementArguments(familyIDs))
         try database.execute(
             sql: """
+                DELETE FROM meetingMemoryGraphTopicQuestion
+                WHERE topicID IN (\(placeholders(familyIDs.count)))
+                """,
+            arguments: StatementArguments(familyIDs))
+        try database.execute(
+            sql: """
                 INSERT INTO meetingMemoryGraphMeetingTopic (meetingID, topicID)
                 SELECT DISTINCT evidence.meetingID, ?
                 FROM topicMeetingEvidence AS evidence
@@ -498,7 +546,17 @@ extension MeetingStore {
                   AND meeting.deletedAt IS NULL
                 """,
             arguments: StatementArguments([root.id] + familyIDs))
-        return database.changesCount
+        let meetingEdges = database.changesCount
+        try database.execute(
+            sql: """
+                INSERT INTO meetingMemoryGraphTopicQuestion (topicID, questionID)
+                SELECT ?, question.id
+                FROM meetingQuestion AS question
+                WHERE question.topicID IN (\(placeholders(familyIDs.count)))
+                  AND question.deletedAt IS NULL
+                """,
+            arguments: StatementArguments([root.id] + familyIDs))
+        return meetingEdges + database.changesCount
     }
 
     /// Topic evidence remains attached to reversible observed identities. The
@@ -597,91 +655,4 @@ extension MeetingStore {
         return meetingEdges + database.changesCount
     }
 
-    private static func meetingPersonEdges(
-        in database: Database
-    ) throws -> [MeetingMemoryGraphProjectionSnapshot.MeetingPersonEdge] {
-        try Row.fetchAll(
-            database,
-            sql: """
-                SELECT meetingID, personID FROM meetingMemoryGraphMeetingPerson
-                ORDER BY meetingID, personID
-                """)
-            .map {
-                .init(
-                    meetingID: MeetingID(rawValue: try requiredUUID($0["meetingID"])),
-                    personID: PersonID(rawValue: try requiredUUID($0["personID"])))
-            }
-    }
-
-    private static func meetingTopicEdges(
-        in database: Database
-    ) throws -> [MeetingMemoryGraphProjectionSnapshot.MeetingTopicEdge] {
-        try Row.fetchAll(
-            database,
-            sql: """
-                SELECT meetingID, topicID FROM meetingMemoryGraphMeetingTopic
-                ORDER BY meetingID, topicID
-                """)
-            .map {
-                .init(
-                    meetingID: MeetingID(rawValue: try requiredUUID($0["meetingID"])),
-                    topicID: TopicID(rawValue: try requiredUUID($0["topicID"])))
-            }
-    }
-
-    private static func meetingDecisionEdges(
-        in database: Database
-    ) throws -> [MeetingMemoryGraphProjectionSnapshot.MeetingDecisionEdge] {
-        try Row.fetchAll(
-            database,
-            sql: """
-                SELECT meetingID, decisionID FROM meetingMemoryGraphMeetingDecision
-                ORDER BY meetingID, decisionID
-                """)
-            .map {
-                .init(
-                    meetingID: MeetingID(rawValue: try requiredUUID($0["meetingID"])),
-                    decisionID: DecisionID(rawValue: try requiredUUID($0["decisionID"])))
-            }
-    }
-
-    private static func meetingCommitmentEdges(
-        in database: Database
-    ) throws -> [MeetingMemoryGraphProjectionSnapshot.MeetingCommitmentEdge] {
-        try Row.fetchAll(
-            database,
-            sql: """
-                SELECT meetingID, commitmentID FROM meetingMemoryGraphMeetingCommitment
-                ORDER BY meetingID, commitmentID
-                """)
-            .map {
-                .init(
-                    meetingID: MeetingID(rawValue: try requiredUUID($0["meetingID"])),
-                    commitmentID: CommitmentID(rawValue: try requiredUUID($0["commitmentID"])))
-            }
-    }
-
-    private static func commitmentPersonEdges(
-        in database: Database
-    ) throws -> [MeetingMemoryGraphProjectionSnapshot.CommitmentPersonEdge] {
-        try Row.fetchAll(
-            database,
-            sql: """
-                SELECT commitmentID, personID FROM meetingMemoryGraphCommitmentPerson
-                ORDER BY commitmentID, personID
-                """)
-            .map {
-                .init(
-                    commitmentID: CommitmentID(rawValue: try requiredUUID($0["commitmentID"])),
-                    personID: PersonID(rawValue: try requiredUUID($0["personID"])))
-            }
-    }
-
-    private static func requiredUUID(_ value: String) throws -> UUID {
-        guard let uuid = UUID(uuidString: value) else {
-            throw StorageError.invalidDerivedMaintenanceJob(
-                "memory graph projection contains a malformed identity")
-        }
-        return uuid
-    }
 }

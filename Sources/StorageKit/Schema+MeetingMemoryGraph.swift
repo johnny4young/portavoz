@@ -269,7 +269,7 @@ extension StorageSchema {
             in: database)
     }
 
-    private static func createMemoryGraphTrigger(
+    static func createMemoryGraphTrigger(
         _ name: String,
         timing: String,
         table: String,

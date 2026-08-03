@@ -41,7 +41,7 @@ final class MeetingMemoryTimelineTests: XCTestCase {
         ])
         XCTAssertEqual(page.omittedStaleCount, 0)
         XCTAssertEqual(page.omittedUnavailableCount, 0)
-        XCTAssertEqual(page.unsupportedKinds, [.unresolvedQuestion])
+        XCTAssertEqual(page.unsupportedKinds, [.commitmentBlocked])
         XCTAssertFalse(page.hasMore)
         XCTAssertGreaterThan(page.projectionGeneration, 0)
     }
@@ -64,6 +64,8 @@ final class MeetingMemoryTimelineTests: XCTestCase {
             if case .decision = $0.entity { return true }
             return false
         }))
+        XCTAssertTrue(page.unsupportedKinds.contains(.unresolvedQuestion))
+        XCTAssertTrue(page.unsupportedKinds.contains(.questionResolved))
     }
 
     func testTimelineServesOnlyExactEvidenceForMeetingScopedCommitmentChanges() async throws {
@@ -111,6 +113,53 @@ final class MeetingMemoryTimelineTests: XCTestCase {
             $0.kind == .commitmentRescheduled
         }))
         XCTAssertGreaterThan(correctedPage.omittedUnavailableCount, 0)
+    }
+
+    func testTopicTimelineServesExplicitQuestionLifecycleWithoutCompanionPromotion()
+        async throws {
+        let fixture = try await seededTimelineFixture(projectGraph: true)
+        let questionID = MeetingQuestionID()
+        _ = try await fixture.store.confirmMeetingQuestion(
+            MeetingQuestionConfirmation(
+                questionID: questionID,
+                topicID: fixture.topicID,
+                text: "Which rollout policy remains open?",
+                evidence: MeetingQuestionEvidence(
+                    meetingID: fixture.through.id,
+                    sourceTranscriptRevision: fixture.through.transcriptRevision,
+                    segmentIDs: [fixture.throughDecisionSegment.id]),
+                confirmedAt: fixture.through.startedAt.addingTimeInterval(70)))
+        _ = try await fixture.store.applyMeetingQuestionTransition(
+            MeetingQuestionTransitionConfirmation(
+                questionID: questionID,
+                transition: .resolve,
+                evidence: MeetingQuestionEvidence(
+                    meetingID: fixture.through.id,
+                    sourceTranscriptRevision: fixture.through.transcriptRevision,
+                    segmentIDs: [fixture.commitmentChangeSegment.id]),
+                confirmedAt: fixture.through.startedAt.addingTimeInterval(75)))
+        try await projectAll(in: fixture.store)
+
+        let result = try await fixture.store.meetingMemoryTimeline(
+            MeetingMemoryTimelineQuery(
+                subject: .topic(fixture.topicID),
+                throughMeetingID: fixture.through.id))
+        guard case .timeline(let page) = result else {
+            return XCTFail("Expected question lifecycle facts, got \(result)")
+        }
+        let questionItems = page.items.filter {
+            $0.entity == .question(questionID)
+        }
+        XCTAssertEqual(questionItems.map(\.kind), [
+            .questionResolved,
+            .unresolvedQuestion,
+        ])
+        XCTAssertEqual(questionItems.map(\.questionChange), [.resolved, .opened])
+        XCTAssertEqual(
+            questionItems.map { $0.navigation?.segmentID },
+            [fixture.commitmentChangeSegment.id, fixture.throughDecisionSegment.id])
+        XCTAssertFalse(page.unsupportedKinds.contains(.unresolvedQuestion))
+        XCTAssertTrue(page.unsupportedKinds.contains(.commitmentBlocked))
     }
 
     func testTimelineReportsLegacyCommitmentChangesWithoutExactEvidenceAsUnsupported()

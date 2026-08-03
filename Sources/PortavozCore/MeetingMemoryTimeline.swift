@@ -56,6 +56,10 @@ public enum MeetingMemoryTimelineItemKind: String, CaseIterable, Hashable, Senda
     case commitmentReopened = "commitment-reopened"
     case commitmentDismissed = "commitment-dismissed"
     case unresolvedQuestion = "unresolved-question"
+    case questionResolved = "question-resolved"
+    case questionReopened = "question-reopened"
+    case questionDismissed = "question-dismissed"
+    case commitmentBlocked = "commitment-blocked"
 }
 
 public enum MeetingMemoryTimelineOrigin: String, Sendable {
@@ -65,6 +69,7 @@ public enum MeetingMemoryTimelineOrigin: String, Sendable {
 public enum MeetingMemoryTimelineEntity: Hashable, Sendable {
     case decision(DecisionID)
     case commitment(CommitmentID)
+    case question(MeetingQuestionID)
 }
 
 /// Structured commitment state carried by a source-backed timeline item.
@@ -73,6 +78,13 @@ public enum MeetingMemoryTimelineCommitmentChange: Equatable, Sendable {
     case reassigned(CommitmentAssignee)
     case rescheduled(Date?)
     case completed
+    case reopened
+    case dismissed
+}
+
+public enum MeetingMemoryTimelineQuestionChange: Equatable, Sendable {
+    case opened
+    case resolved
     case reopened
     case dismissed
 }
@@ -138,6 +150,7 @@ public struct MeetingMemoryTimelineItem: Equatable, Sendable, Identifiable {
     public let text: String
     public let relatedText: String?
     public let commitmentChange: MeetingMemoryTimelineCommitmentChange?
+    public let questionChange: MeetingMemoryTimelineQuestionChange?
     public let origin: MeetingMemoryTimelineOrigin
     public let occurredAt: Date
     public let evidence: [MeetingMemoryTimelineEvidence]
@@ -150,6 +163,7 @@ public struct MeetingMemoryTimelineItem: Equatable, Sendable, Identifiable {
         text: String,
         relatedText: String? = nil,
         commitmentChange: MeetingMemoryTimelineCommitmentChange? = nil,
+        questionChange: MeetingMemoryTimelineQuestionChange? = nil,
         origin: MeetingMemoryTimelineOrigin,
         occurredAt: Date,
         evidence: [MeetingMemoryTimelineEvidence]
@@ -161,6 +175,7 @@ public struct MeetingMemoryTimelineItem: Equatable, Sendable, Identifiable {
         self.text = text
         self.relatedText = relatedText
         self.commitmentChange = commitmentChange
+        self.questionChange = questionChange
         self.origin = origin
         self.occurredAt = occurredAt
         self.evidence = evidence

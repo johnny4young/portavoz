@@ -12,6 +12,7 @@ public enum StorageError: Error, LocalizedError {
     case invalidDerivedMaintenanceJob(String)
     case invalidTranscriptCorrection(String)
     case invalidCommitment(String)
+    case invalidMeetingQuestion(String)
     case staleRefineDraft(meetingID: MeetingID, expected: Int, actual: Int)
     case invalidRecordingReservation(String)
     case invalidProcessingJob(String)
@@ -50,6 +51,8 @@ public enum StorageError: Error, LocalizedError {
             return "invalid transcript correction: \(reason)"
         case .invalidCommitment(let reason):
             return "invalid commitment continuity: \(reason)"
+        case .invalidMeetingQuestion(let reason):
+            return "invalid meeting question continuity: \(reason)"
         case .staleRefineDraft(let meetingID, let expected, let actual):
             return "refine draft for \(meetingID.rawValue.uuidString) expected transcript revision "
                 + "\(expected), current revision is \(actual)"
