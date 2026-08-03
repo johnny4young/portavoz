@@ -238,11 +238,12 @@ private extension MeetingStore {
         previous: CommitmentReminderState?,
         transition: CommitmentReminderTransition
     ) throws {
+        let canonicalDueAt = commitment.dueAt.map(canonicalCommitmentDate)
         switch transition {
         case .schedule(_, let sourceDueAt):
             guard commitment.deletedAt == nil,
                   commitment.status == .confirmed,
-                  commitment.dueAt == sourceDueAt
+                  canonicalDueAt == sourceDueAt
             else {
                 throw StorageError.invalidCommitment(
                     "only a confirmed commitment with its exact due date can be scheduled")
@@ -251,7 +252,7 @@ private extension MeetingStore {
             guard commitment.deletedAt == nil,
                   commitment.status == .confirmed,
                   let sourceDueAt = previous?.sourceDueAt,
-                  commitment.dueAt == sourceDueAt
+                  canonicalDueAt == sourceDueAt
             else {
                 throw StorageError.invalidCommitment(
                     "active reminder no longer matches the confirmed commitment")

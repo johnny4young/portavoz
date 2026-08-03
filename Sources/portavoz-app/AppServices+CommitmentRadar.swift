@@ -18,5 +18,6 @@ extension AppServices: CommitmentRadarModelClient {
         _ request: ManageCommitmentRadarRequest
     ) async throws {
         _ = try await ManageCommitmentRadar(repository: store).execute(request)
+        commitmentReminders.kick()
     }
 }

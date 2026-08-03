@@ -74,12 +74,6 @@ extension AppServices: MeetingDetailModelClient {
         try await store.setActionItem(id, done: done)
     }
 
-    func confirmMeetingDetailCommitment(
-        _ request: ConfirmMeetingCommitmentRequest
-    ) async throws -> Commitment {
-        try await makeCommitmentInboxManager().confirm(request)
-    }
-
     func reviewMeetingDetailCommitment(
         _ request: ReviewMeetingCommitmentRequest
     ) async throws {
@@ -262,11 +256,6 @@ private func makeApplicationMeetingReviewCore(
 }
 
 private extension AppServices {
-    func makeCommitmentInboxManager() -> ManageMeetingCommitmentInbox {
-        ManageMeetingCommitmentInbox(
-            repository: AppMeetingCommitmentReviewRepository(store: store))
-    }
-
     func makeTranscriptEditor() -> CorrectMeetingTranscript {
         CorrectMeetingTranscript(
             repository: AppTranscriptCorrectionRepository(store: store),
@@ -277,39 +266,6 @@ private extension AppServices {
         RestructureMeetingTranscript(
             repository: AppTranscriptCorrectionRepository(store: store),
             sourceDeviceID: Self.persistentMeetingSyncDeviceID())
-    }
-}
-
-private struct AppMeetingCommitmentReviewRepository: MeetingCommitmentReviewRepository {
-    let store: MeetingStore
-
-    func confirmCommitment(
-        _ confirmation: CommitmentConfirmation,
-        at date: Date
-    ) async throws -> CommitmentContinuityEnvelope {
-        try await store.confirmCommitment(confirmation, at: date)
-    }
-
-    func linkCommitmentSource(
-        _ confirmation: CommitmentLinkConfirmation,
-        at date: Date
-    ) async throws -> CommitmentContinuityEnvelope {
-        try await store.linkCommitmentSource(confirmation, at: date)
-    }
-
-    func setCommitmentReviewDecision(
-        _ disposition: CommitmentReviewDisposition?,
-        for actionItemID: UUID,
-        meetingID: MeetingID,
-        revisitAt: Date?,
-        at date: Date
-    ) async throws {
-        try await store.setCommitmentReviewDecision(
-            disposition,
-            for: actionItemID,
-            meetingID: meetingID,
-            revisitAt: revisitAt,
-            at: date)
     }
 }
 

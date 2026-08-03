@@ -73,6 +73,7 @@ struct ContentView: View {
                 case .commitments:
                     CommitmentRadarView(
                         model: commitmentRadarModel,
+                        reminders: services.commitmentReminders,
                         onOpenMeeting: { route = .meeting($0) })
                 case nil:
                     ContentUnavailableView(

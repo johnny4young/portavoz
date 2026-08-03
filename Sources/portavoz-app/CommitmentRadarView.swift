@@ -5,6 +5,7 @@ import SwiftUI
 /// Detail until the user explicitly promotes them to commitment truth.
 struct CommitmentRadarView: View {
     let model: CommitmentRadarModel
+    let reminders: CommitmentReminderModel
     let onOpenMeeting: (MeetingID) -> Void
 
     @State private var expandedItems: Set<CommitmentID> = []
@@ -16,6 +17,7 @@ struct CommitmentRadarView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
+                CommitmentReminderStatusCard(model: reminders)
                 filters
                 content
             }
@@ -257,7 +259,12 @@ private extension CommitmentRadarView {
 
             HStack(spacing: 14) {
                 Label(ownerName(item), systemImage: "person.crop.circle")
-                Label(dueLabel(item.commitment.dueAt), systemImage: "calendar")
+                Label(
+                    dueLabel(item.commitment.dueAt),
+                    systemImage: "calendar")
+                    .accessibilityIdentifier(
+                        "commitment-radar-due-value-\(item.id.rawValue.uuidString)-"
+                            + (item.commitment.dueAt == nil ? "none" : "scheduled"))
             }
             .font(.caption)
             .foregroundStyle(.secondary)

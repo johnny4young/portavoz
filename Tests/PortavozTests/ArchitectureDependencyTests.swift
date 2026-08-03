@@ -1717,7 +1717,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("database.write"))
         XCTAssertTrue(storage.contains("CommitmentReminderPolicy.applying"))
         XCTAssertTrue(storage.contains("commitment.status == .confirmed"))
-        XCTAssertTrue(storage.contains("commitment.dueAt == sourceDueAt"))
+        XCTAssertTrue(storage.contains(
+            "canonicalDueAt == sourceDueAt"))
         XCTAssertFalse(radar.contains("case snooze"))
         XCTAssertFalse(app.contains("CommitmentReminderTransition"))
         XCTAssertTrue(decisions.contains("## D257"))
@@ -1751,13 +1752,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D258"))
     }
 
-    func testMacOSCommitmentReminderAdapterIsDeliveryAwareAndUncomposed() throws {
+    func testMacOSCommitmentReminderAdapterIsDeliveryAwareAndPrivate() throws {
         let workflow = try Self.contents(
             of: "Sources/ApplicationKit/ReconcileCommitmentReminders.swift")
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppCommitmentReminderNotificationScheduler.swift")
-        let services = try Self.contents(
-            of: "Sources/portavoz-app/AppServices.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(workflow.contains(
@@ -1775,9 +1774,48 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("L10n.text(\"Commitment reminder\")"))
         XCTAssertFalse(adapter.contains("Commitment.title"))
         XCTAssertFalse(adapter.contains("TranscriptSegment"))
-        XCTAssertFalse(services.contains(
-            "AppReminderNotificationScheduler"))
         XCTAssertTrue(decisions.contains("## D259"))
+    }
+
+    func testCommitmentRemindersAreExplicitProcessOwnedAndSignalDriven() throws {
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+CommitmentReminders.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentReminderModel.swift")
+        let launch = try Self.contents(
+            of: "Sources/portavoz-app/PortavozApp.swift")
+        let radarClient = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+CommitmentRadar.swift")
+        let radarView = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentRadarView.swift")
+        let reminderCard = try Self.contents(
+            of: "Sources/portavoz-app/CommitmentReminderStatusCard.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(services.contains(
+            "let commitmentReminders: CommitmentReminderModel"))
+        XCTAssertTrue(services.contains("makeCommitmentReminderModel("))
+        XCTAssertTrue(composition.contains(
+            "AppReminderNotificationScheduler"))
+        XCTAssertTrue(composition.contains(
+            "UITestReminderNotificationCenter"))
+        XCTAssertTrue(composition.contains(
+            "commitmentReminders.kick()"))
+        XCTAssertTrue(launch.contains(
+            "commitmentReminders.send(.start)"))
+        XCTAssertTrue(model.contains("case enable"))
+        XCTAssertTrue(model.contains("rerunRequested"))
+        XCTAssertTrue(model.contains("requestCommitmentReminderPermission"))
+        XCTAssertFalse(model.contains("Task.sleep"))
+        XCTAssertTrue(radarClient.contains("commitmentReminders.kick()"))
+        XCTAssertTrue(radarView.contains("CommitmentReminderStatusCard"))
+        XCTAssertTrue(reminderCard.contains(
+            "commitment-reminder-enable"))
+        XCTAssertTrue(reminderCard.contains(
+            "commitment-reminder-enabled"))
+        XCTAssertTrue(decisions.contains("## D260"))
     }
 
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
@@ -4595,6 +4633,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             + Self.contents(
                 of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
         let adapter = try Self.contents(of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let reminderAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+CommitmentReminders.swift")
         let voiceAdapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+MeetingVoiceMemory.swift")
         let content = try Self.contents(of: "Sources/portavoz-app/ContentView.swift")
@@ -4669,8 +4709,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("LinkObservedSpeaker(store: store)"))
         XCTAssertTrue(adapter.contains("setMeetingDetailActionItem"))
         XCTAssertTrue(adapter.contains("deleteMeetingDetailCompanionCard"))
-        XCTAssertTrue(adapter.contains("ManageMeetingCommitmentInbox("))
-        XCTAssertTrue(adapter.contains("AppMeetingCommitmentReviewRepository"))
+        XCTAssertTrue(reminderAdapter.contains("ManageMeetingCommitmentInbox("))
+        XCTAssertTrue(reminderAdapter.contains("AppMeetingCommitmentReviewRepository"))
         XCTAssertTrue(adapter.contains("deleteMeetingDetail"))
         XCTAssertTrue(adapter.contains("requestMeetingDetailSearchReindex"))
         XCTAssertTrue(storage.contains(

@@ -1,6 +1,7 @@
 import ApplicationKit
 import Foundation
 import PortavozCore
+import StorageKit
 @testable import portavoz_app
 import XCTest
 
@@ -152,6 +153,43 @@ final class CommitmentReminderNotificationSchedulerTests: XCTestCase {
         let authorizationRequests = await center.authorizationRequestCount()
         XCTAssertTrue(granted)
         XCTAssertEqual(authorizationRequests, 1)
+    }
+
+    func testAuthorizedSchedulerReconcilesSeededConfirmedDueWork() async throws {
+        let store = try MeetingStore.inMemory()
+        let now = Date()
+        let future = try await store.confirmCommitment(
+            CommitmentConfirmation(
+                title: "Future work",
+                assignee: .me,
+                dueAt: now.addingTimeInterval(2 * 86_400),
+                origin: .manual(meetingID: nil)),
+            at: now.addingTimeInterval(-3_600))
+        let overdue = try await store.confirmCommitment(
+            CommitmentConfirmation(
+                title: "Overdue work",
+                assignee: .me,
+                dueAt: now.addingTimeInterval(-86_400),
+                origin: .manual(meetingID: nil)),
+            at: now.addingTimeInterval(-10 * 86_400))
+        let center = RecordingCommitmentNotificationCenter(
+            authorization: .authorized)
+
+        let report = try await ReconcileCommitmentReminders(
+            reader: store,
+            writer: store,
+            scheduler: makeScheduler(center: center),
+            now: { now }
+        ).execute(ReconcileCommitmentRemindersRequest())
+
+        XCTAssertEqual(report.scheduledCount, 2)
+        let addedRequests = await center.addedRequests()
+        XCTAssertEqual(addedRequests.count, 2)
+        for commitmentID in [future.commitment.id, overdue.commitment.id] {
+            let reminder = try await store.commitmentReminderState(
+                for: commitmentID)
+            XCTAssertEqual(reminder?.status, .scheduled)
+        }
     }
 
     private func schedule() -> CommitmentReminderDeliverySchedule {

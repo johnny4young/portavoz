@@ -8909,3 +8909,42 @@ notification content, while business eligibility remains in ApplicationKit
 and durable truth remains in StorageKit. Users still receive no commitment
 notification until a later explicit composition and permission-recovery slice
 installs the adapter and gives them control.
+
+## D260 — Compose commitment reminders behind explicit user permission (Aug 2026)
+
+**Context:** D259 supplied a privacy-safe native scheduler, but leaving it
+outside the executable graph meant confirmed due commitments never reached
+Notification Center. Asking for permission at launch would violate the
+local-first consent model, and a polling timer would keep reading storage while
+the app is idle. Reconciliation also needs to follow durable commitment
+mutations without allowing SwiftUI or the platform adapter to own eligibility.
+
+**Decision:** install one process-owned `CommitmentReminderModel` in
+`AppServices`. On launch it inspects the current notification authorization
+state without prompting. Only the explicit **Enable reminders** action in
+Commitment Radar may request authorization. Authorized, provisional, and
+ephemeral states enter the existing fail-closed reconciliation workflow;
+not-determined and denied states remain inert and visible to the user.
+
+The model is signal-driven rather than timer-driven. Launch authorization
+inspection, successful Meeting Detail confirmation, and successful Radar
+complete, reopen, or due-date mutations request reconciliation. A burst keeps
+at most one active pass and one coalesced rerun. The ApplicationKit workflow
+continues to decide which confirmed commitments qualify, StorageKit remains the
+durable authority, and the UserNotifications adapter receives only the stable
+identity/date metadata defined by D259. Disposable UI-test stores use an
+in-memory notification center and never touch host notification permission.
+
+No notification delegate, action button, snooze UI, review queue, external-
+sync mutation signal, sync/export field, bundle, CLI, or MCP surface is added.
+Denied permission is recoverable through an explicit status refresh after the
+user changes macOS settings; Portavoz does not rely on an undocumented Settings
+URL.
+
+**Consequences:** users can opt in to generic, local, confirmed-only due-date
+alerts from the Radar, while a normal launch never presents a permission dialog
+or performs periodic background reads. Relaunch and in-app commitment mutations
+converge through one observable process owner, and deterministic tests can
+exercise the complete flow without changing machine notification state.
+Notification actions, snooze controls, review queues, and signals for mutations
+arriving from another device remain later slices.

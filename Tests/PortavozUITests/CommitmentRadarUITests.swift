@@ -17,6 +17,19 @@ final class CommitmentRadarUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-title")
                 .waitForExistence(timeout: 10))
+        let enableReminders = app.control(
+            withIdentifier: "commitment-reminder-enable")
+        XCTAssertTrue(
+            enableReminders.waitForExistence(timeout: 10),
+            "launch inspection must not prompt before the explicit Radar action")
+        enableReminders.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-reminder-enabled")
+                .waitForExistence(timeout: 10),
+            "explicit permission should reconcile confirmed due work")
+        XCTAssertFalse(enableReminders.exists)
+        attachScreenshot(of: app, named: "commitment-radar-reminders-enabled")
+
         let mineID = "B5D10000-0000-4000-8000-000000000002"
         let otherID = "B5D10000-0000-4000-8000-000000000001"
         XCTAssertTrue(
@@ -50,8 +63,8 @@ final class CommitmentRadarUITests: PortavozUITestCase {
         app.control(withIdentifier: "commitment-radar-due-toggle").click()
         app.control(withIdentifier: "commitment-radar-due-save").click()
         XCTAssertTrue(
-            app.control(withIdentifier: "commitment-radar-item-\(mineID)")
-                .staticTexts["No due date"]
+            app.control(
+                withIdentifier: "commitment-radar-due-value-\(mineID)-none")
                 .waitForExistence(timeout: 10),
             "rescheduling must persist and reload the exact Radar item")
         attachScreenshot(of: app, named: "commitment-radar-rescheduled")

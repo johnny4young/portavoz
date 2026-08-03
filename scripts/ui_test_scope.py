@@ -252,6 +252,12 @@ def app_features(filename: str) -> set[str]:
         return {"main-shell"}
     if lowered == "appservices+meetingsync.swift":
         return {"settings-data"}
+    if lowered in {"appservices.swift", "portavozapp.swift"}:
+        # Process composition/startup changes need one deterministic canary per
+        # route, not every feature permutation behind those destinations.
+        return {"main-shell"}
+    if "commitmentreminder" in lowered:
+        return {"commitment-radar", "meeting-commitments"}
     if "commitmentradar" in lowered:
         return {"commitment-radar"}
     if any(token in lowered for token in ("l10n", "applanguage")):

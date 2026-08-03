@@ -1844,7 +1844,7 @@ exercises this same production path in the durable-resume XCUITest (D63).
   timestamp, and the append-only transition; SwiftUI never writes StorageKit or
   invents source history. Reminder snooze remains outside this surface because
   it must not alter the commitment due date.
-- **Commitment reminder delivery (D257–D259):** the lower layers
+- **Commitment reminder delivery (D257–D260):** the lower layers
   distinguish commitment truth from local delivery state through a due-date-
   fenced current projection and immutable schedule/present/snooze/dismiss/
   cancel history. ApplicationKit now owns one fail-closed reconciliation over
@@ -1857,9 +1857,16 @@ exercises this same production path in the durable-resume XCUITest (D63).
   localized copy plus content-free identity/date metadata, and exposes an
   explicit authorization request without invoking it during reconciliation.
   Already-delivered requests append durable presentation history rather than
-  alerting again. The composition root still does not adopt the adapter: no
-  launch owner, permission UI, notification delegate/action, banner, or Radar
-  reminder control exists yet.
+  alerting again. `AppServices` now owns one process-wide reminder model. Launch
+  checks authorization without prompting; only the explicit Radar **Enable
+  reminders** action requests it. Authorized state reconciles on launch and
+  after successful Meeting Detail confirmation or Radar lifecycle/due-date
+  mutations. Bursts coalesce into one active pass plus one rerun, with no
+  polling timer. Radar presents not-determined, denied, active, reconciling, and
+  failed/retry states. Disposable UI-test stores use an in-memory notification
+  center, so the real Mac permission and Notification Center remain untouched.
+  Notification actions, snooze controls, review queues, and external-sync
+  mutation signals remain absent.
 - **Summary sources (D87):** the overview tab renders compact localized
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source

@@ -9231,6 +9231,136 @@
         }
       }
     },
+    "Allow Portavoz notifications in System Settings, then check again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite las notificaciones de Portavoz en Configuración del Sistema y vuelve a comprobar."
+          }
+        }
+      }
+    },
+    "Check again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a comprobar"
+          }
+        }
+      }
+    },
+    "Checking Notification Center without asking for permission.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando el Centro de Notificaciones sin solicitar permiso."
+          }
+        }
+      }
+    },
+    "Checking reminders": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando recordatorios"
+          }
+        }
+      }
+    },
+    "Enable reminders": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activar recordatorios"
+          }
+        }
+      }
+    },
+    "Get a generic local alert when confirmed work is due.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recibe una alerta local genérica cuando venza un compromiso confirmado."
+          }
+        }
+      }
+    },
+    "Notifications are off": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las notificaciones están desactivadas"
+          }
+        }
+      }
+    },
+    "On": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activos"
+          }
+        }
+      }
+    },
+    "Only confirmed commitments with a due date can alert you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo los compromisos confirmados con fecha límite pueden avisarte."
+          }
+        }
+      }
+    },
+    "Private due-date reminders": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recordatorios privados de fechas límite"
+          }
+        }
+      }
+    },
+    "Reminders are on": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los recordatorios están activos"
+          }
+        }
+      }
+    },
+    "Reminders need attention": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los recordatorios requieren atención"
+          }
+        }
+      }
+    },
+    "Your confirmed commitments are safe. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus compromisos confirmados están seguros. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "Commitments to confirm": {
       "localizations": {
         "es": {

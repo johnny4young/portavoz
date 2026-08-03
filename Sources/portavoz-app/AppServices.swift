@@ -70,6 +70,10 @@ final class AppServices {
     static var audioRoot: URL { RecordingsLocation.shared.currentRoot() }
 
     let store: MeetingStore
+    /// One process-owned permission/reconciliation model schedules only
+    /// confirmed due commitments and coalesces mutation bursts without a
+    /// polling timer.
+    let commitmentReminders: CommitmentReminderModel
     /// One process-wide verified model store and lifecycle. Disposable
     /// automation receives its own empty root and never inspects host models.
     @ObservationIgnored let modelStore: ModelStore
@@ -246,6 +250,9 @@ final class AppServices {
             // worse than failing loudly at launch.
             fatalError("cannot open the Portavoz database: \(error)")
         }
+        commitmentReminders = Self.makeCommitmentReminderModel(
+            store: store,
+            usesTemporaryStore: usesTemporaryStore)
         let semanticSearch = Self.makeSemanticSearchComposition(
             store: store, usesTemporaryStore: usesTemporaryStore,
             semanticRuntime: semanticEmbeddingRuntime, telemetry: workloadTelemetry, captureState: resourceCaptureState)
@@ -256,14 +263,11 @@ final class AppServices {
         firstRun = FirstRunModel(client: AppFirstRunModelClient(
             useCase: ResolveFirstRunExperience(
                 library: AppFirstRunLibraryReader(store: store))))
-        localDataLedger = LocalDataLedgerModel(
-            client: AppLocalDataLedgerModelClient(useCase: LoadLocalDataLedger(
-                meetings: AppLocalMeetingCounter(store: store),
-                audio: AppLocalAudioUsageMeter(),
-                voices: AppLocalVoiceCounter(
-                    usesTemporaryStore: usesTemporaryStore,
-                    voiceGallery: voiceGallery,
-                    voiceprintStore: voiceprintStore))))
+        localDataLedger = Self.makeLocalDataLedgerModel(
+            store: store,
+            usesTemporaryStore: usesTemporaryStore,
+            voiceGallery: voiceGallery,
+            voiceprintStore: voiceprintStore)
         askClient = AppAskModelClient(useCase: askUseCase)
         meetingBriefUseCase = PrepareMeetingBrief(
             ask: askUseCase,
@@ -284,6 +288,22 @@ final class AppServices {
         Task { @MainActor [weak self] in
             await self?.refreshMLXReadiness()
         }
+    }
+
+    private static func makeLocalDataLedgerModel(
+        store: MeetingStore,
+        usesTemporaryStore: Bool,
+        voiceGallery: VoiceGallery,
+        voiceprintStore: VoiceprintStore
+    ) -> LocalDataLedgerModel {
+        LocalDataLedgerModel(
+            client: AppLocalDataLedgerModelClient(useCase: LoadLocalDataLedger(
+                meetings: AppLocalMeetingCounter(store: store),
+                audio: AppLocalAudioUsageMeter(),
+                voices: AppLocalVoiceCounter(
+                    usesTemporaryStore: usesTemporaryStore,
+                    voiceGallery: voiceGallery,
+                    voiceprintStore: voiceprintStore))))
     }
 
     private static func makeModelStore(usesTemporaryStore: Bool) -> ModelStore {

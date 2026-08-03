@@ -1191,18 +1191,31 @@ invalid past schedule. Scheduler mutation precedes persistence, and an initial
 persistence failure attempts compensating cancellation only for a newly
 scheduled request, never for a notification already observed as delivered.
 
-The macOS executable now owns a delivery-aware `UserNotifications` adapter for
-that port. It checks existing pending and delivered requests under one stable
+The macOS executable owns a delivery-aware `UserNotifications` adapter for that
+port. It checks existing pending and delivered requests under one stable
 identifier per commitment, removes stale copies before replacement, and
 cancels both locations. Request metadata contains only the commitment identity,
 scheduled timestamp, and source due-date fence; the visible title and body are
 generic localized copy, never commitment, person, meeting, or transcript text.
 Authorized, provisional, and ephemeral states may schedule. Not-determined and
-denied states fail closed without prompting; authorization request is a
-separate explicit capability for a later user action. The adapter is tested but
-not yet installed in `AppServices`, so no launch reconciliation, permission
-prompt, timer, notification delegate/action, SwiftUI, sync/export, bundle, CLI,
-or MCP behavior is composed.
+denied states fail closed without prompting.
+
+`AppServices` installs that adapter behind one process-owned
+`CommitmentReminderModel`. Process launch inspects authorization without asking
+for it; the only authorization request comes from the explicit **Enable
+reminders** control in Commitment Radar. Once enabled, launch, successful
+Meeting Detail confirmation, and successful Radar complete, reopen, or due-date
+mutations signal reconciliation. The model uses no timer: it runs at most one
+pass and coalesces a mutation burst into one pending rerun. SwiftUI observes
+permission/reconciliation state but never schedules a request or reads
+StorageKit. Disposable UI-test stores receive an in-memory notification center
+that grants permission only through the same explicit action and never touches
+the host.
+
+There is still no notification delegate/action, reminder snooze UI, review
+queue, external-sync mutation signal, sync/export field, bundle, CLI, or MCP
+surface. Denied permission remains visible in Radar and may be checked again
+after the user changes macOS settings; no undocumented Settings URL is used.
 
 The bounded read has a content-free Release scale gate. A fresh synthetic
 store is prepared before timing, one warm read precedes five measured reads,
@@ -3029,13 +3042,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,803 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,810 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 519 Swift source files;
+- strict SwiftLint reports zero violations across 522 Swift source files;
 - 62 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
