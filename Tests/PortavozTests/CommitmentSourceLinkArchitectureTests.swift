@@ -191,6 +191,32 @@ final class CommitmentSourceLinkArchitectureTests: XCTestCase {
             "Replay private commitment-link evidence without selecting policy"))
     }
 
+    func testCleanProfileMatrixRemainsReviewOnlyAndOutsideAppComposition() throws {
+        let validator = try Self.contents(
+            of: "scripts/commitment_link_quality.py")
+        let runner = try Self.contents(
+            of: "scripts/run-commitment-link-profile-matrix.sh")
+        let makefile = try Self.contents(of: "Makefile")
+        let appComposition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(validator.contains(
+            "commitment-link-public-private-profile-matrix"))
+        XCTAssertTrue(validator.contains(
+            "compare_public_private_profile"))
+        XCTAssertTrue(runner.contains(
+            "commitment-link profile matrix requires a clean committed checkout"))
+        XCTAssertTrue(runner.contains("--asset-download never"))
+        XCTAssertTrue(makefile.contains("commitment-link-profile-matrix"))
+        XCTAssertFalse(appComposition.contains("PROFILE_MATRIX_KIND"))
+        XCTAssertFalse(appComposition.contains(
+            "compare_public_private_profile"))
+        XCTAssertTrue(decisions.contains("## D254"))
+        XCTAssertTrue(decisions.contains(
+            "Compare public and private commitment-link evidence on one clean profile"))
+    }
+
     private static func contents(of relativePath: String) throws -> String {
         try String(
             contentsOf: repoRoot.appendingPathComponent(relativePath),

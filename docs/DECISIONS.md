@@ -8692,3 +8692,42 @@ not retain a baseline, accept a quality floor, select a similarity threshold,
 or add app composition, persistence, diagnostics, sync/export, bundles, MCP,
 SwiftUI, confirmation, or serving behavior. A clean-head profile matrix and
 explicit human review remain pending.
+
+## D254 — Compare public and private commitment-link evidence on one clean profile (Aug 2026)
+
+**Context:** D250 and D253 can replay public and private score distributions,
+but separately collected receipts do not prove that the same executable,
+embedding profile, build, or source commit produced them. Their independently
+observed equivalence candidates can also use different threshold values, so
+placing the two replay files side by side is not a valid point-by-point
+comparison. A field matrix must prevent source drift without copying private
+fixture text into retained evidence.
+
+**Decision:** add one clean-head Release orchestrator and one exact comparison
+authority. The orchestrator validates the owner-reviewed private fixture,
+requires an unchanged committed checkout before and after collection, resolves
+the full HEAD, builds `portavoz-cli` once, and runs both the canonical public
+and separate private scored collectors through that executable with asset
+downloads fixed to `never`. It validates both receipts, produces both distinct
+replays, and publishes all five artifacts only after the complete matrix
+validates. A mode-`0700` sibling stage plus exclusive destination lock prevents
+partial or concurrent publication; every artifact is regular, non-symlink,
+mode `0600`, non-overwriting, and gitignored when repository-local.
+
+The comparison requires exact equality of embedding-profile fingerprint,
+build, and source commit. It binds complete fixture, scored-receipt, and replay
+digests for both authorities plus the private anonymization provenance. Because
+the score distributions can yield different replay candidates, it evaluates
+both fixtures at the sorted union of their observed inclusive thresholds. The
+same deterministic arithmetic produces aggregate, language, and class metrics
+without fixture text. Exact recomputation rejects changed inputs, candidate
+ordering, metrics, provenance, or review state.
+
+**Consequences:** a future real private pack can now be compared to the public
+authority under one local profile without source/executable drift or synthetic
+field evidence. The bundle remains literally `review-required`, `not-selected`,
+`not-evaluated`, and `not-approved`; it does not retain an accepted baseline,
+choose a threshold, accept a quality floor, or add app composition, storage,
+diagnostics, sync/export, bundles, MCP, SwiftUI, confirmation, or serving
+behavior. Collecting the real owner-reviewed pack and making an explicit human
+quality decision remain pending field work.

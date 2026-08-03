@@ -1382,7 +1382,7 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   result remains `review-required` and its product decision remains
   `not-evaluated` (D236).
 - `make test-commitment-link-quality` validates D245's reproducible 36-case
-  cross-meeting fixture and runs twenty-seven evaluator/contract tests without a
+  cross-meeting fixture and runs thirty-one evaluator/contract tests without a
   model, database, or user library. The corpus is balanced across English,
   Spanish, and mixed speech and across 18 linkable and 18 mandatory-abstention
   cases. It labels semantic-relevant targets separately from legally linkable
@@ -1396,8 +1396,8 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   arithmetic; it remains `review-required`, makes no product decision, and
   selects no threshold or engine. Optional case details are mode `0600`, non-
   overwriting, and untracked.
-- Twenty-one focused package cases cover D246–D253's non-serving product seam:
-  six observer/storage behaviors, seven source-link architecture contracts, and
+- Twenty-two focused package cases cover D246–D254's non-serving product seam:
+  six observer/storage behaviors, eight source-link architecture contracts, and
   eight product-runner cases.
   The real in-memory Store path proves exact open source/evidence identities,
   installed-assets-only borrowing, and semantic-hit versus legal-admission
@@ -1459,8 +1459,20 @@ XCUITest against the real app (XcodeGen generates the `.xcodeproj`, which is git
   tooling cases prove deterministic private outcomes, public/private
   separation, tamper and source-drift rejection, CLI validation, and mode-
   `0600` non-overwriting publication; one package architecture ratchet keeps
-  the private replay out of app composition. No candidate is selected and no threshold
-  is product-evaluated or serving-approved. The
+  the private replay out of app composition. No candidate is selected and no
+  threshold is product-evaluated or serving-approved. D254 adds the clean-head
+  `commitment-link-profile-matrix` target. It builds the Release CLI once,
+  disables asset downloads, captures and validates both scored authorities and
+  both replays, requires one exact profile/build/commit, and publishes five
+  mode-`0600` files atomically inside one ignored mode-`0700` bundle. Public and
+  private metrics are recomputed at the union of observed thresholds instead of
+  comparing potentially unaligned replay candidates. Four tooling cases cover
+  deterministic alignment, provenance mismatch, tamper rejection, owner-only
+  non-overwriting CLI publication, shell syntax, clean-head checks, single-build
+  reuse, download prohibition, and staged publication; one package architecture
+  ratchet keeps the matrix out of app composition. No real private pack or
+  accepted matrix is retained, and every result remains review-required,
+  unselected, non-evaluated, and non-approved. The
   `commitment-link-quality-product` target runs the real
   Storage/Application path and immediately validates it with the D245
   evaluator; downloads remain disabled unless the caller explicitly selects

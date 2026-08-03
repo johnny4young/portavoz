@@ -20,6 +20,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	commitment-link-similarity-replay validate-commitment-link-private-pack \
 	commitment-link-private-similarity-product \
 	commitment-link-private-similarity-replay \
+	commitment-link-profile-matrix \
 	test-correction-composition correction-composition-benchmark \
 	test-commitment-radar-scale commitment-radar-benchmark \
 	test-exact-path-matrix exact-path-matrix \
@@ -241,6 +242,22 @@ commitment-link-private-similarity-replay:
 		--fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" \
 		--observations "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_SIMILARITY_OBSERVATIONS)" \
 		--replay "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_POLICY_REPLAY)"
+
+## Capture public and private evidence through one clean Release executable,
+## replay both authorities, and atomically publish an owner-only comparison
+## bundle without selecting or approving any candidate.
+PORTAVOZ_COMMITMENT_LINK_PROFILE_MATRIX ?=
+commitment-link-profile-matrix:
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_PROFILE_MATRIX)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_PROFILE_MATRIX is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_COMMITMENT_LINK_BUILD)" || \
+		(echo "PORTAVOZ_COMMITMENT_LINK_BUILD is required" >&2; exit 64)
+	scripts/run-commitment-link-profile-matrix.sh \
+		--private-fixture "$(PORTAVOZ_COMMITMENT_LINK_PRIVATE_PACK)" \
+		--output "$(PORTAVOZ_COMMITMENT_LINK_PROFILE_MATRIX)" \
+		--build "$(PORTAVOZ_COMMITMENT_LINK_BUILD)"
 
 ## Validate the exact-shaped, content-free host receipt boundary without
 ## running the expensive Release scale harness.

@@ -26,8 +26,10 @@ POLICY_REPLAY_KIND = "commitment-link-similarity-policy-replay"
 PRIVATE_POLICY_REPLAY_KIND = (
     "commitment-link-private-similarity-policy-replay"
 )
+PROFILE_MATRIX_KIND = "commitment-link-public-private-profile-matrix"
 SCORECARD_KIND = "commitment-link-quality-scorecard"
 POLICY_SWEEP_GENERATION = "observed-equivalence-classes-v1"
+PROFILE_MATRIX_GENERATION = "aligned-observed-thresholds-v1"
 POLICY_RULE = "best-matched-evidence-similarity-at-least"
 PUBLIC_GENERATION = "public-synthetic-v1"
 PUBLIC_SOURCE = "public-synthetic-only"
@@ -550,6 +552,42 @@ def validate_private_destination_path(path, label):
     return resolved
 
 
+def validate_private_directory_destination(path, label):
+    path = Path(path).expanduser()
+    if path.exists() or path.is_symlink():
+        raise CommitmentLinkQualityError(f"{label} already exists")
+    try:
+        if not path.parent.is_dir():
+            raise CommitmentLinkQualityError(
+                f"{label} parent directory does not exist"
+            )
+        resolved = path.resolve()
+    except OSError as error:
+        raise CommitmentLinkQualityError(
+            f"{label} destination could not be inspected"
+        ) from error
+    try:
+        resolved.relative_to(REPOSITORY_ROOT)
+    except ValueError:
+        return resolved
+    try:
+        ignored = subprocess.run(
+            ["git", "check-ignore", "--quiet", str(resolved / "matrix.json")],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+        )
+    except OSError as error:
+        raise CommitmentLinkQualityError(
+            f"{label} destination ignore status could not be inspected"
+        ) from error
+    if ignored.returncode != 0:
+        raise CommitmentLinkQualityError(
+            f"repository-local {label} destination must be covered by .gitignore"
+        )
+    return resolved
+
+
 def fixture_digest(document):
     return document_digest(document)
 
@@ -1046,7 +1084,7 @@ def representative_similarity_thresholds(similarities):
     return thresholds
 
 
-def _replay_similarity_candidates(fixture, similarity_document):
+def _similarity_policy_inputs(fixture, similarity_document):
     unscored = unscored_similarity_projection(similarity_document)
     validate_observations(unscored, fixture)
     cases = {case["id"]: case for case in fixture["cases"]}
@@ -1079,48 +1117,73 @@ def _replay_similarity_candidates(fixture, similarity_document):
             similarities.append(best_similarity)
             baseline_suggestions += 1
 
+    return unscored, suggestion_scores, similarities, baseline_suggestions
+
+
+def _similarity_candidate(
+    fixture,
+    unscored,
+    suggestion_scores,
+    baseline_suggestions,
+    threshold,
+    candidate_id,
+):
+    candidate_rows = []
+    changed_cases = 0
+    for row in unscored["observations"]:
+        filtered = [
+            suggestion
+            for suggestion in row["suggestions"]
+            if suggestion_scores[(row["caseID"], suggestion["commitmentID"])]
+            >= threshold
+        ]
+        if len(filtered) != len(row["suggestions"]):
+            changed_cases += 1
+        candidate_rows.append({
+            "caseID": row["caseID"],
+            "semanticHitSegmentIDs": row["semanticHitSegmentIDs"],
+            "suggestions": filtered,
+        })
+    candidate_document = {
+        **{key: value for key, value in unscored.items() if key != "observations"},
+        "observations": candidate_rows,
+    }
+    scorecard, _ = _evaluate_validated(
+        fixture,
+        candidate_document,
+        fixture["contentSource"],
+    )
+    admitted = scorecard["counts"]["suggestions"]
+    return {
+        "candidateID": candidate_id,
+        "minimumSimilarity": threshold,
+        "changedCases": changed_cases,
+        "admittedSuggestions": admitted,
+        "rejectedSuggestions": baseline_suggestions - admitted,
+        "counts": scorecard["counts"],
+        "metrics": scorecard["metrics"],
+        "byLanguage": scorecard["byLanguage"],
+        "byClass": scorecard["byClass"],
+    }
+
+
+def _replay_similarity_candidates(fixture, similarity_document):
+    unscored, suggestion_scores, similarities, baseline_suggestions = (
+        _similarity_policy_inputs(fixture, similarity_document)
+    )
     candidates = []
     for ordinal, threshold in enumerate(
         representative_similarity_thresholds(similarities),
         start=1,
     ):
-        candidate_rows = []
-        changed_cases = 0
-        for row in unscored["observations"]:
-            filtered = [
-                suggestion
-                for suggestion in row["suggestions"]
-                if suggestion_scores[(row["caseID"], suggestion["commitmentID"])]
-                >= threshold
-            ]
-            if len(filtered) != len(row["suggestions"]):
-                changed_cases += 1
-            candidate_rows.append({
-                "caseID": row["caseID"],
-                "semanticHitSegmentIDs": row["semanticHitSegmentIDs"],
-                "suggestions": filtered,
-            })
-        candidate_document = {
-            **{key: value for key, value in unscored.items() if key != "observations"},
-            "observations": candidate_rows,
-        }
-        scorecard, _ = _evaluate_validated(
+        candidates.append(_similarity_candidate(
             fixture,
-            candidate_document,
-            fixture["contentSource"],
-        )
-        admitted = scorecard["counts"]["suggestions"]
-        candidates.append({
-            "candidateID": f"candidate-{ordinal:03d}",
-            "minimumSimilarity": threshold,
-            "changedCases": changed_cases,
-            "admittedSuggestions": admitted,
-            "rejectedSuggestions": baseline_suggestions - admitted,
-            "counts": scorecard["counts"],
-            "metrics": scorecard["metrics"],
-            "byLanguage": scorecard["byLanguage"],
-            "byClass": scorecard["byClass"],
-        })
+            unscored,
+            suggestion_scores,
+            baseline_suggestions,
+            threshold,
+            f"candidate-{ordinal:03d}",
+        ))
 
     return candidates
 
@@ -1205,6 +1268,193 @@ def validate_private_policy_replay(document, fixture, similarity_document):
     if document != expected:
         raise CommitmentLinkQualityError(
             "private policy replay does not match deterministic recomputation"
+        )
+    return document
+
+
+def _matrix_authority(
+    fixture,
+    observations,
+    replay,
+    *,
+    include_private_provenance=False,
+):
+    authority = {
+        "fixtureGeneration": fixture["generation"],
+        "fixtureSHA256": fixture_digest(fixture),
+        "observationSHA256": document_digest(observations),
+        "replaySHA256": document_digest(replay),
+        "adapter": observations["adapter"],
+        "candidateCount": replay["candidateCount"],
+    }
+    if include_private_provenance:
+        authority["contentSource"] = fixture["contentSource"]
+        authority["anonymization"] = fixture["anonymization"]
+    return authority
+
+
+def _matrix_candidate_projection(candidate):
+    return {
+        key: value
+        for key, value in candidate.items()
+        if key not in {"candidateID", "minimumSimilarity"}
+    }
+
+
+def compare_public_private_profile(
+    public_fixture_document,
+    public_observations,
+    public_replay,
+    private_fixture_document,
+    private_observations,
+    private_replay,
+    *,
+    expected_build=None,
+    expected_commit=None,
+):
+    public_fixture_document = validate_fixture(public_fixture_document)
+    if public_fixture_document != public_fixture():
+        raise CommitmentLinkQualityError(
+            "public fixture does not match the canonical authority"
+        )
+    public_observations = validate_similarity_observations(
+        public_observations,
+        public_fixture_document,
+    )
+    public_replay = validate_policy_replay(
+        public_replay,
+        public_fixture_document,
+        public_observations,
+    )
+    private_fixture_document = validate_private_fixture(
+        private_fixture_document
+    )
+    private_observations = validate_private_similarity_observations(
+        private_observations,
+        private_fixture_document,
+    )
+    private_replay = validate_private_policy_replay(
+        private_replay,
+        private_fixture_document,
+        private_observations,
+    )
+
+    comparable_fields = ("embeddingProfileFingerprint", "build", "commit")
+    for field in comparable_fields:
+        if public_observations[field] != private_observations[field]:
+            raise CommitmentLinkQualityError(
+                f"public/private {field} does not match"
+            )
+    if expected_build is not None:
+        if not isinstance(expected_build, str) or SAFE_BUILD.fullmatch(
+            expected_build
+        ) is None:
+            raise CommitmentLinkQualityError("expected build is invalid")
+        if public_observations["build"] != expected_build:
+            raise CommitmentLinkQualityError(
+                "profile matrix build does not match the expected build"
+            )
+    if expected_commit is not None:
+        if not isinstance(expected_commit, str) or FULL_COMMIT.fullmatch(
+            expected_commit
+        ) is None:
+            raise CommitmentLinkQualityError("expected commit is invalid")
+        if public_observations["commit"] != expected_commit:
+            raise CommitmentLinkQualityError(
+                "profile matrix commit does not match the expected commit"
+            )
+
+    public_inputs = _similarity_policy_inputs(
+        public_fixture_document,
+        public_observations,
+    )
+    private_inputs = _similarity_policy_inputs(
+        private_fixture_document,
+        private_observations,
+    )
+    thresholds = sorted(set(
+        representative_similarity_thresholds(public_inputs[2])
+        + representative_similarity_thresholds(private_inputs[2])
+    ))
+    candidates = []
+    for ordinal, threshold in enumerate(thresholds, start=1):
+        public_candidate = _similarity_candidate(
+            public_fixture_document,
+            public_inputs[0],
+            public_inputs[1],
+            public_inputs[3],
+            threshold,
+            f"matrix-public-{ordinal:03d}",
+        )
+        private_candidate = _similarity_candidate(
+            private_fixture_document,
+            private_inputs[0],
+            private_inputs[1],
+            private_inputs[3],
+            threshold,
+            f"matrix-private-{ordinal:03d}",
+        )
+        candidates.append({
+            "candidateID": f"matrix-candidate-{ordinal:03d}",
+            "minimumSimilarity": threshold,
+            "public": _matrix_candidate_projection(public_candidate),
+            "private": _matrix_candidate_projection(private_candidate),
+        })
+
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "kind": PROFILE_MATRIX_KIND,
+        "generation": PROFILE_MATRIX_GENERATION,
+        "embeddingProfileFingerprint": public_observations[
+            "embeddingProfileFingerprint"
+        ],
+        "build": public_observations["build"],
+        "sourceCommit": public_observations["commit"],
+        "public": _matrix_authority(
+            public_fixture_document,
+            public_observations,
+            public_replay,
+        ),
+        "private": _matrix_authority(
+            private_fixture_document,
+            private_observations,
+            private_replay,
+            include_private_provenance=True,
+        ),
+        "alignedCandidateCount": len(candidates),
+        "candidates": candidates,
+        "evaluationStatus": "review-required",
+        "selectionStatus": "not-selected",
+        "productDecision": "not-evaluated",
+        "servingStatus": "not-approved",
+    }
+
+
+def validate_public_private_profile_matrix(
+    document,
+    public_fixture,
+    public_observations,
+    public_replay,
+    private_fixture,
+    private_observations,
+    private_replay,
+    *,
+    expected_build=None,
+    expected_commit=None,
+):
+    expected = compare_public_private_profile(
+        public_fixture,
+        public_observations,
+        public_replay,
+        private_fixture,
+        private_observations,
+        private_replay,
+        expected_build=expected_build,
+        expected_commit=expected_commit,
+    )
+    if document != expected:
+        raise CommitmentLinkQualityError(
+            "profile matrix does not match deterministic recomputation"
         )
     return document
 
@@ -1436,6 +1686,10 @@ def parser():
         "validate-private-replay-destination"
     )
     validate_private_replay_destination.add_argument("--output", required=True)
+    validate_profile_destination = subparsers.add_parser(
+        "validate-profile-matrix-destination"
+    )
+    validate_profile_destination.add_argument("--output", required=True)
     validate_similarity = subparsers.add_parser("validate-similarity")
     validate_similarity.add_argument("--fixture", required=True)
     validate_similarity.add_argument("--observations", required=True)
@@ -1456,6 +1710,19 @@ def parser():
     validate_private_replay.add_argument("--fixture", required=True)
     validate_private_replay.add_argument("--observations", required=True)
     validate_private_replay.add_argument("--replay", required=True)
+    compare_profile = subparsers.add_parser("compare-profile-matrix")
+    validate_profile = subparsers.add_parser("validate-profile-matrix")
+    for profile_parser in (compare_profile, validate_profile):
+        profile_parser.add_argument("--public-fixture", required=True)
+        profile_parser.add_argument("--public-observations", required=True)
+        profile_parser.add_argument("--public-replay", required=True)
+        profile_parser.add_argument("--private-fixture", required=True)
+        profile_parser.add_argument("--private-observations", required=True)
+        profile_parser.add_argument("--private-replay", required=True)
+        profile_parser.add_argument("--expected-build", required=True)
+        profile_parser.add_argument("--expected-commit", required=True)
+    compare_profile.add_argument("--output", required=True)
+    validate_profile.add_argument("--matrix", required=True)
     replay_similarity = subparsers.add_parser("replay-similarity")
     replay_similarity.add_argument("--fixture", required=True)
     replay_similarity.add_argument("--observations", required=True)
@@ -1509,6 +1776,16 @@ def main(argv=None):
             destination = validate_private_destination_path(
                 arguments.output,
                 "private policy replay",
+            )
+            print(json.dumps({
+                "status": "accepted",
+                "destination": destination.name,
+            }, sort_keys=True))
+            return 0
+        if arguments.command == "validate-profile-matrix-destination":
+            destination = validate_private_directory_destination(
+                arguments.output,
+                "public/private profile matrix bundle",
             )
             print(json.dumps({
                 "status": "accepted",
@@ -1599,6 +1876,85 @@ def main(argv=None):
                 "selectionStatus": replay["selectionStatus"],
                 "productDecision": replay["productDecision"],
                 "servingStatus": replay["servingStatus"],
+            }, sort_keys=True))
+            return 0
+        if arguments.command in {
+            "compare-profile-matrix",
+            "validate-profile-matrix",
+        }:
+            public_fixture_document = validate_fixture(load_json(
+                arguments.public_fixture,
+                "public fixture",
+            ))
+            if public_fixture_document != public_fixture():
+                raise CommitmentLinkQualityError(
+                    "public fixture does not match the canonical authority"
+                )
+            private_fixture_path = validate_private_fixture_path(
+                arguments.private_fixture
+            )
+            private_fixture_document = validate_private_fixture(load_json(
+                private_fixture_path,
+                "private fixture",
+            ))
+
+            artifact_paths = {
+                "public observations": arguments.public_observations,
+                "public replay": arguments.public_replay,
+                "private observations": arguments.private_observations,
+                "private replay": arguments.private_replay,
+            }
+            artifacts = {
+                label: load_json(
+                    validate_owner_only_private_path(path, label),
+                    label,
+                )
+                for label, path in artifact_paths.items()
+            }
+            comparison_arguments = (
+                public_fixture_document,
+                artifacts["public observations"],
+                artifacts["public replay"],
+                private_fixture_document,
+                artifacts["private observations"],
+                artifacts["private replay"],
+            )
+            comparison_options = {
+                "expected_build": arguments.expected_build,
+                "expected_commit": arguments.expected_commit,
+            }
+            if arguments.command == "compare-profile-matrix":
+                output = validate_private_destination_path(
+                    arguments.output,
+                    "public/private profile matrix",
+                )
+                matrix = compare_public_private_profile(
+                    *comparison_arguments,
+                    **comparison_options,
+                )
+                write_json(output, matrix, owner_only=True)
+            else:
+                matrix_path = validate_owner_only_private_path(
+                    arguments.matrix,
+                    "public/private profile matrix",
+                )
+                matrix = validate_public_private_profile_matrix(
+                    load_json(matrix_path, "public/private profile matrix"),
+                    *comparison_arguments,
+                    **comparison_options,
+                )
+            print(json.dumps({
+                "kind": matrix["kind"],
+                "embeddingProfileFingerprint": matrix[
+                    "embeddingProfileFingerprint"
+                ],
+                "build": matrix["build"],
+                "sourceCommit": matrix["sourceCommit"],
+                "alignedCandidateCount": matrix["alignedCandidateCount"],
+                "evaluationStatus": matrix["evaluationStatus"],
+                "selectionStatus": matrix["selectionStatus"],
+                "productDecision": matrix["productDecision"],
+                "servingStatus": matrix["servingStatus"],
             }, sort_keys=True))
             return 0
         fixture = validate_fixture(load_json(arguments.fixture, "fixture"))

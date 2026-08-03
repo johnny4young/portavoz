@@ -2063,6 +2063,18 @@ for serving. No private content, replay result, threshold, or quality floor
 enters app composition, persistence, diagnostics, sync, bundles, MCP, or
 SwiftUI.
 
+One clean-head Release harness now owns the only comparable public/private
+collection path. It validates the owner-reviewed private fixture, requires an
+unchanged committed checkout, builds the CLI once, disables embedding-asset
+downloads, and captures both scored authorities through that executable. It
+then validates both replays and atomically publishes five mode-`0600` artifacts
+inside one mode-`0700`, ignored, non-overwriting bundle. The final matrix binds
+the same source commit, build, and embedding-profile fingerprint and evaluates
+both authorities at the union of their observed inclusive thresholds. Exact
+recomputation rejects provenance or metric drift. The bundle remains review-
+required, selects no candidate, accepts no quality floor, and is absent from
+app composition and every serving or data-transfer surface.
+
 Meeting-derived text is untrusted input at every model boundary. Summary,
 map-note, finished-summary translation, speaker naming, chapter title,
 pre-meeting brief, meeting-type detection, retrieval answer, and meeting-title

@@ -478,6 +478,243 @@ class CommitmentLinkQualityTests(unittest.TestCase):
                     64,
                 )
 
+    def test_profile_matrix_aligns_public_and_private_observed_thresholds(self):
+        public_fixture = self.fixture()
+        public_observations = self.similarity_observations()
+        public_replay = quality.replay_similarity_policies(
+            public_fixture,
+            public_observations,
+        )
+        private_fixture = self.private_fixture()
+        private_observations = self.private_similarity_observations()
+        for row in private_observations["observations"]:
+            for hit in row["semanticHits"]:
+                hit["similarity"] = round(hit["similarity"] + 0.025, 6)
+        private_replay = quality.replay_private_similarity_policies(
+            private_fixture,
+            private_observations,
+        )
+
+        first = quality.compare_public_private_profile(
+            public_fixture,
+            public_observations,
+            public_replay,
+            private_fixture,
+            private_observations,
+            private_replay,
+            expected_build="0.9.0+1",
+            expected_commit="b" * 40,
+        )
+        second = quality.compare_public_private_profile(
+            public_fixture,
+            public_observations,
+            public_replay,
+            private_fixture,
+            private_observations,
+            private_replay,
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(first["kind"], quality.PROFILE_MATRIX_KIND)
+        self.assertEqual(first["alignedCandidateCount"], 5)
+        self.assertEqual(
+            [row["minimumSimilarity"] for row in first["candidates"]],
+            [-1.0, 0.85, 0.875, 0.95, 0.9625],
+        )
+        self.assertEqual(first["evaluationStatus"], "review-required")
+        self.assertEqual(first["selectionStatus"], "not-selected")
+        self.assertEqual(first["productDecision"], "not-evaluated")
+        self.assertEqual(first["servingStatus"], "not-approved")
+        self.assertEqual(
+            first["public"]["observationSHA256"],
+            quality.document_digest(public_observations),
+        )
+        self.assertEqual(
+            first["private"]["replaySHA256"],
+            quality.document_digest(private_replay),
+        )
+        fixture_text = public_fixture["cases"][0]["candidate"]["text"]
+        self.assertNotIn(fixture_text, json.dumps(first, ensure_ascii=False))
+
+    def test_profile_matrix_rejects_noncomparable_sources_and_tampering(self):
+        public_fixture = self.fixture()
+        public_observations = self.similarity_observations()
+        public_replay = quality.replay_similarity_policies(
+            public_fixture,
+            public_observations,
+        )
+        private_fixture = self.private_fixture()
+        private_observations = self.private_similarity_observations()
+        private_replay = quality.replay_private_similarity_policies(
+            private_fixture,
+            private_observations,
+        )
+        matrix = quality.compare_public_private_profile(
+            public_fixture,
+            public_observations,
+            public_replay,
+            private_fixture,
+            private_observations,
+            private_replay,
+        )
+
+        mismatched = copy.deepcopy(private_observations)
+        mismatched["embeddingProfileFingerprint"] = "c" * 64
+        mismatched_replay = quality.replay_private_similarity_policies(
+            private_fixture,
+            mismatched,
+        )
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "embeddingProfileFingerprint",
+        ):
+            quality.compare_public_private_profile(
+                public_fixture,
+                public_observations,
+                public_replay,
+                private_fixture,
+                mismatched,
+                mismatched_replay,
+            )
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "expected commit",
+        ):
+            quality.compare_public_private_profile(
+                public_fixture,
+                public_observations,
+                public_replay,
+                private_fixture,
+                private_observations,
+                private_replay,
+                expected_commit="d" * 40,
+            )
+
+        broken = copy.deepcopy(matrix)
+        broken["candidates"][0]["private"]["metrics"][
+            "linkPrecision"
+        ] = 0.123
+        with self.assertRaisesRegex(
+            quality.CommitmentLinkQualityError,
+            "deterministic recomputation",
+        ):
+            quality.validate_public_private_profile_matrix(
+                broken,
+                public_fixture,
+                public_observations,
+                public_replay,
+                private_fixture,
+                private_observations,
+                private_replay,
+            )
+
+    def test_profile_matrix_cli_publishes_owner_only_and_never_overwrites(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            bundle = root / "matrix-bundle"
+            self.assertEqual(
+                quality.validate_private_directory_destination(
+                    bundle,
+                    "profile matrix bundle",
+                ),
+                bundle.resolve(),
+            )
+            bundle.mkdir(mode=0o700)
+            with self.assertRaisesRegex(
+                quality.CommitmentLinkQualityError,
+                "already exists",
+            ):
+                quality.validate_private_directory_destination(
+                    bundle,
+                    "profile matrix bundle",
+                )
+            paths = {
+                "public_fixture": root / "public-fixture.json",
+                "public_observations": root / "public-observations.json",
+                "public_replay": root / "public-replay.json",
+                "private_fixture": root / "private-fixture.json",
+                "private_observations": root / "private-observations.json",
+                "private_replay": root / "private-replay.json",
+                "matrix": root / "profile-matrix.json",
+            }
+            documents = {
+                "public_fixture": self.fixture(),
+                "public_observations": self.similarity_observations(),
+                "private_fixture": self.private_fixture(),
+                "private_observations": self.private_similarity_observations(),
+            }
+            documents["public_replay"] = quality.replay_similarity_policies(
+                documents["public_fixture"],
+                documents["public_observations"],
+            )
+            documents["private_replay"] = (
+                quality.replay_private_similarity_policies(
+                    documents["private_fixture"],
+                    documents["private_observations"],
+                )
+            )
+            for key, document in documents.items():
+                paths[key].write_text(json.dumps(document), encoding="utf-8")
+                paths[key].chmod(0o600)
+
+            common = [
+                "--public-fixture", str(paths["public_fixture"]),
+                "--public-observations", str(paths["public_observations"]),
+                "--public-replay", str(paths["public_replay"]),
+                "--private-fixture", str(paths["private_fixture"]),
+                "--private-observations", str(paths["private_observations"]),
+                "--private-replay", str(paths["private_replay"]),
+                "--expected-build", "0.9.0+1",
+                "--expected-commit", "b" * 40,
+            ]
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(quality.main([
+                    "compare-profile-matrix",
+                    *common,
+                    "--output", str(paths["matrix"]),
+                ]), 0)
+                self.assertEqual(quality.main([
+                    "validate-profile-matrix",
+                    *common,
+                    "--matrix", str(paths["matrix"]),
+                ]), 0)
+            self.assertEqual(
+                stat.S_IMODE(paths["matrix"].stat().st_mode),
+                0o600,
+            )
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(quality.main([
+                    "compare-profile-matrix",
+                    *common,
+                    "--output", str(paths["matrix"]),
+                ]), 64)
+
+    def test_profile_matrix_runner_is_clean_atomic_and_download_free(self):
+        runner_path = ROOT / "scripts" / "run-commitment-link-profile-matrix.sh"
+        runner = runner_path.read_text(encoding="utf-8")
+
+        self.assertEqual(
+            subprocess.run(
+                ["bash", "-n", str(runner_path)],
+                check=False,
+                capture_output=True,
+            ).returncode,
+            0,
+        )
+        self.assertGreaterEqual(
+            runner.count("git status --porcelain --untracked-files=all"),
+            2,
+        )
+        self.assertEqual(
+            runner.count("swift build -c release --product portavoz-cli"),
+            1,
+        )
+        self.assertEqual(runner.count("--asset-download never"), 2)
+        self.assertNotIn("--asset-download if-needed", runner)
+        self.assertIn("compare-profile-matrix", runner)
+        self.assertIn("validate-profile-matrix", runner)
+        self.assertIn('mv "$stage" "$output"', runner)
+
     def test_fixture_rejects_link_truth_without_exact_owner(self):
         fixture = self.fixture()
         broken = copy.deepcopy(fixture)
