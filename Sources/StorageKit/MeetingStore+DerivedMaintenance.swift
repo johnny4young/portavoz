@@ -2,6 +2,15 @@ import Foundation
 import GRDB
 import PortavozCore
 
+struct DerivedMaintenancePublicationClaim {
+    let id: DerivedMaintenanceJobID
+    let kind: DerivedMaintenanceKind
+    let targetFingerprint: String
+    let sourceGeneration: Int
+    let owner: String
+    let timestamp: Date
+}
+
 extension MeetingStore {
     /// Idempotently admits the current semantic source generation for one
     /// embedding profile. The job records ownership only; NULL vectors remain
@@ -11,14 +20,131 @@ extension MeetingStore {
         maxAttempts: Int = 3,
         at timestamp: Date = Date()
     ) async throws -> DerivedMaintenanceJob {
+        try await admitDerivedMaintenance(
+            kind: .semanticCorpus,
+            targetFingerprint: targetFingerprint,
+            maxAttempts: maxAttempts,
+            at: timestamp)
+    }
+
+    public func claimSemanticCorpusMaintenance(
+        targetFingerprint: String,
+        owner: String,
+        leaseDuration: TimeInterval,
+        at timestamp: Date = Date()
+    ) async throws -> DerivedMaintenanceJob? {
+        try await claimDerivedMaintenance(
+            kind: .semanticCorpus,
+            targetFingerprint: targetFingerprint,
+            owner: owner,
+            leaseDuration: leaseDuration,
+            at: timestamp)
+    }
+
+    public func heartbeatSemanticCorpusMaintenance(
+        _ id: DerivedMaintenanceJobID,
+        owner: String,
+        leaseDuration: TimeInterval,
+        at timestamp: Date = Date()
+    ) async throws {
+        try await heartbeatDerivedMaintenance(
+            id,
+            kind: .semanticCorpus,
+            owner: owner,
+            leaseDuration: leaseDuration,
+            at: timestamp)
+    }
+
+    public func suspendSemanticCorpusMaintenance(
+        _ id: DerivedMaintenanceJobID,
+        owner: String,
+        at timestamp: Date = Date()
+    ) async throws -> DerivedMaintenanceJob {
+        try await suspendDerivedMaintenance(
+            id, kind: .semanticCorpus, owner: owner, at: timestamp)
+    }
+
+    public func completeSemanticCorpusMaintenance(
+        _ id: DerivedMaintenanceJobID,
+        owner: String,
+        at timestamp: Date = Date()
+    ) async throws -> DerivedMaintenanceJob {
+        try await completeDerivedMaintenance(
+            id, kind: .semanticCorpus, owner: owner, at: timestamp)
+    }
+
+    public func failSemanticCorpusMaintenance(
+        _ id: DerivedMaintenanceJobID,
+        owner: String,
+        errorCode: String,
+        retryAt: Date,
+        at timestamp: Date = Date()
+    ) async throws -> DerivedMaintenanceJob {
+        try await failDerivedMaintenance(
+            id,
+            kind: .semanticCorpus,
+            owner: owner,
+            errorCode: errorCode,
+            retryAt: retryAt,
+            at: timestamp)
+    }
+
+    @discardableResult
+    public func recoverExpiredSemanticCorpusMaintenance(
+        at timestamp: Date = Date()
+    ) async throws -> Int {
+        try await recoverExpiredDerivedMaintenance(
+            kind: .semanticCorpus,
+            at: timestamp)
+    }
+
+    public func nextScheduledSemanticCorpusMaintenanceDate(
+        after timestamp: Date = Date()
+    ) async throws -> Date? {
+        try await nextScheduledDerivedMaintenanceDate(
+            kind: .semanticCorpus,
+            after: timestamp)
+    }
+
+    public func hasDueSemanticCorpusMaintenance(
+        targetFingerprint: String,
+        at timestamp: Date = Date()
+    ) async throws -> Bool {
+        try await hasDueDerivedMaintenance(
+            kind: .semanticCorpus,
+            targetFingerprint: targetFingerprint,
+            at: timestamp)
+    }
+
+    public func derivedMaintenanceJobs(
+        kind: DerivedMaintenanceKind
+    ) async throws -> [DerivedMaintenanceJob] {
+        try await database.read { db in
+            try DerivedMaintenanceJobRecord
+                .filter(Column("kind") == kind.rawValue)
+                .order(Column("createdAt"), Column("id"))
+                .fetchAll(db)
+                .map { try $0.job }
+        }
+    }
+
+    func admitDerivedMaintenance(
+        kind: DerivedMaintenanceKind,
+        targetFingerprint: String,
+        maxAttempts: Int,
+        at timestamp: Date
+    ) async throws -> DerivedMaintenanceJob {
         try Self.validateDerivedFingerprint(targetFingerprint)
         guard maxAttempts > 0 else {
             throw StorageError.invalidDerivedMaintenanceJob(
                 "max attempts must be positive")
         }
         return try await database.write { db in
-            let generation = try Self.semanticCorpusGeneration(in: db)
-            guard let fingerprint = SemanticCorpusMaintenanceFingerprint.compute(
+            let generation = try Self.derivedSourceGeneration(
+                kind: kind,
+                in: db)
+            guard let fingerprint = DerivedMaintenanceFingerprint.compute(
+                kind: kind,
                 targetFingerprint: targetFingerprint,
                 sourceGeneration: generation)
             else {
@@ -40,11 +166,11 @@ extension MeetingStore {
                 arguments: [
                     timestamp,
                     timestamp,
-                    DerivedMaintenanceKind.semanticCorpus.rawValue,
+                    kind.rawValue,
                     fingerprint
                 ])
             let job = DerivedMaintenanceJob(
-                kind: .semanticCorpus,
+                kind: kind,
                 targetFingerprint: targetFingerprint.lowercased(),
                 sourceGeneration: generation,
                 operationFingerprint: fingerprint,
@@ -54,7 +180,7 @@ extension MeetingStore {
             try DerivedMaintenanceJobRecord(job).insert(
                 db, onConflict: .ignore)
             guard let record = try DerivedMaintenanceJobRecord
-                .filter(Column("kind") == DerivedMaintenanceKind.semanticCorpus.rawValue)
+                .filter(Column("kind") == kind.rawValue)
                 .filter(Column("operationFingerprint") == fingerprint)
                 .fetchOne(db)
             else {
@@ -65,13 +191,14 @@ extension MeetingStore {
         }
     }
 
-    /// Claims at most one due job for the active profile. A live lease for the
-    /// same derived kind excludes another process even if the profile changed.
-    public func claimSemanticCorpusMaintenance(
+    /// Claims at most one due job for a derived kind. A live lease excludes
+    /// another process even when a newer target profile has been admitted.
+    func claimDerivedMaintenance(
+        kind: DerivedMaintenanceKind,
         targetFingerprint: String,
         owner: String,
         leaseDuration: TimeInterval,
-        at timestamp: Date = Date()
+        at timestamp: Date
     ) async throws -> DerivedMaintenanceJob? {
         try Self.validateDerivedFingerprint(targetFingerprint)
         try Self.validateDerivedOwner(owner)
@@ -81,17 +208,18 @@ extension MeetingStore {
         }
         return try await database.write { db in
             _ = try Self.recoverExpiredDerivedMaintenanceJobs(
-                at: timestamp, in: db)
-            let kind = DerivedMaintenanceKind.semanticCorpus.rawValue
+                kind: kind,
+                at: timestamp,
+                in: db)
             let liveOwner = try DerivedMaintenanceJobRecord
-                .filter(Column("kind") == kind)
+                .filter(Column("kind") == kind.rawValue)
                 .filter(Column("state") == DerivedMaintenanceJobState.running.rawValue)
                 .filter(Column("leaseExpiresAt") > timestamp)
                 .fetchCount(db)
             guard liveOwner == 0 else { return nil }
 
             guard var record = try DerivedMaintenanceJobRecord
-                .filter(Column("kind") == kind)
+                .filter(Column("kind") == kind.rawValue)
                 .filter(Column("targetFingerprint") == targetFingerprint.lowercased())
                 .filter(Column("state") == DerivedMaintenanceJobState.pending.rawValue)
                 .filter(Column("attempt") < Column("maxAttempts"))
@@ -114,11 +242,12 @@ extension MeetingStore {
         }
     }
 
-    public func heartbeatSemanticCorpusMaintenance(
+    func heartbeatDerivedMaintenance(
         _ id: DerivedMaintenanceJobID,
+        kind: DerivedMaintenanceKind,
         owner: String,
         leaseDuration: TimeInterval,
-        at timestamp: Date = Date()
+        at timestamp: Date
     ) async throws {
         try Self.validateDerivedOwner(owner)
         guard leaseDuration.isFinite, leaseDuration > 0 else {
@@ -127,24 +256,25 @@ extension MeetingStore {
         }
         try await database.write { db in
             var record = try Self.ownedDerivedMaintenanceJob(
-                id, owner: owner, at: timestamp, in: db)
+                id, kind: kind, owner: owner, at: timestamp, in: db)
             record.leaseExpiresAt = timestamp.addingTimeInterval(leaseDuration)
             record.updatedAt = timestamp
             try record.update(db)
         }
     }
 
-    /// Expected policy suspension returns the work to pending and refunds the
-    /// claim attempt. No timer can consume retries while capture is protected.
-    public func suspendSemanticCorpusMaintenance(
+    /// Expected policy suspension returns work to pending and refunds the
+    /// claim attempt. Capture cannot consume retry budget.
+    func suspendDerivedMaintenance(
         _ id: DerivedMaintenanceJobID,
+        kind: DerivedMaintenanceKind,
         owner: String,
-        at timestamp: Date = Date()
+        at timestamp: Date
     ) async throws -> DerivedMaintenanceJob {
         try Self.validateDerivedOwner(owner)
         return try await database.write { db in
             var record = try Self.ownedDerivedMaintenanceJob(
-                id, owner: owner, at: timestamp, in: db)
+                id, kind: kind, owner: owner, at: timestamp, in: db)
             record.state = DerivedMaintenanceJobState.pending.rawValue
             record.attempt = max(0, record.attempt - 1)
             record.notBefore = nil
@@ -158,15 +288,16 @@ extension MeetingStore {
         }
     }
 
-    public func completeSemanticCorpusMaintenance(
+    func completeDerivedMaintenance(
         _ id: DerivedMaintenanceJobID,
+        kind: DerivedMaintenanceKind,
         owner: String,
-        at timestamp: Date = Date()
+        at timestamp: Date
     ) async throws -> DerivedMaintenanceJob {
         try Self.validateDerivedOwner(owner)
         return try await database.write { db in
             var record = try Self.ownedDerivedMaintenanceJob(
-                id, owner: owner, at: timestamp, in: db)
+                id, kind: kind, owner: owner, at: timestamp, in: db)
             record.state = DerivedMaintenanceJobState.succeeded.rawValue
             record.notBefore = nil
             record.leaseOwner = nil
@@ -179,20 +310,19 @@ extension MeetingStore {
         }
     }
 
-    /// Records one bounded failure. Retryable work keeps no lease and exposes
-    /// one future wake; the final attempt becomes an inert terminal record.
-    public func failSemanticCorpusMaintenance(
+    func failDerivedMaintenance(
         _ id: DerivedMaintenanceJobID,
+        kind: DerivedMaintenanceKind,
         owner: String,
         errorCode: String,
         retryAt: Date,
-        at timestamp: Date = Date()
+        at timestamp: Date
     ) async throws -> DerivedMaintenanceJob {
         try Self.validateDerivedOwner(owner)
         try Self.validateDerivedCode(errorCode)
         return try await database.write { db in
             var record = try Self.ownedDerivedMaintenanceJob(
-                id, owner: owner, at: timestamp, in: db)
+                id, kind: kind, owner: owner, at: timestamp, in: db)
             let canRetry = record.attempt < record.maxAttempts
             record.state = canRetry
                 ? DerivedMaintenanceJobState.pending.rawValue
@@ -208,18 +338,21 @@ extension MeetingStore {
         }
     }
 
-    @discardableResult
-    public func recoverExpiredSemanticCorpusMaintenance(
-        at timestamp: Date = Date()
+    func recoverExpiredDerivedMaintenance(
+        kind: DerivedMaintenanceKind,
+        at timestamp: Date
     ) async throws -> Int {
         try await database.write { db in
             try Self.recoverExpiredDerivedMaintenanceJobs(
-                at: timestamp, in: db)
+                kind: kind,
+                at: timestamp,
+                in: db)
         }
     }
 
-    public func nextScheduledSemanticCorpusMaintenanceDate(
-        after timestamp: Date = Date()
+    func nextScheduledDerivedMaintenanceDate(
+        kind: DerivedMaintenanceKind,
+        after timestamp: Date
     ) async throws -> Date? {
         try await database.read { db in
             try Date.fetchOne(
@@ -241,18 +374,14 @@ extension MeetingStore {
                           AND leaseExpiresAt > ?
                     )
                     """,
-                arguments: [
-                    DerivedMaintenanceKind.semanticCorpus.rawValue,
-                    timestamp,
-                    DerivedMaintenanceKind.semanticCorpus.rawValue,
-                    timestamp
-                ])
+                arguments: [kind.rawValue, timestamp, kind.rawValue, timestamp])
         }
     }
 
-    public func hasDueSemanticCorpusMaintenance(
+    func hasDueDerivedMaintenance(
+        kind: DerivedMaintenanceKind,
         targetFingerprint: String,
-        at timestamp: Date = Date()
+        at timestamp: Date
     ) async throws -> Bool {
         try Self.validateDerivedFingerprint(targetFingerprint)
         return try await database.read { db in
@@ -269,40 +398,48 @@ extension MeetingStore {
                           AND (notBefore IS NULL OR notBefore <= ?)
                     )
                     """,
-                arguments: [
-                    DerivedMaintenanceKind.semanticCorpus.rawValue,
-                    targetFingerprint.lowercased(),
-                    timestamp
-                ]) ?? false
+                arguments: [kind.rawValue, targetFingerprint.lowercased(), timestamp])
+                ?? false
         }
     }
 
-    public func derivedMaintenanceJobs(
-        kind: DerivedMaintenanceKind
-    ) async throws -> [DerivedMaintenanceJob] {
-        try await database.read { db in
-            try DerivedMaintenanceJobRecord
-                .filter(Column("kind") == kind.rawValue)
-                .order(Column("createdAt"), Column("id"))
-                .fetchAll(db)
-                .map { try $0.job }
-        }
-    }
-
-    private static func semanticCorpusGeneration(in db: Database) throws -> Int {
+    private static func derivedSourceGeneration(
+        kind: DerivedMaintenanceKind,
+        in db: Database
+    ) throws -> Int {
         guard let generation = try Int.fetchOne(
             db,
             sql: "SELECT sourceGeneration FROM derivedMaintenanceSource WHERE kind = ?",
-            arguments: [DerivedMaintenanceKind.semanticCorpus.rawValue])
+            arguments: [kind.rawValue])
         else {
             throw StorageError.invalidDerivedMaintenanceJob(
-                "semantic source generation is missing")
+                "\(kind.rawValue) source generation is missing")
         }
         return generation
     }
 
+    /// Fences derived publication inside the same transaction that mutates
+    /// its disposable read model. Matching only an owner string is not enough:
+    /// an expired worker must not publish an older profile or generation after
+    /// a successor has recovered the operation.
+    static func validateOwnedDerivedMaintenancePublication(
+        _ claim: DerivedMaintenancePublicationClaim,
+        in db: Database
+    ) throws {
+        let record = try ownedDerivedMaintenanceJob(
+            claim.id,
+            kind: claim.kind,
+            owner: claim.owner,
+            at: claim.timestamp,
+            in: db)
+        guard record.targetFingerprint == claim.targetFingerprint.lowercased(),
+              record.sourceGeneration == claim.sourceGeneration
+        else { throw StorageError.derivedMaintenanceJobLeaseLost(claim.id) }
+    }
+
     private static func ownedDerivedMaintenanceJob(
         _ id: DerivedMaintenanceJobID,
+        kind: DerivedMaintenanceKind,
         owner: String,
         at timestamp: Date,
         in db: Database
@@ -310,7 +447,8 @@ extension MeetingStore {
         guard let record = try DerivedMaintenanceJobRecord.fetchOne(
             db, key: id.rawValue.uuidString)
         else { throw StorageError.derivedMaintenanceJobNotFound(id) }
-        guard record.state == DerivedMaintenanceJobState.running.rawValue,
+        guard record.kind == kind.rawValue,
+              record.state == DerivedMaintenanceJobState.running.rawValue,
               record.leaseOwner == owner,
               let expiry = record.leaseExpiresAt,
               expiry > timestamp
@@ -319,11 +457,12 @@ extension MeetingStore {
     }
 
     private static func recoverExpiredDerivedMaintenanceJobs(
+        kind: DerivedMaintenanceKind,
         at timestamp: Date,
         in db: Database
     ) throws -> Int {
         let records = try DerivedMaintenanceJobRecord
-            .filter(Column("kind") == DerivedMaintenanceKind.semanticCorpus.rawValue)
+            .filter(Column("kind") == kind.rawValue)
             .filter(Column("state") == DerivedMaintenanceJobState.running.rawValue)
             .filter(Column("leaseExpiresAt") <= timestamp)
             .fetchAll(db)

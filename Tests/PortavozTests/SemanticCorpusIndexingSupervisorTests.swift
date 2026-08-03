@@ -32,6 +32,43 @@ final class SemanticCorpusIndexingSupervisorTests: XCTestCase {
         XCTAssertEqual(snapshot.maximumConcurrent, 1)
     }
 
+    func testCoalescedRerunKeepsSemanticMaintenanceBuildingUntilFullyDrained() async {
+        let probe = SemanticDrainProbe()
+        let state = SemanticCorpusMaintenanceState()
+        let supervisor = SemanticCorpusIndexingSupervisor(
+            maintenanceState: state,
+            drain: { _ in
+                SemanticCorpusMaintenanceRun(indexing: try await probe.drain())
+            })
+
+        supervisor.kick()
+        await probe.waitForStartedCount(1)
+        supervisor.kick()
+        await probe.release(1)
+        await probe.waitForStartedCount(2)
+
+        XCTAssertEqual(state.current, .building)
+
+        await probe.release(2)
+        await probe.waitForFinishedCount(2)
+        await waitUntil { state.current == .idle }
+
+        XCTAssertEqual(state.current, .idle)
+    }
+
+    func testDisabledMemoryGraphSupervisorIgnoresWakeSignals() async {
+        let probe = MemoryGraphDrainProbe()
+        let supervisor = MeetingMemoryGraphProjectionSupervisor(
+            isEnabled: false,
+            drain: { _ in await probe.drain() })
+
+        supervisor.kick()
+        for _ in 0..<20 { await Task.yield() }
+
+        let startedCount = await probe.startedCount
+        XCTAssertEqual(startedCount, 0)
+    }
+
     func testDisabledSupervisorIgnoresProductionWakeSignals() async {
         let probe = SemanticDrainProbe()
         let supervisor = SemanticCorpusIndexingSupervisor(
@@ -290,6 +327,15 @@ private actor FailingThenSuccessfulSemanticDrainProbe {
         if startedCount == 1 {
             throw SemanticDrainError.failed
         }
+        return .empty
+    }
+}
+
+private actor MemoryGraphDrainProbe {
+    private(set) var startedCount = 0
+
+    func drain() -> MeetingMemoryGraphMaintenanceRun {
+        startedCount += 1
         return .empty
     }
 }

@@ -42,6 +42,7 @@ struct AppSemanticSearchComposition {
     let ask: AskMeetings
     let library: LocalLibrarySemanticSearch
     let background: SemanticCorpusIndexingSupervisor
+    let memoryGraphBackground: MeetingMemoryGraphProjectionSupervisor
 }
 
 extension AppServices {
@@ -94,11 +95,22 @@ extension AppServices {
             isEnabled: !usesTemporaryStore,
             maintenanceState: maintenanceState,
             drain: backgroundIndexer.drain(owner:))
+        let graphProjector = AppMeetingMemoryGraphBackgroundProjector(
+            store: store,
+            projector: ProjectMeetingMemoryGraph(
+                store: store,
+                telemetry: telemetry,
+                maintenanceGate: maintenanceGate),
+            captureState: captureState)
+        let memoryGraphBackground = MeetingMemoryGraphProjectionSupervisor(
+            isEnabled: !usesTemporaryStore,
+            drain: graphProjector.drain(owner:))
         return AppSemanticSearchComposition(
             coordinator: coordinator,
             ask: ask,
             library: library,
-            background: background)
+            background: background,
+            memoryGraphBackground: memoryGraphBackground)
     }
 }
 

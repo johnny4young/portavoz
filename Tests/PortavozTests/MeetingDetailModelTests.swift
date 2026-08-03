@@ -229,6 +229,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .reviewCommitment(review),
         ])
         XCTAssertEqual(client.searchReindexRequests, 0)
+        XCTAssertEqual(client.memoryGraphReindexRequests, 1)
         XCTAssertNil(model.state.lastActionError)
 
         client.failures = [.confirmCommitment, .reviewCommitment]
@@ -866,6 +867,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var calls: [MeetingDetailModelCall] = []
     var failures: Set<MeetingDetailModelFailure> = []
     var searchReindexRequests = 0
+    var memoryGraphReindexRequests = 0
     var canRememberVoiceResult = true
     var rememberVoiceResult: ManageMeetingVoiceMemoryResult = .remembered
     var metadataSuggestionsResult = MeetingReviewMetadataSuggestions()
@@ -1117,6 +1119,10 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
 
     func requestMeetingDetailSearchReindex() {
         searchReindexRequests += 1
+    }
+
+    func requestMeetingDetailMemoryGraphReindex() {
+        memoryGraphReindexRequests += 1
     }
 
     private func fail(_ failure: MeetingDetailModelFailure) throws {

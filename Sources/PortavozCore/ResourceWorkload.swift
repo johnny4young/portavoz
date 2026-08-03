@@ -25,6 +25,7 @@ public enum ResourceWorkloadKind: String, CaseIterable, Sendable {
     case speakerDiarization
     case languageInference
     case searchIndex
+    case memoryGraph
     case librarySync
     case waveform
     case uiProjection

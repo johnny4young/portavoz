@@ -71,4 +71,5 @@ protocol MeetingDetailModelClient: AnyObject {
         speakerID: SpeakerID
     ) async throws -> ManageMeetingVoiceMemoryResult
     func requestMeetingDetailSearchReindex()
+    func requestMeetingDetailMemoryGraphReindex()
 }

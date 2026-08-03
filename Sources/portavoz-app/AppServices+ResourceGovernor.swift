@@ -109,6 +109,7 @@ extension AppServices {
         resourceCaptureState.update(next)
         guard next != .inactive else {
             semanticIndexingSupervisor.kick()
+            memoryGraphProjectionSupervisor.kick()
             meetingSync.maintenanceMayResume()
             libraryMarkdownBackup.maintenanceMayResume()
             return

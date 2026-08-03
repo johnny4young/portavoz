@@ -544,7 +544,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 25. It includes:
+The current schema version is 27. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -563,6 +563,10 @@ The current schema version is 25. It includes:
   review;
 - UUID topic identities, ambiguous presentation aliases, immutable exact
   meeting evidence, and append-only merge/split identity history;
+- explicitly confirmed decision continuity with immutable ordered multi-meeting
+  sources and append-only confirm/supersede/reverse history;
+- a disposable typed Meeting Memory Graph projection with a versioned profile,
+  bounded invalidation cursor, and independently leased maintenance ownership;
 - immutable generation-run provenance;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);
@@ -1263,10 +1267,10 @@ accepted source segment, so correction or physical deletion makes evidence
 stale or unavailable without rewriting history. Stable proposal IDs make an
 exact retry replay immutable persisted identity before mutable source
 validation; different content under the same ID fails closed, while the replay
-still reports current derived availability. There is still no
-model-generated proposal producer, projection job, query-serving adapter,
-UI, sync/export contract, CLI/MCP surface, global taxonomy, or specialized
-graph engine.
+still reports current derived availability. Topic confirmation itself still
+selects no model-generated proposal producer, similarity threshold,
+query-serving policy, UI, sync/export contract, CLI/MCP surface, global
+taxonomy, or specialized graph engine.
 
 Decision continuity is a second, separate relational boundary. Existing
 immutable `SummaryDecisionEvidence` remains a generated observation and grants
@@ -1285,10 +1289,39 @@ The current projection permits only `confirmed`, `superseded`, or `reversed`;
 generated-decision, and segment identities deliberately outlive physical
 source purge, with current/stale/unavailable evidence derived on read. Exact
 command retries replay persisted identity and current availability; identity
-reuse with different content fails closed. This foundation has no automatic
-candidate promotion, semantic relationship authority, background projection,
-timeline, Ask integration, app composition, sync/export format, CLI/MCP
-surface, or graph-engine dependency.
+reuse with different content fails closed. This confirmation boundary has no
+automatic candidate promotion or semantic relationship authority. Timeline,
+Ask integration, sync/export, CLI/MCP, and specialized graph-engine behavior
+remain absent.
+
+Schema v27 adds a **disposable typed Meeting Memory Graph projection** over the
+authoritative meeting, confirmed-person, topic, decision, and commitment
+records. Its v1 topology contains only meeting-person, meeting-topic,
+meeting-decision, meeting-commitment, and commitment-person edges. Topic edges
+resolve reversible observed identities to the current live topic-family root;
+the projection never rewrites immutable topic evidence. No provider, model,
+embedding, score, generated label, or answer text participates in projection.
+
+Authoritative SQLite mutations advance one content-free source generation and
+upsert a bounded invalidation cursor by typed scope. A versioned projection
+fingerprint makes contract changes rebuild every scope without touching source
+records. Each batch validates the exact durable job, lease owner, unexpired
+lease, fingerprint, and claimed source generation in its publication
+transaction, commits only a bounded scope set, and advances
+the projection high-water only after every invalidation at or below that claim
+is settled. Reads fail closed unless profile, source generation, and empty
+cursor all agree. A newer mutation that arrives during a run remains queued for
+a later operation.
+
+ApplicationKit owns projection and durable retry/suspension policy. The macOS
+composition root owns one signal-driven supervisor that runs only while capture
+is inactive, shares the existing durable-maintenance scheduler without borrowing
+a model runtime, coalesces burst signals, and resumes from committed cursor
+state after lease expiry or relaunch. Launch, post-capture reconciliation,
+explicit person/commitment changes, and successful Commitment Radar mutations
+wake the owner; SQLite triggers persist work but never poll. The projection is
+not yet a query-serving authority: GRAPH-4 must add bounded evidence-preserving
+reads and freshness filtering before Ask or another UI can consume it.
 
 The library-global Commitment Radar is a separate bounded read model over only
 confirmed continuity. `LoadCommitmentRadar` owns the injected calendar and
@@ -3254,13 +3287,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,892 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,906 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 553 first-party Swift source files;
+- strict SwiftLint reports zero violations across 558 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

@@ -174,6 +174,35 @@ final class ResourceGovernorPolicyTests: XCTestCase {
             .pauseAfterCheckpoint)
     }
 
+    func testMemoryGraphMaintenanceYieldsDuringCaptureAndResumesWhenIdle() {
+        let admission = request(
+            workloadClass: .maintenance,
+            kind: .memoryGraph)
+        let checkpoint = request(
+            workloadClass: .maintenance,
+            kind: .memoryGraph,
+            phase: .checkpoint)
+
+        XCTAssertEqual(
+            policy.evaluate(
+                request: admission,
+                snapshot: snapshot(captureState: .active)
+            ).disposition,
+            .defer(until: .captureStops))
+        XCTAssertEqual(
+            policy.evaluate(
+                request: checkpoint,
+                snapshot: snapshot(captureState: .active)
+            ).disposition,
+            .pauseAfterCheckpoint)
+        XCTAssertEqual(
+            policy.evaluate(
+                request: admission,
+                snapshot: snapshot(captureState: .inactive)
+            ).disposition,
+            .admitNow)
+    }
+
     func testLiveInteractiveWorkContinuesDuringHealthyCapture() {
         let request = request(
             workloadClass: .liveInteractive,

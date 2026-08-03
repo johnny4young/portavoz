@@ -103,6 +103,10 @@ extension AppServices: MeetingDetailModelClient {
         requestSearchReconciliation()
     }
 
+    func requestMeetingDetailMemoryGraphReindex() {
+        requestMemoryGraphReconciliation()
+    }
+
     func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws {
         let jobs = try await store.retryFailedProcessingJobs(for: meetingID)
         guard !jobs.isEmpty else { return }

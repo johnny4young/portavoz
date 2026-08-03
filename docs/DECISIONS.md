@@ -9399,3 +9399,61 @@ source-backed, correction-aware, idempotent, and explicit about which newer
 decision superseded or reversed an older one. Decision discovery, bounded
 rebuilds, chronology presentation, and serving remain open slices rather than
 implicit side effects of this storage foundation.
+
+## D273 — Project memory topology as disposable durable state (Aug 2026)
+
+**Context:** D270 defines evidence-backed longitudinal questions, while D271
+and D272 establish explicit topic and decision authority beside existing
+confirmed people and commitments. Traversing those normalized source tables
+for every future question would couple serving latency to aggregate history,
+but introducing a graph engine or persisting inferred relationships would add
+complexity before product queries justify it. A derived projection also cannot
+advertise partial rebuilds as current, lose work during capture, or let one
+expired process publish after another owner resumes the same job.
+
+**Decision:** add schema v27 with one relational, disposable, versioned Meeting
+Memory Graph projection. Its v1 edge vocabulary is deliberately limited to
+meeting-person, meeting-topic, meeting-decision, meeting-commitment, and
+commitment-person. Every edge is rebuilt only from authoritative local rows.
+Observed topic evidence remains attached to its reversible child UUID while
+the disposable meeting-topic edge resolves to the current live family root.
+Confirmed historical relationships may remain topological edges; source
+freshness continues to be derived from authoritative evidence and is not
+copied into the graph.
+
+SQLite triggers advance one content-free kind-wide source generation and
+upsert one invalidation row per affected meeting, person, topic, decision, or
+commitment scope. Alias-only presentation edits and other fields that cannot
+change v1 topology do not schedule work. Topic merge/split changes invalidate
+the source plus old and new roots. Profile changes clear only typed edge tables
+and seed every authority scope; newer invalidations are retained rather than
+overwritten.
+
+Every bounded publication validates the exact running durable job, lease
+owner, target fingerprint, claimed source generation, and lease time. A batch
+commits complete scopes and removes only cursor rows no newer than the scope it
+rebuilt. Projection high-water advances only after no invalidation at or below
+the claimed generation remains. The public snapshot fails closed unless its
+profile equals the compiled v1 profile, its generation equals the current
+source generation, and the cursor is empty.
+
+ApplicationKit owns the resource-governed projector and durable orchestration.
+The macOS composition root owns one signal-driven supervisor, reuses the
+generic derived-maintenance lease/retry/suspension ledger, runs only outside
+capture, coalesces burst wakes, and resumes committed cursor state after lease
+expiry or relaunch. It borrows no model runtime. Launch, recording completion,
+and successful topology mutations signal reconciliation; triggers persist work
+but do not poll or execute it.
+
+This decision adds no serving timeline, evidence hydration, graph answer,
+ranking, provider, model, threshold, graph database, sync/export envelope,
+CLI/MCP surface, or UI. Those remain GRAPH-4 and later boundaries and must fail
+closed on stale evidence.
+
+**Consequences:** Portavoz now has bounded, crash-resumable local topology
+without making generated output authoritative or adding a specialized graph
+dependency. Corrections, deletion, reassignment, topic-family changes, and
+profile evolution converge by replay from source truth. The projection can be
+discarded and rebuilt at any time, while partial or incompatible state is never
+servable. Query semantics and evidence freshness remain explicit future work
+rather than hidden projection policy.

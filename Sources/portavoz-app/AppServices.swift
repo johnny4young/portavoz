@@ -114,6 +114,10 @@ final class AppServices {
     /// polling SQLite or making a SwiftUI view responsible for maintenance.
     @ObservationIgnored let semanticIndexingSupervisor:
         SemanticCorpusIndexingSupervisor
+    /// Signal-driven owner for the disposable typed meeting-memory graph.
+    /// It shares durable maintenance semantics but never borrows a model.
+    @ObservationIgnored let memoryGraphProjectionSupervisor:
+        MeetingMemoryGraphProjectionSupervisor
     /// One process-shared Library lane augments exact search without
     /// downloading assets as a side effect of typing.
     @ObservationIgnored let librarySemanticSearch: LocalLibrarySemanticSearch
@@ -258,6 +262,7 @@ final class AppServices {
             semanticRuntime: semanticEmbeddingRuntime, telemetry: workloadTelemetry, captureState: resourceCaptureState)
         semanticIndexingCoordinator = semanticSearch.coordinator
         semanticIndexingSupervisor = semanticSearch.background
+        memoryGraphProjectionSupervisor = semanticSearch.memoryGraphBackground
         librarySemanticSearch = semanticSearch.library
         let askUseCase = semanticSearch.ask
         firstRun = FirstRunModel(client: AppFirstRunModelClient(
@@ -285,6 +290,10 @@ final class AppServices {
             store: store,
             enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable,
             telemetry: workloadTelemetry)
+        scheduleInitialReadinessRefresh()
+    }
+
+    private func scheduleInitialReadinessRefresh() {
         Task { @MainActor [weak self] in
             await self?.refreshMLXReadiness()
         }
@@ -357,6 +366,14 @@ final class AppServices {
         Task { await indexer.requestReindex() }
         guard resourceCaptureState.current == .inactive else { return }
         semanticIndexingSupervisor.kick()
+        requestMemoryGraphReconciliation()
+    }
+
+    /// Topology-only mutations wake no text index. Durable graph triggers keep
+    /// the cursor safe during capture; capture-stop reconciliation runs it.
+    func requestMemoryGraphReconciliation() {
+        guard resourceCaptureState.current == .inactive else { return }
+        memoryGraphProjectionSupervisor.kick()
     }
 
     /// Explicit readiness for workflows that truly need both models.

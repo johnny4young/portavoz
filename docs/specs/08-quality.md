@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,892 cases (13 environment-gated) + 65
+Status: the package inventory contains 1,906 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1250,6 +1250,27 @@ AVFoundation concurrency suppression, current no-op/throwing call shapes, and
 the CI warning gate. This leaves first-party Swift warning-free without turning
 dependency package metadata warnings into product exceptions (D118).
 
+### Meeting Memory Graph projection recovery (D273)
+
+Ten deterministic storage/application cases cover additive v26-to-v27
+migration, exact authority-scope seeding, all five typed edge families,
+canonical topic-root projection, bounded partial publication, fail-closed
+readiness, correction and deletion, profile reset, governor pause/resume,
+expired-owner recovery, idempotent edge replacement, independent semantic and
+graph leases, capture-time admission denial, and the absence of redundant work
+for lifecycle fields that cannot change v1 topology. The tests use only
+in-memory SQLite and public synthetic records; no model, user library, or graph
+engine participates.
+
+Supervisor characterization additionally proves a disabled graph owner ignores
+wake signals and a coalesced semantic rerun retains one continuous `building`
+phase until every queued drain finishes. Architecture ratchets keep the graph
+profile in Core, storage/migrations in StorageKit, orchestration in
+ApplicationKit, and the signal owner in the macOS composition root. Existing
+schema-migration suites now require v27 without dropping any historical
+migration. GRAPH-3 changes no SwiftUI surface, so scoped XCUITest and screenshot
+evidence are intentionally not applicable to this slice.
+
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
@@ -1339,8 +1360,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,892 XCTest package cases (13
-environment-gated), zero strict-lint violations across 553 first-party Swift
+The current field-reliability inventory is 1,906 XCTest package cases (13
+environment-gated), zero strict-lint violations across 558 first-party Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 65 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package

@@ -486,7 +486,7 @@ private extension ResourceWorkloadDescriptor {
             .languageIntelligence
         case .searchIndex:
             .semanticEmbedding
-        case .audioCapture, .librarySync, .waveform, .uiProjection,
+        case .audioCapture, .memoryGraph, .librarySync, .waveform, .uiProjection,
              .mediaExport, .supportExport:
             nil
         }
@@ -499,7 +499,7 @@ private extension ResourceWorkloadDescriptor {
     var writesDurableData: Bool {
         switch kind {
         case .audioCapture, .qualityTranscription, .speakerDiarization,
-             .languageInference, .searchIndex, .librarySync, .waveform,
+             .languageInference, .searchIndex, .memoryGraph, .librarySync, .waveform,
              .mediaExport, .supportExport:
             true
         case .liveTranscription, .uiProjection:

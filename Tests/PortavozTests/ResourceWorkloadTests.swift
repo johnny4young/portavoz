@@ -15,7 +15,7 @@ final class ResourceWorkloadTests: XCTestCase {
             [
                 "audioCapture", "liveTranscription", "qualityTranscription",
                 "speakerDiarization", "languageInference", "searchIndex",
-                "librarySync", "waveform", "uiProjection", "mediaExport",
+                "memoryGraph", "librarySync", "waveform", "uiProjection", "mediaExport",
                 "supportExport",
             ])
         XCTAssertEqual(

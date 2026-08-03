@@ -10,6 +10,7 @@ public struct DerivedMaintenanceJobID: Hashable, Sendable {
 
 public enum DerivedMaintenanceKind: String, CaseIterable, Codable, Sendable {
     case semanticCorpus = "semantic-corpus"
+    case meetingMemoryGraph = "meeting-memory-graph"
 }
 
 public enum DerivedMaintenanceJobState: String, Codable, Sendable {
@@ -89,8 +90,25 @@ public enum SemanticCorpusMaintenanceFingerprint {
               targetFingerprint.count == 64,
               targetFingerprint.allSatisfy({ $0.isHexDigit })
         else { return nil }
+        return DerivedMaintenanceFingerprint.compute(
+            kind: .semanticCorpus,
+            targetFingerprint: targetFingerprint,
+            sourceGeneration: sourceGeneration)
+    }
+}
+
+public enum DerivedMaintenanceFingerprint {
+    public static func compute(
+        kind: DerivedMaintenanceKind,
+        targetFingerprint: String,
+        sourceGeneration: Int
+    ) -> String? {
+        guard sourceGeneration >= 0,
+              targetFingerprint.count == 64,
+              targetFingerprint.allSatisfy({ $0.isHexDigit })
+        else { return nil }
         return OperationFingerprint.make(
-            version: "semantic-corpus-maintenance-v1",
+            version: "\(kind.rawValue)-maintenance-v1",
             components: [targetFingerprint.lowercased(), String(sourceGeneration)])
     }
 }
