@@ -1837,6 +1837,13 @@ exercises this same production path in the durable-resume XCUITest (D63).
   a canonical entity exists. Stable identifiers and the disposable
   `-seed-commitment-radar` fixture verify filtering and exact source navigation
   in English and Spanish.
+- **Durable Radar actions (D256):** each confirmed card can change its due date
+  or be completed, and each completed card can be restored. The window model
+  serializes one mutation, preserves the visible page on failure, and reloads
+  its bounded query after success. `ManageCommitmentRadar` owns event identity,
+  timestamp, and the append-only transition; SwiftUI never writes StorageKit or
+  invents source history. Reminder snooze remains outside this surface because
+  it must not alter the commitment due date.
 - **Summary sources (D87):** the overview tab renders compact localized
   timestamp buttons only when its typed claim matches the current transcript
   revision and every ordered segment link remains live. Selecting a source

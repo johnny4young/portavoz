@@ -321,7 +321,10 @@ class UITestScopeTests(unittest.TestCase):
         for path in [
             "Sources/PortavozCore/CommitmentRadar.swift",
             "Sources/ApplicationKit/LoadCommitmentRadar.swift",
+            "Sources/ApplicationKit/ManageCommitmentRadar.swift",
             "Sources/StorageKit/MeetingStore+CommitmentRadar.swift",
+            "Sources/portavoz-app/AppServices+CommitmentRadar.swift",
+            "Sources/portavoz-app/CommitmentRadarModel.swift",
             "Sources/portavoz-app/CommitmentRadarView.swift",
         ]:
             selection = select_paths([path])

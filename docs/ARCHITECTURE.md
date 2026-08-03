@@ -1147,6 +1147,16 @@ invoke intelligence, hydrate Meeting Detail per row, or promote generated
 action items. Project and topic grouping remain absent because neither has a
 canonical product entity.
 
+Radar lifecycle changes cross a separate `ManageCommitmentRadar` application
+boundary. The view can request only complete, reopen, or due-date reschedule;
+the use case creates the event identity and timestamp and invokes the existing
+append-only continuity transaction without fabricating a source meeting. The
+model serializes mutations, keeps the visible page on failure, and reloads the
+same bounded query after success. StorageKit atomically appends the event and
+updates its current projection. Reminder snooze is intentionally not a Radar
+mutation because it belongs to future reminder-delivery history and must not
+rewrite the commitment's due date.
+
 The bounded read has a content-free Release scale gate. A fresh synthetic
 store is prepared before timing, one warm read precedes five measured reads,
 and the maximum four-statement shape is exercised with exact canonical-person

@@ -337,6 +337,41 @@ final class CommitmentRadarStorageTests: XCTestCase {
     }
 }
 
+final class ManageCommitmentRadarTests: XCTestCase {
+    func testUseCaseMapsOnlyExplicitRadarMutationsToDurableTransitions() async throws {
+        let now = Date(timeIntervalSince1970: 1_810_000_000)
+        let dueAt = now.addingTimeInterval(86_400)
+        let commitmentID = CommitmentID()
+        let eventIDs = [CommitmentEventID(), CommitmentEventID(), CommitmentEventID()]
+        let repository = CommitmentRadarMutationRepositoryFake()
+        let mutations: [CommitmentRadarMutation] = [
+            .complete,
+            .reopen,
+            .reschedule(dueAt),
+        ]
+        for (eventID, mutation) in zip(eventIDs, mutations) {
+            _ = try await ManageCommitmentRadar(
+                repository: repository,
+                now: { now },
+                makeEventID: { eventID })
+                .execute(ManageCommitmentRadarRequest(
+                    commitmentID: commitmentID,
+                    mutation: mutation))
+        }
+
+        let calls = await repository.calls
+        XCTAssertEqual(calls.map(\.transition), [
+            .complete,
+            .reopen,
+            .reschedule(dueAt),
+        ])
+        XCTAssertEqual(calls.map(\.commitmentID), Array(repeating: commitmentID, count: 3))
+        XCTAssertEqual(calls.map(\.eventID), eventIDs)
+        XCTAssertTrue(calls.allSatisfy { $0.sourceMeetingID == nil })
+        XCTAssertEqual(calls.map(\.date), Array(repeating: now, count: 3))
+    }
+}
+
 private actor CommitmentRadarRepositoryFake: CommitmentRadarReading {
     private(set) var queries: [CommitmentRadarQuery] = []
 
@@ -345,6 +380,49 @@ private actor CommitmentRadarRepositoryFake: CommitmentRadarReading {
     ) -> CommitmentRadarPage {
         queries.append(query)
         return CommitmentRadarPage(items: [], totalCount: 0)
+    }
+}
+
+private actor CommitmentRadarMutationRepositoryFake: CommitmentRadarMutating {
+    struct Call: Sendable {
+        let transition: CommitmentTransition
+        let commitmentID: CommitmentID
+        let eventID: CommitmentEventID
+        let sourceMeetingID: MeetingID?
+        let date: Date
+    }
+
+    private(set) var calls: [Call] = []
+
+    func applyCommitmentTransition(
+        _ transition: CommitmentTransition,
+        to commitmentID: CommitmentID,
+        eventID: CommitmentEventID,
+        sourceMeetingID: MeetingID?,
+        at proposedDate: Date
+    ) async throws -> CommitmentContinuityEnvelope {
+        calls.append(Call(
+            transition: transition,
+            commitmentID: commitmentID,
+            eventID: eventID,
+            sourceMeetingID: sourceMeetingID,
+            date: proposedDate))
+        let source = CommitmentSource(
+            commitmentID: commitmentID,
+            kind: .manual,
+            meetingID: nil,
+            firstSeenAt: proposedDate)
+        let confirm = CommitmentEvent(
+            commitmentID: commitmentID,
+            kind: .confirm,
+            occurredAt: proposedDate)
+        return try CommitmentContinuityEnvelope(
+            commitment: CommitmentContinuityPolicy.projectedCommitment(
+                id: commitmentID,
+                title: "Test commitment",
+                events: [confirm]),
+            sources: [source],
+            events: [confirm])
     }
 }
 

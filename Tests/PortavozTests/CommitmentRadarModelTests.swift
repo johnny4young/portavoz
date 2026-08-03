@@ -14,7 +14,7 @@ final class CommitmentRadarModelTests: XCTestCase {
             .success(CommitmentRadarPage(items: [], totalCount: 0)),
             .success(page),
             .success(page),
-        ])
+        ], mutationResponses: [])
         let model = CommitmentRadarModel(client: client)
 
         await model.send(.load)
@@ -34,7 +34,9 @@ final class CommitmentRadarModelTests: XCTestCase {
     }
 
     func testGroupingIsPresentationOnlyAndDoesNotReloadStorage() async {
-        let client = CommitmentRadarModelClientFake(responses: [])
+        let client = CommitmentRadarModelClientFake(
+            responses: [],
+            mutationResponses: [])
         let model = CommitmentRadarModel(client: client)
 
         await model.send(.groupingChanged(.meeting))
@@ -50,7 +52,7 @@ final class CommitmentRadarModelTests: XCTestCase {
             .success(page),
             .failure(.unavailable),
             .success(page),
-        ])
+        ], mutationResponses: [])
         let model = CommitmentRadarModel(client: client)
 
         await model.send(.load)
@@ -63,15 +65,61 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertEqual(model.state.page, page)
     }
 
-    private static func page(title: String) -> CommitmentRadarPage {
+    func testCompleteMutatesDurableTruthAndReloadsWithoutDiscardingThePage() async {
+        let open = Self.page(title: "Send the rollout brief")
+        let completed = Self.page(
+            title: "Send the rollout brief",
+            status: .done,
+            activity: .completed)
+        let client = CommitmentRadarModelClientFake(
+            responses: [.success(open), .success(completed)],
+            mutationResponses: [.success(())])
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.load)
+        let commitmentID = open.items[0].id
+        await model.send(.complete(commitmentID))
+
+        XCTAssertEqual(client.mutations, [ManageCommitmentRadarRequest(
+            commitmentID: commitmentID,
+            mutation: .complete)])
+        XCTAssertEqual(model.state.phase, .loaded)
+        XCTAssertEqual(model.state.page, completed)
+        XCTAssertNil(model.state.mutatingCommitmentID)
+        XCTAssertFalse(model.state.mutationFailed)
+    }
+
+    func testMutationFailurePreservesVisiblePageAndCanBeDismissed() async {
+        let page = Self.page(title: "Recheck the launch checklist")
+        let client = CommitmentRadarModelClientFake(
+            responses: [.success(page)],
+            mutationResponses: [.failure(.unavailable)])
+        let model = CommitmentRadarModel(client: client)
+
+        await model.send(.load)
+        await model.send(.reopen(page.items[0].id))
+
+        XCTAssertEqual(model.state.page, page)
+        XCTAssertEqual(model.state.phase, .loaded)
+        XCTAssertTrue(model.state.mutationFailed)
+        await model.send(.dismissMutationFailure)
+        XCTAssertFalse(model.state.mutationFailed)
+    }
+
+    private static func page(
+        title: String,
+        status: CommitmentStatus = .confirmed,
+        activity: CommitmentRadarActivity = .new
+    ) -> CommitmentRadarPage {
         let date = Date(timeIntervalSince1970: 1_800_000_000)
         let item = CommitmentRadarItem(
             commitment: Commitment(
                 title: title,
+                status: status,
                 assignee: .me,
                 createdAt: date),
             assigneeDisplayName: nil,
-            activity: .new,
+            activity: activity,
             sources: [],
             sourceCount: 0,
             history: [],
@@ -87,10 +135,16 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     }
 
     var responses: [Result<CommitmentRadarPage, Failure>]
+    var mutationResponses: [Result<Void, Failure>]
     var requests: [LoadCommitmentRadarRequest] = []
+    var mutations: [ManageCommitmentRadarRequest] = []
 
-    init(responses: [Result<CommitmentRadarPage, Failure>]) {
+    init(
+        responses: [Result<CommitmentRadarPage, Failure>],
+        mutationResponses: [Result<Void, Failure>]
+    ) {
         self.responses = responses
+        self.mutationResponses = mutationResponses
     }
 
     func loadCommitmentRadar(
@@ -98,5 +152,12 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     ) async throws -> CommitmentRadarPage {
         requests.append(request)
         return try responses.removeFirst().get()
+    }
+
+    func mutateCommitmentRadar(
+        _ request: ManageCommitmentRadarRequest
+    ) async throws {
+        mutations.append(request)
+        return try mutationResponses.removeFirst().get()
     }
 }

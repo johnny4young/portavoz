@@ -8,6 +8,7 @@ struct CommitmentRadarView: View {
     let onOpenMeeting: (MeetingID) -> Void
 
     @State private var expandedItems: Set<CommitmentID> = []
+    @State private var rescheduleItem: CommitmentRadarItem?
 
     private var state: CommitmentRadarModel.State { model.state }
 
@@ -23,6 +24,24 @@ struct CommitmentRadarView: View {
         }
         .accessibilityIdentifier("commitment-radar")
         .task { await model.send(.load) }
+        .sheet(item: $rescheduleItem) { item in
+            CommitmentRadarDueDateSheet(
+                item: item,
+                cancel: { rescheduleItem = nil },
+                save: { dueAt in
+                    await model.send(.reschedule(item.id, dueAt))
+                    rescheduleItem = nil
+                })
+        }
+        .alert(
+            "Couldn’t complete",
+            isPresented: mutationFailureBinding
+        ) {
+            Button("OK") {
+                Task { await model.send(.dismissMutationFailure) }
+            }
+            .accessibilityIdentifier("commitment-radar-mutation-error-dismiss")
+        }
     }
 }
 
@@ -252,6 +271,8 @@ private extension CommitmentRadarView {
             }
             .font(.caption)
 
+            radarActions(item)
+
             DisclosureGroup(
                 isExpanded: expansionBinding(item.id)
             ) {
@@ -267,6 +288,35 @@ private extension CommitmentRadarView {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(
             "commitment-radar-item-\(item.id.rawValue.uuidString)")
+    }
+
+    @ViewBuilder func radarActions(_ item: CommitmentRadarItem) -> some View {
+        HStack(spacing: 8) {
+            Spacer()
+            switch item.commitment.status {
+            case .confirmed:
+                Button("Due date") {
+                    rescheduleItem = item
+                }
+                .accessibilityIdentifier(
+                    "commitment-radar-due-\(item.id.rawValue.uuidString)")
+                Button("Done") {
+                    Task { await model.send(.complete(item.id)) }
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier(
+                    "commitment-radar-complete-\(item.id.rawValue.uuidString)")
+            case .done:
+                Button("Restore") {
+                    Task { await model.send(.reopen(item.id)) }
+                }
+                .accessibilityIdentifier(
+                    "commitment-radar-reopen-\(item.id.rawValue.uuidString)")
+            case .dismissed:
+                EmptyView()
+            }
+        }
+        .disabled(state.mutatingCommitmentID != nil)
     }
 
     @ViewBuilder func firstSourceLink(_ item: CommitmentRadarItem) -> some View {
@@ -548,10 +598,85 @@ private extension CommitmentRadarView {
         case .reopened: PVDesign.brandAmber
         }
     }
+
+    var mutationFailureBinding: Binding<Bool> {
+        Binding(
+            get: { state.mutationFailed },
+            set: { visible in
+                if !visible {
+                    Task { await model.send(.dismissMutationFailure) }
+                }
+            })
+    }
 }
 
 private struct CommitmentRadarGroup: Identifiable {
     let id: String
     let title: String
     var items: [CommitmentRadarItem]
+}
+
+private struct CommitmentRadarDueDateSheet: View {
+    let item: CommitmentRadarItem
+    let cancel: @MainActor () -> Void
+    let save: @MainActor (Date?) async -> Void
+
+    @State private var includesDueDate: Bool
+    @State private var dueAt: Date
+    @State private var isSaving = false
+
+    init(
+        item: CommitmentRadarItem,
+        cancel: @escaping @MainActor () -> Void,
+        save: @escaping @MainActor (Date?) async -> Void
+    ) {
+        self.item = item
+        self.cancel = cancel
+        self.save = save
+        _includesDueDate = State(initialValue: item.commitment.dueAt != nil)
+        _dueAt = State(initialValue: item.commitment.dueAt
+            ?? Date().addingTimeInterval(24 * 60 * 60))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Due date")
+                .font(.title3.weight(.semibold))
+            Text(verbatim: item.commitment.title)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            Toggle("Add due date", isOn: $includesDueDate)
+                .accessibilityIdentifier("commitment-radar-due-toggle")
+            if includesDueDate {
+                DatePicker(
+                    "Due date",
+                    selection: $dueAt,
+                    displayedComponents: [.date])
+                    .accessibilityIdentifier("commitment-radar-due-date")
+            }
+
+            HStack {
+                Spacer()
+                Button("Cancel", action: cancel)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("commitment-radar-due-cancel")
+                Button("Save") {
+                    isSaving = true
+                    Task {
+                        await save(includesDueDate ? dueAt : nil)
+                        isSaving = false
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+                .disabled(isSaving)
+                .accessibilityIdentifier("commitment-radar-due-save")
+            }
+        }
+        .padding(20)
+        .frame(width: 430)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("commitment-radar-due-editor")
+    }
 }

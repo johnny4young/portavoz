@@ -1617,6 +1617,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/PortavozCore/CommitmentRadar.swift")
         let application = try Self.contents(
             of: "Sources/ApplicationKit/LoadCommitmentRadar.swift")
+        let management = try Self.contents(
+            of: "Sources/ApplicationKit/ManageCommitmentRadar.swift")
         let storage = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+CommitmentRadar.swift")
         let model = try Self.contents(
@@ -1638,6 +1640,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(application.contains("calendar.startOfDay(for: now())"))
         XCTAssertTrue(application.contains("private static let dueSoonDays = 7"))
         XCTAssertTrue(application.contains("private static let newActivityDays = 7"))
+        XCTAssertTrue(management.contains("protocol CommitmentRadarMutating"))
+        XCTAssertTrue(management.contains("enum CommitmentRadarMutation"))
+        XCTAssertTrue(management.contains("case complete"))
+        XCTAssertTrue(management.contains("case reopen"))
+        XCTAssertTrue(management.contains("case reschedule(Date?)"))
+        XCTAssertTrue(management.contains("sourceMeetingID: nil"))
+        XCTAssertFalse(management.contains("case snooze"))
         XCTAssertTrue(storage.contains("database.read"))
         XCTAssertTrue(storage.contains("ROW_NUMBER() OVER"))
         XCTAssertTrue(storage.contains("COUNT(*) OVER"))
@@ -1647,7 +1656,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(model.contains("private var requestID = UUID()"))
         XCTAssertTrue(model.contains("case ownerChanged"))
         XCTAssertTrue(model.contains("case groupingChanged"))
+        XCTAssertTrue(model.contains("case complete(CommitmentID)"))
+        XCTAssertTrue(model.contains("case reopen(CommitmentID)"))
+        XCTAssertTrue(model.contains("case reschedule(CommitmentID, Date?)"))
         XCTAssertTrue(composition.contains("LoadCommitmentRadar(repository: store)"))
+        XCTAssertTrue(composition.contains("ManageCommitmentRadar(repository: store)"))
         XCTAssertTrue(root.contains("@State private var commitmentRadarModel"))
         XCTAssertTrue(root.contains("case .commitments:"))
         XCTAssertTrue(view.contains("let onOpenMeeting: (MeetingID) -> Void"))
@@ -1657,6 +1670,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("MeetingStore"))
         XCTAssertFalse(view.contains("SummaryProvider"))
         XCTAssertFalse(view.contains("IntelligenceKit"))
+        XCTAssertTrue(view.contains("commitment-radar-complete-"))
+        XCTAssertTrue(view.contains("commitment-radar-reopen-"))
+        XCTAssertTrue(view.contains("commitment-radar-due-editor"))
         XCTAssertTrue(scaleBenchmark.contains(
             "static let canonicalCorpusSizes = [1_000, 10_000]"))
         XCTAssertTrue(scaleBenchmark.contains("p95BudgetMilliseconds: 100"))
@@ -1673,6 +1689,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D242"))
         XCTAssertTrue(decisions.contains(
             "Gate Commitment Radar with a content-free Release benchmark"))
+        XCTAssertTrue(decisions.contains("## D256"))
+        XCTAssertTrue(decisions.contains(
+            "Route Radar lifecycle actions through append-only continuity"))
     }
 
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {

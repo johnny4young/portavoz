@@ -40,6 +40,32 @@ final class CommitmentRadarUITests: PortavozUITestCase {
             "the owner filter must not mix another person's confirmed work")
         attachScreenshot(of: app, named: "commitment-radar")
 
+        let due = app.control(withIdentifier: "commitment-radar-due-\(mineID)")
+        XCTAssertTrue(due.waitForExistence(timeout: 5))
+        due.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-radar-due-editor")
+                .waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "commitment-radar-due-date")
+        app.control(withIdentifier: "commitment-radar-due-toggle").click()
+        app.control(withIdentifier: "commitment-radar-due-save").click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-radar-item-\(mineID)")
+                .staticTexts["No due date"]
+                .waitForExistence(timeout: 10),
+            "rescheduling must persist and reload the exact Radar item")
+        attachScreenshot(of: app, named: "commitment-radar-rescheduled")
+
+        let complete = app.control(
+            withIdentifier: "commitment-radar-complete-\(mineID)")
+        XCTAssertTrue(complete.waitForExistence(timeout: 5))
+        complete.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-radar-reopen-\(mineID)")
+                .waitForExistence(timeout: 10),
+            "completion must persist and return as a durable Radar action")
+        attachScreenshot(of: app, named: "commitment-radar-completed")
+
         let source = app.control(
             withIdentifier: "commitment-radar-source-B5D20000-0000-4000-8000-000000000002")
         XCTAssertTrue(source.waitForExistence(timeout: 5))

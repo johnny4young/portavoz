@@ -13,4 +13,10 @@ extension AppServices: CommitmentRadarModelClient {
     ) async throws -> CommitmentRadarPage {
         try await LoadCommitmentRadar(repository: store).execute(request)
     }
+
+    func mutateCommitmentRadar(
+        _ request: ManageCommitmentRadarRequest
+    ) async throws {
+        _ = try await ManageCommitmentRadar(repository: store).execute(request)
+    }
 }

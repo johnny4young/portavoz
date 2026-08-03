@@ -8769,3 +8769,31 @@ composition, product persistence, diagnostics, sync/export, bundles, MCP,
 SwiftUI, confirmation, or source-link commands. A real owner-reviewed private
 pack and explicit invocation remain mandatory before a tracked product policy
 or confirmation experiment can be designed.
+
+## D256 — Route Radar lifecycle actions through append-only continuity (Aug 2026)
+
+**Context:** confirmed continuity already stores complete, reopen, and
+reschedule as validated immutable events, but the global Commitment Radar was a
+read-only projection. Letting SwiftUI call StorageKit would reverse the feature
+boundary, while changing a due date in place would erase the history that makes
+the Radar trustworthy. A reminder snooze is also not a due-date change: it is a
+delivery decision with different lifecycle and audit semantics.
+
+**Decision:** add a narrow `ManageCommitmentRadar` ApplicationKit use case for
+only complete, reopen, and optional due-date reschedule. The use case owns the
+event identity and timestamp, attaches no source meeting, and delegates to the
+existing atomic append-event/project-current-state transaction. The per-window
+model serializes one mutation, retains the current page if the operation fails,
+and reruns the same bounded read after success. SwiftUI owns only the due-date
+editor and explicit intents; it imports neither StorageKit nor IntelligenceKit.
+
+Reminder snooze is deliberately absent. It will require separate reminder-
+delivery history and cannot be represented by rewriting a commitment deadline.
+No schema, candidate admission, notification, sync/export, bundle, CLI, or MCP
+surface changes in this slice.
+
+**Consequences:** users can now complete, restore, and reschedule confirmed work
+from its global review surface while every change remains durable and auditable.
+The existing projection/event consistency checks and bounded Radar query remain
+authoritative. Delivery schedules, notification permission recovery, review
+queues, and snooze still require later COMMIT-5 slices.

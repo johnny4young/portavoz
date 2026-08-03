@@ -10,6 +10,10 @@ protocol CommitmentRadarModelClient: AnyObject {
     func loadCommitmentRadar(
         _ request: LoadCommitmentRadarRequest
     ) async throws -> CommitmentRadarPage
+
+    func mutateCommitmentRadar(
+        _ request: ManageCommitmentRadarRequest
+    ) async throws
 }
 
 @MainActor
@@ -93,6 +97,8 @@ final class CommitmentRadarModel {
         fileprivate(set) var activity: ActivitySelection = .all
         fileprivate(set) var grouping: Grouping = .owner
         fileprivate(set) var page: CommitmentRadarPage?
+        fileprivate(set) var mutatingCommitmentID: CommitmentID?
+        fileprivate(set) var mutationFailed = false
     }
 
     enum Action {
@@ -101,6 +107,10 @@ final class CommitmentRadarModel {
         case dueChanged(DueSelection)
         case activityChanged(ActivitySelection)
         case groupingChanged(Grouping)
+        case complete(CommitmentID)
+        case reopen(CommitmentID)
+        case reschedule(CommitmentID, Date?)
+        case dismissMutationFailure
     }
 
     private(set) var state = State()
@@ -127,15 +137,23 @@ final class CommitmentRadarModel {
             await load()
         case .groupingChanged(let grouping):
             state.grouping = grouping
+        case .complete(let commitmentID):
+            await mutate(commitmentID, mutation: .complete)
+        case .reopen(let commitmentID):
+            await mutate(commitmentID, mutation: .reopen)
+        case .reschedule(let commitmentID, let dueAt):
+            await mutate(commitmentID, mutation: .reschedule(dueAt))
+        case .dismissMutationFailure:
+            state.mutationFailed = false
         }
     }
 }
 
 private extension CommitmentRadarModel {
-    func load() async {
+    func load(showProgress: Bool = true) async {
         let currentRequestID = UUID()
         requestID = currentRequestID
-        state.phase = .loading
+        if showProgress { state.phase = .loading }
         do {
             let page = try await client.loadCommitmentRadar(LoadCommitmentRadarRequest(
                 owner: state.owner.filter,
@@ -150,6 +168,26 @@ private extension CommitmentRadarModel {
             guard requestID == currentRequestID, !Task.isCancelled else { return }
             state.page = nil
             state.phase = .failed
+        }
+    }
+
+    func mutate(
+        _ commitmentID: CommitmentID,
+        mutation: CommitmentRadarMutation
+    ) async {
+        guard state.mutatingCommitmentID == nil else { return }
+        state.mutatingCommitmentID = commitmentID
+        state.mutationFailed = false
+        defer { state.mutatingCommitmentID = nil }
+        do {
+            try await client.mutateCommitmentRadar(ManageCommitmentRadarRequest(
+                commitmentID: commitmentID,
+                mutation: mutation))
+            await load(showProgress: false)
+        } catch is CancellationError {
+            // Route teardown owns cancellation; no failure banner is useful.
+        } catch {
+            state.mutationFailed = true
         }
     }
 }
