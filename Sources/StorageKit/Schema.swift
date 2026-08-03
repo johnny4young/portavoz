@@ -259,6 +259,10 @@ public enum StorageSchema {
         return migrator
     }
 
+}
+
+extension StorageSchema {
+
     private static func addMeetingDurabilityColumns(to db: Database) throws {
         try db.alter(table: "meeting") { t in
             t.add(column: "lifecycleState", .text)

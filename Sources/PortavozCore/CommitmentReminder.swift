@@ -76,6 +76,52 @@ public struct CommitmentReminderEvent: Codable, Sendable, Equatable, Identifiabl
     }
 }
 
+/// One bounded reconciliation root. Storage returns the authoritative
+/// commitment beside its current local delivery projection so application
+/// policy can converge an idempotent scheduler without per-row reads.
+public struct CommitmentReminderReconciliationItem: Sendable, Equatable, Identifiable {
+    public var id: CommitmentID { commitment.id }
+    public let commitment: Commitment
+    public let reminder: CommitmentReminderState?
+
+    public init(
+        commitment: Commitment,
+        reminder: CommitmentReminderState?
+    ) {
+        self.commitment = commitment
+        self.reminder = reminder
+    }
+}
+
+public enum ReminderReconciliationQueryError: Error, Sendable, Equatable {
+    case invalidLimit
+}
+
+public struct CommitmentReminderReconciliationQuery: Sendable, Equatable {
+    public static let maximumItemCount = 256
+    public let itemLimit: Int
+
+    public init(itemLimit: Int = 256) throws {
+        guard (1...Self.maximumItemCount).contains(itemLimit) else {
+            throw ReminderReconciliationQueryError.invalidLimit
+        }
+        self.itemLimit = itemLimit
+    }
+}
+
+public struct CommitmentReminderReconciliationPage: Sendable, Equatable {
+    public let items: [CommitmentReminderReconciliationItem]
+    public let totalCount: Int
+
+    public init(
+        items: [CommitmentReminderReconciliationItem],
+        totalCount: Int
+    ) {
+        self.items = items
+        self.totalCount = totalCount
+    }
+}
+
 public enum CommitmentReminderTransition: Sendable, Equatable {
     case schedule(scheduledFor: Date, sourceDueAt: Date)
     case present

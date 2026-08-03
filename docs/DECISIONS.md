@@ -8829,3 +8829,43 @@ confirmed-only reminders and honest snooze history without weakening durable
 commitment truth. Later COMMIT-5 slices can resolve due deliveries and add
 permission-aware local presentation against one bounded projection. Until
 then, no new reminder is scheduled or shown to users.
+
+## D258 — Reconcile reminder intent through a content-free scheduler port (Aug 2026)
+
+**Context:** durable reminder state alone cannot recover a missing or stale
+operating-system request after relaunch. Letting a macOS adapter query and
+mutate SQLite directly would duplicate confirmation/due-date policy, while a
+bounded read that silently truncates could leave old reminders active. A due
+date change also cannot be implemented as a persisted cancel followed by a
+separate schedule: failure between those writes would strand the reminder in a
+terminal state and explicit dismissal must never be silently reversed.
+
+**Decision:** add one complete-count reconciliation projection containing
+unscheduled confirmed due commitments plus every active reminder that may need
+retirement. Terminal projections remain outside the operational set so old
+dismissals and cancellations cannot consume its bounded capacity.
+`ReconcileCommitmentReminders` fails before side effects on invalid, duplicate,
+or partial snapshots and talks only to an idempotent content-free scheduler
+port keyed by `CommitmentID`. Matching schedules are reasserted after relaunch;
+completed, deleted, and due-less commitments cancel active delivery; presented
+matching reminders and terminal user decisions remain unchanged. A first
+schedule uses the exact due date, or a small injected future delay when already
+overdue.
+
+Due-date replacement first upserts the stable scheduler request and then uses
+one StorageKit transaction to append cancel and schedule events and publish
+only the final projection. Initial persistence failure attempts compensating
+scheduler cancellation. Terminal cancel is allowed for a soft-deleted
+commitment whose row still exists, while schedule, present, and snooze retain
+the live confirmed exact-due fence. The scheduler input contains no title,
+transcript, person, or meeting content. No `UserNotifications` adapter,
+permission prompt, application timer, UI, sync/export, bundle, CLI, or MCP
+surface is added.
+
+**Consequences:** local delivery can converge idempotently after relaunch and
+partial failure without letting platform code own business policy or leaking
+commitment text into its request boundary. Reconciliation refuses to claim
+success when more than 256 relevant roots exist; paging or a larger measured
+bound must be designed rather than silently skipping work. Actual macOS
+notification scheduling, permission recovery, delivery actions, and reminder
+review UI remain explicit separate work.

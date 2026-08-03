@@ -1723,6 +1723,34 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D257"))
     }
 
+    func testCommitmentReminderReconciliationIsBoundedAndAdapterNeutral() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/CommitmentReminder.swift")
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/ReconcileCommitmentReminders.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+CommitmentReminder.swift")
+        let app = try Self.contents(
+            of: "Sources/portavoz-app/ContentView.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(core.contains(
+            "struct CommitmentReminderReconciliationQuery"))
+        XCTAssertTrue(core.contains("maximumItemCount = 256"))
+        XCTAssertTrue(workflow.contains(
+            "protocol CommitmentReminderDeliveryScheduling"))
+        XCTAssertTrue(workflow.contains("incompleteSnapshot"))
+        XCTAssertTrue(workflow.contains("minimumSchedulingDelay"))
+        XCTAssertTrue(workflow.contains("try? await scheduler.cancelCommitmentReminder"))
+        XCTAssertFalse(workflow.contains("UserNotifications"))
+        XCTAssertFalse(workflow.contains("UNUserNotificationCenter"))
+        XCTAssertTrue(storage.contains("COUNT(*) OVER () AS totalCount"))
+        XCTAssertTrue(storage.contains("replaceCommitmentReminderSchedule"))
+        XCTAssertTrue(storage.contains("commitment.deletedAt == nil"))
+        XCTAssertFalse(app.contains("ReconcileCommitmentReminders"))
+        XCTAssertTrue(decisions.contains("## D258"))
+    }
+
     func testSemanticEmbeddingsAreCompatibilityFenced() throws {
         let profile = try Self.contents(
             of: "Sources/PortavozCore/SemanticEmbeddingProfile.swift")

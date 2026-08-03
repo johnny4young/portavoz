@@ -1156,7 +1156,7 @@ append-only continuity transaction without fabricating a source meeting. The
 model serializes mutations, keeps the visible page on failure, and reloads the
 same bounded query after success. StorageKit atomically appends the event and
 updates its current projection. Reminder snooze is intentionally not a Radar
-mutation because it belongs to future reminder-delivery history and must not
+mutation because it belongs to separate reminder-delivery history and must not
 rewrite the commitment's due date.
 
 Schema v23 establishes that separate history without composing notifications.
@@ -1168,10 +1168,23 @@ require the commitment to remain open and retain the exact due date captured by
 the reminder cycle. Snooze changes only the next delivery time; the commitment
 deadline and continuity event stream remain untouched. The latest-event
 composite foreign key, no-branch predecessor chain, immutable-history trigger,
-and monotonic projection guard fail closed on malformed persistence. This
-lower-layer contract adds no notification-center adapter, timer, SwiftUI,
-sync/export, bundle, CLI, or MCP behavior; application workflows will consume
-the boundary.
+and monotonic projection guard fail closed on malformed persistence.
+
+A bounded reconciliation query now returns every unscheduled confirmed due
+commitment and every active reminder that may require cancellation, together
+with the complete row count. Terminal projections remain outside this
+operational set. `ReconcileCommitmentReminders` refuses a truncated or duplicate
+snapshot, upserts only content-free stable commitment identities through an
+idempotent local scheduler port, and reasserts matching schedules after
+relaunch. Completed, deleted, or due-less commitments cancel active delivery;
+dismissed and cancelled reminders never rearm themselves. A changed due date
+uses one scheduler replacement and one atomic two-event cancel/schedule storage
+transaction, so a retry cannot strand the projection in a terminal state.
+Overdue first delivery receives a small injected future delay rather than an
+invalid past schedule. Scheduler mutation precedes persistence, and an initial
+persistence failure attempts compensating cancellation. No notification-center
+adapter, permission request, timer, SwiftUI, sync/export, bundle, CLI, or MCP
+behavior is composed.
 
 The bounded read has a content-free Release scale gate. A fresh synthetic
 store is prepared before timing, one warm read precedes five measured reads,
@@ -2998,13 +3011,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,768 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,793 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 511 Swift source files;
+- strict SwiftLint reports zero violations across 517 Swift source files;
 - 62 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
