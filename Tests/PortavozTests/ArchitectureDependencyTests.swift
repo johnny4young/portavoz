@@ -2031,6 +2031,40 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D282"))
     }
 
+    func testAskGraphFactsRemainAnIndependentExactEvidenceLane() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/AskMeetings.swift")
+        let graphLane = try Self.contents(
+            of: "Sources/ApplicationKit/AskGraphFacts.swift")
+        let presentation = try Self.contents(
+            of: "Sources/portavoz-app/AskModel.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(graphLane.contains("enum AskGraphFactQuery"))
+        XCTAssertTrue(graphLane.contains("protocol AskGraphFactRetrieving"))
+        XCTAssertTrue(graphLane.contains("struct LocalAskGraphFactRetrieval"))
+        XCTAssertTrue(graphLane.contains("struct AskEvidenceBundle"))
+        XCTAssertTrue(graphLane.contains(
+            "transcriptCitations: [AskCitation]"))
+        XCTAssertTrue(graphLane.contains(
+            "graphFacts: AskGraphFactLaneOutcome"))
+        for boundary in [
+            "LoadCommitmentBlockers(repository:",
+            "LoadTopicFirstDiscussion(repository:",
+            "LoadPersonCommitments(repository:",
+        ] {
+            XCTAssertTrue(graphLane.contains(boundary))
+        }
+        XCTAssertFalse(graphLane.contains("import IntelligenceKit"))
+        XCTAssertTrue(workflow.contains("func evidenceBundle("))
+        XCTAssertTrue(workflow.contains(
+            "graphFacts: LocalAskGraphFactRetrieval(store: store)"))
+        XCTAssertTrue(workflow.contains(
+            "answer(question: String, citations: [AskCitation])"))
+        XCTAssertFalse(presentation.contains("evidenceBundle("))
+        XCTAssertTrue(decisions.contains("## D283"))
+    }
+
     func testMeetingMemoryGraphProjectionIsDisposableDurableAndSignalDriven() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/MeetingMemoryGraphProjection.swift")

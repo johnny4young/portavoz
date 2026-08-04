@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,978 cases (13 environment-gated) + 65
+Status: the package inventory contains 1,986 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -27,7 +27,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 585 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 586 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -63,7 +63,7 @@ documented below.
 | AnalyzeAudioFileUseCaseTests / ManageLocalVoiceAndModelsUseCaseTests / PublishMeetingContentUseCaseTests | File admission and policy forwarding; deterministic transcription metrics; diarization threshold/timing/optional attribution; meeting-before-provider summary persistence; file, supplied-sample, and recorded local-voice enrollment with duration/sample validation, ordered progress, status/delete isolation, and capture-mode forwarding; catalog-order verification and sequential model installation; coherent Markdown/PDF/SRT/WebVTT/Gist export, canonical format/extension parsing, subtitle rendering without a Markdown prerequisite, pending-only owner-resolved action publication, typed missing/empty states, and zero concrete model, Keychain, filesystem, or network dependency |
 | MenuBarModelTests / MenuBarObservationTests | Storage-independent recent/pending composition, empty/degraded/failed phases, last-healthy-section preservation, and bounded newest-first live meeting roots through delete/restore |
 | ExportLibraryMarkdownBackupUseCaseTests / BackupPublicationReconcileTests / RecoverLibraryMarkdownBackupTests / LibraryMarkdownBackupRecoveryStoreTests / LibraryMarkdownBackupStoreTests / LibraryMarkdownBackupFilesTests / LibraryMarkdownBackupModelTests | Portable canonical filename allocation, existing/concurrent collision retries, typed partial and fatal outcomes, bounded page-copy suspension with partial-stage cleanup, one immutable newest-first SQLite stage with corrupt-aggregate isolation and General-summary parity, one-at-a-time aggregate delivery, process-local suspension/resume without rerender or republish, atomic non-replacing file publication, cursor-bound reservations, no-follow exact-byte destination evidence, missing/matching/conflicting and cursor-less reconciliation, cancellation and destination-failure lease closure, publication-before-source-checkpoint ordering, idempotent and monotonic cursor persistence, checkpoint-only retry without destination inspection or republish, failure-frozen cursor advancement, catalog-before-cleanup stage preservation, ambiguous/conflicting launch fail-closed behavior, exact active continuation and completed-result reconstruction, retryable adopted-stage abandon after destination setup failure, terminal recovered-source cleanup without an implicit fresh export, and process-scoped progress/terminal state |
-| AskMeetingsUseCaseTests / AskPipelineTelemetryTests | Shared trimming/search/evidence/answer behavior, lexical evidence before generation, deterministic bilingual exact retrieval before bounded generative fallback, concurrent lexical/semantic work with partial-order telemetry invariants, no-evidence generation skip, evidence-preserving ordinary generation failure, corpus-read-only product retrieval, cold/unavailable semantic fallback to lexical evidence, honest semantic and pipeline cancellation propagation, capability bypass for empty/invalid requests without trace creation, closed content-free Ask telemetry taxonomy, matched success/failure/cancellation intervals, and first-evidence/first-observable-token milestones |
+| AskMeetingsUseCaseTests / AskPipelineTelemetryTests | Shared trimming/search/evidence/answer behavior; lexical evidence before generation; deterministic bilingual exact retrieval before bounded generative fallback; concurrent lexical/semantic work with partial-order telemetry invariants; no-evidence generation skip; evidence-preserving ordinary generation failure; an independent exact graph-fact bundle that cannot replace transcript evidence, distinguishes no request/domain abstention/operational unavailability, routes all three implemented fact adapters, and propagates cancellation; corpus-read-only product retrieval; cold/unavailable semantic fallback to lexical evidence; honest semantic and pipeline cancellation propagation; capability bypass for empty/invalid requests without trace creation; closed content-free Ask telemetry taxonomy; matched success/failure/cancellation intervals; and first-evidence/first-observable-token milestones |
 | AskPresentationModelTests | Full Ask progressive finding/refinement/generation state, early citations, evidence fallback, cancellation and stale-progress rejection, process-scoped palette search/answer ownership, stale completion rejection across reset/reopen, and Markdown answer receipts |
 | RetrievalChunkingTests | Deterministic single-actor turn grouping; confirmed-person continuity across observed labels; anonymous remote isolation and local-microphone continuity; mixed-language source preservation; character/duration/gap bounds; stable membership identity; representation-only retention; correction-local and per-source-text delta invalidation; source replacement; and fail-closed meeting, revision, identity, speaker, and timeline validation |
 | SuggestMeetingReviewMetadataTests / MeetingDetailModelTests | Title/structure/chapter eligibility, known-recipe and bounded-label admission, independent failure degradation, cancellation propagation, route-owned one-shot state, revision/request fencing, and suggestion preservation after failed title persistence |
@@ -1404,10 +1404,23 @@ identities in the sixth case must abstain before exact factual serving.
 Two architecture ratchets pin exact `PersonID` input, complete current
 authority-versus-projection ownership reconciliation, continuity hydration,
 exact source evidence, the read-only alias candidate boundary, public-only
-canonical mapping, and the absence of Ask composition. These seventeen tests
+canonical mapping, and the absence of alias-based Ask composition. These seventeen tests
 use no model, network, user library, SwiftUI, XCUITest, or screenshot. The
 remaining graph jobs, private evidence, and relational scale budgets remain
 open.
+
+### Independent Ask graph-fact evidence lane (D283)
+
+Seven focused Ask workflow cases prove that one caller-resolved graph query is
+returned beside transcript citations, no query remains explicitly not
+requested, ordinary graph failure is disclosed without erasing transcript
+evidence, graph facts cannot replace failed transcript retrieval, released
+evidence calls never enter the graph lane implicitly, cancellation propagates,
+and the local adapter routes each implemented exact fact query without
+synthesis. One architecture ratchet pins the separate bundle, production-local
+composition, typed adapter boundaries, transcript-only answer contract, and
+absence of presentation adoption. These eight cases use no model, network,
+user library, SwiftUI, XCUITest, or screenshot.
 
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -1499,7 +1512,7 @@ contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
 The current field-reliability inventory is 1,973 XCTest package cases (13
-environment-gated), zero strict-lint violations across 585 first-party Swift
+environment-gated), zero strict-lint violations across 586 first-party Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 65 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package

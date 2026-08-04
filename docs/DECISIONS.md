@@ -9855,3 +9855,39 @@ people; it cannot create or merge identities. Ask still does not extract an
 alias, compose this use case, synthesize an answer, or rank graph facts against
 transcript retrieval. The remaining three D270 jobs, relational scale budgets,
 owner-reviewed private evidence, sync/export, CLI, MCP, and UI remain open.
+
+## D283 — Keep graph facts beside transcript evidence, never in its place (Aug 2026)
+
+**Context:** three exact source-backed graph queries now pass canonical product
+conformance, but Ask exposed only transcript lexical/semantic citations. Adding
+graph facts directly to the existing citation array would erase their typed
+subject, object, status, and abstention semantics; ranking them as transcript
+hits would let topology compete with source evidence; and sending them to the
+answer model before an explicit contract would make a dormant architecture
+slice change user-visible answers.
+
+**Decision:** add one independent `AskGraphFactRetrieving` lane. Its closed
+`AskGraphFactQuery` accepts only a caller-resolved exact commitment blocker,
+topic first discussion, or person commitment query. The local adapter delegates
+to the existing three ApplicationKit fact use cases and returns
+`MeetingMemoryGraphQueryResult` unchanged. `AskEvidenceBundle` stores transcript
+citations and a graph outcome separately. A lane that was not requested remains
+distinguishable from a typed domain abstention. Ordinary graph operational
+failure becomes an explicit unavailable outcome without removing transcript evidence;
+cancellation still cancels the complete bundle.
+
+`AskMeetings.evidenceBundle` runs the two lanes concurrently, while every
+released `search`, `evidence`, and `answer` API remains source compatible and
+continues to use transcript retrieval alone. The answer provider still accepts
+only `[AskCitation]`; no graph fact is converted into generated prose or added
+to transcript RRF. Production local composition owns the exact graph adapter,
+but no current UI, CLI, MCP, command-palette, or meeting-brief path requests the
+new bundle.
+
+**Consequences:** Ask has a reversible, testable seam for longitudinal facts
+without weakening exact transcript evidence or changing shipped answers. The
+next slices must resolve explicit person/topic/date/status filters, define the
+typed fact-aware synthesis contract, and measure bounded cross-lane selection
+before any user-facing composition. Graph telemetry, the remaining three D270
+jobs, relational scale budgets, private evidence, sync/export, CLI, MCP, and UI
+remain open.

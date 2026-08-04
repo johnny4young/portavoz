@@ -1454,6 +1454,21 @@ therefore abstain without either exact-person query running. Ask does not yet
 compose this workflow; alias extraction, answer synthesis, UI, scale evidence,
 sync/export, CLI, and MCP remain separate gates.
 
+Ask now has a **separate exact graph-fact evidence lane** beside transcript
+retrieval. `AskGraphFactQuery` can carry only one already-resolved blocker,
+topic-first-discussion, or person-commitment query. A local adapter delegates
+to the three source-backed ApplicationKit use cases and returns their typed
+facts or abstention unchanged. `AskEvidenceBundle` keeps transcript citations
+and the graph outcome in distinct fields; graph unavailability cannot erase
+transcript evidence, and graph facts cannot be flattened into transcript rank.
+
+This is a composition seam, not answer behavior. Existing Ask search,
+progressive transcript evidence, answer generation, UI, CLI, MCP, and meeting
+brief consumers do not request the bundle. The answer provider still receives
+only transcript citations. Natural-language filter extraction, exact identity
+resolution, fact-aware synthesis, cross-lane selection, and telemetry remain
+later gates.
+
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
 instead of borrowing the commitment's original source. Generated summary,
@@ -3476,13 +3491,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,978 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 1,986 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 585 first-party Swift source files;
+- strict SwiftLint reports zero violations across 586 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

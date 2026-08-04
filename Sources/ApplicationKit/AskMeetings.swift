@@ -177,15 +177,18 @@ public enum AskMeetingsResponse: Equatable, Sendable {
 public struct AskMeetings: ApplicationUseCase {
     private let retrieval: any AskMeetingRetrieving
     private let answering: any AskMeetingAnswering
+    private let graphFacts: (any AskGraphFactRetrieving)?
     private let telemetry: AskPipelineTelemetry
 
     public init(
         retrieval: any AskMeetingRetrieving,
         answering: any AskMeetingAnswering,
+        graphFacts: (any AskGraphFactRetrieving)? = nil,
         telemetry: AskPipelineTelemetry = .disabled
     ) {
         self.retrieval = retrieval
         self.answering = answering
+        self.graphFacts = graphFacts
         self.telemetry = telemetry
     }
 
@@ -203,6 +206,7 @@ public struct AskMeetings: ApplicationUseCase {
                 runtime: semanticRuntime,
                 semanticReadiness: semanticReadiness),
             answering: intelligence,
+            graphFacts: LocalAskGraphFactRetrieval(store: store),
             telemetry: pipelineTelemetry)
     }
 
@@ -253,6 +257,29 @@ public struct AskMeetings: ApplicationUseCase {
             }
             return citations
         }
+    }
+
+    /// Retrieves transcript citations and one already-resolved graph query as
+    /// independent lanes. Ordinary graph failure is disclosed without erasing
+    /// transcript evidence; cancellation still cancels the complete request.
+    public func evidenceBundle(
+        _ question: String,
+        limit: Int = 6,
+        graphQuery: AskGraphFactQuery? = nil
+    ) async throws -> AskEvidenceBundle {
+        let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !question.isEmpty, limit > 0 else {
+            return AskEvidenceBundle(
+                transcriptCitations: [],
+                graphFacts: .notRequested)
+        }
+
+        async let graphOutcome = graphFactOutcome(for: graphQuery)
+        let citations = try await evidence(question, limit: limit)
+        let graphFacts = try await graphOutcome
+        return AskEvidenceBundle(
+            transcriptCitations: citations,
+            graphFacts: graphFacts)
     }
 
     public func answer(
@@ -317,6 +344,21 @@ public struct AskMeetings: ApplicationUseCase {
                 question: question,
                 generatedText: generatedText,
                 citations: citations)
+        }
+    }
+
+    private func graphFactOutcome(
+        for query: AskGraphFactQuery?
+    ) async throws -> AskGraphFactLaneOutcome {
+        guard let query else { return .notRequested }
+        guard let graphFacts else { return .unavailable }
+        do {
+            return .result(try await graphFacts.retrieve(query))
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            return .unavailable
         }
     }
 }

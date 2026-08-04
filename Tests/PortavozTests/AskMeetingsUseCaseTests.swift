@@ -122,6 +122,153 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         XCTAssertEqual(finalCallCount, 1)
     }
 
+    func testEvidenceBundleKeepsTranscriptAndGraphLanesIndependent() async throws {
+        let fixture = AskWorkflowFixture()
+        let retrieval = AskMeetingRetrievalFake(
+            searches: fixture.searches,
+            citations: fixture.citations)
+        let expected = MeetingMemoryGraphQueryResult.abstained(
+            .projectionNotReady)
+        let graph = AskGraphFactRetrievalFake(result: expected)
+        let query = AskGraphFactQuery.personCommitments(
+            PersonCommitmentsQuery(personID: PersonID(), itemLimit: 4))
+        let useCase = AskMeetings(
+            retrieval: retrieval,
+            answering: AskMeetingAnsweringFake(text: nil),
+            graphFacts: graph)
+
+        let result = try await useCase.evidenceBundle(
+            "rollout",
+            limit: 5,
+            graphQuery: query)
+
+        XCTAssertEqual(result.transcriptCitations, fixture.citations)
+        XCTAssertEqual(result.graphFacts, .result(expected))
+        let graphCalls = await graph.calls
+        XCTAssertEqual(graphCalls, [query])
+    }
+
+    func testGraphFailureIsDisclosedWithoutErasingTranscriptEvidence() async throws {
+        let fixture = AskWorkflowFixture()
+        let graph = AskGraphFactRetrievalFake(error: AskWorkflowError.graph)
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: AskMeetingAnsweringFake(text: nil),
+            graphFacts: graph)
+
+        let result = try await useCase.evidenceBundle(
+            "rollout",
+            graphQuery: .topicFirstDiscussion(
+                TopicFirstDiscussionQuery(topicID: TopicID())))
+
+        XCTAssertEqual(result.transcriptCitations, fixture.citations)
+        XCTAssertEqual(result.graphFacts, .unavailable)
+    }
+
+    func testEvidenceBundleWithoutGraphQueryKeepsLaneNotRequested() async throws {
+        let fixture = AskWorkflowFixture()
+        let graph = AskGraphFactRetrievalFake(
+            result: .abstained(.projectionNotReady))
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: AskMeetingAnsweringFake(text: nil),
+            graphFacts: graph)
+
+        let result = try await useCase.evidenceBundle("rollout")
+
+        XCTAssertEqual(result.transcriptCitations, fixture.citations)
+        XCTAssertEqual(result.graphFacts, .notRequested)
+        let graphCalls = await graph.calls
+        XCTAssertTrue(graphCalls.isEmpty)
+    }
+
+    func testGraphFactsCannotReplaceFailedTranscriptRetrieval() async throws {
+        let graph = AskGraphFactRetrievalFake(
+            result: .abstained(.projectionNotReady))
+        let useCase = AskMeetings(
+            retrieval: FailingAskMeetingRetrievalFake(),
+            answering: AskMeetingAnsweringFake(text: nil),
+            graphFacts: graph)
+
+        do {
+            _ = try await useCase.evidenceBundle(
+                "rollout",
+                graphQuery: .topicFirstDiscussion(
+                    TopicFirstDiscussionQuery(topicID: TopicID())))
+            XCTFail("graph facts cannot replace failed transcript retrieval")
+        } catch AskWorkflowError.transcript {
+            // Expected: the released transcript lane remains authoritative.
+        }
+    }
+
+    func testExistingEvidencePathNeverImplicitlyEntersGraphLane() async throws {
+        let fixture = AskWorkflowFixture()
+        let graph = AskGraphFactRetrievalFake(
+            result: .abstained(.projectionNotReady))
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: AskMeetingAnsweringFake(text: nil),
+            graphFacts: graph)
+
+        let citations = try await useCase.evidence("rollout")
+
+        XCTAssertEqual(citations, fixture.citations)
+        let graphCalls = await graph.calls
+        XCTAssertTrue(graphCalls.isEmpty)
+    }
+
+    func testGraphCancellationCancelsTheCompleteEvidenceBundle() async throws {
+        let fixture = AskWorkflowFixture()
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: AskMeetingAnsweringFake(text: nil),
+            graphFacts: AskGraphFactRetrievalFake(error: CancellationError()))
+
+        do {
+            _ = try await useCase.evidenceBundle(
+                "rollout",
+                graphQuery: .commitmentBlockers(
+                    CommitmentBlockerQuery(commitmentID: CommitmentID())))
+            XCTFail("graph cancellation must cancel the evidence request")
+        } catch is CancellationError {
+            // Expected: a cancelled lane cannot publish a partial final bundle.
+        }
+    }
+
+    func testLocalGraphAdapterRoutesEveryExactQueryWithoutSynthesis() async throws {
+        let repository = AskGraphFactRepositoryFake()
+        let adapter = LocalAskGraphFactRetrieval(
+            blockers: repository,
+            topics: repository,
+            commitments: repository)
+        let queries: [AskGraphFactQuery] = [
+            .commitmentBlockers(CommitmentBlockerQuery(
+                commitmentID: CommitmentID(),
+                itemLimit: 3)),
+            .topicFirstDiscussion(TopicFirstDiscussionQuery(
+                topicID: TopicID())),
+            .personCommitments(PersonCommitmentsQuery(
+                personID: PersonID(),
+                itemLimit: 5)),
+        ]
+
+        for query in queries {
+            let result = try await adapter.retrieve(query)
+            XCTAssertEqual(result, .abstained(.projectionNotReady))
+        }
+
+        let calls = await repository.calls
+        XCTAssertEqual(calls, queries)
+    }
+
     func testWhitespaceAndNonPositiveLimitsDoNotEnterCapabilities() async throws {
         let retrieval = AskMeetingRetrievalFake(searches: [], citations: [])
         let answering = AskMeetingAnsweringFake(text: "unused")
@@ -187,6 +334,19 @@ private actor AskMeetingRetrievalFake: AskMeetingRetrieving {
     func retrieve(question: String, limit: Int) -> [AskCitation] {
         calls.append(.retrieve(question, limit))
         return citations
+    }
+}
+
+private struct FailingAskMeetingRetrievalFake: AskMeetingRetrieving {
+    func search(query _: String, limit _: Int) -> [AskSearchResult] {
+        []
+    }
+
+    func retrieve(
+        question _: String,
+        limit _: Int
+    ) throws -> [AskCitation] {
+        throw AskWorkflowError.transcript
     }
 }
 
@@ -268,6 +428,58 @@ private actor AskEvidenceUpdateRecorder {
     }
 }
 
+private actor AskGraphFactRetrievalFake: AskGraphFactRetrieving {
+    let result: MeetingMemoryGraphQueryResult?
+    let error: Error?
+    private(set) var calls: [AskGraphFactQuery] = []
+
+    init(
+        result: MeetingMemoryGraphQueryResult? = nil,
+        error: Error? = nil
+    ) {
+        self.result = result
+        self.error = error
+    }
+
+    func retrieve(
+        _ query: AskGraphFactQuery
+    ) throws -> MeetingMemoryGraphQueryResult {
+        calls.append(query)
+        if let error { throw error }
+        return result ?? .abstained(.projectionNotReady)
+    }
+}
+
+private actor AskGraphFactRepositoryFake:
+    CommitmentBlockerFactReading,
+    TopicFirstDiscussionReading,
+    PersonCommitmentFactReading {
+    private(set) var calls: [AskGraphFactQuery] = []
+
+    func commitmentBlockerFacts(
+        _ query: CommitmentBlockerQuery
+    ) -> MeetingMemoryGraphQueryResult {
+        calls.append(.commitmentBlockers(query))
+        return .abstained(.projectionNotReady)
+    }
+
+    func topicFirstDiscussion(
+        _ query: TopicFirstDiscussionQuery
+    ) -> MeetingMemoryGraphQueryResult {
+        calls.append(.topicFirstDiscussion(query))
+        return .abstained(.projectionNotReady)
+    }
+
+    func personCommitmentFacts(
+        _ query: PersonCommitmentsQuery
+    ) -> MeetingMemoryGraphQueryResult {
+        calls.append(.personCommitments(query))
+        return .abstained(.projectionNotReady)
+    }
+}
+
 private enum AskWorkflowError: Error {
     case generation
+    case graph
+    case transcript
 }
