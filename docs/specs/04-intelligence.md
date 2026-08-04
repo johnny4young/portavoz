@@ -501,10 +501,10 @@ distinct; graph failure cannot erase successful transcript evidence, while
 cancellation still cancels the complete operation.
 
 This seam does not change current answers. Released Ask APIs and consumers do
-not request the bundle, `AskMeetingAnswering` still accepts transcript
-citations only, and graph facts never enter transcript RRF. Natural-language
-filter extraction, identity resolution, fact-aware synthesis, cross-lane
-selection, and user-facing composition remain later gates.
+not request the bundle, their answer path constructs a transcript-only typed
+synthesis input, and graph facts never enter transcript RRF. Natural-language
+filter extraction, identity resolution, cross-lane selection, and user-facing
+composition remain separate gates.
 
 ## Exact Ask graph-fact filters (D284)
 
@@ -522,8 +522,42 @@ constraints abstain as `no-matching-facts`; ApplicationKit never filters facts
 from an already bounded page. Storage therefore owns truthful candidate limits
 and first-discussion chronology, rechecks the filter during authoritative
 hydration, and preserves existing domain abstentions. No model parses these
-filters, no graph fact is converted to prose, and released Ask consumers remain
-transcript-only.
+filters, the filter boundary never converts a graph fact to prose, and released
+Ask consumers remain transcript-only.
+
+## Typed graph-fact answer synthesis (D285)
+
+`AskSynthesisInput` is the opt-in graph-aware answer-provider contract; the
+released `AskMeetingAnswering` port remains transcript-only. The new input keeps
+ranked transcript citations and the graph lane as separate types. A graph
+result becomes `AskGraphFactSynthesisEvidence` only when its exact current
+evidence is non-empty, contains the declared primary segment, and has no
+duplicate segment identity. Every source is converted to an exact
+`AskCitation` with meeting, segment, timestamp, transcript revision, and
+accepted text preserved. Typed abstention, operational unavailability, and
+invalid provenance remain explicit graph-lane states rather than empty model
+context.
+
+The released `answer` workflow supplies transcript citations only. The opt-in
+`answerBundle` workflow accepts one caller-resolved exact graph query, prepares
+both lanes, and returns the unchanged evidence bundle beside optional generated
+text. Fact-aware generation requires non-empty, uniquely identified exact
+transcript citations plus a valid source-backed graph page. A graph fact cannot
+replace an empty transcript result, and failed transcript retrieval still fails
+the complete bundle. Generation failure preserves all evidence, and
+cancellation remains cancellation.
+
+`RAGAnswerContext` gives IntelligenceKit transcript passages and `RAGFact`
+relationships independently. Facts are not RRF candidates. The typed fact page
+also carries truncation, projection generation, and stale/unavailable omission
+counts so incomplete evidence cannot authorize an exhaustive claim. Exact graph
+source segments are deduplicated by segment identity for prompt material, fact
+markers carry structure only, and generated claims may cite `[T…]` or `[S…]`
+exact segment markers but never `[F…]` alone. Missing primary, duplicate, or
+cross-lane-inconsistent source provenance fails before model execution. No
+released UI, CLI, MCP,
+command-palette, or meeting-brief consumer invokes this boundary yet; bounded
+cross-lane selection remains the next adoption gate.
 
 ## Human claim feedback is not model material (D88)
 

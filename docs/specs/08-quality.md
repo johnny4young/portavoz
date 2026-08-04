@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,008 cases (13 environment-gated) + 65
+Status: the package inventory contains 2,024 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1435,6 +1435,23 @@ shared exact Core filter, local composition, pre-limit StorageKit boundaries,
 absence of post-page filtering, lack of Intelligence/GRDB coupling, and no
 Presentation adoption. These twenty-two cases use no model, network, user library,
 SwiftUI, XCUITest, or screenshot.
+
+### Typed graph-fact answer synthesis (D285)
+
+Seven focused Ask workflow cases prove that typed facts, exact source segments,
+and page disclosure reach a separate opt-in generation port; malformed or
+abstained graph material and empty transcript evidence skip generation;
+ordinary generation failure preserves both lanes; and cancellation remains
+cancellation even when a provider returns late output. Five pure
+synthesis-admission cases reject malformed facts,
+duplicate or inconsistent exact evidence, missing transcript identity, and
+cross-lane source drift. Three deterministic IntelligenceKit cases pin separate
+transcript/fact/source markers, page-completeness instructions, exact source
+deduplication, missing-primary rejection, and independence from the released
+transcript-only prompt without executing a model. One architecture ratchet pins
+the ApplicationKit and IntelligenceKit contracts, source-only citation rule,
+dependency direction, and absence of Presentation adoption. These sixteen cases
+use no model, network, user library, SwiftUI, XCUITest, or screenshot.
 
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer

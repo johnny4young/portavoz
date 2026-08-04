@@ -2123,6 +2123,66 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D284"))
     }
 
+    func testAskSynthesisKeepsTypedFactsAndExactSourcesSeparate() throws {
+        let graphLane = try Self.contents(
+            of: "Sources/ApplicationKit/AskGraphFacts.swift")
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/AskMeetings.swift")
+        let answerer = try Self.contents(
+            of: "Sources/IntelligenceKit/RAGAnswerer.swift")
+        let presentation = try Self.contents(
+            of: "Sources/portavoz-app/AskModel.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        for boundary in [
+            "struct AskGraphFactSynthesisEvidence",
+            "sourceSegments: [AskCitation]",
+            "struct AskGraphFactSynthesisPage",
+            "omittedUnavailableCount: Int",
+            "enum AskGraphFactSynthesisLane",
+            "case invalidEvidence",
+            "struct AskSynthesisInput",
+            "isFactAwareGenerationReady",
+            "var synthesisInput: AskSynthesisInput",
+            "struct AskEvidenceBundleAnswer",
+        ] {
+            XCTAssertTrue(graphLane.contains(boundary), boundary)
+        }
+        XCTAssertTrue(graphLane.contains(
+            "$0.segmentID == fact.primaryEvidenceSegmentID"))
+        XCTAssertTrue(graphLane.contains(
+            "Set(fact.evidence.map(\\.segmentID)).count"))
+        XCTAssertTrue(workflow.contains("func answerBundle("))
+        XCTAssertTrue(workflow.contains("protocol AskEvidenceBundleAnswering"))
+        XCTAssertTrue(workflow.contains("generateBundleAnswer("))
+        XCTAssertTrue(workflow.contains("isFactAwareGenerationReady"))
+        XCTAssertTrue(workflow.contains("citations: [AskCitation]"))
+        XCTAssertTrue(workflow.contains("RAGAnswerContext("))
+        XCTAssertFalse(presentation.contains("answerBundle("))
+        XCTAssertFalse(presentation.contains("AskGraphFactQuery"))
+        for boundary in [
+            "struct RAGFact",
+            "struct RAGFactPage",
+            "struct RAGAnswerContext",
+            "func answer(",
+            "context: RAGAnswerContext",
+            "factAnswerInstructions",
+            "static func contextPrompt(",
+            "static func uniqueGraphSources(",
+            "Fact page disclosure:",
+            "Cite only [T…] and [S…]",
+        ] {
+            XCTAssertTrue(answerer.contains(boundary), boundary)
+        }
+        XCTAssertFalse(answerer.contains("import StorageKit"))
+        XCTAssertFalse(answerer.contains("import ApplicationKit"))
+        XCTAssertTrue(answerer.contains(
+            "numbered context passages"))
+        XCTAssertTrue(answerer.contains(
+            "marker of the passage that supports it"))
+        XCTAssertTrue(decisions.contains("## D285"))
+    }
+
     func testMeetingMemoryGraphProjectionIsDisposableDurableAndSignalDriven() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/MeetingMemoryGraphProjection.swift")

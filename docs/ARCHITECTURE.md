@@ -1492,6 +1492,37 @@ MCP, command-palette, and answer consumers still do not request the bundle.
 Fact-aware synthesis, cross-lane selection, and graph telemetry remain later
 gates.
 
+Ask synthesis now has an explicit **two-lane evidence contract**. ApplicationKit
+converts each source-backed graph fact into a typed relationship plus the exact
+current transcript segments that authorize it. Admission rejects non-finite or
+empty fact/source material, missing or repeated primary evidence, duplicate fact
+or segment identities, inconsistent repeated sources, invalid revisions/timing,
+and invalid page disclosure before model execution. Pagination generation,
+overflow, and stale/unavailable omission counts remain attached to the page so
+an incomplete read cannot silently authorize an exhaustive claim. Typed
+abstention, operational unavailability, and malformed provenance stay distinct
+instead of becoming empty prose context.
+
+The existing released Ask workflow and `AskMeetingAnswering` port remain
+unchanged and continue to generate from transcript citations with the original
+numeric-citation prompt. One separate opt-in `AskEvidenceBundleAnswering` port
+accepts the typed input. `answerBundle` invokes it only when both independently
+ranked exact transcript citations and a valid non-empty graph page are present;
+facts never replace an empty or failed transcript lane, and abstained,
+unavailable, or invalid graph material never degrades into a seemingly complete
+transcript-only answer.
+
+IntelligenceKit receives transcript passages and graph facts as separate types.
+Fact relationships never enter transcript RRF or acquire relevance from graph
+popularity. A fact carries its exact source passages, page completeness is
+disclosed in the prompt, and generated claims may cite only transcript/source-
+segment markers, never a fact marker alone. The answer result returns the
+unchanged evidence bundle when the opt-in provider is absent or ordinary
+generation fails; cancellation still cancels the operation. No presentation,
+CLI, MCP, command-palette, or meeting-brief surface invokes the graph-aware
+boundary yet; bounded cross-lane selection, released adoption, and graph
+telemetry remain separate gates.
+
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
 instead of borrowing the commitment's original source. Generated summary,
@@ -3514,7 +3545,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,008 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 2,024 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

@@ -9,6 +9,7 @@ public struct RAGPassage: Sendable, Equatable {
     public let meetingID: MeetingID
     public let meetingTitle: String
     public let timestamp: TimeInterval
+    public let transcriptRevision: Int?
     public let text: String
 
     public init(
@@ -16,13 +17,147 @@ public struct RAGPassage: Sendable, Equatable {
         meetingID: MeetingID,
         meetingTitle: String,
         timestamp: TimeInterval,
+        transcriptRevision: Int? = nil,
         text: String
     ) {
         self.segmentID = segmentID
         self.meetingID = meetingID
         self.meetingTitle = meetingTitle
         self.timestamp = timestamp
+        self.transcriptRevision = transcriptRevision
         self.text = text
+    }
+}
+
+/// One source-backed relationship supplied to generation without flattening it
+/// into transcript retrieval rank. Exact source passages remain mandatory.
+public struct RAGFact: Sendable, Equatable {
+    public let kind: MeetingMemoryGraphFactKind
+    public let subjectText: String
+    public let objectText: String
+    public let status: MeetingMemoryGraphFactStatus
+    public let occurredAt: Date
+    public let primarySourceSegmentID: UUID
+    public let sources: [RAGPassage]
+
+    public init(
+        kind: MeetingMemoryGraphFactKind,
+        subjectText: String,
+        objectText: String,
+        status: MeetingMemoryGraphFactStatus,
+        occurredAt: Date,
+        primarySourceSegmentID: UUID,
+        sources: [RAGPassage]
+    ) {
+        self.kind = kind
+        self.subjectText = subjectText
+        self.objectText = objectText
+        self.status = status
+        self.occurredAt = occurredAt
+        self.primarySourceSegmentID = primarySourceSegmentID
+        self.sources = sources
+    }
+}
+
+/// Disclosure attached to one bounded graph read. It is part of the model
+/// context because a truncated or omission-bearing page cannot authorize a
+/// complete "all" or "none" claim.
+public struct RAGFactPage: Sendable, Equatable {
+    public let facts: [RAGFact]
+    public let hasMore: Bool
+    public let projectionGeneration: Int
+    public let omittedStaleCount: Int
+    public let omittedUnavailableCount: Int
+
+    public init(
+        facts: [RAGFact],
+        hasMore: Bool,
+        projectionGeneration: Int,
+        omittedStaleCount: Int,
+        omittedUnavailableCount: Int
+    ) {
+        self.facts = facts
+        self.hasMore = hasMore
+        self.projectionGeneration = projectionGeneration
+        self.omittedStaleCount = omittedStaleCount
+        self.omittedUnavailableCount = omittedUnavailableCount
+    }
+
+    public var isComplete: Bool {
+        !hasMore
+            && omittedStaleCount == 0
+            && omittedUnavailableCount == 0
+    }
+}
+
+/// Two independent answer lanes. Transcript passages preserve retrieval order;
+/// typed facts carry their own exact source passages and are never RRF inputs.
+public struct RAGAnswerContext: Sendable, Equatable {
+    public let transcriptPassages: [RAGPassage]
+    public let factPage: RAGFactPage
+
+    public init(
+        transcriptPassages: [RAGPassage],
+        factPage: RAGFactPage
+    ) {
+        self.transcriptPassages = transcriptPassages
+        self.factPage = factPage
+    }
+
+    public var isFactAwareReady: Bool {
+        !transcriptPassages.isEmpty
+            && !factPage.facts.isEmpty
+            && isValid
+    }
+
+    public var isValid: Bool {
+        guard factPage.projectionGeneration > 0,
+              factPage.omittedStaleCount >= 0,
+              factPage.omittedUnavailableCount >= 0,
+              Self.hasExactUniquePassages(transcriptPassages),
+              factPage.facts.allSatisfy({ fact in
+            let sourceIDs = fact.sources.compactMap(\.segmentID)
+            return fact.occurredAt.timeIntervalSinceReferenceDate.isFinite
+                && !fact.subjectText.trimmingCharacters(
+                    in: .whitespacesAndNewlines).isEmpty
+                && !fact.objectText.trimmingCharacters(
+                    in: .whitespacesAndNewlines).isEmpty
+                && !fact.sources.isEmpty
+                && sourceIDs.count == fact.sources.count
+                && Set(sourceIDs).count == sourceIDs.count
+                && sourceIDs.filter {
+                    $0 == fact.primarySourceSegmentID
+                }.count == 1
+                && Self.hasExactUniquePassages(fact.sources)
+        }) else { return false }
+        var exactSegments: [UUID: RAGPassage] = [:]
+        for passage in transcriptPassages + factPage.facts.flatMap(\.sources) {
+            guard let segmentID = passage.segmentID else { return false }
+            if let existing = exactSegments[segmentID], existing != passage {
+                return false
+            }
+            exactSegments[segmentID] = passage
+        }
+        return true
+    }
+
+    private static func hasExactUniquePassages(
+        _ passages: [RAGPassage]
+    ) -> Bool {
+        guard !passages.isEmpty,
+              passages.allSatisfy({ passage in
+                  passage.segmentID != nil
+                      && passage.timestamp.isFinite
+                      && passage.timestamp >= 0
+                      && passage.transcriptRevision.map { $0 >= 0 } == true
+                      && !passage.meetingTitle.trimmingCharacters(
+                          in: .whitespacesAndNewlines).isEmpty
+                      && !passage.text.trimmingCharacters(
+                          in: .whitespacesAndNewlines).isEmpty
+              })
+        else { return false }
+        let ids = passages.compactMap(\.segmentID)
+        return Set(ids).count == ids.count
     }
 }
 
@@ -64,6 +199,21 @@ public struct RAGAnswerer: Sendable {
         If the context does not contain the answer, say so plainly — never guess.
         """
 
+    static let factAnswerInstructions = """
+        You answer questions about the user's own meetings using ONLY the numbered
+        exact context segments and typed facts.
+        \(PromptFactory.sourceMaterialGuard())
+        Write a direct answer of one to three full sentences — never output a bare citation.
+        Typed facts describe allowed relationships, but every answer claim must cite
+        one or more exact source-segment markers.
+        Never cite a fact marker by itself and never treat repeated graph
+        relationships as stronger transcript relevance.
+        After each claim, add the marker of the exact segment that supports it, e.g. "… media hora de latencia [T2]."
+        If the fact-page disclosure says the page is incomplete, never claim that
+        the result covers all or none of the user's meetings.
+        If the context does not contain the answer, say so plainly — never guess.
+        """
+
     public init() {}
 
     public func answer(question: String, passages: [RAGPassage]) async throws -> String {
@@ -86,6 +236,96 @@ public struct RAGAnswerer: Sendable {
                 options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 500)
             ).content
         }
+    }
+
+    /// Answers from separately typed transcript and graph lanes. Fact markers
+    /// expose structure to the model, while only exact transcript/source
+    /// markers are valid citations in generated prose.
+    public func answer(
+        question: String,
+        context: RAGAnswerContext
+    ) async throws -> String {
+        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        guard !context.transcriptPassages.isEmpty,
+              !context.factPage.facts.isEmpty
+        else {
+            return "No encuentro nada relacionado en tus reuniones."
+        }
+        guard context.isFactAwareReady else {
+            throw IntelligenceError.providerFailed(
+                "RAG fact context lacks exact source provenance")
+        }
+
+        let prompt = Self.contextPrompt(question: question, context: context)
+        let session = LanguageModelSession(
+            instructions: Self.factAnswerInstructions)
+        return try await IntelligenceScheduler.shared.run(.interactive) {
+            try await session.respond(
+                to: prompt,
+                options: GenerationOptions(
+                    sampling: .greedy,
+                    maximumResponseTokens: 500)
+            ).content
+        }
+    }
+
+    static func contextPrompt(
+        question: String,
+        context: RAGAnswerContext
+    ) -> String {
+        let transcript = context.transcriptPassages.enumerated().map { index, passage in
+            "[T\(index + 1)] (\(passage.meetingTitle), "
+                + "\(Self.timestamp(passage.timestamp))) \(passage.text)"
+        }.joined(separator: "\n")
+        let graphSources = Self.uniqueGraphSources(context.factPage.facts)
+        let sourceMarkers = Dictionary(uniqueKeysWithValues:
+            graphSources.enumerated().compactMap { index, passage in
+                passage.segmentID.map { ($0, "S\(index + 1)") }
+            })
+        let facts = context.factPage.facts.enumerated().map { index, fact in
+            let sources = fact.sources.compactMap { source in
+                source.segmentID.flatMap { sourceMarkers[$0] }
+            }
+            let primary = sourceMarkers[fact.primarySourceSegmentID]
+                .map { "[\($0)]" } ?? "[missing]"
+            let sourceList = sources.map { "[\($0)]" }.joined(separator: ", ")
+            return "[F\(index + 1)] relation=\(fact.kind.rawValue); "
+                + "status=\(fact.status.rawValue); "
+                + "subject=\"\(Self.oneLine(fact.subjectText))\"; "
+                + "object=\"\(Self.oneLine(fact.objectText))\"; "
+                + "occurredAt=\(Self.isoDate(fact.occurredAt)); "
+                + "primarySource=\(primary); sources=\(sourceList)"
+        }.joined(separator: "\n")
+        let sources = graphSources.enumerated().map { index, passage in
+            "[S\(index + 1)] (\(passage.meetingTitle), \(Self.timestamp(passage.timestamp))) \(passage.text)"
+        }.joined(separator: "\n")
+        let disclosure = "complete=\(context.factPage.isComplete); "
+            + "hasMore=\(context.factPage.hasMore); "
+            + "projectionGeneration=\(context.factPage.projectionGeneration); "
+            + "omittedStale=\(context.factPage.omittedStaleCount); "
+            + "omittedUnavailable="
+            + "\(context.factPage.omittedUnavailableCount)"
+        return """
+            Transcript passages:
+            \(transcript.isEmpty ? "(none)" : transcript)
+
+            Typed source-backed facts:
+            \(facts.isEmpty ? "(none)" : facts)
+
+            Exact graph source segments:
+            \(sources.isEmpty ? "(none)" : sources)
+
+            Fact page disclosure:
+            \(disclosure)
+
+            Question: \(question)
+
+            Answer with full sentences, in the same language as the question.
+            Cite only [T…] and [S…] exact segment markers after supported claims; never cite [F…] alone.
+            When complete=false, do not make exhaustive all/none claims.
+            """
     }
 
     /// Multi-query expansion for cross-lingual retrieval: the library is
@@ -119,6 +359,28 @@ public struct RAGAnswerer: Sendable {
     static func timestamp(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds.rounded()))
         return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+
+    static func uniqueGraphSources(_ facts: [RAGFact]) -> [RAGPassage] {
+        var seen: Set<UUID> = []
+        var sources: [RAGPassage] = []
+        for fact in facts {
+            for source in fact.sources {
+                guard let segmentID = source.segmentID,
+                      seen.insert(segmentID).inserted
+                else { continue }
+                sources.append(source)
+            }
+        }
+        return sources
+    }
+
+    static func oneLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isNewline).joined(separator: " ")
+    }
+
+    static func isoDate(_ date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
     }
 }
 #endif

@@ -160,6 +160,16 @@ public protocol AskMeetingAnswering: Sendable {
     func answer(question: String, citations: [AskCitation]) async throws -> String?
 }
 
+/// Opt-in answer generation over the independent transcript and graph lanes.
+/// Keeping this port separate preserves the released transcript-only provider
+/// and makes fact-aware adoption explicit at every composition root.
+public protocol AskEvidenceBundleAnswering: Sendable {
+    func answer(
+        question: String,
+        evidence: AskSynthesisInput
+    ) async throws -> String?
+}
+
 public enum AskMeetingsRequest: Sendable {
     case search(query: String, limit: Int)
     case evidence(question: String, limit: Int)
@@ -177,6 +187,7 @@ public enum AskMeetingsResponse: Equatable, Sendable {
 public struct AskMeetings: ApplicationUseCase {
     private let retrieval: any AskMeetingRetrieving
     private let answering: any AskMeetingAnswering
+    private let bundleAnswering: (any AskEvidenceBundleAnswering)?
     private let graphFacts: (any AskGraphFactRetrieving)?
     private let graphFilterResolver: (any AskGraphFactFilterResolving)?
     private let telemetry: AskPipelineTelemetry
@@ -184,12 +195,14 @@ public struct AskMeetings: ApplicationUseCase {
     public init(
         retrieval: any AskMeetingRetrieving,
         answering: any AskMeetingAnswering,
+        bundleAnswering: (any AskEvidenceBundleAnswering)? = nil,
         graphFacts: (any AskGraphFactRetrieving)? = nil,
         graphFilterResolver: (any AskGraphFactFilterResolving)? = nil,
         telemetry: AskPipelineTelemetry = .disabled
     ) {
         self.retrieval = retrieval
         self.answering = answering
+        self.bundleAnswering = bundleAnswering
         self.graphFacts = graphFacts
         self.graphFilterResolver = graphFilterResolver
         self.telemetry = telemetry
@@ -209,6 +222,7 @@ public struct AskMeetings: ApplicationUseCase {
                 runtime: semanticRuntime,
                 semanticReadiness: semanticReadiness),
             answering: intelligence,
+            bundleAnswering: intelligence,
             graphFacts: LocalAskGraphFactRetrieval(store: store),
             graphFilterResolver: LocalAskGraphFactFilterResolver(store: store),
             telemetry: pipelineTelemetry)
@@ -279,14 +293,55 @@ public struct AskMeetings: ApplicationUseCase {
                 graphFacts: .notRequested)
         }
 
-        async let graphOutcome = graphFactOutcome(
-            for: graphQuery,
-            filter: graphFilter)
-        let citations = try await evidence(question, limit: limit)
-        let graphFacts = try await graphOutcome
-        return AskEvidenceBundle(
-            transcriptCitations: citations,
-            graphFacts: graphFacts)
+        return try await telemetry.measure(.evidence) { trace in
+            try await retrieveEvidenceBundle(
+                question: question,
+                limit: limit,
+                graphQuery: graphQuery,
+                graphFilter: graphFilter,
+                trace: trace)
+        }
+    }
+
+    /// Generates from the explicit transcript + graph bundle while returning
+    /// the exact source material unchanged. Existing released Ask paths keep
+    /// using transcript-only `answer`; callers must opt into a graph job.
+    public func answerBundle(
+        _ question: String,
+        limit: Int = 6,
+        graphQuery: AskGraphFactQuery,
+        graphFilter: AskGraphFactFilterRequest? = nil
+    ) async throws -> AskEvidenceBundleAnswer {
+        let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !question.isEmpty, limit > 0 else {
+            return AskEvidenceBundleAnswer(
+                question: question,
+                generatedText: nil,
+                evidence: AskEvidenceBundle(
+                    transcriptCitations: [],
+                    graphFacts: .notRequested))
+        }
+        return try await telemetry.measure(.answer) { trace in
+            let bundle = try await retrieveEvidenceBundle(
+                question: question,
+                limit: limit,
+                graphQuery: graphQuery,
+                graphFilter: graphFilter,
+                trace: trace)
+            try Task.checkCancellation()
+            let input = bundle.synthesisInput
+            let generatedText = try await generateBundleAnswer(
+                question: question,
+                evidence: input)
+            try Task.checkCancellation()
+            if generatedText?.contains(where: { !$0.isWhitespace }) == true {
+                trace.reach(.firstToken)
+            }
+            return AskEvidenceBundleAnswer(
+                question: question,
+                generatedText: generatedText,
+                evidence: bundle)
+        }
     }
 
     public func answer(
@@ -332,15 +387,9 @@ public struct AskMeetings: ApplicationUseCase {
             }
             await milestone.reachIfNeeded(for: citations, trace: trace)
             let generatedText: String?
-            do {
-                generatedText = try await answering.answer(
-                    question: question,
-                    citations: citations)
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                generatedText = nil
-            }
+            generatedText = try await generateTranscriptAnswer(
+                question: question,
+                citations: citations)
             try Task.checkCancellation()
             if generatedText?.contains(where: { !$0.isWhitespace }) == true {
                 // The current answer capability returns one complete String,
@@ -387,6 +436,65 @@ public struct AskMeetings: ApplicationUseCase {
             return .unavailable
         }
     }
+
+    private func retrieveEvidenceBundle(
+        question: String,
+        limit: Int,
+        graphQuery: AskGraphFactQuery?,
+        graphFilter: AskGraphFactFilterRequest?,
+        trace: AskPipelineTrace
+    ) async throws -> AskEvidenceBundle {
+        async let graphOutcome = graphFactOutcome(
+            for: graphQuery,
+            filter: graphFilter)
+        let citations = try await retrieval.retrieve(
+            question: question,
+            limit: limit,
+            trace: trace)
+        if !citations.isEmpty {
+            trace.reach(.firstEvidence)
+        }
+        let graphFacts = try await graphOutcome
+        try Task.checkCancellation()
+        let bundle = AskEvidenceBundle(
+            transcriptCitations: citations,
+            graphFacts: graphFacts)
+        return bundle
+    }
+
+    private func generateTranscriptAnswer(
+        question: String,
+        citations: [AskCitation]
+    ) async throws -> String? {
+        guard !citations.isEmpty else { return nil }
+        do {
+            return try await answering.answer(
+                question: question,
+                citations: citations)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return nil
+        }
+    }
+
+    private func generateBundleAnswer(
+        question: String,
+        evidence: AskSynthesisInput
+    ) async throws -> String? {
+        guard evidence.isFactAwareGenerationReady,
+              let bundleAnswering
+        else { return nil }
+        do {
+            return try await bundleAnswering.answer(
+                question: question,
+                evidence: evidence)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return nil
+        }
+    }
 }
 
 private actor AskFirstEvidenceMilestone {
@@ -408,7 +516,10 @@ public protocol AskQueryExpanding: Sendable {
 
 /// Concrete local intelligence adapter shared by retrieval expansion and final
 /// answer generation. It is inert when Foundation Models is unavailable.
-public struct OnDeviceAskMeetingIntelligence: AskMeetingAnswering, AskQueryExpanding {
+public struct OnDeviceAskMeetingIntelligence:
+    AskMeetingAnswering,
+    AskEvidenceBundleAnswering,
+    AskQueryExpanding {
     public init() {}
 
     public func expand(_ question: String) async -> [String] {
@@ -425,16 +536,52 @@ public struct OnDeviceAskMeetingIntelligence: AskMeetingAnswering, AskQueryExpan
         guard #available(macOS 26.0, iOS 26.0, *),
               FoundationModelSummaryProvider.unavailabilityReason() == nil
         else { return nil }
-        let passages = citations.map { citation in
-            RAGPassage(
-                segmentID: citation.segmentID,
-                meetingID: citation.meetingID,
-                meetingTitle: citation.meetingTitle,
-                timestamp: citation.timestamp,
-                text: citation.text)
+        return try await RAGAnswerer().answer(
+            question: question,
+            passages: citations.map(Self.ragPassage))
+    }
+
+    public func answer(
+        question: String,
+        evidence: AskSynthesisInput
+    ) async throws -> String? {
+        guard #available(macOS 26.0, iOS 26.0, *),
+              FoundationModelSummaryProvider.unavailabilityReason() == nil,
+              evidence.isFactAwareGenerationReady,
+              case .facts(let graphPage) = evidence.graphFacts
+        else { return nil }
+        let facts = graphPage.facts.map { graphFact in
+            RAGFact(
+                kind: graphFact.fact.kind,
+                subjectText: graphFact.fact.subjectText,
+                objectText: graphFact.fact.objectText,
+                status: graphFact.fact.status,
+                occurredAt: graphFact.fact.occurredAt,
+                primarySourceSegmentID:
+                    graphFact.fact.primaryEvidenceSegmentID,
+                sources: graphFact.sourceSegments.map(Self.ragPassage))
         }
         return try await RAGAnswerer().answer(
             question: question,
-            passages: passages)
+            context: RAGAnswerContext(
+                transcriptPassages: evidence.transcriptCitations.map(
+                    Self.ragPassage),
+                factPage: RAGFactPage(
+                    facts: facts,
+                    hasMore: graphPage.hasMore,
+                    projectionGeneration: graphPage.projectionGeneration,
+                    omittedStaleCount: graphPage.omittedStaleCount,
+                    omittedUnavailableCount:
+                        graphPage.omittedUnavailableCount)))
+    }
+
+    private static func ragPassage(_ citation: AskCitation) -> RAGPassage {
+        RAGPassage(
+            segmentID: citation.segmentID,
+            meetingID: citation.meetingID,
+            meetingTitle: citation.meetingTitle,
+            timestamp: citation.timestamp,
+            transcriptRevision: citation.transcriptRevision,
+            text: citation.text)
     }
 }

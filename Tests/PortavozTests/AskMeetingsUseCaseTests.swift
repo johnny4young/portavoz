@@ -28,7 +28,9 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             .retrieve("rollout", 6),
         ])
         let answerCallCount = await answering.callCount
+        let answerInputs = await answering.citationInputs
         XCTAssertEqual(answerCallCount, 1)
+        XCTAssertEqual(answerInputs, [fixture.citations])
     }
 
     func testNoEvidenceSkipsGenerationAndKeepsTypedEmptyAnswer() async throws {
@@ -146,6 +148,214 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         XCTAssertEqual(result.graphFacts, .result(expected))
         let graphCalls = await graph.calls
         XCTAssertEqual(graphCalls, [query])
+    }
+
+    func testAnswerBundleSendsTypedFactPageAndExactSourcesToOptInGeneration() async throws {
+        let fixture = AskWorkflowFixture()
+        let fact = graphFact(
+            meetingID: fixture.meetingID,
+            segmentID: fixture.segmentID)
+        let page = graphPage(
+            [fact],
+            hasMore: true,
+            omittedStaleCount: 2,
+            omittedUnavailableCount: 1)
+        let bundleAnswering = AskEvidenceBundleAnsweringFake(text: "El viernes.")
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: AskMeetingAnsweringFake(text: nil),
+            bundleAnswering: bundleAnswering,
+            graphFacts: AskGraphFactRetrievalFake(result: .facts(page)))
+
+        let result = try await useCase.answerBundle(
+            "rollout",
+            graphQuery: .personCommitments(PersonCommitmentsQuery(
+                personID: PersonID())))
+
+        XCTAssertEqual(result.generatedText, "El viernes.")
+        XCTAssertEqual(result.evidence.transcriptCitations, fixture.citations)
+        XCTAssertEqual(result.evidence.graphFacts, .result(.facts(page)))
+        let inputs = await bundleAnswering.inputs
+        XCTAssertEqual(inputs.count, 1)
+        XCTAssertEqual(inputs[0].transcriptCitations, fixture.citations)
+        guard case .facts(let synthesisPage) = inputs[0].graphFacts else {
+            return XCTFail("typed graph facts must enter a separate synthesis lane")
+        }
+        XCTAssertTrue(synthesisPage.hasMore)
+        XCTAssertEqual(synthesisPage.projectionGeneration, 7)
+        XCTAssertEqual(synthesisPage.omittedStaleCount, 2)
+        XCTAssertEqual(synthesisPage.omittedUnavailableCount, 1)
+        XCTAssertFalse(synthesisPage.isComplete)
+        XCTAssertEqual(synthesisPage.facts.map(\.fact), [fact])
+        XCTAssertEqual(synthesisPage.facts[0].sourceSegments, [AskCitation(
+            segmentID: fixture.segmentID,
+            meetingID: fixture.meetingID,
+            meetingTitle: "Planning",
+            timestamp: 3,
+            transcriptRevision: 0,
+            text: "El rollout queda para el viernes.")])
+    }
+
+    func testInvalidGraphProvenanceFailsClosedWithoutTranscriptOnlyGeneration() async throws {
+        let fixture = AskWorkflowFixture()
+        let invalid = graphFact(
+            meetingID: fixture.meetingID,
+            segmentID: fixture.segmentID,
+            primarySegmentID: UUID())
+        let bundleAnswering = AskEvidenceBundleAnsweringFake(
+            text: "must not be used")
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: AskMeetingAnsweringFake(text: "Transcript only."),
+            bundleAnswering: bundleAnswering,
+            graphFacts: AskGraphFactRetrievalFake(
+                result: .facts(graphPage([invalid]))))
+
+        let result = try await useCase.answerBundle(
+            "rollout",
+            graphQuery: .topicFirstDiscussion(TopicFirstDiscussionQuery(
+                topicID: TopicID())))
+
+        XCTAssertNil(result.generatedText)
+        XCTAssertEqual(result.evidence.synthesisInput.graphFacts, .invalidEvidence)
+        let callCount = await bundleAnswering.callCount
+        XCTAssertEqual(callCount, 0)
+    }
+
+    func testGraphFactsNeverReplaceEmptyTranscriptEvidence() async throws {
+        let fixture = AskWorkflowFixture()
+        let fact = graphFact(
+            meetingID: fixture.meetingID,
+            segmentID: fixture.segmentID)
+        let bundleAnswering = AskEvidenceBundleAnsweringFake(
+            text: "must not be used")
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(searches: [], citations: []),
+            answering: AskMeetingAnsweringFake(text: nil),
+            bundleAnswering: bundleAnswering,
+            graphFacts: AskGraphFactRetrievalFake(
+                result: .facts(graphPage([fact]))))
+
+        let result = try await useCase.answerBundle(
+            "when",
+            graphQuery: .personCommitments(PersonCommitmentsQuery(
+                personID: PersonID())))
+
+        XCTAssertNil(result.generatedText)
+        XCTAssertFalse(result.evidence.synthesisInput.isFactAwareGenerationReady)
+        let callCount = await bundleAnswering.callCount
+        XCTAssertEqual(callCount, 0)
+    }
+
+    func testGraphAbstentionWithTranscriptEvidenceSkipsFactAwareGeneration() async throws {
+        let fixture = AskWorkflowFixture()
+        let bundleAnswering = AskEvidenceBundleAnsweringFake(
+            text: "must not be used")
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: AskMeetingAnsweringFake(text: nil),
+            bundleAnswering: bundleAnswering,
+            graphFacts: AskGraphFactRetrievalFake(
+                result: .abstained(.noMatchingFacts)))
+
+        let result = try await useCase.answerBundle(
+            "when",
+            graphQuery: .topicFirstDiscussion(TopicFirstDiscussionQuery(
+                topicID: TopicID())))
+
+        XCTAssertNil(result.generatedText)
+        XCTAssertEqual(
+            result.evidence.synthesisInput.graphFacts,
+            .abstained(.noMatchingFacts))
+        let callCount = await bundleAnswering.callCount
+        XCTAssertEqual(callCount, 0)
+    }
+
+    func testBundleGenerationFailureKeepsBothEvidenceLanes() async throws {
+        let fixture = AskWorkflowFixture()
+        let page = graphPage([graphFact(
+            meetingID: fixture.meetingID,
+            segmentID: fixture.segmentID)])
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: AskMeetingAnsweringFake(text: nil),
+            bundleAnswering: AskEvidenceBundleAnsweringFake(
+                error: AskWorkflowError.generation),
+            graphFacts: AskGraphFactRetrievalFake(result: .facts(page)))
+
+        let result = try await useCase.answerBundle(
+            "when",
+            graphQuery: .personCommitments(PersonCommitmentsQuery(
+                personID: PersonID())))
+
+        XCTAssertNil(result.generatedText)
+        XCTAssertEqual(result.evidence.transcriptCitations, fixture.citations)
+        XCTAssertEqual(result.evidence.graphFacts, .result(.facts(page)))
+    }
+
+    func testBundleGenerationCancellationPropagates() async throws {
+        let fixture = AskWorkflowFixture()
+        let page = graphPage([graphFact(
+            meetingID: fixture.meetingID,
+            segmentID: fixture.segmentID)])
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: AskMeetingAnsweringFake(text: nil),
+            bundleAnswering: AskEvidenceBundleAnsweringFake(
+                error: CancellationError()),
+            graphFacts: AskGraphFactRetrievalFake(result: .facts(page)))
+
+        do {
+            _ = try await useCase.answerBundle(
+                "when",
+                graphQuery: .personCommitments(PersonCommitmentsQuery(
+                    personID: PersonID())))
+            XCTFail("fact-aware generation cancellation must propagate")
+        } catch is CancellationError {
+            // Expected: callers discard the cancelled bundle answer.
+        }
+    }
+
+    func testBundleCancellationAfterGenerationDoesNotPublishLateAnswer() async throws {
+        let fixture = AskWorkflowFixture()
+        let page = graphPage([graphFact(
+            meetingID: fixture.meetingID,
+            segmentID: fixture.segmentID)])
+        let bundleAnswering = BlockingAskEvidenceBundleAnsweringFake()
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: AskMeetingAnsweringFake(text: nil),
+            bundleAnswering: bundleAnswering,
+            graphFacts: AskGraphFactRetrievalFake(result: .facts(page)))
+        let task = Task {
+            try await useCase.answerBundle(
+                "when",
+                graphQuery: .personCommitments(PersonCommitmentsQuery(
+                    personID: PersonID())))
+        }
+        await bundleAnswering.waitUntilStarted()
+
+        task.cancel()
+        await bundleAnswering.release()
+
+        do {
+            _ = try await task.value
+            XCTFail("a cancelled bundle answer must not publish late output")
+        } catch is CancellationError {
+            // Expected: the post-generation cancellation checkpoint wins.
+        }
     }
 
     func testGraphFailureIsDisclosedWithoutErasingTranscriptEvidence() async throws {
@@ -311,6 +521,49 @@ private struct AskWorkflowFixture {
     }
 }
 
+private func graphFact(
+    meetingID: MeetingID,
+    segmentID: UUID,
+    primarySegmentID: UUID? = nil,
+    transcriptRevision: Int = 0
+) -> MeetingMemoryGraphFact {
+    let commitmentID = CommitmentID()
+    return MeetingMemoryGraphFact(
+        id: .commitment(commitmentID),
+        kind: .personCommittedTo,
+        subject: .person(PersonID()),
+        object: .commitment(commitmentID),
+        subjectText: "Mara",
+        objectText: "Ship rollout",
+        status: .active,
+        occurredAt: Date(timeIntervalSince1970: 1_000),
+        evidence: [MeetingMemoryGraphEvidence(
+            meetingID: meetingID,
+            meetingTitle: "Planning",
+            meetingStartedAt: Date(timeIntervalSince1970: 997),
+            transcriptRevision: transcriptRevision,
+            segmentID: segmentID,
+            startTime: 3,
+            endTime: 5,
+            text: "El rollout queda para el viernes.",
+            language: "es")],
+        primaryEvidenceSegmentID: primarySegmentID ?? segmentID)
+}
+
+private func graphPage(
+    _ facts: [MeetingMemoryGraphFact],
+    hasMore: Bool = false,
+    omittedStaleCount: Int = 0,
+    omittedUnavailableCount: Int = 0
+) -> MeetingMemoryGraphFactPage {
+    MeetingMemoryGraphFactPage(
+        facts: facts,
+        hasMore: hasMore,
+        projectionGeneration: 7,
+        omittedStaleCount: omittedStaleCount,
+        omittedUnavailableCount: omittedUnavailableCount)
+}
+
 private actor AskMeetingRetrievalFake: AskMeetingRetrieving {
     enum Call: Equatable {
         case search(String, Int)
@@ -354,6 +607,7 @@ private actor AskMeetingAnsweringFake: AskMeetingAnswering {
     let text: String?
     let error: Error?
     private(set) var callCount = 0
+    private(set) var citationInputs: [[AskCitation]] = []
 
     init(text: String? = nil, error: Error? = nil) {
         self.text = text
@@ -362,11 +616,59 @@ private actor AskMeetingAnsweringFake: AskMeetingAnswering {
 
     func answer(
         question _: String,
-        citations _: [AskCitation]
+        citations: [AskCitation]
     ) throws -> String? {
         callCount += 1
+        citationInputs.append(citations)
         if let error { throw error }
         return text
+    }
+}
+
+private actor AskEvidenceBundleAnsweringFake: AskEvidenceBundleAnswering {
+    let text: String?
+    let error: Error?
+    private(set) var callCount = 0
+    private(set) var inputs: [AskSynthesisInput] = []
+
+    init(text: String? = nil, error: Error? = nil) {
+        self.text = text
+        self.error = error
+    }
+
+    func answer(
+        question _: String,
+        evidence: AskSynthesisInput
+    ) throws -> String? {
+        callCount += 1
+        inputs.append(evidence)
+        if let error { throw error }
+        return text
+    }
+}
+
+private actor BlockingAskEvidenceBundleAnsweringFake: AskEvidenceBundleAnswering {
+    private var started = false
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    func answer(
+        question _: String,
+        evidence _: AskSynthesisInput
+    ) async -> String? {
+        started = true
+        await withCheckedContinuation { continuation = $0 }
+        return "late answer"
+    }
+
+    func waitUntilStarted() async {
+        while !started {
+            await Task.yield()
+        }
+    }
+
+    func release() {
+        continuation?.resume()
+        continuation = nil
     }
 }
 

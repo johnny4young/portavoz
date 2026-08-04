@@ -9935,3 +9935,52 @@ natural-language parser and no released UI, CLI, MCP, command-palette, or
 meeting-brief consumer invokes it yet. Typed fact-aware synthesis, bounded
 cross-lane selection, the other three D270 fact jobs, telemetry, scale budgets,
 and private field evidence remain separate gates.
+
+## D285 — Give Ask synthesis typed facts and exact source segments (Aug 2026)
+
+**Context:** Ask could retrieve source-backed graph facts beside transcript
+citations, but its answer provider accepted only `[AskCitation]`. Flattening a
+fact into that ranked array would discard subject/object/status semantics, let
+graph popularity impersonate transcript relevance, and make generated prose
+the only visible representation of a relationship. Passing a fact without its
+current exact source segments would also weaken the provenance contract already
+enforced by storage.
+
+**Decision:** preserve the released transcript-only `AskMeetingAnswering` port
+and add a separate opt-in `AskEvidenceBundleAnswering` port over one storage-
+independent `AskSynthesisInput`. The new input keeps transcript citations and a
+closed typed graph lane separate. Each admitted
+`AskGraphFactSynthesisEvidence` carries the original typed fact plus exact
+source citations derived from current authoritative evidence. Admission
+requires non-empty evidence, the declared primary segment, unique segment
+identities, and consistent current material when a segment appears in both
+lanes. Typed domain abstention, operational unavailability, and malformed
+provenance remain distinguishable; malformed graph evidence is excluded
+without erasing valid transcript material.
+
+Add one opt-in `AskMeetings.answerBundle` workflow. It accepts an already exact
+graph job and optional exact filter, runs the existing two-lane retrieval, sends
+the typed synthesis input to generation, and returns the unchanged evidence
+bundle beside optional generated text. Existing released `answer` calls keep
+their transcript-only provider and response shape. Fact-aware generation
+requires both independently ranked exact transcript citations and a valid
+source-backed graph page: graph facts cannot replace an empty transcript result,
+and a transcript retrieval error still fails the complete operation. Page
+truncation, projection generation, and stale or unavailable evidence omissions
+travel with the admitted facts so incomplete graph results cannot authorize an
+exhaustive "all" or "none" claim.
+
+IntelligenceKit represents graph relationships as `RAGFact` values with exact
+`RAGPassage` sources inside a disclosure-bearing `RAGFactPage`. Transcript
+passages and facts receive separate prompt markers; graph sources are
+deduplicated only by exact segment identity. Fact markers communicate structure
+but are not valid citations. Generated claims must cite exact transcript or
+graph-source segment markers, and invalid primary, duplicate, inconsistent, or
+stale source provenance fails before model execution.
+
+**Consequences:** Ask now has a reversible, local fact-aware synthesis contract
+without changing released UI behavior, transcript RRF, storage schemas, or graph
+authority. Evidence survives model absence and ordinary generation failure.
+Cross-lane selection is intentionally still absent, so no presentation, CLI,
+MCP, command-palette, or meeting-brief surface may adopt graph-aware generation
+until bounded selection proves exact evidence cannot be drowned by volume.
