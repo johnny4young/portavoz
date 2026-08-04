@@ -18,8 +18,12 @@ extension MeetingStore {
         _ query: TopicFirstDiscussionQuery,
         in database: Database
     ) throws -> MeetingMemoryGraphQueryResult {
+        guard query.isValid else { return .abstained(.invalidQuery) }
         guard try meetingMemoryGraphProjectionIsReady(in: database) else {
             return .abstained(.projectionNotReady)
+        }
+        if let status = query.filter.status, status != .confirmed {
+            return .abstained(.noMatchingFacts)
         }
         let topics = try liveTopicRecords(in: database)
         let queryKey = query.topicID.rawValue.uuidString
@@ -27,12 +31,54 @@ extension MeetingStore {
             return .abstained(.topicUnavailable)
         }
         let root = try topicRoot(queryKey, among: topics)
-        guard let earliest = try loadTopicEvidence(
+        let occurrences = try loadTopicEvidenceOccurrences(
             for: query.topicID,
-            in: database).first
-        else { return .abstained(.evidenceUnavailable) }
+            in: database)
+        let earliest: TopicEvidenceOccurrence
+        switch firstDiscussionOccurrence(
+            in: occurrences,
+            matching: query.filter
+        ) {
+        case .occurrence(let occurrence):
+            earliest = occurrence
+        case .abstained(let reason):
+            return .abstained(reason)
+        }
 
-        switch earliest.availability {
+        return try topicFirstDiscussionFact(
+            earliest,
+            root: root,
+            in: database)
+    }
+
+    private static func firstDiscussionOccurrence(
+        in occurrences: [TopicEvidenceOccurrence],
+        matching filter: MeetingMemoryGraphFactFilter
+    ) -> TopicFirstDiscussionOccurrenceSelection {
+        if filter.isUnrestricted {
+            return occurrences.first.map {
+                .occurrence($0)
+            } ?? .abstained(.evidenceUnavailable)
+        }
+        for occurrence in occurrences {
+            guard let occurredAt = occurrence.occurredAt else {
+                return .abstained(.evidenceUnavailable)
+            }
+            if filter.includes(occurredAt: occurredAt, status: .confirmed) {
+                return .occurrence(occurrence)
+            }
+        }
+        return .abstained(.noMatchingFacts)
+    }
+
+    private static func topicFirstDiscussionFact(
+        _ earliest: TopicEvidenceOccurrence,
+        root: TopicRecord,
+        in database: Database
+    ) throws -> MeetingMemoryGraphQueryResult {
+        let earliestEvidence = earliest.evidence
+
+        switch earliestEvidence.availability {
         case .stale:
             return .abstained(.staleEvidenceOnly)
         case .unavailable:
@@ -42,14 +88,14 @@ extension MeetingStore {
         }
         guard try graphContainsTopicMeetingEdge(
             topicID: root.id,
-            meetingID: earliest.meetingID,
+            meetingID: earliestEvidence.meetingID,
             in: database)
         else { return .abstained(.projectionInconsistent) }
 
         let evidenceStatus = try timelineEvidence(
-            meetingID: earliest.meetingID,
-            transcriptRevision: earliest.sourceTranscriptRevision,
-            segmentIDs: [earliest.segmentID],
+            meetingID: earliestEvidence.meetingID,
+            transcriptRevision: earliestEvidence.sourceTranscriptRevision,
+            segmentIDs: [earliestEvidence.segmentID],
             in: database)
         guard case .current(let evidence) = evidenceStatus,
               let source = evidence.first
@@ -60,17 +106,17 @@ extension MeetingStore {
         let generation = try meetingMemoryGraphProjectionGeneration(in: database)
         return .facts(MeetingMemoryGraphFactPage(
             facts: [MeetingMemoryGraphFact(
-                id: .topicEvidence(earliest.id),
+                id: .topicEvidence(earliestEvidence.id),
                 kind: .topicDiscussedInMeeting,
                 subject: .topic(topic.id),
-                object: .meeting(earliest.meetingID),
+                object: .meeting(earliestEvidence.meetingID),
                 subjectText: topic.preferredLabel,
                 objectText: source.meetingTitle,
                 status: .confirmed,
-                occurredAt: source.meetingStartedAt.addingTimeInterval(
-                    source.startTime),
+                occurredAt: earliest.occurredAt
+                    ?? source.meetingStartedAt.addingTimeInterval(source.startTime),
                 evidence: evidence,
-                primaryEvidenceSegmentID: earliest.segmentID)],
+                primaryEvidenceSegmentID: earliestEvidence.segmentID)],
             hasMore: false,
             projectionGeneration: generation,
             omittedStaleCount: 0,
@@ -118,4 +164,9 @@ extension MeetingStore {
             return .abstained(.evidenceUnavailable)
         }
     }
+}
+
+private enum TopicFirstDiscussionOccurrenceSelection {
+    case occurrence(TopicEvidenceOccurrence)
+    case abstained(MeetingMemoryGraphQueryAbstention)
 }

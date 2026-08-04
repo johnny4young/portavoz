@@ -7,6 +7,14 @@ extension MeetingStore {
         for topicID: TopicID,
         in database: Database
     ) throws -> [TopicMeetingEvidence] {
+        try loadTopicEvidenceOccurrences(for: topicID, in: database)
+            .map(\.evidence)
+    }
+
+    static func loadTopicEvidenceOccurrences(
+        for topicID: TopicID,
+        in database: Database
+    ) throws -> [TopicEvidenceOccurrence] {
         let records = try topicEvidenceRecords(for: topicID, in: database)
         let meetingIDs = Array(Set(records.map(\.meetingID)))
         let segmentIDs = Array(Set(records.map(\.segmentID)))
@@ -40,11 +48,29 @@ extension MeetingStore {
                     segments: segments)
             }
             .map { record in
-                try record.evidence(availability: topicEvidenceAvailability(
-                    record,
-                    meeting: meetings[record.meetingID],
-                    segment: segments[record.segmentID],
-                    acceptedSegmentIDs: acceptedSegmentIDs))
+                let meeting = meetings[record.meetingID]
+                let segment = segments[record.segmentID]
+                let evidence = try record.evidence(
+                    availability: topicEvidenceAvailability(
+                        record,
+                        meeting: meeting,
+                        segment: segment,
+                        acceptedSegmentIDs: acceptedSegmentIDs))
+                let occurredAt: Date?
+                if let meeting,
+                   let segment,
+                   segment.meetingID == record.meetingID {
+                    let date = meeting.startedAt.addingTimeInterval(
+                        segment.startTime)
+                    occurredAt = date.timeIntervalSinceReferenceDate.isFinite
+                        ? date
+                        : nil
+                } else {
+                    occurredAt = nil
+                }
+                return TopicEvidenceOccurrence(
+                    evidence: evidence,
+                    occurredAt: occurredAt)
             }
     }
 
@@ -138,4 +164,9 @@ extension MeetingStore {
         guard count > 0 else { return "NULL" }
         return Array(repeating: "?", count: count).joined(separator: ",")
     }
+}
+
+struct TopicEvidenceOccurrence {
+    let evidence: TopicMeetingEvidence
+    let occurredAt: Date?
 }

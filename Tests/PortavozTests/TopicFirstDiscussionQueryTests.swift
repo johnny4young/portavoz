@@ -66,6 +66,40 @@ final class TopicFirstDiscussionQueryTests: XCTestCase {
             .topicEvidence(fixture.firstEvidenceID))
     }
 
+    func testDateRangeChoosesEarliestDiscussionInsideRange() async throws {
+        let fixture = try await firstDiscussionFixture()
+        _ = try await projectFirstDiscussionGraph(in: fixture.store)
+
+        let result = try await fixture.store.topicFirstDiscussion(
+            TopicFirstDiscussionQuery(
+                topicID: fixture.rootTopicID,
+                filter: MeetingMemoryGraphFactFilter(
+                    occurredAtOrAfter: fixture.laterMeeting.startedAt,
+                    occurredBefore: fixture.laterMeeting.startedAt
+                        .addingTimeInterval(60))))
+        guard case .facts(let page) = result else {
+            return XCTFail("Expected the first in-range discussion, got \(result)")
+        }
+
+        XCTAssertEqual(
+            page.facts.first?.id,
+            .topicEvidence(fixture.laterEvidenceID))
+        XCTAssertEqual(page.facts.first?.object, .meeting(fixture.laterMeeting.id))
+        XCTAssertEqual(page.facts.first?.navigation?.segmentID, fixture.laterSegment.id)
+    }
+
+    func testIncompatibleTopicStatusReturnsTypedNoMatch() async throws {
+        let fixture = try await firstDiscussionFixture()
+        _ = try await projectFirstDiscussionGraph(in: fixture.store)
+
+        let result = try await fixture.store.topicFirstDiscussion(
+            TopicFirstDiscussionQuery(
+                topicID: fixture.rootTopicID,
+                filter: MeetingMemoryGraphFactFilter(status: .active)))
+
+        XCTAssertEqual(result, .abstained(.noMatchingFacts))
+    }
+
     func testStaleEarliestMentionCannotBeReplacedByLaterCurrentMention() async throws {
         let fixture = try await firstDiscussionFixture()
         var revisedMeeting = fixture.firstMeeting
@@ -180,9 +214,12 @@ final class TopicFirstDiscussionQueryTests: XCTestCase {
             store: store,
             firstMeeting: firstMeeting,
             firstSegment: firstSegment,
+            laterMeeting: laterMeeting,
+            laterSegment: laterSegment,
             rootTopicID: root.topic.id,
             observedTopicID: observed.observedTopic.id,
-            firstEvidenceID: root.evidence.id)
+            firstEvidenceID: root.evidence.id,
+            laterEvidenceID: observed.evidence.id)
     }
 }
 
@@ -190,9 +227,12 @@ private struct FirstDiscussionFixture {
     let store: MeetingStore
     let firstMeeting: Meeting
     let firstSegment: TranscriptSegment
+    let laterMeeting: Meeting
+    let laterSegment: TranscriptSegment
     let rootTopicID: TopicID
     let observedTopicID: TopicID
     let firstEvidenceID: TopicMeetingEvidenceID
+    let laterEvidenceID: TopicMeetingEvidenceID
 }
 
 private actor FirstDiscussionRepositoryStub: TopicFirstDiscussionReading {

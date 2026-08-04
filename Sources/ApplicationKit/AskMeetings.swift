@@ -178,17 +178,20 @@ public struct AskMeetings: ApplicationUseCase {
     private let retrieval: any AskMeetingRetrieving
     private let answering: any AskMeetingAnswering
     private let graphFacts: (any AskGraphFactRetrieving)?
+    private let graphFilterResolver: (any AskGraphFactFilterResolving)?
     private let telemetry: AskPipelineTelemetry
 
     public init(
         retrieval: any AskMeetingRetrieving,
         answering: any AskMeetingAnswering,
         graphFacts: (any AskGraphFactRetrieving)? = nil,
+        graphFilterResolver: (any AskGraphFactFilterResolving)? = nil,
         telemetry: AskPipelineTelemetry = .disabled
     ) {
         self.retrieval = retrieval
         self.answering = answering
         self.graphFacts = graphFacts
+        self.graphFilterResolver = graphFilterResolver
         self.telemetry = telemetry
     }
 
@@ -207,6 +210,7 @@ public struct AskMeetings: ApplicationUseCase {
                 semanticReadiness: semanticReadiness),
             answering: intelligence,
             graphFacts: LocalAskGraphFactRetrieval(store: store),
+            graphFilterResolver: LocalAskGraphFactFilterResolver(store: store),
             telemetry: pipelineTelemetry)
     }
 
@@ -265,7 +269,8 @@ public struct AskMeetings: ApplicationUseCase {
     public func evidenceBundle(
         _ question: String,
         limit: Int = 6,
-        graphQuery: AskGraphFactQuery? = nil
+        graphQuery: AskGraphFactQuery? = nil,
+        graphFilter: AskGraphFactFilterRequest? = nil
     ) async throws -> AskEvidenceBundle {
         let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, limit > 0 else {
@@ -274,7 +279,9 @@ public struct AskMeetings: ApplicationUseCase {
                 graphFacts: .notRequested)
         }
 
-        async let graphOutcome = graphFactOutcome(for: graphQuery)
+        async let graphOutcome = graphFactOutcome(
+            for: graphQuery,
+            filter: graphFilter)
         let citations = try await evidence(question, limit: limit)
         let graphFacts = try await graphOutcome
         return AskEvidenceBundle(
@@ -348,11 +355,30 @@ public struct AskMeetings: ApplicationUseCase {
     }
 
     private func graphFactOutcome(
-        for query: AskGraphFactQuery?
+        for query: AskGraphFactQuery?,
+        filter: AskGraphFactFilterRequest?
     ) async throws -> AskGraphFactLaneOutcome {
-        guard let query else { return .notRequested }
+        guard let query else {
+            return filter == nil
+                ? .notRequested
+                : .result(.abstained(.invalidQuery))
+        }
         guard let graphFacts else { return .unavailable }
         do {
+            if let filter {
+                guard let graphFilterResolver else { return .unavailable }
+                switch try await graphFilterResolver.resolve(filter) {
+                case .resolved(let value):
+                    switch value.applying(to: query) {
+                    case .query(let filteredQuery):
+                        return .result(try await graphFacts.retrieve(filteredQuery))
+                    case .abstained(let reason):
+                        return .result(.abstained(reason))
+                    }
+                case .abstained(let reason):
+                    return .result(.abstained(reason))
+                }
+            }
             return .result(try await graphFacts.retrieve(query))
         } catch is CancellationError {
             throw CancellationError()

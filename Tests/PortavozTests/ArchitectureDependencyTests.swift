@@ -1899,6 +1899,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/PortavozCore/MeetingMemoryGraphQuery.swift")
         let storage = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+TopicFirstDiscussionQuery.swift")
+        let evidenceStorage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+TopicContinuityEvidence.swift")
         let application = try Self.contents(
             of: "Sources/ApplicationKit/LoadTopicFirstDiscussion.swift")
         let adapter = try Self.contents(
@@ -1919,13 +1921,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(core.contains("enum MeetingMemoryGraphFactID"))
         XCTAssertTrue(core.contains("case topicDiscussedInMeeting"))
         XCTAssertTrue(core.contains("case projectionInconsistent"))
-        XCTAssertTrue(storage.contains("guard let earliest = try loadTopicEvidence("))
-        XCTAssertTrue(storage.contains("in: database).first"))
-        XCTAssertTrue(storage.contains("switch earliest.availability"))
+        XCTAssertTrue(storage.contains("loadTopicEvidenceOccurrences("))
+        XCTAssertTrue(storage.contains("for occurrence in occurrences"))
+        XCTAssertTrue(storage.contains("switch earliestEvidence.availability"))
+        XCTAssertTrue(evidenceStorage.contains("topicEvidencePrecedes("))
         XCTAssertTrue(storage.contains("meetingMemoryGraphMeetingTopic"))
         XCTAssertTrue(storage.contains("graphContainsTopicMeetingEdge"))
-        XCTAssertTrue(storage.contains("meetingID: earliest.meetingID"))
-        XCTAssertTrue(storage.contains("id: .topicEvidence(earliest.id)"))
+        XCTAssertTrue(storage.contains("meetingID: earliestEvidence.meetingID"))
+        XCTAssertTrue(storage.contains("id: .topicEvidence(earliestEvidence.id)"))
         XCTAssertTrue(storage.contains("timelineEvidence("))
         XCTAssertTrue(application.contains("protocol TopicFirstDiscussionReading"))
         XCTAssertTrue(application.contains("struct LoadTopicFirstDiscussion"))
@@ -2063,6 +2066,61 @@ final class ArchitectureDependencyTests: XCTestCase {
             "answer(question: String, citations: [AskCitation])"))
         XCTAssertFalse(presentation.contains("evidenceBundle("))
         XCTAssertTrue(decisions.contains("## D283"))
+    }
+
+    func testAskGraphFiltersResolveExactIdentitiesBeforeBoundedQueries() throws {
+        let filters = try Self.contents(
+            of: "Sources/ApplicationKit/AskGraphFactFilters.swift")
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/AskMeetings.swift")
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/MeetingMemoryGraphQuery.swift")
+        let blockers = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingMemoryGraphQuery.swift")
+        let commitments = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+PersonCommitmentsQuery.swift")
+        let firstDiscussion = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+TopicFirstDiscussionQuery.swift")
+        let topicContinuity = try Self.contents(
+            of: "Sources/ApplicationKit/TopicContinuity.swift")
+        let presentation = try Self.contents(
+            of: "Sources/portavoz-app/AskModel.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        for boundary in [
+            "struct AskGraphFactDateRange",
+            "struct AskGraphFactFilterRequest",
+            "struct ResolvedAskGraphFactFilter",
+            "protocol AskGraphFactFilterResolving",
+            "struct LocalAskGraphFactFilterResolver",
+            "enum AskGraphFactQueryApplication",
+            "func applying(",
+        ] {
+            XCTAssertTrue(filters.contains(boundary), boundary)
+        }
+        XCTAssertTrue(core.contains("struct MeetingMemoryGraphFactFilter"))
+        XCTAssertTrue(filters.contains("PersonAliasNormalizer.normalize"))
+        XCTAssertTrue(filters.contains("TopicAliasNormalizer.normalize"))
+        XCTAssertTrue(topicContinuity.contains(
+            "protocol CanonicalTopicCandidateReading"))
+        XCTAssertFalse(filters.contains("import IntelligenceKit"))
+        XCTAssertFalse(filters.contains("import GRDB"))
+        XCTAssertTrue(workflow.contains(
+            "graphFilterResolver: LocalAskGraphFactFilterResolver(store: store)"))
+        XCTAssertTrue(workflow.contains("value.applying(to: query)"))
+        XCTAssertFalse(filters.contains("facts.filter"))
+        for source in [blockers, commitments] {
+            XCTAssertTrue(source.contains("query.filter.includes"))
+            XCTAssertTrue(source.contains(".noMatchingFacts"))
+        }
+        XCTAssertTrue(firstDiscussion.contains("filter.includes"))
+        XCTAssertTrue(firstDiscussion.contains(".noMatchingFacts"))
+        XCTAssertTrue(blockers.contains("blocker.confirmedAt >= ?"))
+        XCTAssertTrue(commitments.contains("latestReassignment"))
+        XCTAssertTrue(commitments.contains("COALESCE("))
+        XCTAssertTrue(firstDiscussion.contains("loadTopicEvidenceOccurrences"))
+        XCTAssertFalse(presentation.contains("graphFilter:"))
+        XCTAssertTrue(decisions.contains("## D284"))
     }
 
     func testMeetingMemoryGraphProjectionIsDisposableDurableAndSignalDriven() throws {

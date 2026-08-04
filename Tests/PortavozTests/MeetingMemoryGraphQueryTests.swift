@@ -136,6 +136,52 @@ final class MeetingMemoryGraphQueryTests: XCTestCase {
         XCTAssertTrue(page.hasMore)
     }
 
+    func testOccurrenceFilterRunsBeforeBlockerCandidateLimit() async throws {
+        let fixture = try await queryFixture(includeBlocker: true)
+        let secondDecisionID = DecisionID()
+        try await insertQueryDecision(
+            id: secondDecisionID,
+            statement: "Privacy review is required.",
+            meeting: fixture.meeting,
+            segmentID: fixture.segments[3].id,
+            occurredAt: Self.baseDate.addingTimeInterval(3),
+            in: fixture.store)
+        _ = try await fixture.store.confirmDecisionCommitmentBlocker(
+            DecisionCommitmentBlockerConfirmation(
+                blockerID: DecisionCommitmentBlockerID(),
+                decisionID: secondDecisionID,
+                commitmentID: fixture.commitmentID,
+                evidence: fixture.evidence(segmentIDs: [fixture.segments[3].id]),
+                confirmedAt: Self.baseDate.addingTimeInterval(20)))
+        _ = try await projectGraph(in: fixture.store)
+
+        let result = try await fixture.store.commitmentBlockerFacts(
+            CommitmentBlockerQuery(
+                commitmentID: fixture.commitmentID,
+                itemLimit: 1,
+                filter: MeetingMemoryGraphFactFilter(
+                    occurredAtOrAfter: Self.baseDate,
+                    occurredBefore: Self.baseDate.addingTimeInterval(15))))
+        guard case .facts(let page) = result else {
+            return XCTFail("Expected the older in-range blocker, got \(result)")
+        }
+
+        XCTAssertEqual(page.facts.map(\.id), [.blocker(fixture.blockerID)])
+        XCTAssertFalse(page.hasMore)
+    }
+
+    func testIncompatibleBlockerStatusReturnsTypedNoMatch() async throws {
+        let fixture = try await queryFixture(includeBlocker: true)
+        _ = try await projectGraph(in: fixture.store)
+
+        let result = try await fixture.store.commitmentBlockerFacts(
+            CommitmentBlockerQuery(
+                commitmentID: fixture.commitmentID,
+                filter: MeetingMemoryGraphFactFilter(status: .confirmed)))
+
+        XCTAssertEqual(result, .abstained(.noMatchingFacts))
+    }
+
     func testUnavailableNewerCandidateDoesNotHideCurrentOlderFact() async throws {
         let fixture = try await queryFixture(includeBlocker: true)
         let secondDecisionID = DecisionID()

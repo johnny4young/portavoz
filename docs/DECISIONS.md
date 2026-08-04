@@ -9891,3 +9891,47 @@ typed fact-aware synthesis contract, and measure bounded cross-lane selection
 before any user-facing composition. Graph telemetry, the remaining three D270
 jobs, relational scale budgets, private evidence, sync/export, CLI, MCP, and UI
 remain open.
+
+## D284 — Resolve exact Ask filters without changing fact authority (Aug 2026)
+
+**Context:** D283 gave Ask a separate typed graph-fact lane, but callers could
+only submit an already-resolved graph query. Filtering a returned page by an
+unresolved name would risk guessing between same-name people or topics.
+A post-page date or status filter would also be semantically wrong: a matching
+fact can sit beyond the candidate limit, and first-discussion chronology must
+be evaluated inside the requested range rather than filtered after choosing an
+all-time winner.
+
+**Decision:** add a caller-extracted `AskGraphFactFilterRequest` in
+ApplicationKit. It accepts at most one exact person or topic alias, one finite
+half-open occurrence range, and one typed fact status. The local resolver uses
+the existing read-only canonical-person and canonical-topic candidate ports;
+zero or multiple candidates abstain, and candidate lookup cannot mutate or
+merge identity. The resolved identity must equal the exact `PersonID` or
+`TopicID` already carried by the compatible graph query. Mixed identity
+dimensions, identity mismatch, or attaching an identity to another graph job
+is invalid before fact retrieval.
+
+Add one shared `MeetingMemoryGraphFactFilter` to the three exact query
+contracts. Its finite half-open occurrence interval and closed typed status are
+intersected with any existing exact constraints before the query enters
+StorageKit; disjoint constraints abstain as `no-matching-facts`. Blocker
+confirmation time and the authoritative person-commitment occurrence time
+(latest reassignment, otherwise commitment creation) participate in candidate
+SQL before ordering and limit. First-discussion serving chooses the earliest
+authoritative topic evidence inside the range; meeting and segment chronology
+is batch-loaded, and an unknown occurrence fails closed rather than skipping a
+potentially earlier source.
+Every candidate is still rehydrated and rechecked against the same filter in
+the SQLite snapshot. The fixed active/confirmed fact shapes reject incompatible
+statuses as a typed no-match.
+
+**Consequences:** Ask now has a deterministic, local, ambiguity-safe filter
+boundary for exact person, topic, occurrence date, and fact status without
+changing transcript retrieval, answer generation, storage schemas, or factual
+authority. Pagination and chronology remain truthful because filtering occurs
+before the visible limit, never over an already bounded page. It is not a
+natural-language parser and no released UI, CLI, MCP, command-palette, or
+meeting-brief consumer invokes it yet. Typed fact-aware synthesis, bounded
+cross-lane selection, the other three D270 fact jobs, telemetry, scale budgets,
+and private field evidence remain separate gates.

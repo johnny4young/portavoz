@@ -1465,9 +1465,32 @@ transcript evidence, and graph facts cannot be flattened into transcript rank.
 This is a composition seam, not answer behavior. Existing Ask search,
 progressive transcript evidence, answer generation, UI, CLI, MCP, and meeting
 brief consumers do not request the bundle. The answer provider still receives
-only transcript citations. Natural-language filter extraction, exact identity
-resolution, fact-aware synthesis, cross-lane selection, and telemetry remain
-later gates.
+only transcript citations.
+
+The graph lane also accepts an optional **caller-extracted exact filter**. A
+narrow ApplicationKit resolver normalizes a person or topic alias through the
+existing read-only candidate ports and admits exactly one canonical identity;
+missing or duplicate aliases abstain without guessing. A person filter can
+only match the exact `PersonID` already carried by a person-commitment query,
+and a topic filter can only match the exact `TopicID` already carried by a
+first-discussion query. Mixed identity dimensions, a mismatched identity, or an
+identity attached to the wrong graph job is invalid before factual retrieval.
+
+Date filtering uses one finite half-open occurrence range, and status filtering
+uses the closed typed fact status. ApplicationKit intersects those constraints
+with the exact query before StorageKit runs it; filtering never happens over an
+already bounded fact page. Blocker confirmation time and the latest exact
+person reassignment time (or commitment creation time when never reassigned)
+enter candidate SQL before ordering and limiting. First-discussion retrieval
+selects the earliest authoritative topic evidence inside the requested range.
+Its meeting and segment chronology is loaded in one batch, and an unknown
+occurrence fails closed instead of hiding a potentially earlier source.
+Hydration rechecks the same exact filter inside the SQLite snapshot, while an
+incompatible fixed fact status or a complete constrained miss returns typed
+`no-matching-facts`. This adds no natural-language parser and current UI, CLI,
+MCP, command-palette, and answer consumers still do not request the bundle.
+Fact-aware synthesis, cross-lane selection, and graph telemetry remain later
+gates.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
@@ -3491,13 +3514,13 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 1,986 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 2,008 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
 - the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
   gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 586 first-party Swift source files;
+- strict SwiftLint reports zero violations across 587 first-party Swift source files;
 - 65 XCUITest cases define the English and Spanish release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;

@@ -197,6 +197,39 @@ final class PersonCommitmentsQueryTests: XCTestCase {
         XCTAssertTrue(page.hasMore)
     }
 
+    func testOccurrenceFilterRunsBeforePersonCommitmentLimit() async throws {
+        let fixture = try await personCommitmentFixture(commitmentCount: 2)
+        _ = try await projectPersonCommitmentGraph(in: fixture.store)
+
+        let result = try await fixture.store.personCommitmentFacts(
+            PersonCommitmentsQuery(
+                personID: fixture.person.id,
+                itemLimit: 1,
+                filter: MeetingMemoryGraphFactFilter(
+                    occurredAtOrAfter: Self.baseDate,
+                    occurredBefore: Self.baseDate.addingTimeInterval(10.5))))
+        guard case .facts(let page) = result else {
+            return XCTFail("Expected the older in-range commitment, got \(result)")
+        }
+
+        XCTAssertEqual(page.facts.map(\.id), [
+            .commitment(fixture.commitments[0].id),
+        ])
+        XCTAssertFalse(page.hasMore)
+    }
+
+    func testIncompatiblePersonCommitmentStatusReturnsTypedNoMatch() async throws {
+        let fixture = try await personCommitmentFixture(commitmentCount: 1)
+        _ = try await projectPersonCommitmentGraph(in: fixture.store)
+
+        let result = try await fixture.store.personCommitmentFacts(
+            PersonCommitmentsQuery(
+                personID: fixture.person.id,
+                filter: MeetingMemoryGraphFactFilter(status: .confirmed)))
+
+        XCTAssertEqual(result, .abstained(.noMatchingFacts))
+    }
+
     func testApplicationUseCasePreservesTypedRepositoryResult() async throws {
         let personID = PersonID()
         let expected = MeetingMemoryGraphQueryResult.abstained(

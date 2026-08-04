@@ -1,5 +1,74 @@
 import Foundation
 
+/// Exact constraints shared by every source-backed graph fact query. Date
+/// bounds are half-open so adjacent caller ranges cannot overlap.
+public struct MeetingMemoryGraphFactFilter: Equatable, Sendable {
+    public let occurredAtOrAfter: Date?
+    public let occurredBefore: Date?
+    public let status: MeetingMemoryGraphFactStatus?
+
+    public init(
+        occurredAtOrAfter: Date? = nil,
+        occurredBefore: Date? = nil,
+        status: MeetingMemoryGraphFactStatus? = nil
+    ) {
+        self.occurredAtOrAfter = occurredAtOrAfter
+        self.occurredBefore = occurredBefore
+        self.status = status
+    }
+
+    public var isValid: Bool {
+        if let occurredAtOrAfter,
+           !occurredAtOrAfter.timeIntervalSinceReferenceDate.isFinite {
+            return false
+        }
+        if let occurredBefore,
+           !occurredBefore.timeIntervalSinceReferenceDate.isFinite {
+            return false
+        }
+        if let occurredAtOrAfter, let occurredBefore,
+           occurredAtOrAfter >= occurredBefore {
+            return false
+        }
+        return true
+    }
+
+    public var isUnrestricted: Bool {
+        occurredAtOrAfter == nil && occurredBefore == nil && status == nil
+    }
+
+    public func includes(
+        occurredAt: Date,
+        status candidateStatus: MeetingMemoryGraphFactStatus
+    ) -> Bool {
+        guard isValid,
+              occurredAt.timeIntervalSinceReferenceDate.isFinite
+        else { return false }
+        if let lower = occurredAtOrAfter, occurredAt < lower { return false }
+        if let upper = occurredBefore, occurredAt >= upper { return false }
+        if let status, candidateStatus != status { return false }
+        return true
+    }
+
+    public func intersection(
+        with other: MeetingMemoryGraphFactFilter
+    ) -> MeetingMemoryGraphFactFilter? {
+        guard isValid, other.isValid else { return nil }
+        if let status, let otherStatus = other.status, status != otherStatus {
+            return nil
+        }
+        let intersection = MeetingMemoryGraphFactFilter(
+            occurredAtOrAfter: [occurredAtOrAfter, other.occurredAtOrAfter]
+                .compactMap { $0 }
+                .max(),
+            occurredBefore: [occurredBefore, other.occurredBefore]
+                .compactMap { $0 }
+                .min(),
+            status: status ?? other.status)
+        return intersection.isValid ? intersection : nil
+    }
+}
+
 /// The first source-backed product query over the disposable Meeting Memory
 /// Graph. A caller provides an exact commitment identity; natural-language
 /// identity discovery remains a separate retrieval concern.
@@ -9,17 +78,20 @@ public struct CommitmentBlockerQuery: Equatable, Sendable {
 
     public let commitmentID: CommitmentID
     public let itemLimit: Int
+    public let filter: MeetingMemoryGraphFactFilter
 
     public init(
         commitmentID: CommitmentID,
-        itemLimit: Int = defaultItemLimit
+        itemLimit: Int = defaultItemLimit,
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
     ) {
         self.commitmentID = commitmentID
         self.itemLimit = itemLimit
+        self.filter = filter
     }
 
     public var isValid: Bool {
-        (1...Self.maximumItemLimit).contains(itemLimit)
+        (1...Self.maximumItemLimit).contains(itemLimit) && filter.isValid
     }
 }
 
@@ -27,9 +99,18 @@ public struct CommitmentBlockerQuery: Equatable, Sendable {
 /// identity. Label and natural-language resolution happen before this query.
 public struct TopicFirstDiscussionQuery: Equatable, Sendable {
     public let topicID: TopicID
+    public let filter: MeetingMemoryGraphFactFilter
 
-    public init(topicID: TopicID) {
+    public init(
+        topicID: TopicID,
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) {
         self.topicID = topicID
+        self.filter = filter
+    }
+
+    public var isValid: Bool {
+        filter.isValid
     }
 }
 
@@ -41,17 +122,20 @@ public struct PersonCommitmentsQuery: Equatable, Sendable {
 
     public let personID: PersonID
     public let itemLimit: Int
+    public let filter: MeetingMemoryGraphFactFilter
 
     public init(
         personID: PersonID,
-        itemLimit: Int = defaultItemLimit
+        itemLimit: Int = defaultItemLimit,
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
     ) {
         self.personID = personID
         self.itemLimit = itemLimit
+        self.filter = filter
     }
 
     public var isValid: Bool {
-        (1...Self.maximumItemLimit).contains(itemLimit)
+        (1...Self.maximumItemLimit).contains(itemLimit) && filter.isValid
     }
 }
 
@@ -160,9 +244,11 @@ public enum MeetingMemoryGraphQueryAbstention: String, Equatable, Sendable {
     case personUnavailable = "person-unavailable"
     case ambiguousPerson = "ambiguous-person"
     case topicUnavailable = "topic-unavailable"
+    case ambiguousTopic = "ambiguous-topic"
     case projectionInconsistent = "projection-inconsistent"
     case unsupportedCausalLink = "unsupported-causal-link"
     case noActiveCommitments = "no-active-commitments"
+    case noMatchingFacts = "no-matching-facts"
     case candidateBudgetExceeded = "candidate-budget-exceeded"
     case staleEvidenceOnly = "stale-evidence-only"
     case evidenceUnavailable = "evidence-unavailable"

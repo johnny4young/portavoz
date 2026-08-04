@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 1,986 cases (13 environment-gated) + 65
+Status: the package inventory contains 2,008 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -27,7 +27,7 @@ support, durable post-capture recovery, processing recovery, and typed
 recording-failure screenshots; earlier automation-mode harness failures remain
 documented below.
 
-**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 586 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
+**SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config (default rules + correctness/clarity opt-ins, industry thresholds: line 120, function-body 60/100, cyclomatic 12/20, type-body 400/600). `swiftlint lint --strict --no-cache` passes with **zero violations across 587 Swift source files**; in CI, any violation breaks the build. Inherent exceptions are suppressed inline with justification (catalog sha256 data lines, CLI arg-parser dispatchers, large stateful composition/view files) — splitting those files remains technical debt.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1422,6 +1422,20 @@ composition, typed adapter boundaries, transcript-only answer contract, and
 absence of presentation adoption. These eight cases use no model, network,
 user library, SwiftUI, XCUITest, or screenshot.
 
+### Exact Ask graph-fact filters (D284)
+
+Twenty-one focused cases cover finite half-open date/status filtering and
+intersection, exact person/topic alias resolution, ambiguity and identity/job
+compatibility, rejection of invalid resolved constraints and exact queries,
+query pushdown before retrieval, absence of capability entry without a graph
+job, blocker/person filtering before visible limits, earliest topic discussion
+inside a requested range, and incompatible fixed-status no-match behavior. One
+architecture ratchet pins the read-only candidate ports,
+shared exact Core filter, local composition, pre-limit StorageKit boundaries,
+absence of post-page filtering, lack of Intelligence/GRDB coupling, and no
+Presentation adoption. These twenty-two cases use no model, network, user library,
+SwiftUI, XCUITest, or screenshot.
+
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
@@ -1511,8 +1525,8 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The current field-reliability inventory is 1,973 XCTest package cases (13
-environment-gated), zero strict-lint violations across 586 first-party Swift
+The current field-reliability inventory is 1,995 XCTest package cases (13
+environment-gated), zero strict-lint violations across 587 first-party Swift
 source files, a 108-case recording/recovery corpus passing 25 consecutive
 iterations, and 65 XCUITest cases per locale. Release evidence requires the package
 inventory to pass without failures on a supported AppKit-capable host. Package

@@ -2,10 +2,15 @@ import Foundation
 import PortavozCore
 import StorageKit
 
+/// Read-only exact-alias topic lookup. Multiple current roots deliberately
+/// remain visible as ambiguity; lookup can never mutate continuity.
+public protocol CanonicalTopicCandidateReading: Sendable {
+    func topics(matchingAlias alias: String) async throws -> [Topic]
+}
+
 /// Narrow topic-continuity port. Candidate lookup and mutation remain separate
 /// so an alias or similarity result cannot confirm itself.
-public protocol TopicContinuityStore: Sendable {
-    func topics(matchingAlias alias: String) async throws -> [Topic]
+public protocol TopicContinuityStore: CanonicalTopicCandidateReading {
     func createTopicAndLink(
         _ proposal: TopicLinkProposal
     ) async throws -> ConfirmedTopicLink

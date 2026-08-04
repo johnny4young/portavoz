@@ -23,12 +23,17 @@ extension MeetingStore {
         guard try meetingMemoryGraphProjectionIsReady(in: database) else {
             return .abstained(.projectionNotReady)
         }
+        if let status = query.filter.status, status != .active {
+            return .abstained(.noMatchingFacts)
+        }
         guard try graphQueryCommitmentIsAvailable(query.commitmentID, in: database) else {
             return .abstained(.commitmentUnavailable)
         }
         let candidates = try blockerFactCandidates(query, in: database)
         guard !candidates.keys.isEmpty else {
-            return .abstained(.unsupportedCausalLink)
+            return .abstained(query.filter.isUnrestricted
+                ? .unsupportedCausalLink
+                : .noMatchingFacts)
         }
 
         let hydration = try hydrateBlockerFacts(
@@ -90,9 +95,7 @@ extension MeetingStore {
             max(
                 MeetingMemoryGraphQueryBudget.minimumCandidateCount,
                 query.itemLimit * MeetingMemoryGraphQueryBudget.candidateMultiplier))
-        let keys = try String.fetchAll(
-            database,
-            sql: """
+        var sql = """
                 SELECT edge.blockerID
                 FROM meetingMemoryGraphDecisionCommitmentBlocker AS edge
                 JOIN decisionCommitmentBlocker AS blocker
@@ -106,10 +109,28 @@ extension MeetingStore {
                   AND blocker.deletedAt IS NULL
                   AND decision.status = 'confirmed'
                   AND decision.deletedAt IS NULL
+            """
+        var arguments: StatementArguments = [
+            query.commitmentID.rawValue.uuidString
+        ]
+        if let lower = query.filter.occurredAtOrAfter {
+            sql += "\n  AND blocker.confirmedAt >= ?"
+            arguments += [lower]
+        }
+        if let upper = query.filter.occurredBefore {
+            sql += "\n  AND blocker.confirmedAt < ?"
+            arguments += [upper]
+        }
+        sql += """
+
                 ORDER BY blocker.confirmedAt DESC, blocker.id
                 LIMIT ?
-                """,
-            arguments: [query.commitmentID.rawValue.uuidString, limit + 1])
+            """
+        arguments += [limit + 1]
+        let keys = try String.fetchAll(
+            database,
+            sql: sql,
+            arguments: arguments)
         return BlockerFactCandidates(
             keys: Array(keys.prefix(limit)),
             exceededBudget: keys.count > limit)
@@ -132,6 +153,13 @@ extension MeetingStore {
             else {
                 throw StorageError.invalidDerivedMaintenanceJob(
                     "memory graph blocker topology disagrees with authority")
+            }
+            guard query.filter.includes(
+                occurredAt: continuity.blocker.confirmedAt,
+                status: .active)
+            else {
+                throw StorageError.invalidDerivedMaintenanceJob(
+                    "memory graph blocker candidate violates exact filter")
             }
             let decision = try loadDecisionContinuity(
                 continuity.blocker.decisionID,

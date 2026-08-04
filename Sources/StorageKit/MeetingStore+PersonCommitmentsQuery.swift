@@ -23,6 +23,9 @@ extension MeetingStore {
         guard try meetingMemoryGraphProjectionIsReady(in: database) else {
             return .abstained(.projectionNotReady)
         }
+        if let status = query.filter.status, status != .active {
+            return .abstained(.noMatchingFacts)
+        }
         guard let person = try graphQueryPerson(
             query.personID,
             in: database)
@@ -40,7 +43,9 @@ extension MeetingStore {
         else { return .abstained(.projectionInconsistent) }
         let candidates = try personCommitmentCandidates(query, in: database)
         guard !candidates.keys.isEmpty else {
-            return .abstained(.projectionInconsistent)
+            return .abstained(query.filter.isUnrestricted
+                ? .projectionInconsistent
+                : .noMatchingFacts)
         }
 
         let hydration = try hydratePersonCommitmentFacts(
@@ -107,22 +112,50 @@ extension MeetingStore {
             max(
                 MeetingMemoryGraphQueryBudget.minimumCandidateCount,
                 query.itemLimit * MeetingMemoryGraphQueryBudget.candidateMultiplier))
-        let keys = try String.fetchAll(
-            database,
-            sql: """
+        var sql = """
+                WITH latestReassignment AS (
+                    SELECT commitmentID,
+                           occurredAt,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY commitmentID
+                               ORDER BY occurredAt DESC, id DESC
+                           ) AS rowRank
+                    FROM commitmentEvent
+                    WHERE kind = 'reassign'
+                )
                 SELECT edge.commitmentID
                 FROM meetingMemoryGraphCommitmentPerson AS edge
                 JOIN commitment
                   ON commitment.id = edge.commitmentID
                  AND commitment.canonicalPersonID = edge.personID
+                LEFT JOIN latestReassignment
+                  ON latestReassignment.commitmentID = commitment.id
+                 AND latestReassignment.rowRank = 1
                 WHERE edge.personID = ?
                   AND commitment.assigneeKind = 'person'
                   AND commitment.status = 'confirmed'
                   AND commitment.deletedAt IS NULL
-                ORDER BY commitment.updatedAt DESC, commitment.id
+            """
+        var arguments: StatementArguments = [query.personID.rawValue.uuidString]
+        let occurrence = "COALESCE(latestReassignment.occurredAt, commitment.createdAt)"
+        if let lower = query.filter.occurredAtOrAfter {
+            sql += "\n  AND \(occurrence) >= ?"
+            arguments += [lower]
+        }
+        if let upper = query.filter.occurredBefore {
+            sql += "\n  AND \(occurrence) < ?"
+            arguments += [upper]
+        }
+        sql += """
+
+                ORDER BY \(occurrence) DESC, commitment.id
                 LIMIT ?
-                """,
-            arguments: [query.personID.rawValue.uuidString, limit + 1])
+            """
+        arguments += [limit + 1]
+        let keys = try String.fetchAll(
+            database,
+            sql: sql,
+            arguments: arguments)
         return PersonCommitmentCandidates(
             keys: Array(keys.prefix(limit)),
             exceededBudget: keys.count > limit)
@@ -171,6 +204,13 @@ extension MeetingStore {
                 continuity,
                 in: database) {
             case .current(let evidence, let occurredAt):
+                guard query.filter.includes(
+                    occurredAt: occurredAt,
+                    status: .active)
+                else {
+                    throw StorageError.invalidDerivedMaintenanceJob(
+                        "memory graph commitment candidate violates exact filter")
+                }
                 guard let primary = evidence.first else {
                     hydration.unavailableCount += 1
                     continue
