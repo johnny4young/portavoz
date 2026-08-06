@@ -124,7 +124,15 @@ final class MeetingMaterialPromptGuardTests: XCTestCase {
                 hasMore: true,
                 projectionGeneration: 7,
                 omittedStaleCount: 2,
-                omittedUnavailableCount: 1))
+                omittedUnavailableCount: 1,
+                selectionOmittedCount: 2),
+            selection: RAGAnswerSelectionDisclosure(
+                transcriptCandidateCount: 1,
+                selectedTranscriptCount: 1,
+                graphFactCandidateCount: 3,
+                selectedGraphFactCount: 1,
+                additionalGraphSourceCount: 1,
+                omittedGraphFactCount: 2))
 
         let prompt = RAGAnswerer.contextPrompt(
             question: "When will it ship?",
@@ -139,6 +147,10 @@ final class MeetingMaterialPromptGuardTests: XCTestCase {
         XCTAssertTrue(prompt.contains("complete=false; hasMore=true"))
         XCTAssertTrue(prompt.contains("omittedStale=2"))
         XCTAssertTrue(prompt.contains("omittedUnavailable=1"))
+        XCTAssertTrue(prompt.contains("selectionOmitted=2"))
+        XCTAssertTrue(prompt.contains("transcriptCandidates=1"))
+        XCTAssertTrue(prompt.contains("selectedGraphFacts=1"))
+        XCTAssertTrue(prompt.contains("omittedGraphFacts=2"))
         XCTAssertTrue(prompt.contains(
             "When complete=false, do not make exhaustive all/none claims."))
     }
@@ -171,7 +183,95 @@ final class MeetingMaterialPromptGuardTests: XCTestCase {
                 hasMore: false,
                 projectionGeneration: 7,
                 omittedStaleCount: 0,
-                omittedUnavailableCount: 0))
+                omittedUnavailableCount: 0),
+            selection: RAGAnswerSelectionDisclosure(
+                transcriptCandidateCount: 1,
+                selectedTranscriptCount: 1,
+                graphFactCandidateCount: 1,
+                selectedGraphFactCount: 1,
+                additionalGraphSourceCount: 1,
+                omittedGraphFactCount: 0))
+
+        XCTAssertFalse(context.isFactAwareReady)
+    }
+
+    func testTypedRAGContextReusesTranscriptMarkerForOverlappingSource() {
+        let meetingID = MeetingID()
+        let segmentID = UUID()
+        let source = RAGPassage(
+            segmentID: segmentID,
+            meetingID: meetingID,
+            meetingTitle: "Planning",
+            timestamp: 12,
+            transcriptRevision: 4,
+            text: "Mara committed to ship on Friday.")
+        let context = RAGAnswerContext(
+            transcriptPassages: [source],
+            factPage: RAGFactPage(
+                facts: [RAGFact(
+                    kind: .personCommittedTo,
+                    subjectText: "Mara",
+                    objectText: "Ship rollout",
+                    status: .active,
+                    occurredAt: Date(timeIntervalSince1970: 1_000),
+                    primarySourceSegmentID: segmentID,
+                    sources: [source])],
+                hasMore: false,
+                projectionGeneration: 7,
+                omittedStaleCount: 0,
+                omittedUnavailableCount: 0),
+            selection: RAGAnswerSelectionDisclosure(
+                transcriptCandidateCount: 1,
+                selectedTranscriptCount: 1,
+                graphFactCandidateCount: 1,
+                selectedGraphFactCount: 1,
+                additionalGraphSourceCount: 0,
+                omittedGraphFactCount: 0))
+
+        let prompt = RAGAnswerer.contextPrompt(
+            question: "When will it ship?",
+            context: context)
+
+        XCTAssertTrue(context.isFactAwareReady)
+        XCTAssertTrue(prompt.contains("primarySource=[T1]; sources=[T1]"))
+        XCTAssertFalse(prompt.contains("[S1]"))
+        XCTAssertTrue(prompt.contains(
+            "Exact graph source segments:\n(none)"))
+        XCTAssertTrue(prompt.contains("additionalGraphSources=0"))
+    }
+
+    func testTypedRAGContextRejectsForgedSelectionDisclosure() {
+        let meetingID = MeetingID()
+        let segmentID = UUID()
+        let source = RAGPassage(
+            segmentID: segmentID,
+            meetingID: meetingID,
+            meetingTitle: "Planning",
+            timestamp: 12,
+            transcriptRevision: 4,
+            text: "Mara committed to ship on Friday.")
+        let context = RAGAnswerContext(
+            transcriptPassages: [source],
+            factPage: RAGFactPage(
+                facts: [RAGFact(
+                    kind: .personCommittedTo,
+                    subjectText: "Mara",
+                    objectText: "Ship rollout",
+                    status: .active,
+                    occurredAt: Date(timeIntervalSince1970: 1_000),
+                    primarySourceSegmentID: segmentID,
+                    sources: [source])],
+                hasMore: false,
+                projectionGeneration: 7,
+                omittedStaleCount: 0,
+                omittedUnavailableCount: 0),
+            selection: RAGAnswerSelectionDisclosure(
+                transcriptCandidateCount: 1,
+                selectedTranscriptCount: 1,
+                graphFactCandidateCount: 2,
+                selectedGraphFactCount: 2,
+                additionalGraphSourceCount: 0,
+                omittedGraphFactCount: 0))
 
         XCTAssertFalse(context.isFactAwareReady)
     }

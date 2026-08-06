@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,024 cases (13 environment-gated) + 65
+Status: the package inventory contains 2,035 cases (13 environment-gated) + 65
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1452,6 +1452,21 @@ transcript-only prompt without executing a model. One architecture ratchet pins
 the ApplicationKit and IntelligenceKit contracts, source-only citation rule,
 dependency direction, and absence of Presentation adoption. These sixteen cases
 use no model, network, user library, SwiftUI, XCUITest, or screenshot.
+
+### Bounded post-RRF fact-aware selection (D286)
+
+Seven pure selector cases prove the fixed 6-transcript/4-fact/8-additional-
+source production bounds, transcript-prefix and graph-prefix order, facts never
+outnumbering transcript citations, zero-cost exact overlap, whole-fact source
+atomicity, typed budget exhaustion, disclosure matching, policy validation,
+and idempotent reselection. One workflow case proves only the bounded input
+reaches generation while the answer retains the full evidence bundle. Two
+IntelligenceKit cases prove exact transcript-marker reuse without duplicate
+source material and fail-closed forged disclosure; the existing typed-prompt
+case also pins selection and omission disclosure. One architecture ratchet
+pins post-RRF ownership, production bounds, dependency direction, source-marker
+reuse, typed exhaustion, and absence of Presentation adoption. These eleven
+cases use no model, network, user library, SwiftUI, XCUITest, or screenshot.
 
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer

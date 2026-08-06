@@ -15,9 +15,11 @@ final class AskGraphFactSynthesisTests: XCTestCase {
 
         let input = AskEvidenceBundle(
             transcriptCitations: [fixture.citation()],
-            graphFacts: .result(.facts(page))).synthesisInput
+            graphFacts: .result(.facts(page))).synthesisInput.selecting()
 
         XCTAssertTrue(input.isFactAwareGenerationReady)
+        XCTAssertEqual(input.selection?.selectedTranscriptCount, 1)
+        XCTAssertEqual(input.selection?.selectedGraphFactCount, 1)
         guard case .facts(let prepared) = input.graphFacts else {
             return XCTFail("valid graph material must remain typed")
         }
@@ -79,16 +81,19 @@ final class AskGraphFactSynthesisTests: XCTestCase {
 
         XCTAssertFalse(AskSynthesisInput(
             transcriptCitations: [],
-            graphFacts: .facts(page)).isFactAwareGenerationReady)
+            graphFacts: .facts(page)).selecting().isFactAwareGenerationReady)
         XCTAssertFalse(AskSynthesisInput(
             transcriptCitations: [fixture.citation(includeSegmentID: false)],
-            graphFacts: .facts(page)).isFactAwareGenerationReady)
+            graphFacts: .facts(page)).selecting().isFactAwareGenerationReady)
         XCTAssertFalse(AskSynthesisInput(
             transcriptCitations: [fixture.citation(timestamp: .nan)],
-            graphFacts: .facts(page)).isFactAwareGenerationReady)
+            graphFacts: .facts(page)).selecting().isFactAwareGenerationReady)
         XCTAssertFalse(AskSynthesisInput(
             transcriptCitations: [fixture.citation(transcriptRevision: -1)],
-            graphFacts: .facts(page)).isFactAwareGenerationReady)
+            graphFacts: .facts(page)).selecting().isFactAwareGenerationReady)
+        XCTAssertTrue(AskSynthesisInput(
+            transcriptCitations: [fixture.citation()],
+            graphFacts: .facts(page)).selecting().isFactAwareGenerationReady)
     }
 
     func testOverlappingTranscriptAndFactSourceMustBeIdentical() throws {
@@ -99,7 +104,7 @@ final class AskGraphFactSynthesisTests: XCTestCase {
 
         let input = AskSynthesisInput(
             transcriptCitations: [inconsistent],
-            graphFacts: .facts(page))
+            graphFacts: .facts(page)).selecting()
 
         XCTAssertFalse(input.isFactAwareGenerationReady)
     }

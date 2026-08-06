@@ -329,7 +329,7 @@ public struct AskMeetings: ApplicationUseCase {
                 graphFilter: graphFilter,
                 trace: trace)
             try Task.checkCancellation()
-            let input = bundle.synthesisInput
+            let input = bundle.synthesisInput.selecting()
             let generatedText = try await generateBundleAnswer(
                 question: question,
                 evidence: input)
@@ -548,7 +548,8 @@ public struct OnDeviceAskMeetingIntelligence:
         guard #available(macOS 26.0, iOS 26.0, *),
               FoundationModelSummaryProvider.unavailabilityReason() == nil,
               evidence.isFactAwareGenerationReady,
-              case .facts(let graphPage) = evidence.graphFacts
+              case .facts(let graphPage) = evidence.graphFacts,
+              let selection = evidence.selection
         else { return nil }
         let facts = graphPage.facts.map { graphFact in
             RAGFact(
@@ -572,7 +573,22 @@ public struct OnDeviceAskMeetingIntelligence:
                     projectionGeneration: graphPage.projectionGeneration,
                     omittedStaleCount: graphPage.omittedStaleCount,
                     omittedUnavailableCount:
-                        graphPage.omittedUnavailableCount)))
+                        graphPage.omittedUnavailableCount,
+                    selectionOmittedCount:
+                        graphPage.selectionOmittedCount),
+                selection: RAGAnswerSelectionDisclosure(
+                    transcriptCandidateCount:
+                        selection.transcriptCandidateCount,
+                    selectedTranscriptCount:
+                        selection.selectedTranscriptCount,
+                    graphFactCandidateCount:
+                        selection.graphFactCandidateCount,
+                    selectedGraphFactCount:
+                        selection.selectedGraphFactCount,
+                    additionalGraphSourceCount:
+                        selection.additionalGraphSourceCount,
+                    omittedGraphFactCount:
+                        selection.omittedGraphFactCount)))
     }
 
     private static func ragPassage(_ citation: AskCitation) -> RAGPassage {

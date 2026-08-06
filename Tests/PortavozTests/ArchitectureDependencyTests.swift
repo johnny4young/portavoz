@@ -2183,6 +2183,55 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D285"))
     }
 
+    func testAskFactAwareSelectionReservesTranscriptRankAndExactSources() throws {
+        let selector = try Self.contents(
+            of: "Sources/ApplicationKit/AskGraphFactSelection.swift")
+        let graphLane = try Self.contents(
+            of: "Sources/ApplicationKit/AskGraphFacts.swift")
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/AskMeetings.swift")
+        let answerer = try Self.contents(
+            of: "Sources/IntelligenceKit/RAGAnswerer.swift")
+        let presentation = try Self.contents(
+            of: "Sources/portavoz-app/AskModel.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        for boundary in [
+            "struct AskFactAwareSelectionDisclosure",
+            "struct AskFactAwareSelectionPolicy",
+            "maximumTranscriptCitations: 6",
+            "maximumGraphFacts: 4",
+            "maximumAdditionalGraphSources: 8",
+            "input.transcriptCitations.prefix",
+            "min(maximumGraphFacts, transcript.count)",
+            "page.facts.prefix(factLimit)",
+            "else { break }",
+            "graphFacts: .selectionBudgetExceeded(disclosure)",
+            "selectionOmittedCount",
+        ] {
+            XCTAssertTrue(selector.contains(boundary), boundary)
+        }
+        XCTAssertFalse(selector.contains("import StorageKit"))
+        XCTAssertFalse(selector.contains("import IntelligenceKit"))
+        XCTAssertTrue(graphLane.contains(
+            "selection.matches("))
+        XCTAssertTrue(workflow.contains(
+            "bundle.synthesisInput.selecting()"))
+        for boundary in [
+            "struct RAGAnswerSelectionDisclosure",
+            "selectedGraphFactCount <= selectedTranscriptCount",
+            "selection.additionalGraphSourceCount",
+            "transcriptMarkers[segmentID] ?? sourceMarkers[segmentID]",
+            "Context selection disclosure:",
+            "selectionOmitted=",
+        ] {
+            XCTAssertTrue(answerer.contains(boundary), boundary)
+        }
+        XCTAssertFalse(presentation.contains("answerBundle("))
+        XCTAssertFalse(presentation.contains("AskGraphFactQuery"))
+        XCTAssertTrue(decisions.contains("## D286"))
+    }
+
     func testMeetingMemoryGraphProjectionIsDisposableDurableAndSignalDriven() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/MeetingMemoryGraphProjection.swift")

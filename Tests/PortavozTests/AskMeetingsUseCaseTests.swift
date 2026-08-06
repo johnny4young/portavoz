@@ -180,6 +180,14 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         let inputs = await bundleAnswering.inputs
         XCTAssertEqual(inputs.count, 1)
         XCTAssertEqual(inputs[0].transcriptCitations, fixture.citations)
+        XCTAssertEqual(inputs[0].selection,
+                       AskFactAwareSelectionDisclosure(
+                           transcriptCandidateCount: 1,
+                           selectedTranscriptCount: 1,
+                           graphFactCandidateCount: 1,
+                           selectedGraphFactCount: 1,
+                           additionalGraphSourceCount: 0,
+                           omittedGraphFactCount: 0))
         guard case .facts(let synthesisPage) = inputs[0].graphFacts else {
             return XCTFail("typed graph facts must enter a separate synthesis lane")
         }
@@ -196,6 +204,62 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             timestamp: 3,
             transcriptRevision: 0,
             text: "El rollout queda para el viernes.")])
+    }
+
+    func testAnswerBundleSelectsBoundedPrefixesButReturnsFullEvidence() async throws {
+        let fixture = AskWorkflowFixture()
+        let citations = (0..<8).map { index in
+            AskCitation(
+                segmentID: UUID(),
+                meetingID: fixture.meetingID,
+                meetingTitle: "Planning",
+                timestamp: TimeInterval(index),
+                transcriptRevision: 0,
+                text: "Transcript candidate \(index)")
+        }
+        let facts = (0..<6).map { _ in
+            graphFact(
+                meetingID: fixture.meetingID,
+                segmentID: UUID())
+        }
+        let page = graphPage(facts)
+        let bundleAnswering = AskEvidenceBundleAnsweringFake(text: "Bounded.")
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: citations),
+            answering: AskMeetingAnsweringFake(text: nil),
+            bundleAnswering: bundleAnswering,
+            graphFacts: AskGraphFactRetrievalFake(result: .facts(page)))
+
+        let result = try await useCase.answerBundle(
+            "rollout",
+            graphQuery: .personCommitments(PersonCommitmentsQuery(
+                personID: PersonID())))
+
+        XCTAssertEqual(result.generatedText, "Bounded.")
+        XCTAssertEqual(result.evidence.transcriptCitations, citations)
+        XCTAssertEqual(result.evidence.graphFacts, .result(.facts(page)))
+        let inputs = await bundleAnswering.inputs
+        XCTAssertEqual(inputs.count, 1)
+        XCTAssertEqual(
+            inputs[0].transcriptCitations,
+            Array(citations.prefix(6)))
+        guard case .facts(let selectedPage) = inputs[0].graphFacts else {
+            return XCTFail("the selected graph prefix must remain typed")
+        }
+        XCTAssertEqual(
+            selectedPage.facts.map(\.fact),
+            Array(facts.prefix(4)))
+        XCTAssertEqual(selectedPage.selectionOmittedCount, 2)
+        XCTAssertEqual(inputs[0].selection,
+                       AskFactAwareSelectionDisclosure(
+                           transcriptCandidateCount: 8,
+                           selectedTranscriptCount: 6,
+                           graphFactCandidateCount: 6,
+                           selectedGraphFactCount: 4,
+                           additionalGraphSourceCount: 4,
+                           omittedGraphFactCount: 2))
     }
 
     func testInvalidGraphProvenanceFailsClosedWithoutTranscriptOnlyGeneration() async throws {

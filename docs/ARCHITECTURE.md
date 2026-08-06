@@ -282,7 +282,8 @@ The app composition resolves recording paths and supplies the concrete codec
 adapter. `AudioPlaybackKit` owns AVFoundation playback, waveform analysis, AAC
 encoding, and clip rendering. SwiftUI owns transport controls, drawing, and the
 native save panel; it neither discovers channel files nor constructs audio
-capabilities. Multi-channel compression refuses to replace an existing output,
+capabilities.
+Multi-channel compression refuses to replace an existing output,
 retains every original until all outputs verify, removes generated outputs on
 failure or cancellation, and only then removes the raw channels.
 
@@ -1520,8 +1521,29 @@ segment markers, never a fact marker alone. The answer result returns the
 unchanged evidence bundle when the opt-in provider is absent or ordinary
 generation fails; cancellation still cancels the operation. No presentation,
 CLI, MCP, command-palette, or meeting-brief surface invokes the graph-aware
-boundary yet; bounded cross-lane selection, released adoption, and graph
-telemetry remain separate gates.
+boundary yet.
+
+Before the opt-in provider runs, ApplicationKit applies a deterministic
+**post-RRF fact-aware selector**. Transcript rank is reserved first as the
+unchanged first six exact citations. Graph facts never enter RRF: they preserve
+query order as one contiguous prefix of at most four facts, may never outnumber
+the selected transcript citations, and remain atomic with every exact source
+segment. The selector permits at most eight unique graph-source segments that
+are not already selected transcript citations. A source already present in the
+transcript lane consumes no additional budget and reuses its `[T…]` prompt
+marker instead of being duplicated as `[S…]` material.
+
+The selector stops before the first fact whose complete source set would exceed
+the budget; it never skips that fact to admit a cheaper later relationship. If
+no fact fits atomically, the graph lane reports typed selection-budget
+exhaustion and generation does not run. The selected page and IntelligenceKit
+context both carry candidate, selected, additional-source, and selection-
+omission counts. Both layers validate those counts, the facts-to-transcript
+ratio, and exact source overlap before model execution. Selection makes only
+the provider input smaller: `AskEvidenceBundleAnswer` still returns the full
+unselected transcript and graph evidence to its caller. Released adoption,
+the remaining exact graph jobs, relational scale budgets, private field
+evidence, and graph telemetry remain separate gates.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
@@ -3545,7 +3567,7 @@ The current local acceptance baseline is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,024 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 2,035 XCTest package cases pass, with 13 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;

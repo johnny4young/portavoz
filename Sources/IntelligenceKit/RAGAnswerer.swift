@@ -68,25 +68,68 @@ public struct RAGFactPage: Sendable, Equatable {
     public let projectionGeneration: Int
     public let omittedStaleCount: Int
     public let omittedUnavailableCount: Int
+    public let selectionOmittedCount: Int
 
     public init(
         facts: [RAGFact],
         hasMore: Bool,
         projectionGeneration: Int,
         omittedStaleCount: Int,
-        omittedUnavailableCount: Int
+        omittedUnavailableCount: Int,
+        selectionOmittedCount: Int = 0
     ) {
         self.facts = facts
         self.hasMore = hasMore
         self.projectionGeneration = projectionGeneration
         self.omittedStaleCount = omittedStaleCount
         self.omittedUnavailableCount = omittedUnavailableCount
+        self.selectionOmittedCount = selectionOmittedCount
     }
 
     public var isComplete: Bool {
         !hasMore
             && omittedStaleCount == 0
             && omittedUnavailableCount == 0
+            && selectionOmittedCount == 0
+    }
+}
+
+/// Counts emitted by the application-owned post-RRF selector. IntelligenceKit
+/// validates them again before constructing a prompt so a forged context cannot
+/// let graph volume displace transcript evidence.
+public struct RAGAnswerSelectionDisclosure: Sendable, Equatable {
+    public let transcriptCandidateCount: Int
+    public let selectedTranscriptCount: Int
+    public let graphFactCandidateCount: Int
+    public let selectedGraphFactCount: Int
+    public let additionalGraphSourceCount: Int
+    public let omittedGraphFactCount: Int
+
+    public init(
+        transcriptCandidateCount: Int,
+        selectedTranscriptCount: Int,
+        graphFactCandidateCount: Int,
+        selectedGraphFactCount: Int,
+        additionalGraphSourceCount: Int,
+        omittedGraphFactCount: Int
+    ) {
+        self.transcriptCandidateCount = transcriptCandidateCount
+        self.selectedTranscriptCount = selectedTranscriptCount
+        self.graphFactCandidateCount = graphFactCandidateCount
+        self.selectedGraphFactCount = selectedGraphFactCount
+        self.additionalGraphSourceCount = additionalGraphSourceCount
+        self.omittedGraphFactCount = omittedGraphFactCount
+    }
+
+    public var isValid: Bool {
+        transcriptCandidateCount >= selectedTranscriptCount
+            && selectedTranscriptCount > 0
+            && graphFactCandidateCount >= selectedGraphFactCount
+            && selectedGraphFactCount > 0
+            && selectedGraphFactCount <= selectedTranscriptCount
+            && additionalGraphSourceCount >= 0
+            && omittedGraphFactCount
+                == graphFactCandidateCount - selectedGraphFactCount
     }
 }
 
@@ -95,13 +138,16 @@ public struct RAGFactPage: Sendable, Equatable {
 public struct RAGAnswerContext: Sendable, Equatable {
     public let transcriptPassages: [RAGPassage]
     public let factPage: RAGFactPage
+    public let selection: RAGAnswerSelectionDisclosure
 
     public init(
         transcriptPassages: [RAGPassage],
-        factPage: RAGFactPage
+        factPage: RAGFactPage,
+        selection: RAGAnswerSelectionDisclosure
     ) {
         self.transcriptPassages = transcriptPassages
         self.factPage = factPage
+        self.selection = selection
     }
 
     public var isFactAwareReady: Bool {
@@ -114,6 +160,14 @@ public struct RAGAnswerContext: Sendable, Equatable {
         guard factPage.projectionGeneration > 0,
               factPage.omittedStaleCount >= 0,
               factPage.omittedUnavailableCount >= 0,
+              factPage.selectionOmittedCount >= 0,
+              selection.isValid,
+              selection.selectedTranscriptCount == transcriptPassages.count,
+              selection.selectedGraphFactCount == factPage.facts.count,
+              selection.graphFactCandidateCount
+                == factPage.facts.count + factPage.selectionOmittedCount,
+              selection.omittedGraphFactCount
+                == factPage.selectionOmittedCount,
               Self.hasExactUniquePassages(transcriptPassages),
               factPage.facts.allSatisfy({ fact in
             let sourceIDs = fact.sources.compactMap(\.segmentID)
@@ -138,7 +192,12 @@ public struct RAGAnswerContext: Sendable, Equatable {
             }
             exactSegments[segmentID] = passage
         }
-        return true
+        let transcriptIDs = Set(transcriptPassages.compactMap(\.segmentID))
+        let graphSourceIDs = Set(factPage.facts.flatMap {
+            $0.sources.compactMap(\.segmentID)
+        })
+        return selection.additionalGraphSourceCount
+            == graphSourceIDs.subtracting(transcriptIDs).count
     }
 
     private static func hasExactUniquePassages(
@@ -275,21 +334,79 @@ public struct RAGAnswerer: Sendable {
         question: String,
         context: RAGAnswerContext
     ) -> String {
-        let transcript = context.transcriptPassages.enumerated().map { index, passage in
+        let transcript = Self.transcriptPrompt(context.transcriptPassages)
+        let transcriptMarkers = Self.transcriptSourceMarkers(
+            context.transcriptPassages)
+        let graph = Self.graphPrompt(
+            facts: context.factPage.facts,
+            transcriptMarkers: transcriptMarkers)
+        return """
+            Transcript passages:
+            \(transcript.isEmpty ? "(none)" : transcript)
+
+            Typed source-backed facts:
+            \(graph.facts.isEmpty ? "(none)" : graph.facts)
+
+            Exact graph source segments:
+            \(graph.sources.isEmpty ? "(none)" : graph.sources)
+
+            Fact page disclosure:
+            \(Self.factPageDisclosure(context.factPage))
+
+            Context selection disclosure:
+            \(Self.selectionDisclosure(context.selection))
+
+            Question: \(question)
+
+            Answer with full sentences, in the same language as the question.
+            Cite only [T…] and [S…] exact segment markers after supported claims; never cite [F…] alone.
+            When complete=false, do not make exhaustive all/none claims.
+            """
+    }
+
+    private static func transcriptPrompt(_ passages: [RAGPassage]) -> String {
+        passages.enumerated().map { index, passage in
             "[T\(index + 1)] (\(passage.meetingTitle), "
                 + "\(Self.timestamp(passage.timestamp))) \(passage.text)"
         }.joined(separator: "\n")
-        let graphSources = Self.uniqueGraphSources(context.factPage.facts)
-        let sourceMarkers = Dictionary(uniqueKeysWithValues:
+    }
+
+    /// `answer` only builds a prompt after `isFactAwareReady`, which rejects
+    /// duplicate segment IDs, so no collision reaches this in production.
+    /// Resolving one to the earliest marker rather than trapping keeps prompt
+    /// construction total for the internal callers that skip that gate.
+    private static func transcriptSourceMarkers(
+        _ passages: [RAGPassage]
+    ) -> [UUID: String] {
+        Dictionary(
+            passages.enumerated().compactMap { index, passage in
+                passage.segmentID.map { ($0, "T\(index + 1)") }
+            },
+            uniquingKeysWith: { first, _ in first })
+    }
+
+    private static func graphPrompt(
+        facts: [RAGFact],
+        transcriptMarkers: [UUID: String]
+    ) -> (facts: String, sources: String) {
+        let graphSources = Self.uniqueGraphSources(facts).filter { source in
+            source.segmentID.map { transcriptMarkers[$0] == nil } ?? false
+        }
+        let sourceMarkers = Dictionary(
             graphSources.enumerated().compactMap { index, passage in
                 passage.segmentID.map { ($0, "S\(index + 1)") }
-            })
-        let facts = context.factPage.facts.enumerated().map { index, fact in
+            },
+            uniquingKeysWith: { first, _ in first })
+        let factPrompt = facts.enumerated().map { index, fact in
             let sources = fact.sources.compactMap { source in
-                source.segmentID.flatMap { sourceMarkers[$0] }
+                source.segmentID.flatMap { segmentID in
+                    transcriptMarkers[segmentID] ?? sourceMarkers[segmentID]
+                }
             }
-            let primary = sourceMarkers[fact.primarySourceSegmentID]
-                .map { "[\($0)]" } ?? "[missing]"
+            let primary = (
+                transcriptMarkers[fact.primarySourceSegmentID]
+                    ?? sourceMarkers[fact.primarySourceSegmentID]
+            ).map { "[\($0)]" } ?? "[missing]"
             let sourceList = sources.map { "[\($0)]" }.joined(separator: ", ")
             return "[F\(index + 1)] relation=\(fact.kind.rawValue); "
                 + "status=\(fact.status.rawValue); "
@@ -298,34 +415,32 @@ public struct RAGAnswerer: Sendable {
                 + "occurredAt=\(Self.isoDate(fact.occurredAt)); "
                 + "primarySource=\(primary); sources=\(sourceList)"
         }.joined(separator: "\n")
-        let sources = graphSources.enumerated().map { index, passage in
-            "[S\(index + 1)] (\(passage.meetingTitle), \(Self.timestamp(passage.timestamp))) \(passage.text)"
+        let sourcePrompt = graphSources.enumerated().map { index, passage in
+            "[S\(index + 1)] (\(passage.meetingTitle), "
+                + "\(Self.timestamp(passage.timestamp))) \(passage.text)"
         }.joined(separator: "\n")
-        let disclosure = "complete=\(context.factPage.isComplete); "
-            + "hasMore=\(context.factPage.hasMore); "
-            + "projectionGeneration=\(context.factPage.projectionGeneration); "
-            + "omittedStale=\(context.factPage.omittedStaleCount); "
-            + "omittedUnavailable="
-            + "\(context.factPage.omittedUnavailableCount)"
-        return """
-            Transcript passages:
-            \(transcript.isEmpty ? "(none)" : transcript)
+        return (factPrompt, sourcePrompt)
+    }
 
-            Typed source-backed facts:
-            \(facts.isEmpty ? "(none)" : facts)
+    private static func factPageDisclosure(_ page: RAGFactPage) -> String {
+        "complete=\(page.isComplete); "
+            + "hasMore=\(page.hasMore); "
+            + "projectionGeneration=\(page.projectionGeneration); "
+            + "omittedStale=\(page.omittedStaleCount); "
+            + "omittedUnavailable=\(page.omittedUnavailableCount); "
+            + "selectionOmitted=\(page.selectionOmittedCount)"
+    }
 
-            Exact graph source segments:
-            \(sources.isEmpty ? "(none)" : sources)
-
-            Fact page disclosure:
-            \(disclosure)
-
-            Question: \(question)
-
-            Answer with full sentences, in the same language as the question.
-            Cite only [T…] and [S…] exact segment markers after supported claims; never cite [F…] alone.
-            When complete=false, do not make exhaustive all/none claims.
-            """
+    private static func selectionDisclosure(
+        _ selection: RAGAnswerSelectionDisclosure
+    ) -> String {
+        "transcriptCandidates=\(selection.transcriptCandidateCount); "
+            + "selectedTranscript=\(selection.selectedTranscriptCount); "
+            + "graphFactCandidates=\(selection.graphFactCandidateCount); "
+            + "selectedGraphFacts=\(selection.selectedGraphFactCount); "
+            + "additionalGraphSources="
+            + "\(selection.additionalGraphSourceCount); "
+            + "omittedGraphFacts=\(selection.omittedGraphFactCount)"
     }
 
     /// Multi-query expansion for cross-lingual retrieval: the library is

@@ -145,6 +145,7 @@ public struct AskGraphFactSynthesisPage: Equatable, Sendable {
     public let projectionGeneration: Int
     public let omittedStaleCount: Int
     public let omittedUnavailableCount: Int
+    public let selectionOmittedCount: Int
 
     public init?(page: MeetingMemoryGraphFactPage) {
         guard !page.facts.isEmpty,
@@ -165,12 +166,48 @@ public struct AskGraphFactSynthesisPage: Equatable, Sendable {
         projectionGeneration = page.projectionGeneration
         omittedStaleCount = page.omittedStaleCount
         omittedUnavailableCount = page.omittedUnavailableCount
+        selectionOmittedCount = 0
+    }
+
+    private init(
+        facts: [AskGraphFactSynthesisEvidence],
+        hasMore: Bool,
+        projectionGeneration: Int,
+        omittedStaleCount: Int,
+        omittedUnavailableCount: Int,
+        selectionOmittedCount: Int
+    ) {
+        self.facts = facts
+        self.hasMore = hasMore
+        self.projectionGeneration = projectionGeneration
+        self.omittedStaleCount = omittedStaleCount
+        self.omittedUnavailableCount = omittedUnavailableCount
+        self.selectionOmittedCount = selectionOmittedCount
+    }
+
+    /// The leading `count` facts of this already-validated page, in query
+    /// order. Post-RRF selection only ever shortens a page, so every retained
+    /// fact keeps provenance the full page already proved, and the dropped
+    /// remainder is added to the selection omission count. Returns nil for a
+    /// `count` outside `1...facts.count`: an empty page is never valid
+    /// material, and a longer one cannot come from narrowing.
+    func selectingPrefix(_ count: Int) -> AskGraphFactSynthesisPage? {
+        guard count > 0, count <= facts.count else { return nil }
+        return AskGraphFactSynthesisPage(
+            facts: Array(facts.prefix(count)),
+            hasMore: hasMore,
+            projectionGeneration: projectionGeneration,
+            omittedStaleCount: omittedStaleCount,
+            omittedUnavailableCount: omittedUnavailableCount,
+            selectionOmittedCount:
+                selectionOmittedCount + (facts.count - count))
     }
 
     public var isComplete: Bool {
         !hasMore
             && omittedStaleCount == 0
             && omittedUnavailableCount == 0
+            && selectionOmittedCount == 0
     }
 
     private static func hasConsistentSources(
@@ -199,6 +236,7 @@ public enum AskGraphFactSynthesisLane: Equatable, Sendable {
     case abstained(MeetingMemoryGraphQueryAbstention)
     case unavailable
     case invalidEvidence
+    case selectionBudgetExceeded(AskFactAwareSelectionDisclosure)
 }
 
 /// Complete, storage-independent answer material. Transcript citations and
@@ -207,13 +245,16 @@ public enum AskGraphFactSynthesisLane: Equatable, Sendable {
 public struct AskSynthesisInput: Equatable, Sendable {
     public let transcriptCitations: [AskCitation]
     public let graphFacts: AskGraphFactSynthesisLane
+    public let selection: AskFactAwareSelectionDisclosure?
 
     public init(
         transcriptCitations: [AskCitation],
-        graphFacts: AskGraphFactSynthesisLane = .notRequested
+        graphFacts: AskGraphFactSynthesisLane = .notRequested,
+        selection: AskFactAwareSelectionDisclosure? = nil
     ) {
         self.transcriptCitations = transcriptCitations
         self.graphFacts = graphFacts
+        self.selection = selection
     }
 
     /// Fact-aware synthesis is deliberately stricter than transcript-only Ask:
@@ -222,7 +263,11 @@ public struct AskSynthesisInput: Equatable, Sendable {
     public var isFactAwareGenerationReady: Bool {
         guard Self.hasExactTranscriptEvidence(transcriptCitations),
               case .facts(let page) = graphFacts,
-              !page.facts.isEmpty
+              !page.facts.isEmpty,
+              let selection,
+              selection.matches(
+                  transcriptCitations: transcriptCitations,
+                  graphPage: page)
         else { return false }
 
         let transcriptByID = Dictionary(uniqueKeysWithValues:

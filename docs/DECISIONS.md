@@ -9981,6 +9981,45 @@ stale source provenance fails before model execution.
 **Consequences:** Ask now has a reversible, local fact-aware synthesis contract
 without changing released UI behavior, transcript RRF, storage schemas, or graph
 authority. Evidence survives model absence and ordinary generation failure.
-Cross-lane selection is intentionally still absent, so no presentation, CLI,
-MCP, command-palette, or meeting-brief surface may adopt graph-aware generation
-until bounded selection proves exact evidence cannot be drowned by volume.
+At this decision boundary cross-lane selection was intentionally absent, so no
+presentation, CLI, MCP, command-palette, or meeting-brief surface could adopt
+graph-aware generation until bounded selection proved exact evidence could not
+be drowned by volume.
+
+## D286 — Reserve transcript rank before bounded graph facts (Aug 2026)
+
+**Context:** the typed synthesis boundary kept graph relationships out of
+transcript RRF, but it still passed every retrieved fact and exact source to the
+opt-in provider. A large graph page could therefore consume the local model's
+context, make repeated topology look more important than the independently
+ranked transcript evidence, or require dropping only part of one fact's exact
+provenance. Deduplicating sources without disclosing the resulting selection
+would also make an incomplete page appear complete.
+
+**Decision:** run one deterministic ApplicationKit selector after transcript
+RRF and before the opt-in fact-aware provider. Reserve the unchanged first six
+transcript citations. Then admit one query-ordered contiguous prefix of at most
+four graph facts, never more facts than selected transcript citations. A fact
+is atomic with all exact source segments. Admit at most eight unique graph
+sources not already present in the transcript selection; overlapping exact
+sources consume zero additional budget and reuse their transcript prompt
+marker. Stop before the first fact that would exceed the source budget rather
+than skipping it for a cheaper later relationship. If no fact fits, return a
+typed selection-budget-exceeded graph lane and do not generate.
+
+Carry candidate, selected, additional-source, and omitted-fact counts in one
+closed selection disclosure. Selection omissions participate in page
+completeness. ApplicationKit validates that disclosure against the selected
+material, while IntelligenceKit independently validates the same counts,
+facts-to-transcript bound, exact source overlap, and additional-source count
+before constructing a prompt. Prompt source deduplication is identity-based:
+an overlapping graph source cites `[T…]`; only a new source receives `[S…]`.
+
+**Consequences:** graph volume cannot alter transcript RRF or displace the
+reserved transcript prefix, and no selected relationship loses provenance.
+The model receives bounded, deterministic, omission-aware material while the
+answer result retains the full unselected two-lane evidence bundle. There is no
+schema, graph authority, model, or released-product behavior change. Released
+Ask, UI, CLI, MCP, command-palette, and meeting-brief surfaces remain
+transcript-only; remaining graph jobs, scale evidence, telemetry, and explicit
+adoption are separate decisions.
