@@ -25,6 +25,102 @@ final class SemanticIndexTests: XCTestCase {
         XCTAssertEqual(actual.map(\.transcriptRevision), expected.map(\.transcriptRevision))
     }
 
+    /// The batch scan must be an optimization, not a behavior change: every
+    /// variant returns exactly what a dedicated per-variant scan returned.
+    func testBatchSemanticSearchMatchesPerQueryScan() async throws {
+        let fixture = try await Self.fixture()
+        let variants: [[Float]] = [[0.9, 0.1], [0.1, 0.9], [0.7, 0.7]]
+        var expected: [[SearchHit]] = []
+        for variant in variants {
+            expected.append(try await fixture.store.searchSemantic(
+                variant,
+                profile: fixture.profile,
+                limit: 2))
+        }
+
+        let batched = try await fixture.store.searchSemantic(
+            variants,
+            profile: fixture.profile,
+            limit: 2)
+
+        XCTAssertEqual(batched.count, variants.count)
+        for (index, variantHits) in batched.enumerated() {
+            XCTAssertEqual(
+                variantHits.map(\.segmentID),
+                expected[index].map(\.segmentID),
+                "variant \(index) ranking changed")
+            XCTAssertEqual(
+                variantHits.map(\.transcriptRevision),
+                expected[index].map(\.transcriptRevision))
+        }
+        let throughPort = try await AccelerateExactSemanticIndex(
+            store: fixture.store
+        ).search(variants, profile: fixture.profile, limit: 2)
+        XCTAssertEqual(
+            throughPort.map { $0.map(\.segmentID) },
+            batched.map { $0.map(\.segmentID) },
+            "the port must expose the same batch result as the store")
+    }
+
+    /// An unusable variant contributes nothing but must not shift the
+    /// positions its caller ranks by.
+    func testBatchSemanticSearchKeepsPositionsForUnusableVariants() async throws {
+        let fixture = try await Self.fixture()
+        let usable: [Float] = [0.9, 0.1]
+        let expected = try await fixture.store.searchSemantic(
+            usable,
+            profile: fixture.profile,
+            limit: 2)
+
+        let batched = try await fixture.store.searchSemantic(
+            [[1, 0, 0], usable, [.nan, 1]],
+            profile: fixture.profile,
+            limit: 2)
+
+        XCTAssertEqual(batched.count, 3)
+        XCTAssertTrue(batched[0].isEmpty, "a wrong-dimension variant yields nothing")
+        XCTAssertEqual(batched[1].map(\.segmentID), expected.map(\.segmentID))
+        XCTAssertTrue(batched[2].isEmpty, "a non-finite variant yields nothing")
+
+        let allUnusable = try await fixture.store.searchSemantic(
+            [[1, 0, 0], [.infinity, 1]],
+            profile: fixture.profile,
+            limit: 2)
+        XCTAssertEqual(allUnusable.map(\.count), [0, 0])
+
+        let none: [[Float]] = []
+        let noQueries = try await fixture.store.searchSemantic(
+            none, profile: fixture.profile, limit: 2)
+        XCTAssertTrue(noQueries.isEmpty)
+
+        let noLimit = try await fixture.store.searchSemantic(
+            [usable], profile: fixture.profile, limit: 0)
+        XCTAssertEqual(
+            noLimit.map(\.count),
+            [0],
+            "a non-positive limit stays fail-closed")
+    }
+
+    /// The default port implementation preserves the previous behavior for an
+    /// adapter that cannot fuse the traversal.
+    func testUnfusedAdapterStillAnswersEveryVariant() async throws {
+        let fixture = try await Self.fixture()
+        let hits = try await fixture.store.searchSemantic(
+            [0.9, 0.1],
+            profile: fixture.profile,
+            limit: 2)
+        let index = UnfusedSemanticIndex(hits: hits)
+
+        let batched = try await index.search(
+            [[0.9, 0.1], [0.1, 0.9]],
+            profile: fixture.profile,
+            limit: 2)
+
+        XCTAssertEqual(batched.count, 2)
+        XCTAssertEqual(batched[0].map(\.segmentID), hits.map(\.segmentID))
+        XCTAssertEqual(batched[1].map(\.segmentID), hits.map(\.segmentID))
+    }
+
     func testAskUsesInjectedSemanticIndexForPublishedEvidence() async throws {
         let fixture = try await Self.fixture()
         let storedHits = try await fixture.store.search("launch")
@@ -46,6 +142,35 @@ final class SemanticIndexTests: XCTestCase {
         XCTAssertTrue(requests.allSatisfy { $0.query == [1, 0] })
         XCTAssertTrue(requests.allSatisfy { $0.profile == fixture.profile })
         XCTAssertTrue(requests.allSatisfy { $0.limit == 12 })
+    }
+
+    /// Bilingual expansion asks several variants of one question. They must
+    /// reach the index as one traversal, not one traversal per variant.
+    func testAskScansTheCorpusOnceForEveryQueryVariant() async throws {
+        let fixture = try await Self.fixture()
+        let storedHits = try await fixture.store.search("launch")
+        let hit = try XCTUnwrap(storedHits.first)
+        let index = RecordingSemanticIndex(hits: [hit])
+        let retrieval = LocalAskMeetingRetrieval(
+            store: fixture.store,
+            queryExpander: NoAskQueryExpansion(),
+            runtime: SemanticIndexRuntime(profile: fixture.profile),
+            semanticIndex: index)
+
+        _ = try await retrieval.retrieve(
+            question: "¿Qué decidimos sobre el proyecto launch?",
+            limit: 6)
+        let batches = await index.batchedVariantCounts
+        let requests = await index.requests
+
+        XCTAssertEqual(
+            batches.count,
+            1,
+            "every variant must be scored inside one corpus traversal")
+        XCTAssertEqual(
+            batches.first,
+            requests.count,
+            "the single batch must carry every scored variant")
     }
 
     func testLibraryUsesInjectedSemanticIndexWithoutChangingItsLimit() async throws {
@@ -603,6 +728,9 @@ private actor RecordingSemanticIndex: SemanticIndexSearching {
 
     private let hits: [SearchHit]
     private(set) var requests: [Request] = []
+    /// Each element is one batch call's variant count, so a consumer that
+    /// scans per variant is distinguishable from one that scans once.
+    private(set) var batchedVariantCounts: [Int] = []
 
     init(hits: [SearchHit]) {
         self.hits = hits
@@ -618,6 +746,21 @@ private actor RecordingSemanticIndex: SemanticIndexSearching {
             profile: profile,
             limit: limit))
         return Array(hits.prefix(limit))
+    }
+
+    func search(
+        _ queries: [[Float]],
+        profile: SemanticEmbeddingProfile,
+        limit: Int
+    ) -> [[SearchHit]] {
+        batchedVariantCounts.append(queries.count)
+        return queries.map { query in
+            requests.append(Request(
+                query: query,
+                profile: profile,
+                limit: limit))
+            return Array(hits.prefix(limit))
+        }
     }
 }
 
@@ -895,5 +1038,19 @@ private final class RecordingShadowMaintenanceGate: @unchecked Sendable {
             descriptor: descriptor,
             phase: phase))
         lock.unlock()
+    }
+}
+
+/// An adapter that implements only the single-query requirement, proving the
+/// protocol default still answers every variant.
+private struct UnfusedSemanticIndex: SemanticIndexSearching {
+    let hits: [SearchHit]
+
+    func search(
+        _ query: [Float],
+        profile: SemanticEmbeddingProfile,
+        limit: Int
+    ) -> [SearchHit] {
+        Array(hits.prefix(limit))
     }
 }

@@ -6886,8 +6886,16 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(search.contains("segment.meetingID NOT IN"))
         XCTAssertTrue(search.contains("ORDER BY segment.rowid ASC"))
         XCTAssertTrue(search.contains("candidates.count == limit"))
-        XCTAssertTrue(search.contains("semanticHits(in: db, candidates:"))
+        XCTAssertTrue(search.contains("Self.semanticHits("))
         XCTAssertTrue(search.contains("stride(from: 0, to: rowIDs.count, by: 500)"))
+        // Every query variant is scored inside one corpus traversal: a single
+        // cursor, one bounded candidate list per variant.
+        XCTAssertEqual(
+            search.components(separatedBy: "Row.fetchCursor").count - 1,
+            1,
+            "the semantic scan opens exactly one cursor")
+        XCTAssertTrue(search.contains("into candidates: inout [SemanticCandidate]"))
+        XCTAssertTrue(search.contains("_ queries: [[Float]]"))
         XCTAssertTrue(ask.contains("public static func retrieveLexical"))
         XCTAssertTrue(ask.contains("guard terms.count <= 8"))
         XCTAssertTrue(ask.contains("1.0 / Double(60 + rank)"))

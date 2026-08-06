@@ -2759,6 +2759,11 @@ the same read-only `SemanticIndexSearching` port after readiness and query-vecto
 creation. Its shipped `AccelerateExactSemanticIndex` adapter delegates to the
 unchanged SQLite-streamed, bounded Accelerate top-k implementation and returns
 current `SearchHit` projections with segment identity and transcript revision.
+The port also accepts every query variant at once and returns results
+positionally; the exact adapter scores them during one corpus traversal, so
+bilingual expansion no longer multiplies streamed BLOB volume by the variant
+count. Adapters that do not fuse the work inherit a default that loops the
+single-query call.
 The default composition remains exact control, so ranking, fusion, corpus
 maintenance, storage schema, asset policy, and UI behavior are unchanged. This
 is the Strangler seam for later shadow candidates; it does not authorize a

@@ -1132,8 +1132,19 @@ it returns current StorageKit `SearchHit` projections so citation identity,
 timestamp, meeting, and transcript revision remain available to Ask and
 Library. Query-vector creation and the runtime lease stay outside the port.
 
+A second entry point takes every query variant together and returns results
+corresponding positionally to them (D290). The protocol supplies a default that
+loops the single-query call, so a research or shadow adapter that cannot fuse
+the traversal keeps its previous behavior. A variant that does not match the
+active profile, or whose score is not finite, contributes nothing while keeping
+its position, because fusion ranks by variant order.
+
 The shipped `AccelerateExactSemanticIndex` delegates to the existing
-SQLite-streamed cosine scan. `LocalAskMeetingRetrieval` and
+SQLite-streamed cosine scan, and its batch entry point scores every variant
+during **one** cursor: the embedding BLOB is read once and each variant keeps
+its own bounded top-k under the unchanged score-then-traversal-order tie-break.
+Bilingual expansion therefore costs one corpus traversal per request instead of
+one per variant. `LocalAskMeetingRetrieval` and
 `LocalLibrarySemanticSearch` inject the port and default to that adapter, so
 their lexical-first policy, readiness gate, cancellation, rank fusion, and
 failure degradation are unchanged. Corpus indexing, compatibility invalidation,

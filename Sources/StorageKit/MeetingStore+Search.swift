@@ -319,14 +319,38 @@ extension MeetingStore {
         profile: SemanticEmbeddingProfile,
         limit: Int = 8
     ) async throws -> [SearchHit] {
-        guard profile.isValid,
-              limit > 0,
-              query.count == profile.vectorDimension,
-              query.allSatisfy(\.isFinite)
-        else { return [] }
-        let (expectedBytes, overflow) = query.count.multipliedReportingOverflow(
-            by: MemoryLayout<Float>.size)
-        guard !overflow else { return [] }
+        try await searchSemantic([query], profile: profile, limit: limit)
+            .first ?? []
+    }
+
+    /// The same exact top-k, scoring every query variant during **one** corpus
+    /// traversal. Bilingual expansion asks several variants of one question, so
+    /// scanning per variant multiplied the streamed BLOB volume by the variant
+    /// count for no additional evidence.
+    ///
+    /// Results correspond positionally to `queries`; a query that does not
+    /// match the profile contributes an empty result instead of dropping the
+    /// alignment its caller ranks by.
+    public func searchSemantic(
+        _ queries: [[Float]],
+        profile: SemanticEmbeddingProfile,
+        limit: Int = 8
+    ) async throws -> [[SearchHit]] {
+        let empty = [[SearchHit]](repeating: [], count: queries.count)
+        guard profile.isValid, limit > 0, !queries.isEmpty else { return empty }
+        let (expectedBytes, overflow) = profile.vectorDimension
+            .multipliedReportingOverflow(by: MemoryLayout<Float>.size)
+        guard !overflow else { return empty }
+
+        // Scoring positions, so an unusable variant keeps its caller's index.
+        let scored = queries.indices.filter { index in
+            queries[index].count == profile.vectorDimension
+                && queries[index].allSatisfy(\.isFinite)
+        }
+        guard !scored.isEmpty else { return empty }
+        let flattened = scored.flatMap { queries[$0] }
+        let dimension = profile.vectorDimension
+
         return try await database.read { db in
             let rows = try Row.fetchCursor(
                 db,
@@ -344,38 +368,76 @@ extension MeetingStore {
                     ORDER BY segment.rowid ASC
                     """,
                 arguments: [profile.fingerprint])
-            var candidates: [SemanticCandidate] = []
-            candidates.reserveCapacity(min(limit, 64))
+            var candidates = [[SemanticCandidate]](
+                repeating: [], count: scored.count)
+            for slot in candidates.indices {
+                candidates[slot].reserveCapacity(min(limit, 64))
+            }
             var traversalOrder = 0
 
-            try query.withUnsafeBufferPointer { queryBuffer in
+            try flattened.withUnsafeBufferPointer { queryBuffer in
                 while let row = try rows.next() {
                     let order = traversalOrder
                     traversalOrder += 1
-                    let score = try row.withUnsafeData(atIndex: 0) { blob -> Float? in
-                        guard let blob else { return nil }
-                        return Self.semanticDotProduct(
-                            blob, query: queryBuffer, expectedBytes: expectedBytes)
+                    try row.withUnsafeData(atIndex: 0) { blob in
+                        guard let blob else { return }
+                        let rowID: Int64 = row["rowID"]
+                        for slot in scored.indices {
+                            let variant = UnsafeBufferPointer(
+                                rebasing: queryBuffer[
+                                    (slot * dimension)..<((slot + 1) * dimension)])
+                            // A variant that cannot be scored skips only
+                            // itself, exactly as the single-query scan skipped
+                            // only that query's row.
+                            guard let score = Self.semanticDotProduct(
+                                blob,
+                                query: variant,
+                                expectedBytes: expectedBytes)
+                            else { continue }
+                            Self.admit(
+                                score: score,
+                                order: order,
+                                rowID: rowID,
+                                into: &candidates[slot],
+                                limit: limit)
+                        }
                     }
-                    guard let score else { continue }
-                    if candidates.count == limit,
-                       let worst = candidates.last,
-                       !SemanticCandidate.isBetter(score: score, order: order, than: worst) {
-                        continue
-                    }
-                    let candidate = SemanticCandidate(
-                        score: score,
-                        order: order,
-                        rowID: row["rowID"])
-                    let insertionIndex = candidates.firstIndex {
-                        candidate.isBetter(than: $0)
-                    } ?? candidates.endIndex
-                    candidates.insert(candidate, at: insertionIndex)
-                    if candidates.count > limit { candidates.removeLast() }
                 }
             }
-            return try Self.semanticHits(in: db, candidates: candidates)
+
+            var results = empty
+            for (slot, index) in scored.enumerated() {
+                results[index] = try Self.semanticHits(
+                    in: db,
+                    candidates: candidates[slot])
+            }
+            return results
         }
+    }
+
+    /// Bounded insertion into one variant's top-k, preserving the exact
+    /// score-then-traversal-order tie-break of the single-query scan.
+    private static func admit(
+        score: Float,
+        order: Int,
+        rowID: Int64,
+        into candidates: inout [SemanticCandidate],
+        limit: Int
+    ) {
+        if candidates.count == limit,
+           let worst = candidates.last,
+           !SemanticCandidate.isBetter(score: score, order: order, than: worst) {
+            return
+        }
+        let candidate = SemanticCandidate(
+            score: score,
+            order: order,
+            rowID: rowID)
+        let insertionIndex = candidates.firstIndex {
+            candidate.isBetter(than: $0)
+        } ?? candidates.endIndex
+        candidates.insert(candidate, at: insertionIndex)
+        if candidates.count > limit { candidates.removeLast() }
     }
 
     /// Resolves ordered derived-index identities through current authoritative

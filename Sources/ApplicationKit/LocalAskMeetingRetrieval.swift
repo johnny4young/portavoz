@@ -243,12 +243,14 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         semanticIndex: any SemanticIndexSearching
     ) async throws -> SemanticCandidates {
         var result = SemanticCandidates.empty
-        for vector in vectors {
-            for (rank, hit) in try await semanticIndex.search(
-                vector,
-                profile: profile,
-                limit: 12
-            ).enumerated()
+        // One traversal scores every variant; the fold keeps each segment's
+        // best rank across variants, earliest variant winning a tie.
+        for variantHits in try await semanticIndex.search(
+            vectors,
+            profile: profile,
+            limit: 12
+        ) {
+            for (rank, hit) in variantHits.enumerated()
             where result.bestRank[hit.segmentID].map({ rank < $0 }) ?? true {
                 result.bestRank[hit.segmentID] = rank
                 result.hitsByID[hit.segmentID] = hit

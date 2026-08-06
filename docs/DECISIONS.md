@@ -10156,3 +10156,34 @@ pending work, acceptance criterion, or field-validation item lost. One file
 answers "what is next", one answers "what is missing", one answers "why", and
 one answers "what is built". The hygiene script keeps rejecting all three
 retired planning paths if they are ever tracked.
+
+## D290 — Score every Ask query variant in one corpus traversal (Aug 2026)
+
+**Context:** deterministic bilingual expansion turns one question into several
+query variants so an unaccented Spanish phrasing can reach accented source text.
+`LocalAskMeetingRetrieval` then called the semantic port once per variant, and
+the exact Accelerate control answers each call by streaming every compatible
+embedding BLOB out of SQLite. Three variants therefore streamed and scored the
+whole corpus three times to produce one fused result, and the cost grew with
+both corpus size and expansion breadth — on the retrieval path whose budget is
+first evidence.
+
+**Decision:** the semantic port gains a batch entry point that takes the query
+variants together and returns results corresponding positionally to them. The
+protocol supplies a default that loops the single-query call, so an adapter that
+cannot fuse the work — including every shadow research candidate — keeps exactly
+its previous behavior. `AccelerateExactSemanticIndex` overrides it, and
+StorageKit scores all variants during one cursor: the row is read once, each
+variant's dot product runs against the same BLOB, and each variant keeps its own
+bounded top-k with the unchanged score-then-traversal-order tie-break.
+
+A variant that does not match the active profile, or whose score is not finite,
+contributes nothing while keeping its position, because the caller's fusion
+ranks by variant order. The single-query entry point is now a wrapper over the
+batch, so both paths share one implementation.
+
+**Consequences:** Ask reads the corpus once per request instead of once per
+variant, and expansion breadth stops multiplying I/O. Ranking, fusion, top-k
+bounds, profile fencing, and citation authority are unchanged — the equivalence
+is asserted per variant against the previous per-query scan. There is no schema,
+product, or UI change.
