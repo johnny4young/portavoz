@@ -3472,6 +3472,13 @@ touch the real library or Keychain.
     with an explicit safety proof; broad import-level suppression is forbidden.
 23. Resource policy begins from content-free matched measurements at workflow
     boundaries; realtime audio callbacks remain outside telemetry and policy.
+24. A trapping standard-library construction — `Dictionary(uniqueKeysWithValues:)`
+    above all — is an assertion that its invariant was already proven upstream,
+    not an oversight. Every current use is backed by a primary key, a unique
+    index, a `Set`, or an explicit guard in the same function. Replacing one
+    with a total variant such as `uniquingKeysWith:` silently deletes that
+    assertion and is allowed only where the duplicate is genuinely reachable
+    and the collision policy is the intended behavior.
 
 ## Runtime composition facts
 
