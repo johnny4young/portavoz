@@ -61,8 +61,9 @@ public protocol PostCaptureProcessingStore: Sendable {
         _ jobID: ProcessingJobID,
         owner: String,
         reason: ProcessingJobFailure,
+        enqueue replacements: [ProcessingJobRequest],
         at timestamp: Date
-    ) async throws
+    ) async throws -> ProcessingJobCancellation
     func nextPostCaptureProcessingDate(
         kinds: Set<ProcessingJobKind>,
         after timestamp: Date
@@ -404,12 +405,15 @@ private extension ProcessPostCaptureJobs {
             segments: segments,
             turns: [],
             meetingID: job.meetingID)
-        let language = SpokenLanguageDetector.homogeneousLanguage(in: attribution.segments)
+        // Same contract as the summary follow-up: the diarization fingerprint
+        // predicts a canonically ordered durable read.
+        let attributed = TranscriptSegmentOrder.canonical(attribution.segments)
+        let language = SpokenLanguageDetector.homogeneousLanguage(in: attributed)
         let voiceprint = await audio.currentPostCaptureVoiceprint()
         guard let diarization = DiarizationOperationFingerprint.request(
             meetingID: job.meetingID,
             transcriptRevision: detail.meeting.transcriptRevision + 1,
-            segments: attribution.segments,
+            segments: attributed,
             systemAsset: Self.currentCaptures(in: assets)[.system],
             voiceprint: voiceprint)
         else { throw PostCaptureProcessingError.inputNotReady }
@@ -423,7 +427,7 @@ private extension ProcessPostCaptureJobs {
                 sourceTranscriptRevision: detail.meeting.transcriptRevision,
                 language: language,
                 speakers: attribution.speakers,
-                segments: attribution.segments),
+                segments: attributed),
             followUps: [diarization],
             at: now())
         await audio.schedulePostCaptureIdleRelease()
@@ -458,10 +462,7 @@ private extension ProcessPostCaptureJobs {
                 microphone: voiced,
                 system: systemSegments)
         }
-        return (systemSegments + microphoneSegments).sorted {
-            if $0.startTime != $1.startTime { return $0.startTime < $1.startTime }
-            return $0.id.uuidString < $1.id.uuidString
-        }
+        return TranscriptSegmentOrder.canonical(systemSegments + microphoneSegments)
     }
 
     private func processDiarization(_ job: ProcessingJob, owner: String) async throws {
@@ -498,11 +499,16 @@ private extension ProcessPostCaptureJobs {
             segments: detail.segments,
             turns: turns,
             meetingID: job.meetingID)
-        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(
-            in: attribution.segments)
+        // Slicing emits pieces in source position with fresh identities, so the
+        // attributed order is not yet the durable one. The summary follow-up
+        // fingerprint predicts what the summary worker will read back, and the
+        // read is canonically ordered — predict from the same order or the only
+        // automatic summary is cancelled as superseded and never replaced.
+        let segments = TranscriptSegmentOrder.canonical(attribution.segments)
+        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(in: segments)
         let followUps = try await summaryFollowUp(
             meeting: detail.meeting,
-            segments: attribution.segments,
+            segments: segments,
             speakers: attribution.speakers,
             spokenLanguage: spokenLanguage,
             transcriptRevision: detail.meeting.transcriptRevision + 1)
@@ -515,7 +521,7 @@ private extension ProcessPostCaptureJobs {
                 sourceTranscriptRevision: detail.meeting.transcriptRevision,
                 language: spokenLanguage,
                 speakers: attribution.speakers,
-                segments: attribution.segments),
+                segments: segments),
             followUps: followUps,
             at: now())
         if completion.enqueuedJobs.isEmpty {
@@ -546,7 +552,13 @@ private extension ProcessPostCaptureJobs {
             providerID: selection.providerID,
             transcriptRevision: detail.meeting.transcriptRevision)
         guard fingerprint == job.inputFingerprint else {
-            throw PostCaptureProcessingError.inputSuperseded
+            // The enqueued fingerprint was predicted from the producing stage's
+            // in-memory material; this one is read from the durable rows the
+            // summary will actually be built from. A mismatch means the
+            // prediction drifted, not that the meeting stopped deserving a
+            // summary — so the replacement is bound to what is durably true.
+            throw PostCaptureProcessingError.summaryInputSuperseded(
+                replacement: Self.summaryJobRequest(fingerprint: fingerprint))
         }
 
         let attempt = PostCaptureSummaryGenerationAttempt(
@@ -598,14 +610,19 @@ private extension ProcessPostCaptureJobs {
             segments: segments,
             speakers: speakers,
             spokenLanguage: spokenLanguage)
-        return [ProcessingJobRequest(
-            kind: .summary,
-            inputFingerprint: SummaryOperationFingerprint.compute(
+        return [Self.summaryJobRequest(
+            fingerprint: SummaryOperationFingerprint.compute(
                 request: request,
                 providerID: selection.providerID,
-                transcriptRevision: transcriptRevision),
+                transcriptRevision: transcriptRevision))]
+    }
+
+    static func summaryJobRequest(fingerprint: String) -> ProcessingJobRequest {
+        ProcessingJobRequest(
+            kind: .summary,
+            inputFingerprint: fingerprint,
             priority: 10,
-            maxAttempts: 3)]
+            maxAttempts: 3)
     }
 
     private func summaryRequest(
@@ -637,21 +654,27 @@ private extension ProcessPostCaptureJobs {
             var shouldRunPostMeetingAction = false
             let timestamp = now()
             if error.isSupersededPostCaptureInput {
-                try await store.cancelPostCaptureJob(
+                let replacements = error.supersededPostCaptureReplacements
+                let cancellation = try await store.cancelPostCaptureJob(
                     job.id,
                     owner: owner,
                     reason: ProcessingJobFailure(
                         code: "processing.input.superseded",
                         message: error.localizedDescription),
+                    enqueue: replacements,
                     at: timestamp)
+                // A replacement keeps the meeting in processing; the completion
+                // action belongs to the attempt that actually settles it.
                 shouldRunPostMeetingAction = job.kind == .summary
+                    && cancellation.enqueuedJobs.isEmpty
             } else if job.kind == .summary, job.attempt >= job.maxAttempts {
-                try await store.cancelPostCaptureJob(
+                _ = try await store.cancelPostCaptureJob(
                     job.id,
                     owner: owner,
                     reason: ProcessingJobFailure(
                         code: "processing.summary.unavailable",
                         message: error.localizedDescription),
+                    enqueue: [],
                     at: timestamp)
                 shouldRunPostMeetingAction = true
             } else {
@@ -744,15 +767,25 @@ private extension Error {
     }
 
     var isSupersededPostCaptureInput: Bool {
-        if let worker = self as? PostCaptureProcessingError,
-           case .inputSuperseded = worker {
-            return true
+        if let worker = self as? PostCaptureProcessingError {
+            switch worker {
+            case .inputSuperseded, .summaryInputSuperseded: return true
+            default: break
+            }
         }
         if let storage = self as? StorageError,
            case .processingJobInputChanged = storage {
             return true
         }
         return false
+    }
+
+    var supersededPostCaptureReplacements: [ProcessingJobRequest] {
+        if let worker = self as? PostCaptureProcessingError,
+           case .summaryInputSuperseded(let replacement) = worker {
+            return [replacement]
+        }
+        return []
     }
 }
 

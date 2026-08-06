@@ -2478,6 +2478,14 @@ speech. This defense in depth prevents punctuation-only rows from becoming UI
 noise, search material, generated facts, or navigable evidence without using a
 language-specific word list.
 
+`TranscriptSegmentOrder` is the companion ordering boundary: start time,
+then segment identity. Start time alone is not a total order — the microphone
+and system channels routinely open a segment at the same instant — so the
+reviewed detail projection, the export aggregate, and the post-capture worker's
+attributed material all use it, and StorageKit's `ORDER BY startTime, id`
+reproduces the Swift comparator byte-for-byte. Operation fingerprints hash that
+projection, so a single order is what makes them a function of durable state.
+
 Transcript recognition language and generated-output language are independent.
 Automatic durable transcription and Refine never pin a complete channel to an
 aggregate meeting language, even when existing metadata appears homogeneous;

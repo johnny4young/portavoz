@@ -76,6 +76,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         simulateSequoiaCapabilities: Bool = false,
         unnamedSpeaker: Bool = false,
         aiSuggestions: Bool = false,
+        abandonedSummary: Bool = false,
         summaryEngine: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication.portavoz(
@@ -96,6 +97,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         }
         if aiSuggestions {
             app.launchArguments.append("-seed-ai-suggestions")
+        }
+        if abandonedSummary {
+            app.launchArguments.append("-seed-abandoned-summary")
         }
         if let summaryEngine {
             app.launchArguments += ["-summaryEngine", summaryEngine]
@@ -404,6 +408,21 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "a terminal durable failure must expose one explicit retry action")
         attachScreenshot(of: app, named: "meeting-detail-processing-recovery")
         retry.click()
+    }
+
+    @MainActor
+    func testAbandonedAutomaticSummarySaysSoBesideGeneration() {
+        let app = launchOnSeededMeeting(withoutSummary: true, abandonedSummary: true)
+        defer { app.terminate() }
+
+        let notice = app.staticTexts["detail-summary-abandoned"]
+        XCTAssertTrue(
+            notice.waitForExistence(timeout: 10),
+            "a cancelled automatic summary must be visible, not silently absent")
+        XCTAssertTrue(
+            app.buttons["detail-generate-summary"].waitForExistence(timeout: 10),
+            "the explicit generation route must stay available beside the notice")
+        attachScreenshot(of: app, named: "meeting-detail-abandoned-summary")
     }
 
     @MainActor

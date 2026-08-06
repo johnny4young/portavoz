@@ -38,6 +38,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/MeetingDetailRailSection.swift",
     "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
     "Sources/portavoz-app/MeetingDetailScene.swift",
+    "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
     "Sources/portavoz-app/MeetingDetailTrustSection.swift",
     "Sources/portavoz-app/MeetingDetailView.swift",
     "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
@@ -231,10 +232,15 @@ DEFAULT_FEATURE_OWNERSHIP = (
     {
         "feature": "processing-and-refine",
         "tests": [
+            "testAbandonedAutomaticSummarySaysSoBesideGeneration",
             "testFailedDurableProcessingOffersOneRecoveryAction",
             "testRunningRefineCanBeCanceledWithoutChangingTheTranscript",
         ],
         "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+                "anchor": '"detail-summary-abandoned"',
+            },
             {
                 "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
                 "anchor": '"detail-recover-with-refine"',
@@ -305,7 +311,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         ],
         "sourceAnchors": [
             {
-                "path": "Sources/portavoz-app/MeetingDetailView.swift",
+                "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
                 "anchor": '"detail-generate-summary"',
             },
             {

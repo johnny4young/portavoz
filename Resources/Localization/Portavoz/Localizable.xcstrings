@@ -4431,6 +4431,36 @@
         }
       }
     },
+    "The automatic summary could not run with the configured engine.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen automático no pudo ejecutarse con el motor configurado."
+          }
+        }
+      }
+    },
+    "The automatic summary did not finish for this meeting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen automático no terminó para esta reunión."
+          }
+        }
+      }
+    },
+    "The automatic summary stopped because this transcript changed. Nothing was lost.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resumen automático se detuvo porque esta transcripción cambió. No se perdió nada."
+          }
+        }
+      }
+    },
     "The audio could not be finalized, but its recovery file was preserved.": {
       "localizations": {
         "es": {

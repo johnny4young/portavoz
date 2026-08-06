@@ -363,16 +363,30 @@ extension MeetingStore {
     /// cancellation is terminal but is not an aggregate failure: once no
     /// other work or capture publication remains unresolved, the meeting can
     /// become ready without pretending that an artifact was generated.
+    /// Cancels an owned attempt and, in the same transaction, admits any
+    /// replacement work the worker still wants. A replacement must carry a
+    /// different fingerprint than the cancelled job — `enqueueFollowUps`
+    /// rejects self-enqueue — and the `(meeting, kind, fingerprint)`
+    /// idempotency key makes a repeated replacement a no-op, so a drifting
+    /// input converges instead of looping.
+    @discardableResult
     public func cancelProcessingJob(
         _ id: ProcessingJobID,
         owner: String,
         reason: ProcessingJobFailure,
+        enqueue replacementRequests: [ProcessingJobRequest] = [],
         at timestamp: Date = Date()
-    ) async throws -> ProcessingJob {
+    ) async throws -> ProcessingJobCancellation {
         try Self.validateOwner(owner)
         try Self.validateFailure(reason)
+        try Self.validateFollowUps(replacementRequests)
         return try await database.write { db in
             var record = try Self.ownedJob(id, owner: owner, at: timestamp, in: db)
+            let enqueued = try Self.enqueueFollowUps(
+                Self.admissibleReplacements(replacementRequests, after: record, in: db),
+                after: record,
+                at: timestamp,
+                in: db)
             record.state = ProcessingJobState.cancelled.rawValue
             record.notBefore = nil
             record.leaseOwner = nil
@@ -385,7 +399,7 @@ extension MeetingStore {
             let job = try record.job
             try Self.reconcileProcessingLifecycle(
                 for: job.meetingID, at: timestamp, in: db)
-            return job
+            return ProcessingJobCancellation(cancelledJob: job, enqueuedJobs: enqueued)
         }
     }
 
@@ -703,6 +717,25 @@ extension MeetingStore {
         guard owners.isSubset(of: Set(liveSpeakerIDs)) else {
             throw StorageError.invalidProcessingJob(
                 "summary action owners must belong to the current live cast")
+        }
+    }
+
+    /// One replacement per kind, per meeting. The attempt being cancelled is
+    /// still `running` here, so an earlier cancelled sibling means this drift
+    /// already had its repair — a second one would mean the input keeps moving,
+    /// which the worker must surface instead of chasing.
+    private static func admissibleReplacements(
+        _ requests: [ProcessingJobRequest],
+        after current: ProcessingJobRecord,
+        in db: Database
+    ) throws -> [ProcessingJobRequest] {
+        guard !requests.isEmpty else { return [] }
+        return try requests.filter { request in
+            try ProcessingJobRecord
+                .filter(Column("meetingID") == current.meetingID)
+                .filter(Column("kind") == request.kind.rawValue)
+                .filter(Column("state") == ProcessingJobState.cancelled.rawValue)
+                .fetchCount(db) == 0
         }
     }
 

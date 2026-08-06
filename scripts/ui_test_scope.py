@@ -117,6 +117,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "meeting-processing": (
         test_id("MeetingDetailUITests", "testFailedDurableProcessingOffersOneRecoveryAction"),
+        test_id(
+            "MeetingDetailUITests",
+            "testAbandonedAutomaticSummarySaysSoBesideGeneration"),
         test_id("MeetingDetailUITests", "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador"),
         test_id("MeetingDetailUITests", "testRunningRefineCanBeCanceledWithoutChangingTheTranscript"),
     ),
@@ -335,6 +338,8 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-export", "meeting-naming", "meeting-processing"}
     if "meetinggenerateddocumentsection" in lowered:
         return {"meeting-correction", "meeting-evidence", "meeting-summary"}
+    if "meetingdetailsummaryplaceholder" in lowered:
+        return {"meeting-processing", "meeting-summary"}
     if "meetingcommitmentinbox" in lowered:
         return {"meeting-commitments"}
     if "meetingdetailtrustsection" in lowered:

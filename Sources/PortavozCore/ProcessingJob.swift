@@ -158,6 +158,19 @@ public struct ProcessingArtifactCommit: Sendable {
     }
 }
 
+/// One cancelled attempt plus any replacement work admitted in the same
+/// transaction. A superseded derivation that is still wanted is replaced here,
+/// so no meeting is left silently without the artifact its input still earns.
+public struct ProcessingJobCancellation: Sendable {
+    public let cancelledJob: ProcessingJob
+    public let enqueuedJobs: [ProcessingJob]
+
+    public init(cancelledJob: ProcessingJob, enqueuedJobs: [ProcessingJob]) {
+        self.cancelledJob = cancelledJob
+        self.enqueuedJobs = enqueuedJobs
+    }
+}
+
 /// Durable job state. Workers mutate it only through an owner-bound lease;
 /// callers use `(meetingID, kind, inputFingerprint)` as the idempotency key.
 public struct ProcessingJob: Sendable, Identifiable, Equatable {

@@ -120,12 +120,14 @@ extension MeetingStore: PostCaptureProcessingStore {
         _ jobID: ProcessingJobID,
         owner: String,
         reason: ProcessingJobFailure,
+        enqueue replacements: [ProcessingJobRequest],
         at timestamp: Date
-    ) async throws {
-        _ = try await cancelProcessingJob(
+    ) async throws -> ProcessingJobCancellation {
+        try await cancelProcessingJob(
             jobID,
             owner: owner,
             reason: reason,
+            enqueue: replacements,
             at: timestamp)
     }
 

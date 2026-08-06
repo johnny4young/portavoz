@@ -256,6 +256,18 @@ The three section roots use accessibility containment so their stable section
 identifiers do not overwrite the nested controls exposed to Voice Control,
 assistive technologies, or XCUITest.
 
+D288 adds a fourth child on the same boundary. `MeetingDetailSummaryPlaceholder`
+receives the meeting's durable jobs plus one generation action and owns what a
+meeting without a summary offers. When the newest `summary` job ended
+`cancelled` it states why above **Generate summary** (`detail-summary-abandoned`),
+distinguishing a superseded input from an unavailable engine. This is the only
+surface that can say so: a cancelled job is not a failure, so the meeting stays
+`ready`, `lastProcessingError` stays cleared, and neither the trust section nor
+the library row mentions it. `needsAttention` is deliberately not reused —
+it offers recording recovery for something that was never a recording problem.
+The reviewed boundary advances to 372 interaction signals, twelve owners, and 28
+UI journeys.
+
 D225 adds `MeetingTranscriptContent` as the Foundation/ApplicationKit value
 between accepted transcript evidence and review presentation. The accepted
 factory projects each source segment to one stable row and carries source

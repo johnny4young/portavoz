@@ -24,6 +24,7 @@
     "Sources/portavoz-app/MeetingDetailRailSection.swift",
     "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
     "Sources/portavoz-app/MeetingDetailScene.swift",
+    "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
     "Sources/portavoz-app/MeetingDetailTrustSection.swift",
     "Sources/portavoz-app/MeetingDetailView.swift",
     "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
@@ -1090,6 +1091,24 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+      "category": "control",
+      "source": "Button(action: generate) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-generate-summary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-summary-abandoned\")",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
       "category": "control",
       "source": "Button {",
@@ -1159,18 +1178,6 @@
       "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
       "category": "state",
       "source": "@State private var retryingProcessing = false",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "control",
-      "source": "Button {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingDetailView.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"detail-generate-summary\")",
       "occurrences": 1
     },
     {
@@ -2417,6 +2424,7 @@
     {
       "feature": "processing-and-refine",
       "tests": [
+        "testAbandonedAutomaticSummarySaysSoBesideGeneration",
         "testFailedDurableProcessingOffersOneRecoveryAction",
         "testRunningRefineCanBeCanceledWithoutChangingTheTranscript"
       ],
@@ -2430,11 +2438,16 @@
           "anchor": "\"detail-refine-review\""
         },
         {
+          "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
+          "anchor": "\"detail-summary-abandoned\""
+        },
+        {
           "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
           "anchor": "\"detail-recover-with-refine\""
         }
       ],
       "screenshots": [
+        "meeting-detail-abandoned-summary",
         "meeting-detail-processing-recovery"
       ]
     },
@@ -2503,7 +2516,7 @@
       ],
       "sourceAnchors": [
         {
-          "path": "Sources/portavoz-app/MeetingDetailView.swift",
+          "path": "Sources/portavoz-app/MeetingDetailSummaryPlaceholder.swift",
           "anchor": "\"detail-generate-summary\""
         },
         {

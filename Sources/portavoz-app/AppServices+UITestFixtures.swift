@@ -59,6 +59,7 @@ extension AppServices {
             transcriptRevision: meeting.transcriptRevision)
         await seedPrivacyReceipt(for: meeting.id)
         await seedProcessingFailureIfRequested(for: meeting.id)
+        await seedAbandonedSummaryIfRequested(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         requestSearchReconciliation()
@@ -242,6 +243,37 @@ extension AppServices {
                     message: "fixture detail must never reach diagnostics"))
         } catch {
             assertionFailure("Could not seed processing failure: \(error)")
+        }
+    }
+
+    /// A meeting whose automatic summary was cancelled and never replaced. The
+    /// meeting stays `ready` — audio and transcript are intact — so the summary
+    /// pane is the only place that can say the summary is not coming.
+    private func seedAbandonedSummaryIfRequested(for meetingID: MeetingID) async {
+        guard ProcessInfo.processInfo.arguments.contains("-seed-abandoned-summary") else {
+            return
+        }
+        let owner = "ui-test-abandoned-summary"
+        do {
+            _ = try await store.enqueueProcessingJobs(
+                for: meetingID,
+                requests: [ProcessingJobRequest(
+                    kind: .summary,
+                    inputFingerprint: "ui-test-abandoned-summary",
+                    maxAttempts: 1)])
+            guard let job = try await store.claimNextProcessingJob(
+                kinds: [.summary],
+                owner: owner,
+                leaseDuration: 60)
+            else { return }
+            _ = try await store.cancelProcessingJob(
+                job.id,
+                owner: owner,
+                reason: ProcessingJobFailure(
+                    code: "processing.input.superseded",
+                    message: "The processing input changed before execution."))
+        } catch {
+            assertionFailure("Could not seed the abandoned summary: \(error)")
         }
     }
 

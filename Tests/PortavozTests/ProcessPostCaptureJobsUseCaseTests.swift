@@ -238,7 +238,7 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
         XCTAssertEqual(actions, [fixture.meeting.id])
     }
 
-    func testSupersededSummaryCancelsWithoutCallingProviderAndRunsAction() async throws {
+    func testSupersededSummaryReplacesTheAttemptWithTheDurableFingerprint() async throws {
         let fixture = Fixture(now: now)
         let segment = fixture.segment(
             channel: .system, text: "Current", language: "en", start: 0)
@@ -257,17 +257,34 @@ final class ProcessPostCaptureJobsUseCaseTests: XCTestCase {
             capabilities: capabilities,
             heartbeatInterval: .seconds(3_600),
             now: { processPostCaptureNow })
+        let durableFingerprint = SummaryOperationFingerprint.compute(
+            request: SummaryRequest(
+                meetingID: fixture.meeting.id,
+                segments: [segment],
+                speakers: [],
+                recipe: .general,
+                targetLanguage: "en"),
+            providerID: "durable-test",
+            transcriptRevision: fixture.meeting.transcriptRevision)
 
         _ = await workflow.execute(.init(owner: "test-owner"))
 
         let cancellations = await store.cancellationRecords()
         XCTAssertEqual(cancellations.first?.reason.code, "processing.input.superseded")
+        // The stale attempt is replaced by one bound to what is durably true,
+        // so a drifted prediction costs a retry, not the meeting's summary.
+        XCTAssertEqual(cancellations.first?.replacements.map(\.kind), [.summary])
+        XCTAssertEqual(
+            cancellations.first?.replacements.map(\.inputFingerprint),
+            [durableFingerprint])
         let providerRequests = await provider.requests()
         let runs = await store.generationRuns()
         let actions = await capabilities.actionMeetingIDs()
         XCTAssertTrue(providerRequests.isEmpty)
         XCTAssertTrue(runs.isEmpty)
-        XCTAssertEqual(actions, [fixture.meeting.id])
+        // The replacement still owes this meeting a summary; the completion
+        // action belongs to the attempt that actually settles it.
+        XCTAssertTrue(actions.isEmpty)
     }
 
     func testSummaryPublicationLeaseLossRecordsCancelledAttemptWithoutFalseStateChange() async throws {
@@ -535,6 +552,7 @@ private struct FailureRecord: Sendable {
 
 private struct CancellationRecord: Sendable {
     let reason: ProcessingJobFailure
+    let replacements: [ProcessingJobRequest]
 }
 
 private struct SchedulingRequest: Sendable {
@@ -668,10 +686,22 @@ private actor WorkflowStoreFake: PostCaptureProcessingStore {
         _ jobID: ProcessingJobID,
         owner: String,
         reason: ProcessingJobFailure,
+        enqueue replacements: [ProcessingJobRequest],
         at timestamp: Date
-    ) throws {
+    ) throws -> ProcessingJobCancellation {
         if let failurePreservationError { throw failurePreservationError }
-        cancellations.append(CancellationRecord(reason: reason))
+        cancellations.append(
+            CancellationRecord(reason: reason, replacements: replacements))
+        let cancelled = jobs.first { $0.id == jobID } ?? ProcessingJob(
+            meetingID: MeetingID(), kind: .summary, inputFingerprint: "cancelled")
+        return ProcessingJobCancellation(
+            cancelledJob: cancelled,
+            enqueuedJobs: replacements.map {
+                ProcessingJob(
+                    meetingID: cancelled.meetingID,
+                    kind: $0.kind,
+                    inputFingerprint: $0.inputFingerprint)
+            })
     }
 
     func nextPostCaptureProcessingDate(

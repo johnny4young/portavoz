@@ -220,15 +220,14 @@ private extension MeetingDetailView {
                 Text("Generating summary…").foregroundStyle(.secondary)
             }
         } else if !detail.segments.isEmpty {
-            Button {
-                coordinator.regenerate(
-                    language: summaryLanguage(in: detail),
-                    detail: detail,
-                    summary: nil)
-            } label: {
-                Label("Generate summary", systemImage: "sparkles")
-            }
-            .accessibilityIdentifier("detail-generate-summary")
+            MeetingDetailSummaryPlaceholder(
+                processingJobs: detail.processingJobs,
+                generate: {
+                    coordinator.regenerate(
+                        language: summaryLanguage(in: detail),
+                        detail: detail,
+                        summary: nil)
+                })
         }
     }
 

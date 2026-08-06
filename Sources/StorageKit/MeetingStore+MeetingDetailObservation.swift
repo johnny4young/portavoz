@@ -146,10 +146,14 @@ extension MeetingStore {
             .filter(Column("deletedAt") == nil)
             .fetchAll(database)
             .map { try $0.speaker }
+        // Total order (TranscriptSegmentOrder): summary and Apuntador operation
+        // fingerprints hash this projection, so a start-time-only sort would
+        // let tied rows resolve differently between two reads of unchanged
+        // material and supersede work that was fenced against it.
         let segmentRecords = try SegmentRecord
             .filter(Column("meetingID") == key)
             .filter(Column("deletedAt") == nil)
-            .order(Column("startTime"))
+            .order(Column("startTime"), Column("id"))
             .fetchAll(database)
         let segments = try segmentRecords.map { try $0.segment }
         let meeting = try meetingRecord.meeting

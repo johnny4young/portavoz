@@ -809,7 +809,8 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             owner: "worker-a",
             reason: ProcessingJobFailure(
                 code: "summary.unavailable", message: "No configured provider."),
-            at: now.addingTimeInterval(2))
+            at: now.addingTimeInterval(2)
+        ).cancelledJob
         XCTAssertEqual(cancelled.state, .cancelled)
         XCTAssertEqual(cancelled.errorCode, "summary.unavailable")
         XCTAssertEqual(cancelled.errorMessage, "No configured provider.")
@@ -823,6 +824,62 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             for: captured.id, requests: [request], at: now.addingTimeInterval(3))
         XCTAssertEqual(repeated.map(\.id), [jobID])
         XCTAssertEqual(repeated.first?.state, .cancelled)
+    }
+
+    func testSupersededCancellationAdmitsOneReplacementAndThenStops() async throws {
+        let store = try MeetingStore.inMemory()
+        let captured = meeting()
+        try await store.save(captured)
+        _ = try await seedCast(for: captured.id, in: store)
+        func claim(_ fingerprint: String, at timestamp: Date) async throws -> ProcessingJobID {
+            _ = try await store.enqueueProcessingJobs(
+                for: captured.id,
+                requests: [ProcessingJobRequest(
+                    kind: .summary, inputFingerprint: fingerprint)],
+                at: timestamp)
+            let claimed = try await store.claimNextProcessingJob(
+                kinds: [.summary], owner: "worker-a", leaseDuration: 30, at: timestamp)
+            return try XCTUnwrap(claimed).id
+        }
+        let superseded = ProcessingJobFailure(
+            code: "processing.input.superseded",
+            message: "The processing input changed before execution.")
+
+        let stale = try await claim("summary:predicted", at: now)
+        let first = try await store.cancelProcessingJob(
+            stale,
+            owner: "worker-a",
+            reason: superseded,
+            enqueue: [ProcessingJobRequest(
+                kind: .summary, inputFingerprint: "summary:durable")],
+            at: now.addingTimeInterval(1))
+
+        XCTAssertEqual(first.cancelledJob.state, .cancelled)
+        XCTAssertEqual(first.enqueuedJobs.map(\.inputFingerprint), ["summary:durable"])
+        XCTAssertEqual(first.enqueuedJobs.first?.state, .pending)
+        // The replacement is durable work, so the meeting is processing again
+        // rather than silently reporting a summary it will never receive.
+        let replacingDetail = try await detail(captured.id, in: store)
+        XCTAssertEqual(replacingDetail.meeting.lifecycleState, .processing)
+
+        // A second drift means the input keeps moving: stop, do not chase.
+        let replacement = try await store.claimNextProcessingJob(
+            kinds: [.summary],
+            owner: "worker-a",
+            leaseDuration: 30,
+            at: now.addingTimeInterval(2))
+        let second = try await store.cancelProcessingJob(
+            try XCTUnwrap(replacement).id,
+            owner: "worker-a",
+            reason: superseded,
+            enqueue: [ProcessingJobRequest(
+                kind: .summary, inputFingerprint: "summary:drifted-again")],
+            at: now.addingTimeInterval(3))
+
+        XCTAssertTrue(second.enqueuedJobs.isEmpty)
+        let jobs = try await store.processingJobs(for: captured.id)
+        XCTAssertEqual(jobs.count, 2)
+        XCTAssertTrue(jobs.allSatisfy { $0.state == .cancelled })
     }
 
     func testNextScheduledDateFiltersByCapabilityAndLiveMeeting() async throws {

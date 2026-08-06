@@ -924,6 +924,15 @@ idempotency key, kind, input fingerprint, and source revision, and reconciles
 the meeting to processing. Claims and scheduled wakes are capability-
 filtered and owner-fenced; generated work must use its artifact completion API,
 while the generic completion path remains available only to non-content jobs.
+D288 gives `cancelProcessingJob(_:owner:reason:enqueue:at:)` an atomic
+replacement lane and returns `ProcessingJobCancellation`. A replacement is
+admitted only when no job of that kind has already been cancelled for the
+meeting — the attempt being cancelled is still `running`, so an earlier
+cancelled sibling means the repair already happened — and self-enqueue plus the
+`(meeting, kind, fingerprint)` idempotency key keep a repeat a no-op. Nothing
+about `cancelled` lifecycle reconciliation changes: a cancelled job is still
+neither pending nor failed, so a meeting whose replacement is exhausted stays
+`ready` and the app surfaces the missing summary instead.
 `completeTranscriptionJob` validates the exact meeting/fingerprint/source
 revision, replaces the live cast/transcript with one canonical meeting-owned
 artifact, advances `transcriptRevision`, completes the lease, enqueues exact
@@ -1018,6 +1027,16 @@ The existing aggregate API remains:
 and identity. The explicit tie-break keeps the newest immutable version first
 when SQLite's millisecond date precision gives two snapshots the same
 `createdAt`, including after portable replay.
+
+Its segments — and the export aggregate's — use `ORDER BY startTime, id`, the
+SQL form of `TranscriptSegmentOrder` (D288). Start time alone is not a total
+order: the microphone and system channels routinely open a segment at the same
+instant, and diarization slicing can land a piece on an existing start time.
+Since summary and Apuntador operation fingerprints hash this projection, an
+underdetermined order would let two reads of unchanged rows hash differently
+and permanently supersede the derived work fenced against them. Every
+`uuidString` shares the same 8-4-4-4-12 shape, so SQLite's byte-wise comparison
+reproduces the Swift comparator exactly.
 
 `spotlightDocuments()` is the D85 read-side projection for local OS search. A
 single `DatabaseQueue.read` uses ranked CTEs to select every live meeting, its

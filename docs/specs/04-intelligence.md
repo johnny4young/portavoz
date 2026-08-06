@@ -811,6 +811,19 @@ durably; exhausted summary work cancels without failing the meeting because the
 released product already treats a transcript without a summary as valid
 (D104).
 
+Because that enqueued value is *predicted* from the producing stage's in-memory
+material while the worker recomputes it from a durable read, D288 makes the two
+sides agree by construction — both stages canonicalize attributed material
+through `TranscriptSegmentOrder`, matching the storage projection — and stops
+trusting the prediction outright. A worker that still finds a mismatch cancels
+the stale attempt and admits a replacement bound to the fingerprint it just
+read, in the same transaction, bounded to one replacement per meeting. The
+post-meeting Shortcut moves with it: a cancellation that admitted a replacement
+still owes the meeting a summary, so the hook fires on the attempt that settles
+it. A transcript correction never reaches this path — D233 cancels
+accepted-only work inside the correction transaction with the owner lease
+cleared, and explicit regeneration remains the contract there.
+
 D43 preserves post-meeting Shortcut behavior after Stop becomes asynchronous.
 When no summary provider is available, the Shortcut receives transcript-only
 Markdown after diarization. Otherwise it runs after summary success or terminal

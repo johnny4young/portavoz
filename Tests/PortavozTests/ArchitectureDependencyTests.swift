@@ -6960,7 +6960,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            371)
+            372)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             12)

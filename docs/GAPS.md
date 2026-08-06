@@ -192,6 +192,21 @@ visible release blocker rather than being inferred from deterministic tests.
   card evidence must resolve stale until the refreshed Apuntador snapshot
   installs sources for the accepted transcript revision.
 - **Real export**: `export --gist` / "Publicar como Gist" with a token; `issues --github/--linear` with tokens against a test repo.
+- **Summary fingerprint drift (D288)**: two of 47 real local meetings had their
+  only automatic summary job cancelled as `processing.input.superseded` seconds
+  after capture, with no transcript correction in their history. Recomputing
+  each enqueued fingerprint from the frozen durable rows failed across every
+  combination of segment order, output language, glossary, provider, and
+  transcript revision, while the same reconstruction reproduced a succeeded
+  meeting's fingerprint exactly. **The drifting input is still unidentified.**
+  D288 makes the repair independent of that cause — the worker replaces the
+  attempt with one bound to what it durably read, and the app says so when the
+  bounded replacement is spent — and removes one proven contributor by giving
+  the projection a total order. Both affected meetings are bilingual with
+  `meeting.language` NULL; the succeeded control is homogeneous `en`. Field
+  work: capture a fresh occurrence with the replacement in place and record
+  whether the replacement succeeds, which would localize the drift to the
+  producing stage's prediction rather than to anything the worker reads.
 
 ## What are NOT gaps (deliberate decisions — do not "fix")
 

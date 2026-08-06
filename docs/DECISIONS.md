@@ -10056,3 +10056,68 @@ regression degrades to an unducked microphone instead of terminating the app.
 closely spaced local turns are ducked as one range rather than individually,
 which is the audible intent. Clip export shares the composition and inherits
 the fix. There is no schema, capture, transcript, or storage change.
+
+## D288 — Replace a superseded summary instead of losing it (Aug 2026)
+
+**Context:** the post-capture workflow enqueues the summary job while
+publishing the diarization artifact, and binds it to a fingerprint computed
+from the attributed material still in memory. The summary worker later recomputes
+that fingerprint from a durable `MeetingDetail` read and refuses to run when the
+two differ. Nothing replaced the refused job: `reconcileProcessingLifecycle`
+treats `cancelled` as neither pending nor failed, so the meeting settled on
+`ready` with `lastProcessingError` cleared and no summary, and Meeting Detail
+showed the ordinary **Generate summary** button as though the user had simply
+never asked.
+
+Two meetings in a 47-meeting local library reached that state, six seconds after
+capture, with no transcript correction anywhere in their history. Recomputing
+their enqueued fingerprint from the frozen durable rows failed across every
+combination of segment order, output language, glossary, provider, and
+transcript revision, while the same reconstruction reproduced a succeeded
+meeting's fingerprint exactly. The prediction is therefore not reliably
+reproducible from the rows it fences, and no single drifting input explains it.
+
+Separately, the reviewed transcript projection those fingerprints hash ordered
+segments by `startTime` alone. The microphone and system channels routinely open
+a segment at the same instant — both affected meetings contain such pairs — so
+that projection had no total order and the fingerprint was not a function of the
+durable rows.
+
+**Decision:** stop depending on the prediction being right.
+`TranscriptSegmentOrder` is the one transcript order shared by every durable
+read and every in-memory artifact: start time, then segment identity, which
+`ORDER BY startTime, id` reproduces byte-for-byte. The reviewed detail
+projection and the export aggregate adopt it, and the post-capture workflow
+canonicalizes attributed material before it both fingerprints and publishes it,
+so the producing stage and the consuming stage agree by construction.
+
+When the summary worker still finds a mismatch it cancels the stale attempt and
+admits a replacement bound to the fingerprint it just read, in the same
+transaction. Storage admits one replacement per kind per meeting — the attempt
+being cancelled is still `running`, so an earlier cancelled sibling means the
+repair already happened and a second drift means the input keeps moving. The
+existing `(meeting, kind, fingerprint)` idempotency key makes a repeated
+replacement a no-op. The completion action moves to the attempt that settles the
+meeting rather than firing on a cancellation that still owes it a summary.
+
+This does not extend to D233. A transcript correction cancels accepted-only
+`summary` and `index` work inside the correction transaction with the owner
+lease cleared, so it can never reach the worker's replacement path; explicit
+regeneration remains the contract for corrected material. What D233 left
+missing there is the signal, not the job: `MeetingDetailSummaryPlaceholder`
+now states that the automatic summary was cancelled — distinguishing a
+superseded input from an unavailable engine — directly above the generation
+button that repairs it. The meeting keeps reporting `ready`, which is true: its
+audio and transcript are intact, and `needsAttention` would offer recording
+recovery for a summary that was never a recording problem. The reviewed Meeting
+Detail boundary advances to 372 interaction signals, twelve owners, and 28 UI
+journeys.
+
+**Rationale:** a fingerprint that fences durable work must be a function of
+durable state; a total order makes that true and removes one proven source of
+drift. Because the field evidence shows drift this repository cannot yet fully
+explain, correctness cannot rest on having found every cause — replacing the
+attempt repairs the meeting whatever the cause, while the one-replacement bound
+keeps a genuinely unstable input from spinning the worker. Leaving the
+lifecycle state alone keeps `ready` honest and puts the explanation where the
+user can act on it.
