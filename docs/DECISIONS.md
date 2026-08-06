@@ -10217,3 +10217,40 @@ pre-change build at 129.14 ms, sits far above both the 100 ms budget and the
 release authority PERF-001 requires. Confirming the budget stays a controlled-host
 measurement in the field queue, and SEARCH-3 is not claimed closed on budget.
 
+
+## D292 — Declare skill capability before reading what a skill acts on (Aug 2026)
+
+**Context:** Band 8 turns confirmed memory into actions. The material those
+actions run over is a transcript — text other people spoke, read by a model.
+Any design where the thing being acted on can influence what the action is
+allowed to do is a prompt-injection hole with a real external effect at the end
+of it. Nothing in Portavoz had a skill vocabulary yet, so this is the moment the
+boundary is cheap to set.
+
+**Decision:** a skill publishes an immutable `SkillDefinition` — id, version,
+capability set, confirmation policy — and that declaration is the ceiling. A
+`SkillProposal` may request a subset of it and never a superset;
+`SkillAdmissionPolicy` refuses `undeclaredCapability` without inspecting
+anything else. Arguments are typed values (`meeting`, `segment`, `person`,
+`commitment`, bounded `text`, `date`), so there is no free-form command string
+for injected text to inhabit; admission validates their shape and never their
+meaning.
+
+Confirmation is per proposal by default and expires after fifteen minutes, so a
+proposal the user left unconfirmed is re-proposed rather than executed later
+against changed material. A standing rule may replace that confirmation only
+when every requested capability is reversible, checked both at definition time
+and against the requested subset that will actually run. Remote capability
+additionally requires separately permitted egress.
+
+`SkillExecutionState` distinguishes the states that cannot have acted
+(`proposed`, `previewed`, `dismissed`) from those that may have
+(`confirmed` onward), and `SkillExecution` carries an idempotency key stable
+across retries of one proposal.
+
+**Consequences:** this slice is pure policy in `PortavozCore` with no executor,
+no storage, no UI, and no adapter. No skill can run yet, which is the point: the
+admission rule exists before anything can be admitted. The shipped no-egress
+tier will declare only `readMeetingMaterial`, `writeLocalDraft`, and
+`writeLocalFile`; `sendRemote` stays declarable but unused until external
+integrations are a separate decision.
