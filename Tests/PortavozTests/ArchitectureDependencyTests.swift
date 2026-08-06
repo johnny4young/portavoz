@@ -3876,6 +3876,48 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D287"))
     }
 
+    func testSkillExecutionAdmitsBeforeItClaimsAndKeepsPlatformOut() throws {
+        let policy = try Self.contents(of: "Sources/PortavozCore/Skill.swift")
+        let executor = try Self.contents(
+            of: "Sources/ApplicationKit/ExecuteSkill.swift")
+        let skill = try Self.contents(
+            of: "Sources/ApplicationKit/ReminderDraftSkill.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        // Admission is decided from the declaration alone, so the policy never
+        // reaches for storage or a model.
+        for forbidden in ["import StorageKit", "import Foundation\nimport GRDB"] {
+            XCTAssertFalse(policy.contains(forbidden), forbidden)
+        }
+        XCTAssertTrue(policy.contains("isSubset(of: proposal.definition.capabilities)"))
+        XCTAssertTrue(policy.contains("public static let confirmationValidity"))
+
+        // Refusal must precede the durable claim: a refused proposal that
+        // wrote a claim would be an execution nobody can settle.
+        let admitIndex = try XCTUnwrap(
+            executor.range(of: "SkillAdmissionPolicy.admit")?.lowerBound)
+        let claimIndex = try XCTUnwrap(
+            executor.range(of: "claims.confirmSkillExecution")?.lowerBound)
+        XCTAssertLessThan(admitIndex, claimIndex)
+        let effectIndex = try XCTUnwrap(
+            executor.range(of: "effect.perform(proposal)")?.lowerBound)
+        XCTAssertLessThan(claimIndex, effectIndex)
+
+        // One authority for which states may proceed.
+        XCTAssertTrue(executor.contains("case .admitted, .alreadySettled:"))
+        XCTAssertFalse(executor.contains("record.state == .confirmed"))
+
+        // Platform effects stay behind ports.
+        for forbidden in ["import EventKit", "import SwiftUI", "import AppKit"] {
+            XCTAssertFalse(executor.contains(forbidden), forbidden)
+            XCTAssertFalse(skill.contains(forbidden), forbidden)
+        }
+        XCTAssertTrue(skill.contains("public protocol ReminderDraftDelivering"))
+        XCTAssertTrue(decisions.contains("## D292"))
+        XCTAssertTrue(decisions.contains("## D293"))
+        XCTAssertTrue(decisions.contains("## D294"))
+    }
+
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {
         for file in ["CLIAsk.swift", "CLIMcp.swift", "CLIMeetings.swift"] {
             let source = try Self.contents(of: "Sources/portavoz-cli/\(file)")

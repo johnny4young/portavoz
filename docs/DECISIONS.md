@@ -10293,3 +10293,40 @@ record.
 
 **Consequences:** storage and policy only — no executor, no adapter, no UI, and
 no skill that can run. Secrets stay in Keychain and never reach these tables.
+
+## D294 — Admit, then claim, then act (Aug 2026)
+
+**Context:** D292 decides whether a skill may run and D293 whether it already
+has. Composing them is where the ordering becomes load-bearing, and where the
+two decisions can quietly become three.
+
+**Decision:** `ExecuteSkill` runs admission first. A refused proposal writes
+nothing, because a claim with no admission would leave an execution nobody can
+settle and nothing to reconcile it against. An unregistered skill is refused at
+the same point, for the same reason: a claim with no way to perform it could
+never reach a terminal state.
+
+The durable claim then happens strictly before the effect, so a crash between
+them is recoverable as an interrupted run rather than an invisible one.
+`beginSkillExecution` remains the **only** place that decides which states may
+proceed. The executor's first draft duplicated that policy, gating on
+`confirmed` alone, and thereby blocked the retry the store explicitly allows
+after a failure — the duplicated rule had already drifted from the one it
+copied. The executor now passes any existing claim through and lets storage
+answer.
+
+Effects are ports. `SkillEffectPerforming` hides the platform entirely, so
+ApplicationKit never imports EventKit, and `ReminderDraftSkill` decides what a
+draft contains as a pure projection over typed arguments before any framework
+is involved. Exactly one title and at most one due date; a second of either is
+refused rather than resolved, because guessing which the user meant is how a
+draft ends up asserting something they never confirmed.
+
+A failure records a typed `FailureCategory` taken from the error itself through
+`CategorizedFailure`; an untyped error settles as `recoverable` rather than
+inventing a severity.
+
+**Consequences:** the full path — admit, claim, perform, settle — is exercised
+end to end with one reversible, no-egress skill. Delivery to the platform, the
+other four skills, and the product surface remain separate. No user-visible
+behavior changes yet, so there is no CHANGELOG entry.
