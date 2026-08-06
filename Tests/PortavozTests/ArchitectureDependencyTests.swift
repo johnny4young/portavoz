@@ -3918,6 +3918,31 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D294"))
     }
 
+    func testLocalSkillsAreContractsOverExistingWorkAndStayOffTheNetwork() throws {
+        let skills = try Self.contents(
+            of: "Sources/ApplicationKit/LocalSkills.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        // Each effect delegates to the use case that already owns the work,
+        // so a skill can never become a second implementation that drifts.
+        XCTAssertTrue(skills.contains("RecapComposer.compose("))
+        XCTAssertTrue(skills.contains("export.execute(ExportMeetingBundleRequest("))
+        XCTAssertTrue(skills.contains("brief.execute(event)"))
+
+        // No platform framework and no transport reaches this layer.
+        for forbidden in [
+            "import EventKit", "import SwiftUI", "import AppKit",
+            "URLSession", "URLRequest",
+        ] {
+            XCTAssertFalse(skills.contains(forbidden), forbidden)
+        }
+        XCTAssertFalse(skills.contains(".sendRemote"))
+
+        // Audio would move far more than one confirmation previewed.
+        XCTAssertTrue(skills.contains("includeAudio: false"))
+        XCTAssertTrue(decisions.contains("## D295"))
+    }
+
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {
         for file in ["CLIAsk.swift", "CLIMcp.swift", "CLIMeetings.swift"] {
             let source = try Self.contents(of: "Sources/portavoz-cli/\(file)")

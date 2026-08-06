@@ -10330,3 +10330,46 @@ inventing a severity.
 end to end with one reversible, no-egress skill. Delivery to the platform, the
 other four skills, and the product surface remain separate. No user-visible
 behavior changes yet, so there is no CHANGELOG entry.
+
+## D295 — A skill is a contract over work the product already does (Aug 2026)
+
+**Context:** the no-egress tier names five actions — reminder draft, recap,
+meeting-package export, open a cited meeting, pre-meeting brief. Three of them
+already exist as shipped capabilities with their own use cases. Writing skill
+versions of that work would create a second implementation of each, free to
+drift from the one the rest of the product uses.
+
+**Decision:** a skill contributes the *contract* — declared capabilities, typed
+arguments, confirmation, an idempotency key naming one intended effect, and a
+durable receipt — and delegates the work. `RecapDraftEffect` calls
+`RecapComposer`, `MeetingPackageExportEffect` calls `ExportMeetingBundle`, and
+`PreMeetingBriefEffect` calls `PrepareMeetingBrief`. An architecture ratchet
+pins those delegations so a future edit cannot quietly inline the work.
+
+Argument projection refuses rather than resolves: a recap of two meetings is
+not a recap, so two `meeting` arguments are an error instead of a choice. The
+package export excludes audio, because one confirmation should not move far
+more than its preview showed. The export is the only local skill declaring
+`writeLocalFile`, which is irreversible and therefore permanently ineligible
+for a standing rule even though it never leaves the Mac.
+
+The idempotency key names the effect, not the subject: exporting one meeting to
+two destinations is two effects, so the destination is part of the key.
+
+**Deliberately deferred, and why.** AUTO-2 owns no user interface — the
+Automation center is AUTO-6 and Shortcuts/App Intents are AUTO-3 — so:
+
+- **Opening a cited meeting** is a navigation action needing a route that only
+  those bands introduce.
+- **Start/stop recording through App Intents** is AUTO-3's surface, and
+  `StartRecordingIntent` already ships.
+- **The EventKit reminder adapter** stays a port with no implementation.
+  Delivering to Reminders needs `NSRemindersFullAccessUsageDescription` and a
+  new TCC prompt, and nothing in this band can invoke it. Shipping a permission
+  request with no feature behind it, plus an adapter no code path reaches, is
+  worse than the port alone.
+
+**Consequences:** four declared local skills, none able to leave the Mac,
+asserted rather than assumed by `LocalSkills.isEntirelyLocal`. No user-visible
+behavior changes yet — nothing can propose a skill — so there is no CHANGELOG
+entry and no XCUITest applies.
