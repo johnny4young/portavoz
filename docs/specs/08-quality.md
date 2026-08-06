@@ -1505,8 +1505,9 @@ design-sync, planning, ticket, report, generated-project, result-bundle, and
 local screenshot state. It also rejects private tracker-key patterns in
 implementation/test/tooling files while preserving public durable decision
 references such as D116 and accepted architecture/specification truth under
-`docs/`. The local `docs/ROADMAP.md` and `docs/refactor-20260714.md` planning
-files are ignored and rejected if tracked (D119).
+`docs/`. The local `docs/ROADMAP.md` planning file — and the retired
+`docs/refactor-20260714.md` and `docs/STRATEGY-20260716.md` it consolidated —
+are ignored and rejected if tracked (D119).
 
 The recording-recovery scope includes deterministic cold-model hot attachment:
 `-simulate-live-transcription-attach` emits preparing, then available, and one

@@ -3626,9 +3626,9 @@ make install
 - `CHANGELOG.md` contains user-visible benefits, not internal restructuring.
 
 The repository delivery ledger and completed migration execution ledger are
-local maintainer state.
-`docs/ROADMAP.md` and `docs/refactor-20260714.md` remain on developer machines
-but are gitignored and must not be cited as public project truth.
+local maintainer state. `docs/ROADMAP.md` consolidates them, remains on
+developer machines, is gitignored, and must not be cited as public project
+truth.
 
 All explanatory documentation under `docs/` is written in English. Literal
 localized UI copy and bilingual transcript fixtures may remain quoted as test

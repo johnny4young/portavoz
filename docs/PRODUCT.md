@@ -165,3 +165,145 @@ Portavoz cannot inspect that setting and therefore promises encryption, not
 unconditional end-to-end encryption. Until then, Developer ID, Hardened
 Runtime, notarization, narrow TCC entitlements, and enforceable egress policy
 are the shipping boundary — never a sandbox marketing claim.
+
+---
+
+# Go-to-market
+
+> Consolidated from the former local `STRATEGY-20260716.md` (deleted 2026-08-06).
+> This section is **intent and policy**, not implemented status. Engineering
+> sequencing lives in the local `docs/ROADMAP.md`; implemented truth lives in
+> [ARCHITECTURE.md](ARCHITECTURE.md), [specs/](specs/README.md), and
+> [GAPS.md](GAPS.md).
+
+## Defensible positioning sentence
+
+> Portavoz is the Apple-native meeting memory for people who cannot send every
+> conversation to a cloud bot. It records locally, knows who said what,
+> preserves English and Spanish as spoken, and lets every decision point back
+> to evidence.
+
+## What must exist before a serious paid launch
+
+| Capability | Why it sells | Status |
+|---|---|---|
+| Reliable recording and crash recovery | The category has zero tolerance for lost meetings | Strength; field proof continues |
+| Accurate mixed mic/system audio | Bot-free capture is the differentiator | Exists; device/AEC field matrix open |
+| Useful transcript + speaker identity | Core outcome | Exists; real multilingual/speaker benchmarks pending |
+| Evidence-linked outcomes | Trust against hallucination | Foundation exists; make proof the default interaction |
+| Local intelligence fallback | Value without Apple Intelligence or cloud | Ollama/MLX paths exist; setup should simplify |
+| FREE usable forever | Removes adoption friction | Policy in place |
+| **Purchase / activate / restore** | Converts value into revenue | **Missing — the one true commercial blocker** |
+| Signed updates and release trust | Buyers expect continuity | Release foundation exists |
+| Privacy/egress receipt | Makes the promise verifiable | Implemented; productize and expose |
+| Export/ownership | Avoids lock-in fear | Exists; improve discoverability |
+| Clear compatibility | Prevents refunds and support load | Add matrix and pre-purchase check |
+
+## Pricing policy
+
+The FREE + one-time-PRO model is sound and matches the economics — the customer
+supplies the Mac, storage, and local compute. The risk was never the price
+concept; it is the missing checkout and license lifecycle.
+
+**FREE — $0.** Unlimited local recording history and minutes; local
+transcription, speaker separation/identity, playback, search; basic summaries
+with a supported local/BYOK setup; import/export and ownership; no artificial
+data lock; community support.
+
+**PRO Personal — $69 one-time** (launch $49 for a clearly bounded window).
+Sells: cross-device private text sync; advanced evidence/RAG/Ask and continuity;
+Companion and advanced intelligence workflows where supported; recipes,
+developer integrations, MCP, GitHub, Shortcuts/App Intents; advanced exports and
+automation; priority support; all updates within the purchased major version.
+**Never sell "AI minutes" for local processing.**
+
+**PRO Family — validate before publishing.** Candidate $99 one-time for up to
+five Macs in one household. Test demand first.
+
+**Business pilot — not self-serve.** High-touch only, after inbound demand:
+invoicing/PO support, documented deployment and update controls, a
+security/data-flow package, priority onboarding, optional annual maintenance.
+Do not promise admin, SSO, retention policy, BAA, legal hold, or audit exports
+until implemented and reviewed.
+
+### What "one-time" honestly means
+
+- perpetual use of the purchased major version;
+- bug and security fixes for the supported lifecycle;
+- optional paid major upgrades, targeted every 18–24 months and only when
+  meaningful, with an upgrade discount for existing customers;
+- no loss of local data or FREE access if a customer declines an upgrade;
+- no retroactive removal of purchased capabilities.
+
+A separate voluntary supporter tier can fund open-source work without changing
+the product contract.
+
+### Commerce provider
+
+Keep the provider replaceable — **the application must never depend on provider
+SDK types.** Candidates: Lemon Squeezy (license keys with activation limits,
+fast to launch), Stripe Managed Payments (merchant-of-record for tax, fraud,
+disputes, localized checkout), Polar (open-source friendly). Score them:
+
+| Criterion | Weight |
+|---|---:|
+| Seller-country eligibility and payout | 20% |
+| Merchant-of-record tax/compliance | 20% |
+| License API and webhooks | 15% |
+| Checkout conversion / local payment methods | 15% |
+| Refund/dispute/support workflow | 10% |
+| Fees at $49/$69 | 10% |
+| Data export/migration | 10% |
+
+### Pricing experiments — sequential, never simultaneous
+
+1. $49 launch vs $69 standard messaging;
+2. "Pay once" vs "No subscription" headline;
+3. product-led FREE → PRO upgrade moment after proven value;
+4. family-pack interest;
+5. professional discount for students, journalists, nonprofits, and open-source
+   maintainers;
+6. refund rate and support cost, not conversion alone.
+
+Primary metrics: visitor→download, download→first recording, activated
+user→PRO intent, checkout completion, refund rate, 30-day active use, and
+support minutes per sale.
+
+## Website and marketing principles
+
+- Lead with the promise and the proof, not the feature list. Published
+  reproducible benchmarks are the credibility asset — keep them current.
+- Every claim on the site must map to evidence in the repo. No sandbox claim,
+  no unconditional end-to-end-encryption claim, no "field-proven sync" claim
+  until §8 of the roadmap closes it.
+- **The archive story is unwritten and it is the sharpest wedge:** competitors
+  monetize by holding old notes hostage; Portavoz structurally cannot. Say so.
+- Start with narrow ideal customers (bilingual developers and consultants with
+  English meetings) rather than "everyone who meets".
+
+## What Portavoz must not become
+
+1. **Not a generic AI wrapper.** The moat is capture, evidence, identity,
+   continuity, and local policy — not a chat box over a transcript.
+2. **Not a cloud service by default.** Cloud features stay explicit, minimal,
+   reversible.
+3. **Not a surveillance dashboard.** Never score employees, infer emotion, or
+   enable hidden recording.
+4. **Not feature soup.** New features must strengthen Capture, Understand, or
+   Act.
+5. **Not an enterprise roadmap before product-market fit.**
+6. **Not a meeting bot.** Joining calls as a participant destroys the
+   differentiation.
+7. **Not "AI said so."** Generated decisions without evidence are suggestions.
+8. **Not a false compliance product.** Local processing reduces exposure; it
+   does not make a customer compliant with recording, professional, privacy,
+   employment, or health law.
+9. **Not cross-platform at the expense of Apple quality.**
+10. **Not an Electron rewrite.**
+11. **Not a lifetime-support trap.** One-time purchase still defines version,
+    support, and paid-upgrade boundaries.
+12. **Not an opaque privacy slogan.** Optional egress is disclosed exactly.
+13. **Not autonomous without review.** External messages, tasks, tickets, and
+    exports require confirmation.
+14. **Not a replacement for human consent.** Help users record consent and
+    understand local rules; never promise universal legality.

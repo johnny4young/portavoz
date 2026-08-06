@@ -10121,3 +10121,38 @@ attempt repairs the meeting whatever the cause, while the one-replacement bound
 keeps a genuinely unstable input from spinning the worker. Leaving the
 lifecycle state alone keeps `ready` honest and puts the explanation where the
 user can act on it.
+
+## D289 — Keep one local planning file and one durable gap ledger (Aug 2026)
+
+**Context:** planning truth was spread across four documents totalling roughly
+405 KB. `docs/ROADMAP.md` held the forward bands, `docs/refactor-20260714.md`
+held a migration program whose bands 0–6 were complete, and
+`docs/STRATEGY-20260716.md` mixed engineering guidance with pricing, website,
+marketing, and competitive strategy. All three were local-only. The tracked
+`docs/GAPS.md` had grown to 65 KB, most of it prose describing resolved gaps
+whose rationale already lived in `DECISIONS.md` and the specs. A session could
+not answer "what is pending" without reading all four and reconciling their
+overlapping, partly stale status claims.
+
+**Decision:** `docs/ROADMAP.md` becomes the single local planning authority. It
+carries the program rules, the shared definition of done, a per-ticket working
+agreement, the architecture context a pending ticket needs, a one-line-per-slice
+delivered ledger, and an ordered ticket queue. Completed work is never described
+at length there — it points at its decision numbers, because `DECISIONS.md` is
+already the authority for why something was done.
+
+Business strategy — pricing policy, packaging, commerce provider selection,
+website and marketing principles, and product anti-goals — moves to the tracked
+`docs/PRODUCT.md`, which already owned vision, positioning, and the competitive
+map. `docs/refactor-20260714.md` and `docs/STRATEGY-20260716.md` are deleted.
+
+`docs/GAPS.md` stays tracked and keeps every gap as a ledger row, but a resolved
+row is compressed to its verdict plus decision references. Open and partial rows
+state their remaining scope in full, because a tracked document must remain
+self-sufficient — it may not depend on the gitignored roadmap for its meaning.
+
+**Consequences:** the planning corpus drops from about 405 KB to 111 KB with no
+pending work, acceptance criterion, or field-validation item lost. One file
+answers "what is next", one answers "what is missing", one answers "why", and
+one answers "what is built". The hygiene script keeps rejecting all three
+retired planning paths if they are ever tracked.
