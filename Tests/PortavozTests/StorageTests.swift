@@ -102,7 +102,7 @@ final class MeetingStoreTests: XCTestCase {
 
         let claimID = UUID().uuidString
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 30)
+            XCTAssertEqual(StorageSchema.version, 31)
             XCTAssertEqual(
                 try Set(db.columns(in: "summaryClaim").map(\.name)),
                 ["id", "summaryID", "kind", "sourceTranscriptRevision", "createdAt"])

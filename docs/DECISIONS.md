@@ -10254,3 +10254,42 @@ admission rule exists before anything can be admitted. The shipped no-egress
 tier will declare only `readMeetingMaterial`, `writeLocalDraft`, and
 `writeLocalFile`; `sendRemote` stays declarable but unused until external
 integrations are a separate decision.
+
+## D293 — Claim the effect before running it (Aug 2026)
+
+**Context:** D292 decides whether a skill *may* run. Nothing yet decides whether
+it *already has*. A skill's effect is outside Portavoz — a reminder draft, a
+file — so a retry, a relaunch after a crash, or two windows acting at once must
+not produce it twice. Deciding that in memory loses the answer exactly when it
+matters, at relaunch.
+
+**Decision:** schema v31 adds the shape the reminder lifecycle already
+established — an append-only `skillExecutionEvent` log as the authority and one
+`skillExecutionState` projection so relaunch answers "did this already run?" in
+one read instead of replaying history.
+
+The claim is the `idempotencyKey`, unique across the table, so two proposals can
+never own one effect and a repeat confirmation of one proposal returns the
+existing claim rather than creating a second. `(proposalID, attempt, kind)` is
+unique too, so a duplicated transition is refused by the database rather than by
+trusting the caller to have checked.
+
+Transitions are deliberately asymmetric about what may already exist. A
+`succeeded` execution is never admitted again. An `executing` one found at
+relaunch is also not admitted: the process died mid-run, so the effect may or
+may not exist and the caller must reconcile rather than repeat. A `failed` one
+may retry under an incremented attempt, so the log distinguishes the retry from
+the original. Cancellation is legal only before the run begins; afterwards only
+the outcome can be recorded, because the effect may already be real.
+
+History is ordered by insertion rather than by `occurredAt`. Two transitions can
+share a timestamp, and ordering by time with an id tiebreak sorted a
+confirmation after the run it authorized whenever both landed in the same
+instant. The log is append-only, so insertion order is the causal order.
+
+Events carry a typed `FailureCategory` and never a message, because a failure
+string is the easiest place for meeting-derived text to leak into a durable
+record.
+
+**Consequences:** storage and policy only — no executor, no adapter, no UI, and
+no skill that can run. Secrets stay in Keychain and never reach these tables.
