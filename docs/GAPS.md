@@ -162,6 +162,18 @@ visible release blocker rather than being inferred from deterministic tests.
   plays across a merged rapid exchange, and confirms clear playback still
   quietens the microphone between distant turns; the deterministic tests prove
   the schedule's ordering invariant, not AVFoundation's acceptance of it.
+- **Ask retrieval budget on a controlled host (D290/D291)**: every semantic
+  scan measurement taken on 6 Aug 2026 — including the pre-change build at
+  129.14 ms p95 — sits far above the 100 ms budget and the 92.85 ms committed
+  26 Jul baseline for the identical 100k-segment, 512-dimension configuration.
+  The runs were taken on a developer workstation with other applications
+  running, and they disagree with themselves (one build measured three query
+  variants faster than one, which is impossible), so the host's noise exceeds
+  the effect being measured. Re-run `portavoz-cli bench-semantic --segments
+  100000 --runs 20 --variants 1` and `--variants 3` on the named stable Mac
+  with background services controlled, three times each, before treating any
+  Ask retrieval number as a budget verdict. Until then SEARCH-3 is not closed
+  on budget.
 - **Formal M3 DER**: correct the Speaker column of the draft RTTM in `~/Desktop/portavoz-verificacion/reunion-2026-07-07.md` → measure with `portavoz-cli der --file system.wav --reference <rttm corregido>`.
 - **Translation pivot** (D25): regenerating a summary in another language must translate the existing snapshot (fast) instead of summarizing again; verify that it preserves structure and action items.
 - **Cold live captions, translated captions, and reader ownership (D121/D128/D129)**: release the idle speech models or use a clean install, start recording before Parakeet is ready, and prove captions begin automatically during the same call after verified preparation without an audio gap or memory growth. Then use the "Translate → …" picker across Spanish and English speakers; prove same-language and uncertain short rows remain unchanged, a long still-growing opposite-language row gains a labeled translation before the next speaker, later growth refreshes that row, no source-language modal appears, target switching cannot restore stale output, pair download is deliberate, and unsupported/failure states are visible rather than silent. Scroll into caption history while new rows arrive: the position and sharp text must remain stable until the explicit Jump to live action.

@@ -91,7 +91,7 @@ struct PortavozCLI {
               portavoz-cli bench-fts [--meetings N] [--segments-per-meeting N]
               portavoz-cli bench-scale [--library-sizes 1000,10000,50000,100000]
                                         [--meeting-minutes 30,120,480] [--runs 20] [--output <json>]
-              portavoz-cli bench-semantic [--segments 100000] [--runs 20] [--output <json>]
+              portavoz-cli bench-semantic [--segments 100000] [--runs 20] [--variants 1] [--output <json>]
               portavoz-cli bench-waveform [--mic <audio>] [--system <audio>]
                                           [--buckets 600] [--runs 20] [--output <json>]
               portavoz-cli bench-spotlight [--mode legacy|snapshot] [--meetings 100000]

@@ -40,12 +40,22 @@ enum BenchSemanticCommand {
 private struct SemanticBenchmarkOptions {
     var segments = 100_000
     var runs = 20
+    /// Bilingual expansion asks several variants of one question. The default
+    /// stays 1 so the committed baseline remains comparable; a higher value
+    /// measures whether they still cost one corpus traversal.
+    var variants = 1
     var output: String?
 
     init(arguments: [String]) throws {
         var index = 0
         while index < arguments.count {
             switch arguments[index] {
+            case "--variants":
+                index += 1
+                guard arguments.indices.contains(index),
+                    let value = Int(arguments[index]), (1...8).contains(value)
+                else { throw SemanticBenchmarkError.invalidVariants }
+                variants = value
             case "--segments":
                 index += 1
                 guard arguments.indices.contains(index),
@@ -74,6 +84,7 @@ private struct SemanticBenchmarkOptions {
 private enum SemanticBenchmarkError: Error, CustomStringConvertible {
     case invalidRuns
     case invalidSegments
+    case invalidVariants
     case missingOptionValue(String)
     case processUsageUnavailable
     case unexpectedTopResult
@@ -85,6 +96,8 @@ private enum SemanticBenchmarkError: Error, CustomStringConvertible {
             "--runs must be between 3 and 100"
         case .invalidSegments:
             "--segments must be between 1 and 1000000"
+        case .invalidVariants:
+            "--variants must be between 1 and 8"
         case .missingOptionValue(let option):
             "missing value after \(option)"
         case .processUsageUnavailable:
@@ -118,6 +131,9 @@ private struct SemanticBenchmarkReport: Codable {
         let embeddingDimension: Int
         let resultLimit: Int
         let segmentsPerMeeting: Int
+        /// How many variants of one question each measured request carried.
+        /// Evidence at different variant counts is not interchangeable.
+        let queryVariants: Int
     }
 
     struct Checkpoint: Codable {
@@ -203,14 +219,20 @@ private enum SemanticBenchmark {
             // Query a vector that is present in the corpus. This keeps result
             // validation meaningful while every persisted vector still varies.
             let queryIndex = options.segments / 2
-            let query = vector(index: queryIndex, dimension: dimension)
+            // Distinct present vectors, so every variant scores real work and
+            // the first one still pins the expected top result.
+            let queries = (0..<options.variants).map { offset in
+                vector(
+                    index: (queryIndex + offset) % options.segments,
+                    dimension: dimension)
+            }
             let expectedText = "Semantic benchmark transcript segment \(queryIndex)"
             for _ in 0..<warmupRuns {
                 let hits = try await store.searchSemantic(
-                    query,
+                    queries,
                     profile: profile,
                     limit: resultLimit)
-                guard hits.first?.text == expectedText else {
+                guard hits.first?.first?.text == expectedText else {
                     throw SemanticBenchmarkError.unexpectedTopResult
                 }
             }
@@ -218,7 +240,7 @@ private enum SemanticBenchmark {
             let measurement = try await measure(
                 runs: options.runs,
                 store: store,
-                query: query,
+                queries: queries,
                 profile: profile,
                 expectedText: expectedText)
 
@@ -254,7 +276,8 @@ private enum SemanticBenchmark {
                 warmupRuns: warmupRuns,
                 embeddingDimension: dimension,
                 resultLimit: resultLimit,
-                segmentsPerMeeting: segmentsPerMeeting),
+                segmentsPerMeeting: segmentsPerMeeting,
+                queryVariants: options.variants),
             checkpoint: .init(
                 totalSegments: options.segments,
                 meetingCount: Int(ceil(Double(options.segments) / Double(segmentsPerMeeting))),
@@ -344,7 +367,7 @@ private enum SemanticBenchmark {
     private static func measure(
         runs: Int,
         store: MeetingStore,
-        query: [Float],
+        queries: [[Float]],
         profile: SemanticEmbeddingProfile,
         expectedText: String
     ) async throws -> Measurement {
@@ -363,14 +386,16 @@ private enum SemanticBenchmark {
             }
             let start = ContinuousClock.now
             let hits = try await store.searchSemantic(
-                query,
+                queries,
                 profile: profile,
                 limit: resultLimit)
             let wall = semanticMilliseconds(since: start)
             let after = try ProcessUsage.current()
             sampler.cancel()
             let peak = max(after.physicalFootprintBytes, await sampler.value)
-            guard hits.first?.text == expectedText else {
+            guard hits.count == queries.count,
+                  hits.first?.first?.text == expectedText
+            else {
                 throw SemanticBenchmarkError.unexpectedTopResult
             }
 
@@ -383,7 +408,7 @@ private enum SemanticBenchmark {
             measurement.incrementalPeakBytes.append(
                 peak - min(peak, before.physicalFootprintBytes))
             measurement.endingBytes.append(after.physicalFootprintBytes)
-            measurement.resultCount = hits.count
+            measurement.resultCount = hits.first?.count ?? 0
         }
         return measurement
     }

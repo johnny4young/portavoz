@@ -6837,6 +6837,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(scaleRunner.contains(#""buildConfiguration") != "release""#))
         XCTAssertTrue(semanticCLI.contains("let dimension = await embedder.dimension"))
         XCTAssertTrue(semanticCLI.contains("profile: profile"))
+        // Variant-count evidence is not interchangeable, so the probe measures
+        // the batch path and records how many variants each request carried.
+        XCTAssertTrue(semanticCLI.contains(#"case "--variants":"#))
+        XCTAssertTrue(semanticCLI.contains("var variants = 1"))
+        XCTAssertTrue(semanticCLI.contains("let queryVariants: Int"))
+        XCTAssertTrue(semanticCLI.contains("queryVariants: options.variants"))
+        XCTAssertTrue(semanticCLI.contains("queries,"))
+        XCTAssertTrue(dispatch.contains("[--variants 1]"))
         XCTAssertTrue(semanticCLI.contains("mach_timebase_info(&timebase)"))
         XCTAssertTrue(semanticCLI.contains("usage.ri_phys_footprint"))
         XCTAssertTrue(semanticRunner.contains("swift build -c release --product portavoz-cli"))

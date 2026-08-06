@@ -376,30 +376,39 @@ extension MeetingStore {
             var traversalOrder = 0
 
             try flattened.withUnsafeBufferPointer { queryBuffer in
-                while let row = try rows.next() {
-                    let order = traversalOrder
-                    traversalOrder += 1
-                    try row.withUnsafeData(atIndex: 0) { blob in
-                        guard let blob else { return }
-                        let rowID: Int64 = row["rowID"]
-                        for slot in scored.indices {
-                            let variant = UnsafeBufferPointer(
-                                rebasing: queryBuffer[
-                                    (slot * dimension)..<((slot + 1) * dimension)])
-                            // A variant that cannot be scored skips only
-                            // itself, exactly as the single-query scan skipped
-                            // only that query's row.
-                            guard let score = Self.semanticDotProduct(
-                                blob,
-                                query: variant,
-                                expectedBytes: expectedBytes)
-                            else { continue }
-                            Self.admit(
-                                score: score,
-                                order: order,
-                                rowID: rowID,
-                                into: &candidates[slot],
-                                limit: limit)
+                // Slice each variant once. Rebasing per row multiplied pointer
+                // work by the corpus size for no benefit.
+                let variants = (0..<scored.count).map { slot in
+                    UnsafeBufferPointer(
+                        rebasing: queryBuffer[
+                            (slot * dimension)..<((slot + 1) * dimension)])
+                }
+                // Direct element access: `&candidates[slot]` in the row loop
+                // pays a bounds and exclusivity check per row per variant,
+                // which is what made one variant cost more than before.
+                try candidates.withUnsafeMutableBufferPointer { admitted in
+                    while let row = try rows.next() {
+                        let order = traversalOrder
+                        traversalOrder += 1
+                        try row.withUnsafeData(atIndex: 0) { blob in
+                            guard let blob else { return }
+                            let rowID: Int64 = row["rowID"]
+                            for slot in variants.indices {
+                                // A variant that cannot be scored skips only
+                                // itself, exactly as the single-query scan
+                                // skipped only that query's row.
+                                guard let score = Self.semanticDotProduct(
+                                    blob,
+                                    query: variants[slot],
+                                    expectedBytes: expectedBytes)
+                                else { continue }
+                                Self.admit(
+                                    score: score,
+                                    order: order,
+                                    rowID: rowID,
+                                    into: &admitted[slot],
+                                    limit: limit)
+                            }
                         }
                     }
                 }

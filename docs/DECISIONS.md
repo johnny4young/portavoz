@@ -10187,3 +10187,33 @@ variant, and expansion breadth stops multiplying I/O. Ranking, fusion, top-k
 bounds, profile fencing, and citation authority are unchanged — the equivalence
 is asserted per variant against the previous per-query scan. There is no schema,
 product, or UI change.
+
+## D291 — Keep the batched scan's hot loop free of per-row overhead (Aug 2026)
+
+**Context:** D290's batched traversal rebased a query slice and took an `inout`
+array-element reference once per row *per variant*. At corpus scale that is
+100k pointer rebases and 100k bounds-and-exclusivity checks for work that does
+not change between rows. A same-host A/B against the pre-change build measured
+the one-variant path slower after batching, which would have made the
+optimization a trade rather than a win for Library search and any single-query
+consumer.
+
+**Decision:** slice every variant once before the row loop, and hold the
+candidate lists through `withUnsafeMutableBufferPointer` so admission writes
+through a direct element pointer. The scan keeps one shape for every variant
+count; there is no separate single-query loop to drift from the batched one.
+
+**Consequences:** the measured one-variant p95 improved from 177.66 ms to
+154.25 ms and p50 from 144.89 ms to 137.02 ms on the same host.
+
+The attribution evidence in `docs/evidence/semantic-batch-attribution-20260806.json`
+is explicitly diagnostic. It reproduces the property D290 exists for — three
+variants cost about one traversal rather than three — in both builds. It does
+**not** settle whether a residual one-variant regression remains: the runs
+disagree with themselves, one of them measuring three variants faster than one,
+so this workstation's noise exceeds the effect. Every run there, including the
+pre-change build at 129.14 ms, sits far above both the 100 ms budget and the
+92.85 ms committed baseline, which is itself evidence that the host is not the
+release authority PERF-001 requires. Confirming the budget stays a controlled-host
+measurement in the field queue, and SEARCH-3 is not claimed closed on budget.
+
