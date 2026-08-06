@@ -10023,3 +10023,36 @@ schema, graph authority, model, or released-product behavior change. Released
 Ask, UI, CLI, MCP, command-palette, and meeting-brief surfaces remain
 transcript-only; remaining graph jobs, scale evidence, telemetry, and explicit
 adoption are separate decisions.
+
+## D287 — Clear playback ducks only where a full ramp cycle fits (Aug 2026)
+
+**Context:** clear playback ducks the microphone outside transcript-confirmed
+local turns, ramping up 60 ms before each turn and back down 120 ms after it.
+`CleanPlaybackPolicy` merged only overlapping ranges, so two turns separated by
+any positive gap stayed distinct. When that gap was shorter than one full
+duck-and-recover cycle the emitted ramps overlapped — an observed pair produced
+a release ramp of `[262.680, 262.800]` immediately followed by an attack ramp
+of `[262.700, 262.760]` nested inside it. `AVMutableAudioMixInputParameters`
+answers an out-of-order or overlapping ramp with an Objective-C exception,
+which Swift cannot catch, so opening the meeting aborted the process. Nine of
+39 real local meetings carried at least one such pair; every one of them was
+unopenable, and refining a transcript could introduce the condition because it
+rewrites turn timings.
+
+**Decision:** decide separation with the same arithmetic the schedule emits.
+Two ranges stay distinct only when the earlier release ramp ends no later than
+the later attack ramp starts; otherwise they merge into one audible range —
+ducking for under `attack + release` is inaudible anyway. Volume events become
+pure policy: `CleanPlaybackPolicy.volumeSchedule` returns the complete typed
+timeline, and `MeetingAudioComposition` only replays it. Because the merge
+predicate and the schedule compute identical expressions, no rounding at the
+boundary can leave the schedule overlapping.
+
+The AVFoundation boundary additionally validates the schedule with
+`isStrictlyOrdered` and returns no mix when it is violated, so a future policy
+regression degrades to an unducked microphone instead of terminating the app.
+
+**Consequences:** meetings with rapid back-and-forth turns open and play. Very
+closely spaced local turns are ducked as one range rather than individually,
+which is the audible intent. Clip export shares the composition and inherits
+the fix. There is no schema, capture, transcript, or storage change.

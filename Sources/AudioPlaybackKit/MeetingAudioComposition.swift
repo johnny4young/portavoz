@@ -87,53 +87,72 @@ struct MeetingAudioComposition {
     /// Mutes the microphone outside local turns because the system channel is
     /// already the clean remote source. Short ramps avoid clicks at speech
     /// boundaries. Mic-only recordings never receive this mix.
+    ///
+    /// The schedule is computed as pure policy and replayed here unchanged.
+    /// `AVMutableAudioMixInputParameters` raises an Objective-C exception —
+    /// which Swift cannot catch, so the process aborts — when volume events
+    /// arrive out of order or with overlapping ramps, so an unordered schedule
+    /// fails closed to no mix instead of reaching AVFoundation.
     private static func cleanMix(
         for microphoneTrack: AVCompositionTrack,
         duration: TimeInterval,
         audibleRanges: [ClosedRange<TimeInterval>]
     ) -> AVAudioMix? {
-        let ranges = CleanPlaybackPolicy.audibleRanges(
-            audibleRanges,
+        let schedule = CleanPlaybackPolicy.volumeSchedule(
+            audibleRanges: audibleRanges,
             duration: duration)
-        guard !ranges.isEmpty else { return nil }
+        guard !schedule.isEmpty,
+              CleanPlaybackPolicy.isStrictlyOrdered(schedule)
+        else { return nil }
 
         let parameters = AVMutableAudioMixInputParameters(track: microphoneTrack)
-        let background = CleanPlaybackPolicy.backgroundMicrophoneGain
-        parameters.setVolume(background, at: .zero)
-
-        for range in ranges {
-            let attackStart = max(0, range.lowerBound - CleanPlaybackPolicy.attack)
-            if attackStart < range.lowerBound {
+        for event in schedule {
+            switch event {
+            case let .level(volume, time):
+                parameters.setVolume(volume, at: Self.time(time))
+            case let .ramp(from, to, start, end):
                 parameters.setVolumeRamp(
-                    fromStartVolume: background,
-                    toEndVolume: 1,
+                    fromStartVolume: from,
+                    toEndVolume: to,
                     timeRange: CMTimeRange(
-                        start: CMTime(seconds: attackStart, preferredTimescale: 600),
-                        end: CMTime(seconds: range.lowerBound, preferredTimescale: 600)))
-            } else {
-                parameters.setVolume(1, at: CMTime(
-                    seconds: range.lowerBound,
-                    preferredTimescale: 600))
-            }
-            parameters.setVolume(
-                1,
-                at: CMTime(seconds: range.upperBound, preferredTimescale: 600))
-            let releaseEnd = min(
-                duration,
-                range.upperBound + CleanPlaybackPolicy.release)
-            if releaseEnd > range.upperBound {
-                parameters.setVolumeRamp(
-                    fromStartVolume: 1,
-                    toEndVolume: background,
-                    timeRange: CMTimeRange(
-                        start: CMTime(seconds: range.upperBound, preferredTimescale: 600),
-                        end: CMTime(seconds: releaseEnd, preferredTimescale: 600)))
+                        start: Self.time(start),
+                        end: Self.time(end)))
             }
         }
 
         let mix = AVMutableAudioMix()
         mix.inputParameters = [parameters]
         return mix
+    }
+
+    private static func time(_ seconds: TimeInterval) -> CMTime {
+        CMTime(seconds: seconds, preferredTimescale: 600)
+    }
+}
+
+/// One microphone volume instruction on the playback timeline. The schedule is
+/// the complete contract between clear-playback policy and AVFoundation.
+public enum CleanPlaybackVolumeEvent: Equatable, Sendable {
+    case level(volume: Float, at: TimeInterval)
+    case ramp(
+        from: Float,
+        to: Float,
+        start: TimeInterval,
+        end: TimeInterval)
+
+    /// When the event begins, and when the timeline is free again.
+    public var start: TimeInterval {
+        switch self {
+        case let .level(_, time): time
+        case let .ramp(_, _, start, _): start
+        }
+    }
+
+    public var end: TimeInterval {
+        switch self {
+        case let .level(_, time): time
+        case let .ramp(_, _, _, end): end
+        }
     }
 }
 
@@ -143,6 +162,21 @@ public enum CleanPlaybackPolicy {
     public static let backgroundMicrophoneGain: Float = 0
     public static let attack: TimeInterval = 0.06
     public static let release: TimeInterval = 0.12
+
+    /// Two local turns can be ducked apart only when the release ramp of the
+    /// earlier one finishes before the attack ramp of the later one has to
+    /// start — otherwise the ramps overlap. Ducking for under `attack +
+    /// release` is inaudible anyway, so such turns become one range.
+    ///
+    /// This compares the ramp boundaries the schedule actually emits instead
+    /// of the gap against a separation constant, so no rounding at the
+    /// boundary can let an overlapping pair through.
+    public static func canDuckBetween(
+        earlierEnd: TimeInterval,
+        laterStart: TimeInterval
+    ) -> Bool {
+        earlierEnd + release <= laterStart - attack
+    }
 
     public static func audibleRanges(
         _ ranges: [ClosedRange<TimeInterval>],
@@ -157,7 +191,10 @@ public enum CleanPlaybackPolicy {
 
         var merged: [ClosedRange<TimeInterval>] = []
         for range in clamped {
-            if let last = merged.last, range.lowerBound <= last.upperBound {
+            if let last = merged.last,
+               !canDuckBetween(
+                   earlierEnd: last.upperBound,
+                   laterStart: range.lowerBound) {
                 merged[merged.count - 1] =
                     last.lowerBound...max(last.upperBound, range.upperBound)
             } else {
@@ -165,5 +202,61 @@ public enum CleanPlaybackPolicy {
             }
         }
         return merged
+    }
+
+    /// The complete microphone volume timeline: quiet by default, ramped up
+    /// just before each local turn and back down just after it. `audibleRanges`
+    /// leaves two ranges separate only when `canDuckBetween` holds for them, so
+    /// consecutive ramps here can never overlap.
+    public static func volumeSchedule(
+        audibleRanges ranges: [ClosedRange<TimeInterval>],
+        duration: TimeInterval
+    ) -> [CleanPlaybackVolumeEvent] {
+        let audible = audibleRanges(ranges, duration: duration)
+        guard !audible.isEmpty else { return [] }
+
+        var events: [CleanPlaybackVolumeEvent] = [
+            .level(volume: backgroundMicrophoneGain, at: 0)
+        ]
+        for range in audible {
+            let attackStart = max(0, range.lowerBound - attack)
+            if attackStart < range.lowerBound {
+                events.append(.ramp(
+                    from: backgroundMicrophoneGain,
+                    to: 1,
+                    start: attackStart,
+                    end: range.lowerBound))
+            } else {
+                events.append(.level(volume: 1, at: range.lowerBound))
+            }
+            events.append(.level(volume: 1, at: range.upperBound))
+            let releaseEnd = min(duration, range.upperBound + release)
+            if releaseEnd > range.upperBound {
+                events.append(.ramp(
+                    from: 1,
+                    to: backgroundMicrophoneGain,
+                    start: range.upperBound,
+                    end: releaseEnd))
+            }
+        }
+        return events
+    }
+
+    /// Every event must start no earlier than the previous one ended, and no
+    /// ramp may be empty or inverted. AVFoundation aborts the process instead
+    /// of returning an error when this is violated, so the boundary checks it.
+    public static func isStrictlyOrdered(
+        _ schedule: [CleanPlaybackVolumeEvent]
+    ) -> Bool {
+        var cursor = -TimeInterval.infinity
+        for event in schedule {
+            guard event.start.isFinite,
+                  event.end.isFinite,
+                  event.start >= cursor
+            else { return false }
+            if case .ramp = event, event.end <= event.start { return false }
+            cursor = event.end
+        }
+        return true
     }
 }

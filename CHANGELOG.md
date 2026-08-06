@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## August 6, 2026
+
+- **▶️ Opening a meeting no longer quits Portavoz** — Recordings with rapid back-and-forth turns now open and play normally instead of closing the app when clear playback ducked between turns too quickly to be possible.
+
 ## August 3, 2026
 
 - **📊 Private quality learns from your reviews** — See a local 90-day advisory scorecard for kept suggestions, owner accuracy, evidence coverage, and time to confirm without exposing meeting text or automating your decisions.

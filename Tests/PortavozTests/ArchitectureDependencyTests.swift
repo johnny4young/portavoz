@@ -3850,6 +3850,32 @@ final class ArchitectureDependencyTests: XCTestCase {
             "self.routeTransitions.admits(ticket)"))
     }
 
+    func testClearPlaybackSchedulesVolumeAsPurePolicyAndFailsClosed() throws {
+        let composition = try Self.contents(
+            of: "Sources/AudioPlaybackKit/MeetingAudioComposition.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        for boundary in [
+            "enum CleanPlaybackVolumeEvent",
+            "public static func canDuckBetween(",
+            "earlierEnd + release <= laterStart - attack",
+            "public static func volumeSchedule(",
+            "public static func isStrictlyOrdered(",
+            "CleanPlaybackPolicy.isStrictlyOrdered(schedule)",
+        ] {
+            XCTAssertTrue(composition.contains(boundary), boundary)
+        }
+        // The ramps must be replayed from the schedule, never recomputed at
+        // the AVFoundation boundary where ordering cannot be proven.
+        XCTAssertFalse(composition.contains("range.lowerBound - CleanPlaybackPolicy.attack"))
+        XCTAssertFalse(composition.contains("range.upperBound + CleanPlaybackPolicy.release"))
+        XCTAssertEqual(
+            composition.components(separatedBy: "setVolumeRamp(").count - 1,
+            1,
+            "exactly one ramp call, driven by the schedule")
+        XCTAssertTrue(decisions.contains("## D287"))
+    }
+
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {
         for file in ["CLIAsk.swift", "CLIMcp.swift", "CLIMeetings.swift"] {
             let source = try Self.contents(of: "Sources/portavoz-cli/\(file)")

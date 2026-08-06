@@ -283,6 +283,14 @@ adapter. `AudioPlaybackKit` owns AVFoundation playback, waveform analysis, AAC
 encoding, and clip rendering. SwiftUI owns transport controls, drawing, and the
 native save panel; it neither discovers channel files nor constructs audio
 capabilities.
+Clear playback derives its complete microphone volume timeline as pure policy:
+`CleanPlaybackPolicy.volumeSchedule` emits typed level and ramp events, and the
+AVFoundation composition only replays them. Two local turns stay
+separately ducked only when the earlier release ramp ends no later than the
+later attack ramp starts, decided with the same arithmetic the schedule emits;
+closer turns merge. The boundary revalidates ordering and returns no mix rather
+than handing AVFoundation an overlapping ramp, which it answers with an
+Objective-C exception that Swift cannot catch.
 Multi-channel compression refuses to replace an existing output,
 retains every original until all outputs verify, removes generated outputs on
 failure or cancellation, and only then removes the raw channels.
