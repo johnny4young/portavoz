@@ -10600,10 +10600,28 @@ roots, so those recordings were reachable from neither.
 error really does mean nothing happened. The failing entry's hidden
 `.partial-<name>` cross-volume temp is removed too — it is a complete copy of
 that meeting's audio, and a later resume could not tell it from a finished
-directory. Restoration *replaces* an existing source rather than deleting the
-destination copy: the resume branch drops its source with `try?`, so a source
-that is present may be a partial leftover, and trusting it would destroy audio
-the pre-rollback code kept.
+directory. Restoration puts the destination copy back *over* an existing source rather
+than deleting it: the resume branch drops its source with `try?`, so a source
+that is present may be a partial leftover, and trusting it would destroy audio.
+
+**Correction (same day).** The first attempt used `FileManager.replaceItemAt`,
+which fails this job twice and was caught by an adversarial pass that
+reproduced both on a mounted volume. It cannot cross volumes at all (EXDEV) —
+and crossing volumes is the only reason the migration has a copy path — so on
+an external drive it stranded every directory it was meant to restore. On one
+volume it can also throw *after* it has already swapped: the good copy lands
+correctly, the old contents are left at the destination's **real** name, and
+the caller is told the entry was stranded. A later resume then reads that name
+as a finished migration and drops the restored source, destroying the audio.
+
+`putBack` replaces it: the existing origin is renamed aside to a hidden
+`.superseded-<name>` **inside the source folder** — a rename needs no
+permission to delete children, and `contentsOfDirectory` skips hidden entries,
+so no later migration can mistake it for a meeting — then `moveItem` brings the
+copy back, which does cross volumes. A failed move puts the origin back, so a
+restore that cannot finish leaves it no worse. Both failure shapes now have
+tests; the cross-volume one mounts a scratch disk image and skips where it
+cannot.
 
 When a restore itself fails, the error becomes
 `RecordingsMigrationError.stranded`, carrying a count and the folder — enough to

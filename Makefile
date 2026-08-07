@@ -590,6 +590,18 @@ test-ui-preflight:
 	@if pgrep -x Gancho >/dev/null || pgrep -x gancho >/dev/null; then \
 		echo "⚠️  Gancho is running; if XCUITest fails because of interrupting windows, close it and retry."; \
 	fi
+	@# A system alert sits above every app window and the interruption monitor
+	@# cannot dismiss it, so each affected case fails with "Handler claimed to
+	@# have handled Dialog ... but it's still interrupting". A freshly installed
+	@# dev identity asking for its one-time TCC grants is the usual source, which
+	@# makes `make install` immediately before a UI run the usual trigger. Not
+	@# dismissed automatically: answering an unknown system prompt on the user's
+	@# behalf is not this harness's decision.
+	@if [ "$$(osascript -e 'tell application "System Events" to tell process "UserNotificationCenter" to count windows' 2>/dev/null || echo 0)" != "0" ]; then \
+		echo "⛔️ A system alert is open (UserNotificationCenter). It will interrupt every case."; \
+		echo "   Answer or dismiss it, then re-run."; \
+		exit 1; \
+	fi
 	@sleep 1
 
 ## Regenerate the three public README/website screenshots from a fictional,

@@ -185,16 +185,12 @@ public struct RecordingsLocation: Sendable {
             let source = sourceAudio.appendingPathComponent(name)
             guard manager.fileExists(atPath: target.path) else { continue }
             do {
-                // Replaces rather than skips when the source still exists. The
-                // resume branch drops its source with `try?`, so a source that
-                // is present may be a *partial* leftover; deleting the complete
-                // destination copy on the strength of that would destroy audio
-                // the pre-rollback code kept.
-                if manager.fileExists(atPath: source.path) {
-                    _ = try manager.replaceItemAt(source, withItemAt: target)
-                } else {
-                    try manager.moveItem(at: target, to: source)
-                }
+                try putBack(
+                    target,
+                    over: source,
+                    named: name,
+                    in: sourceAudio,
+                    using: manager)
             } catch {
                 stranded.append(name)
             }
@@ -206,6 +202,48 @@ public struct RecordingsLocation: Sendable {
                 cause: cause)
         }
         return cause
+    }
+
+    /// Moves one directory back over whatever is at its origin, and either
+    /// succeeds completely or leaves the origin exactly as it found it.
+    ///
+    /// Deliberately not `replaceItemAt`, which fails this job twice. It cannot
+    /// cross volumes at all (EXDEV) — and crossing volumes is the only reason
+    /// the migration has a copy path — so on an external drive it would strand
+    /// every directory it was supposed to restore. Worse, on one volume it can
+    /// throw *after* it has already swapped: the good copy lands correctly, but
+    /// the old contents are left at the destination's real name and the caller
+    /// is told the entry was stranded. A later resume then finds that name,
+    /// treats it as a finished migration, and drops the restored source —
+    /// destroying the audio.
+    ///
+    /// A rename inside one directory needs no permission to delete children, so
+    /// quarantining the existing origin works even when removing it does not.
+    private func putBack(
+        _ target: URL,
+        over source: URL,
+        named name: String,
+        in sourceAudio: URL,
+        using manager: FileManager
+    ) throws {
+        guard manager.fileExists(atPath: source.path) else {
+            try manager.moveItem(at: target, to: source)
+            return
+        }
+        // Hidden and inside the *source* folder, never at the destination's
+        // real name. `contentsOfDirectory` skips hidden entries, so a leftover
+        // can never be mistaken for a meeting directory by a later migration.
+        let quarantine = sourceAudio.appendingPathComponent(".superseded-" + name)
+        try? manager.removeItem(at: quarantine)
+        try manager.moveItem(at: source, to: quarantine)
+        do {
+            try manager.moveItem(at: target, to: source)
+        } catch {
+            // Put the origin back so a failed restore leaves it no worse.
+            try? manager.moveItem(at: quarantine, to: source)
+            throw error
+        }
+        try? manager.removeItem(at: quarantine)
     }
 }
 
