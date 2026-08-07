@@ -10,6 +10,7 @@ public enum AskGraphFactQuery: Equatable, Sendable {
     case personCommitments(PersonCommitmentsQuery)
     case decisionConflicts(DecisionConflictsQuery)
     case changeSince(ChangeSinceQuery)
+    case decisionHistory(DecisionHistoryQuery)
 }
 
 /// Independent graph-fact retrieval for Ask. The result keeps typed facts and
@@ -29,6 +30,7 @@ public struct LocalAskGraphFactRetrieval: AskGraphFactRetrieving {
     private let commitments: any PersonCommitmentFactReading
     private let conflicts: any DecisionConflictsReading
     private let changes: any ChangeSinceReading
+    private let history: any DecisionHistoryReading
 
     public init(store: MeetingStore) {
         blockers = store
@@ -36,6 +38,7 @@ public struct LocalAskGraphFactRetrieval: AskGraphFactRetrieving {
         commitments = store
         conflicts = store
         changes = store
+        history = store
     }
 
     public init(
@@ -43,13 +46,15 @@ public struct LocalAskGraphFactRetrieval: AskGraphFactRetrieving {
         topics: any TopicFirstDiscussionReading,
         commitments: any PersonCommitmentFactReading,
         conflicts: any DecisionConflictsReading,
-        changes: any ChangeSinceReading
+        changes: any ChangeSinceReading,
+        history: any DecisionHistoryReading
     ) {
         self.blockers = blockers
         self.topics = topics
         self.commitments = commitments
         self.conflicts = conflicts
         self.changes = changes
+        self.history = history
     }
 
     public func retrieve(
@@ -70,6 +75,9 @@ public struct LocalAskGraphFactRetrieval: AskGraphFactRetrieving {
                 .execute(query)
         case .changeSince(let query):
             return try await LoadChangeSince(repository: changes)
+                .execute(query)
+        case .decisionHistory(let query):
+            return try await LoadDecisionHistory(repository: history)
                 .execute(query)
         }
     }

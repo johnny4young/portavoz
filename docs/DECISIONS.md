@@ -10765,3 +10765,24 @@ the discriminator proximity cannot pass.
 **Consequences:** five of the six D270 jobs now answer from source-backed
 authority. `decisionHistory` remains open, and the decision-topic confirmation
 gesture still has no UI surface; both ship together as the band's next slice.
+
+## D310 — decisionHistory answers only with current confirmed truth (Aug 2026)
+
+**Context:** the last of the six D270 jobs. "What did we decide about X" must
+return the decision that stands — the superseded one and a decision about a
+different subject are exactly the corpus's forbidden results, and a generated
+observation that nobody confirmed cannot answer at all.
+
+**Decision:** `DecisionHistoryQuery` serves current confirmed decisions linked
+to the topic family through the D308 authority. A superseded decision keeps its
+link — decisionConflicts serves it — but its projected status excludes it here;
+the exclusion is mutation-tested. The returned fact stands on the authority row
+itself (`decisionAboutness(linkID)`), and abstains
+`insufficientConfirmedDecision` when the topic has no current confirmed
+decision, matching the canonical corpus reason name exactly as every other job
+does. All 6 canonical cases traverse public product boundaries, with the
+distractor decision linked to *its own* subject's topic — as an honest user
+would leave it — and still excluded.
+
+**Consequences:** all six D270 jobs now answer from source-backed authority.
+GRAPH-6 is unblocked once the confirmation gesture ships.

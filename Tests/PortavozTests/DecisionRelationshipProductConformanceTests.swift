@@ -41,6 +41,73 @@ final class DecisionRelationshipProductConformanceTests: XCTestCase {
         }
     }
 
+    func testCanonicalDecisionHistoryCasesTraverseProductPath() async throws {
+        let fixture = try RelationshipFixtureDocument.load()
+        let cases = fixture.cases.filter { $0.job == "decisionHistory" }
+
+        XCTAssertEqual(cases.count, 6)
+        XCTAssertEqual(
+            Set(cases.map(\.relationship)),
+            [
+                "englishToEnglish", "spanishToSpanish",
+                "englishToSpanish", "spanishToEnglish",
+                "codeSwitched", "abstention",
+            ])
+
+        for fixtureCase in cases {
+            let adapter = try await RelationshipProductAdapter(fixtureCase)
+            let result = try await LoadDecisionHistory(
+                repository: adapter.store
+            ).execute(DecisionHistoryQuery(topicID: adapter.topicID))
+
+            try assertHistory(
+                result,
+                matches: fixtureCase.expected,
+                adapter: adapter,
+                caseID: fixtureCase.id)
+        }
+    }
+
+    private func assertHistory(
+        _ result: MeetingMemoryGraphQueryResult,
+        matches expected: RelationshipExpected,
+        adapter: RelationshipProductAdapter,
+        caseID: String
+    ) throws {
+        switch result {
+        case .facts(let page):
+            XCTAssertEqual(expected.answerPolicy, "answer", caseID)
+            let resultIDs = try page.facts.map { fact in
+                guard case .decisionAboutness(let linkID) = fact.id else {
+                    throw RelationshipFixtureError.invalid(
+                        "\(caseID): product returned a non-aboutness fact")
+                }
+                XCTAssertEqual(fact.kind, .decisionAboutTopic, caseID)
+                return try XCTUnwrap(
+                    adapter.externalFactIDByLinkID[linkID],
+                    "\(caseID): product returned an unmapped decision link")
+            }
+            let evidenceIDs = try page.facts.flatMap(\.evidence).map { evidence in
+                try XCTUnwrap(
+                    adapter.externalEvidenceIDBySegmentID[evidence.segmentID],
+                    "\(caseID): product returned unmapped transcript evidence")
+            }
+            XCTAssertEqual(resultIDs, expected.resultIDs, caseID)
+            XCTAssertEqual(evidenceIDs, expected.evidenceIDs, caseID)
+            XCTAssertTrue(
+                Set(expected.forbiddenResultIDs).isDisjoint(with: resultIDs),
+                caseID)
+        case .abstained(let reason):
+            XCTAssertEqual(expected.answerPolicy, "abstain", caseID)
+            XCTAssertEqual(
+                expected.abstentionReason,
+                "insufficientConfirmedDecision",
+                caseID)
+            XCTAssertEqual(reason, .insufficientConfirmedDecision, caseID)
+            XCTAssertTrue(expected.resultIDs.isEmpty, caseID)
+        }
+    }
+
     func testCanonicalChangeSinceCasesTraverseProductPath() async throws {
         let fixture = try RelationshipFixtureDocument.load()
         let cases = fixture.cases.filter { $0.job == "changeSince" }
@@ -127,6 +194,7 @@ private struct RelationshipProductAdapter {
     let topicID: TopicID
     let anchorMeetingID: MeetingID?
     let externalFactIDByEventID: [DecisionEventID: String]
+    let externalFactIDByLinkID: [DecisionTopicLinkID: String]
     let externalEvidenceIDBySegmentID: [UUID: String]
 
     // swiftlint:disable:next function_body_length
@@ -275,41 +343,77 @@ private struct RelationshipProductAdapter {
             observationIDByChoice[fact.objectID] = observationID
         }
 
-        // The queried subject becomes a topic through the public topic path,
-        // and every confirmed decision is linked through the decision-topic
-        // authority — the explicit gesture GRAPH-5a demands.
-        // A case with no confirmed decision (the unresolvable-baseline shape)
-        // still queries a real topic; the label content is immaterial because
-        // the adapter abstains before topology is consulted.
-        let subject = decisions.first?.subjectID
+        // Every subject becomes its own topic through the public topic path,
+        // and every confirmed decision is linked to *its* subject's topic
+        // through the decision-topic authority — a distractor about another
+        // subject therefore lives on another topic, exactly as a user who
+        // linked honestly would leave it. The queried subject is the one the
+        // case is about: the subject carrying the most confirmed decisions.
+        let bySubject = Dictionary(grouping: decisions, by: \.subjectID)
+        let queriedSubject = bySubject
+            .sorted { lhs, rhs in
+                lhs.value.count != rhs.value.count
+                    ? lhs.value.count > rhs.value.count
+                    : lhs.key < rhs.key
+            }
+            .first?.key
             ?? "\(fixtureCase.id)-subject"
-        let firstEvidence = try Self.required(
-            (decisions.first.flatMap { $0.evidenceIDs.first }
-                ?? fixtureCase.corpus.evidence.first?.id)
-                .flatMap { evidenceByID[$0] },
-            "missing subject evidence")
-        let topic = try await store.createTopicAndLink(TopicLinkProposal(
-            meetingID: try Self.required(
-                meetingIDByExternalID[firstEvidence.meetingID],
-                "unknown topic meeting"),
-            segmentID: try Self.required(
-                segmentIDByEvidenceID[firstEvidence.id],
-                "unknown topic segment"),
-            sourceTranscriptRevision: firstEvidence.transcriptRevision,
-            observedLabel: subject,
-            language: firstEvidence.language,
-            origin: .manual))
-        for fact in decisions {
-            _ = try await store.confirmDecisionTopicLink(
-                DecisionTopicLinkConfirmation(
-                    decisionID: try Self.required(
-                        decisionIDByChoice[fact.objectID],
-                        "unlinked decision \(fact.objectID)"),
-                    topicID: topic.topic.id,
-                    observationID: try Self.required(
-                        observationIDByChoice[fact.objectID],
-                        "missing observation \(fact.objectID)"),
-                    confirmedAt: Self.baseDate.addingTimeInterval(2_000)))
+        var topicIDBySubject: [String: TopicID] = [:]
+        var externalFactIDByLinkID: [DecisionTopicLinkID: String] = [:]
+        for subject in Set(bySubject.keys).union([queriedSubject]).sorted() {
+            let subjectFacts = bySubject[subject] ?? []
+            let firstEvidence = try Self.required(
+                (subjectFacts.first.flatMap { $0.evidenceIDs.first }
+                    ?? fixtureCase.corpus.evidence.first?.id)
+                    .flatMap { evidenceByID[$0] },
+                "missing subject evidence for \(subject)")
+            let topic = try await store.createTopicAndLink(TopicLinkProposal(
+                meetingID: try Self.required(
+                    meetingIDByExternalID[firstEvidence.meetingID],
+                    "unknown topic meeting"),
+                segmentID: try Self.required(
+                    segmentIDByEvidenceID[firstEvidence.id],
+                    "unknown topic segment"),
+                sourceTranscriptRevision: firstEvidence.transcriptRevision,
+                observedLabel: subject,
+                language: firstEvidence.language,
+                origin: .manual))
+            topicIDBySubject[subject] = topic.topic.id
+            for fact in subjectFacts {
+                let confirmed = try await store.confirmDecisionTopicLink(
+                    DecisionTopicLinkConfirmation(
+                        decisionID: try Self.required(
+                            decisionIDByChoice[fact.objectID],
+                            "unlinked decision \(fact.objectID)"),
+                        topicID: topic.topic.id,
+                        observationID: try Self.required(
+                            observationIDByChoice[fact.objectID],
+                            "missing observation \(fact.objectID)"),
+                        confirmedAt: Self.baseDate.addingTimeInterval(2_000)))
+                externalFactIDByLinkID[confirmed.link.id] = fact.id
+            }
+        }
+
+        // A corpus decision whose status is "superseded" implies the
+        // relationship without spelling it as a relation fact: the confirmed
+        // decision on the same subject replaced it.
+        for subject in bySubject.keys.sorted() where relation == nil {
+            let subjectFacts = bySubject[subject] ?? []
+            guard let replaced = subjectFacts.first(
+                where: { $0.status == "superseded" }),
+                let successor = subjectFacts.first(
+                    where: { $0.status == "confirmed" })
+            else { continue }
+            _ = try await store.confirmDecisionRelationship(
+                DecisionRelationshipConfirmation(
+                    targetDecisionID: try Self.required(
+                        decisionIDByChoice[replaced.objectID],
+                        "replaced decision is not confirmed"),
+                    successorDecisionID: try Self.required(
+                        decisionIDByChoice[successor.objectID],
+                        "successor decision is not confirmed"),
+                    kind: .supersede,
+                    confirmedAt: Self.baseDate.addingTimeInterval(2_500)))
         }
 
         // The confirmed relationship: the newer decision explicitly supersedes
@@ -354,9 +458,12 @@ private struct RelationshipProductAdapter {
         try await Self.projectGraph(in: store)
 
         self.store = store
-        self.topicID = topic.topic.id
+        self.topicID = try Self.required(
+            topicIDBySubject[queriedSubject],
+            "missing queried topic")
         self.anchorMeetingID = anchorMeetingID
         self.externalFactIDByEventID = externalFactIDByEventID
+        self.externalFactIDByLinkID = externalFactIDByLinkID
         self.externalEvidenceIDBySegmentID = Dictionary(
             uniqueKeysWithValues: segmentIDByEvidenceID.map { ($1, $0) })
     }

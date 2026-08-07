@@ -1876,9 +1876,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         let application = try Self.contents(
             of: "Sources/ApplicationKit/LoadDecisionRelationships.swift")
 
+        let history = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+DecisionHistoryQuery.swift")
         XCTAssertTrue(core.contains("decisionSupersededDecision"))
+        XCTAssertTrue(core.contains("decisionAboutTopic"))
         XCTAssertTrue(core.contains("unsupportedConflict"))
         XCTAssertTrue(core.contains("missingTemporalBaseline"))
+        XCTAssertTrue(core.contains("insufficientConfirmedDecision"))
+        XCTAssertTrue(history.contains("DecisionTopicLinkRecord"))
+        XCTAssertFalse(
+            history.contains("topicMeetingEvidence"),
+            "decision history never derives from meeting co-occurrence")
+        XCTAssertTrue(
+            history.contains("continuity.decision.status == .confirmed"),
+            "superseded truth never answers what was decided")
         XCTAssertTrue(storage.contains("FROM decisionTopicLink AS link"))
         XCTAssertFalse(
             storage.contains("topicMeetingEvidence"),
@@ -1891,6 +1902,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "an unresolvable anchor abstains before topology")
         XCTAssertTrue(application.contains("LoadDecisionConflicts"))
         XCTAssertTrue(application.contains("LoadChangeSince"))
+        XCTAssertTrue(application.contains("LoadDecisionHistory"))
     }
 
     func testBlockerQueryUsesGraphTopologyButRehydratesAuthority() throws {

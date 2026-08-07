@@ -135,6 +135,18 @@ public struct ResolvedAskGraphFactFilter: Equatable, Sendable {
                 topicID: exact.topicID,
                 itemLimit: exact.itemLimit,
                 filter: filter)))
+        case .decisionHistory(let exact):
+            guard exact.isValid,
+                  personID == nil,
+                  topicID == nil || topicID == exact.topicID
+            else { return .abstained(.invalidQuery) }
+            guard let filter = exact.filter.intersection(with: factFilter) else {
+                return .abstained(.noMatchingFacts)
+            }
+            return .query(.decisionHistory(DecisionHistoryQuery(
+                topicID: exact.topicID,
+                itemLimit: exact.itemLimit,
+                filter: filter)))
         case .changeSince(let exact):
             guard exact.isValid,
                   personID == nil,

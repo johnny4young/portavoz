@@ -1,6 +1,30 @@
 import PortavozCore
 import StorageKit
 
+public protocol DecisionHistoryReading: Sendable {
+    func decisionHistory(
+        _ query: DecisionHistoryQuery
+    ) async throws -> MeetingMemoryGraphQueryResult
+}
+
+extension MeetingStore: DecisionHistoryReading {}
+
+/// Application boundary for "what did we decide about X": the current
+/// confirmed decisions linked to one exact topic, superseded truth excluded.
+public struct LoadDecisionHistory: ApplicationUseCase {
+    private let repository: any DecisionHistoryReading
+
+    public init(repository: any DecisionHistoryReading) {
+        self.repository = repository
+    }
+
+    public func execute(
+        _ query: DecisionHistoryQuery
+    ) async throws -> MeetingMemoryGraphQueryResult {
+        try await repository.decisionHistory(query)
+    }
+}
+
 public protocol DecisionConflictsReading: Sendable {
     func decisionConflicts(
         _ query: DecisionConflictsQuery

@@ -114,6 +114,35 @@ public struct TopicFirstDiscussionQuery: Equatable, Sendable {
     }
 }
 
+/// Finds the *current* confirmed decisions about one exact topic family —
+/// "what did we decide about X" — with superseded and reversed decisions
+/// excluded. Label and alias resolution happen before this query, and a
+/// decision about a different subject never answers, however close by.
+public struct DecisionHistoryQuery: Equatable, Sendable {
+    public static let defaultItemLimit = 20
+    public static let maximumItemLimit = 100
+
+    public let topicID: TopicID
+    public let itemLimit: Int
+    public let filter: MeetingMemoryGraphFactFilter
+
+    public init(
+        topicID: TopicID,
+        itemLimit: Int = Self.defaultItemLimit,
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) {
+        self.topicID = topicID
+        self.itemLimit = itemLimit
+        self.filter = filter
+    }
+
+    public var isValid: Bool {
+        itemLimit >= 1
+            && itemLimit <= Self.maximumItemLimit
+            && filter.isValid
+    }
+}
+
 /// Finds explicitly confirmed decision replacements about one exact topic
 /// family: which confirmed decision superseded or reversed which. Label and
 /// alias resolution happen before this query; a generated note that "guessed"
@@ -207,6 +236,9 @@ public enum MeetingMemoryGraphFactID: Hashable, Sendable {
     /// The supersede/reverse event on the older decision: one relationship,
     /// one identity, however many topics its decisions are linked to.
     case decisionRelationship(DecisionEventID)
+    /// The decision-topic authority row asserting the aboutness the fact
+    /// stands on.
+    case decisionAboutness(DecisionTopicLinkID)
 }
 
 public enum MeetingMemoryGraphFactKind: String, Equatable, Sendable {
@@ -217,6 +249,9 @@ public enum MeetingMemoryGraphFactKind: String, Equatable, Sendable {
     /// Shared by decisionConflicts and changeSince — the relationship is the
     /// same authority; the jobs differ only in temporal anchoring.
     case decisionSupersededDecision = "decision-superseded-decision"
+    /// Subject: a current confirmed decision. Object: the topic it is
+    /// explicitly about.
+    case decisionAboutTopic = "decision-about-topic"
 }
 
 public enum MeetingMemoryGraphFactEntity: Hashable, Sendable {
@@ -326,6 +361,10 @@ public enum MeetingMemoryGraphQueryAbstention: String, Equatable, Sendable {
     /// The anchor meeting could not be resolved, so "since when" has no exact
     /// answer and the query abstains rather than guessing a baseline.
     case missingTemporalBaseline = "missing-temporal-baseline"
+    /// No current confirmed decision is linked to the topic. Generated
+    /// observations that were never confirmed cannot answer "what did we
+    /// decide", and neither can a decision that was since replaced.
+    case insufficientConfirmedDecision = "insufficient-confirmed-decision"
 }
 
 public enum MeetingMemoryGraphQueryResult: Equatable, Sendable {

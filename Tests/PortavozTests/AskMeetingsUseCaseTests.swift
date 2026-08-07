@@ -524,7 +524,8 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             topics: repository,
             commitments: repository,
             conflicts: repository,
-            changes: repository)
+            changes: repository,
+            history: repository)
         let queries: [AskGraphFactQuery] = [
             .commitmentBlockers(CommitmentBlockerQuery(
                 commitmentID: CommitmentID(),
@@ -541,6 +542,9 @@ final class AskMeetingsUseCaseTests: XCTestCase {
                 topicID: TopicID(),
                 sinceMeetingID: MeetingID(),
                 itemLimit: 6)),
+            .decisionHistory(DecisionHistoryQuery(
+                topicID: TopicID(),
+                itemLimit: 7)),
         ]
 
         for query in queries {
@@ -830,7 +834,8 @@ private actor AskGraphFactRepositoryFake:
     TopicFirstDiscussionReading,
     PersonCommitmentFactReading,
     DecisionConflictsReading,
-    ChangeSinceReading {
+    ChangeSinceReading,
+    DecisionHistoryReading {
     private(set) var calls: [AskGraphFactQuery] = []
 
     func commitmentBlockerFacts(
@@ -865,6 +870,13 @@ private actor AskGraphFactRepositoryFake:
         _ query: ChangeSinceQuery
     ) -> MeetingMemoryGraphQueryResult {
         calls.append(.changeSince(query))
+        return .abstained(.projectionNotReady)
+    }
+
+    func decisionHistory(
+        _ query: DecisionHistoryQuery
+    ) -> MeetingMemoryGraphQueryResult {
+        calls.append(.decisionHistory(query))
         return .abstained(.projectionNotReady)
     }
 }
