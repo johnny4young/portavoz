@@ -718,6 +718,85 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
             isFinal: isFinal)
     }
 
+    // MARK: - Lane resolution is indexed, not re-derived per event
+
+    /// The index exists to stop lane resolution being quadratic in a meeting's
+    /// correction count. It may not change a single answer while doing so —
+    /// including through a restore chain, which resolves by following
+    /// predecessors rather than by the restore's own kind.
+    func testIndexedLaneResolutionMatchesResolvingAgainstWholeHistory() throws {
+        let source = segment(1, text: "Original", start: 0, end: 4)
+        let text = edit(
+            101,
+            targets: [source.id],
+            kind: .replaceText(text: "Corrected", language: "en"))
+        let speaker = edit(
+            102,
+            targets: [source.id],
+            kind: .changeSpeaker(secondSpeaker))
+        let suppress = edit(103, targets: [source.id], kind: .suppress)
+        // A restore of a restore: the lane comes from the original correction
+        // at the end of the chain, not from either restore.
+        let undo = edit(
+            104, targets: [source.id], kind: .restore, supersedes: text.id)
+        let redo = edit(
+            105, targets: [source.id], kind: .restore, supersedes: undo.id)
+        let history = [text, speaker, suppress, undo, redo]
+
+        let index = TranscriptCorrectionDomainIndex(history: history)
+        for event in history {
+            let indexed = try index.domain(of: event)
+            let direct = try TranscriptCorrectionPolicy.correctionDomain(
+                of: event, in: history)
+            XCTAssertEqual(indexed, direct, "\(event.id)")
+        }
+        let resolved: [TranscriptCorrectionDomain] = [
+            try index.domain(of: redo),
+            try index.domain(of: suppress),
+            try index.domain(of: speaker),
+        ]
+        XCTAssertEqual(resolved, [.text, .structure, .speaker])
+    }
+
+    func testIndexedLaneResolutionRefusesTheSameHistoriesAsBefore() throws {
+        let source = segment(1, text: "Original", start: 0, end: 4)
+        let text = edit(
+            101,
+            targets: [source.id],
+            kind: .replaceText(text: "Corrected", language: "en"))
+
+        // A duplicated id makes the whole history unreadable, and the refusal
+        // names the event that was asked about.
+        let duplicated = TranscriptCorrectionDomainIndex(history: [text, text])
+        XCTAssertThrowsError(try duplicated.domain(of: text)) { error in
+            XCTAssertEqual(
+                error as? TranscriptCorrectionValidationError,
+                .duplicateEventID(text.id))
+        }
+
+        // A restore whose predecessor is absent has no lane to inherit.
+        let orphan = edit(
+            102, targets: [source.id], kind: .restore, supersedes: id(999))
+        let index = TranscriptCorrectionDomainIndex(history: [text, orphan])
+        XCTAssertThrowsError(try index.domain(of: orphan)) { error in
+            XCTAssertEqual(
+                error as? TranscriptCorrectionValidationError,
+                .missingPredecessor(orphan.id))
+        }
+
+        // A restore cycle must be refused rather than recursed forever.
+        let first = edit(
+            201, targets: [source.id], kind: .restore, supersedes: id(202))
+        let second = edit(
+            202, targets: [source.id], kind: .restore, supersedes: id(201))
+        let cyclic = TranscriptCorrectionDomainIndex(history: [first, second])
+        XCTAssertThrowsError(try cyclic.domain(of: first)) { error in
+            XCTAssertEqual(
+                error as? TranscriptCorrectionValidationError,
+                .invalidSupersession(first.id))
+        }
+    }
+
     private func edit(
         _ value: Int,
         targets: [UUID],

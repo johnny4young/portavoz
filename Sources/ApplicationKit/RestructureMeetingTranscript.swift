@@ -187,11 +187,10 @@ private struct TranscriptStructureProjectionBuilder {
         }
         effectiveActiveCorrections = active
         activeByTarget = Self.eventsByTarget(active)
+        let domains = TranscriptCorrectionDomainIndex(history: history)
         activeDomains = Dictionary(uniqueKeysWithValues:
             active.compactMap { event in
-                (try? TranscriptCorrectionPolicy.correctionDomain(
-                    of: event,
-                    in: history)).map { (event.id, $0) }
+                (try? domains.domain(of: event)).map { (event.id, $0) }
             })
     }
 

@@ -392,14 +392,14 @@ public enum TranscriptCorrectionPolicy {
         of event: TranscriptCorrectionEvent,
         in history: [TranscriptCorrectionEvent]
     ) throws -> TranscriptCorrectionDomain {
-        let grouped = Dictionary(grouping: history, by: \.id)
-        guard grouped.values.allSatisfy({ $0.count == 1 }) else {
-            throw TranscriptCorrectionValidationError.duplicateEventID(event.id)
-        }
-        return try correctionDomain(
-            of: event,
-            indexedBy: grouped.mapValues { $0[0] },
-            visited: [])
+        try TranscriptCorrectionDomainIndex(history: history).domain(of: event)
+    }
+
+    static func correctionDomain(
+        of event: TranscriptCorrectionEvent,
+        indexedBy events: [UUID: TranscriptCorrectionEvent]
+    ) throws -> TranscriptCorrectionDomain {
+        try correctionDomain(of: event, indexedBy: events, visited: [])
     }
 
     public static func precedes(
@@ -479,6 +479,45 @@ public enum TranscriptCorrectionPolicy {
                 indexedBy: events,
                 visited: visited)
         }
+    }
+}
+
+/// One correction history, indexed once so lane resolution is a lookup.
+///
+/// Every call site resolves the lane of *each* active correction against the
+/// *whole* history. Re-indexing per call made that quadratic in a meeting's
+/// correction count — paid on every compose and on every Meeting Detail
+/// snapshot, which is exactly where a heavily corrected meeting is slowest.
+/// The index does the grouping once; per-event semantics, including which
+/// event id a duplicate reports, are unchanged.
+public struct TranscriptCorrectionDomainIndex: Sendable {
+    private let events: [UUID: TranscriptCorrectionEvent]
+    private let hasDuplicateID: Bool
+
+    public init(history: [TranscriptCorrectionEvent]) {
+        var events: [UUID: TranscriptCorrectionEvent] = [:]
+        events.reserveCapacity(history.count)
+        var duplicated = false
+        for event in history {
+            if events.updateValue(event, forKey: event.id) != nil {
+                duplicated = true
+            }
+        }
+        self.events = events
+        hasDuplicateID = duplicated
+    }
+
+    /// Deferred rather than thrown at construction so the reported id stays the
+    /// event that was asked about, as it was when each call re-indexed.
+    public func domain(
+        of event: TranscriptCorrectionEvent
+    ) throws -> TranscriptCorrectionDomain {
+        guard !hasDuplicateID else {
+            throw TranscriptCorrectionValidationError.duplicateEventID(event.id)
+        }
+        return try TranscriptCorrectionPolicy.correctionDomain(
+            of: event,
+            indexedBy: events)
     }
 }
 

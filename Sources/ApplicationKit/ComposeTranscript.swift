@@ -300,12 +300,11 @@ private extension ComposeTranscript {
         indexBySourceID: [UUID: Int]
     ) throws {
         var ownersByTarget: [UUID: [TranscriptCorrectionDomain: UUID]] = [:]
+        let domains = TranscriptCorrectionDomainIndex(history: history)
         for correction in active {
             let domain: TranscriptCorrectionDomain
             do {
-                domain = try TranscriptCorrectionPolicy.correctionDomain(
-                    of: correction,
-                    in: history)
+                domain = try domains.domain(of: correction)
             } catch {
                 throw ComposeTranscriptError.invalidSupersession(correction.id)
             }
@@ -435,10 +434,10 @@ private extension ComposeTranscript {
             correction.targetSegmentIDs.map { ($0, correction) }
         }, by: \.0).mapValues { $0.map(\.1).sorted(by: correctionPrecedes) }
         var domainByCorrectionID: [UUID: TranscriptCorrectionDomain] = [:]
+        let domains = TranscriptCorrectionDomainIndex(history: history)
         for correction in corrections {
             do {
-                domainByCorrectionID[correction.id] = try TranscriptCorrectionPolicy
-                    .correctionDomain(of: correction, in: history)
+                domainByCorrectionID[correction.id] = try domains.domain(of: correction)
             } catch {
                 throw ComposeTranscriptError.invalidSupersession(correction.id)
             }

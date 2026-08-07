@@ -92,8 +92,9 @@ public extension MeetingReviewReadModel {
             if case .restore = $0.kind { return false }
             return true
         }
+        let index = TranscriptCorrectionDomainIndex(history: currentHistory)
         let domains = Set(effectiveActive.compactMap {
-            try? TranscriptCorrectionPolicy.correctionDomain(of: $0, in: currentHistory)
+            try? index.domain(of: $0)
         })
         return TranscriptCorrectionEditorContext(
             original: original,

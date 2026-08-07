@@ -10488,3 +10488,42 @@ ran. Dropping the oldest audio is the trade live transcription already makes.
 
 **Consequences:** a damaged channel is transcribed rather than discarded, and no
 live audio handoff in the app is unbounded.
+
+## D300 — Correction lane resolution indexes the history once (Aug 2026)
+
+**Context:** `TranscriptCorrectionPolicy.correctionDomain(of:in:)` grouped the
+whole correction history by id on every call, and every caller resolves the lane
+of *each* active correction — twice per compose, once per Meeting Detail
+snapshot. That is quadratic in a meeting's correction count. Measured on 8 000
+segments with 4 000 corrections: **p95 12 749 ms**, on the interactive path.
+
+**Decision:** `TranscriptCorrectionDomainIndex` indexes one history once and
+answers per-event lookups. Per-event semantics are unchanged, including which
+event id a duplicate reports — the duplicate check is deferred to the query so
+the refusal still names the event that was asked about, rather than an arbitrary
+event discovered while indexing. `correctionDomain(of:in:)` remains, implemented
+on top of the index, for the single-event callers.
+
+Same fixture after: **p95 185 ms**, a 69× reduction, and
+`testDenseCorrectionHistoryStaysWithinTheCompositionBudget` now guards it.
+
+**Consequences:** a heavily corrected meeting stays interactive. Composition
+cost is now dominated by the segments, not by the correction history.
+
+## D301 — A skill's destination travels in the proposal (Aug 2026)
+
+**Context:** `MeetingPackageExportSkill.idempotencyKey(for:destination:)`
+scopes an export by its destination, but the effect never read one — the writer
+resolved a path of its own. The key could therefore distinguish two writes the
+effect could not, so one confirmation authorised a path the user never saw in
+the preview it confirmed.
+
+**Decision:** the destination is a typed argument of the proposal. The effect
+projects it with the same "exactly one, validated" rule the meeting subject
+uses, and `MeetingPackageWriting.write(_:for:to:)` receives it. Key and effect
+now derive the destination from one place. `PreMeetingBriefSkill` gains the
+matching `event(from:)` projection, so no effect reads raw arguments any more.
+
+**Consequences:** what the receipt says was written, and where, is what
+happened. Both previously untested effects now have behavioural tests, including
+that a failed export leaves nothing written.

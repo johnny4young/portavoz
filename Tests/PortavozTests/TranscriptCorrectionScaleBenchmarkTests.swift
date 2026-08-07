@@ -27,6 +27,27 @@ final class TranscriptCorrectionScaleBenchmarkTests: XCTestCase {
         XCTAssertEqual(options.p95BudgetMilliseconds, 250)
     }
 
+    /// A heavily corrected meeting: 4 000 corrections over 8 000 segments.
+    ///
+    /// Lane resolution used to re-index the whole correction history once per
+    /// active correction, twice per compose — quadratic in the correction
+    /// count. This fixture measured 12 749 ms p95 that way, against 185 ms
+    /// once the history is indexed once. The test is the guard against that
+    /// cost coming back.
+    func testDenseCorrectionHistoryStaysWithinTheCompositionBudget() throws {
+        let report = try CorrectionCompositionBenchmark.run(options: .init(
+            segmentCount: 8_000,
+            correctionInterval: 2,
+            runs: 5,
+            p95BudgetMilliseconds: 250))
+
+        XCTAssertEqual(report.configuration.correctionCount, 4_000)
+        XCTAssertLessThan(
+            report.timing.p95Milliseconds,
+            250,
+            "a dense correction history must stay interactive")
+    }
+
     func testSmallHarnessReportsOnlyAggregateCompositionCost() throws {
         let report = try CorrectionCompositionBenchmark.run(options: .init(
             segmentCount: 200,

@@ -34,13 +34,33 @@ public enum LocalSkills {
         in arguments: [SkillArgument],
         orThrow error: some Error
     ) throws -> MeetingID {
-        guard arguments.allSatisfy(\.isValid) else { throw error }
-        let meetings = arguments.compactMap { argument -> MeetingID? in
+        try exactlyOne(in: arguments, orThrow: error) { argument in
             guard case .meeting(let id) = argument else { return nil }
             return id
         }
-        guard meetings.count == 1 else { throw error }
-        return meetings[0]
+    }
+
+    /// One trimmed free-text argument, for the skills whose subject is a string
+    /// the app resolved — a calendar identifier, an export destination.
+    static func exactlyOneText(
+        in arguments: [SkillArgument],
+        orThrow error: some Error
+    ) throws -> String {
+        try exactlyOne(in: arguments, orThrow: error) { argument in
+            guard case .text(let value) = argument else { return nil }
+            return value.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
+    private static func exactlyOne<Value>(
+        in arguments: [SkillArgument],
+        orThrow error: some Error,
+        _ project: (SkillArgument) -> Value?
+    ) throws -> Value {
+        guard arguments.allSatisfy(\.isValid) else { throw error }
+        let matches = arguments.compactMap(project)
+        guard matches.count == 1 else { throw error }
+        return matches[0]
     }
 }
 
@@ -157,12 +177,32 @@ public enum MeetingPackageExportSkill {
             in: arguments,
             orThrow: MeetingPackageExportError.missingMeeting)
     }
+
+    /// The destination the key is scoped by, read from the proposal itself.
+    ///
+    /// The key claims "this meeting, to this destination". That claim only
+    /// holds if the destination the effect writes to is the one the key was
+    /// built from, so both come from the same argument rather than the key
+    /// naming a path the writer separately decides.
+    public static func destination(
+        from arguments: [SkillArgument]
+    ) throws -> String {
+        try LocalSkills.exactlyOneText(
+            in: arguments,
+            orThrow: MeetingPackageExportError.missingDestination)
+    }
 }
 
-/// Writes package bytes wherever the user chose. The destination is resolved
-/// by the app before the proposal exists, so a skill never picks a path.
+/// Writes package bytes to the destination the user chose. The destination is
+/// resolved by the app before the proposal exists and travels *in* the
+/// proposal, so a skill never picks a path and the writer never picks one
+/// behind the confirmation's back.
 public protocol MeetingPackageWriting: Sendable {
-    func write(_ package: Data, for meetingID: MeetingID) async throws
+    func write(
+        _ package: Data,
+        for meetingID: MeetingID,
+        to destination: String
+    ) async throws
 }
 
 public struct MeetingPackageExportEffect: SkillEffectPerforming {
@@ -180,12 +220,14 @@ public struct MeetingPackageExportEffect: SkillEffectPerforming {
     public func perform(_ proposal: SkillProposal) async throws {
         let meetingID = try MeetingPackageExportSkill.meeting(
             from: proposal.arguments)
+        let path = try MeetingPackageExportSkill.destination(
+            from: proposal.arguments)
         // Audio stays out: this tier is text-only, and including it would make
         // one confirmation move far more than the user previewed.
         let package = try await export.execute(ExportMeetingBundleRequest(
             meetingID: meetingID,
             includeAudio: false))
-        try await destination.write(package, for: meetingID)
+        try await destination.write(package, for: meetingID, to: path)
     }
 }
 
@@ -210,6 +252,14 @@ public enum PreMeetingBriefSkill {
 
     public static func idempotencyKey(forEvent identifier: String) -> String {
         "\(id):\(identifier)"
+    }
+
+    public static func event(
+        from arguments: [SkillArgument]
+    ) throws -> String {
+        try LocalSkills.exactlyOneText(
+            in: arguments,
+            orThrow: PreMeetingBriefError.missingEvent)
     }
 }
 
@@ -240,13 +290,8 @@ public struct PreMeetingBriefEffect: SkillEffectPerforming {
     }
 
     public func perform(_ proposal: SkillProposal) async throws {
-        let identifiers = proposal.arguments.compactMap { argument -> String? in
-            guard case .text(let value) = argument else { return nil }
-            return value.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        guard identifiers.count == 1,
-              let event = try await events.upcomingEvent(
-                  matching: identifiers[0])
+        let identifier = try PreMeetingBriefSkill.event(from: proposal.arguments)
+        guard let event = try await events.upcomingEvent(matching: identifier)
         else { throw PreMeetingBriefError.missingEvent }
         try await delivery.deliver(try await brief.execute(event))
     }
