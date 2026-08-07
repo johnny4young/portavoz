@@ -1048,4 +1048,95 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             else { return XCTFail("wrong error: \(error)") }
         }
     }
+
+    // MARK: - Lease recovery without a relaunch
+
+    /// A worker that dies mid-job leaves most of its lease behind. Launch
+    /// recovery runs immediately on relaunch, so it sees an unexpired lease and
+    /// recovers nothing; without inline recovery the meeting stays in
+    /// `processing` for the whole session.
+    func testClaimRecoversAnExpiredLeaseWithoutWaitingForRelaunch() async throws {
+        let store = try MeetingStore.inMemory()
+        let subject = meeting()
+        try await store.save(subject)
+        _ = try await store.enqueueProcessingJobs(
+            for: subject.id,
+            requests: [ProcessingJobRequest(kind: .diarization, inputFingerprint: "fp-1")],
+            at: now)
+        let claimed = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "worker-that-dies",
+            leaseDuration: 120,
+            at: now)
+        XCTAssertNotNil(claimed)
+
+        // The original owner never released the lease; a later claim by anyone
+        // must reclaim it rather than see an empty queue.
+        let afterExpiry = now.addingTimeInterval(121)
+        let reclaimed = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "worker-after-restart",
+            leaseDuration: 120,
+            at: afterExpiry)
+
+        XCTAssertEqual(reclaimed?.id, claimed?.id)
+        XCTAssertEqual(reclaimed?.attempt, 2, "reclaiming is a new attempt")
+
+        // An unexpired lease is still owned and must not be stolen.
+        let stolen = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "impatient-worker",
+            leaseDuration: 120,
+            at: afterExpiry.addingTimeInterval(1))
+        XCTAssertNil(stolen, "a live lease belongs to its owner")
+    }
+
+    /// The supervisor arms exactly one wake from this date. If a running job's
+    /// lease expiry is not a candidate, nothing ever reclaims it.
+    func testNextScheduledDateIncludesARunningLeaseExpiry() async throws {
+        let store = try MeetingStore.inMemory()
+        let subject = meeting()
+        try await store.save(subject)
+        _ = try await store.enqueueProcessingJobs(
+            for: subject.id,
+            requests: [ProcessingJobRequest(kind: .diarization, inputFingerprint: "fp-2")],
+            at: now)
+        _ = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "worker",
+            leaseDuration: 120,
+            at: now)
+
+        let wake = try await store.nextScheduledProcessingDate(
+            kinds: [.diarization],
+            after: now)
+
+        XCTAssertEqual(
+            wake,
+            now.addingTimeInterval(120),
+            "the lease expiry is the durable wake-up")
+    }
+
+    func testNextScheduledDateIgnoresADeletedMeetingsLease() async throws {
+        let store = try MeetingStore.inMemory()
+        let subject = meeting()
+        try await store.save(subject)
+        _ = try await store.enqueueProcessingJobs(
+            for: subject.id,
+            requests: [ProcessingJobRequest(kind: .diarization, inputFingerprint: "fp-3")],
+            at: now)
+        _ = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "worker",
+            leaseDuration: 120,
+            at: now)
+        try await store.delete(subject.id)
+
+        let wake = try await store.nextScheduledProcessingDate(
+            kinds: [.diarization],
+            after: now)
+
+        XCTAssertNil(wake, "a tombstoned meeting must not wake the worker")
+    }
 }
+

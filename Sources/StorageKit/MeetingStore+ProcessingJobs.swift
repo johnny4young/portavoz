@@ -107,6 +107,11 @@ extension MeetingStore {
         try Self.validateWorker(owner, leaseDuration: leaseDuration)
         try Self.validateKinds(kinds)
         return try await database.write { db in
+            // A worker that died mid-job leaves 90–120 s of lease behind, and
+            // launch recovery runs immediately on relaunch — too early to see
+            // it. Recovering here is what lets the next claim pick that work
+            // up, matching `claimDerivedMaintenance`.
+            try Self.recoverExpiredProcessingJobs(at: timestamp, in: db)
             guard var record = try Self.dueProcessingJob(
                 kinds: kinds.map(\.rawValue), at: timestamp, in: db)
             else { return nil }
@@ -411,23 +416,44 @@ extension MeetingStore {
         after timestamp: Date = Date()
     ) async throws -> Date? {
         try Self.validateKinds(kinds)
+        let rawKinds = kinds.map(\.rawValue)
+        let placeholders = databaseQuestionMarks(count: rawKinds.count)
         return try await database.read { db in
-            let record = try ProcessingJobRecord
-                .filter(Column("state") == ProcessingJobState.pending.rawValue)
-                .filter(kinds.map(\.rawValue).contains(Column("kind")))
-                .filter(Column("notBefore") != nil)
-                .filter(Column("notBefore") > timestamp)
-                .filter(sql: "attempt < maxAttempts")
-                .filter(sql: """
-                    EXISTS (
-                        SELECT 1 FROM meeting
-                        WHERE meeting.id = processingJob.meetingID
-                          AND meeting.deletedAt IS NULL
+            // A running job's lease expiry is a wake-up too. Without it a
+            // worker that died mid-job leaves its meeting in `processing` with
+            // nothing scheduled to reclaim the lease, so the spinner never
+            // clears until some unrelated event happens to run a claim. This
+            // mirrors `nextScheduledDerivedMaintenanceDate`.
+            let liveMeeting = """
+                EXISTS (
+                    SELECT 1 FROM meeting
+                    WHERE meeting.id = processingJob.meetingID
+                      AND meeting.deletedAt IS NULL
+                )
+                """
+            return try Date.fetchOne(
+                db,
+                sql: """
+                    SELECT MIN(wakeAt) FROM (
+                        SELECT notBefore AS wakeAt
+                        FROM processingJob
+                        WHERE state = 'pending'
+                          AND kind IN (\(placeholders))
+                          AND notBefore IS NOT NULL
+                          AND notBefore > ?
+                          AND attempt < maxAttempts
+                          AND \(liveMeeting)
+                        UNION ALL
+                        SELECT leaseExpiresAt AS wakeAt
+                        FROM processingJob
+                        WHERE state = 'running'
+                          AND kind IN (\(placeholders))
+                          AND leaseExpiresAt IS NOT NULL
+                          AND leaseExpiresAt > ?
+                          AND \(liveMeeting)
                     )
-                    """)
-                .order(Column("notBefore"), Column("createdAt"), Column("id"))
-                .fetchOne(db)
-            return record?.notBefore
+                    """,
+                arguments: StatementArguments(rawKinds + [timestamp] + rawKinds + [timestamp]))
         }
     }
 
@@ -438,37 +464,50 @@ extension MeetingStore {
         at timestamp: Date = Date()
     ) async throws -> [ProcessingJob] {
         try await database.write { db in
-            let expired = try ProcessingJobRecord
-                .filter(Column("state") == ProcessingJobState.running.rawValue)
-                .filter(sql: "leaseExpiresAt <= ?", arguments: [timestamp])
-                .fetchAll(db)
-            var recovered: [ProcessingJob] = []
-            var meetingIDs: Set<MeetingID> = []
-            for var record in expired {
-                let canRetry = record.attempt < record.maxAttempts
-                record.state = canRetry
-                    ? ProcessingJobState.pending.rawValue
-                    : ProcessingJobState.failed.rawValue
-                record.progress = canRetry ? 0 : record.progress
-                record.notBefore = canRetry ? timestamp : nil
-                record.leaseOwner = nil
-                record.leaseExpiresAt = nil
-                record.errorCode = canRetry
-                    ? "processing.lease.expired" : "processing.lease.exhausted"
-                record.errorMessage = "The previous worker stopped before releasing its lease."
-                record.finishedAt = canRetry ? nil : timestamp
-                record.updatedAt = timestamp
-                try record.update(db)
-                let job = try record.job
-                recovered.append(job)
-                meetingIDs.insert(job.meetingID)
-            }
-            for meetingID in meetingIDs {
-                try Self.reconcileProcessingLifecycle(
-                    for: meetingID, at: timestamp, in: db)
-            }
-            return recovered
+            try Self.recoverExpiredProcessingJobs(at: timestamp, in: db)
         }
+    }
+
+    /// Reclaims leases whose owner died without releasing them.
+    ///
+    /// Callable inside an existing write so a claim can recover first: launch
+    /// recovery alone is not enough, because a worker that dies mid-job leaves
+    /// 90–120 s of lease behind, and an immediate relaunch recovers nothing.
+    @discardableResult
+    static func recoverExpiredProcessingJobs(
+        at timestamp: Date,
+        in db: Database
+    ) throws -> [ProcessingJob] {
+        let expired = try ProcessingJobRecord
+        .filter(Column("state") == ProcessingJobState.running.rawValue)
+        .filter(sql: "leaseExpiresAt <= ?", arguments: [timestamp])
+        .fetchAll(db)
+        var recovered: [ProcessingJob] = []
+        var meetingIDs: Set<MeetingID> = []
+        for var record in expired {
+            let canRetry = record.attempt < record.maxAttempts
+            record.state = canRetry
+                ? ProcessingJobState.pending.rawValue
+                : ProcessingJobState.failed.rawValue
+            record.progress = canRetry ? 0 : record.progress
+            record.notBefore = canRetry ? timestamp : nil
+            record.leaseOwner = nil
+            record.leaseExpiresAt = nil
+            record.errorCode = canRetry
+                ? "processing.lease.expired" : "processing.lease.exhausted"
+            record.errorMessage = "The previous worker stopped before releasing its lease."
+            record.finishedAt = canRetry ? nil : timestamp
+            record.updatedAt = timestamp
+            try record.update(db)
+            let job = try record.job
+            recovered.append(job)
+            meetingIDs.insert(job.meetingID)
+        }
+        for meetingID in meetingIDs {
+            try Self.reconcileProcessingLifecycle(
+                for: meetingID, at: timestamp, in: db)
+        }
+        return recovered
     }
 }
 

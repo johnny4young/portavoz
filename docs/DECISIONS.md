@@ -10373,3 +10373,35 @@ Automation center is AUTO-6 and Shortcuts/App Intents are AUTO-3 — so:
 asserted rather than assumed by `LocalSkills.isEntirelyLocal`. No user-visible
 behavior changes yet — nothing can propose a skill — so there is no CHANGELOG
 entry and no XCUITest applies.
+
+## D296 — Reclaim a dead worker's lease at claim time, not only at launch (Aug 2026)
+
+**Context:** post-capture jobs carry a 120-second lease with a 30-second
+heartbeat, so a worker that dies mid-job always leaves 90–120 seconds of lease
+behind. `recoverExpiredProcessingJobs` had exactly one production caller,
+launch recovery, which runs immediately on relaunch — while that lease is still
+valid. Nothing recovered it, `claimNextProcessingJob` selected only `pending`
+rows so it saw an empty queue, and `nextScheduledProcessingDate` considered only
+future `notBefore` values, so no wake was ever armed. The meeting stayed in
+`processing` with a spinner for the rest of the session, and only a second
+relaunch more than two minutes after the crash released it. A plain Cmd-Q or a
+Sparkle update during diarization was enough to reach it — there is no
+termination handler anywhere in `Sources/`.
+
+The sibling derived-maintenance lane already solved this: `claimDerivedMaintenance`
+recovers inline before selecting, and `nextScheduledDerivedMaintenanceDate`
+unions `leaseExpiresAt` for running rows.
+
+**Decision:** mirror that lane. `recoverExpiredProcessingJobs` gains a static
+form callable inside an existing write, and `claimNextProcessingJob` calls it
+before selecting, so the next claim by any worker reclaims abandoned work.
+`nextScheduledProcessingDate` becomes the minimum of future `notBefore` values
+for pending jobs and `leaseExpiresAt` for running ones, both still fenced on a
+live meeting, so the supervisor arms a wake at lease expiry instead of never.
+
+**Consequences:** an interrupted post-capture job resumes within one lease
+period without a relaunch. An unexpired lease still belongs to its owner —
+reclaiming remains impossible before expiry, and a reclaim is a new attempt
+against the same bounded retry budget. A tombstoned meeting's lease wakes
+nobody. Two deterministic tests fail against the previous implementation and
+pass against this one.
