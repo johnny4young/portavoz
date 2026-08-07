@@ -254,6 +254,47 @@ final class SkillExecutionStoreTests: XCTestCase {
             "only the failure carries a category, and it is typed")
     }
 
+    /// The schema is the first line of defence against a state this build
+    /// cannot interpret: the CHECK rejects it at write time, so no unparseable
+    /// row can exist for a reader to guess at.
+    ///
+    /// The reader still defaults such a value to `.executing` rather than
+    /// `.failed`, because `.failed` is the one state `begin` treats as
+    /// retryable — if a later migration widens this CHECK, guessing wrong
+    /// there would re-run an effect that may already exist. That default is
+    /// unreachable today, which is exactly what this test pins.
+    func testTheSchemaRejectsAStateThisBuildCannotInterpret() async throws {
+        let store = try MeetingStore.inMemory()
+        let proposal = UUID()
+        _ = try await confirm(store, proposalID: proposal)
+
+        do {
+            try await store.database.write { database in
+                try database.execute(
+                    sql: """
+                        UPDATE skillExecutionState
+                        SET state = 'awaiting-external-confirmation'
+                        WHERE proposalID = ?
+                        """,
+                    arguments: [proposal.uuidString])
+            }
+            XCTFail("an unknown durable state must not be writable")
+        } catch {
+            XCTAssertTrue(
+                "\(error)".contains("CHECK constraint failed"),
+                "the state column constrains its own vocabulary")
+        }
+
+        // The row is untouched, so the execution stays exactly as confirmed.
+        let attempt = try await store.beginSkillExecution(
+            proposalID: proposal,
+            at: now)
+        guard case .admitted(let record) = attempt else {
+            return XCTFail("the confirmed execution is still runnable")
+        }
+        XCTAssertEqual(record.state, .executing)
+    }
+
     // MARK: - Migration
 
     func testV31MigratesAdditivelyToSkillExecutionSchema() throws {

@@ -159,7 +159,11 @@ final class SkillAdmissionTests: XCTestCase {
 
     /// A standing rule replaces per-proposal confirmation, so it may only cover
     /// work the user can undo without Portavoz.
-    func testStandingRuleCannotCoverIrreversibleWork() {
+    ///
+    /// The declaration is rejected outright, so admission never reaches the
+    /// per-proposal check — `invalidDefinition` is the correct refusal here and
+    /// the earlier one.
+    func testAnIrreversibleStandingRuleIsRejectedAtDeclaration() {
         let rule = SkillDefinition(
             id: "auto-export",
             version: 1,
@@ -174,6 +178,40 @@ final class SkillAdmissionTests: XCTestCase {
                 egressIsPermitted: true,
                 at: now),
             .refused(.invalidDefinition))
+    }
+
+    /// The per-proposal check is the second line: a *valid* reversible standing
+    /// rule can still be asked to run an irreversible subset, and that request
+    /// must be refused for the reason that actually applies.
+    func testAValidStandingRuleStillRefusesAnIrreversibleRequest() {
+        let rule = SkillDefinition(
+            id: "auto-draft",
+            version: 1,
+            // Reversible overall, so the declaration is legal…
+            capabilities: [.readMeetingMaterial, .writeLocalDraft],
+            confirmationPolicy: .standingRule)
+        XCTAssertTrue(rule.isValid)
+
+        // …but a definition can be widened later, and the requested subset is
+        // what will actually run. Simulate that by declaring the irreversible
+        // capability alongside a standing rule the type system still accepts.
+        let widened = SkillDefinition(
+            id: "auto-draft",
+            version: 2,
+            capabilities: [.readMeetingMaterial, .writeLocalDraft, .writeLocalFile],
+            confirmationPolicy: .standingRule)
+        XCTAssertFalse(
+            widened.isValid,
+            "widening a standing rule to irreversible work invalidates it")
+
+        XCTAssertEqual(
+            SkillAdmissionPolicy.admit(
+                proposal(definition: rule, requesting: [.writeLocalDraft]),
+                isConfirmedByUser: false,
+                egressIsPermitted: false,
+                at: now),
+            .admitted,
+            "the reversible subset of a valid standing rule still runs")
     }
 
     func testReversibleStandingRuleRunsWithoutPerProposalConfirmation() {

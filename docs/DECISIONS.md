@@ -10465,3 +10465,26 @@ failure always happens; only the live-caption UI notification is gated on
 re-transcription from the finalized audio, which is what the recovery flag
 exists for. A test drives an engine that fails as its audio stream closes and
 fails against the previous implementation.
+
+## D299 — Inspection that could not finish keeps its channel (Aug 2026)
+
+**Context:** `AudioSilence.fileIsSilent` promises in its own docstring to return
+false when a file cannot be read, "better to transcribe a channel than to
+silently drop one we failed to inspect". The failure-to-*open* path honoured
+that, but a read failure part way through the file `break`ed out of the loop and
+fell through to `return true`. A recording truncated by a crash reads fine until
+its damaged tail, so it was reported silent and its channel dropped — in exactly
+the recovery path where the audio matters most.
+
+**Decision:** only reaching the end of the file intact may conclude silence. A
+read that fails short of the end returns false, exactly as an unopenable file
+does; an empty read remains an ordinary end-of-file. Three tests cover a
+truncated file, an unreadable path, and an audible file.
+
+Separately, dictation's engine feed becomes `.bufferingNewest(128)`, matching
+the recording lane. Its producer never suspends on the consumer, so the previous
+unbounded stream let a stalled engine grow the backlog for as long as dictation
+ran. Dropping the oldest audio is the trade live transcription already makes.
+
+**Consequences:** a damaged channel is transcribed rather than discarded, and no
+live audio handoff in the app is unbounded.

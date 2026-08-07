@@ -264,9 +264,16 @@ extension MeetingStore {
         else { return nil }
         let raw: String = row["state"]
         // `cancelled` is the durable spelling of a dismissal that never ran.
-        let state: SkillExecutionState = raw == "cancelled"
-            ? .dismissed
-            : (SkillExecutionState(rawValue: raw) ?? .failed)
+        //
+        // An unrecognised state must read as "this may already have acted",
+        // never as `.failed`: `.failed` is the one state `beginSkillExecution`
+        // treats as retryable, so defaulting there would let a row written by a
+        // newer build be re-run. `.executing` is the fail-closed reading — the
+        // caller reconciles instead of repeating.
+        let state: SkillExecutionState = switch raw {
+        case "cancelled": .dismissed
+        default: SkillExecutionState(rawValue: raw) ?? .executing
+        }
         return SkillExecutionRecord(
             proposalID: proposalID,
             skillID: row["skillID"],

@@ -23,6 +23,25 @@ public enum LocalSkills {
     public static var isEntirelyLocal: Bool {
         definitions.allSatisfy { !$0.declaresExternalEffect }
     }
+
+    /// One meeting subject, shared by every skill that acts on exactly one.
+    ///
+    /// Written once because two copies of a rule drift: the previous pair
+    /// differed only in error type, and neither validated its arguments the way
+    /// the reminder projection does. Malformed arguments are refused here too,
+    /// so no effect ever runs on an unbounded or empty value.
+    static func exactlyOneMeeting(
+        in arguments: [SkillArgument],
+        orThrow error: some Error
+    ) throws -> MeetingID {
+        guard arguments.allSatisfy(\.isValid) else { throw error }
+        let meetings = arguments.compactMap { argument -> MeetingID? in
+            guard case .meeting(let id) = argument else { return nil }
+            return id
+        }
+        guard meetings.count == 1 else { throw error }
+        return meetings[0]
+    }
 }
 
 // MARK: - Recap draft
@@ -58,12 +77,9 @@ public enum RecapDraftSkill {
     public static func meeting(
         from arguments: [SkillArgument]
     ) throws -> MeetingID {
-        let meetings = arguments.compactMap { argument -> MeetingID? in
-            guard case .meeting(let id) = argument else { return nil }
-            return id
-        }
-        guard meetings.count == 1 else { throw RecapDraftError.missingMeeting }
-        return meetings[0]
+        try LocalSkills.exactlyOneMeeting(
+            in: arguments,
+            orThrow: RecapDraftError.missingMeeting)
     }
 }
 
@@ -137,14 +153,9 @@ public enum MeetingPackageExportSkill {
     public static func meeting(
         from arguments: [SkillArgument]
     ) throws -> MeetingID {
-        let meetings = arguments.compactMap { argument -> MeetingID? in
-            guard case .meeting(let id) = argument else { return nil }
-            return id
-        }
-        guard meetings.count == 1 else {
-            throw MeetingPackageExportError.missingMeeting
-        }
-        return meetings[0]
+        try LocalSkills.exactlyOneMeeting(
+            in: arguments,
+            orThrow: MeetingPackageExportError.missingMeeting)
     }
 }
 

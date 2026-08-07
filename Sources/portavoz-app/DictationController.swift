@@ -269,7 +269,14 @@ final class DictationController {
             }
             captureStartedAt = Date()
 
-            let (audio, feed) = AsyncStream.makeStream(of: AudioChunk.self)
+            // Bounded like every other live audio handoff (the recording lane
+            // uses the same 128-buffer window). The pump never suspends on the
+            // consumer, so an unbounded stream lets a stalled engine grow the
+            // backlog for as long as dictation runs; dropping the oldest audio
+            // is the same trade live transcription already makes.
+            let (audio, feed) = AsyncStream.makeStream(
+                of: AudioChunk.self,
+                bufferingPolicy: .bufferingNewest(128))
             localFeed = feed
             self.feed = feed
             pump = makeAudioPump(stream: micStream, feed: feed, sessionID: id)

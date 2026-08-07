@@ -35,6 +35,12 @@ public enum AudioSilence {
     /// effectively silent, stopping at the first block with real audio.
     /// Returns false when the file can't be read — better to transcribe a
     /// channel than to silently drop one we failed to inspect.
+    ///
+    /// "Can't be read" covers a failure *part way through*, not only a failure
+    /// to open. A recording truncated by a crash reads fine until its damaged
+    /// tail, and concluding silence there would drop a channel that contains
+    /// speech — in exactly the recovery path where the audio matters most.
+    /// Only reaching the end intact can conclude silence.
     public static func fileIsSilent(at url: URL, floorDBFS: Float = -60) -> Bool {
         guard let file = try? AVAudioFile(forReading: url) else { return false }
         let format = file.processingFormat
@@ -45,9 +51,12 @@ public enum AudioSilence {
         let threshold = pow(10, floorDBFS / 20)
         while file.framePosition < file.length {
             buffer.frameLength = 0
-            guard (try? file.read(into: buffer, frameCount: blockSize)) != nil,
-                buffer.frameLength > 0
-            else { break }
+            guard (try? file.read(into: buffer, frameCount: blockSize)) != nil else {
+                // Inspection failed short of the end: fall back to keeping the
+                // channel, exactly as an unopenable file does.
+                return false
+            }
+            guard buffer.frameLength > 0 else { break }
             if peak(of: Downmix.mono(from: buffer)) >= threshold { return false }
         }
         return true

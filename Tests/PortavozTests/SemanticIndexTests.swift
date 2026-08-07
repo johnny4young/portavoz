@@ -167,10 +167,17 @@ final class SemanticIndexTests: XCTestCase {
             batches.count,
             1,
             "every variant must be scored inside one corpus traversal")
+        // Guard against the test going vacuous: if expansion ever collapsed to
+        // a single variant there would be nothing to batch, and `batches.count
+        // == 1` would pass while proving nothing.
+        XCTAssertGreaterThan(
+            batches.first ?? 0,
+            1,
+            "bilingual expansion must actually produce several variants")
         XCTAssertEqual(
-            batches.first,
             requests.count,
-            "the single batch must carry every scored variant")
+            batches.first,
+            "no variant may reach the index outside that one traversal")
     }
 
     func testLibraryUsesInjectedSemanticIndexWithoutChangingItsLimit() async throws {
