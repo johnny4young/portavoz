@@ -602,6 +602,9 @@ test-ui-preflight:
 		echo "   Answer or dismiss it, then re-run."; \
 		exit 1; \
 	fi
+	@# A warning, not a gate: stale registrations do not always misroute, and
+	@# rebuilding the database is a system-wide action with its own side effects.
+	@-scripts/check-url-scheme-handlers.sh
 	@sleep 1
 
 ## Regenerate the three public README/website screenshots from a fictional,
