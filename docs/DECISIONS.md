@@ -10405,3 +10405,39 @@ reclaiming remains impossible before expiry, and a reclaim is a new attempt
 against the same bounded retry budget. A tombstoned meeting's lease wakes
 nobody. Two deterministic tests fail against the previous implementation and
 pass against this one.
+
+## D297 — Never migrate the recordings root over a live capture (Aug 2026)
+
+**Context:** `migrateAudio` enumerates every meeting directory under the
+recordings root and, when the destination is on another volume, `moveItem`
+fails and the fallback runs `copyItem` then `removeItem` — deleting the source.
+Its comment justified that with "meeting dirs are immutable UUID-named
+recordings", which is false for exactly one directory: the one being recorded.
+
+Settings is a separate scene with no recording-phase gate, and its "Change…"
+control is disabled only while a migration is already running, so choosing an
+external volume mid-meeting was reachable. The live directory would be copied
+as a snapshot and then unlinked while `RecordingSession`'s writers still held
+it open; every sample after the copy point lands in an unlinked inode. At Stop,
+publication fails on the vanished staging path and `reconcileEmptyCapture`
+finds the truncated copy, so the user is told audio was *preserved* while an
+arbitrary tail of the meeting is gone. Choosing an external volume is the main
+reason to use this setting, so the destructive branch was the common one.
+
+**Decision:** recording safety outranks the setting, so the move fails closed.
+`ManageRecordingStorage` takes an optional `RecordingStorageActivity` and
+throws `recordingInProgress` before any file work when capture or post-capture
+is busy; `processing` counts as busy because workers still read that audio and
+publication resolves paths under the current root. Inspection stays available,
+so Settings can still show where recordings live during a meeting.
+
+`migrateAudio` additionally accepts `skipping:` names it must leave in place.
+That is defence in depth rather than the primary gate: a future caller that
+forgets the activity check still cannot unlink a directory whose writers are
+live, and the skipped meeting simply stays at the old root.
+
+**Consequences:** the user is asked to finish the recording first instead of
+silently losing its tail. A partially migrated library remains readable because
+`RecordingsLocation.resolve` already falls back across roots. Tests cover the
+refusal, that no file work precedes it, that inspection still works while busy,
+and that a reserved directory is neither copied nor unlinked.

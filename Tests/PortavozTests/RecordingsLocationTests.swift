@@ -93,6 +93,33 @@ final class RecordingsLocationTests: XCTestCase {
         }
     }
 
+    /// Defence in depth behind `ManageRecordingStorage`'s activity gate: the
+    /// cross-volume branch copies and then deletes the source, so a live
+    /// meeting's directory must never be enumerated even if a caller forgets
+    /// to check. Leaving it in place keeps the open writers valid.
+    func testMigrateLeavesReservedRecordingsWhereTheirWritersHoldThem() throws {
+        _ = try makeRecording("live", under: defaultRoot)
+        _ = try makeRecording("finished", under: defaultRoot)
+        let custom = workspace.appendingPathComponent("target")
+
+        let moved = try location.migrateAudio(
+            from: defaultRoot,
+            to: custom,
+            skipping: ["live"])
+
+        XCTAssertEqual(moved, 1, "only the finished meeting moves")
+        let manager = FileManager.default
+        XCTAssertTrue(manager.fileExists(
+            atPath: custom.appendingPathComponent("Audio/finished/microphone.wav").path))
+        XCTAssertFalse(manager.fileExists(
+            atPath: defaultRoot.appendingPathComponent("Audio/finished").path))
+        // The live one is untouched at BOTH ends: not copied, not unlinked.
+        XCTAssertTrue(manager.fileExists(
+            atPath: defaultRoot.appendingPathComponent("Audio/live/microphone.wav").path))
+        XCTAssertFalse(manager.fileExists(
+            atPath: custom.appendingPathComponent("Audio/live").path))
+    }
+
     func testMigrateResumesAfterInterruption() throws {
         // "A" already migrated on a previous run (exists at BOTH ends);
         // "B" is still pending.

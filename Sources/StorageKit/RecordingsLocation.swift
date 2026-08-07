@@ -85,9 +85,18 @@ public struct RecordingsLocation: Sendable {
     /// the copy lands under a hidden temp name and only an atomic rename
     /// publishes it — the source is removed last.
     @discardableResult
+    /// Moves every meeting directory to a new root.
+    ///
+    /// `skipping` names directories that must be left where they are because
+    /// something still holds their files open. The cross-volume branch below
+    /// copies and then deletes the source, so migrating a directory whose
+    /// writers are live unlinks it underneath them and silently truncates the
+    /// recording. Callers pass the live meetings; this is the last line of
+    /// defence behind `ManageRecordingStorage`'s activity gate.
     public func migrateAudio(
         from origin: URL,
         to destination: URL,
+        skipping reservedDirectoryNames: Set<String> = [],
         progress: ((Int, Int) -> Void)? = nil
     ) throws -> Int {
         let canonicalOrigin = origin.standardizedFileURL.resolvingSymlinksInPath()
@@ -108,6 +117,9 @@ public struct RecordingsLocation: Sendable {
         var moved = 0
         for (index, entry) in entries.enumerated() {
             progress?(index + 1, entries.count)
+            guard !reservedDirectoryNames.contains(entry.lastPathComponent) else {
+                continue
+            }
             let target = targetAudio.appendingPathComponent(entry.lastPathComponent)
             if manager.fileExists(atPath: target.path) {
                 // Already migrated on a previous, interrupted run. Meeting

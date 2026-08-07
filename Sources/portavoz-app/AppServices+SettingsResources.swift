@@ -28,7 +28,12 @@ extension AppServices {
         progress: @escaping @MainActor (RecordingStorageProgress) -> Void
     ) async throws -> (location: RecordingStorageLocation, recordingCount: Int) {
         let result = try await ManageRecordingStorage(
-            storage: AppRecordingStorageManager()
+            storage: AppRecordingStorageManager(),
+            // Settings is a separate scene with no recording-phase gate, so
+            // the move is reachable mid-capture. Moving a live meeting's
+            // directory across volumes copies and then unlinks it underneath
+            // the open writers.
+            activity: AppRecordingStorageActivity(recording: recording)
         ).execute(ManageRecordingStorageRequest(
             action: .move(to: destination),
             progress: { update in
@@ -77,6 +82,20 @@ private struct AppAudioInputListing: AudioInputListing {
                 AudioInputOption(uid: $0.uid, name: $0.name)
             }
         }.value
+    }
+}
+
+@MainActor
+private struct AppRecordingStorageActivity: RecordingStorageActivity {
+    let recording: RecordingController
+
+    /// `processing` counts as busy: post-capture workers still read the
+    /// meeting's audio, and publication resolves paths under the current root.
+    func recordingStorageIsBusy() async -> Bool {
+        switch recording.phase {
+        case .preparing, .recording, .processing: true
+        case .idle, .done, .failed: false
+        }
     }
 }
 
