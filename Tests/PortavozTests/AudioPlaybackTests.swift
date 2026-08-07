@@ -459,6 +459,44 @@ final class MeetingPlayerTests: XCTestCase {
         }
     }
 
+    /// The schedule is validated in seconds but delivered as CMTime at 1/600 s.
+    /// An event pair ordered by microseconds is *one* instant to AVFoundation,
+    /// and an empty ramp there raises the same uncatchable exception as an
+    /// empty one in seconds (D287) — so ordering is judged after quantization.
+    func testCleanPlaybackOrderingIsJudgedOnTheTicksAVFoundationReceives() {
+        // 1/600 s ≈ 1.667 ms. These two are ordered in seconds and identical
+        // once quantized.
+        XCTAssertFalse(CleanPlaybackPolicy.isStrictlyOrdered([
+            .ramp(from: 0, to: 1, start: 10, end: 10.000_1),
+        ]))
+        XCTAssertTrue(CleanPlaybackPolicy.isStrictlyOrdered([
+            .ramp(from: 0, to: 1, start: 10, end: 10.002),
+        ]))
+
+        // A turn shorter than one tick is dropped rather than kept as a
+        // degenerate range: keeping it would fail the ordering check and
+        // silence clear playback for the whole meeting.
+        let subTick = CleanPlaybackPolicy.volumeSchedule(
+            audibleRanges: [10 ... 10.000_5],
+            duration: 60)
+        XCTAssertTrue(subTick.isEmpty)
+        XCTAssertEqual(
+            CleanPlaybackPolicy.audibleRanges([10 ... 10.000_5], duration: 60)
+                .count,
+            0)
+
+        // A real turn alongside a sub-tick one keeps clear playback working.
+        let mixed = CleanPlaybackPolicy.volumeSchedule(
+            audibleRanges: [5 ... 5.000_5, 10...11],
+            duration: 60)
+        XCTAssertTrue(CleanPlaybackPolicy.isStrictlyOrdered(mixed))
+        XCTAssertEqual(
+            mixed,
+            CleanPlaybackPolicy.volumeSchedule(
+                audibleRanges: [10...11],
+                duration: 60))
+    }
+
     func testCleanPlaybackOrderingRejectsOverlappingAndEmptyRamps() {
         XCTAssertFalse(CleanPlaybackPolicy.isStrictlyOrdered([
             .ramp(from: 1, to: 0, start: 262.68, end: 262.8),

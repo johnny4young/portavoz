@@ -51,6 +51,11 @@ public actor PyannoteDiarizer: Diarizer {
     /// shared `SpeakerManager`, not from window overlap.
     static let windowSeconds: TimeInterval = 10
     static let modelSampleRate = 16_000
+    /// How far a chunk's session timestamp may sit from where the held buffer
+    /// ends before the two are treated as non-contiguous. Wide enough for
+    /// resampling rounding, far under the half-second silence the capture layer
+    /// pads a real output-switch gap with.
+    static let continuityTolerance: TimeInterval = 0.25
 
     /// FluidAudio's `.default` (0.7) multiplies out to a 0.84 cosine-
     /// distance assignment threshold (`speakerThreshold = clustering ×
@@ -185,27 +190,22 @@ public actor PyannoteDiarizer: Diarizer {
         AsyncThrowingStream { continuation in
             let job = Task {
                 do {
-                    let windowSamples = Int(Self.windowSeconds) * Self.modelSampleRate
-                    var buffer: [Float] = []
-                    var windowStart: TimeInterval = 0
-
+                    var cutter = DiarizationWindowCutter()
                     for await chunk in audio {
                         try Task.checkCancellation()
-                        buffer.append(contentsOf: try await self.resample(chunk))
-                        while buffer.count >= windowSamples {
-                            let window = Array(buffer.prefix(windowSamples))
-                            buffer.removeFirst(windowSamples)
-                            let turns = try await self.processWindow(window, at: windowStart)
-                            windowStart += Self.windowSeconds
-                            for turn in turns { continuation.yield(turn) }
+                        let resampled = try await self.resample(chunk)
+                        for window in cutter.accept(resampled, at: chunk.timestamp) {
+                            for turn in try await self.processWindow(
+                                window.samples, at: window.start) {
+                                continuation.yield(turn)
+                            }
                         }
                     }
-
-                    // Tail shorter than a window (the model zero-pads); skip
-                    // fragments under the 1 s minimum speech duration.
-                    if buffer.count >= Self.modelSampleRate {
-                        let turns = try await self.processWindow(buffer, at: windowStart)
-                        for turn in turns { continuation.yield(turn) }
+                    if let tail = cutter.flush() {
+                        for turn in try await self.processWindow(
+                            tail.samples, at: tail.start) {
+                            continuation.yield(turn)
+                        }
                     }
                     continuation.finish()
                 } catch {

@@ -114,7 +114,7 @@ public struct RecordingsLocation: Sendable {
             at: sourceAudio, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
         ).sorted { $0.lastPathComponent < $1.lastPathComponent }
 
-        var moved = 0
+        var movedNames: [String] = []
         for (index, entry) in entries.enumerated() {
             progress?(index + 1, entries.count)
             guard !reservedDirectoryNames.contains(entry.lastPathComponent) else {
@@ -126,21 +126,76 @@ public struct RecordingsLocation: Sendable {
                 // dirs are immutable UUID-named recordings: same name IS the
                 // same content, so finish the move by dropping the source.
                 try? manager.removeItem(at: entry)
-                moved += 1
+                movedNames.append(entry.lastPathComponent)
                 continue
             }
             do {
-                try manager.moveItem(at: entry, to: target)
+                do {
+                    try manager.moveItem(at: entry, to: target)
+                } catch {
+                    let temp = targetAudio.appendingPathComponent(
+                        ".partial-" + entry.lastPathComponent)
+                    try? manager.removeItem(at: temp)
+                    try manager.copyItem(at: entry, to: temp)
+                    try manager.moveItem(at: temp, to: target)
+                    try manager.removeItem(at: entry)
+                }
             } catch {
-                let temp = targetAudio.appendingPathComponent(
-                    ".partial-" + entry.lastPathComponent)
-                try? manager.removeItem(at: temp)
-                try manager.copyItem(at: entry, to: temp)
-                try manager.moveItem(at: temp, to: target)
-                try manager.removeItem(at: entry)
+                // The caller only persists the new root after this returns, so
+                // a throw here would leave the root pointing at `origin` while
+                // some recordings already sit under `destination` — reachable
+                // from neither root, since `resolve` only ever looks at the
+                // current and default roots. Put back what this run moved so a
+                // failure really does mean nothing happened.
+                throw restore(
+                    movedNames,
+                    from: targetAudio,
+                    to: sourceAudio,
+                    after: error,
+                    using: manager)
             }
-            moved += 1
+            movedNames.append(entry.lastPathComponent)
         }
-        return moved
+        return movedNames.count
     }
+
+    /// Returns the error to throw: the original cause when every directory made
+    /// it back, or a stranding report naming what did not.
+    private func restore(
+        _ names: [String],
+        from targetAudio: URL,
+        to sourceAudio: URL,
+        after cause: Error,
+        using manager: FileManager
+    ) -> Error {
+        var stranded: [String] = []
+        for name in names {
+            let target = targetAudio.appendingPathComponent(name)
+            let source = sourceAudio.appendingPathComponent(name)
+            guard !manager.fileExists(atPath: source.path) else {
+                try? manager.removeItem(at: target)
+                continue
+            }
+            do {
+                try manager.moveItem(at: target, to: source)
+            } catch {
+                stranded.append(name)
+            }
+        }
+        guard stranded.isEmpty else {
+            return RecordingsMigrationError.stranded(
+                count: stranded.count,
+                at: targetAudio,
+                cause: cause)
+        }
+        return cause
+    }
+}
+
+/// A migration that could neither finish nor fully undo itself.
+public enum RecordingsMigrationError: Error {
+    /// Recordings that reached the destination but could not be put back. The
+    /// count and folder are enough for the user to find them; naming the
+    /// meetings would put library content into an error message.
+    case stranded(count: Int, at: URL, cause: Error)
 }

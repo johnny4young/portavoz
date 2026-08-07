@@ -125,8 +125,12 @@ struct MeetingAudioComposition {
         return mix
     }
 
+    /// Built from the same tick the ordering check validated, so what
+    /// AVFoundation receives is exactly what was proven ordered.
     private static func time(_ seconds: TimeInterval) -> CMTime {
-        CMTime(seconds: seconds, preferredTimescale: 600)
+        CMTimeMake(
+            value: CleanPlaybackPolicy.tick(seconds) ?? 0,
+            timescale: CleanPlaybackPolicy.timescale)
     }
 }
 
@@ -186,7 +190,15 @@ public enum CleanPlaybackPolicy {
         let clamped = ranges.compactMap { range -> ClosedRange<TimeInterval>? in
             let lower = min(duration, max(0, range.lowerBound))
             let upper = min(duration, max(0, range.upperBound))
-            return lower < upper ? lower...upper : nil
+            // Dropped rather than kept as a degenerate range: a turn shorter
+            // than one tick is the same instant to AVFoundation, and letting it
+            // through would fail the ordering check and silence clear playback
+            // for the whole meeting over a few inaudible milliseconds.
+            guard let lowerTick = tick(lower),
+                  let upperTick = tick(upper),
+                  lowerTick < upperTick
+            else { return nil }
+            return lower...upper
         }.sorted { $0.lowerBound < $1.lowerBound }
 
         var merged: [ClosedRange<TimeInterval>] = []
@@ -220,7 +232,7 @@ public enum CleanPlaybackPolicy {
         ]
         for range in audible {
             let attackStart = max(0, range.lowerBound - attack)
-            if attackStart < range.lowerBound {
+            if tick(attackStart) ?? 0 < tick(range.lowerBound) ?? 0 {
                 events.append(.ramp(
                     from: backgroundMicrophoneGain,
                     to: 1,
@@ -231,7 +243,10 @@ public enum CleanPlaybackPolicy {
             }
             events.append(.level(volume: 1, at: range.upperBound))
             let releaseEnd = min(duration, range.upperBound + release)
-            if releaseEnd > range.upperBound {
+            // A range ending within one tick of the meeting's end leaves no
+            // room to ramp back down; emitting the ramp anyway would make it
+            // empty once quantized.
+            if tick(releaseEnd) ?? 0 > tick(range.upperBound) ?? 0 {
                 events.append(.ramp(
                     from: 1,
                     to: backgroundMicrophoneGain,
@@ -242,20 +257,41 @@ public enum CleanPlaybackPolicy {
         return events
     }
 
+    /// The timescale the schedule is delivered on. Policy owns it because the
+    /// ordering AVFoundation enforces is the ordering *after* quantization, not
+    /// the one in seconds.
+    public static let timescale: Int32 = 600
+
+    /// The tick an instant lands on. Two instants closer than one tick are the
+    /// same instant to AVFoundation, however far apart they are in seconds.
+    public static func tick(_ seconds: TimeInterval) -> Int64? {
+        let scaled = (seconds * TimeInterval(timescale)).rounded()
+        guard scaled.isFinite,
+              scaled >= TimeInterval(Int64.min),
+              scaled <= TimeInterval(Int64.max)
+        else { return nil }
+        return Int64(scaled)
+    }
+
     /// Every event must start no earlier than the previous one ended, and no
     /// ramp may be empty or inverted. AVFoundation aborts the process instead
     /// of returning an error when this is violated, so the boundary checks it.
+    ///
+    /// Checked in ticks, not seconds: a pair ordered by nanoseconds collapses
+    /// to one instant at 1/600 s, and a ramp that is empty *after* quantization
+    /// raises the same uncatchable exception as one that was empty to begin
+    /// with (D287).
     public static func isStrictlyOrdered(
         _ schedule: [CleanPlaybackVolumeEvent]
     ) -> Bool {
-        var cursor = -TimeInterval.infinity
+        var cursor = Int64.min
         for event in schedule {
-            guard event.start.isFinite,
-                  event.end.isFinite,
-                  event.start >= cursor
+            guard let start = tick(event.start),
+                  let end = tick(event.end),
+                  start >= cursor
             else { return false }
-            if case .ramp = event, event.end <= event.start { return false }
-            cursor = event.end
+            if case .ramp = event, end <= start { return false }
+            cursor = end
         }
         return true
     }

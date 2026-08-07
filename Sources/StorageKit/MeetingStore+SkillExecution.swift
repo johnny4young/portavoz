@@ -329,10 +329,18 @@ extension MeetingStore {
             failureCategory: failureCategory,
             at: now,
             in: database)
+        // The projection's updatedAt is monotonic, clamped in SQL rather than
+        // trusted from the wall clock. A backward clock step between confirm
+        // and settle would otherwise fail the `updatedAt >= createdAt` CHECK
+        // and leave the row stuck in `executing` — the one state that means
+        // "the effect may already have happened", so the proposal could never
+        // be settled or retried. The event log keeps the unclamped truth: its
+        // occurredAt is whatever the clock said.
         try database.execute(
             sql: """
                 UPDATE skillExecutionState
-                SET state = ?, attempt = ?, latestEventID = ?, updatedAt = ?
+                SET state = ?, attempt = ?, latestEventID = ?,
+                    updatedAt = MAX(?, updatedAt)
                 WHERE proposalID = ?
                 """,
             arguments: [state, attempt, eventID, now, proposalID.uuidString])

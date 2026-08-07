@@ -295,6 +295,40 @@ final class SkillExecutionStoreTests: XCTestCase {
         XCTAssertEqual(record.state, .executing)
     }
 
+    // MARK: - Clock
+
+    /// NTP can step the clock backwards. A settlement stamped before the row
+    /// was created would fail the `updatedAt >= createdAt` CHECK and strand the
+    /// execution in `executing` — the one state meaning "the effect may already
+    /// have happened", so it could never be settled or retried.
+    func testABackwardClockStepStillSettlesTheExecution() async throws {
+        let store = try store()
+        let proposal = UUID()
+        _ = try await confirm(store, proposalID: proposal)
+        _ = try await store.beginSkillExecution(proposalID: proposal, at: now)
+
+        let backwards = now.addingTimeInterval(-3_600)
+        let settled = try await store.settleSkillExecution(
+            proposalID: proposal,
+            succeeded: true,
+            failureCategory: nil,
+            at: backwards)
+
+        guard case .admitted(let record) = settled else {
+            return XCTFail("a backward clock step must not block settlement")
+        }
+        XCTAssertEqual(record.state, .succeeded)
+        XCTAssertGreaterThanOrEqual(
+            record.updatedAt,
+            now,
+            "the projection's updatedAt never moves backwards")
+
+        // The event log keeps what the clock actually said, unclamped.
+        let history = try await store.skillExecutionHistory(proposalID: proposal)
+        XCTAssertEqual(history.last?.kind, "succeed")
+        XCTAssertEqual(history.last?.occurredAt, backwards)
+    }
+
     // MARK: - Migration
 
     func testV31MigratesAdditivelyToSkillExecutionSchema() throws {

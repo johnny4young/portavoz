@@ -10527,3 +10527,57 @@ matching `event(from:)` projection, so no effect reads raw arguments any more.
 **Consequences:** what the receipt says was written, and where, is what
 happened. Both previously untested effects now have behavioural tests, including
 that a failed export leaves nothing written.
+
+## D302 — Playback ordering is judged on the ticks AVFoundation receives (Aug 2026)
+
+**Context:** D287 made the clear-playback schedule fail closed on an out-of-
+order or empty volume ramp, because AVFoundation raises an uncatchable ObjC
+exception instead of returning an error. The check ran on `TimeInterval`
+seconds, but the schedule is delivered as `CMTime` at timescale 600. Two events
+ordered by microseconds are one instant at 1/600 s, so a ramp proven non-empty
+in seconds could still reach AVFoundation empty — the exact crash D287 closed,
+through the gap the check did not cover.
+
+**Decision:** the timescale belongs to the policy. `CleanPlaybackPolicy.tick`
+quantizes, `isStrictlyOrdered` compares ticks, the composition builds `CMTime`
+from that same tick, and `audibleRanges` drops a turn shorter than one tick
+rather than keeping it as a range that would fail the check and silence clear
+playback for the whole meeting over a few inaudible milliseconds.
+
+**Consequences:** what is validated is exactly what AVFoundation receives.
+
+## D303 — The live turn timeline is the session's, not the consumer's (Aug 2026)
+
+**Context:** `PyannoteDiarizer.diarize` positioned each window by counting the
+windows it had consumed, starting at zero. Live diarization attaches only once
+system levels arrive and the runtime is acquired — after capture has begun — and
+reads an `AsyncStream` with `.bufferingNewest(128)`, which drops audio under
+back-pressure. Every live turn was therefore placed earlier than it happened,
+drifting further with each drop, and the live speaker labels drifted against the
+caption timeline they relabel.
+
+**Decision:** windows are anchored to `AudioChunk.timestamp`, the session clock
+the capture layer already stamps (and already pads across output-switch gaps).
+A chunk that does not continue where the held buffer ends releases that buffer
+as its own window instead of splicing a jump cut into one window. The logic
+lives in `DiarizationWindowCutter` — pure and synchronous, so the timeline is
+tested without the model.
+
+**Consequences:** live labels stay aligned with the captions regardless of when
+the consumer attached or what the stream dropped.
+
+## D304 — A failed recordings migration puts back what it moved (Aug 2026)
+
+**Context:** `migrateAudio` moves meeting directories one at a time and the
+caller only persists the new root once it returns. A throw part way through left
+recordings under the destination while the root still pointed at the origin —
+and `RecordingsLocation.resolve` only ever looks at the current and default
+roots, so those recordings were reachable from neither.
+
+**Decision:** a failure restores every directory that run moved, so a thrown
+error really does mean nothing happened. When a restore itself fails, the error
+becomes `RecordingsMigrationError.stranded`, carrying a count and the folder —
+enough to find them, without naming meetings in an error message.
+
+**Consequences:** a failed migration is a no-op, or it says precisely what it
+could not undo.

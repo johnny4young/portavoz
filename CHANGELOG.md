@@ -18,6 +18,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 6, 2026
 
+- **🗣️ Live speaker names stay on the right line** — Who-said-what during the meeting is now placed by the recording's own clock, so labels no longer drift earlier as the meeting goes on.
+- **📁 A folder move that fails leaves your library exactly as it was** — If moving your recordings folder cannot finish, Portavoz puts everything back where it was instead of leaving recordings in a place it can no longer find.
+- **🔇 A damaged recording keeps every channel** — When a recording was cut short by a crash, Portavoz now still transcribes the part it could not fully inspect instead of treating it as silence.
+- **⚡ Heavily corrected meetings open fast again** — Meetings with hundreds of edits no longer slow down every time you open them.
 - **🎙️ A transcription hiccup at Stop no longer costs you the ending** — If live transcription fails while the recording is being finalized, Portavoz now re-transcribes from the saved audio instead of keeping only the part it managed to hear.
 - **🛡️ Moving your recordings folder waits for the meeting** — Changing the recordings location while you are still recording is now refused with a clear message instead of moving the file the recording is being written into.
 - **⏳ Processing no longer gets stuck after a crash** — If Portavoz is quit or crashes while a meeting is still being processed, the work now resumes on its own instead of leaving the meeting spinning until you relaunch twice.

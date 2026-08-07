@@ -139,6 +139,69 @@ final class RecordingsLocationTests: XCTestCase {
                 atPath: custom.appendingPathComponent("Audio/B/microphone.wav").path))
     }
 
+    /// The caller only persists the new root once `migrateAudio` returns, so a
+    /// half-done migration would leave recordings under a folder no root points
+    /// at — reachable from neither `currentRoot()` nor `defaultRoot`. A failure
+    /// must therefore mean nothing happened.
+    func testAFailedMigrationPutsBackEverythingItMoved() throws {
+        let custom = workspace.appendingPathComponent("target")
+        _ = try makeRecording("A", under: defaultRoot)
+        _ = try makeRecording("B", under: defaultRoot)
+        // A dangling symlink at B's destination: invisible to fileExists, so
+        // it is not mistaken for an already-migrated directory, and fatal to
+        // both the rename and the cross-volume copy.
+        let targetAudio = custom.appendingPathComponent("Audio", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: targetAudio, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: targetAudio.appendingPathComponent("B"),
+            withDestinationURL: workspace.appendingPathComponent("nowhere"))
+
+        XCTAssertThrowsError(try location.migrateAudio(from: defaultRoot, to: custom))
+
+        for name in ["A", "B"] {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: defaultRoot
+                    .appendingPathComponent("Audio/\(name)/microphone.wav").path),
+                "\(name) must still be reachable from the unchanged root")
+        }
+        XCTAssertFalse(
+            FileManager.default.fileExists(
+                atPath: targetAudio.appendingPathComponent("A").path),
+            "nothing this run moved may be left behind")
+    }
+
+    /// When even the undo fails, the user is told how much is where — without
+    /// naming meetings, which would put library content in an error message.
+    func testAMigrationThatCannotUndoItselfReportsWhatItStranded() throws {
+        let custom = workspace.appendingPathComponent("target")
+        _ = try makeRecording("A", under: defaultRoot)
+        _ = try makeRecording("A", under: custom)
+        _ = try makeRecording("B", under: defaultRoot)
+        let targetAudio = custom.appendingPathComponent("Audio", isDirectory: true)
+        defer {
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o755], ofItemAtPath: targetAudio.path)
+        }
+        // Read-only destination: A still counts as migrated (its source is just
+        // dropped), B cannot land, and A cannot be moved back out either.
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o500], ofItemAtPath: targetAudio.path)
+
+        XCTAssertThrowsError(
+            try location.migrateAudio(from: defaultRoot, to: custom)
+        ) { error in
+            guard case RecordingsMigrationError.stranded(let count, let at, _) =
+                error
+            else { return XCTFail("expected a stranding report, got \(error)") }
+            XCTAssertEqual(count, 1)
+            XCTAssertEqual(at.lastPathComponent, "Audio")
+            XCTAssertFalse(
+                "\(error)".contains("microphone"),
+                "the report names a folder and a count, not library content")
+        }
+    }
+
     func testMigrateWithoutAudioFolderIsNoOp() throws {
         let custom = workspace.appendingPathComponent("target")
         XCTAssertEqual(try location.migrateAudio(from: defaultRoot, to: custom), 0)
