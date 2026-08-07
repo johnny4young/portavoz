@@ -142,6 +142,66 @@ final class AskPresentationModelTests: XCTestCase {
         XCTAssertEqual(model.state.query, "newer")
     }
 
+    /// SwiftUI can deliver a trailing text update after `onSubmit` — coalesced
+    /// typing, an IME commit, a re-render with the same value. Treating that as
+    /// a new query cancelled the answer already running for it, leaving the
+    /// palette showing hits, no answer, and nothing to restart it.
+    func testAnEchoedQueryDoesNotCancelTheAnswerRunningForIt() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        let model = CommandPaletteModel(client: client)
+
+        model.updateQuery("rollout")
+        try await waitUntil { client.searchRequests.contains("rollout") }
+        client.completeSearch("rollout", with: [fixture.newHit])
+        model.submit()
+        try await waitUntil { client.answerRequests.contains("rollout") }
+
+        // The same text arrives again while the answer is in flight.
+        model.updateQuery("rollout")
+
+        client.completeAnswer(
+            "rollout",
+            with: AskMeetingAnswer(
+                question: "rollout",
+                generatedText: "El viernes.",
+                citations: [fixture.citation]))
+        try await waitUntil { model.state.answer != nil }
+        XCTAssertEqual(model.state.answer?.text, "El viernes.")
+        XCTAssertFalse(model.state.isAnswering)
+    }
+
+    /// `isAnswering` gates `submit`, so a palette that leaked it would refuse
+    /// every further Enter. Characterization: this pins the property rather
+    /// than a fix — the behaviour already held before the defer that now
+    /// guarantees it.
+    func testAnAnswerThatFailsStillLetsTheUserAskAgain() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        let model = CommandPaletteModel(client: client)
+
+        model.updateQuery("rollout")
+        try await waitUntil { client.searchRequests.contains("rollout") }
+        client.completeSearch("rollout", with: [fixture.newHit])
+        model.submit()
+        try await waitUntil { client.answerRequests.contains("rollout") }
+
+        // The request fails outright rather than answering.
+        client.failAnswer("rollout")
+        try await waitUntil { !model.state.isAnswering }
+
+        // Enter works again, on the same question.
+        model.submit()
+        try await waitUntil { client.answerRequests.filter { $0 == "rollout" }.count == 2 }
+        client.completeAnswer(
+            "rollout",
+            with: AskMeetingAnswer(
+                question: "rollout",
+                generatedText: "El viernes.",
+                citations: [fixture.citation]))
+        try await waitUntil { model.state.answer?.text == "El viernes." }
+    }
+
     func testPaletteMarkdownKeepsQuestionAnswerAndReceipts() async throws {
         let fixture = AskPresentationFixture()
         let client = ControlledAskModelClient()
@@ -262,6 +322,12 @@ private final class ControlledAskModelClient: AskModelClient {
         answerContinuations.removeValue(forKey: question)?.resume(returning: answer)
     }
 
+    func failAnswer(_ question: String) {
+        evidenceReceivers.removeValue(forKey: question)
+        answerContinuations.removeValue(forKey: question)?
+            .resume(throwing: AskPresentationTestError.refused)
+    }
+
     func publishEvidence(
         _ question: String,
         update: AskEvidenceUpdate
@@ -272,4 +338,5 @@ private final class ControlledAskModelClient: AskModelClient {
 
 private enum AskPresentationTestError: Error {
     case timeout
+    case refused
 }

@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 6, 2026
 
+- **⌘K always answers** — Pressing Enter in the command palette now always produces an answer or an honest failure, instead of occasionally leaving the results on screen with nothing happening.
 - **🗣️ Live speaker names stay on the right line** — Who-said-what during the meeting is now placed by the recording's own clock, so labels no longer drift earlier as the meeting goes on.
 - **📁 A folder move that fails leaves your library exactly as it was** — If moving your recordings folder cannot finish, Portavoz puts everything back where it was instead of leaving recordings in a place it can no longer find — and if it genuinely cannot undo the move, it tells you how many recordings are in which folder instead of claiming nothing was lost.
 - **🔇 A damaged audio file keeps every channel** — When an imported or compressed file is missing part of its audio, Portavoz now still transcribes the part it could not fully inspect instead of treating it as silence.

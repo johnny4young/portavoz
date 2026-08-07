@@ -10651,3 +10651,41 @@ refuses a whole-table `segment` region in that file.
 
 **Consequences:** indexing is invisible to the library, and search results stay
 exactly as fresh as before.
+
+## D306 — A release gate never asserts a model's exact words (Aug 2026)
+
+**Context:** `testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState`
+asserted that a specific Spanish sentence appeared after Enter. That sentence is
+`RAGAnswerer` output — an on-device Foundation Models session. When the model is
+unavailable or throttled, `AskMeetings` honestly falls back to "Closest passages
+from your meetings:" with the same citations, and the gate failed. Measured on a
+quiet machine: **3 of 6 runs failed**, none of them a regression.
+
+**Decision:** the test asserts the property it is named for instead. The
+`palette-answer` element renders only from `state.answer`, which nothing but
+`submit()` sets, so its presence *is* the proof that Enter ran the full Ask
+workflow rather than reusing the instant FTS hits — and the citation still
+proves the receipt reaches the exact second. Same strength for the stated
+property, no dependency on a model. 6 of 6 runs pass after the change.
+
+No UI gate may assert generated text. A model's availability is not a property
+of this repository, and a gate that fails for it teaches the team to ignore red.
+
+**Consequences:** the bilingual gate means what it says again.
+
+## D307 — A palette query that did not change cannot cancel its own answer (Aug 2026)
+
+**Context:** `CommandPaletteModel.updateQuery` bumped the generation and
+cancelled the in-flight answer on *every* binding update, including one whose
+text was unchanged. SwiftUI delivers such updates — coalesced typing, an IME
+commit, a re-render with the same value — and after `onSubmit` that left the
+palette showing hits, no answer, and nothing to restart it.
+
+**Decision:** an update whose text equals the current query returns early.
+`answer` also clears `isAnswering` for its own generation in a `defer`, so a
+future cancel that forgets to bump the generation cannot leave the flag set and
+make `submit` refuse every later Enter. That second part is defence in depth and
+is documented as such: removing it leaves every palette test green, so it is
+unreachable today rather than a fix for a live defect.
+
+**Consequences:** Enter always produces an answer or an honest failure.

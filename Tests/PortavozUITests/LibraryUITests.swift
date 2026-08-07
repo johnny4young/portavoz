@@ -510,9 +510,18 @@ final class LibraryUITests: PortavozUITestCase {
             app.buttons["palette-hit-0"].waitForExistence(timeout: 10),
             "the palette must publish instant local FTS results")
         field.typeKey(.return, modifierFlags: [])
+        // `palette-answer` renders only from `state.answer`, which nothing but
+        // `submit()` sets — so its presence *is* the proof that Enter ran the
+        // full Ask workflow rather than reusing the instant FTS hits.
+        //
+        // Deliberately not asserting the answer's words. Those come from
+        // `RAGAnswerer`, an on-device Foundation Models session: when the model
+        // is unavailable or throttled the workflow honestly falls back to
+        // "Closest passages from your meetings:" with the same citations.
+        // Pinning the generated sentence made this gate fail about half the
+        // time for a reason that was never a regression.
         XCTAssertTrue(
-            app.staticTexts["El presupuesto se revisó y el rollout quedó para el viernes."]
-                .waitForExistence(timeout: 10),
+            app.staticTexts["palette-answer"].waitForExistence(timeout: 20),
             "Enter must use the same full Ask workflow")
         XCTAssertTrue(app.buttons["palette-copy-answer"].exists)
         let citation = app.buttons["palette-citation-0"]

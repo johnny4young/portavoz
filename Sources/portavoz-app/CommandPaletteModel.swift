@@ -43,6 +43,13 @@ final class CommandPaletteModel {
     }
 
     func updateQuery(_ text: String) {
+        // A binding update that does not change the question must not cancel an
+        // answer already running for it. SwiftUI can deliver a trailing text
+        // update after `onSubmit` — coalesced typing, an IME commit, a re-render
+        // with the same value — and treating that as a new query cancelled the
+        // in-flight answer, leaving the palette showing hits, no answer, and
+        // nothing to restart it.
+        guard text != state.query else { return }
         generation += 1
         let requestGeneration = generation
         searchTask?.cancel()
@@ -92,6 +99,19 @@ final class CommandPaletteModel {
     }
 
     private func answer(_ question: String, generation requestGeneration: Int) async {
+        // `isAnswering` gates `submit`, so leaking it true would be a palette
+        // that refuses every further Enter. Today no early return below can
+        // leak it — every site that cancels this task also bumps `generation`,
+        // so the guards it fails are the superseded ones. This clears it for
+        // the current generation only, as defence in depth against a future
+        // cancel that forgets to bump: a superseded request must never clear
+        // the flag of the newer one that replaced it.
+        //
+        // Verified as unreachable, not assumed: removing this defer leaves
+        // every palette test green.
+        defer {
+            if generation == requestGeneration { state.isAnswering = false }
+        }
         let answer: PaletteAnswer
         do {
             let result = try await client.answerAskMeetings(question, limit: 6)
@@ -115,7 +135,6 @@ final class CommandPaletteModel {
         }
         guard generation == requestGeneration else { return }
         state.answer = answer
-        state.isAnswering = false
         answerTask = nil
     }
 }
