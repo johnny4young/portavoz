@@ -10689,3 +10689,45 @@ is documented as such: removing it leaves every palette test green, so it is
 unreachable today rather than a fix for a live defect.
 
 **Consequences:** Enter always produces an answer or an honest failure.
+
+## D308 — Decision↔topic aboutness is explicit authority, never co-occurrence (Aug 2026)
+
+**Context:** the three remaining memory-graph jobs — decisionHistory,
+decisionConflicts, changeSince — all answer a question about a *subject*, and no
+decision↔topic edge existed. The cheap route, joining
+`topic → meeting → decision`, returns every decision taken in any meeting where
+the topic was mentioned: proximity dressed up as aboutness, exactly the failure
+the corpus distractors exist to catch, and exactly what D270/D271 forbid the
+graph to invent.
+
+**Decision:** schema v32 adds the authority, modelled on the existing
+continuity shapes. `decisionTopicLink` carries `confirmed`/`retracted` with a
+partial-unique "one active link per pair" (a mis-click retraction must not
+poison the pair forever); `decisionTopicLinkSource` is immutable and copies the
+exact summary/meeting origin, observed statement, topic label, and
+`sourceTranscriptRevision` — no foreign keys, so purge cannot erase why the
+user linked; `decisionTopicLinkEvent` is append-only with one confirm and at
+most one retract.
+
+The structural rule sits in the v32 confirm trigger, not only in Swift: a
+confirm event is legal only over a source whose observation the decision
+*itself already owns* as evidence (`decisionContinuitySource` for the same
+decision). Nothing that merely co-occurred in a meeting can satisfy that, from
+any code path, present or future.
+
+The disposable `meetingMemoryGraphDecisionTopic` edge derives from confirmed
+live links alone, targets the topic family's current root (a merge changes
+traversal without rewriting authority), and is rebuilt under both the decision
+and topic scopes. Mutation-tested: rewriting either rebuild site to
+co-occurrence fails the acceptance test, including in an incremental
+decision-only rebuild where the topic scope cannot mask it, and removing the
+trigger's ownership clause fails the direct-SQL test.
+
+`ConfirmDecisionTopicLink`, `RetractDecisionTopicLink`, and
+`LoadDecisionTopicLinks` are the only commands; semantic retrieval may suggest,
+never execute. No UI surface exists yet — the confirmation gesture ships with
+the adapter slice that consumes it.
+
+**Consequences:** GRAPH-5b's three adapters can now be honest: "about
+`atlas-001`" always resolves through user-confirmed authority with exact source
+evidence, and a rebuild from nothing reproduces the same edges.

@@ -1821,8 +1821,47 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 31"))
+        XCTAssertTrue(schema.contains("public static let version = 32"))
         XCTAssertTrue(decisions.contains("## D270"))
+    }
+
+    /// GRAPH-5a: the decision-topic edge derives only from the explicit
+    /// authority. Co-occurrence — a decision source and topic evidence sharing
+    /// a meeting — must never appear in either rebuild site, and the confirm
+    /// trigger keeps the ownership check that makes the rule hold below Swift.
+    func testDecisionTopicEdgeDerivesOnlyFromExplicitAuthority() throws {
+        let rebuild = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingMemoryGraph.swift")
+        let migration = try Self.contents(
+            of: "Sources/StorageKit/Schema+DecisionTopicAuthority.swift")
+        let store = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+DecisionTopicLink.swift")
+
+        XCTAssertTrue(rebuild.contains(
+            "func rebuildMeetingMemoryGraphDecisionTopics"))
+        for insert in [
+            // Decision scope selects from the authority…
+            "SELECT DISTINCT link.topicID\n                FROM decisionTopicLink AS link",
+            // …and so does the topic scope.
+            "SELECT DISTINCT link.decisionID, ?\n                FROM decisionTopicLink AS link",
+        ] {
+            XCTAssertTrue(
+                rebuild.contains(insert),
+                "decision-topic edges must derive from decisionTopicLink")
+        }
+        // The rebuild never reaches for co-occurrence to fill this edge.
+        XCTAssertFalse(rebuild.contains(
+            "INSERT OR IGNORE INTO meetingMemoryGraphDecisionTopic (\n"
+                + "                        decisionID, topicID\n"
+                + "                    )\n"
+                + "                    SELECT DISTINCT source"))
+        XCTAssertTrue(migration.contains(
+            "owned.summaryDecisionID = source.summaryDecisionID"),
+            "the confirm trigger keeps its evidence-ownership check")
+        XCTAssertTrue(store.contains(
+            "evidence must already belong to the decision"))
+        XCTAssertTrue(migration.contains(
+            "decisionTopicLink_one_active"))
     }
 
     func testBlockerQueryUsesGraphTopologyButRehydratesAuthority() throws {
@@ -2777,7 +2816,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 31"))
+        XCTAssertTrue(schema.contains("public static let version = 32"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))

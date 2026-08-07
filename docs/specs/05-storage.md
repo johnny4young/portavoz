@@ -108,6 +108,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `meetingQuestionEvent` (v29) | immutable resolve/reopen/dismiss event with question FK, exact source meeting/revision/primary segment, and strictly increasing occurrence time |
 | `meetingQuestionEventEvidenceSegment` (v29) | event FK plus immutable ordered exact segment identity without a segment FK |
 | `meetingMemoryGraphMeetingQuestion` / `meetingMemoryGraphTopicQuestion` (v29) | disposable question topology from live explicit authority; status remains outside the graph |
+| `decisionTopicLink` / `decisionTopicLinkSource` / `decisionTopicLinkEvent` (v32) | explicitly confirmed "decision is about topic" authority (D308): `confirmed`/`retracted` projection with a partial-unique active pair, immutable sources copying the exact summary/meeting origin and observed statement (no foreign keys — purge cannot erase why the user linked), append-only one-confirm/one-retract events. The confirm trigger accepts only evidence the decision itself already owns as a `decisionContinuitySource`, so meeting co-occurrence can never found a link from any code path |
+| `meetingMemoryGraphDecisionTopic` (v32) | disposable aboutness edge derived from confirmed live links alone, targeting the topic family's current root; rebuilt under both decision and topic scopes and mutation-tested against co-occurrence in each |
 
 Schema v16 adds the partial
 `meeting_on_live_startedAt_id(startedAt DESC, id ASC)` index for deterministic

@@ -20,7 +20,8 @@ extension MeetingStore {
                 topicQuestions: try Self.topicQuestionEdges(in: database),
                 meetingBlockers: try Self.meetingBlockerEdges(in: database),
                 decisionCommitmentBlockers: try Self.decisionCommitmentBlockerEdges(
-                    in: database))
+                    in: database),
+                decisionTopics: try Self.decisionTopicEdges(in: database))
         }
     }
 
@@ -174,6 +175,23 @@ extension MeetingStore {
                     meetingID: MeetingID(rawValue: try requiredUUID($0["meetingID"])),
                     blockerID: DecisionCommitmentBlockerID(
                         rawValue: try requiredUUID($0["blockerID"])))
+            }
+    }
+
+    private static func decisionTopicEdges(
+        in database: Database
+    ) throws -> [MeetingMemoryGraphProjectionSnapshot.DecisionTopicEdge] {
+        try Row.fetchAll(
+            database,
+            sql: """
+                SELECT decisionID, topicID
+                FROM meetingMemoryGraphDecisionTopic
+                ORDER BY decisionID, topicID
+                """)
+            .map {
+                .init(
+                    decisionID: DecisionID(rawValue: try requiredUUID($0["decisionID"])),
+                    topicID: TopicID(rawValue: try requiredUUID($0["topicID"])))
             }
     }
 

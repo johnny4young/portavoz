@@ -165,6 +165,18 @@ public struct MeetingMemoryGraphProjectionSnapshot: Equatable, Sendable {
         }
     }
 
+    /// Explicitly confirmed aboutness (D270/D271): present only when the
+    /// decision-topic authority asserts it, never from meeting co-occurrence.
+    public struct DecisionTopicEdge: Hashable, Sendable {
+        public let decisionID: DecisionID
+        public let topicID: TopicID
+
+        public init(decisionID: DecisionID, topicID: TopicID) {
+            self.decisionID = decisionID
+            self.topicID = topicID
+        }
+    }
+
     public let meetingPeople: [MeetingPersonEdge]
     public let meetingTopics: [MeetingTopicEdge]
     public let meetingDecisions: [MeetingDecisionEdge]
@@ -174,6 +186,7 @@ public struct MeetingMemoryGraphProjectionSnapshot: Equatable, Sendable {
     public let topicQuestions: [TopicQuestionEdge]
     public let meetingBlockers: [MeetingBlockerEdge]
     public let decisionCommitmentBlockers: [DecisionCommitmentBlockerEdge]
+    public let decisionTopics: [DecisionTopicEdge]
 
     public init(
         meetingPeople: [MeetingPersonEdge],
@@ -184,7 +197,8 @@ public struct MeetingMemoryGraphProjectionSnapshot: Equatable, Sendable {
         meetingQuestions: [MeetingQuestionEdge],
         topicQuestions: [TopicQuestionEdge],
         meetingBlockers: [MeetingBlockerEdge] = [],
-        decisionCommitmentBlockers: [DecisionCommitmentBlockerEdge] = []
+        decisionCommitmentBlockers: [DecisionCommitmentBlockerEdge] = [],
+        decisionTopics: [DecisionTopicEdge] = []
     ) {
         self.meetingPeople = meetingPeople
         self.meetingTopics = meetingTopics
@@ -195,5 +209,6 @@ public struct MeetingMemoryGraphProjectionSnapshot: Equatable, Sendable {
         self.topicQuestions = topicQuestions
         self.meetingBlockers = meetingBlockers
         self.decisionCommitmentBlockers = decisionCommitmentBlockers
+        self.decisionTopics = decisionTopics
     }
 }

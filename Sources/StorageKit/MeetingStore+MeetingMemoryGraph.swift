@@ -520,6 +520,9 @@ extension MeetingStore {
             try database.execute(
                 sql: "DELETE FROM meetingMemoryGraphTopicQuestion WHERE topicID = ?",
                 arguments: [topicID])
+            try database.execute(
+                sql: "DELETE FROM meetingMemoryGraphDecisionTopic WHERE topicID = ?",
+                arguments: [topicID])
             return 0
         }
         let root = try topicRoot(topicID, among: topics)
@@ -560,7 +563,28 @@ extension MeetingStore {
                   AND question.deletedAt IS NULL
                 """,
             arguments: StatementArguments([root.id] + familyIDs))
-        return meetingEdges + database.changesCount
+        let questionEdges = database.changesCount
+        try database.execute(
+            sql: """
+                DELETE FROM meetingMemoryGraphDecisionTopic
+                WHERE topicID IN (\(placeholders(familyIDs.count)))
+                """,
+            arguments: StatementArguments(familyIDs))
+        try database.execute(
+            sql: """
+                INSERT OR IGNORE INTO meetingMemoryGraphDecisionTopic (
+                    decisionID, topicID
+                )
+                SELECT DISTINCT link.decisionID, ?
+                FROM decisionTopicLink AS link
+                JOIN decisionContinuity AS decision ON decision.id = link.decisionID
+                WHERE link.topicID IN (\(placeholders(familyIDs.count)))
+                  AND link.status = 'confirmed'
+                  AND link.deletedAt IS NULL
+                  AND decision.deletedAt IS NULL
+                """,
+            arguments: StatementArguments([root.id] + familyIDs))
+        return meetingEdges + questionEdges + database.changesCount
     }
 
     /// Topic evidence remains attached to reversible observed identities. The
@@ -613,6 +637,9 @@ extension MeetingStore {
                 """,
             arguments: [decisionID])
         try database.execute(
+            sql: "DELETE FROM meetingMemoryGraphDecisionTopic WHERE decisionID = ?",
+            arguments: [decisionID])
+        try database.execute(
             sql: """
                 INSERT INTO meetingMemoryGraphMeetingDecision (meetingID, decisionID)
                 SELECT DISTINCT source.meetingID, source.decisionID
@@ -640,7 +667,50 @@ extension MeetingStore {
                   AND commitment.deletedAt IS NULL
                 """,
             arguments: [decisionID])
-        return meetingEdges + database.changesCount
+        let blockerEdges = database.changesCount
+        let topicEdges = try rebuildMeetingMemoryGraphDecisionTopics(
+            decisionID: decisionID,
+            in: database)
+        return meetingEdges + blockerEdges + topicEdges
+    }
+
+    /// Derived from the decision-topic authority alone (D270/D271): only an
+    /// explicitly confirmed, live link produces an edge, and the edge targets
+    /// the topic family's current root so a merge changes traversal without
+    /// rewriting authoritative history. No meeting co-occurrence appears here.
+    private static func rebuildMeetingMemoryGraphDecisionTopics(
+        decisionID: String,
+        in database: Database
+    ) throws -> Int {
+        let topics = try liveTopicRecords(in: database)
+        let linkedTopicIDs = try String.fetchAll(
+            database,
+            sql: """
+                SELECT DISTINCT link.topicID
+                FROM decisionTopicLink AS link
+                JOIN decisionContinuity AS decision ON decision.id = link.decisionID
+                WHERE link.decisionID = ?
+                  AND link.status = 'confirmed'
+                  AND link.deletedAt IS NULL
+                  AND decision.deletedAt IS NULL
+                """,
+            arguments: [decisionID])
+        let rootIDs = try Set(linkedTopicIDs.compactMap { topicID -> String? in
+            guard topics[topicID] != nil else { return nil }
+            return try topicRoot(topicID, among: topics).id
+        })
+        var published = 0
+        for rootID in rootIDs.sorted() {
+            try database.execute(
+                sql: """
+                    INSERT OR IGNORE INTO meetingMemoryGraphDecisionTopic (
+                        decisionID, topicID
+                    ) VALUES (?, ?)
+                    """,
+                arguments: [decisionID, rootID])
+            published += database.changesCount
+        }
+        return published
     }
 
     private static func rebuildMeetingMemoryGraphCommitment(
