@@ -10472,9 +10472,18 @@ fails against the previous implementation.
 false when a file cannot be read, "better to transcribe a channel than to
 silently drop one we failed to inspect". The failure-to-*open* path honoured
 that, but a read failure part way through the file `break`ed out of the loop and
-fell through to `return true`. A recording truncated by a crash reads fine until
-its damaged tail, so it was reported silent and its channel dropped — in exactly
-the recovery path where the audio matters most.
+fell through to `return true`, so a file we could not finish inspecting was
+reported silent and its channel dropped.
+
+**Correction (same day).** This entry first named a crash-truncated *capture*
+file as the case. That is wrong, and measurably so: `CaptureFileWriter` uses CAF
+precisely because its data chunk is sized to EOF, so a killed recording's
+declared length equals its readable bytes and every read succeeds. The reachable
+inputs come from elsewhere — `resolveExternalRefineAudio` passes arbitrary
+user-imported files, and `MeetingAudioLayout` resolves compressed `.m4a` copies
+and legacy WAV — plus any read that fails because the recordings volume went
+away mid-scan. The fix is unchanged; the justification was not true and is
+recorded here rather than quietly rewritten.
 
 **Decision:** only reaching the end of the file intact may conclude silence. A
 read that fails short of the end returns false, exactly as an unopenable file
@@ -10539,10 +10548,18 @@ in seconds could still reach AVFoundation empty — the exact crash D287 closed,
 through the gap the check did not cover.
 
 **Decision:** the timescale belongs to the policy. `CleanPlaybackPolicy.tick`
-quantizes, `isStrictlyOrdered` compares ticks, the composition builds `CMTime`
-from that same tick, and `audibleRanges` drops a turn shorter than one tick
-rather than keeping it as a range that would fail the check and silence clear
-playback for the whole meeting over a few inaudible milliseconds.
+quantizes, `isStrictlyOrdered` compares ticks, and the composition builds
+`CMTime` from that same tick. `audibleRanges` refuses a bound that has no tick
+at all — a non-finite or astronomically large time would make the ordering check
+reject the whole schedule and silence clear playback for the entire meeting.
+
+**Correction (same day).** This entry first claimed the sub-tick *length* check
+was what stopped the schedule failing. Measured, that is false: keeping a
+sub-tick range still passes `isStrictlyOrdered`, because both ramp emissions are
+already tick-guarded and `.level` events have no non-emptiness requirement. The
+length check is tidiness — such a turn raises and lowers the microphone at the
+same instant, so its instructions do nothing. The representable check is the
+crash guard. The code is unchanged; the stated reason was wrong.
 
 **Consequences:** what is validated is exactly what AVFoundation receives.
 
@@ -10563,6 +10580,11 @@ as its own window instead of splicing a jump cut into one window. The logic
 lives in `DiarizationWindowCutter` — pure and synchronous, so the timeline is
 tested without the model.
 
+The gap that triggers a re-anchor is measured between chunk timestamps, never
+against how many *resampled* samples are held: the resampler's output count is
+not an exact function of elapsed time, and measuring against the buffer would
+accumulate its rounding until a contiguous stream read as a drop.
+
 **Consequences:** live labels stay aligned with the captions regardless of when
 the consumer attached or what the stream dropped.
 
@@ -10575,12 +10597,25 @@ and `RecordingsLocation.resolve` only ever looks at the current and default
 roots, so those recordings were reachable from neither.
 
 **Decision:** a failure restores every directory that run moved, so a thrown
-error really does mean nothing happened. When a restore itself fails, the error
-becomes `RecordingsMigrationError.stranded`, carrying a count and the folder —
-enough to find them, without naming meetings in an error message.
+error really does mean nothing happened. The failing entry's hidden
+`.partial-<name>` cross-volume temp is removed too — it is a complete copy of
+that meeting's audio, and a later resume could not tell it from a finished
+directory. Restoration *replaces* an existing source rather than deleting the
+destination copy: the resume branch drops its source with `try?`, so a source
+that is present may be a partial leftover, and trusting it would destroy audio
+the pre-rollback code kept.
+
+When a restore itself fails, the error becomes
+`RecordingsMigrationError.stranded`, carrying a count and the folder — enough to
+find them, without naming meetings in an error message. The app adapter
+translates it into `ManageRecordingStorageError.recordingsStranded` so
+presentation reads an ApplicationKit error, and Settings gives it its own
+message: every other migration failure is a true no-op, and the existing
+"Nothing was lost" text is precisely what this case is not.
 
 **Consequences:** a failed migration is a no-op, or it says precisely what it
-could not undo.
+could not undo — and never silently tells the user nothing was lost when
+recordings really are in another folder.
 
 ## D305 — Library observation regions are column-scoped (Aug 2026)
 

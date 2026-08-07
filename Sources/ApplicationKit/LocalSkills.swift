@@ -163,11 +163,17 @@ public enum MeetingPackageExportSkill {
         capabilities: [.readMeetingMaterial, .writeLocalFile],
         confirmationPolicy: .explicitPerProposal)
 
+    /// Normalized exactly as `destination(from:)` normalizes it. Two callers
+    /// passing "  /a  " and "/a" mean one write, and a key that disagreed with
+    /// the projection would claim two slots for it — the drift the destination
+    /// argument exists to prevent.
     public static func idempotencyKey(
         for meetingID: MeetingID,
         destination: String
     ) -> String {
-        "\(id):\(meetingID.rawValue.uuidString):\(destination)"
+        let normalized = destination
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return "\(id):\(meetingID.rawValue.uuidString):\(normalized)"
     }
 
     public static func meeting(

@@ -136,6 +136,15 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
         } catch {
             continuation.finish()
             await progressTask.value
+            // Translated here rather than leaked upward: presentation reads
+            // ApplicationKit errors, and a bare StorageKit error would render
+            // as an opaque description under a "nothing was lost" message that
+            // is false for exactly this case.
+            if case RecordingsMigrationError.stranded(let count, let at, _) = error {
+                throw ManageRecordingStorageError.recordingsStranded(
+                    count: count,
+                    path: at.path)
+            }
             throw error
         }
     }

@@ -328,10 +328,13 @@ enter recognition.
 Digitally silent channels never reach Whisper — but only a channel proven
 silent. `AudioSilence.fileIsSilent` reads the file in ~1 s blocks and can
 conclude silence *only* by reaching the end intact; a read that fails short of
-it returns false, exactly as an unopenable file does (D299). A recording
-truncated by a crash reads fine until its damaged tail, so the previous
-early-`break` reported it silent and dropped its channel — in exactly the
-recovery path where the audio matters most. `TranscriptContentPolicy`
+it returns false, exactly as an unopenable file does (D299). Not a capture
+file: `CaptureFileWriter` uses CAF precisely so a killed recording stays fully
+readable. The reachable inputs arrive from elsewhere —
+`resolveExternalRefineAudio` passes arbitrary user-imported files, and
+`MeetingAudioLayout` resolves compressed `.m4a` copies and legacy WAV — plus any
+read that fails because the recordings volume went away mid-scan.
+`TranscriptContentPolicy`
 removes rows with no letter or digit from both system and microphone results;
 Whisper mapping, the ApplicationKit Refine boundary, accepted-aggregate storage,
 and intelligence formatting independently enforce the same minimum. Microphone

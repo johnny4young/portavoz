@@ -320,6 +320,14 @@ extension SettingsView {
                         update.recordingCount)
                     : L10n.text("Done: folder updated.")
                 migrating = false
+            } catch ManageRecordingStorageError.recordingsStranded(let count, let path) {
+                // "Nothing was lost" is exactly what this case is not, so it
+                // gets its own message: the rollback itself failed and some
+                // recordings really are in the other folder.
+                migrationStatus = ManageRecordingStorageError
+                    .recordingsStranded(count: count, path: path)
+                    .localizedDescription
+                migrating = false
             } catch {
                 migrationStatus =
                     // One-line UI error.

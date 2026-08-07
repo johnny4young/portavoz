@@ -2207,7 +2207,10 @@ that validation ran on `TimeInterval` seconds while the schedule is delivered as
 `CMTime` at timescale 600. Two events ordered by microseconds are one instant
 there, so a ramp proven non-empty in seconds could still reach AVFoundation
 empty. The timescale now belongs to the policy: `CleanPlaybackPolicy.tick`
-quantizes, `isStrictlyOrdered` compares ticks, the composition builds `CMTime`
-from that same tick, and `audibleRanges` drops a turn shorter than one tick
-instead of keeping a range that would fail the check and silence clear playback
-for the whole meeting over a few inaudible milliseconds.
+quantizes, `isStrictlyOrdered` compares ticks, and the composition builds
+`CMTime` from that same tick. `audibleRanges` refuses a bound with no tick at
+all — a non-finite or astronomically large time would make the ordering check
+reject the whole schedule — and drops a turn shorter than one tick because such
+a turn raises and lowers the microphone at the same instant, so its instructions
+do nothing. (Keeping it would still pass the check; only the representable
+guard is load-bearing.)

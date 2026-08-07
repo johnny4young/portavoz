@@ -149,6 +149,7 @@ public struct RecordingsLocation: Sendable {
                 // failure really does mean nothing happened.
                 throw restore(
                     movedNames,
+                    failing: entry.lastPathComponent,
                     from: targetAudio,
                     to: sourceAudio,
                     after: error,
@@ -161,23 +162,39 @@ public struct RecordingsLocation: Sendable {
 
     /// Returns the error to throw: the original cause when every directory made
     /// it back, or a stranding report naming what did not.
+    ///
+    /// `failing` is the entry that threw. Its hidden cross-volume temp may hold
+    /// a complete copy of that meeting's audio, and leaving it behind would
+    /// contradict "nothing happened" — a later resume would find it and could
+    /// not tell it from a finished directory.
     private func restore(
         _ names: [String],
+        failing: String?,
         from targetAudio: URL,
         to sourceAudio: URL,
         after cause: Error,
         using manager: FileManager
     ) -> Error {
+        if let failing {
+            try? manager.removeItem(at: targetAudio.appendingPathComponent(
+                ".partial-" + failing))
+        }
         var stranded: [String] = []
         for name in names {
             let target = targetAudio.appendingPathComponent(name)
             let source = sourceAudio.appendingPathComponent(name)
-            guard !manager.fileExists(atPath: source.path) else {
-                try? manager.removeItem(at: target)
-                continue
-            }
+            guard manager.fileExists(atPath: target.path) else { continue }
             do {
-                try manager.moveItem(at: target, to: source)
+                // Replaces rather than skips when the source still exists. The
+                // resume branch drops its source with `try?`, so a source that
+                // is present may be a *partial* leftover; deleting the complete
+                // destination copy on the strength of that would destroy audio
+                // the pre-rollback code kept.
+                if manager.fileExists(atPath: source.path) {
+                    _ = try manager.replaceItemAt(source, withItemAt: target)
+                } else {
+                    try manager.moveItem(at: target, to: source)
+                }
             } catch {
                 stranded.append(name)
             }
@@ -193,9 +210,24 @@ public struct RecordingsLocation: Sendable {
 }
 
 /// A migration that could neither finish nor fully undo itself.
-public enum RecordingsMigrationError: Error {
+public enum RecordingsMigrationError: LocalizedError {
     /// Recordings that reached the destination but could not be put back. The
     /// count and folder are enough for the user to find them; naming the
     /// meetings would put library content into an error message.
     case stranded(count: Int, at: URL, cause: Error)
+
+    /// Spelled out here rather than left to the default `Error` description,
+    /// which renders as an opaque "operation couldn't be completed" and would
+    /// drop the only two facts the user needs.
+    public var errorDescription: String? {
+        switch self {
+        case .stranded(let count, let at, let cause):
+            return """
+                \(count) recording(s) were moved to \(at.path) and could not be \
+                put back (\(cause.localizedDescription)). They are safe there; \
+                move them back into the Audio folder of your recordings \
+                location, or point Portavoz at that folder.
+                """
+        }
+    }
 }

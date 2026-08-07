@@ -96,10 +96,22 @@ public enum ManageRecordingStorageError: Error, Equatable, LocalizedError, Senda
     /// open. Moving them now would unlink the directory underneath the writers.
     case recordingInProgress
 
+    /// The migration failed *and* could not put back everything it had moved.
+    /// Carried as its own case because every other failure is a true no-op —
+    /// telling the user "nothing was lost" here would be false, and the folder
+    /// and count are the only two facts that let them recover.
+    case recordingsStranded(count: Int, path: String)
+
     public var errorDescription: String? {
         switch self {
         case .recordingInProgress:
             "Finish the current recording before moving the recordings folder."
+        case .recordingsStranded(let count, let path):
+            """
+            \(count) recording(s) were moved to \(path) and could not be put \
+            back. They are safe there: move them into the Audio folder of your \
+            recordings location, or point Portavoz at that folder.
+            """
         }
     }
 }

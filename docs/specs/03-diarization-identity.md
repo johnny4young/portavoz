@@ -17,7 +17,10 @@ Status: implemented; DER verified against real AMI; real meeting processed. Deci
   output-switch gaps with silence). A chunk that does not continue where the
   held buffer ends — beyond a 0.25 s tolerance for resampling rounding —
   releases that buffer as its own window rather than splicing a jump cut into
-  one window. The cutter is pure and synchronous, so the timeline is tested
+  one window. The gap is measured between chunk timestamps, never against how
+  many *resampled* samples are held: the resampler's output count is not an
+  exact function of elapsed time, so measuring against the buffer would
+  accumulate its rounding until a contiguous stream read as a drop. The cutter is pure and synchronous, so the timeline is tested
   without the model.
 - **`clusteringThreshold = 0.45` (D17) — DO NOT RAISE**: FluidAudio's internal wiring multiplies by ×1.2 (effective cosine distance 0.54). Measured calibration: at 0.50 the AMI sample already merges its 2 real speakers (DER 7.6% → 49.8%); but in a real remote meeting 0.45 fragments (11 clusters where there were ~4; distances 0.55–0.64). Fragmentation is addressed post-clustering, not with the threshold.
 - **`sanitizeTurns`**: labels that appear only in the last window (zero-padded by the model) with quality < 0.35 are discarded — the final window routinely produces a phantom speaker (q ≈ 0.2). "Me" is never touched.

@@ -473,9 +473,10 @@ final class MeetingPlayerTests: XCTestCase {
             .ramp(from: 0, to: 1, start: 10, end: 10.002),
         ]))
 
-        // A turn shorter than one tick is dropped rather than kept as a
-        // degenerate range: keeping it would fail the ordering check and
-        // silence clear playback for the whole meeting.
+        // A turn shorter than one tick raises and lowers the microphone at the
+        // same instant, so its instructions do nothing; it is dropped rather
+        // than emitted. (Keeping it would still pass the ordering check —
+        // that is tidiness, not the crash guard.)
         let subTick = CleanPlaybackPolicy.volumeSchedule(
             audibleRanges: [10 ... 10.000_5],
             duration: 60)
@@ -484,6 +485,20 @@ final class MeetingPlayerTests: XCTestCase {
             CleanPlaybackPolicy.audibleRanges([10 ... 10.000_5], duration: 60)
                 .count,
             0)
+
+        // The crash guard is the representable check. A bound this large has no
+        // tick, and letting it reach the schedule would make `isStrictlyOrdered`
+        // refuse everything — silencing clear playback for the whole meeting
+        // rather than for one impossible turn.
+        XCTAssertNil(CleanPlaybackPolicy.tick(2e16))
+        XCTAssertNil(CleanPlaybackPolicy.tick(.infinity))
+        let unrepresentable = CleanPlaybackPolicy.volumeSchedule(
+            audibleRanges: [2e16 ... 2.1e16, 10...11],
+            duration: 3e16)
+        XCTAssertTrue(CleanPlaybackPolicy.isStrictlyOrdered(unrepresentable))
+        XCTAssertFalse(
+            unrepresentable.isEmpty,
+            "the representable turn survives its impossible neighbour")
 
         // A real turn alongside a sub-tick one keeps clear playback working.
         let mixed = CleanPlaybackPolicy.volumeSchedule(

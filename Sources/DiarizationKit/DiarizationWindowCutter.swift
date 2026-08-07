@@ -24,6 +24,12 @@ struct DiarizationWindowCutter {
     private let tolerance: TimeInterval
     private var buffer: [Float] = []
     private var bufferStart: TimeInterval?
+    /// Where the session clock should be when the next chunk arrives, carried
+    /// forward from chunk timestamps rather than derived from how many
+    /// *resampled* samples are held. The resampler's output count is not an
+    /// exact function of elapsed time, so measuring the gap against the buffer
+    /// would accumulate its rounding and eventually read as a drop.
+    private var expectedNext: TimeInterval?
 
     init(
         windowSeconds: TimeInterval = PyannoteDiarizer.windowSeconds,
@@ -44,21 +50,25 @@ struct DiarizationWindowCutter {
     /// When a chunk does not continue where the held audio ends — the stream
     /// dropped some — the held audio is released as its own window rather than
     /// spliced onto the new chunk, so no window ever contains a jump cut.
+    /// `sourceDuration` is the chunk's own length in session seconds, measured
+    /// at the capture rate before resampling — `AudioChunk.duration`.
     mutating func accept(
         _ samples: [Float],
-        at timestamp: TimeInterval
+        at timestamp: TimeInterval,
+        sourceDuration: TimeInterval
     ) -> [Window] {
         var released: [Window] = []
-        if let start = bufferStart {
-            let expected = start
-                + TimeInterval(buffer.count) / TimeInterval(sampleRate)
+        if let expected = expectedNext {
             if !timestamp.isFinite || abs(timestamp - expected) > tolerance {
                 if let gapped = flush() { released.append(gapped) }
                 reset()
             }
         }
-        guard timestamp.isFinite else { return released }
+        guard timestamp.isFinite, sourceDuration.isFinite else {
+            return released
+        }
         if bufferStart == nil { bufferStart = timestamp }
+        expectedNext = timestamp + sourceDuration
         buffer.append(contentsOf: samples)
         while buffer.count >= windowSamples, let start = bufferStart {
             released.append(Window(
@@ -84,5 +94,6 @@ struct DiarizationWindowCutter {
     private mutating func reset() {
         buffer.removeAll(keepingCapacity: true)
         bufferStart = nil
+        expectedNext = nil
     }
 }

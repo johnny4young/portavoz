@@ -171,6 +171,69 @@ final class RecordingsLocationTests: XCTestCase {
             "nothing this run moved may be left behind")
     }
 
+    /// The resume branch drops its source with `try?`, so a source directory
+    /// that still exists may be a *partial* leftover. Rolling back must never
+    /// delete the complete destination copy on the strength of the source
+    /// merely existing — that would destroy audio the pre-rollback code kept.
+    func testRollbackNeverDeletesACompleteCopyForAPartialSource() throws {
+        let manager = FileManager.default
+        let custom = workspace.appendingPathComponent("target")
+        let sourceA = try makeRecording("A", under: defaultRoot)
+        _ = try makeRecording("A", under: custom)
+        _ = try makeRecording("B", under: defaultRoot)
+        // Only the destination copy of "A" has the system channel; the source
+        // is missing it, exactly as a half-finished removal would leave it.
+        try Data("wav".utf8).write(
+            to: custom.appendingPathComponent("Audio/A/system.wav"))
+        // Make the source's own removal fail so "A" takes the resume branch and
+        // is still counted as moved: a read-only subdirectory cannot be emptied.
+        let locked = sourceA.appendingPathComponent("locked", isDirectory: true)
+        try manager.createDirectory(at: locked, withIntermediateDirectories: true)
+        try Data("x".utf8).write(to: locked.appendingPathComponent("held.wav"))
+        defer {
+            try? manager.setAttributes(
+                [.posixPermissions: 0o755], ofItemAtPath: locked.path)
+        }
+        try manager.setAttributes(
+            [.posixPermissions: 0o500], ofItemAtPath: locked.path)
+        try manager.createSymbolicLink(
+            at: custom.appendingPathComponent("Audio/B"),
+            withDestinationURL: workspace.appendingPathComponent("nowhere"))
+
+        XCTAssertThrowsError(try location.migrateAudio(from: defaultRoot, to: custom))
+
+        // The system channel existed in exactly one place. Wherever rollback
+        // left it, it must still exist somewhere.
+        let survived = manager.fileExists(
+            atPath: sourceA.appendingPathComponent("system.wav").path)
+            || manager.fileExists(
+                atPath: custom.appendingPathComponent("Audio/A/system.wav").path)
+        XCTAssertTrue(
+            survived,
+            "the only copy of this channel was deleted during rollback")
+    }
+
+    /// The failing entry's hidden cross-volume temp is a full copy of that
+    /// meeting's audio. Leaving it behind would contradict "nothing happened",
+    /// and a later resume could not tell it from a finished directory.
+    func testAFailedMigrationLeavesNoHiddenPartialCopy() throws {
+        let custom = workspace.appendingPathComponent("target")
+        _ = try makeRecording("B", under: defaultRoot)
+        let targetAudio = custom.appendingPathComponent("Audio", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: targetAudio, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: targetAudio.appendingPathComponent("B"),
+            withDestinationURL: workspace.appendingPathComponent("nowhere"))
+
+        XCTAssertThrowsError(try location.migrateAudio(from: defaultRoot, to: custom))
+
+        XCTAssertFalse(
+            FileManager.default.fileExists(
+                atPath: targetAudio.appendingPathComponent(".partial-B").path),
+            "no hidden copy of B is left in the destination")
+    }
+
     /// When even the undo fails, the user is told how much is where — without
     /// naming meetings, which would put library content in an error message.
     func testAMigrationThatCannotUndoItselfReportsWhatItStranded() throws {

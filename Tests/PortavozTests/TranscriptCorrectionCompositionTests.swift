@@ -743,19 +743,26 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
             105, targets: [source.id], kind: .restore, supersedes: undo.id)
         let history = [text, speaker, suppress, undo, redo]
 
+        // Asserting the answers directly. Comparing the index against
+        // `correctionDomain(of:in:)` would prove nothing: that function is now
+        // implemented by this index, so the two sides can never disagree.
         let index = TranscriptCorrectionDomainIndex(history: history)
-        for event in history {
-            let indexed = try index.domain(of: event)
-            let direct = try TranscriptCorrectionPolicy.correctionDomain(
-                of: event, in: history)
-            XCTAssertEqual(indexed, direct, "\(event.id)")
+        let resolved: [TranscriptCorrectionDomain] = try history.map {
+            try index.domain(of: $0)
         }
-        let resolved: [TranscriptCorrectionDomain] = [
-            try index.domain(of: redo),
-            try index.domain(of: suppress),
-            try index.domain(of: speaker),
-        ]
-        XCTAssertEqual(resolved, [.text, .structure, .speaker])
+        XCTAssertEqual(
+            resolved,
+            [.text, .speaker, .structure, .text, .text],
+            "a restore, and a restore of a restore, both inherit .text")
+
+        // Order of the history must not change any answer, and neither must
+        // extra unrelated events sharing the array.
+        let shuffled = TranscriptCorrectionDomainIndex(
+            history: history.reversed())
+        let reshuffled: [TranscriptCorrectionDomain] = try history.map {
+            try shuffled.domain(of: $0)
+        }
+        XCTAssertEqual(reshuffled, resolved)
     }
 
     func testIndexedLaneResolutionRefusesTheSameHistoriesAsBefore() throws {
@@ -766,12 +773,21 @@ final class TranscriptCorrectionCompositionTests: XCTestCase {
             kind: .replaceText(text: "Corrected", language: "en"))
 
         // A duplicated id makes the whole history unreadable, and the refusal
-        // names the event that was asked about.
-        let duplicated = TranscriptCorrectionDomainIndex(history: [text, text])
+        // names the event that was *asked about* — not whichever event the
+        // indexing pass happened to find duplicated. The duplicate is therefore
+        // a different event from the one queried, so the two cannot be
+        // confused; querying with `text` here would prove nothing.
+        let speaker = edit(
+            102,
+            targets: [source.id],
+            kind: .changeSpeaker(secondSpeaker))
+        let duplicated = TranscriptCorrectionDomainIndex(
+            history: [speaker, speaker, text])
         XCTAssertThrowsError(try duplicated.domain(of: text)) { error in
             XCTAssertEqual(
                 error as? TranscriptCorrectionValidationError,
-                .duplicateEventID(text.id))
+                .duplicateEventID(text.id),
+                "the refusal names the queried event, not the duplicated one")
         }
 
         // A restore whose predecessor is absent has no lane to inherit.

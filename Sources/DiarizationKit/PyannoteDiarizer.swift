@@ -194,7 +194,10 @@ public actor PyannoteDiarizer: Diarizer {
                     for await chunk in audio {
                         try Task.checkCancellation()
                         let resampled = try await self.resample(chunk)
-                        for window in cutter.accept(resampled, at: chunk.timestamp) {
+                        for window in cutter.accept(
+                            resampled,
+                            at: chunk.timestamp,
+                            sourceDuration: chunk.duration) {
                             for turn in try await self.processWindow(
                                 window.samples, at: window.start) {
                                 continuation.yield(turn)

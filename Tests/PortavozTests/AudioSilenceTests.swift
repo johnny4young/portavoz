@@ -6,9 +6,13 @@ import XCTest
 final class AudioSilenceTests: XCTestCase {
     // MARK: - Whole-file inspection
 
-    /// A recording truncated by a crash reads fine until its damaged tail.
-    /// Concluding "silent" there would drop a channel that may contain speech,
-    /// in exactly the recovery path where the audio matters most.
+    /// A file whose header promises more than the bytes deliver — an imported
+    /// or compressed file that lost its tail after a clean close. Concluding
+    /// "silent" there would drop a channel we never finished inspecting.
+    ///
+    /// Deliberately *not* the capture case: `CaptureFileWriter` writes CAF with
+    /// its data chunk sized to EOF, so a killed recording's declared length
+    /// never exceeds its readable bytes and no mid-file read can fail.
     func testTruncatedFileIsNotReportedSilent() throws {
         let url = try writeSilentFile(seconds: 4)
         defer { try? FileManager.default.removeItem(at: url) }
@@ -16,8 +20,9 @@ final class AudioSilenceTests: XCTestCase {
             AudioSilence.fileIsSilent(at: url),
             "the intact file really is silent")
 
-        // Chop the audio data while leaving the header claiming the full
-        // length, which is what an interrupted write leaves behind.
+        // Chop the audio data after the file was closed, so the header still
+        // claims the full length. AVAudioFile then reports a length the bytes
+        // cannot satisfy and the read fails part way through.
         let handle = try FileHandle(forWritingTo: url)
         let full = try FileManager.default
             .attributesOfItem(atPath: url.path)[.size] as? NSNumber ?? 0

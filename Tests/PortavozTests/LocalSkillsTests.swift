@@ -80,6 +80,23 @@ final class LocalSkillsTests: XCTestCase {
             RecapDraftSkill.idempotencyKey(for: first),
             MeetingPackageExportSkill.idempotencyKey(
                 for: first, destination: "/a"))
+
+        // The key normalizes the destination exactly as the projection does,
+        // so one intended write can never claim two slots.
+        XCTAssertEqual(
+            MeetingPackageExportSkill.idempotencyKey(
+                for: first, destination: "  /a  "),
+            MeetingPackageExportSkill.idempotencyKey(
+                for: first, destination: "/a"))
+        XCTAssertEqual(
+            try MeetingPackageExportSkill.idempotencyKey(
+                for: first,
+                destination: MeetingPackageExportSkill.destination(from: [
+                    .meeting(first), .text("  /a  "),
+                ])),
+            MeetingPackageExportSkill.idempotencyKey(
+                for: first, destination: "  /a  "),
+            "key and projection agree on the same argument")
     }
 
     // MARK: - Argument projection refuses rather than guesses

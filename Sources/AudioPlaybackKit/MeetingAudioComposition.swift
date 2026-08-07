@@ -190,10 +190,17 @@ public enum CleanPlaybackPolicy {
         let clamped = ranges.compactMap { range -> ClosedRange<TimeInterval>? in
             let lower = min(duration, max(0, range.lowerBound))
             let upper = min(duration, max(0, range.upperBound))
-            // Dropped rather than kept as a degenerate range: a turn shorter
-            // than one tick is the same instant to AVFoundation, and letting it
-            // through would fail the ordering check and silence clear playback
-            // for the whole meeting over a few inaudible milliseconds.
+            // `tick` returning nil is the load-bearing half: a bound that
+            // cannot be represented on the timescale must never reach the
+            // schedule, because `isStrictlyOrdered` would refuse the whole
+            // thing and silence clear playback for the entire meeting.
+            //
+            // `lowerTick < upperTick` is tidiness, not a crash guard — a turn
+            // shorter than one tick raises and lowers the microphone at the
+            // same instant, so its instructions do nothing. (Measured: keeping
+            // such a range still passes the ordering check, because both ramp
+            // emissions below are already tick-guarded and `.level` events have
+            // no non-emptiness requirement.)
             guard let lowerTick = tick(lower),
                   let upperTick = tick(upper),
                   lowerTick < upperTick

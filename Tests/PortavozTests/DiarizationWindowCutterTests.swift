@@ -28,9 +28,9 @@ final class DiarizationWindowCutterTests: XCTestCase {
 
         // The consumer attached 30 s into the meeting: the first window it
         // completes is at 30 s, not at 0.
-        XCTAssertTrue(cutter.accept(chunk(1), at: 30).isEmpty)
-        let first = cutter.accept(chunk(1), at: 31)
-        let second = cutter.accept(chunk(2), at: 32)
+        XCTAssertTrue(cutter.accept(chunk(1), at: 30, sourceDuration: 1).isEmpty)
+        let first = cutter.accept(chunk(1), at: 31, sourceDuration: 1)
+        let second = cutter.accept(chunk(2), at: 32, sourceDuration: 2)
 
         XCTAssertEqual(first.map(\.start), [30])
         XCTAssertEqual(second.map(\.start), [32])
@@ -39,11 +39,11 @@ final class DiarizationWindowCutterTests: XCTestCase {
 
     func testDroppedAudioShiftsNothingThatFollowsIt() {
         var cutter = cutter()
-        _ = cutter.accept(chunk(1), at: 0)
+        _ = cutter.accept(chunk(1), at: 0, sourceDuration: 1)
 
         // The stream dropped 5 s. The next window must sit where the audio
         // actually is, and must not splice across the gap.
-        let released = cutter.accept(chunk(2), at: 6)
+        let released = cutter.accept(chunk(2), at: 6, sourceDuration: 2)
 
         XCTAssertEqual(
             released.map(\.start),
@@ -57,10 +57,10 @@ final class DiarizationWindowCutterTests: XCTestCase {
 
     func testAGapShorterThanTheToleranceIsTreatedAsContiguous() {
         var cutter = cutter()
-        _ = cutter.accept(chunk(1), at: 0)
+        _ = cutter.accept(chunk(1), at: 0, sourceDuration: 1)
 
         // 0.1 s of resampling rounding, well inside the tolerance.
-        let released = cutter.accept(chunk(1), at: 1.1)
+        let released = cutter.accept(chunk(1), at: 1.1, sourceDuration: 1)
 
         XCTAssertEqual(released.map(\.start), [0])
         XCTAssertEqual(
@@ -71,21 +71,51 @@ final class DiarizationWindowCutterTests: XCTestCase {
 
     func testATailShorterThanTheMinimumCarriesNoTurn() {
         var cutter = cutter()
-        _ = cutter.accept(chunk(0.2), at: 10)
+        _ = cutter.accept(chunk(0.2), at: 10, sourceDuration: 0.2)
 
         XCTAssertNil(cutter.flush())
 
-        _ = cutter.accept(chunk(0.8), at: 20)
+        _ = cutter.accept(chunk(0.8), at: 20, sourceDuration: 0.8)
         let tail = cutter.flush()
         XCTAssertEqual(tail?.start, 20)
         XCTAssertNil(cutter.flush(), "a flushed tail is not emitted twice")
     }
 
+    /// The gap is measured between chunk timestamps, never against how many
+    /// *resampled* samples are held: the resampler's output count is not an
+    /// exact function of elapsed time, and measuring against the buffer would
+    /// accumulate its rounding until a contiguous stream read as a drop.
+    func testResamplerRoundingNeverAccumulatesIntoAFalseGap() {
+        var cutter = cutter()
+        // Every chunk is one second of session time, but the "resampler"
+        // returns 2% fewer samples than that. Against the buffer this drifts
+        // past the 0.25 s tolerance within 13 chunks.
+        let short = [Float](repeating: 0.5, count: Int(0.98 * Double(rate)))
+        var starts: [TimeInterval] = []
+        for index in 0..<40 {
+            starts += cutter.accept(
+                short,
+                at: TimeInterval(index),
+                sourceDuration: 1
+            ).map(\.start)
+        }
+
+        // Windows land on an unbroken 0, 2, 4, … sequence. A phantom gap would
+        // flush early and re-anchor to a chunk boundary, breaking the stride.
+        // (Fewer than 20 windows is expected and correct: the chunks really do
+        // carry 2% less audio than the session clock says.)
+        XCTAssertEqual(
+            starts,
+            (0..<starts.count).map { TimeInterval($0) * windowSeconds },
+            "no window was re-anchored by a phantom gap")
+        XCTAssertGreaterThan(starts.count, 15)
+    }
+
     func testANonFiniteTimestampNeverAnchorsAWindow() {
         var cutter = cutter()
-        _ = cutter.accept(chunk(1), at: 5)
+        _ = cutter.accept(chunk(1), at: 5, sourceDuration: 1)
 
-        let released = cutter.accept(chunk(1), at: .nan)
+        let released = cutter.accept(chunk(1), at: .nan, sourceDuration: 1)
 
         XCTAssertEqual(
             released.map(\.start),

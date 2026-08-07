@@ -37,10 +37,17 @@ public enum AudioSilence {
     /// channel than to silently drop one we failed to inspect.
     ///
     /// "Can't be read" covers a failure *part way through*, not only a failure
-    /// to open. A recording truncated by a crash reads fine until its damaged
-    /// tail, and concluding silence there would drop a channel that contains
-    /// speech — in exactly the recovery path where the audio matters most.
-    /// Only reaching the end intact can conclude silence.
+    /// to open, and only reaching the end intact can conclude silence.
+    ///
+    /// Not for capture files: `CaptureFileWriter` uses CAF precisely so a
+    /// killed recording stays fully readable, its data chunk sized to EOF, so
+    /// its declared length never exceeds its readable bytes. The inputs that
+    /// reach this branch arrive from elsewhere — `resolveExternalRefineAudio`
+    /// hands over arbitrary user-imported files, and `MeetingAudioLayout`
+    /// resolves compressed `.m4a` copies and legacy WAV. A file whose header
+    /// promises more than the bytes deliver, or a read that fails because the
+    /// recordings volume went away mid-scan, would otherwise be reported silent
+    /// and have its channel dropped.
     public static func fileIsSilent(at url: URL, floorDBFS: Float = -60) -> Bool {
         guard let file = try? AVAudioFile(forReading: url) else { return false }
         let format = file.processingFormat
