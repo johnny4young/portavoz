@@ -323,10 +323,12 @@ extension SettingsView {
             } catch ManageRecordingStorageError.recordingsStranded(let count, let path) {
                 // "Nothing was lost" is exactly what this case is not, so it
                 // gets its own message: the rollback itself failed and some
-                // recordings really are in the other folder.
-                migrationStatus = ManageRecordingStorageError
-                    .recordingsStranded(count: count, path: path)
-                    .localizedDescription
+                // recordings really are in the other folder. Rendered through
+                // the catalog here — the error's own description is an
+                // unlocalized fallback for non-app consumers.
+                migrationStatus =
+                    // swiftlint:disable:next line_length
+                    L10n.format("%d recording(s) were moved to %@ and could not be put back. They are safe there: move them into the Audio folder of your recordings location, or point Portavoz at that folder.", count, path)
                 migrating = false
             } catch {
                 migrationStatus =

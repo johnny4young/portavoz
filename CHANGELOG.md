@@ -18,7 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 6, 2026
 
-- **⌘K always answers** — Pressing Enter in the command palette now always produces an answer or an honest failure, instead of occasionally leaving the results on screen with nothing happening.
+- **⌨️ ⌘K always answers** — Pressing Enter in the command palette now always produces an answer or an honest failure, instead of occasionally leaving the results on screen with nothing happening.
 - **🗣️ Live speaker names stay on the right line** — Who-said-what during the meeting is now placed by the recording's own clock, so labels no longer drift earlier as the meeting goes on.
 - **📁 A folder move that fails leaves your library exactly as it was** — If moving your recordings folder cannot finish, Portavoz puts everything back where it was instead of leaving recordings in a place it can no longer find — and if it genuinely cannot undo the move, it tells you how many recordings are in which folder instead of claiming nothing was lost.
 - **🔇 A damaged audio file keeps every channel** — When an imported or compressed file is missing part of its audio, Portavoz now still transcribes the part it could not fully inspect instead of treating it as silence.
@@ -26,7 +26,6 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **🎙️ A transcription hiccup at Stop no longer costs you the ending** — If live transcription fails while the recording is being finalized, Portavoz now re-transcribes from the saved audio instead of keeping only the part it managed to hear.
 - **🛡️ Moving your recordings folder waits for the meeting** — Changing the recordings location while you are still recording is now refused with a clear message instead of moving the file the recording is being written into.
 - **⏳ Processing no longer gets stuck after a crash** — If Portavoz is quit or crashes while a meeting is still being processed, the work now resumes on its own instead of leaving the meeting spinning until you relaunch twice.
-
 - **▶️ Opening a meeting no longer quits Portavoz** — Recordings with rapid back-and-forth turns now open and play normally instead of closing the app when clear playback ducked between turns too quickly to be possible.
 - **✨ Your automatic summary stops going missing** — When the automatic pass loses track of a transcript it just finished, Portavoz retries it against the saved meeting instead of quietly giving up, and says so beside Generate summary whenever a summary really is not coming.
 

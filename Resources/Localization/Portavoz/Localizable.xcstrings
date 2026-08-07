@@ -21,6 +21,16 @@
         }
       }
     },
+    "%d recording(s) were moved to %@ and could not be put back. They are safe there: move them into the Audio folder of your recordings location, or point Portavoz at that folder.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d grabación(es) se movieron a %@ y no se pudieron devolver. Están seguras ahí: muévelas a la carpeta Audio de tu ubicación de grabaciones, o apunta Portavoz a esa carpeta."
+          }
+        }
+      }
+    },
     "%@ in meetings with no decision": {
       "localizations": {
         "es": {
