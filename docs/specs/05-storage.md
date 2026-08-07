@@ -1128,7 +1128,19 @@ Library now has four independent GRDB `ValueObservation` streams (D54).
 Meeting rows plus voice mix explicitly observe `meeting`, `speaker`, and
 `segment`; open items observe `meeting`, `summary`, and `actionItem`; trash
 observes `meeting`; active FTS observes the base `meeting` and `segment` tables
-rather than FTS5 shadow tables. Each source uses newest-value buffering and
+rather than FTS5 shadow tables.
+
+The two `segment` regions are scoped to the columns their queries read, not to
+the whole table (D305). The semantic backfill writes `embedding` and
+`embeddingFingerprint` on `segment` in batches, and a whole-table region made
+every batch commit re-fetch the entire library, recompute every voice mix, and
+re-run any active full-text query — the more of the library was being indexed,
+the more often it happened. `librarySegmentRegion` covers `meetingID`,
+`speakerID`, `deletedAt`, `startTime`, `endTime`; `searchSegmentRegion` covers
+`id`, `meetingID`, `text`, `startTime`, `deletedAt`. An embedding write
+intersects neither; anything either projection shows still does, including an
+insert or delete. An architecture ratchet refuses a whole-table `segment`
+region in that file. Each source uses newest-value buffering and
 cancels its observation task when the consumer ends. The three persistent
 sidebar sources fail independently, so corrupt meeting projection data does
 not prevent open-item or trash reads from remaining available. Meeting rows
@@ -1191,7 +1203,9 @@ latest-summary-only `openActionItems(limit:)` query.
 
 - User-selectable root; persists as a plain absolute path in `recordings-root.txt` NEXT TO THE DB (file, not UserDefaults → the CLI honors the same folder). No security-scoped bookmark: the app has hardened runtime but is NOT sandboxed; TCC prompts once for protected folders (usage strings in Info.plist, including external drives).
 - `currentRoot()` falls back to the default if the marker points to a missing folder (disconnected drive). `resolve(relative)` tries the current root → default (an interrupted migration remains fully readable).
-- `migrateAudio(from:to:progress:)` is resumable: one meeting directory (immutable UUID) at a time; cross-volume copies to `.partial-<n>` and publishes with an atomic rename; existing destination = already migrated (skips and cleans the source). A destination that resolves to the current root, including a symlink alias, is a no-op so it can never trigger the resume cleanup against its own source. 9 tests.
+- `migrateAudio(from:to:progress:)` is resumable: one meeting directory (immutable UUID) at a time; cross-volume copies to `.partial-<n>` and publishes with an atomic rename; existing destination = already migrated (skips and cleans the source). A destination that resolves to the current root, including a symlink alias, is a no-op so it can never trigger the resume cleanup against its own source.
+- **A failure puts back what that run moved (D304).** The caller persists the new root only once the migration returns, so a throw part way through left recordings under the destination while the root still pointed at the origin — and `resolve` only ever looks at the current and default roots, making them reachable from neither. Every directory the failed run moved is restored, so a thrown error really does mean nothing happened. When a restore itself fails, the error becomes `RecordingsMigrationError.stranded`, carrying a count and the folder — enough to find them, without naming meetings in an error message.
+- `skipping` names directories whose writers are still live; `ManageRecordingStorage` refuses outright while capture is active, and this is the last line of defence behind it. 12 tests.
 
 The macOS Settings surface enters `ApplicationKit.ManageRecordingStorage` to
 inspect or change the root. SwiftUI retains the native folder panel and

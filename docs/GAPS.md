@@ -229,3 +229,13 @@ visible release blocker rather than being inferred from deterministic tests.
 - No bot that joins the call (the entire native bot-free market avoids it; our capture is local).
 - Diarization threshold at 0.45 (raising it breaks AMI; fragmentation is resolved post-clustering).
 - XCTest instead of Swift Testing (D13, because of the build environment without full Xcode).
+- Meeting Detail recomputing the transcript projection on playback ticks —
+  checked, and it does not. `loadedBody` hoists the transcript, accepted, and
+  structure projections into locals, and it never reads a player property, so
+  Observation does not invalidate it as playback advances. The three other
+  `transcriptContent` call sites are event handlers (evidence focus, pending
+  seek, seek-and-play), each once per user action.
+- Duplicate keys aborting `Dictionary(uniqueKeysWithValues:)` — all 66 sites
+  were audited against their key sources; every one is unique by construction
+  (a primary key, a `Set`, or `enumerated()`). The rule to keep is that a new
+  site must state which of those three guarantees it relies on.

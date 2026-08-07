@@ -1,11 +1,24 @@
 # Spec 03 — Diarization and identity (DiarizationKit + naming)
 
-Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage), D148 (content-free resource measurement), D164 (process-owned model residency with fresh sessions).
+Status: implemented; DER verified against real AMI; real meeting processed. Decisions: D5 (structural Me), D17 (threshold), D21 (voiceprint + verified names), D46 (degradable external-audio attribution), D47 (reviewable refine attribution), D48 (application-owned initial Stop request), D49 (recording-scoped Start runtime), D65 (accepted Refine transcript provenance), D86 (explicit canonical people), D103 (terminal diarization and local-voice workflows), D104 (application-owned durable attribution policy), D105 (application-owned participant voice memory), D106 (application-owned app enrollment), D107 (application-owned verified name suggestions), D133 (stable split lineage), D148 (content-free resource measurement), D164 (process-owned model residency with fresh sessions), D303 (session-clock-anchored live windows).
 
 ## PyannoteDiarizer — `Sources/DiarizationKit/PyannoteDiarizer.swift`
 
 - pyannote community-1 (segmentation) + WeSpeaker v2 (embeddings) via FluidAudio; 10 sha256-pinned artifacts (~14 MB). `DiarizerModels.load(localSegmentationModel:localEmbeddingModel:)` loads from explicit paths and **never downloads** (unlike `AsrModels.load`).
 - Streaming in 10 s windows with `atTime` (the internal `SpeakerManager` keeps S1/S2… stable across windows) + batch `diarizeFile`.
+- **`DiarizationWindowCutter` owns where a window sits on the timeline.** Live
+  diarization attaches only once system levels arrive and the runtime is
+  acquired — after capture has begun — and reads an `AsyncStream` with
+  `.bufferingNewest(128)`, which drops audio under back-pressure. Counting
+  consumed windows therefore placed every live turn earlier than it happened
+  and drifted further with each drop, against the very captions
+  `LiveSpeakerLabeler` relabels. Windows are anchored to `AudioChunk.timestamp`,
+  the session clock the capture layer stamps (and already pads across
+  output-switch gaps with silence). A chunk that does not continue where the
+  held buffer ends — beyond a 0.25 s tolerance for resampling rounding —
+  releases that buffer as its own window rather than splicing a jump cut into
+  one window. The cutter is pure and synchronous, so the timeline is tested
+  without the model.
 - **`clusteringThreshold = 0.45` (D17) — DO NOT RAISE**: FluidAudio's internal wiring multiplies by ×1.2 (effective cosine distance 0.54). Measured calibration: at 0.50 the AMI sample already merges its 2 real speakers (DER 7.6% → 49.8%); but in a real remote meeting 0.45 fragments (11 clusters where there were ~4; distances 0.55–0.64). Fragmentation is addressed post-clustering, not with the threshold.
 - **`sanitizeTurns`**: labels that appear only in the last window (zero-padded by the model) with quality < 0.35 are discarded — the final window routinely produces a phantom speaker (q ≈ 0.2). "Me" is never touched.
 - **`mergeMicroClusters`** (batch/`diarizeFile` only): labels with < 15 s of total speech yield each turn to the temporally nearest major label. Verified: real meeting 11 → 4 speakers; AMI unchanged (7.6%). Biometric rules: "Me" never absorbs or is absorbed (a phantom Me would contaminate action item owners); with no majors available, turns remain unchanged (short meeting ≠ fragmentation). 6 tests.

@@ -14,6 +14,18 @@ restoration. Each visible composed row retains the ordered accepted segment IDs
 from which it was derived, and composed chapters are rebuilt from the same
 rows.
 
+Every correction's lane — text, speaker, or structure — is resolved through
+`TranscriptCorrectionDomainIndex`, which indexes one history once (D300). A
+restore inherits its predecessor's lane, so resolution walks the supersession
+chain; doing that against a freshly grouped copy of the whole history per event
+made composition quadratic in a meeting's correction count, on the interactive
+path. Measured on 8 000 segments with 4 000 corrections: p95 12 749 ms before,
+185 ms after, guarded by
+`testDenseCorrectionHistoryStaysWithinTheCompositionBudget`. Per-event
+semantics are unchanged, including which event id a duplicate reports — the
+duplicate check is deferred to the query so the refusal still names the event
+that was asked about.
+
 Composition fails closed for an unspecified base, stale revision, duplicate
 correction identity, missing or repeated target, overlapping active edits,
 invalid or branched supersession, a target-changing supersession, nonmonotonic
@@ -313,7 +325,13 @@ Whisper hint `nil`, and the aggregate language is recomputed only when the
 result is homogeneous. Summary/UI language and stale meeting metadata never
 enter recognition.
 
-Digitally silent channels never reach Whisper. `TranscriptContentPolicy`
+Digitally silent channels never reach Whisper — but only a channel proven
+silent. `AudioSilence.fileIsSilent` reads the file in ~1 s blocks and can
+conclude silence *only* by reaching the end intact; a read that fails short of
+it returns false, exactly as an unopenable file does (D299). A recording
+truncated by a crash reads fine until its damaged tail, so the previous
+early-`break` reported it silent and dropped its channel — in exactly the
+recovery path where the audio matters most. `TranscriptContentPolicy`
 removes rows with no letter or digit from both system and microphone results;
 Whisper mapping, the ApplicationKit Refine boundary, accepted-aggregate storage,
 and intelligence formatting independently enforce the same minimum. Microphone
