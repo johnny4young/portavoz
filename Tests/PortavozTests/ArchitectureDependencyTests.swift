@@ -5056,12 +5056,18 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(observation.contains("func observeLibraryMeetings()"))
         XCTAssertTrue(observation.contains("func observeLibraryOpenItems("))
         XCTAssertTrue(observation.contains("func observeLibraryTrash()"))
+        // Segment regions are column-scoped so a semantic backfill, which
+        // writes only embedding columns, cannot re-fire either projection.
         XCTAssertTrue(observation.contains(
-            "regions: [Table(\"meeting\"), Table(\"speaker\"), Table(\"segment\")]"))
+            "Table(\"meeting\"), Table(\"speaker\"), Self.librarySegmentRegion"))
+        XCTAssertTrue(observation.contains(
+            "regions: [Table(\"meeting\"), Self.searchSegmentRegion]"))
+        XCTAssertFalse(
+            observation.contains("Table(\"segment\")"),
+            "a whole-table segment region re-fetches the library on every embedding batch")
         XCTAssertTrue(observation.contains(
             "regions: [Table(\"meeting\"), Table(\"summary\"), Table(\"actionItem\")]"))
         XCTAssertTrue(observation.contains("region: Table(\"meeting\")"))
-        XCTAssertTrue(observation.contains("regions: [Table(\"meeting\"), Table(\"segment\")]"))
         XCTAssertFalse(view.contains("services.store"))
         XCTAssertFalse(view.contains("services.meetingLifecycle"))
         XCTAssertFalse(view.contains("services.libraryVersion +="))

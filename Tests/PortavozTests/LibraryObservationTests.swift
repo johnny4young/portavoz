@@ -5,6 +5,44 @@ import XCTest
 @testable import StorageKit
 
 final class LibraryObservationTests: XCTestCase {
+    /// The semantic backfill writes `embedding`/`embeddingFingerprint` on
+    /// `segment` in batches. Tracking the whole table made every batch commit
+    /// re-fetch the entire library and recompute every voice mix — the more of
+    /// the library was being indexed, the more often it happened.
+    func testIndexingEmbeddingsDoesNotRefireTheLibraryOrSearch() async throws {
+        let store = try MeetingStore.inMemory()
+
+        try await store.database.read { database in
+            let library = try MeetingStore.librarySegmentRegion
+                .databaseRegion(database)
+            let search = try MeetingStore.searchSegmentRegion
+                .databaseRegion(database)
+
+            for region in [library, search] {
+                XCTAssertFalse(
+                    region.isModified(byEventsOfKind: .update(
+                        tableName: "segment",
+                        columnNames: ["embedding", "embeddingFingerprint"])),
+                    "indexing is not a library change")
+            }
+
+            // Everything either projection reads still re-fires it.
+            XCTAssertTrue(library.isModified(byEventsOfKind: .update(
+                tableName: "segment", columnNames: ["speakerID"])))
+            XCTAssertTrue(library.isModified(byEventsOfKind: .update(
+                tableName: "segment", columnNames: ["deletedAt"])))
+            XCTAssertTrue(search.isModified(byEventsOfKind: .update(
+                tableName: "segment", columnNames: ["text"])))
+            XCTAssertTrue(search.isModified(byEventsOfKind: .update(
+                tableName: "segment", columnNames: ["deletedAt"])))
+            // A new or removed row is a change to every column.
+            XCTAssertTrue(library.isModified(
+                byEventsOfKind: .insert(tableName: "segment")))
+            XCTAssertTrue(search.isModified(
+                byEventsOfKind: .delete(tableName: "segment")))
+        }
+    }
+
     func testScopedObservationsTrackOnlyTheirQueryInputsThroughLifecycle() async throws {
         let store = try MeetingStore.inMemory()
         var meetingRows = store.observeLibraryMeetings().makeAsyncIterator()

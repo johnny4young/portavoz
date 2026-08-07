@@ -10581,3 +10581,20 @@ enough to find them, without naming meetings in an error message.
 
 **Consequences:** a failed migration is a no-op, or it says precisely what it
 could not undo.
+
+## D305 — Library observation regions are column-scoped (Aug 2026)
+
+**Context:** `observeLibraryMeetings` and `observeLibrarySearch` tracked
+`Table("segment")` as a whole. The semantic backfill writes `embedding` and
+`embeddingFingerprint` on `segment` in batches, so every batch commit re-fetched
+the entire library, recomputed every voice mix, and re-ran any active full-text
+query. The more of the library was being indexed, the more often it happened.
+
+**Decision:** both observations track only the `segment` columns their queries
+read — `librarySegmentRegion` and `searchSegmentRegion`. GRDB narrows the region
+to those columns, so an embedding write no longer intersects either, while any
+change to what the projections actually show still does. An architecture ratchet
+refuses a whole-table `segment` region in that file.
+
+**Consequences:** indexing is invisible to the library, and search results stay
+exactly as fresh as before.
