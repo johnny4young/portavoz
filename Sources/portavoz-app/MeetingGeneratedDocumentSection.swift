@@ -26,6 +26,8 @@ struct MeetingGeneratedDocumentValues {
     let alternateEngine: MeetingGeneratedDocumentAlternateEngine?
     let presentation: MeetingDetailPresentation
     let freshness: DerivedArtifactFreshness
+    let decisionConfirmations:
+        [SummaryDecisionID: DecisionObservationConfirmationState]
 }
 
 struct MeetingGeneratedDocumentActions {
@@ -38,6 +40,9 @@ struct MeetingGeneratedDocumentActions {
     let focusEvidence: @MainActor (TranscriptSegment) -> Void
     let setClaimFeedback:
         @MainActor (SummaryClaimID, SummaryClaimFeedback?) async -> Bool
+    let confirmDecision:
+        @MainActor (SummaryDecisionEvidence, _ statement: String) -> Void
+    let decisionsDidAppear: @MainActor () -> Void
 }
 
 /// The generated meeting document: overview, typed sections, commitments,
@@ -322,18 +327,65 @@ struct MeetingGeneratedDocumentSection: View {
                             let resolution = currentResolution(evidence.resolveEvidence(
                                 currentTranscriptRevision: values.transcriptRevision,
                                 segments: values.segments))
-                            evidenceSources(
-                                resolution,
-                                sourceIdentifier:
-                                    "summary-decision-\(section.sourceOrdinal)-\(index)-evidence",
-                                staleIdentifier:
-                                    "summary-decision-\(section.sourceOrdinal)-\(index)-stale",
-                                unavailableIdentifier:
-                                    "summary-decision-\(section.sourceOrdinal)-\(index)-unavailable")
+                            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                evidenceSources(
+                                    resolution,
+                                    sourceIdentifier:
+                                        "summary-decision-\(section.sourceOrdinal)-\(index)-evidence",
+                                    staleIdentifier:
+                                        "summary-decision-\(section.sourceOrdinal)-\(index)-stale",
+                                    unavailableIdentifier:
+                                        "summary-decision-\(section.sourceOrdinal)-\(index)-unavailable")
+                                decisionConfirmation(
+                                    evidence,
+                                    bullet: bullet,
+                                    resolution: resolution,
+                                    identifier:
+                                        "summary-decision-\(section.sourceOrdinal)-\(index)")
+                            }
                         }
                     }
                 }
             }
+            .onAppear { actions.decisionsDidAppear() }
+        }
+    }
+
+    /// The gesture entry, or the durable state it produced. Confirmation only
+    /// offers itself over current evidence — stale or purged evidence keeps
+    /// the existing honest badges and nothing else.
+    @ViewBuilder
+    private func decisionConfirmation(
+        _ evidence: SummaryDecisionEvidence,
+        bullet: String,
+        resolution: TranscriptEvidenceResolution,
+        identifier: String
+    ) -> some View {
+        if let confirmed = values.decisionConfirmations[evidence.id] {
+            let badge = confirmed.topicLabels.isEmpty
+                ? L10n.text("Confirmed")
+                : L10n.format(
+                    "Confirmed · %@",
+                    confirmed.topicLabels.joined(separator: ", "))
+            Label(badge, systemImage: "checkmark.seal.fill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                // One element with an explicit label: the badge announces its
+                // full state, and the identifier's element carries the topic
+                // instead of an empty container wrapping unreachable children.
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(badge)
+                .accessibilityIdentifier("\(identifier)-confirmed")
+        } else if resolution.status == .current {
+            Button {
+                actions.confirmDecision(evidence, bullet)
+            } label: {
+                Text("Confirm…")
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundStyle(.tint)
+            .accessibilityIdentifier("\(identifier)-confirm")
         }
     }
 

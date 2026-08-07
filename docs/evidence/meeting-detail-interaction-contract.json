@@ -9,6 +9,7 @@
     "Sources/portavoz-app/AutoSelectTextField.swift",
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
+    "Sources/portavoz-app/DecisionConfirmSheet.swift",
     "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
     "Sources/portavoz-app/MeetingDetailActionSection.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
@@ -164,6 +165,84 @@
       "path": "Sources/portavoz-app/CustomStructureSheet.swift",
       "category": "state",
       "source": "@State private var sectionsText: String",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Cancel\"), action: dismiss)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(topic.preferredLabel) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "control",
+      "source": "TextField(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"decision-confirm-sheet\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"decision-confirm-statement\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"decision-confirm-submit\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"decision-confirm-topic-field\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "state",
+      "source": "@State private var confirming = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+      "category": "state",
+      "source": "@State private var topicLabel = \"\"",
       "occurrences": 1
     },
     {
@@ -577,6 +656,12 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
       "category": "presentation",
+      "source": "flow.sheet = .confirmDecision",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
+      "category": "presentation",
       "source": "flow.sheet = .recap",
       "occurrences": 1
     },
@@ -812,6 +897,12 @@
       "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
       "category": "presentation",
       "source": "dismiss: { flow.sheet = nil })",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "presentation",
+      "source": "flow.sheet = nil",
       "occurrences": 1
     },
     {
@@ -1202,7 +1293,7 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
       "source": "Button {",
-      "occurrences": 1
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
@@ -1298,6 +1389,18 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
       "source": "return Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"\\(identifier)-confirmed\")",
       "occurrences": 1
     },
     {
@@ -2292,6 +2395,25 @@
       "screenshots": [
         "meeting-detail-commitment-inbox",
         "meeting-detail-commitment-self-assignment"
+      ]
+    },
+    {
+      "feature": "decision-confirmation",
+      "tests": [
+        "testDecisionCanBeConfirmedAboutATopic"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+          "anchor": "\"decision-confirm-sheet\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"\\(identifier)-confirmed\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-decision-confirmed"
       ]
     },
     {

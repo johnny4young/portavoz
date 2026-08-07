@@ -132,6 +132,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "meeting-evidence": (
         test_id("MeetingDetailUITests", "testSummarySourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testDecisionSourceJumpsToItsTranscriptAndAudio"),
+        test_id("MeetingDetailUITests", "testDecisionCanBeConfirmedAboutATopic"),
         test_id("MeetingDetailUITests", "testActionItemSourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testSummaryFeedbackIsExplicitReversibleAndLocal"),

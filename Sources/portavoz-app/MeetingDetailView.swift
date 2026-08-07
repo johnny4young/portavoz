@@ -113,9 +113,7 @@ private extension MeetingDetailView {
         .frame(maxWidth: 1060, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private func transcriptContent(
-        _ detail: MeetingReviewReadModel
-    ) -> MeetingTranscriptContent {
+    private func transcriptContent(_ detail: MeetingReviewReadModel) -> MeetingTranscriptContent {
         detail.transcriptContent(chapterTitles: model.state.chapterTitles)
     }
 
@@ -249,7 +247,8 @@ private extension MeetingDetailView {
                 regenerating: flow.isRegenerating,
                 alternateEngine: coordinator.alternateEngine,
                 presentation: presentation,
-                freshness: detail.summaryFreshness),
+                freshness: detail.summaryFreshness,
+                decisionConfirmations: model.state.decisionConfirmations),
             actions: coordinator.generatedDocumentActions(
                 summary: summary,
                 detail: detail,
@@ -421,7 +420,9 @@ private extension MeetingDetailView {
             turnOffMirror: {
                 sceneActions.disableMirrorAfterMeeting()
                 sceneActions.clearJustRecorded()
-            })
+            },
+            confirmDecision: coordinator.confirmDecision,
+            linkableTopics: model.state.linkableTopics)
     }
 
     private func summaryLanguage(

@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## August 7, 2026
+
+- **✅ Decisions you can confirm and file by topic** — Turn a generated decision into confirmed meeting truth with one click, optionally naming the topic it is about, and ask later what was decided about that topic knowing only confirmed decisions answer.
+
 ## August 6, 2026
 
 - **⌨️ ⌘K always answers** — Pressing Enter in the command palette now always produces an answer or an honest failure, instead of occasionally leaving the results on screen with nothing happening.

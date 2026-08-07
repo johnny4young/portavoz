@@ -1002,6 +1002,25 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         try fail(.setClaimFeedback)
     }
 
+    func confirmMeetingDetailDecision(
+        _ request: ConfirmDecisionAboutTopicRequest
+    ) throws -> DecisionAboutTopicOutcome {
+        DecisionAboutTopicOutcome(
+            observationID: request.observationID,
+            decisionID: DecisionID(),
+            topicLabel: nil)
+    }
+
+    func meetingDetailDecisionConfirmations(
+        for observationIDs: [SummaryDecisionID]
+    ) throws -> [DecisionObservationConfirmationState] {
+        []
+    }
+
+    func meetingDetailLinkableTopics() throws -> [LinkableTopic] {
+        []
+    }
+
     func deleteMeetingDetailCompanionCard(_ id: UUID) throws {
         calls.append(.deleteCompanion(id))
         try fail(.deleteCompanion)

@@ -26,8 +26,19 @@ final class MeetingDetailFlowState {
         case renameMeeting
         case recap
         case newStructure
+        case confirmDecision
 
         var id: String { rawValue }
+    }
+
+    /// The generated decision the confirm sheet is acting on. Route payload
+    /// kept beside the route, matching the rename-title pattern.
+    struct DecisionConfirmTarget: Equatable {
+        let observationID: SummaryDecisionID
+        let statement: String
+        let meetingID: MeetingID
+        let evidenceSegmentID: UUID
+        let sourceTranscriptRevision: Int
     }
 
     enum DialogRoute: Identifiable {
@@ -67,6 +78,7 @@ final class MeetingDetailFlowState {
     var includeCorrectionProvenance = false
 
     var renameMeetingTitle = ""
+    var decisionConfirmTarget: DecisionConfirmTarget?
     var renameSpeakerName = ""
     var isRegenerating = false
     var isEnhancingNotes = false

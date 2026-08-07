@@ -10786,3 +10786,26 @@ would leave it — and still excluded.
 
 **Consequences:** all six D270 jobs now answer from source-backed authority.
 GRAPH-6 is unblocked once the confirmation gesture ships.
+
+## D311 — The decision confirmation gesture composes both authorities (Aug 2026)
+
+**Context:** decision continuity (D270-band) and the decision-topic authority
+(D308) were store-complete with no production caller — no released surface ever
+confirmed a decision. The graph jobs those authorities feed were tested against
+seeded truth only.
+
+**Decision:** the Decisions tab offers one explicit gesture per generated
+decision bullet: **Confirm…**, rendered only over current, resolvable evidence.
+The sheet quotes the exact statement and takes an optional topic; on confirm,
+`ConfirmDecisionAboutTopic` composes `ConfirmObservedDecision` and — when a
+topic was named — `ConfirmDecisionTopicLink`. A typed label with exactly one
+existing alias match links to that topic; no match creates one grounded on the
+decision's own evidence segment; an ambiguous label refuses rather than
+guessing identity, and the decision stays confirmed so the user can retry the
+link. Re-running the gesture on a confirmed observation reuses the decision, so
+a topic can be added later. The durable state renders as a badge naming the
+topics, with an explicit accessibility label so the state is announced whole.
+
+**Consequences:** the six graph jobs now have a real production writer behind
+them. Retraction UI and a dedicated review surface remain open, recorded in the
+roadmap rather than implied.

@@ -11,6 +11,86 @@
         }
       }
     },
+    "Confirm…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmar…"
+          }
+        }
+      }
+    },
+    "Confirm this decision": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmar esta decisión"
+          }
+        }
+      }
+    },
+    "Confirm decision": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmar decisión"
+          }
+        }
+      }
+    },
+    "Topic (optional)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tema (opcional)"
+          }
+        }
+      }
+    },
+    "The decision is saved with its exact source. A topic groups it for later questions.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La decisión se guarda con su fuente exacta. Un tema la agrupa para preguntas futuras."
+          }
+        }
+      }
+    },
+    "Confirmed · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmada · %@"
+          }
+        }
+      }
+    },
+    "That topic name matches more than one topic. Pick one from the list.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese nombre coincide con más de un tema. Elige uno de la lista."
+          }
+        }
+      }
+    },
+    "Could not confirm this decision. Its summary may have changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo confirmar esta decisión. Su resumen puede haber cambiado."
+          }
+        }
+      }
+    },
     "%d exported · %d could not be exported.": {
       "localizations": {
         "es": {

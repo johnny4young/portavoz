@@ -37,6 +37,9 @@ final class MeetingDetailModel {
         fileprivate(set) var audioCompressionMessage: String?
         fileprivate(set) var revision = 0
         fileprivate(set) var lastActionError: String?
+        fileprivate(set) var decisionConfirmations:
+            [SummaryDecisionID: DecisionObservationConfirmationState] = [:]
+        fileprivate(set) var linkableTopics: [LinkableTopic] = []
     }
 
     private(set) var state = State()
@@ -183,6 +186,8 @@ final class MeetingDetailModel {
         case .removeCompanionCard(let id):
             await removeCompanionCard(id)
             return nil
+        case .confirmDecision(let request):
+            return await confirmDecision(request)
         }
     }
 
@@ -214,6 +219,9 @@ final class MeetingDetailModel {
             return nil
         case .loadMetadataSuggestions:
             await loadMetadataSuggestions()
+            return nil
+        case .loadDecisionConfirmations:
+            await loadDecisionConfirmations()
             return nil
         case .loadPlayback:
             await loadPlayback()
@@ -412,6 +420,44 @@ private extension MeetingDetailModel {
         } catch {
             state.lastActionError = L10n.text(
                 "Could not save this summary feedback. The summary may have changed.")
+            return nil
+        }
+    }
+
+    /// Which generated decisions already became durable truth, and the
+    /// topics they are about — what the confirm affordance renders from.
+    func loadDecisionConfirmations() async {
+        guard let observationIDs = state.readModel?.summary?
+            .draft.decisionEvidence.map(\.id),
+            !observationIDs.isEmpty
+        else { return }
+        do {
+            let states = try await client.meetingDetailDecisionConfirmations(
+                for: observationIDs)
+            state.decisionConfirmations = Dictionary(
+                uniqueKeysWithValues: states.map { ($0.observationID, $0) })
+            state.linkableTopics = try await client.meetingDetailLinkableTopics()
+        } catch {
+            // Presentation only; the affordance simply stays in its
+            // unconfirmed reading until a later load succeeds.
+        }
+    }
+
+    func confirmDecision(
+        _ request: ConfirmDecisionAboutTopicRequest
+    ) async -> Effect? {
+        do {
+            let outcome = try await client.confirmMeetingDetailDecision(request)
+            state.lastActionError = nil
+            await loadDecisionConfirmations()
+            return .decisionConfirmed(outcome)
+        } catch is ConfirmDecisionAboutTopicError {
+            state.lastActionError = L10n.text(
+                "That topic name matches more than one topic. Pick one from the list.")
+            return nil
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not confirm this decision. Its summary may have changed.")
             return nil
         }
     }

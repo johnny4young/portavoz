@@ -35,6 +35,13 @@ protocol MeetingDetailModelClient: AnyObject {
         for claimID: SummaryClaimID,
         meetingID: MeetingID
     ) async throws
+    func confirmMeetingDetailDecision(
+        _ request: ConfirmDecisionAboutTopicRequest
+    ) async throws -> DecisionAboutTopicOutcome
+    func meetingDetailDecisionConfirmations(
+        for observationIDs: [SummaryDecisionID]
+    ) async throws -> [DecisionObservationConfirmationState]
+    func meetingDetailLinkableTopics() async throws -> [LinkableTopic]
     func deleteMeetingDetailCompanionCard(_ id: UUID) async throws
     func deleteMeetingDetail(_ id: MeetingID) async throws
     func retryMeetingDetailProcessing(_ meetingID: MeetingID) async throws

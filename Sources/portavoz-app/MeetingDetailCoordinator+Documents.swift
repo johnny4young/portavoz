@@ -84,7 +84,43 @@ extension MeetingDetailCoordinator {
                     return false
                 }
                 return savedID == claimID
+            },
+            confirmDecision: { evidence, statement in
+                // Both are required or the affordance was never offered: the
+                // confirm button renders only over current, resolvable
+                // evidence.
+                guard let segmentID = evidence.evidenceSegmentIDs.first,
+                      let revision = evidence.sourceTranscriptRevision
+                else { return }
+                flow.decisionConfirmTarget = MeetingDetailFlowState
+                    .DecisionConfirmTarget(
+                        observationID: evidence.id,
+                        statement: statement,
+                        meetingID: detail.meeting.id,
+                        evidenceSegmentID: segmentID,
+                        sourceTranscriptRevision: revision)
+                flow.sheet = .confirmDecision
+            },
+            decisionsDidAppear: {
+                Task { await model.send(.loadDecisionConfirmations) }
             })
+    }
+
+    /// Runs the composed gesture and reports success so the sheet can close
+    /// only when the confirmation actually landed.
+    func confirmDecision(
+        _ target: MeetingDetailFlowState.DecisionConfirmTarget,
+        _ choice: DecisionTopicChoice
+    ) async -> Bool {
+        let effect = await model.send(.confirmDecision(
+            ConfirmDecisionAboutTopicRequest(
+                observationID: target.observationID,
+                meetingID: target.meetingID,
+                evidenceSegmentID: target.evidenceSegmentID,
+                sourceTranscriptRevision: target.sourceTranscriptRevision,
+                topic: choice)))
+        guard case .decisionConfirmed = effect else { return false }
+        return true
     }
 
     func shouldSuggestThinSummary(

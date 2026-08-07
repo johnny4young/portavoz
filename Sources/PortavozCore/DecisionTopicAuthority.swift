@@ -207,3 +207,34 @@ public struct DecisionTopicLinkContinuity: Equatable, Sendable {
         self.events = events
     }
 }
+
+/// What the decision-confirmation gesture needs to render honestly: which
+/// generated observations already became durable decisions, and which topics
+/// those decisions are about.
+public struct DecisionObservationConfirmationState: Equatable, Sendable {
+    public let observationID: SummaryDecisionID
+    public let decisionID: DecisionID
+    public let topicLabels: [String]
+
+    public init(
+        observationID: SummaryDecisionID,
+        decisionID: DecisionID,
+        topicLabels: [String]
+    ) {
+        self.observationID = observationID
+        self.decisionID = decisionID
+        self.topicLabels = topicLabels
+    }
+}
+
+/// A live, unmerged topic offered by the linking gesture. Suggestion only —
+/// typing a new label creates a new topic; nothing here grants confirmation.
+public struct LinkableTopic: Equatable, Sendable, Identifiable {
+    public let id: TopicID
+    public let preferredLabel: String
+
+    public init(id: TopicID, preferredLabel: String) {
+        self.id = id
+        self.preferredLabel = preferredLabel
+    }
+}

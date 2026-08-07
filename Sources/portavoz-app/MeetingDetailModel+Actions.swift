@@ -24,6 +24,7 @@ extension MeetingDetailModel {
         case commitment(CommitmentAction)
         case setSummaryClaimFeedback(SummaryClaimID, SummaryClaimFeedback?)
         case removeCompanionCard(UUID)
+        case confirmDecision(ConfirmDecisionAboutTopicRequest)
     }
 
     enum ReviewAction {
@@ -39,6 +40,7 @@ extension MeetingDetailModel {
         case exportAudioClip(ClosedRange<TimeInterval>, to: URL)
         case checkVoiceMemoryOffer(name: String)
         case rememberVoice(SpeakerID)
+        case loadDecisionConfirmations
     }
 
     enum Action {
@@ -119,6 +121,16 @@ extension MeetingDetailModel {
             .content(.removeCompanionCard(id))
         }
 
+        static func confirmDecision(
+            _ request: ConfirmDecisionAboutTopicRequest
+        ) -> Self {
+            .content(.confirmDecision(request))
+        }
+
+        static var loadDecisionConfirmations: Self {
+            .review(.loadDecisionConfirmations)
+        }
+
         static var deleteMeeting: Self { .review(.deleteMeeting) }
         static var retryProcessing: Self { .review(.retryProcessing) }
 
@@ -171,6 +183,7 @@ extension MeetingDetailModel {
         case commitmentConfirmed(Commitment)
         case commitmentReviewSaved
         case summaryClaimFeedbackSaved(SummaryClaimID)
+        case decisionConfirmed(DecisionAboutTopicOutcome)
         case meetingDeleted(MeetingID)
         case documentPrepared(PreparedMeetingDocument)
         case gistPublished(URL)

@@ -60,6 +60,10 @@ struct MeetingDetailFlowActions {
     let dismissMirror: @MainActor () -> Void
     let showMirrorTrend: @MainActor () -> Void
     let turnOffMirror: @MainActor () -> Void
+    let confirmDecision:
+        @MainActor (MeetingDetailFlowState.DecisionConfirmTarget, DecisionTopicChoice)
+            async -> Bool
+    let linkableTopics: [LinkableTopic]
 }
 
 /// Presentation host for all Meeting Detail sheets, dialogs, alerts, and
@@ -144,6 +148,19 @@ struct MeetingDetailFlowHost<Content: View>: View {
             }
         case .newStructure:
             CustomStructureSheet(existing: nil, onSave: actions.createStructure)
+        case .confirmDecision:
+            if let target = flow.decisionConfirmTarget {
+                DecisionConfirmSheet(
+                    target: target,
+                    topics: actions.linkableTopics,
+                    confirm: { choice in
+                        await actions.confirmDecision(target, choice)
+                    },
+                    dismiss: {
+                        flow.decisionConfirmTarget = nil
+                        flow.sheet = nil
+                    })
+            }
         }
     }
 

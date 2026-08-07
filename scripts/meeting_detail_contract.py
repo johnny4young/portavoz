@@ -23,6 +23,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/AutoSelectTextField.swift",
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
+    "Sources/portavoz-app/DecisionConfirmSheet.swift",
     "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
     "Sources/portavoz-app/MeetingDetailActionSection.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
@@ -155,6 +156,22 @@ DEFAULT_FEATURE_OWNERSHIP = (
             {
                 "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
                 "anchor": '"summary-feedback-correction"',
+            },
+        ],
+    },
+    {
+        "feature": "decision-confirmation",
+        "tests": [
+            "testDecisionCanBeConfirmedAboutATopic",
+        ],
+        "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
+                "anchor": '"decision-confirm-sheet"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+                "anchor": '"\\(identifier)-confirmed"',
             },
         ],
     },

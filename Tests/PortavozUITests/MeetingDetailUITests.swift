@@ -590,6 +590,49 @@ final class MeetingDetailUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "meeting-detail-summary-evidence")
     }
 
+    /// The explicit gesture that promotes a generated decision to durable
+    /// truth with an optional topic. Runs against the disposable seed, so the
+    /// confirmation lands in the temp store and the badge proves the durable
+    /// state round-tripped, not just that a sheet closed.
+    @MainActor
+    func testDecisionCanBeConfirmedAboutATopic() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let decisions = app.control(withIdentifier: "summary-tab-1")
+        XCTAssertTrue(decisions.waitForExistence(timeout: 10))
+        decisions.click()
+
+        let confirm = app.control(withIdentifier: "summary-decision-0-0-confirm")
+        XCTAssertTrue(
+            confirm.waitForExistence(timeout: 5),
+            "an unconfirmed decision over current evidence offers the gesture")
+        confirm.click()
+
+        let sheet = app.control(withIdentifier: "decision-confirm-sheet")
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        let statement = app.control(withIdentifier: "decision-confirm-statement")
+        XCTAssertTrue(statement.exists, "the sheet quotes the exact statement")
+
+        let field = app.textFields["decision-confirm-topic-field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.click()
+        field.typeText("atlas-rollout")
+        app.control(withIdentifier: "decision-confirm-submit").click()
+
+        let badge = app.control(withIdentifier: "summary-decision-0-0-confirmed")
+        XCTAssertTrue(
+            badge.waitForExistence(timeout: 10),
+            "the durable confirmation renders as the badge")
+        XCTAssertTrue(
+            badge.label.contains("atlas-rollout"),
+            "the badge names the topic; saw '\(badge.label)'")
+        XCTAssertFalse(
+            app.control(withIdentifier: "summary-decision-0-0-confirm").exists,
+            "the gesture does not offer itself twice")
+        attachScreenshot(of: app, named: "meeting-detail-decision-confirmed")
+    }
+
     @MainActor
     func testDecisionSourceJumpsToItsTranscriptAndAudio() {
         let app = launchOnSeededMeeting()

@@ -91,6 +91,22 @@ extension AppServices: MeetingDetailModelClient {
             meetingID: meetingID)
     }
 
+    func confirmMeetingDetailDecision(
+        _ request: ConfirmDecisionAboutTopicRequest
+    ) async throws -> DecisionAboutTopicOutcome {
+        try await ConfirmDecisionAboutTopic(store: store).execute(request)
+    }
+
+    func meetingDetailDecisionConfirmations(
+        for observationIDs: [SummaryDecisionID]
+    ) async throws -> [DecisionObservationConfirmationState] {
+        try await store.decisionObservationConfirmations(for: observationIDs)
+    }
+
+    func meetingDetailLinkableTopics() async throws -> [LinkableTopic] {
+        try await store.linkableTopics()
+    }
+
     func deleteMeetingDetailCompanionCard(_ id: UUID) async throws {
         try await store.deleteCompanionCard(id)
     }
