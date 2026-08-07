@@ -111,6 +111,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `decisionTopicLink` / `decisionTopicLinkSource` / `decisionTopicLinkEvent` (v32) | explicitly confirmed "decision is about topic" authority (D308): `confirmed`/`retracted` projection with a partial-unique active pair, immutable sources copying the exact summary/meeting origin and observed statement (no foreign keys — purge cannot erase why the user linked), append-only one-confirm/one-retract events. The confirm trigger accepts only evidence the decision itself already owns as a `decisionContinuitySource`, so meeting co-occurrence can never found a link from any code path |
 | `meetingMemoryGraphDecisionTopic` (v32) | disposable aboutness edge derived from confirmed live links alone, targeting the topic family's current root; rebuilt under both decision and topic scopes and mutation-tested against co-occurrence in each |
 
+`MeetingStore+DecisionRelationshipQuery` (D309) serves `decisionConflicts` and `changeSince` from that authority: candidates come only from `decisionTopicLink`, the projection edge is cross-checked (a missing edge abstains as inconsistency), and each fact rehydrates both decisions' statements and current evidence — replaced first, successor second — through decision continuity. `changeSince` resolves its exact anchor meeting before any topology and abstains `missingTemporalBaseline` on an unknown baseline; a topic whose decisions carry no confirmed relationship abstains `unsupportedConflict`.
+
 Schema v16 adds the partial
 `meeting_on_live_startedAt_id(startedAt DESC, id ASC)` index for deterministic
 newest-first keyset scans. It contains no new data and is copied into a backup

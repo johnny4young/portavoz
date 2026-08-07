@@ -10731,3 +10731,37 @@ the adapter slice that consumes it.
 **Consequences:** GRAPH-5b's three adapters can now be honest: "about
 `atlas-001`" always resolves through user-confirmed authority with exact source
 evidence, and a rebuild from nothing reproduces the same edges.
+
+## D309 — decisionConflicts and changeSince answer from the aboutness authority (Aug 2026)
+
+**Context:** with D308's decision↔topic authority in place, two of the three
+remaining memory-graph jobs could become honest. Both ask about a *subject* —
+"which decisions about `atlas-001` conflict?", "what changed about it since the
+last meeting?" — and both are the same underlying relationship: one confirmed
+decision explicitly superseding or reversing another.
+
+**Decision:** one shared adapter serves both jobs. Candidates come only from
+`decisionTopicLink` (family-resolved, confirmed, live); the projection edge is
+cross-checked and a missing edge abstains as `projectionInconsistent` rather
+than being silently repaired; every returned fact is rehydrated from decision
+continuity with the exact current source segments of *both* decisions, replaced
+first, successor second. A relationship where either side is about the topic is
+relevant to it.
+
+`decisionConflicts` is the unanchored reading. `changeSince` resolves one exact
+anchor meeting *before topology is consulted* — an unknown or deleted baseline
+abstains as `missingTemporalBaseline`, mirroring the canonical corpus's rule
+that "since when" is never guessed — and then keeps only relationships whose
+event occurred after the anchor ended. Decisions about the topic with no
+confirmed relationship abstain as `unsupportedConflict`: a generated note that
+"guessed" a replacement was never confirmed, so it does not exist as authority
+and needs no exclusion logic.
+
+Mutation-tested: ignoring the anchor fails the boundary test, and rewriting
+candidate selection to meeting co-occurrence fails against a fixture that keeps
+a fully confirmed, co-occurring, *unlinked* decision pair in the same meetings —
+the discriminator proximity cannot pass.
+
+**Consequences:** five of the six D270 jobs now answer from source-backed
+authority. `decisionHistory` remains open, and the decision-topic confirmation
+gesture still has no UI surface; both ship together as the band's next slice.

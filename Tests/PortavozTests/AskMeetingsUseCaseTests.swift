@@ -522,7 +522,9 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         let adapter = LocalAskGraphFactRetrieval(
             blockers: repository,
             topics: repository,
-            commitments: repository)
+            commitments: repository,
+            conflicts: repository,
+            changes: repository)
         let queries: [AskGraphFactQuery] = [
             .commitmentBlockers(CommitmentBlockerQuery(
                 commitmentID: CommitmentID(),
@@ -532,6 +534,13 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID(),
                 itemLimit: 5)),
+            .decisionConflicts(DecisionConflictsQuery(
+                topicID: TopicID(),
+                itemLimit: 4)),
+            .changeSince(ChangeSinceQuery(
+                topicID: TopicID(),
+                sinceMeetingID: MeetingID(),
+                itemLimit: 6)),
         ]
 
         for query in queries {
@@ -819,7 +828,9 @@ private actor AskGraphFactRetrievalFake: AskGraphFactRetrieving {
 private actor AskGraphFactRepositoryFake:
     CommitmentBlockerFactReading,
     TopicFirstDiscussionReading,
-    PersonCommitmentFactReading {
+    PersonCommitmentFactReading,
+    DecisionConflictsReading,
+    ChangeSinceReading {
     private(set) var calls: [AskGraphFactQuery] = []
 
     func commitmentBlockerFacts(
@@ -840,6 +851,20 @@ private actor AskGraphFactRepositoryFake:
         _ query: PersonCommitmentsQuery
     ) -> MeetingMemoryGraphQueryResult {
         calls.append(.personCommitments(query))
+        return .abstained(.projectionNotReady)
+    }
+
+    func decisionConflicts(
+        _ query: DecisionConflictsQuery
+    ) -> MeetingMemoryGraphQueryResult {
+        calls.append(.decisionConflicts(query))
+        return .abstained(.projectionNotReady)
+    }
+
+    func changeSince(
+        _ query: ChangeSinceQuery
+    ) -> MeetingMemoryGraphQueryResult {
+        calls.append(.changeSince(query))
         return .abstained(.projectionNotReady)
     }
 }

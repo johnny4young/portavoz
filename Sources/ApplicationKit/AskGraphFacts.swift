@@ -8,6 +8,8 @@ public enum AskGraphFactQuery: Equatable, Sendable {
     case commitmentBlockers(CommitmentBlockerQuery)
     case topicFirstDiscussion(TopicFirstDiscussionQuery)
     case personCommitments(PersonCommitmentsQuery)
+    case decisionConflicts(DecisionConflictsQuery)
+    case changeSince(ChangeSinceQuery)
 }
 
 /// Independent graph-fact retrieval for Ask. The result keeps typed facts and
@@ -25,21 +27,29 @@ public struct LocalAskGraphFactRetrieval: AskGraphFactRetrieving {
     private let blockers: any CommitmentBlockerFactReading
     private let topics: any TopicFirstDiscussionReading
     private let commitments: any PersonCommitmentFactReading
+    private let conflicts: any DecisionConflictsReading
+    private let changes: any ChangeSinceReading
 
     public init(store: MeetingStore) {
         blockers = store
         topics = store
         commitments = store
+        conflicts = store
+        changes = store
     }
 
     public init(
         blockers: any CommitmentBlockerFactReading,
         topics: any TopicFirstDiscussionReading,
-        commitments: any PersonCommitmentFactReading
+        commitments: any PersonCommitmentFactReading,
+        conflicts: any DecisionConflictsReading,
+        changes: any ChangeSinceReading
     ) {
         self.blockers = blockers
         self.topics = topics
         self.commitments = commitments
+        self.conflicts = conflicts
+        self.changes = changes
     }
 
     public func retrieve(
@@ -54,6 +64,12 @@ public struct LocalAskGraphFactRetrieval: AskGraphFactRetrieving {
                 .execute(query)
         case .personCommitments(let query):
             return try await LoadPersonCommitments(repository: commitments)
+                .execute(query)
+        case .decisionConflicts(let query):
+            return try await LoadDecisionConflicts(repository: conflicts)
+                .execute(query)
+        case .changeSince(let query):
+            return try await LoadChangeSince(repository: changes)
                 .execute(query)
         }
     }

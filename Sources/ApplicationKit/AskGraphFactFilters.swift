@@ -123,6 +123,31 @@ public struct ResolvedAskGraphFactFilter: Equatable, Sendable {
                 personID: exact.personID,
                 itemLimit: exact.itemLimit,
                 filter: filter)))
+        case .decisionConflicts(let exact):
+            guard exact.isValid,
+                  personID == nil,
+                  topicID == nil || topicID == exact.topicID
+            else { return .abstained(.invalidQuery) }
+            guard let filter = exact.filter.intersection(with: factFilter) else {
+                return .abstained(.noMatchingFacts)
+            }
+            return .query(.decisionConflicts(DecisionConflictsQuery(
+                topicID: exact.topicID,
+                itemLimit: exact.itemLimit,
+                filter: filter)))
+        case .changeSince(let exact):
+            guard exact.isValid,
+                  personID == nil,
+                  topicID == nil || topicID == exact.topicID
+            else { return .abstained(.invalidQuery) }
+            guard let filter = exact.filter.intersection(with: factFilter) else {
+                return .abstained(.noMatchingFacts)
+            }
+            return .query(.changeSince(ChangeSinceQuery(
+                topicID: exact.topicID,
+                sinceMeetingID: exact.sinceMeetingID,
+                itemLimit: exact.itemLimit,
+                filter: filter)))
         }
     }
 }

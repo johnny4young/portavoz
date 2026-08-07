@@ -114,6 +114,67 @@ public struct TopicFirstDiscussionQuery: Equatable, Sendable {
     }
 }
 
+/// Finds explicitly confirmed decision replacements about one exact topic
+/// family: which confirmed decision superseded or reversed which. Label and
+/// alias resolution happen before this query; a generated note that "guessed"
+/// a replacement is not a conflict.
+public struct DecisionConflictsQuery: Equatable, Sendable {
+    public static let defaultItemLimit = 20
+    public static let maximumItemLimit = 100
+
+    public let topicID: TopicID
+    public let itemLimit: Int
+    public let filter: MeetingMemoryGraphFactFilter
+
+    public init(
+        topicID: TopicID,
+        itemLimit: Int = Self.defaultItemLimit,
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) {
+        self.topicID = topicID
+        self.itemLimit = itemLimit
+        self.filter = filter
+    }
+
+    public var isValid: Bool {
+        itemLimit >= 1
+            && itemLimit <= Self.maximumItemLimit
+            && filter.isValid
+    }
+}
+
+/// Finds what changed about one exact topic family since one exact anchor
+/// meeting: confirmed decision replacements whose relationship event occurred
+/// after the anchor ended. Resolving "the last meeting" to an exact meeting is
+/// the caller's job — an unresolvable anchor abstains rather than guessing.
+public struct ChangeSinceQuery: Equatable, Sendable {
+    public static let defaultItemLimit = 20
+    public static let maximumItemLimit = 100
+
+    public let topicID: TopicID
+    public let sinceMeetingID: MeetingID
+    public let itemLimit: Int
+    public let filter: MeetingMemoryGraphFactFilter
+
+    public init(
+        topicID: TopicID,
+        sinceMeetingID: MeetingID,
+        itemLimit: Int = Self.defaultItemLimit,
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) {
+        self.topicID = topicID
+        self.sinceMeetingID = sinceMeetingID
+        self.itemLimit = itemLimit
+        self.filter = filter
+    }
+
+    public var isValid: Bool {
+        itemLimit >= 1
+            && itemLimit <= Self.maximumItemLimit
+            && filter.isValid
+    }
+}
+
 /// Finds current source-backed commitments for one exact canonical person.
 /// Name and alias resolution happen before this query.
 public struct PersonCommitmentsQuery: Equatable, Sendable {
@@ -143,12 +204,19 @@ public enum MeetingMemoryGraphFactID: Hashable, Sendable {
     case blocker(DecisionCommitmentBlockerID)
     case topicEvidence(TopicMeetingEvidenceID)
     case commitment(CommitmentID)
+    /// The supersede/reverse event on the older decision: one relationship,
+    /// one identity, however many topics its decisions are linked to.
+    case decisionRelationship(DecisionEventID)
 }
 
 public enum MeetingMemoryGraphFactKind: String, Equatable, Sendable {
     case decisionBlocksCommitment = "decision-blocks-commitment"
     case topicDiscussedInMeeting = "topic-discussed-in-meeting"
     case personCommittedTo = "person-committed-to"
+    /// Subject: the successor decision. Object: the decision it replaced.
+    /// Shared by decisionConflicts and changeSince — the relationship is the
+    /// same authority; the jobs differ only in temporal anchoring.
+    case decisionSupersededDecision = "decision-superseded-decision"
 }
 
 public enum MeetingMemoryGraphFactEntity: Hashable, Sendable {
@@ -252,6 +320,12 @@ public enum MeetingMemoryGraphQueryAbstention: String, Equatable, Sendable {
     case candidateBudgetExceeded = "candidate-budget-exceeded"
     case staleEvidenceOnly = "stale-evidence-only"
     case evidenceUnavailable = "evidence-unavailable"
+    /// Decisions about the topic exist, but no confirmed supersession or
+    /// reversal relates any of them; a generated guess is not a conflict.
+    case unsupportedConflict = "unsupported-conflict"
+    /// The anchor meeting could not be resolved, so "since when" has no exact
+    /// answer and the query abstains rather than guessing a baseline.
+    case missingTemporalBaseline = "missing-temporal-baseline"
 }
 
 public enum MeetingMemoryGraphQueryResult: Equatable, Sendable {

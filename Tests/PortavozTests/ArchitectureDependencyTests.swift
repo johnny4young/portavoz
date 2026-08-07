@@ -1864,6 +1864,35 @@ final class ArchitectureDependencyTests: XCTestCase {
             "decisionTopicLink_one_active"))
     }
 
+    /// GRAPH-5b: decisionConflicts and changeSince answer only from the
+    /// decision-topic authority and decision continuity, rehydrated with
+    /// current evidence. The anchor resolves before topology, and both jobs'
+    /// canonical abstention reasons exist as typed cases.
+    func testDecisionRelationshipQueriesDeriveFromAuthorityOnly() throws {
+        let core = try Self.contents(
+            of: "Sources/PortavozCore/MeetingMemoryGraphQuery.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+DecisionRelationshipQuery.swift")
+        let application = try Self.contents(
+            of: "Sources/ApplicationKit/LoadDecisionRelationships.swift")
+
+        XCTAssertTrue(core.contains("decisionSupersededDecision"))
+        XCTAssertTrue(core.contains("unsupportedConflict"))
+        XCTAssertTrue(core.contains("missingTemporalBaseline"))
+        XCTAssertTrue(storage.contains("FROM decisionTopicLink AS link"))
+        XCTAssertFalse(
+            storage.contains("topicMeetingEvidence"),
+            "aboutness never derives from meeting co-occurrence")
+        XCTAssertTrue(storage.contains("loadDecisionContinuity"))
+        XCTAssertTrue(storage.contains("timelineEvidence(for:"))
+        XCTAssertTrue(storage.contains("graphContainsDecisionTopicEdge"))
+        XCTAssertTrue(
+            storage.contains("return .abstained(.missingTemporalBaseline)"),
+            "an unresolvable anchor abstains before topology")
+        XCTAssertTrue(application.contains("LoadDecisionConflicts"))
+        XCTAssertTrue(application.contains("LoadChangeSince"))
+    }
+
     func testBlockerQueryUsesGraphTopologyButRehydratesAuthority() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/MeetingMemoryGraphQuery.swift")
