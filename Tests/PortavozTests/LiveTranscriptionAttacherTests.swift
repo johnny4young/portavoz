@@ -67,6 +67,41 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
         XCTAssertEqual(outcome, .completed)
     }
 
+    /// The engine's final flush is the likeliest place for a live-lane failure,
+    /// and it happens after `finish()` clears `active`. If that failure does
+    /// not raise recovery, Stop sees partial captions with no flag, enqueues
+    /// only diarization over them, and commits the meeting as complete with
+    /// the tail of the conversation missing — while the audio still has it.
+    func testFailureWhileDrainingAtStopStillRequiresRecovery() async throws {
+        let probe = LiveTranscriptionProbe()
+        let attacher = LiveTranscriptionAttacher(
+            channels: [.microphone],
+            hints: TranscriptionHints(meetingID: MeetingID()),
+            callbacks: StartRecordingLiveCallbacks(
+                caption: { probe.record(caption: $0) },
+                liveTranscription: { probe.record(event: $0) }),
+            initialRuntime: LiveTranscriptionRuntime(
+                engine: FinalFlushFailingEngine(),
+                completion: { probe.recordRuntimeFinish() }),
+            capacityPerChannel: 2,
+            telemetry: .disabled)
+
+        await attacher.recordingDidStart(
+            loader: { throw LiveTranscriptionTestFailure.unexpectedLoad })
+        attacher.feeds.yield(chunk(at: 1))
+        try await waitUntil { probe.captionTimes == [1] }
+
+        // The failure surfaces only as the stream closes inside finish().
+        let requiresRecovery = await attacher.finish()
+
+        XCTAssertTrue(
+            requiresRecovery,
+            "a live-lane failure at Stop must force durable re-transcription")
+        XCTAssertFalse(
+            probe.events.contains(.failed),
+            "the caption UI is already gone, so it must not be notified")
+    }
+
     func testDeferredLoadFailureIsVisibleAndFallsBackToDurableTranscript() async throws {
         let probe = LiveTranscriptionProbe()
         let attacher = makeAttacher(probe: probe, initialAvailable: false, capacity: 2)
@@ -793,6 +828,38 @@ private final class DeferredLiveTranscriptionLoader: @unchecked Sendable {
             return self.continuation
         }
         continuation?.resume()
+    }
+}
+
+/// Emits captions and then fails when the audio stream closes — the engine's
+/// final flush, which is exactly when `finish()` has already cleared `active`.
+private struct FinalFlushFailingEngine: TranscriptionEngine {
+    let descriptor = EngineDescriptor(
+        id: "test-final-flush-failure",
+        displayName: "Test final-flush failure",
+        realTimeFactor: 0,
+        runsOnDevice: true,
+        approximateMemoryMB: 0)
+
+    func transcribe(
+        _ audio: AsyncStream<AudioChunk>,
+        hints: TranscriptionHints
+    ) -> AsyncThrowingStream<TranscriptSegment, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                for await chunk in audio {
+                    continuation.yield(TranscriptSegment(
+                        meetingID: hints.meetingID ?? MeetingID(),
+                        channel: chunk.channel,
+                        text: "chunk \(Int(chunk.timestamp))",
+                        startTime: chunk.timestamp,
+                        endTime: chunk.timestamp + 0.1,
+                        isFinal: true))
+                }
+                continuation.finish(throwing: LiveTranscriptionTestFailure.loadFailed)
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
     }
 }
 

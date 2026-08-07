@@ -10441,3 +10441,27 @@ silently losing its tail. A partially migrated library remains readable because
 `RecordingsLocation.resolve` already falls back across roots. Tests cover the
 refusal, that no file work precedes it, that inspection still works while busy,
 and that a reserved directory is neither copied nor unlinked.
+
+## D298 — A live-lane failure at Stop still raises recovery (Aug 2026)
+
+**Context:** `LiveTranscriptionAttacher.finish()` clears `active` and only then
+drains the consumer tasks, but `liveLaneFailed()` opened with
+`guard active else { return }`. The engine's final flush — the likeliest place
+for a transcription failure, because that is where SpeechAnalyzer finalizes and
+tears down — therefore recorded nothing.
+
+`requiresRecovery` stayed false, so `StopRecording` saw non-empty live captions
+with no recovery flag, enqueued only diarization over those partial captions
+instead of a full durable transcription, and committed the meeting as complete.
+The tail of the conversation was permanently missing from the transcript while
+the finalized CAF files still contained it. `finish()` reads `requiresRecovery`
+after the drain, so the guard was the only thing preventing correct behaviour.
+
+**Decision:** separate the two concerns the guard had merged. Recording the
+failure always happens; only the live-caption UI notification is gated on
+`active`, because that surface is genuinely gone once the session ends.
+
+**Consequences:** a transcription failure during Stop now falls back to durable
+re-transcription from the finalized audio, which is what the recovery flag
+exists for. A test drives an engine that fails as its audio stream closes and
+fails against the previous implementation.

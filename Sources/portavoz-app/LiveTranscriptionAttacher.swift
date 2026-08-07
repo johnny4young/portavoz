@@ -159,9 +159,21 @@ actor LiveTranscriptionAttacher {
         }
     }
 
+    /// Recording the failure and telling the user about it are separate
+    /// concerns, and only the second one ends with the session.
+    ///
+    /// `finish()` clears `active` before draining the consumers, and the
+    /// engine's final flush is exactly where a transcription failure is most
+    /// likely. Gating `requiresRecovery` on `active` therefore dropped the one
+    /// failure that matters most: Stop would see partial captions with no
+    /// recovery flag, enqueue only diarization over them, and commit the
+    /// meeting as complete with the tail of the conversation missing — while
+    /// the finalized audio still contained it.
     private func liveLaneFailed() {
-        guard active else { return }
         requiresRecovery = true
+        // The live caption UI is gone once the session ends; only this part
+        // belongs to the active session.
+        guard active else { return }
         callbacks.liveTranscription(.failed)
     }
 }
