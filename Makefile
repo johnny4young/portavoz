@@ -30,7 +30,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-exact-path-mutation-baseline exact-path-mutation-baseline \
 	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
 	test-meeting-detail-baseline meeting-detail-baseline \
-	test-recording-stress test-ui test-ui-en test-ui-es \
+	test-recording-stress test-model-gated test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
 	release-reliability long-capture-baseline
@@ -38,6 +38,39 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 ## Unit tests (the package suite).
 test:
 	$(XCODE) swift test
+
+## Q4/T7 compensating gate: hosted CI cannot provide Apple Intelligence, the
+## sha256-pinned speech models, or real enrollment audio, so model-dependent
+## behavior is verified on the release Mac instead (docs/RELEASING.md). A
+## class that skips ENTIRELY means the capability under test is absent —
+## models not installed, Apple Intelligence off — and that fails the gate.
+## Individually skipped env-fixture tests are printed for owner review.
+MODEL_GATED_TEST_CLASSES = DiarizationIntegrationTests \
+	FoundationModelIntegrationTests MeetingTypeDetectorIntegrationTests \
+	ParakeetIntegrationTests SentenceEmbedderIntegrationTests \
+	ObjectiveCheckDetectorShapeTests
+test-model-gated:
+	@set -u; status=0; \
+	for class in $(MODEL_GATED_TEST_CLASSES); do \
+		log=$$(mktemp); \
+		if ! $(XCODE) swift test --filter "$$class" >"$$log" 2>&1; then \
+			echo "FAIL $$class: test failure"; tail -20 "$$log"; status=1; \
+		fi; \
+		summary=$$(grep -E "Executed [0-9]+ tests?," "$$log" | tail -1); \
+		executed=$$(printf '%s' "$$summary" | grep -Eo "Executed [0-9]+" | grep -Eo "[0-9]+" || echo 0); \
+		skipped=$$(printf '%s' "$$summary" | grep -Eo "[0-9]+ tests? skipped" | grep -Eo "[0-9]+" || echo 0); \
+		echo "$$class: executed=$$executed skipped=$$skipped"; \
+		grep -E "Test Case .* skipped" "$$log" || true; \
+		if [ "$$executed" -eq 0 ]; then \
+			echo "FAIL $$class: the filter matched no tests — was the class renamed?"; \
+			status=1; \
+		elif [ "$$skipped" -ge "$$executed" ]; then \
+			echo "FAIL $$class: every test skipped — the capability under test is absent on this Mac"; \
+			status=1; \
+		fi; \
+		rm -f "$$log"; \
+	done; \
+	exit $$status
 
 ## Verify the content-free correction benchmark contract without running the
 ## canonical 20,000-segment Release measurement.
