@@ -2214,3 +2214,38 @@ reject the whole schedule — and drops a turn shorter than one tick because suc
 a turn raises and lowers the microphone at the same instant, so its instructions
 do nothing. (Keeping it would still pass the check; only the representable
 guard is load-bearing.)
+
+## Skill proposals in Meeting Detail (D316, Aug 2026)
+
+The no-egress skill tier's first surface anchors proposals to their subject
+at zero vertical cost. `SkillOfferMenu` (in SkillOfferBanner.swift) renders a
+badged sparkles menu beside the document actions once the meeting has a
+summary, offering the meeting-scoped skills: recap draft and text-only
+package export. The placement is load-bearing: Meeting Detail's column is
+deliberately packed — a banner inside the height-ratcheted artifacts viewport
+pushed the document's own controls out of the box (seven gates failed), and a
+banner above it displaced the sections below (four more) — so proposals
+occupy a slot that exists whether or not they do. Each row opens `SkillConfirmSheet`, which shows the exact
+artifact — the composed recap verbatim, or the meeting title plus the
+destination already chosen in the native save panel — and the declared
+capability chips. Confirming runs `ExecuteSkill` (claim before effect, typed
+failure categories); the durable receipts render in
+`MeetingDetailTrustSection` beside the privacy receipt as
+`skill-receipt-<skillID>` rows.
+
+Offer policy is durable state, never session memory: dismissal writes
+`skillOfferDismissal` (v34) keyed by the stable intent identity, a succeeded
+recap retires its offer, export keeps offering per destination, and a failed
+run keeps offering because retry is legitimate. Recap delivery is the
+pasteboard — the same act as the manual sheet's Copy — and the export writes
+one atomic text-only `.portavoz` file.
+
+One SwiftUI constraint is load-bearing here: an empty ViewBuilder branch is
+never installed, so the menu renders a hidden 1×1 anchor while empty —
+otherwise the `onAppear` that triggers the offers load (through the
+coordinator; the view file stays effect-free) could never fire, and the
+menu could never learn it has offers to show.
+XCUITest covers the whole journey in one launch
+(`testSkillProposalJourneyFromBannerToReceipt`, EN+ES): offer menu → exact
+preview → confirm → clipboard artifact → receipt → offer retirement →
+durable dismissal.

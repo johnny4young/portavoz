@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 /// Drives a seeded meeting to verify the redesigned detail view renders —
@@ -650,6 +651,64 @@ final class MeetingDetailUITests: PortavozUITestCase {
             evaluatedWith: unlinked)
         wait(for: [topicGone], timeout: 10)
         attachScreenshot(of: app, named: "meeting-detail-decision-topic-retracted")
+    }
+
+    /// Q12/D316 — one launch, the whole skill journey: the banner proposes,
+    /// the sheet previews the exact artifact, confirming leaves a durable
+    /// receipt and retires the offer, and dismissing is terminal. Condensed
+    /// deliberately: every stage shares the launch instead of paying one app
+    /// start per assertion.
+    @MainActor
+    func testSkillProposalJourneyFromBannerToReceipt() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let menu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(
+            menu.waitForExistence(timeout: 10),
+            "a processed meeting with a summary must surface skill offers")
+
+        // 1 · Preview: the sheet shows the exact draft before any claim.
+        menu.click()
+        let recapItem = app.menuItems["skill-offer-recap-draft"]
+        XCTAssertTrue(recapItem.waitForExistence(timeout: 5))
+        recapItem.click()
+        let sheet = app.control(withIdentifier: "skill-confirm-sheet")
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        let body = app.control(withIdentifier: "skill-confirm-preview-body")
+        XCTAssertTrue(body.waitForExistence(timeout: 5))
+
+        // 2 · Confirm: the effect lands on the clipboard and the durable
+        // receipt renders in the trust rail.
+        app.control(withIdentifier: "skill-confirm-submit").click()
+        let receipt = app.control(withIdentifier: "skill-receipt-recap-draft")
+        XCTAssertTrue(
+            receipt.waitForExistence(timeout: 10),
+            "a confirmed run must leave its auditable receipt")
+        XCTAssertTrue(
+            receipt.label.contains("—"),
+            "the receipt announces skill and outcome; saw '\(receipt.label)'")
+        let copied = NSPasteboard.general.string(forType: .string) ?? ""
+        XCTAssertFalse(
+            copied.isEmpty,
+            "the confirmed recap must actually reach the clipboard")
+
+        // 3 · A succeeded recap retires its offer; export keeps offering.
+        // 4 · Dismissing the last offer is terminal: the menu itself leaves.
+        menu.click()
+        let exportDismiss = app.menuItems["skill-offer-dismiss-package-export"]
+        XCTAssertTrue(
+            exportDismiss.waitForExistence(timeout: 5),
+            "each export destination is a new intent, so export keeps offering")
+        XCTAssertFalse(
+            app.menuItems["skill-offer-recap-draft"].exists,
+            "the draft exists — the offer must not ask again")
+        exportDismiss.click()
+        let gone = expectation(
+            for: NSPredicate(format: "exists == false"),
+            evaluatedWith: menu)
+        wait(for: [gone], timeout: 5)
+        attachScreenshot(of: app, named: "meeting-detail-skill-receipt")
     }
 
     @MainActor

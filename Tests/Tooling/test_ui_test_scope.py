@@ -258,7 +258,7 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-correction", "meeting-evidence", "meeting-summary"
             },
             "Sources/portavoz-app/MeetingDetailTrustSection.swift": {
-                "meeting-health", "meeting-processing"
+                "meeting-health", "meeting-processing", "meeting-skills"
             },
             "Sources/portavoz-app/MeetingTranscriptSection.swift": {
                 "meeting-audio", "meeting-correction", "meeting-evidence",

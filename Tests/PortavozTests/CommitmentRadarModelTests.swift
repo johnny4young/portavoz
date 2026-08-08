@@ -299,14 +299,20 @@ final class CommitmentRadarModelTests: XCTestCase {
             responses: [.success(confirmed)],
             mutationResponses: [],
             qualityResponses: [.success(scorecard)],
-            qualityResponseDelay: .milliseconds(30))
+            holdsQualityResponses: true)
         let model = CommitmentRadarModel(client: client)
+        let qualityRequestStarted = expectation(
+            description: "quality request reached the client")
+        client.onQualityRequestStarted = { qualityRequestStarted.fulfill() }
 
         async let qualityLoad: Void = model.send(.modeChanged(.quality))
-        try await Task.sleep(for: .milliseconds(5))
+        await fulfillment(of: [qualityRequestStarted], timeout: 30)
+        XCTAssertEqual(model.state.mode, .quality)
         await model.send(.modeChanged(.confirmed))
+        client.releaseHeldQualityResponses()
         await qualityLoad
 
+        XCTAssertEqual(client.qualityRequestCount, 1)
         XCTAssertEqual(model.state.mode, .confirmed)
         XCTAssertEqual(model.state.phase, .loaded)
         XCTAssertEqual(model.state.page, confirmed)
@@ -393,7 +399,13 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     var presentationRequests: [RecordCommitmentFieldPresentationRequest] = []
     var events: [String] = []
     let presentationResponseDelay: Duration
-    let qualityResponseDelay: Duration
+    /// When true, quality responses suspend until `releaseHeldQualityResponses()`,
+    /// so a test can prove a response arrived strictly after a mode change
+    /// without wall-clock choreography.
+    let holdsQualityResponses: Bool
+    var onQualityRequestStarted: (() -> Void)?
+    private var qualityResponsesReleased = false
+    private var heldQualityResponses: [CheckedContinuation<Void, Never>] = []
 
     init(
         responses: [Result<CommitmentRadarPage, Failure>],
@@ -403,7 +415,7 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
         qualityResponses: [Result<CommitmentFieldQualityScorecard, Failure>] = [],
         presentationResponses: [Result<Void, Failure>] = [],
         presentationResponseDelay: Duration = .zero,
-        qualityResponseDelay: Duration = .zero
+        holdsQualityResponses: Bool = false
     ) {
         self.responses = responses
         self.mutationResponses = mutationResponses
@@ -412,7 +424,16 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
         self.qualityResponses = qualityResponses
         self.presentationResponses = presentationResponses
         self.presentationResponseDelay = presentationResponseDelay
-        self.qualityResponseDelay = qualityResponseDelay
+        self.holdsQualityResponses = holdsQualityResponses
+    }
+
+    func releaseHeldQualityResponses() {
+        qualityResponsesReleased = true
+        let held = heldQualityResponses
+        heldQualityResponses = []
+        for continuation in held {
+            continuation.resume()
+        }
     }
 
     func loadCommitmentRadar(
@@ -459,8 +480,9 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
 
     func loadCommitmentFieldQuality() async throws -> CommitmentFieldQualityScorecard {
         qualityRequestCount += 1
-        if qualityResponseDelay > .zero {
-            try await Task.sleep(for: qualityResponseDelay)
+        onQualityRequestStarted?()
+        if holdsQualityResponses, !qualityResponsesReleased {
+            await withCheckedContinuation { heldQualityResponses.append($0) }
         }
         return try qualityResponses.removeFirst().get()
     }

@@ -64,6 +64,8 @@ struct MeetingDetailFlowActions {
         @MainActor (MeetingDetailFlowState.DecisionConfirmTarget, DecisionTopicChoice)
             async -> Bool
     let linkableTopics: [LinkableTopic]
+    let confirmSkill:
+        @MainActor (MeetingDetailFlowState.SkillConfirmTarget) async -> Bool
 }
 
 /// Presentation host for all Meeting Detail sheets, dialogs, alerts, and
@@ -158,6 +160,16 @@ struct MeetingDetailFlowHost<Content: View>: View {
                     },
                     dismiss: {
                         flow.decisionConfirmTarget = nil
+                        flow.sheet = nil
+                    })
+            }
+        case .confirmSkill:
+            if let target = flow.skillConfirmTarget {
+                SkillConfirmSheet(
+                    target: target,
+                    confirm: { await actions.confirmSkill(target) },
+                    dismiss: {
+                        flow.skillConfirmTarget = nil
                         flow.sheet = nil
                     })
             }

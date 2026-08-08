@@ -26,6 +26,8 @@ extension MeetingDetailModel {
         case removeCompanionCard(UUID)
         case confirmDecision(ConfirmDecisionAboutTopicRequest)
         case retractDecisionTopic(DecisionTopicLinkRetraction)
+        case performSkill(MeetingSkillOffer, destination: String?)
+        case dismissSkillOffer(MeetingSkillOffer)
     }
 
     enum ReviewAction {
@@ -42,6 +44,7 @@ extension MeetingDetailModel {
         case checkVoiceMemoryOffer(name: String)
         case rememberVoice(SpeakerID)
         case loadDecisionConfirmations
+        case loadSkillOffers
     }
 
     enum Action {
@@ -134,6 +137,21 @@ extension MeetingDetailModel {
             .content(.retractDecisionTopic(retraction))
         }
 
+        static func performSkill(
+            _ offer: MeetingSkillOffer,
+            destination: String?
+        ) -> Self {
+            .content(.performSkill(offer, destination: destination))
+        }
+
+        static func dismissSkillOffer(_ offer: MeetingSkillOffer) -> Self {
+            .content(.dismissSkillOffer(offer))
+        }
+
+        static var loadSkillOffers: Self {
+            .review(.loadSkillOffers)
+        }
+
         static var loadDecisionConfirmations: Self {
             .review(.loadDecisionConfirmations)
         }
@@ -191,6 +209,7 @@ extension MeetingDetailModel {
         case commitmentReviewSaved
         case summaryClaimFeedbackSaved(SummaryClaimID)
         case decisionConfirmed(DecisionAboutTopicOutcome)
+        case skillPerformed(MeetingSkillOffer)
         case meetingDeleted(MeetingID)
         case documentPrepared(PreparedMeetingDocument)
         case gistPublished(URL)

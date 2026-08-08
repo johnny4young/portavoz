@@ -40,6 +40,8 @@ final class MeetingDetailModel {
         fileprivate(set) var decisionConfirmations:
             [SummaryDecisionID: DecisionObservationConfirmationState] = [:]
         fileprivate(set) var linkableTopics: [LinkableTopic] = []
+        fileprivate(set) var skillOffers: [MeetingSkillOffer] = []
+        fileprivate(set) var skillReceipts: [MeetingSkillReceipt] = []
     }
 
     private(set) var state = State()
@@ -191,6 +193,11 @@ final class MeetingDetailModel {
         case .retractDecisionTopic(let retraction):
             await retractDecisionTopic(retraction)
             return nil
+        case .performSkill(let offer, let destination):
+            return await performSkill(offer, destination: destination)
+        case .dismissSkillOffer(let offer):
+            await dismissSkillOffer(offer)
+            return nil
         }
     }
 
@@ -225,6 +232,9 @@ final class MeetingDetailModel {
             return nil
         case .loadDecisionConfirmations:
             await loadDecisionConfirmations()
+            return nil
+        case .loadSkillOffers:
+            await loadSkillOffers()
             return nil
         case .loadPlayback:
             await loadPlayback()
@@ -462,6 +472,52 @@ private extension MeetingDetailModel {
             state.lastActionError = L10n.text(
                 "Could not confirm this decision. Its summary may have changed.")
             return nil
+        }
+    }
+
+    /// Which skills the banner may offer, and the receipts of what already
+    /// ran — both read from durable state, never guessed.
+    func loadSkillOffers() async {
+        do {
+            let hasSummary = state.readModel?.summary != nil
+            state.skillOffers = try await client.meetingDetailSkillOffers(
+                meetingID: meetingID,
+                hasSummary: hasSummary)
+            state.skillReceipts = try await client.meetingDetailSkillReceipts(
+                meetingID: meetingID)
+        } catch {
+            // Presentation only: the banner simply stays empty until a later
+            // load succeeds.
+        }
+    }
+
+    /// Runs one confirmed offer and re-reads offers and receipts so the UI
+    /// reflects the durable outcome. Returns the effect the sheet closes on.
+    func performSkill(
+        _ offer: MeetingSkillOffer,
+        destination: String?
+    ) async -> Effect? {
+        do {
+            let failure = try await client.performMeetingDetailSkill(
+                offer,
+                destination: destination)
+            state.lastActionError = failure
+            await loadSkillOffers()
+            return failure == nil ? .skillPerformed(offer) : nil
+        } catch {
+            state.lastActionError = L10n.text(
+                "The skill could not run. Nothing left Portavoz.")
+            return nil
+        }
+    }
+
+    func dismissSkillOffer(_ offer: MeetingSkillOffer) async {
+        do {
+            try await client.dismissMeetingDetailSkillOffer(offer)
+            await loadSkillOffers()
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not dismiss this suggestion.")
         }
     }
 
@@ -808,5 +864,24 @@ private extension MeetingDetailModel {
             return
         }
         state.phase = .loaded
+    }
+}
+
+extension MeetingDetailModel {
+    /// The exact artifact one offer would produce — read-only, computed for
+    /// the confirmation sheet before anything durable exists.
+    func skillPreview(
+        _ offer: MeetingSkillOffer,
+        destination: String?
+    ) async -> MeetingSkillPreview? {
+        do {
+            return try await client.meetingDetailSkillPreview(
+                offer,
+                destination: destination)
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not build this skill's preview.")
+            return nil
+        }
     }
 }

@@ -553,7 +553,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 33. It includes:
+The current schema version is 34. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -586,6 +586,8 @@ The current schema version is 33. It includes:
 - a disposable per-segment corrected-text search projection (one row per
   active text replacement, FTS-mirrored, rebuilt transactionally with every
   correction write);
+- durable skill-offer dismissal keyed by stable intent identity, so a
+  declined proposal never returns;
 - immutable generation-run provenance;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);

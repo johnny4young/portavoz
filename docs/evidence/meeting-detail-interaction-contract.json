@@ -15,6 +15,7 @@
     "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator+Skills.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator.swift",
     "Sources/portavoz-app/MeetingDetailFlowHost.swift",
     "Sources/portavoz-app/MeetingDetailFlowState.swift",
@@ -29,6 +30,8 @@
     "Sources/portavoz-app/MeetingDetailTrustSection.swift",
     "Sources/portavoz-app/MeetingDetailView.swift",
     "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+    "Sources/portavoz-app/SkillConfirmSheet.swift",
+    "Sources/portavoz-app/SkillOfferBanner.swift",
     "Sources/portavoz-app/MeetingHealthView.swift",
     "Sources/portavoz-app/MeetingPlayerBar.swift",
     "Sources/portavoz-app/MeetingRecapSheet.swift",
@@ -690,6 +693,12 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Skills.swift",
+      "category": "presentation",
+      "source": "flow.sheet = .confirmSkill",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MeetingDetailCoordinator.swift",
       "category": "navigation",
       "source": "NSWorkspace.shared.open(url)",
@@ -903,7 +912,7 @@
       "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
       "category": "presentation",
       "source": "flow.sheet = nil",
-      "occurrences": 1
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
@@ -1263,6 +1272,12 @@
       "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"privacy-remote-event-\\(index)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-receipt-\\(receipt.skillID)\")",
       "occurrences": 1
     },
     {
@@ -1851,6 +1866,96 @@
       "path": "Sources/portavoz-app/MirrorCard.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"mirror-card\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Cancel\"), action: dismiss)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-preview-body\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-preview-destination\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-preview-subject\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-sheet\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-submit\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "state",
+      "source": "@State private var running = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+      "category": "control",
+      "source": "Button(dismissTitle(for: offer)) { dismiss(offer) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+      "category": "control",
+      "source": "Button(openTitle(for: offer)) { open(offer) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+      "category": "control",
+      "source": "Menu {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-offer-menu\")",
       "occurrences": 1
     },
     {
@@ -2618,6 +2723,29 @@
         "meeting-detail-post-meeting-mirror",
         "meeting-detail-privacy-receipt",
         "meeting-detail-transcript-navigation"
+      ]
+    },
+    {
+      "feature": "skill-proposals",
+      "tests": [
+        "testSkillProposalJourneyFromBannerToReceipt"
+      ],
+      "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+          "anchor": "\"skill-receipt-\\(receipt.skillID)\""
+        },
+        {
+          "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+          "anchor": "\"skill-confirm-sheet\""
+        },
+        {
+          "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+          "anchor": "\"skill-offer-menu\""
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-skill-receipt"
       ]
     },
     {

@@ -3881,6 +3881,326 @@
         }
       }
     },
+    "%@ — completed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — completada"
+          }
+        }
+      }
+    },
+    "%@ — did not finish": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ — no terminó"
+          }
+        }
+      }
+    },
+    "Choose destination…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir destino…"
+          }
+        }
+      }
+    },
+    "Copy draft to clipboard": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar borrador al portapapeles"
+          }
+        }
+      }
+    },
+    "Could not build this skill's preview.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo construir el preview del skill."
+          }
+        }
+      }
+    },
+    "Could not dismiss this suggestion.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo descartar la sugerencia."
+          }
+        }
+      }
+    },
+    "Dismiss this suggestion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar esta sugerencia"
+          }
+        }
+      }
+    },
+    "Draft a recap of this meeting?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Preparo el recap de esta reunión?"
+          }
+        }
+      }
+    },
+    "Draft this recap": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar este recap"
+          }
+        }
+      }
+    },
+    "Export this meeting as a package?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Exporto esta reunión como paquete?"
+          }
+        }
+      }
+    },
+    "Export this package": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar este paquete"
+          }
+        }
+      }
+    },
+    "Package export": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportación de paquete"
+          }
+        }
+      }
+    },
+    "Preview draft": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver borrador"
+          }
+        }
+      }
+    },
+    "Reads the meeting and copies a draft you still send yourself. Nothing leaves this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lee la reunión y copia un borrador que tú mismo envías. Nada sale de este Mac."
+          }
+        }
+      }
+    },
+    "Recap draft": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrador de recap"
+          }
+        }
+      }
+    },
+    "Skill runs": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ejecuciones de skills"
+          }
+        }
+      }
+    },
+    "Text only — audio never enters the package.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo texto — el audio nunca entra al paquete."
+          }
+        }
+      }
+    },
+    "The skill could not run. Nothing left Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El skill no pudo correr. Nada salió de Portavoz."
+          }
+        }
+      }
+    },
+    "The skill ran and failed. Nothing left Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El skill corrió y falló. Nada salió de Portavoz."
+          }
+        }
+      }
+    },
+    "This skill run could not start. Its proposal may be stale.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta ejecución no pudo iniciar. Su propuesta puede haber caducado."
+          }
+        }
+      }
+    },
+    "Write package": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribir paquete"
+          }
+        }
+      }
+    },
+    "Writes a text-only .portavoz file to a folder you choose. Nothing leaves this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escribe un archivo .portavoz solo de texto en la carpeta que elijas. Nada sale de este Mac."
+          }
+        }
+      }
+    },
+    "nothing leaves this Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nada sale de este Mac"
+          }
+        }
+      }
+    },
+    "reads meeting material": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lee material de la reunión"
+          }
+        }
+      }
+    },
+    "writes a local draft": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "escribe un borrador local"
+          }
+        }
+      }
+    },
+    "writes one local file": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "escribe un archivo local"
+          }
+        }
+      }
+    },
+    "Don't suggest the export again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No volver a sugerir la exportación"
+          }
+        }
+      }
+    },
+    "Don't suggest the recap again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No volver a sugerir el recap"
+          }
+        }
+      }
+    },
+    "Draft the recap…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar el recap…"
+          }
+        }
+      }
+    },
+    "Export a text-only package…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar un paquete solo de texto…"
+          }
+        }
+      }
+    },
+    "Skill suggestions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugerencias de skills"
+          }
+        }
+      }
+    },
+    "Things Portavoz can prepare from this meeting — always previewed, always confirmed by you, nothing leaves this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cosas que Portavoz puede preparar de esta reunión — siempre con preview, siempre confirmadas por ti, nada sale de este Mac."
+          }
+        }
+      }
+    },
     "Remove note": {
       "localizations": {
         "es": {

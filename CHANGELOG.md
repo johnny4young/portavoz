@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## August 8, 2026
+
+- **✳️ Portavoz now proposes, you confirm** — A processed meeting sprouts a sparkles menu with its first skills: draft the recap onto your clipboard or export a text-only package, each behind a preview of the exact result, an explicit confirmation, and a durable receipt in the meeting's trust rail. Decline once and it never asks again; nothing ever leaves your Mac.
+
 ## August 7, 2026
 
 - **↩️ Un-file a decision from a topic** — The confirmed badge on a decision now opens a menu where you can take back a topic link you no longer stand behind; the decision stays confirmed, and the history keeps the retraction.

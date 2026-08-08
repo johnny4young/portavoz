@@ -143,6 +143,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation",
         ),
     ),
+    "meeting-skills": (
+        test_id("MeetingDetailUITests", "testSkillProposalJourneyFromBannerToReceipt"),
+    ),
     "meeting-health": (
         test_id("MeetingDetailUITests", "testRightRailShowsHealthAndChapters"),
         test_id("MeetingDetailUITests", "testFreshQualifyingMeetingShowsThePostMeetingMirror"),
@@ -343,8 +346,12 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-processing", "meeting-summary"}
     if "meetingcommitmentinbox" in lowered:
         return {"meeting-commitments"}
+    if any(token in lowered for token in (
+        "skillofferbanner", "skillconfirmsheet", "meetingdetailcoordinator+skills"
+    )):
+        return {"meeting-skills"}
     if "meetingdetailtrustsection" in lowered:
-        return {"meeting-health", "meeting-processing"}
+        return {"meeting-health", "meeting-processing", "meeting-skills"}
     if "meetingdetailactionsection" in lowered:
         return {"meeting-export", "meeting-processing", "meeting-recap"}
     if "meetingdetailcoordinator+identity" in lowered:

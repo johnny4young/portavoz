@@ -215,6 +215,30 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertNil(model.state.lastActionError)
     }
 
+    /// The skill gesture routes the exact offer and destination to the client
+    /// and reloads offers so the banner reflects the durable outcome.
+    func testSkillActionsRouteOfferIdentityAndReloadOffers() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let offer = MeetingSkillOffer(
+            kind: .packageExport,
+            meetingID: fixture.meeting.id)
+
+        let effect = await model.send(
+            .performSkill(offer, destination: "/tmp/x.portavoz"))
+        await model.send(.dismissSkillOffer(offer))
+
+        guard case .skillPerformed(let performed) = effect else {
+            return XCTFail("a successful run must report its effect")
+        }
+        XCTAssertEqual(performed.offerKey, offer.offerKey)
+        XCTAssertTrue(client.calls.contains(
+            .performSkill(offer.offerKey, "/tmp/x.portavoz")))
+        XCTAssertTrue(client.calls.contains(.dismissSkillOffer(offer.offerKey)))
+        XCTAssertNil(model.state.lastActionError)
+    }
+
     func testCommitmentAdmissionAndReviewStayBehindTheFeatureOwner() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
@@ -1031,6 +1055,41 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         calls.append(.retractDecisionTopic(retraction.linkID))
     }
 
+    func meetingDetailSkillOffers(
+        meetingID: MeetingID,
+        hasSummary: Bool
+    ) throws -> [MeetingSkillOffer] {
+        calls.append(.loadSkillOffers(meetingID, hasSummary))
+        return hasSummary
+            ? [MeetingSkillOffer(kind: .recapDraft, meetingID: meetingID)]
+            : []
+    }
+
+    func meetingDetailSkillReceipts(
+        meetingID: MeetingID
+    ) throws -> [MeetingSkillReceipt] {
+        []
+    }
+
+    func meetingDetailSkillPreview(
+        _ offer: MeetingSkillOffer,
+        destination: String?
+    ) throws -> MeetingSkillPreview {
+        .recap(subject: "Recap", body: "Body")
+    }
+
+    func performMeetingDetailSkill(
+        _ offer: MeetingSkillOffer,
+        destination: String?
+    ) throws -> String? {
+        calls.append(.performSkill(offer.offerKey, destination))
+        return nil
+    }
+
+    func dismissMeetingDetailSkillOffer(_ offer: MeetingSkillOffer) throws {
+        calls.append(.dismissSkillOffer(offer.offerKey))
+    }
+
     func meetingDetailDecisionConfirmations(
         for observationIDs: [SummaryDecisionID]
     ) throws -> [DecisionObservationConfirmationState] {
@@ -1225,4 +1284,7 @@ private enum MeetingDetailModelCall: Equatable {
     case checkVoiceMemoryOffer(String)
     case rememberVoice(MeetingID, SpeakerID)
     case retractDecisionTopic(DecisionTopicLinkID)
+    case loadSkillOffers(MeetingID, Bool)
+    case performSkill(String, String?)
+    case dismissSkillOffer(String)
 }

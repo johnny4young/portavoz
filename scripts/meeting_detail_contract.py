@@ -29,6 +29,7 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Documents.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Identity.swift",
+    "Sources/portavoz-app/MeetingDetailCoordinator+Skills.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator.swift",
     "Sources/portavoz-app/MeetingDetailFlowHost.swift",
     "Sources/portavoz-app/MeetingDetailFlowState.swift",
@@ -43,6 +44,8 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/MeetingDetailTrustSection.swift",
     "Sources/portavoz-app/MeetingDetailView.swift",
     "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+    "Sources/portavoz-app/SkillConfirmSheet.swift",
+    "Sources/portavoz-app/SkillOfferBanner.swift",
     "Sources/portavoz-app/MeetingHealthView.swift",
     "Sources/portavoz-app/MeetingPlayerBar.swift",
     "Sources/portavoz-app/MeetingRecapSheet.swift",
@@ -156,6 +159,26 @@ DEFAULT_FEATURE_OWNERSHIP = (
             {
                 "path": "Sources/portavoz-app/SummaryClaimFeedbackView.swift",
                 "anchor": '"summary-feedback-correction"',
+            },
+        ],
+    },
+    {
+        "feature": "skill-proposals",
+        "tests": [
+            "testSkillProposalJourneyFromBannerToReceipt",
+        ],
+        "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/SkillOfferBanner.swift",
+                "anchor": '"skill-offer-menu"',
+            },
+            {
+                "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+                "anchor": '"skill-confirm-sheet"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+                "anchor": '"skill-receipt-\\(receipt.skillID)"',
             },
         ],
     },

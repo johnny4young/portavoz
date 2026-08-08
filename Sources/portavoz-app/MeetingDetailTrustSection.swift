@@ -1,3 +1,4 @@
+import ApplicationKit
 import PortavozCore
 import SwiftUI
 
@@ -25,7 +26,32 @@ struct MeetingDetailTrustValues {
     let hasSavedAudio: Bool
     let lastProcessingError: String?
     let privacyReceipt: PrivacyReceipt?
+    let skillReceipts: [MeetingSkillReceipt]
     let presentation: MeetingDetailPresentation
+
+    /// The section renders only when it has something trustworthy to say:
+    /// processing state, a privacy receipt, or at least one skill receipt.
+    static func make(
+        detail: MeetingReviewReadModel,
+        skillReceipts: [MeetingSkillReceipt],
+        presentation: MeetingDetailPresentation
+    ) -> MeetingDetailTrustValues? {
+        let hasProcessingState = detail.meeting.lifecycleState == .needsAttention
+            || detail.processingJobs.contains {
+                $0.state == .pending || $0.state == .running || $0.state == .failed
+            }
+        guard hasProcessingState || detail.privacyReceipt != nil
+            || !skillReceipts.isEmpty
+        else { return nil }
+        return MeetingDetailTrustValues(
+            lifecycleState: detail.meeting.lifecycleState,
+            processingJobs: detail.processingJobs,
+            hasSavedAudio: detail.meeting.audioDirectory != nil,
+            lastProcessingError: detail.meeting.lastProcessingError,
+            privacyReceipt: detail.privacyReceipt,
+            skillReceipts: skillReceipts,
+            presentation: presentation)
+    }
 }
 
 struct MeetingDetailTrustActions {
@@ -48,9 +74,54 @@ struct MeetingDetailTrustSection: View {
         VStack(alignment: .leading, spacing: 12) {
             processingStatus
             privacyReceiptSection
+            skillReceiptSection
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-trust-section")
+    }
+
+    /// Q12/D316: every durable skill execution for this meeting — the
+    /// auditable answer to "what did Portavoz do on my behalf here".
+    @ViewBuilder
+    private var skillReceiptSection: some View {
+        if !values.skillReceipts.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Skill runs")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ForEach(values.skillReceipts) { receipt in
+                    HStack(spacing: 6) {
+                        Image(systemName: receipt.state == .succeeded
+                            ? "checkmark.seal"
+                            : "exclamationmark.triangle")
+                            .foregroundStyle(
+                                receipt.state == .succeeded ? .green : .orange)
+                        Text(skillReceiptTitle(receipt))
+                            .font(.caption)
+                        Spacer(minLength: 4)
+                        Text(receipt.updatedAt, style: .time)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    // One element, explicit label: the row announces skill and
+                    // outcome instead of an unreachable icon+text container.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(skillReceiptTitle(receipt))
+                    .accessibilityIdentifier("skill-receipt-\(receipt.skillID)")
+                }
+            }
+        }
+    }
+
+    private func skillReceiptTitle(_ receipt: MeetingSkillReceipt) -> String {
+        let name = switch receipt.skillID {
+        case "recap-draft": L10n.text("Recap draft")
+        case "meeting-package-export": L10n.text("Package export")
+        default: receipt.skillID
+        }
+        return receipt.state == .succeeded
+            ? L10n.format("%@ — completed", name)
+            : L10n.format("%@ — did not finish", name)
     }
 
     @ViewBuilder

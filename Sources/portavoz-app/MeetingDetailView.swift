@@ -170,19 +170,10 @@ private extension MeetingDetailView {
         _ detail: MeetingReviewReadModel,
         transcript: MeetingTranscriptContent
     ) -> some View {
-        let hasProcessingState = detail.meeting.lifecycleState == .needsAttention
-            || detail.processingJobs.contains {
-                $0.state == .pending || $0.state == .running || $0.state == .failed
-            }
-        let trust = hasProcessingState || detail.privacyReceipt != nil
-            ? MeetingDetailTrustValues(
-                lifecycleState: detail.meeting.lifecycleState,
-                processingJobs: detail.processingJobs,
-                hasSavedAudio: detail.meeting.audioDirectory != nil,
-                lastProcessingError: detail.meeting.lastProcessingError,
-                privacyReceipt: detail.privacyReceipt,
-                presentation: presentation)
-            : nil
+        let trust = MeetingDetailTrustValues.make(
+            detail: detail,
+            skillReceipts: model.state.skillReceipts,
+            presentation: presentation)
         return MeetingDetailRailSection(
             values: MeetingDetailRailValues(
                 trust: trust,
@@ -346,7 +337,8 @@ private extension MeetingDetailView {
                 hasAudio: detail.meeting.audioDirectory != nil,
                 hasSummary: summary != nil,
                 hasCorrections: !detail.correctionRevision.isAccepted,
-                includeCorrectionProvenance: flow.includeCorrectionProvenance),
+                includeCorrectionProvenance: flow.includeCorrectionProvenance,
+                skillOffers: model.state.skillOffers),
             actions: MeetingDetailActionActions(
                 startRefine: { coordinator.startRefine(detail) },
                 startSpanishRefine: {
@@ -360,7 +352,10 @@ private extension MeetingDetailView {
                     flow.includeCorrectionProvenance = $0
                 },
                 export: { coordinator.handleExportAction($0, detail: detail) },
-                deleteMeeting: { Task { await deleteMeeting() } }))
+                deleteMeeting: { Task { await deleteMeeting() } },
+                openSkillOffer: { coordinator.openSkillOffer($0, detail: detail) },
+                dismissSkillOffer: coordinator.dismissSkillOffer,
+                loadSkillOffers: coordinator.loadSkillOffers))
     }
 
     private func acceptPersonOffer() {
@@ -422,7 +417,7 @@ private extension MeetingDetailView {
                 sceneActions.clearJustRecorded()
             },
             confirmDecision: coordinator.confirmDecision,
-            linkableTopics: model.state.linkableTopics)
+            linkableTopics: model.state.linkableTopics, confirmSkill: coordinator.confirmSkill)
     }
 
     private func summaryLanguage(

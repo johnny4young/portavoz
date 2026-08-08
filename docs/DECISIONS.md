@@ -10973,3 +10973,57 @@ remains a separate, unmade decision.
 the private pack (the remaining Q6 items) now has a fixed, fail-closed
 contract to land on, and chunking comparisons (Q7) can include answer
 grounding without inventing a metric per run.
+
+## D316 — Skill proposals surface beside their meeting, and dismissal is durable (Aug 2026)
+
+**Context:** the no-egress skill tier (D292–D295, D301) was complete but
+unreachable — no user could run a skill. The obvious wiring was refuted
+before building: routing the existing manual flows (recap sheet, export
+panel) through `ExecuteSkill` would receipt artifacts the user did not send,
+because the manual surfaces allow edits that never travel in the typed
+arguments. The skills tier's differentiator is the PROPOSAL motion, so the
+proposal needed its own surface.
+
+**Decision:** phase 1 anchors proposals to their subject. A badged offers
+menu beside Meeting Detail's document actions proposes the meeting-scoped
+skills — recap draft and text-only package export — once the meeting has a
+summary. Each offer opens the confirmation sheet, which shows the EXACT artifact (the composed recap
+verbatim; the meeting title and chosen destination for export) plus the
+declared capabilities, and confirming runs the durable execution machinery:
+claim before effect, one auditable receipt per intent, failure categories
+typed. Receipts render in the meeting's trust rail beside the privacy
+receipt. The export destination is resolved by the native save panel BEFORE
+the proposal exists, so the confirmed proposal never resolves a path behind
+the user's back; recap delivery is the pasteboard — exactly what the manual
+sheet's Copy does, and the user still sends it themselves.
+
+Dismissal became durable state (schema v34, `skillOfferDismissal`): the AUTO
+contract makes `dismissed` terminal from `proposed`, but the execution tables
+only begin at confirmation. The offer key is the stable intent identity
+(skill + meeting), deliberately not the random per-render proposal ID, so a
+regenerated banner can never resurrect a declined offer. A succeeded recap
+retires its offer (the draft exists; re-drafting is the manual sheet's job);
+export keeps offering because each destination is a distinct intended
+effect; a failed run keeps offering because retry is legitimate.
+
+**Two presentation lessons recorded for the next surface.** A ViewBuilder
+branch that renders nothing is never installed, so a load trigger attached
+to the offers view could never fire before the first offers arrive — the
+empty state renders a hidden 1×1 anchor so the tree keeps a node to hang
+the trigger on. And Meeting Detail tolerates NO persistent vertical
+insertion: a banner inside the height-ratcheted artifacts viewport pushed
+the document's own controls out of the box (seven gates failed), a banner
+above it displaced the sections below (four more) — exactly what those
+gates exist to catch — so the proposals took a zero-height slot in the
+actions row instead.
+
+**Deliberately excluded from phase 1:** the reminder-draft skill's UI (its
+delivery adapter needs EventKit and a permission moment of its own), the
+pre-meeting brief (its subject is a calendar event, not a past meeting), a
+Skills management pane (phase 2, when egress skills need consent and
+standing-rule management), and any menu-bar moment (phase 3; its
+verification cost is documented in the roadmap).
+
+**Consequences:** a user can now run a skill end to end — proposal, exact
+preview, explicit confirmation, durable receipt — with nothing leaving the
+Mac, and the phase-2 pane will be born with real receipts in it.

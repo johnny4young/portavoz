@@ -1,3 +1,4 @@
+import ApplicationKit
 import Foundation
 import Observation
 import PortavozCore
@@ -27,8 +28,18 @@ final class MeetingDetailFlowState {
         case recap
         case newStructure
         case confirmDecision
+        case confirmSkill
 
         var id: String { rawValue }
+    }
+
+    /// The offer the skill confirmation sheet is acting on, with the exact
+    /// preview it will show and, for export, the destination the user already
+    /// chose in the save panel.
+    struct SkillConfirmTarget {
+        let offer: MeetingSkillOffer
+        let preview: MeetingSkillPreview
+        let destination: String?
     }
 
     /// The generated decision the confirm sheet is acting on. Route payload
@@ -79,6 +90,7 @@ final class MeetingDetailFlowState {
 
     var renameMeetingTitle = ""
     var decisionConfirmTarget: DecisionConfirmTarget?
+    var skillConfirmTarget: SkillConfirmTarget?
     var renameSpeakerName = ""
     var isRegenerating = false
     var isEnhancingNotes = false

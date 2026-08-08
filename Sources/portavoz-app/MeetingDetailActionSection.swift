@@ -1,3 +1,4 @@
+import ApplicationKit
 import SwiftUI
 
 enum MeetingDetailExportAction {
@@ -16,6 +17,7 @@ struct MeetingDetailActionValues {
     let hasSummary: Bool
     let hasCorrections: Bool
     let includeCorrectionProvenance: Bool
+    let skillOffers: [MeetingSkillOffer]
 }
 
 struct MeetingDetailActionActions {
@@ -26,6 +28,9 @@ struct MeetingDetailActionActions {
     let setIncludeCorrectionProvenance: @MainActor (Bool) -> Void
     let export: @MainActor (MeetingDetailExportAction) -> Void
     let deleteMeeting: @MainActor () -> Void
+    let openSkillOffer: @MainActor (MeetingSkillOffer) -> Void
+    let dismissSkillOffer: @MainActor (MeetingSkillOffer) -> Void
+    let loadSkillOffers: @MainActor () -> Void
 }
 
 /// Refine, export, publishing, and deletion controls for one reviewed meeting.
@@ -38,6 +43,12 @@ struct MeetingDetailActionSection: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            SkillOfferMenu(
+                offers: values.skillOffers,
+                hasSummary: values.hasSummary,
+                open: actions.openSkillOffer,
+                dismiss: actions.dismissSkillOffer,
+                load: actions.loadSkillOffers)
             refineControl
             exportMenu
             deleteButton
