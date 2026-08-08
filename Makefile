@@ -30,7 +30,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-exact-path-mutation-baseline exact-path-mutation-baseline \
 	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
 	test-meeting-detail-baseline meeting-detail-baseline \
-	test-recording-stress test-model-gated test-ui test-ui-en test-ui-es \
+	test-recording-stress test-model-gated test-ui-real-audio test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
 	release-reliability long-capture-baseline
@@ -49,6 +49,26 @@ MODEL_GATED_TEST_CLASSES = DiarizationIntegrationTests \
 	FoundationModelIntegrationTests MeetingTypeDetectorIntegrationTests \
 	ParakeetIntegrationTests SentenceEmbedderIntegrationTests \
 	ObjectiveCheckDetectorShapeTests
+## Drive the player journeys against a COPY of a real recording fragment
+## (a folder shaped Audio/<uuid>/…). Point PORTAVOZ_TEST_AUDIO_ROOT at the
+## scratch copy — NEVER at the release app's live data. The seeded meeting
+## adopts that audio, so skip/only-my-voice/clip/evidence-seek run over real
+## waveforms instead of the synthetic two-tone clip.
+test-ui-real-audio:
+	@test -n "$(PORTAVOZ_TEST_AUDIO_ROOT)" || \
+		(echo "PORTAVOZ_TEST_AUDIO_ROOT is required: a scratch COPY of a real recording" >&2; exit 64)
+	@case "$(PORTAVOZ_TEST_AUDIO_ROOT)" in \
+		*"Application Support/Portavoz"*|*"Portavoz.app"*) \
+			echo "Refusing to run against the release app's live data — copy the recording to a scratch folder" >&2; \
+			exit 64 ;; \
+	esac
+	@$(MAKE) --no-print-directory test-ui-scoped \
+		UI_TESTS="PortavozUITests/MeetingDetailUITests/testPlayerExposesSkipAndOnlyMyVoice \
+			PortavozUITests/MeetingDetailUITests/testClipMarkingRevealsExport \
+			PortavozUITests/MeetingDetailUITests/testSummarySourceJumpsToItsTranscriptAndAudio \
+			PortavozUITests/MeetingDetailUITests/testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix" \
+		UI_TEST_LOCALES="en"
+
 test-model-gated:
 	@set -u; status=0; \
 	for class in $(MODEL_GATED_TEST_CLASSES); do \

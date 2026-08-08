@@ -2160,3 +2160,33 @@ automation/accessibility session is active on the machine — observed with
 an agent's computer-use session: 3 consecutive attempts failed during init,
 and the same code passed 7/7 in a cycle without that session. This is not a
 code failure: run the UITests without concurrent automation clients.
+
+## UI-suite cost model and the journey pattern (Aug 2026)
+
+Measured on the full bilingual run of Aug 7 (132 cases, ~1,940 s of test
+time): the per-case cost is dominated by a fixed launch-and-settle overhead
+of roughly 12–15 s — app launch, temp-store seeding, library settle,
+navigation — while each additional verified stage inside a running case costs
+only ~1–2 s. The most expensive cases (structural corrections at ~41 s,
+commitment inbox at ~33 s) are already multi-stage journeys; the waste
+concentrates in single-assertion cases that pay the full launch for one
+check.
+
+**Default new coverage to single-launch journeys.** The reference is
+`testSkillProposalJourneyFromBannerToReceipt` (D316): banner → exact preview
+→ confirm → clipboard artifact → durable receipt → offer retirement →
+durable dismissal — six verified stages in one ~16 s launch, where four
+separate cases would spend ~60 s. Split into separate cases only when stages
+genuinely need different seed flags or launch arguments; never merge cases
+across different launch configurations, because a shared launch that half
+the assertions must un-do stops being evidence.
+
+**Real recording fragments.** `make test-ui-real-audio` drives the player
+journeys (skip, only-my-voice, clip export, evidence seek) against a scratch
+COPY of a real recording: point `PORTAVOZ_TEST_AUDIO_ROOT` at a folder shaped
+`Audio/<uuid>/…` and the seeded meeting adopts that audio instead of the
+synthetic two-tone clip. The target refuses paths that look like the release
+app's live data, and `run-ui-tests.sh` exports the override in both plain and
+`TEST_RUNNER_`-prefixed forms so it reaches the runner process regardless of
+how xcodebuild spawns it. This lane is owner-run evidence — real recordings
+never enter the repository.

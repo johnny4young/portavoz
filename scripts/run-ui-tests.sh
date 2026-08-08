@@ -42,6 +42,14 @@ if [[ -z "${DEVELOPER_DIR:-}" ]]; then
   fi
 fi
 
+# Real-recording lane (T30/D316 era): tests read PORTAVOZ_TEST_AUDIO_ROOT from
+# the RUNNER process, and xcodebuild only forwards TEST_RUNNER_-prefixed
+# variables there — export both spellings so the override reaches the tests
+# regardless of how the runner is spawned.
+if [[ -n "${PORTAVOZ_TEST_AUDIO_ROOT:-}" ]]; then
+  export TEST_RUNNER_PORTAVOZ_TEST_AUDIO_ROOT="$PORTAVOZ_TEST_AUDIO_ROOT"
+fi
+
 # Compile the app and UI bundle once. English and Spanish then reuse the same
 # products through test-without-building instead of paying the build cost twice.
 xcodebuild build-for-testing "${common[@]}"
