@@ -10809,3 +10809,43 @@ topics, with an explicit accessibility label so the state is announced whole.
 **Consequences:** the six graph jobs now have a real production writer behind
 them. Retraction UI and a dedicated review surface remain open, recorded in the
 roadmap rather than implied.
+
+## D312 — GRAPH-6: relational storage meets the product queries (Aug 2026)
+
+**Context:** band 7's exit gate had to prove the relational projection serves
+the longitudinal product queries at scale, or produce the ADR for a graph
+engine. The harness seeds a deterministic synthetic corpus — dense repeated
+topics, merged-topic families, same-name canonical people, per-topic
+supersession chains — through the same public confirmation paths the product
+uses, projects through the real maintenance path, and measures every one of the
+six D270 jobs.
+
+**Measured (in-memory store, Apple Silicon; 30 samples per lane; evidence in
+`docs/evidence/meeting-memory-graph-scale-20260807.json`):** at 10k meetings /
+1k topic families / 10k confirmed decisions and commitments, every job answers
+between 2.3 ms and 76.1 ms p95 against the 250 ms interactive budget — worst
+lane firstDiscussion at 76.1 ms, over 3× headroom. Recursive-CTE probes for
+topic-family roots (10k topics with merges) and supersession chains stay under
+6 ms, so recursive read models are not a blocker either. Disk 119 MB; physical
+footprint delta under 6 MB.
+
+**Decision:** the specialized-graph-engine gate stays closed. SQLite remains
+authoritative, the projection remains disposable, and no ADR is needed.
+
+Two findings are recorded rather than smoothed over. Full rebuild-from-zero
+projection is superlinear — 414 edges/s at 1k falling to 48.9 at 10k
+(17.6 minutes) because per-scope rebuilds load every live topic row to resolve
+family roots; the normal incremental path touches few scopes, and the job is
+checkpointed, resumable, and capture-yielding by design, so this is a GAPS
+throughput item, not a gate failure. And returning to the canonical profile
+after an alternate one at the same source generation is refused by operation
+idempotency — reachable only via binary downgrade, also in GAPS.
+
+The always-on invariants run on every push at small scale: no edge without
+provenance across all seven projection tables, correction-awareness (rewriting
+the transcript under the current decision's evidence abstains stale while an
+untouched subject answers), and rebuild determinism proven through a full
+profile reset comparing raw authority-keyed edge sets.
+
+**Consequences:** band 7 is code-complete. What remains for the band is UI
+(link retraction) and field validation, not storage design.

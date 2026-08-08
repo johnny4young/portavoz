@@ -56,6 +56,26 @@ Resolved gaps are kept as one-line entries so the ledger stays complete; their f
 
 | T30 | Meeting Memory Graph has three source-backed fact adapters, all canonically verified, but user-facing Ask/scale serving remains open | **PARTIAL (D270–D286)**: a deterministic 36-case public-synthetic corpus defines six longitudinal jobs; schemas v25–v30 add topic, decision, commitment-change, question, and blocker authority plus a disposable relational graph; three adapters (active blockers, authoritative first discussion, current person commitments) serve and are canonically verified through public product boundaries; Ask carries a separately typed fact seam with exact alias/date/status filters, typed synthesis, and deterministic post-RRF selection that reserves transcript rank. The graph only checks or selects topology — it never becomes source evidence. **Still open:** the other three D270 job adapters, relational latency/throughput budgets, private owner-reviewed evidence, sync/export, CLI, MCP, UI, and product telemetry. Released consumers remain transcript-only | Finish the remaining exact query adapters and measure relational query/projection budgets with untracked owner-reviewed evidence before explicit released adoption |
 
+- **Returning to the canonical graph profile after an alternate profile stalls
+  until the next authority write.** Derived-maintenance operations are
+  idempotent by `(kind, targetFingerprint, sourceGeneration)`; once the
+  canonical operation is `done`, re-admitting it at the same source generation
+  reloads the done row and `claim` finds nothing pending, while
+  `meetingMemoryGraphRequiresMaintenance()` keeps reporting true. Only
+  reachable by running an older binary after a newer one (profile fingerprints
+  are per-build constants), and any authority write clears it. Found by the
+  GRAPH-6 harness, which proves rebuild determinism through the alternate
+  profile without the return trip.
+- **Full graph rebuild-from-zero at 10k meetings measures 17.6 minutes (48.9 edges/s vs 414 at 1k).** The
+  per-scope rebuild loads every live topic row to resolve family roots
+  (`liveTopicRecords`) once per topic/decision scope, so a full reset is
+  roughly scopes × topics row loads. Incremental invalidations — the normal
+  path — touch few scopes and stay cheap, and the job is checkpointed,
+  resumable, and yields to capture (GOV-4b), so this is a throughput
+  optimization opportunity, not a correctness or interactivity gap. Interactive
+  query latency at the same scale is measured healthy (see
+  docs/evidence/meeting-memory-graph-scale-20260807.json).
+
 ## Positioning gaps (against the competitive map)
 
 - **OSS growth after publication**: distribution is solved; discoverability,
