@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 7, 2026
 
+- **🔔 Reminders heal themselves after you flip notifications** — If you deny notifications and later allow Portavoz in System Settings, coming back to the app is enough: reminders notice and start scheduling, with a direct button to the right Settings pane when they are off.
 - **🧠 The meeting memory graph rebuilds in seconds, not minutes** — A full rebuild of the longitudinal memory graph on a 10,000-meeting library dropped from about 18 minutes to under half a minute, so answers come back sooner after an update resets it.
 - **🔎 Corrected lines stay findable** — Fix a word in a transcript and search now finds the line by its corrected text instead of losing it, the stale wording stops matching, and changing only who said a line no longer hides it from search.
 - **✅ Decisions you can confirm and file by topic** — Turn a generated decision into confirmed meeting truth with one click, optionally naming the topic it is about, and ask later what was decided about that topic knowing only confirmed decisions answer.

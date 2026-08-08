@@ -3141,6 +3141,16 @@
         }
       }
     },
+    "Open System Settings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir Configuración del Sistema"
+          }
+        }
+      }
+    },
     "Or skip — they download on your first recording.": {
       "localizations": {
         "es": {

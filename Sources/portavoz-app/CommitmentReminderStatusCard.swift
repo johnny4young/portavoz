@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct CommitmentReminderStatusCard: View {
@@ -24,10 +25,24 @@ struct CommitmentReminderStatusCard: View {
             in: RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("commitment-reminder-card")
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await model.send(.applicationDidBecomeActive) }
+        }
     }
 }
 
 private extension CommitmentReminderStatusCard {
+    /// Deep link to the Notifications pane; falls back to the System Settings
+    /// root if the pane URL scheme ever changes shape.
+    func openNotificationSettings() {
+        let pane = URL(
+            string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")
+        let root = URL(fileURLWithPath: "/System/Applications/System Settings.app")
+        if let pane, NSWorkspace.shared.open(pane) { return }
+        NSWorkspace.shared.open(root)
+    }
+
     @ViewBuilder var statusControl: some View {
         if model.state.phase == .failed {
             Button("Try again") {
@@ -48,10 +63,18 @@ private extension CommitmentReminderStatusCard {
                 .disabled(model.state.phase == .requestingPermission)
                 .accessibilityIdentifier("commitment-reminder-enable")
             case .denied:
-                Button("Check again") {
-                    Task { await model.send(.retry) }
+                // macOS never re-prompts a denied app; the only recovery is
+                // the system pane, so offer the exact door plus a re-check.
+                HStack(spacing: 8) {
+                    Button("Open System Settings") {
+                        openNotificationSettings()
+                    }
+                    .accessibilityIdentifier("commitment-reminder-open-settings")
+                    Button("Check again") {
+                        Task { await model.send(.retry) }
+                    }
+                    .accessibilityIdentifier("commitment-reminder-check-again")
                 }
-                .accessibilityIdentifier("commitment-reminder-check-again")
             case .enabled:
                 enabledControl
             }

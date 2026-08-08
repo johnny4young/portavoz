@@ -150,6 +150,61 @@ final class CommitmentReminderModelTests: XCTestCase {
         XCTAssertEqual(model.state.phase, .idle)
     }
 
+    /// Q10 recovery: the user denies, later allows Portavoz in System
+    /// Settings, and returning to the app is enough — the model notices the
+    /// grant and starts scheduling without any prompt.
+    func testReturningToTheAppRecoversAPermissionGrantedInSystemSettings() async {
+        let client = RecordingReminderModelClient(permission: .denied)
+        let model = CommitmentReminderModel(client: client)
+
+        await model.send(.start)
+        XCTAssertEqual(model.state.permission, .denied)
+
+        client.systemPermissionChanged(to: .enabled)
+        await model.send(.applicationDidBecomeActive)
+        await waitUntil { client.reconciliationCount == 1 }
+
+        XCTAssertEqual(model.state.permission, .enabled)
+        XCTAssertEqual(
+            client.authorizationRequests, 0,
+            "recovery observes the system state; it never re-prompts")
+    }
+
+    /// Returning also notices a revocation: reminders must stop claiming to
+    /// be on when the user turned them off behind the app's back.
+    func testReturningToTheAppNoticesARevokedPermission() async {
+        let client = RecordingReminderModelClient(permission: .enabled)
+        let model = CommitmentReminderModel(client: client)
+
+        await model.send(.start)
+        await waitUntil { model.state.phase == .idle }
+        XCTAssertEqual(model.state.permission, .enabled)
+
+        client.systemPermissionChanged(to: .denied)
+        await model.send(.applicationDidBecomeActive)
+
+        XCTAssertEqual(model.state.permission, .denied)
+    }
+
+    /// Activation never stomps an in-flight pass: the coalesced
+    /// reconciliation keeps its phase and no permission re-check races it.
+    func testActivationDoesNotInterruptAnActiveReconciliation() async {
+        let client = RecordingReminderModelClient(
+            permission: .enabled,
+            suspendsFirstReconciliation: true)
+        let model = CommitmentReminderModel(client: client)
+
+        await model.send(.start)
+        await waitUntil { client.reconciliationCount == 1 }
+        XCTAssertEqual(model.state.phase, .reconciling)
+
+        await model.send(.applicationDidBecomeActive)
+
+        XCTAssertEqual(model.state.phase, .reconciling)
+        client.resumeFirstReconciliation()
+        await waitUntil { model.state.phase == .idle }
+    }
+
     private func waitUntil(
         timeout: Duration = .seconds(1),
         condition: @escaping @MainActor () -> Bool
@@ -237,6 +292,10 @@ private final class RecordingReminderModelClient: CommitmentReminderModelClient 
     ) -> ReminderDismissalOutcome {
         dismissalCount += 1
         return .dismissed
+    }
+
+    func systemPermissionChanged(to permission: CommitmentReminderPermission) {
+        self.permission = permission
     }
 
     func resumeFirstReconciliation() {

@@ -50,6 +50,10 @@ final class CommitmentReminderModel {
         case start
         case enable
         case retry
+        /// The user may have flipped notification permission in System
+        /// Settings while the app was in the background; returning is the
+        /// moment to notice — in both directions — without prompting.
+        case applicationDidBecomeActive
     }
 
     private(set) var state = State()
@@ -72,6 +76,13 @@ final class CommitmentReminderModel {
         case .enable:
             await requestPermission()
         case .retry:
+            await refreshPermission()
+        case .applicationDidBecomeActive:
+            // Never stomp an in-flight request or reconciliation pass; a
+            // failed pass recovers here too, so returning to the app is
+            // enough to heal both permission flips and transient failures.
+            guard started, state.phase == .idle || state.phase == .failed
+            else { return }
             await refreshPermission()
         }
     }
