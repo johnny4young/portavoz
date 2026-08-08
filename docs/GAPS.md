@@ -66,15 +66,15 @@ Resolved gaps are kept as one-line entries so the ledger stays complete; their f
   are per-build constants), and any authority write clears it. Found by the
   GRAPH-6 harness, which proves rebuild determinism through the alternate
   profile without the return trip.
-- **Full graph rebuild-from-zero at 10k meetings measures 17.6 minutes (48.9 edges/s vs 414 at 1k).** The
-  per-scope rebuild loads every live topic row to resolve family roots
-  (`liveTopicRecords`) once per topic/decision scope, so a full reset is
-  roughly scopes × topics row loads. Incremental invalidations — the normal
-  path — touch few scopes and stay cheap, and the job is checkpointed,
-  resumable, and yields to capture (GOV-4b), so this is a throughput
-  optimization opportunity, not a correctness or interactivity gap. Interactive
-  query latency at the same scale is measured healthy (see
-  docs/evidence/meeting-memory-graph-scale-20260807.json).
+- **RESOLVED (D314, Aug 7 2026) — graph rebuild-from-zero was superlinear.**
+  The per-scope rebuild used to load every live topic row to resolve family
+  roots (`liveTopicRecords`) once per topic/decision scope — 17.6 minutes /
+  48.9 edges/s at 10k meetings vs 414 at 1k. Family resolution now runs as
+  two recursive CTEs (`topicFamilyRootID`, `topicFamilyMemberIDs`) inside the
+  scope's own transaction: 1 892.9 edges/s and 27.2 s at 10k (38.7×),
+  near-linear against 2 766 edges/s at 1k, with query lanes still inside the
+  250 ms budget. Evidence:
+  docs/evidence/meeting-memory-graph-rebuild-20260807.json.
 
 ## Positioning gaps (against the competitive map)
 

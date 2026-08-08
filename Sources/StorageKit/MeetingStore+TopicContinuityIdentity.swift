@@ -116,6 +116,76 @@ extension MeetingStore {
                 .map { ($0.id, $0) })
     }
 
+    /// A merge chain deeper than this is only reachable through corrupt
+    /// redirects; the cap turns a persisted cycle into a detectable terminal
+    /// state instead of an unbounded recursive walk.
+    private static let topicRedirectDepthLimit = 10_000
+
+    /// SQL twin of `topicRoot(_:among:)` for rebuild-scale call sites: walks
+    /// one topic's redirect chain with a recursive CTE instead of loading the
+    /// whole topic table per scope (the superlinear rebuild driver measured by
+    /// GRAPH-6). Failure semantics mirror the in-memory walk for the chain it
+    /// touches — a redirect cycle and a redirect to a tombstoned or missing
+    /// topic both throw; a missing or tombstoned starting topic returns nil.
+    /// Unlike the in-memory walk, broken chains in *other* families are not
+    /// visited, so they no longer fail this scope.
+    static func topicFamilyRootID(
+        _ topicKey: String,
+        in database: Database
+    ) throws -> String? {
+        let row = try Row.fetchOne(
+            database,
+            sql: """
+                WITH RECURSIVE chain(id, mergedIntoTopicID, depth) AS (
+                    SELECT topic.id, topic.mergedIntoTopicID, 0
+                    FROM topic
+                    WHERE topic.id = ? AND topic.deletedAt IS NULL
+                    UNION ALL
+                    SELECT topic.id, topic.mergedIntoTopicID, chain.depth + 1
+                    FROM chain
+                    JOIN topic ON topic.id = chain.mergedIntoTopicID
+                    WHERE topic.deletedAt IS NULL
+                      AND chain.depth < \(topicRedirectDepthLimit)
+                )
+                SELECT id, mergedIntoTopicID, depth FROM chain
+                ORDER BY depth DESC LIMIT 1
+                """,
+            arguments: [topicKey])
+        guard let row else { return nil }
+        guard (row["depth"] as Int? ?? 0) < Self.topicRedirectDepthLimit else {
+            throw StorageError.invalidTopicContinuity(
+                "persisted topic redirects contain a cycle")
+        }
+        guard (row["mergedIntoTopicID"] as String?) == nil else {
+            throw StorageError.invalidTopicContinuity(
+                "topic redirect target is unavailable")
+        }
+        return row["id"]
+    }
+
+    /// Every live topic whose redirect chain reaches `rootID` — the family a
+    /// merge or split scope must republish. `UNION` (not `UNION ALL`) makes a
+    /// corrupt downward cycle terminate instead of recursing forever.
+    static func topicFamilyMemberIDs(
+        rootID: String,
+        in database: Database
+    ) throws -> [String] {
+        try String.fetchAll(
+            database,
+            sql: """
+                WITH RECURSIVE family(id) AS (
+                    SELECT id FROM topic WHERE id = ? AND deletedAt IS NULL
+                    UNION
+                    SELECT topic.id
+                    FROM topic
+                    JOIN family ON topic.mergedIntoTopicID = family.id
+                    WHERE topic.deletedAt IS NULL
+                )
+                SELECT id FROM family ORDER BY id
+                """,
+            arguments: [rootID])
+    }
+
     static func liveTopic(
         _ topicID: TopicID,
         in database: Database

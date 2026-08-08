@@ -10911,3 +10911,34 @@ recorded in GAPS, not silently absorbed.
 text and unfindable by the stale one, with search, Ask, Library, and MCP all
 converging on the same segment identity. Existing MCP consumers observe no
 change unless they opt into the appended tools.
+
+## D314 — Graph rebuild resolves topic families in SQL, not by loading the table (Aug 2026)
+
+**Context:** the GRAPH-6 verdict (D312) recorded one known cost honestly
+instead of smoothing it: rebuild-from-zero was superlinear because every
+topic/decision scope called `liveTopicRecords` — a full fetch of all live
+topics — to resolve merge-family roots, making a full reset roughly
+scopes × topics row loads (414 edges/s at 1k collapsing to 48.9 at 10k;
+17.6 minutes for a complete rebuild).
+
+**Decision:** family resolution moves into two recursive CTEs that stay
+O(family) per scope. `topicFamilyRootID` walks one redirect chain upward with
+the same failure semantics as the in-memory `topicRoot` walk — a redirect
+cycle (bounded by an explicit depth cap) and a redirect into a tombstoned or
+missing topic both throw; a missing starting topic returns nil. One deliberate
+narrowing: broken chains in *other* families are no longer visited, so they
+fail their own scope instead of every scope. `topicFamilyMemberIDs` walks
+downward with `UNION` recursion so a corrupt cycle terminates. The three graph
+rebuild scopes use these helpers; query-lane call sites keep their measured,
+budget-passing shape and are deliberately untouched.
+
+**Measured (same in-memory harness and fixture as D312; evidence in
+`docs/evidence/meeting-memory-graph-rebuild-20260807.json`):** 2 766 edges/s
+at 1k and 1 892.9 edges/s at 10k — 27.2 s for the full 10k rebuild, 38.7×
+the baseline and near-linear across the decade. Conformance, projection
+checkpoint/resume, and the always-on scale invariants (including rebuild
+determinism via raw edge-set comparison) all pass unchanged.
+
+**Consequences:** the D312 GAPS throughput item is resolved; a full
+profile-fingerprint reset at 10k meetings costs under half a minute inside
+the existing checkpointed, capture-yielding maintenance job.

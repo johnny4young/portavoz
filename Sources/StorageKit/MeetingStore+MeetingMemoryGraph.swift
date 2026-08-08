@@ -512,8 +512,10 @@ extension MeetingStore {
         _ topicID: String,
         in database: Database
     ) throws -> Int {
-        let topics = try liveTopicRecords(in: database)
-        guard topics[topicID] != nil else {
+        // Family resolution stays inside SQL (recursive CTE): loading every
+        // live topic per scope was the superlinear rebuild driver GRAPH-6
+        // measured (414 -> 48.9 edges/s between 1k and 10k meetings).
+        guard let rootID = try topicFamilyRootID(topicID, in: database) else {
             try database.execute(
                 sql: "DELETE FROM meetingMemoryGraphMeetingTopic WHERE topicID = ?",
                 arguments: [topicID])
@@ -525,12 +527,7 @@ extension MeetingStore {
                 arguments: [topicID])
             return 0
         }
-        let root = try topicRoot(topicID, among: topics)
-        let familyIDs = try topics.values.compactMap { record -> String? in
-            try topicRoot(record.id, among: topics).id == root.id
-                ? record.id
-                : nil
-        }
+        let familyIDs = try topicFamilyMemberIDs(rootID: rootID, in: database)
         try database.execute(
             sql: """
                 DELETE FROM meetingMemoryGraphMeetingTopic
@@ -552,7 +549,7 @@ extension MeetingStore {
                 WHERE evidence.topicID IN (\(placeholders(familyIDs.count)))
                   AND meeting.deletedAt IS NULL
                 """,
-            arguments: StatementArguments([root.id] + familyIDs))
+            arguments: StatementArguments([rootID] + familyIDs))
         let meetingEdges = database.changesCount
         try database.execute(
             sql: """
@@ -562,7 +559,7 @@ extension MeetingStore {
                 WHERE question.topicID IN (\(placeholders(familyIDs.count)))
                   AND question.deletedAt IS NULL
                 """,
-            arguments: StatementArguments([root.id] + familyIDs))
+            arguments: StatementArguments([rootID] + familyIDs))
         let questionEdges = database.changesCount
         try database.execute(
             sql: """
@@ -583,7 +580,7 @@ extension MeetingStore {
                   AND link.deletedAt IS NULL
                   AND decision.deletedAt IS NULL
                 """,
-            arguments: StatementArguments([root.id] + familyIDs))
+            arguments: StatementArguments([rootID] + familyIDs))
         return meetingEdges + questionEdges + database.changesCount
     }
 
@@ -594,7 +591,6 @@ extension MeetingStore {
         forMeetingID meetingID: String,
         in database: Database
     ) throws -> Int {
-        let topics = try liveTopicRecords(in: database)
         let observedTopicIDs = try String.fetchAll(
             database,
             sql: """
@@ -605,9 +601,8 @@ extension MeetingStore {
                   AND meeting.deletedAt IS NULL
                 """,
             arguments: [meetingID])
-        let rootIDs = try Set(observedTopicIDs.compactMap { topicID -> String? in
-            guard topics[topicID] != nil else { return nil }
-            return try topicRoot(topicID, among: topics).id
+        let rootIDs = try Set(observedTopicIDs.compactMap { topicID in
+            try topicFamilyRootID(topicID, in: database)
         })
         var published = 0
         for rootID in rootIDs.sorted() {
@@ -682,7 +677,6 @@ extension MeetingStore {
         decisionID: String,
         in database: Database
     ) throws -> Int {
-        let topics = try liveTopicRecords(in: database)
         let linkedTopicIDs = try String.fetchAll(
             database,
             sql: """
@@ -695,9 +689,8 @@ extension MeetingStore {
                   AND decision.deletedAt IS NULL
                 """,
             arguments: [decisionID])
-        let rootIDs = try Set(linkedTopicIDs.compactMap { topicID -> String? in
-            guard topics[topicID] != nil else { return nil }
-            return try topicRoot(topicID, among: topics).id
+        let rootIDs = try Set(linkedTopicIDs.compactMap { topicID in
+            try topicFamilyRootID(topicID, in: database)
         })
         var published = 0
         for rootID in rootIDs.sorted() {
