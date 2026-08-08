@@ -10942,3 +10942,34 @@ determinism via raw edge-set comparison) all pass unchanged.
 **Consequences:** the D312 GAPS throughput item is resolved; a full
 profile-fingerprint reset at 10k meetings costs under half a minute inside
 the existing checkpointed, capture-yielding maintenance job.
+
+## D315 — The Ask answer judge is deterministic, content-free, and says what it cannot see (Aug 2026)
+
+**Context:** SEARCH-0b's honest-quality boundary (D192–D196) judges retrieval
+but left answers explicitly unevaluated — nothing could say whether the
+generated answer respected the abstention policy or grounded its citations,
+and Q7's chunking comparison needs exactly that judge.
+
+**Decision:** `scripts/ask_answer_quality.py` adds a separately versioned
+answer judge (answer schema 1, its own observation and scorecard kinds; the
+retrieval schema is untouched). The observation contract is content-free:
+per fixture query it carries only the outcome (`answered`/`abstained`), the
+cited segment identities, and a character count — answer text is a forbidden
+key, so the same contract serves the public synthetic fixture and a future
+private anonymized pack. Validation fails closed: every fixture query judged
+exactly once, no unknown or duplicate citation, an abstention must be
+evidence-free, and an answer without a single citation (or with an empty
+artifact) is inadmissible rather than low-scoring. The judge scores
+`answerOutcomeAccuracy`, `citationPrecision`, `evidenceRecall`,
+`falseAnswerCount`, `missedAnswerCount`, and `hardNegativeCitationCount`
+(the hallucination surrogate), with optional explicit floors.
+
+**Deliberate limit, stated instead of hidden:** every scorecard carries
+`"proseQuality": "notEvaluated"`. A deterministic judge verifies grounding
+and policy, not eloquence; a semantic quality judge would need a model and
+remains a separate, unmade decision.
+
+**Consequences:** collecting answer observations from the product adapter and
+the private pack (the remaining Q6 items) now has a fixed, fail-closed
+contract to land on, and chunking comparisons (Q7) can include answer
+grounding without inventing a metric per run.
