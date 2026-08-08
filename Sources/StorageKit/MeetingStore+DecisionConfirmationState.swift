@@ -21,10 +21,10 @@ extension MeetingStore {
                     throw StorageError.invalidDecisionContinuity(
                         "decision confirmation identity is malformed")
                 }
-                let labels = try String.fetchAll(
+                let links = try Row.fetchAll(
                     database,
                     sql: """
-                        SELECT topic.preferredLabel
+                        SELECT link.id AS linkID, topic.preferredLabel AS label
                         FROM decisionTopicLink AS link
                         JOIN topic ON topic.id = link.topicID
                         WHERE link.decisionID = ?
@@ -34,10 +34,19 @@ extension MeetingStore {
                         ORDER BY link.createdAt, topic.preferredLabel
                         """,
                     arguments: [source.decisionID])
+                let topicLinks = try links.map { row in
+                    guard let linkRaw = UUID(uuidString: row["linkID"] ?? "") else {
+                        throw StorageError.invalidDecisionContinuity(
+                            "decision topic link identity is malformed")
+                    }
+                    return DecisionObservationConfirmationState.TopicLink(
+                        id: DecisionTopicLinkID(rawValue: linkRaw),
+                        label: row["label"] ?? "")
+                }
                 return DecisionObservationConfirmationState(
                     observationID: SummaryDecisionID(rawValue: observationRaw),
                     decisionID: DecisionID(rawValue: decisionRaw),
-                    topicLabels: labels)
+                    topicLinks: topicLinks)
             }
         }
     }

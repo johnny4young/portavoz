@@ -1331,6 +1331,16 @@
         }
       }
     },
+    "Could not remove this topic link. It may already be retracted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo quitar el vínculo con el tema. Puede que ya esté retirado."
+          }
+        }
+      }
+    },
     "Could not rename: %@": {
       "localizations": {
         "es": {
@@ -3877,6 +3887,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eliminar nota"
+          }
+        }
+      }
+    },
+    "Remove topic “%@”": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar el tema “%@”"
           }
         }
       }

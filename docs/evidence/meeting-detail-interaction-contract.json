@@ -1352,6 +1352,12 @@
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
+      "source": "Button(L10n.format(\"Remove topic “%@”\", link.label)) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "control",
       "source": "Button(clock(segment.startTime)) {",
       "occurrences": 1
     },
@@ -1365,7 +1371,7 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
       "source": "Menu {",
-      "occurrences": 2
+      "occurrences": 3
     },
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
@@ -1394,6 +1400,12 @@
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"\\(identifier)-confirm\")",
       "occurrences": 1
     },
@@ -1401,7 +1413,7 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"\\(identifier)-confirmed\")",
-      "occurrences": 1
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
@@ -2410,10 +2422,15 @@
         {
           "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
           "anchor": "\"\\(identifier)-confirmed\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"\\(identifier)-retract-\\(link.id.rawValue.uuidString)\""
         }
       ],
       "screenshots": [
-        "meeting-detail-decision-confirmed"
+        "meeting-detail-decision-confirmed",
+        "meeting-detail-decision-topic-retracted"
       ]
     },
     {

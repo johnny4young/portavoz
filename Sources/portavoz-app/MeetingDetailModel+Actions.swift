@@ -25,6 +25,7 @@ extension MeetingDetailModel {
         case setSummaryClaimFeedback(SummaryClaimID, SummaryClaimFeedback?)
         case removeCompanionCard(UUID)
         case confirmDecision(ConfirmDecisionAboutTopicRequest)
+        case retractDecisionTopic(DecisionTopicLinkRetraction)
     }
 
     enum ReviewAction {
@@ -125,6 +126,12 @@ extension MeetingDetailModel {
             _ request: ConfirmDecisionAboutTopicRequest
         ) -> Self {
             .content(.confirmDecision(request))
+        }
+
+        static func retractDecisionTopic(
+            _ retraction: DecisionTopicLinkRetraction
+        ) -> Self {
+            .content(.retractDecisionTopic(retraction))
         }
 
         static var loadDecisionConfirmations: Self {

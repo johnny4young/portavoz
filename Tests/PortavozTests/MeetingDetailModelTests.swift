@@ -201,6 +201,20 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertNil(model.state.lastActionError)
     }
 
+    /// The retraction gesture reaches the client with the exact link identity
+    /// and leaves no stale error behind.
+    func testRetractingADecisionTopicLinkCallsTheClientWithItsIdentity() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let retraction = DecisionTopicLinkRetraction(linkID: DecisionTopicLinkID())
+
+        await model.send(.retractDecisionTopic(retraction))
+
+        XCTAssertEqual(client.calls, [.retractDecisionTopic(retraction.linkID)])
+        XCTAssertNil(model.state.lastActionError)
+    }
+
     func testCommitmentAdmissionAndReviewStayBehindTheFeatureOwner() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
@@ -1011,6 +1025,12 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
             topicLabel: nil)
     }
 
+    func retractMeetingDetailDecisionTopic(
+        _ retraction: DecisionTopicLinkRetraction
+    ) throws {
+        calls.append(.retractDecisionTopic(retraction.linkID))
+    }
+
     func meetingDetailDecisionConfirmations(
         for observationIDs: [SummaryDecisionID]
     ) throws -> [DecisionObservationConfirmationState] {
@@ -1204,4 +1224,5 @@ private enum MeetingDetailModelCall: Equatable {
     case exportAudioClip(String, ClosedRange<TimeInterval>, URL)
     case checkVoiceMemoryOffer(String)
     case rememberVoice(MeetingID, SpeakerID)
+    case retractDecisionTopic(DecisionTopicLinkID)
 }

@@ -38,6 +38,9 @@ protocol MeetingDetailModelClient: AnyObject {
     func confirmMeetingDetailDecision(
         _ request: ConfirmDecisionAboutTopicRequest
     ) async throws -> DecisionAboutTopicOutcome
+    func retractMeetingDetailDecisionTopic(
+        _ retraction: DecisionTopicLinkRetraction
+    ) async throws
     func meetingDetailDecisionConfirmations(
         for observationIDs: [SummaryDecisionID]
     ) async throws -> [DecisionObservationConfirmationState]

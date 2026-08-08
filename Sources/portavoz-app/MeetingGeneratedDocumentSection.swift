@@ -42,6 +42,8 @@ struct MeetingGeneratedDocumentActions {
         @MainActor (SummaryClaimID, SummaryClaimFeedback?) async -> Bool
     let confirmDecision:
         @MainActor (SummaryDecisionEvidence, _ statement: String) -> Void
+    let retractDecisionTopic:
+        @MainActor (DecisionObservationConfirmationState.TopicLink) -> Void
     let decisionsDidAppear: @MainActor () -> Void
 }
 
@@ -367,15 +369,39 @@ struct MeetingGeneratedDocumentSection: View {
                 : L10n.format(
                     "Confirmed · %@",
                     confirmed.topicLabels.joined(separator: ", "))
-            Label(badge, systemImage: "checkmark.seal.fill")
+            let badgeLabel = Label(badge, systemImage: "checkmark.seal.fill")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                // One element with an explicit label: the badge announces its
-                // full state, and the identifier's element carries the topic
-                // instead of an empty container wrapping unreachable children.
-                .accessibilityElement(children: .ignore)
+            if confirmed.topicLinks.isEmpty {
+                badgeLabel
+                    // One element with an explicit label: the badge announces
+                    // its full state, and the identifier's element carries the
+                    // topic instead of an empty container wrapping unreachable
+                    // children.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(badge)
+                    .accessibilityIdentifier("\(identifier)-confirmed")
+            } else {
+                // The badge doubles as the retraction entry: each active link
+                // offers its withdrawal. The decision stays confirmed — only
+                // what it is about is taken back (history keeps the event).
+                Menu {
+                    ForEach(confirmed.topicLinks) { link in
+                        Button(L10n.format("Remove topic “%@”", link.label)) {
+                            actions.retractDecisionTopic(link)
+                        }
+                        .accessibilityIdentifier(
+                            "\(identifier)-retract-\(link.id.rawValue.uuidString)")
+                    }
+                } label: {
+                    badgeLabel
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
                 .accessibilityLabel(badge)
                 .accessibilityIdentifier("\(identifier)-confirmed")
+            }
         } else if resolution.status == .current {
             Button {
                 actions.confirmDecision(evidence, bullet)

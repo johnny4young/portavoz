@@ -101,6 +101,12 @@ extension MeetingDetailCoordinator {
                         sourceTranscriptRevision: revision)
                 flow.sheet = .confirmDecision
             },
+            retractDecisionTopic: { link in
+                Task {
+                    await model.send(.retractDecisionTopic(
+                        DecisionTopicLinkRetraction(linkID: link.id)))
+                }
+            },
             decisionsDidAppear: {
                 Task { await model.send(.loadDecisionConfirmations) }
             })

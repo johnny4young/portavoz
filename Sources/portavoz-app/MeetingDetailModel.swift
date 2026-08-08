@@ -188,6 +188,9 @@ final class MeetingDetailModel {
             return nil
         case .confirmDecision(let request):
             return await confirmDecision(request)
+        case .retractDecisionTopic(let retraction):
+            await retractDecisionTopic(retraction)
+            return nil
         }
     }
 
@@ -459,6 +462,19 @@ private extension MeetingDetailModel {
             state.lastActionError = L10n.text(
                 "Could not confirm this decision. Its summary may have changed.")
             return nil
+        }
+    }
+
+    /// Withdraws one "about" link and re-reads the confirmations so the badge
+    /// reflects durable truth, never an optimistic guess.
+    func retractDecisionTopic(_ retraction: DecisionTopicLinkRetraction) async {
+        do {
+            try await client.retractMeetingDetailDecisionTopic(retraction)
+            state.lastActionError = nil
+            await loadDecisionConfirmations()
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not remove this topic link. It may already be retracted.")
         }
     }
 

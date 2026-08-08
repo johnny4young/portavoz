@@ -212,18 +212,32 @@ public struct DecisionTopicLinkContinuity: Equatable, Sendable {
 /// generated observations already became durable decisions, and which topics
 /// those decisions are about.
 public struct DecisionObservationConfirmationState: Equatable, Sendable {
+    /// One active aboutness link as presentation needs it: enough identity to
+    /// retract, and the label the badge shows.
+    public struct TopicLink: Equatable, Sendable, Identifiable {
+        public let id: DecisionTopicLinkID
+        public let label: String
+
+        public init(id: DecisionTopicLinkID, label: String) {
+            self.id = id
+            self.label = label
+        }
+    }
+
     public let observationID: SummaryDecisionID
     public let decisionID: DecisionID
-    public let topicLabels: [String]
+    public let topicLinks: [TopicLink]
+
+    public var topicLabels: [String] { topicLinks.map(\.label) }
 
     public init(
         observationID: SummaryDecisionID,
         decisionID: DecisionID,
-        topicLabels: [String]
+        topicLinks: [TopicLink]
     ) {
         self.observationID = observationID
         self.decisionID = decisionID
-        self.topicLabels = topicLabels
+        self.topicLinks = topicLinks
     }
 }
 

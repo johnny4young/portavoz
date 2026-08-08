@@ -617,7 +617,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let field = app.textFields["decision-confirm-topic-field"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.click()
-        field.typeText("atlas-rollout")
+        field.typeText("atlasrollout")
         app.control(withIdentifier: "decision-confirm-submit").click()
 
         let badge = app.control(withIdentifier: "summary-decision-0-0-confirmed")
@@ -625,12 +625,31 @@ final class MeetingDetailUITests: PortavozUITestCase {
             badge.waitForExistence(timeout: 10),
             "the durable confirmation renders as the badge")
         XCTAssertTrue(
-            badge.label.contains("atlas-rollout"),
+            badge.label.contains("atlasrollout"),
             "the badge names the topic; saw '\(badge.label)'")
         XCTAssertFalse(
             app.control(withIdentifier: "summary-decision-0-0-confirm").exists,
             "the gesture does not offer itself twice")
         attachScreenshot(of: app, named: "meeting-detail-decision-confirmed")
+
+        // The badge doubles as the retraction entry: withdrawing the link
+        // returns the observation to its unconfirmed-topic reading (the
+        // decision itself stays confirmed, so the badge loses the topic).
+        badge.click()
+        let retract = app.menuItems.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "summary-decision-0-0-retract-")).firstMatch
+        XCTAssertTrue(
+            retract.waitForExistence(timeout: 5),
+            "each linked topic offers its withdrawal from the badge menu")
+        retract.click()
+
+        let unlinked = app.control(withIdentifier: "summary-decision-0-0-confirmed")
+        let topicGone = expectation(
+            for: NSPredicate(format: "NOT (label CONTAINS %@)", "atlasrollout"),
+            evaluatedWith: unlinked)
+        wait(for: [topicGone], timeout: 10)
+        attachScreenshot(of: app, named: "meeting-detail-decision-topic-retracted")
     }
 
     @MainActor
@@ -844,11 +863,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
             .firstMatch
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         editor.click()
-        editor.typeText("El rollout queda para el lunes después de QA.")
+        editor.typeText("El rollout queda para el lunes tras QA")
         app.control(withIdentifier: "summary-feedback-save").click()
 
         XCTAssertTrue(
-            app.staticTexts["El rollout queda para el lunes después de QA."]
+            app.staticTexts["El rollout queda para el lunes tras QA"]
                 .waitForExistence(timeout: 5),
             "the saved correction must be visible without replacing the generated overview")
         XCTAssertTrue(

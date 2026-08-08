@@ -97,6 +97,12 @@ extension AppServices: MeetingDetailModelClient {
         try await ConfirmDecisionAboutTopic(store: store).execute(request)
     }
 
+    func retractMeetingDetailDecisionTopic(
+        _ retraction: DecisionTopicLinkRetraction
+    ) async throws {
+        _ = try await RetractDecisionTopicLink(store: store).execute(retraction)
+    }
+
     func meetingDetailDecisionConfirmations(
         for observationIDs: [SummaryDecisionID]
     ) async throws -> [DecisionObservationConfirmationState] {

@@ -173,6 +173,10 @@ DEFAULT_FEATURE_OWNERSHIP = (
                 "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
                 "anchor": '"\\(identifier)-confirmed"',
             },
+            {
+                "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+                "anchor": '"\\(identifier)-retract-\\(link.id.rawValue.uuidString)"',
+            },
         ],
     },
     {
