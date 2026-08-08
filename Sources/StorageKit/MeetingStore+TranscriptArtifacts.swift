@@ -119,6 +119,9 @@ extension MeetingStore {
         meeting.transcriptRevision += 1
         meeting.updatedAt = timestamp
         try meeting.update(db)
+        // The revision bump makes every prior correction stale; the corrected
+        // search rows must leave with it.
+        try refreshSegmentCorrectedText(meetingID: artifact.meetingID, in: db)
     }
 
     private static func hasTranscriptContent(_ value: String) -> Bool {

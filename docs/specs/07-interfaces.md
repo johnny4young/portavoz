@@ -83,13 +83,21 @@ reported (D75/D103).
 
 - Transport: **JSON-RPC 2.0 over stdio, newline-delimited**; protocolVersion `2024-11-05`. Storage-agnostic protocol layer in IntegrationsKit (`MCPServer`, `MCPTool` with Data→String handlers, raw JSON schemas); the toolbox is assembled in the CLI (`MeetingToolbox`).
 - Registration with an agent: `claude mcp add portavoz -- portavoz-cli mcp`.
-- **6 tools**: `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest read-consistent General snapshot + action items) · `get_action_items` (global pending items) · `ask` (the shared ApplicationKit hybrid on-device workflow with bounded per-term lexical candidates, complete selected segments, and citations).
-- **Correction boundary (D233/D234):** search and Ask omit immutable accepted
-  rows touched by an active correction rather than returning stale text.
-  Transcript, summary, and open-item MCP reads remain accepted-only and do not
-  claim to expose the composed overlay or its freshness. D234 adopts corrections
-  only for explicit document exports; MCP adoption waits for a separately
-  versioned response contract.
+- **9 tools**: the frozen ordered prefix `list_meetings` · `search_meetings` (FTS with snippets+ids+timestamps) · `get_transcript` (attributed) · `get_summary` (latest read-consistent General snapshot + action items) · `get_action_items` (global pending items) · `ask` (the shared ApplicationKit hybrid on-device workflow with bounded per-term lexical candidates, complete selected segments, and citations), plus the appended `portavoz-reading/2` tools `get_transcript_v2` · `get_summary_v2` · `get_action_items_v2`.
+- **Correction boundary (D233/D234/D313):** search and Ask serve the corrected
+  text of an active `replaceText` correction under its accepted segment
+  identity, keep speaker-only-corrected lines findable, and continue omitting
+  structurally corrected rows. The six v1 tools are frozen — same names, array
+  order, accepted-only text, clamps, and error strings — so existing consumers
+  observe no change. The appended v2 tools carry the composed contract: every
+  response opens with one content-free header line, `portavoz-reading/2
+  meeting=<uuid> base=<n> correction=<accepted|16-hex|unavailable>
+  reading=<composed|accepted> composed=<current|pending>`. `get_transcript_v2`
+  composes on demand and paginates composed rows ("Rows x-y of N"); any
+  composition doubt downgrades to the accepted body with
+  `reading=accepted composed=pending` (fail closed). `get_summary_v2` and
+  `get_action_items_v2` always read accepted generated artifacts but disclose
+  whether they predate the current corrections via `composed=pending`.
 - **Read-only shape (MCP-001, Jul 2026)**: the `initialize` response carries `instructions` declaring the contract — every tool only reads, nothing can mutate the library, processing stays local, and `ask` is the preferred entry for questions. `get_transcript` is paginated by segment (`offset`/`limit`, default 200, cap 500) with a self-describing header naming the covered range, the total, and the exact offset to continue from — an agent never guesses whether more remains, and a past-the-end offset gets an honest one-line answer instead of an error. `search_meetings` accepts `limit` (default 20, cap 50); the boundary never sees an unbounded client value. `MeetingToolboxTests` covers the real catalog (shape, schemas, pagination overlap/bounds/caps, search clamping) — previously only the protocol layer had tests, against fakes.
 - Verified E2E: an MCP agent answered "what did we agree about the transcription budget?" with the correct sources.
 

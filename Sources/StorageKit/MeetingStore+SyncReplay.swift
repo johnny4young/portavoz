@@ -203,6 +203,9 @@ extension MeetingStore {
                 at: aggregate.meeting.updatedAt,
                 in: db)
         }
+        // Unconditional: replay hard-deletes segments (cascading the corrected
+        // rows away) even when the correction fingerprint did not change.
+        try refreshSegmentCorrectedText(meetingID: meetingID, in: db)
     }
 
     static func meetingSyncLocalState(

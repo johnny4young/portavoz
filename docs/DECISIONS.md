@@ -10849,3 +10849,65 @@ profile reset comparing raw authority-keyed edge sets.
 
 **Consequences:** band 7 is code-complete. What remains for the band is UI
 (link retraction) and field validation, not storage design.
+
+## D313 — Corrected text reaches search through a per-segment projection; MCP appends portavoz-reading/2 (Aug 2026)
+
+**Context:** correction composition was complete (D225, D229–D235) but a
+corrected word made its line unfindable: any active correction removed the
+segment from FTS and semantic serving, MCP reads stayed accepted-only, and the
+originally designed fix — materializing composed rows into a correction-local
+index — was proven unsound under adversarial review. `segmentID` is the
+citation identity of the whole stack (RRF fusion deduplicates by it, Library
+selection resolves by it, commitment-link evidence throws on duplicates), and
+composed rows are not 1:1 with segments: a split mints N rows from one
+segment, a merge collapses several. Synchronous recomposition inside the
+write transaction was also impossible — `ComposeTranscript` lives in
+ApplicationKit, which StorageKit must not import.
+
+**Decision:** serve corrected text only where it is 1:1 with a segment.
+
+1. **`segmentCorrectedText` (v33)** holds at most one row per segment — the
+   active `replaceText` correction's text — with an FTS5 mirror maintained by
+   the same GRDB trigger mechanism as v1's `segmentSearch`. The projection is
+   disposable and rebuilt transactionally by every path that changes
+   correction state or the accepted revision (append, tombstone, replica
+   merge, sync replay, refine, re-transcription), plus a v33 backfill so
+   upgraded libraries find their corrected text immediately. Active-ness is
+   resolved by `SegmentCorrectedTextProjection` over
+   `TranscriptCorrectionPolicy.effectiveCorrections` — one shared answer to
+   "which corrections count", not a second one.
+2. **The search lane gets its own predicate.**
+   `acceptedSegmentHasNoActiveTextAffectingCorrectionSQL` excludes only
+   corrections that change what text exists (`replaceText`, `split`, `merge`,
+   `suppress`). An active `changeSpeaker` no longer hides its line from
+   search — that was a bug, since neither the text nor its embedding changed.
+   Evidence and continuity lanes keep the stricter any-correction predicate:
+   a speaker correction does change who said it, which those lanes cite.
+3. **Search unions the two lanes.** Accepted-text hits and corrected-text
+   hits merge under one bm25 ordering; a segment can never serve from both
+   because the projection row exists exactly when the predicate excludes the
+   accepted text. Citation identity stays the accepted `segmentID`, so Ask
+   fusion, Library selection, and evidence linking are untouched.
+4. **MCP appends, never mutates.** The six existing tools are frozen — same
+   names, order, accepted-only text, clamps, and error strings — and three
+   tools are appended under the `portavoz-reading/2` contract:
+   `get_transcript_v2` (composed reading, on-demand `ComposeTranscript`, row
+   pagination), `get_summary_v2` and `get_action_items_v2` (accepted reading
+   with correction provenance). Every v2 response opens with one content-free
+   header line — `portavoz-reading/2 meeting=<uuid> base=<n>
+   correction=<accepted|16-hex|unavailable> reading=<composed|accepted>
+   composed=<current|pending>` — and fails closed: corrected text serves only
+   when the full composition succeeds against the current revision; anything
+   else downgrades to the accepted reading and says so.
+
+**Deliberately excluded:** split/merge/suppress content stays out of search
+(their rows have no 1:1 segment identity); semantic search still serves no
+text-replaced segment (its stored embedding describes the original text);
+Spotlight stays correction-unaware; Apuntador regeneration policy remains
+deferred until source/evidence semantics are characterized. All four are
+recorded in GAPS, not silently absorbed.
+
+**Consequences:** fixing one word makes the line findable by its corrected
+text and unfindable by the stale one, with search, Ask, Library, and MCP all
+converging on the same segment identity. Existing MCP consumers observe no
+change unless they opt into the appended tools.

@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 7, 2026
 
+- **🔎 Corrected lines stay findable** — Fix a word in a transcript and search now finds the line by its corrected text instead of losing it, the stale wording stops matching, and changing only who said a line no longer hides it from search.
 - **✅ Decisions you can confirm and file by topic** — Turn a generated decision into confirmed meeting truth with one click, optionally naming the topic it is about, and ask later what was decided about that topic knowing only confirmed decisions answer.
 
 ## August 6, 2026

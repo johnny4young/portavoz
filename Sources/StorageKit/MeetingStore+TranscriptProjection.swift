@@ -29,6 +29,35 @@ extension MeetingStore {
         )
         """
 
+    /// The search-lane variant (T28b/D313): only corrections that change what
+    /// text exists — replaceText and the structural kinds — remove a segment
+    /// from accepted-text serving. An active `changeSpeaker` leaves the text
+    /// untouched, so the line (and its unchanged embedding) stays findable.
+    /// Text-replaced segments are served from `segmentCorrectedText` instead.
+    /// Evidence and continuity lanes keep the stricter predicate above.
+    static let acceptedSegmentHasNoActiveTextAffectingCorrectionSQL = """
+        NOT EXISTS (
+            SELECT 1
+            FROM transcriptCorrectionTarget AS correctionTarget
+            JOIN transcriptCorrection AS correction
+              ON correction.id = correctionTarget.correctionID
+            WHERE correctionTarget.segmentID = segment.id
+              AND correction.meetingID = segment.meetingID
+              AND correction.baseTranscriptRevision = (
+                  SELECT currentMeeting.transcriptRevision
+                  FROM meeting AS currentMeeting
+                  WHERE currentMeeting.id = segment.meetingID
+              )
+              AND correction.deletedAt IS NULL
+              AND correction.kind IN ('replaceText', 'split', 'merge', 'suppress')
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM transcriptCorrection AS successor
+                  WHERE successor.supersedesCorrectionID = correction.id
+              )
+        )
+        """
+
     static func transcriptCorrectionRevision(
         meetingID: MeetingID,
         in database: Database

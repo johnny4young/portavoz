@@ -130,6 +130,9 @@ extension MeetingStore {
                 current: currentProjection,
                 at: timestamp,
                 in: database)
+            try Self.refreshSegmentCorrectedText(
+                meetingID: meetingID,
+                in: database)
             return tombstone
         }
     }
@@ -198,6 +201,7 @@ private extension MeetingStore {
                 current: currentProjection,
                 at: timestamp,
                 in: database)
+            try refreshSegmentCorrectedText(meetingID: meetingID, in: database)
         }
         return persistedEvents
     }

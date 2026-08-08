@@ -401,7 +401,7 @@ final class SemanticIndexTests: XCTestCase {
         XCTAssertTrue(hits.isEmpty)
     }
 
-    func testActiveCorrectionExcludesOnlyOverlappingAcceptedEvidenceUntilRestore() async throws {
+    func testActiveTextCorrectionMovesExactServingToCorrectedTextUntilRestore() async throws {
         let fixture = try await Self.fixture()
         let replacement = TranscriptCorrectionEvent(
             meetingID: fixture.meeting.id,
@@ -413,13 +413,20 @@ final class SemanticIndexTests: XCTestCase {
 
         _ = try await fixture.store.appendTranscriptCorrection(replacement)
 
+        // D313: exact search serves the corrected text under the accepted
+        // segment identity; the replaced wording stops matching; the semantic
+        // lane still refuses the row because its vector describes the
+        // original text.
         let correctedExact = try await fixture.store.search("launch")
+        let staleExact = try await fixture.store.search("Friday")
         let unaffectedExact = try await fixture.store.search("archive")
         let correctedSemantic = try await fixture.store.searchSemantic(
             [1, 0],
             profile: fixture.profile,
             limit: 2)
-        XCTAssertTrue(correctedExact.isEmpty)
+        XCTAssertEqual(correctedExact.map(\.segmentID), [fixture.first.id])
+        XCTAssertEqual(correctedExact.map(\.text), ["The launch moved to Monday."])
+        XCTAssertTrue(staleExact.isEmpty)
         XCTAssertEqual(unaffectedExact.map(\.segmentID), [fixture.second.id])
         XCTAssertFalse(correctedSemantic.contains { $0.segmentID == fixture.first.id })
 

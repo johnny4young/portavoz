@@ -76,6 +76,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `companionCardEvidenceSegment` (v13) | id, evidenceID (FK CASCADE), role (`question` or `answer`), segmentID? (FK SET NULL), ordinal, createdAt; unique evidence+role+ordinal and evidence+role+live-segment |
 | `meetingSyncState` (v14) | meetingID (TEXT PK, deliberately no FK), localGeneration, acknowledgedGeneration, changedAt, isDeleted; content-free coalesced mutation state with pending index and purge-surviving deletion evidence |
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
+| `segmentCorrectedText` (v33) | segmentID (TEXT PK, FK cascade), meetingID (FK cascade, indexed), correctionID (UNIQUE, FK cascade), baseTranscriptRevision, non-empty text, optional language, updatedAt; disposable one-row-per-segment projection of the active `replaceText` correction (D313), rebuilt transactionally with every correction/revision write and backfilled at migration |
+| `segmentCorrectedSearch` (v33) | FTS5 external-content over segmentCorrectedText.text, synchronized by GRDB triggers exactly like `segmentSearch` |
 | `enhancedNote` (v15) | id, meetingID (UNIQUE, FK cascade), markdown, language, inputFingerprint (all checked non-empty), generationRunID (FK `setNull`, device-local), createdAt/updatedAt/deletedAt; ONE regenerable enhanced-notes document per meeting (D135), replaced in place preserving createdAt, portable via v15-registered `enhancedNote_sync_ai/au/ad` triggers over [markdown, language, inputFingerprint, deletedAt] |
 | `derivedMaintenanceSource` (v18) | kind (TEXT PK), sourceGeneration, updatedAt; content-free mutation identity for derived work, never a progress cursor |
 | `derivedMaintenanceJob` (v18) | content-free kind/profile/source operation identity, bounded attempts and scheduling time, lease owner/expiry, stable error code and timestamps; independent from meeting lifecycle |
@@ -586,10 +588,25 @@ restore can resume background indexing. Timestamps remain monotonic with the
 meeting, affected jobs, and existing semantic-maintenance source even when an
 older correction arrives through sync replay.
 
-One shared SQL predicate excludes actively corrected accepted rows from FTS,
-semantic reads, embedding candidates, vector publication, and identity
-projection. Unaffected rows remain available. Restored rows become eligible
-again; corrected text has no index row yet. Summary and Apuntador publication
+Two SQL predicates now split the correction boundary by lane (D313). Evidence,
+continuity, and identity projections keep the strict predicate: any active
+correction — including a speaker change, which alters who said it — excludes
+the accepted row. The search lane (FTS, semantic reads, embedding candidates,
+vector publication) uses the text-affecting predicate instead: only
+`replaceText`, `split`, `merge`, and `suppress` exclude a row, so a
+speaker-only correction no longer hides its unchanged text or embedding.
+Text-replaced segments serve their corrected text from the v33
+`segmentCorrectedText` projection — at most one row per segment (the active
+replacement, resolved by `SegmentCorrectedTextProjection` over
+`effectiveCorrections`), FTS-mirrored by GRDB triggers, refreshed inside every
+transaction that changes correction state or the accepted revision (append,
+tombstone, replica merge, sync replay, refine, re-transcription; sync replay
+refreshes unconditionally because hard-deleted segments cascade the rows away
+even when the correction fingerprint is unchanged), and backfilled by the v33
+migration itself. `search` unions both lanes under one bm25 ordering with a
+query-time revision fence; a segment can never serve from both, and citation
+identity stays the accepted `segmentID`. Restored rows become eligible again.
+Summary and Apuntador publication
 now require exact current accepted-transcript and correction revisions from
 the linked `GenerationRun`. Summary cache lookup applies the same requirement,
 and malformed provenance fails closed. No further correction schema migration

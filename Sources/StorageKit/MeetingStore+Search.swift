@@ -85,29 +85,61 @@ extension MeetingStore {
         limit: Int
     ) throws -> [SearchHit] {
         guard limit > 0 else { return [] }
+        // Two lanes, one identity: accepted text for segments without an
+        // active text-affecting correction, corrected text (T28b/D313) for
+        // segments whose active replaceText projected a row. A segment can
+        // never serve from both — the projection row only exists when the
+        // predicate excludes the accepted text.
         let rows = try Row.fetchAll(
             database,
             sql: """
-                SELECT segment.id AS segmentID,
-                       segment.meetingID AS meetingID,
-                       segment.startTime AS startTime,
-                       segment.text AS text,
-                       meeting.title AS title,
-                       meeting.transcriptRevision AS transcriptRevision,
-                       snippet(segmentSearch, 0, '[', ']', '…', 12) AS snippet
-                FROM segmentSearch
-                JOIN segment ON segment.rowid = segmentSearch.rowid
-                JOIN meeting ON meeting.id = segment.meetingID
-                WHERE segmentSearch MATCH ?
-                  AND segment.deletedAt IS NULL
-                  AND meeting.deletedAt IS NULL
-                  AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
-                -- FTS5's hidden rank column defaults to bm25(), but unlike
-                -- calling bm25() here it can abandon scoring after LIMIT.
-                ORDER BY rank
+                SELECT * FROM (
+                    SELECT segment.id AS segmentID,
+                           segment.meetingID AS meetingID,
+                           segment.startTime AS startTime,
+                           segment.text AS text,
+                           meeting.title AS title,
+                           meeting.transcriptRevision AS transcriptRevision,
+                           snippet(segmentSearch, 0, '[', ']', '…', 12) AS snippet,
+                           rank AS searchRank
+                    FROM segmentSearch
+                    JOIN segment ON segment.rowid = segmentSearch.rowid
+                    JOIN meeting ON meeting.id = segment.meetingID
+                    WHERE segmentSearch MATCH ?
+                      AND segment.deletedAt IS NULL
+                      AND meeting.deletedAt IS NULL
+                      AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
+                    -- FTS5's hidden rank column defaults to bm25(), but unlike
+                    -- calling bm25() here it can abandon scoring after LIMIT.
+                    ORDER BY rank
+                    LIMIT ?
+                )
+                UNION ALL
+                SELECT * FROM (
+                    SELECT segment.id AS segmentID,
+                           segment.meetingID AS meetingID,
+                           segment.startTime AS startTime,
+                           corrected.text AS text,
+                           meeting.title AS title,
+                           meeting.transcriptRevision AS transcriptRevision,
+                           snippet(segmentCorrectedSearch, 0, '[', ']', '…', 12) AS snippet,
+                           rank AS searchRank
+                    FROM segmentCorrectedSearch
+                    JOIN segmentCorrectedText AS corrected
+                      ON corrected.rowid = segmentCorrectedSearch.rowid
+                    JOIN segment ON segment.id = corrected.segmentID
+                    JOIN meeting ON meeting.id = corrected.meetingID
+                    WHERE segmentCorrectedSearch MATCH ?
+                      AND corrected.baseTranscriptRevision = meeting.transcriptRevision
+                      AND segment.deletedAt IS NULL
+                      AND meeting.deletedAt IS NULL
+                    ORDER BY rank
+                    LIMIT ?
+                )
+                ORDER BY searchRank
                 LIMIT ?
                 """,
-            arguments: [match, limit])
+            arguments: [match, limit, match, limit, limit])
         return try Self.searchHits(from: rows)
     }
 
@@ -151,7 +183,7 @@ extension MeetingStore {
                         JOIN meeting ON meeting.id = segment.meetingID
                         WHERE segment.deletedAt IS NULL
                           AND meeting.deletedAt IS NULL
-                          AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
+                          AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
                         LIMIT 1
                     )
                     """) ?? false
@@ -177,7 +209,7 @@ extension MeetingStore {
                         JOIN meeting ON meeting.id = segment.meetingID
                         WHERE segment.deletedAt IS NULL
                           AND meeting.deletedAt IS NULL
-                          AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
+                          AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
                           AND (
                               segment.embedding IS NULL
                               OR segment.embeddingFingerprint IS NOT ?
@@ -226,7 +258,7 @@ extension MeetingStore {
                     FROM segment
                     JOIN meeting ON meeting.id = segment.meetingID AND meeting.deletedAt IS NULL
                     WHERE segment.embedding IS NULL AND segment.deletedAt IS NULL
-                      AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
+                      AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
                     ORDER BY segment.createdAt, segment.rowid
                     LIMIT ?
                     """,
@@ -290,7 +322,7 @@ extension MeetingStore {
                                 AND meeting.deletedAt IS NULL
                                 AND meeting.transcriptRevision = ?
                           )
-                          AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
+                          AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
                         """,
                     arguments: [
                         Self.blob(from: vector),
@@ -364,7 +396,7 @@ extension MeetingStore {
                       AND segment.meetingID NOT IN (
                           SELECT meeting.id FROM meeting WHERE meeting.deletedAt IS NOT NULL
                       )
-                      AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
+                      AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
                     ORDER BY segment.rowid ASC
                     """,
                 arguments: [profile.fingerprint])
@@ -483,7 +515,7 @@ extension MeetingStore {
                         AND meeting.deletedAt IS NULL
                     WHERE segment.id IN (\(databaseQuestionMarks(count: segmentKeys.count)))
                       AND segment.deletedAt IS NULL
-                      AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
+                      AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
                     """,
                 arguments: StatementArguments(segmentKeys))
             var current: [UUID: SearchHit] = [:]
@@ -563,7 +595,7 @@ extension MeetingStore {
                     JOIN meeting ON meeting.id = segment.meetingID AND meeting.deletedAt IS NULL
                     WHERE segment.rowid IN (\(databaseQuestionMarks(count: chunk.count)))
                       AND segment.deletedAt IS NULL
-                      AND \(Self.acceptedSegmentHasNoActiveCorrectionSQL)
+                      AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
                     """,
                 arguments: StatementArguments(chunk))
             for row in rows {
