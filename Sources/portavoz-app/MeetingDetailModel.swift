@@ -1,7 +1,6 @@
 import ApplicationKit
 import Foundation
 import Observation
-import OSLog
 import PortavozCore
 
 /// Per-detail owner of scoped loading, partial failure, and the current
@@ -9,18 +8,7 @@ import PortavozCore
 @MainActor
 @Observable
 final class MeetingDetailModel {
-    private static let performanceSignposter = OSSignposter(
-        subsystem: "app.portavoz.mac",
-        category: "meeting-detail")
-
-    enum LoadPhase: Equatable {
-        case idle
-        case loading
-        case loaded
-        case missing
-        case degraded(failures: Int)
-        case failed
-    }
+    typealias LoadPhase = MeetingDetailLoadPhase
 
     struct State {
         fileprivate(set) var phase: LoadPhase = .idle
@@ -48,26 +36,10 @@ final class MeetingDetailModel {
     let meetingID: MeetingID
 
     private let client: any MeetingDetailModelClient
-    private let firstContentInterval: OSSignpostIntervalState
-    private let firstContentWorkloadSpan: ResourceWorkloadSpan
-    private let workloadTelemetry: ResourceWorkloadTelemetry
-    private var didRenderFirstContent = false
-    private var observationID = UUID()
-    private var observedSections: Set<MeetingReviewSection> = []
-    private var failedSections: Set<MeetingReviewSection> = []
-    private var hasCoreSnapshot = false
-    private var core: MeetingReviewCore?
-    private var summary: MeetingReviewSummary?
-    private var companionCards: [CompanionCard] = []
-    private var companionCorrectionSources: [UUID: TranscriptCorrectionArtifactSource] = [:]
-    private var privacyReceipt: PrivacyReceipt?
-    private var processingJobs: [ProcessingJob] = []
-    private var notes = MeetingReviewNotes()
-    private var commitmentReviewStates: [CommitmentReviewState] = []
+    private let firstContentTrace: MeetingDetailFirstContentTrace
+    private var reviewAccumulator = MeetingDetailReviewAccumulator()
+    private var metadataSuggestionState = MeetingDetailMetadataSuggestionState()
     private var didLoadVoiceSuggestions = false
-    private var didCompleteTitleSuggestion = false
-    private var didCompleteRecipeSuggestion = false
-    private var metadataRequestID = UUID()
     private var playbackDirectoryAttempt: String?
 
     init(
@@ -77,27 +49,14 @@ final class MeetingDetailModel {
     ) {
         self.meetingID = meetingID
         self.client = client
-        self.workloadTelemetry = workloadTelemetry
-        firstContentInterval = Self.performanceSignposter.beginInterval(
-            "Meeting Detail First Content")
-        firstContentWorkloadSpan = workloadTelemetry.begin(
-            ResourceWorkloadDescriptor(
-                workloadClass: .userInitiated,
-                kind: .uiProjection,
-                operation: .execute))
+        firstContentTrace = MeetingDetailFirstContentTrace(
+            workloadTelemetry: workloadTelemetry)
     }
 
     /// Ends the content-free navigation interval when SwiftUI mounts the
     /// first real Meeting Detail projection. Repeated appearances are ignored.
     func firstContentDidAppear() {
-        guard !didRenderFirstContent else { return }
-        didRenderFirstContent = true
-        Self.performanceSignposter.endInterval(
-            "Meeting Detail First Content",
-            firstContentInterval)
-        workloadTelemetry.finish(
-            firstContentWorkloadSpan,
-            outcome: .completed)
+        firstContentTrace.finish()
     }
 
     /// Any explicit summary regeneration supersedes the optional recipe chip.
@@ -131,14 +90,13 @@ final class MeetingDetailModel {
     }
 
     func observe() async {
-        let currentID = UUID()
-        observationID = currentID
+        let currentID = reviewAccumulator.beginObservation()
         state.phase = .loading
-        observedSections = []
-        failedSections = []
 
         for await update in client.observeMeetingReview(meetingID) {
-            guard !Task.isCancelled, observationID == currentID else { return }
+            guard !Task.isCancelled,
+                reviewAccumulator.accepts(observationID: currentID)
+            else { return }
             publish(update)
         }
     }
@@ -157,6 +115,15 @@ final class MeetingDetailModel {
     }
 
     private func sendContentAction(_ action: ContentAction) async -> Effect? {
+        switch action {
+        case .editing(let editingAction):
+            return await sendEditingAction(editingAction)
+        case .artifact(let artifactAction):
+            return await sendArtifactAction(artifactAction)
+        }
+    }
+
+    private func sendEditingAction(_ action: EditingAction) async -> Effect? {
         switch action {
         case .renameMeeting(let meeting, let title):
             await renameMeeting(meeting, title: title)
@@ -178,6 +145,11 @@ final class MeetingDetailModel {
                 speaker,
                 source: source,
                 selection: selection)
+        }
+    }
+
+    private func sendArtifactAction(_ action: ArtifactAction) async -> Effect? {
+        switch action {
         case .setActionItem(let id, let done):
             await setActionItem(id, done: done)
             return nil
@@ -215,12 +187,28 @@ final class MeetingDetailModel {
 
     private func sendReviewAction(_ action: ReviewAction) async -> Effect? {
         switch action {
+        case .maintenance(let maintenanceAction):
+            return await sendMaintenanceAction(maintenanceAction)
+        case .preparation(let preparationAction):
+            return await sendPreparationAction(preparationAction)
+        case .audio(let audioAction):
+            return await sendAudioAction(audioAction)
+        }
+    }
+
+    private func sendMaintenanceAction(_ action: MaintenanceAction) async -> Effect? {
+        switch action {
         case .deleteMeeting:
             await deleteMeeting()
             return .meetingDeleted(meetingID)
         case .retryProcessing:
             await retryProcessing()
             return nil
+        }
+    }
+
+    private func sendPreparationAction(_ action: PreparationAction) async -> Effect? {
+        switch action {
         case .prepareDocument(let format, let options):
             return await prepareDocument(format, options: options)
         case .publishGist(let options):
@@ -239,6 +227,11 @@ final class MeetingDetailModel {
         case .loadSkillOffers:
             await loadSkillOffers()
             return nil
+        }
+    }
+
+    private func sendAudioAction(_ action: AudioAction) async -> Effect? {
+        switch action {
         case .loadPlayback:
             await loadPlayback()
             return nil
@@ -623,53 +616,35 @@ private extension MeetingDetailModel {
     }
 
     func loadMetadataSuggestions() async {
-        guard let detail = state.readModel else { return }
-        let suggestMeetingTitle = !didCompleteTitleSuggestion
-            && detail.summaryFreshness == .current
-            && detail.meeting.title.first?.isNumber == true
-            && detail.summary != nil
-        let suggestRecipe = !didCompleteRecipeSuggestion
-            && detail.summaryFreshness == .current
-            && !detail.segments.isEmpty
-            && detail.summary?.draft.recipeID == Recipe.general.id
-        let generatedSegments = detail.transcriptGenerationMaterial().segments
-        let chapterStarts = Set(
-            ChapterExtractor.chapters(from: generatedSegments).map(\.startTime))
         let titledStarts = Set(state.chapterTitles.keys)
-        guard suggestMeetingTitle
-                || suggestRecipe
-                || !chapterStarts.isSubset(of: titledStarts)
+        guard let detail = state.readModel,
+            let attempt = metadataSuggestionState.begin(
+                review: detail,
+                titledChapterStarts: titledStarts)
         else { return }
 
-        let request = SuggestMeetingReviewMetadataRequest(
-            review: detail,
-            titledChapterStarts: titledStarts,
-            suggestMeetingTitle: suggestMeetingTitle,
-            suggestRecipe: suggestRecipe)
-        let currentID = UUID()
-        metadataRequestID = currentID
-
         do {
-            let suggestions = try await client.meetingDetailMetadataSuggestions(request)
-            guard !Task.isCancelled, metadataRequestID == currentID else { return }
-            if suggestMeetingTitle {
-                didCompleteTitleSuggestion = true
+            let suggestions = try await client.meetingDetailMetadataSuggestions(
+                attempt.request)
+            guard !Task.isCancelled,
+                metadataSuggestionState.accepts(attempt)
+            else { return }
+            metadataSuggestionState.complete(attempt)
+            if attempt.suggestsMeetingTitle {
                 state.suggestedTitle = suggestions.meetingTitle
             }
-            if suggestRecipe {
-                didCompleteRecipeSuggestion = true
+            if attempt.suggestsRecipe {
                 state.suggestedRecipe = suggestions.recipe
             }
             state.chapterTitles.merge(suggestions.chapterTitles) { _, new in new }
         } catch is CancellationError {
             // A newer read revision retries every still-eligible suggestion.
         } catch {
-            guard metadataRequestID == currentID else { return }
+            guard metadataSuggestionState.accepts(attempt) else { return }
             // Optional intelligence degrades silently, as before. Mark only
             // the attempted one-shot suggestions complete to avoid a loop;
             // missing chapter labels may retry after a future read revision.
-            if suggestMeetingTitle { didCompleteTitleSuggestion = true }
-            if suggestRecipe { didCompleteRecipeSuggestion = true }
+            metadataSuggestionState.complete(attempt)
         }
     }
 
@@ -776,99 +751,20 @@ private extension MeetingDetailModel {
 private extension MeetingDetailModel {
     func publish(_ update: MeetingReviewUpdate) {
         // Reject optional intelligence generated from an older projection.
-        metadataRequestID = UUID()
-        switch update {
-        case .core(let value):
-            if core?.correctionRevision != value?.correctionRevision {
-                state.chapterTitles = [:]
-                state.suggestedTitle = nil
-                state.suggestedRecipe = nil
-                didCompleteTitleSuggestion = false
-                didCompleteRecipeSuggestion = false
-            }
-            core = value
-            hasCoreSnapshot = true
-            markObserved(.core)
-        case .summary(let value):
-            summary = value
-            markObserved(.summary)
-        case .companionCards(let cards, let correctionSources):
-            companionCards = cards
-            companionCorrectionSources = correctionSources
-            markObserved(.companion)
-        case .privacyReceipt(let value):
-            privacyReceipt = value
-            markObserved(.privacy)
-        case .processingJobs(let value):
-            processingJobs = value
-            markObserved(.processing)
-        case .notes(let value):
-            notes = value
-            markObserved(.notes)
-        case .commitmentReviewStates(let value):
-            commitmentReviewStates = value
-            markObserved(.commitments)
-        case .failed(let section):
-            failedSections.insert(section)
-            observedSections.remove(section)
-            if section == .core, !hasCoreSnapshot {
-                hasCoreSnapshot = true
-                core = nil
-            }
+        let transition = reviewAccumulator.apply(update)
+        metadataSuggestionState.invalidate(
+            correctionRevisionChanged: transition.correctionRevisionChanged)
+        if transition.correctionRevisionChanged {
+            state.chapterTitles = [:]
+            state.suggestedTitle = nil
+            state.suggestedRecipe = nil
         }
-        refreshReadModel()
-        refreshPhase()
+        if transition.shouldInvalidatePlayback {
+            invalidatePlayback()
+        }
+        state.readModel = transition.readModel
+        state.phase = transition.phase
         state.revision += 1
-    }
-
-    func markObserved(_ section: MeetingReviewSection) {
-        observedSections.insert(section)
-        failedSections.remove(section)
-    }
-
-    func refreshReadModel() {
-        guard let core else {
-            invalidatePlayback()
-            state.readModel = nil
-            return
-        }
-        let previousAudioDirectory = state.readModel?.meeting.audioDirectory
-        if previousAudioDirectory != core.meeting.audioDirectory,
-            previousAudioDirectory != nil {
-            invalidatePlayback()
-        }
-        state.readModel = MeetingReviewReadModel(
-            core: core,
-            summary: summary,
-            companionCards: companionCards,
-            companionCorrectionSources: companionCorrectionSources,
-            privacyReceipt: privacyReceipt,
-            processingJobs: processingJobs,
-            notes: notes,
-            commitmentReviewStates: commitmentReviewStates)
-    }
-
-    func refreshPhase() {
-        let accountedSections = observedSections.union(failedSections)
-        guard accountedSections.count == MeetingReviewSection.allCases.count else {
-            state.phase = .loading
-            return
-        }
-        if core == nil, observedSections.contains(.core) {
-            state.phase = .missing
-            return
-        }
-        guard failedSections.count < MeetingReviewSection.allCases.count,
-            !(failedSections.contains(.core) && core == nil)
-        else {
-            state.phase = .failed
-            return
-        }
-        if !failedSections.isEmpty {
-            state.phase = .degraded(failures: failedSections.count)
-            return
-        }
-        state.phase = .loaded
     }
 }
 

@@ -250,6 +250,18 @@ transcript/cast, newest summary, Apuntador, privacy receipt, and durable
 processing streams. A failed stream degrades only its section and preserves
 healthy state from the remaining sections.
 
+The route model delegates scoped-update accumulation to the pure
+`MeetingDetailReviewAccumulator`. That owner fences observation instances,
+retains the last healthy section across an observation restart, derives the
+loaded/missing/degraded/failed state, and emits one storage-independent read
+model plus explicit correction and audio-directory invalidation signals.
+`MeetingDetailModel` alone applies those signals to suggestion and playback UI
+lifetimes. Optional metadata request identity and one-shot eligibility live in
+`MeetingDetailMetadataSuggestionState`; successful values remain in the route
+model. Meeting actions retain one public factory surface but are routed through
+editing, artifact, maintenance, preparation, and audio families, keeping each
+exhaustive dispatcher bounded without weakening feature ownership.
+
 `MeetingDetailScene` is the route/composition owner and the only Meeting Detail
 presentation type that receives `AppServices`. It constructs one
 `MeetingDetailModel` in `@State`; the route keys the scene by `MeetingID`, so a

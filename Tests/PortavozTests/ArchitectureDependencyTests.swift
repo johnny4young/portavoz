@@ -4975,10 +4975,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/SuggestMeetingSpeakerNames.swift")
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+MeetingNames.swift")
-        let model = try Self.contents(
-            of: "Sources/portavoz-app/MeetingDetailModel.swift")
-            + Self.contents(
-                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
+        let model = try Self.meetingDetailModelContents()
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
         let coordinator = try Self.contents(
@@ -5011,10 +5008,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/SuggestMeetingReviewMetadata.swift")
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+MeetingReviewMetadata.swift")
-        let model = try Self.contents(
-            of: "Sources/portavoz-app/MeetingDetailModel.swift")
-            + Self.contents(
-                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
+        let model = try Self.meetingDetailModelContents()
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
         let coordinator = try Self.contents(
@@ -5037,7 +5031,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertFalse(view.contains(concreteGenerator), concreteGenerator)
         }
         XCTAssertTrue(model.contains("case loadMetadataSuggestions"))
-        XCTAssertTrue(model.contains("metadataRequestID"))
+        XCTAssertTrue(model.contains("MeetingDetailMetadataSuggestionState"))
+        XCTAssertTrue(model.contains("private var requestID"))
         XCTAssertTrue(model.contains("didCompleteTitleSuggestion"))
         XCTAssertTrue(model.contains("didCompleteRecipeSuggestion"))
         XCTAssertTrue(coordinator.contains("model.send(.loadMetadataSuggestions)"))
@@ -5056,10 +5051,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/MeetingAudioWorkflows.swift")
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+MeetingAudio.swift")
-        let model = try Self.contents(
-            of: "Sources/portavoz-app/MeetingDetailModel.swift")
-            + Self.contents(
-                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
+        let model = try Self.meetingDetailModelContents()
         let view = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailView.swift")
         let playerBar = try Self.contents(
@@ -5727,10 +5719,7 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testMeetingDetailUsesScopedReadModelWithoutGlobalReload() throws {
         let readModels = try Self.contents(
             of: "Sources/ApplicationKit/MeetingDetailReadModels.swift")
-        let model = try Self.contents(
-            of: "Sources/portavoz-app/MeetingDetailModel.swift")
-            + Self.contents(
-                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
+        let model = try Self.meetingDetailModelContents()
         let adapter = try Self.contents(of: "Sources/portavoz-app/AppServices+MeetingDetail.swift")
         let reminderAdapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+CommitmentReminders.swift")
@@ -5748,6 +5737,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(readModels.contains("import StorageKit"))
         XCTAssertFalse(readModels.contains("import GRDB"))
         XCTAssertTrue(model.contains("@Observable"))
+        XCTAssertTrue(model.contains("struct MeetingDetailReviewAccumulator"))
+        XCTAssertTrue(model.contains("func beginObservation() -> UUID"))
         XCTAssertTrue(model.contains("MeetingReviewReadModel("))
         XCTAssertTrue(adapter.contains("store.observeMeetingReviewCore"))
         XCTAssertTrue(adapter.contains("store.observeMeetingReviewSummary"))
@@ -6249,10 +6240,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let summaries = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+Summaries.swift")
         let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
-        let model = try Self.contents(
-            of: "Sources/portavoz-app/MeetingDetailModel.swift")
-            + Self.contents(
-                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
+        let model = try Self.meetingDetailModelContents()
         let diagnostics = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
 
@@ -6960,10 +6948,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Tests/PortavozUITests/MeetingDetailUITests.swift")
         let fixture = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
-        let model = try Self.contents(
-            of: "Sources/portavoz-app/MeetingDetailModel.swift")
-            + Self.contents(
-                of: "Sources/portavoz-app/MeetingDetailModel+Actions.swift")
+        let model = try Self.meetingDetailModelContents()
         let health = try Self.contents(of: "Sources/IntelligenceKit/MeetingHealth.swift")
         let search = try Self.contents(of: "Sources/StorageKit/MeetingStore+Search.swift")
         let ask = try Self.contents(
@@ -7358,6 +7343,16 @@ private extension ArchitectureDependencyTests {
 
     struct CharacterCount: ApplicationUseCase {
         func execute(_ request: String) async throws -> Int { request.count }
+    }
+
+    static func meetingDetailModelContents() throws -> String {
+        try [
+            "Sources/portavoz-app/MeetingDetailModel.swift",
+            "Sources/portavoz-app/MeetingDetailModel+Actions.swift",
+            "Sources/portavoz-app/MeetingDetailReviewAccumulator.swift",
+            "Sources/portavoz-app/MeetingDetailMetadataSuggestionState.swift",
+            "Sources/portavoz-app/MeetingDetailPerformanceTrace.swift",
+        ].map(contents(of:)).joined()
     }
 
     static func contents(of relativePath: String) throws -> String {

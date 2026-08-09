@@ -8,7 +8,7 @@ extension MeetingDetailModel {
         case review(ReviewMeetingCommitmentRequest)
     }
 
-    enum ContentAction {
+    enum EditingAction {
         case renameMeeting(Meeting, title: String)
         case acceptNameSuggestion(Speaker, name: String)
         case acceptVoiceSuggestion(Speaker, name: String)
@@ -20,6 +20,9 @@ extension MeetingDetailModel {
             Speaker,
             source: PersonAliasSource,
             selection: CanonicalPersonSelection)
+    }
+
+    enum ArtifactAction {
         case setActionItem(UUID, done: Bool)
         case commitment(CommitmentAction)
         case setSummaryClaimFeedback(SummaryClaimID, SummaryClaimFeedback?)
@@ -33,21 +36,38 @@ extension MeetingDetailModel {
         case dismissSkillOffer(MeetingSkillOffer)
     }
 
-    enum ReviewAction {
+    enum ContentAction {
+        case editing(EditingAction)
+        case artifact(ArtifactAction)
+    }
+
+    enum MaintenanceAction {
         case deleteMeeting
         case retryProcessing
+    }
+
+    enum PreparationAction {
         case prepareDocument(MeetingDocumentFormat, MeetingDocumentOptions)
         case publishGist(MeetingDocumentOptions)
         case loadNameSuggestions
         case loadVoiceSuggestions
         case loadMetadataSuggestions
+        case loadDecisionConfirmations
+        case loadSkillOffers
+    }
+
+    enum AudioAction {
         case loadPlayback
         case compressAudio
         case exportAudioClip(ClosedRange<TimeInterval>, to: URL)
         case checkVoiceMemoryOffer(name: String)
         case rememberVoice(SpeakerID)
-        case loadDecisionConfirmations
-        case loadSkillOffers
+    }
+
+    enum ReviewAction {
+        case maintenance(MaintenanceAction)
+        case preparation(PreparationAction)
+        case audio(AudioAction)
     }
 
     enum Action {
@@ -56,38 +76,38 @@ extension MeetingDetailModel {
         case searchableContentChanged
 
         static func renameMeeting(_ meeting: Meeting, title: String) -> Self {
-            .content(.renameMeeting(meeting, title: title))
+            .content(.editing(.renameMeeting(meeting, title: title)))
         }
 
         static func acceptNameSuggestion(_ speaker: Speaker, name: String) -> Self {
-            .content(.acceptNameSuggestion(speaker, name: name))
+            .content(.editing(.acceptNameSuggestion(speaker, name: name)))
         }
 
         static func acceptVoiceSuggestion(_ speaker: Speaker, name: String) -> Self {
-            .content(.acceptVoiceSuggestion(speaker, name: name))
+            .content(.editing(.acceptVoiceSuggestion(speaker, name: name)))
         }
 
         static func renameSpeaker(_ speaker: Speaker, name: String) -> Self {
-            .content(.renameSpeaker(speaker, name: name))
+            .content(.editing(.renameSpeaker(speaker, name: name)))
         }
 
         static func correctTranscript(
             _ request: CorrectMeetingTranscriptRequest
         ) -> Self {
-            .content(.correctTranscript(request))
+            .content(.editing(.correctTranscript(request)))
         }
 
         static func restructureTranscript(
             _ request: RestructureMeetingTranscriptRequest
         ) -> Self {
-            .content(.restructureTranscript(request))
+            .content(.editing(.restructureTranscript(request)))
         }
 
         static func findCanonicalPeople(
             _ speaker: Speaker,
             source: PersonAliasSource
         ) -> Self {
-            .content(.findCanonicalPeople(speaker, source: source))
+            .content(.editing(.findCanonicalPeople(speaker, source: source)))
         }
 
         static func linkCanonicalPerson(
@@ -95,49 +115,49 @@ extension MeetingDetailModel {
             source: PersonAliasSource,
             selection: CanonicalPersonSelection
         ) -> Self {
-            .content(.linkCanonicalPerson(
+            .content(.editing(.linkCanonicalPerson(
                 speaker,
                 source: source,
-                selection: selection))
+                selection: selection)))
         }
 
         static func setActionItem(_ id: UUID, done: Bool) -> Self {
-            .content(.setActionItem(id, done: done))
+            .content(.artifact(.setActionItem(id, done: done)))
         }
 
         static func confirmCommitment(
             _ request: ConfirmMeetingCommitmentRequest
         ) -> Self {
-            .content(.commitment(.confirm(request)))
+            .content(.artifact(.commitment(.confirm(request))))
         }
 
         static func reviewCommitment(
             _ request: ReviewMeetingCommitmentRequest
         ) -> Self {
-            .content(.commitment(.review(request)))
+            .content(.artifact(.commitment(.review(request))))
         }
 
         static func setSummaryClaimFeedback(
             _ claimID: SummaryClaimID,
             _ feedback: SummaryClaimFeedback?
         ) -> Self {
-            .content(.setSummaryClaimFeedback(claimID, feedback))
+            .content(.artifact(.setSummaryClaimFeedback(claimID, feedback)))
         }
 
         static func removeCompanionCard(_ id: UUID) -> Self {
-            .content(.removeCompanionCard(id))
+            .content(.artifact(.removeCompanionCard(id)))
         }
 
         static func confirmDecision(
             _ request: ConfirmDecisionAboutTopicRequest
         ) -> Self {
-            .content(.confirmDecision(request))
+            .content(.artifact(.confirmDecision(request)))
         }
 
         static func retractDecisionTopic(
             _ retraction: DecisionTopicLinkRetraction
         ) -> Self {
-            .content(.retractDecisionTopic(retraction))
+            .content(.artifact(.retractDecisionTopic(retraction)))
         }
 
         static func performSkill(
@@ -145,62 +165,68 @@ extension MeetingDetailModel {
             preview: MeetingSkillPreview,
             destination: String?
         ) -> Self {
-            .content(.performSkill(
+            .content(.artifact(.performSkill(
                 offer,
                 preview: preview,
-                destination: destination))
+                destination: destination)))
         }
 
         static func dismissSkillOffer(_ offer: MeetingSkillOffer) -> Self {
-            .content(.dismissSkillOffer(offer))
+            .content(.artifact(.dismissSkillOffer(offer)))
         }
 
         static var loadSkillOffers: Self {
-            .review(.loadSkillOffers)
+            .review(.preparation(.loadSkillOffers))
         }
 
         static var loadDecisionConfirmations: Self {
-            .review(.loadDecisionConfirmations)
+            .review(.preparation(.loadDecisionConfirmations))
         }
 
-        static var deleteMeeting: Self { .review(.deleteMeeting) }
-        static var retryProcessing: Self { .review(.retryProcessing) }
+        static var deleteMeeting: Self { .review(.maintenance(.deleteMeeting)) }
+        static var retryProcessing: Self { .review(.maintenance(.retryProcessing)) }
 
         static func prepareDocument(
             _ format: MeetingDocumentFormat,
             options: MeetingDocumentOptions = MeetingDocumentOptions()
         ) -> Self {
-            .review(.prepareDocument(format, options))
+            .review(.preparation(.prepareDocument(format, options)))
         }
 
         static func publishGist(
             options: MeetingDocumentOptions = MeetingDocumentOptions()
         ) -> Self {
-            .review(.publishGist(options))
+            .review(.preparation(.publishGist(options)))
         }
 
         static var publishGist: Self {
-            .review(.publishGist(MeetingDocumentOptions()))
+            .review(.preparation(.publishGist(MeetingDocumentOptions())))
         }
-        static var loadNameSuggestions: Self { .review(.loadNameSuggestions) }
-        static var loadVoiceSuggestions: Self { .review(.loadVoiceSuggestions) }
-        static var loadMetadataSuggestions: Self { .review(.loadMetadataSuggestions) }
-        static var loadPlayback: Self { .review(.loadPlayback) }
-        static var compressAudio: Self { .review(.compressAudio) }
+        static var loadNameSuggestions: Self {
+            .review(.preparation(.loadNameSuggestions))
+        }
+        static var loadVoiceSuggestions: Self {
+            .review(.preparation(.loadVoiceSuggestions))
+        }
+        static var loadMetadataSuggestions: Self {
+            .review(.preparation(.loadMetadataSuggestions))
+        }
+        static var loadPlayback: Self { .review(.audio(.loadPlayback)) }
+        static var compressAudio: Self { .review(.audio(.compressAudio)) }
 
         static func exportAudioClip(
             _ range: ClosedRange<TimeInterval>,
             to destination: URL
         ) -> Self {
-            .review(.exportAudioClip(range, to: destination))
+            .review(.audio(.exportAudioClip(range, to: destination)))
         }
 
         static func checkVoiceMemoryOffer(name: String) -> Self {
-            .review(.checkVoiceMemoryOffer(name: name))
+            .review(.audio(.checkVoiceMemoryOffer(name: name)))
         }
 
         static func rememberVoice(_ speakerID: SpeakerID) -> Self {
-            .review(.rememberVoice(speakerID))
+            .review(.audio(.rememberVoice(speakerID)))
         }
     }
 

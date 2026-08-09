@@ -228,6 +228,18 @@ summary observations. Meeting Detail renders the inbox as an independent,
 evidence-first review section; generated candidates still cannot enter Radar or
 notification scheduling until the user confirms them.
 
+The route model does not keep seven independent observation fields. A pure
+`MeetingDetailReviewAccumulator` owns the current observation token, per-section
+delivery/failure accounting, last healthy values, phase derivation, and read-model
+assembly. Restarting observation resets delivery accounting but deliberately
+retains healthy section values; a failed replacement stream therefore degrades
+instead of blanking already rendered content. The accumulator returns explicit
+correction-revision and audio-directory changes, and only `MeetingDetailModel`
+invalidates suggestion or playback presentation state. Optional metadata
+one-shot/request identity is separately scoped in
+`MeetingDetailMetadataSuggestionState`, so unrelated section delivery can fence
+stale generation without coupling it to playback attempts.
+
 Meeting Detail routing enters `MeetingDetailScene` (D223). The scene owns the
 route's observable `MeetingDetailModel`, is keyed by `MeetingID`, and is the
 only detail presentation

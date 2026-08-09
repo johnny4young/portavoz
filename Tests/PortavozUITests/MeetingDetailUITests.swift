@@ -123,9 +123,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
         // the scoped observation, the list re-renders, and `click` re-resolves this
         // query — against a snapshot that can already be stale ("Failed to get
         // matching snapshot"). Waiting for hittable re-resolves until it settles.
-        let settled = expectation(
-            for: NSPredicate(format: "isHittable == true"), evaluatedWith: meeting)
-        wait(for: [settled], timeout: 10)
+        XCTAssertTrue(
+            app.prepareForInteraction(),
+            "Portavoz must own the foreground before selecting the seeded meeting")
+        XCTAssertTrue(
+            meeting.waitForStableFrame(timeout: 10),
+            "the seeded meeting must settle after the app returns to the foreground")
         meeting.click()
         return app
     }
@@ -198,13 +201,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
             acceptedEvidence.waitForExistence(timeout: 5),
             "the accepted transcript must remain available as immutable evidence")
 
-        let textEditor = app.control(withIdentifier: "transcript-correction-text")
+        let textEditor = app.textViews["transcript-correction-text"]
         XCTAssertTrue(textEditor.waitForExistence(timeout: 5))
         textEditor.click()
         textEditor.typeKey("a", modifierFlags: .command)
         textEditor.typeText("El rollout del modelo queda para el lunes.")
-        let speakerPicker = app.control(
-            withIdentifier: "transcript-correction-speaker")
+        let speakerPicker = app.popUpButtons["transcript-correction-speaker"]
         XCTAssertTrue(speakerPicker.waitForExistence(timeout: 5))
         speakerPicker.click()
         let localSpeaker = app.menuItems["Me"]
@@ -423,6 +425,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.buttons["detail-generate-summary"].waitForExistence(timeout: 10),
             "the explicit generation route must stay available beside the notice")
+        XCTAssertTrue(
+            app.prepareForInteraction(),
+            "Portavoz must own the foreground before capturing the recovery state")
         attachScreenshot(of: app, named: "meeting-detail-abandoned-summary")
     }
 
@@ -466,7 +471,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
         }
         attachScreenshot(of: app, named: "sequoia-summary-actionable-settings")
 
-        app.control(withIdentifier: "settings-category-voice").click()
+        let voiceCategory = app.buttons["settings-category-voice"]
+        XCTAssertTrue(
+            voiceCategory.waitForStableFrame(timeout: 5),
+            "the Voice category must expose its actual button hit target")
+        voiceCategory.click()
         XCTAssertTrue(
             app.control(withIdentifier: "settings-apuntador-status")
                 .waitForExistence(timeout: 5),
@@ -503,7 +512,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         // The ▸ coauthoring marker lives under the Decisiones section, now
         // behind its own tab — switching to it reveals the bullet.
-        app.control(withIdentifier: "summary-tab-1").click()
+        let decisionsTab = app.control(withIdentifier: "summary-tab-1")
+        XCTAssertTrue(app.prepareForInteraction())
+        XCTAssertTrue(decisionsTab.waitForStableFrame(timeout: 5))
+        decisionsTab.click()
         XCTAssertTrue(
             app.staticTexts["▸"].waitForExistence(timeout: 5),
             "the Decisiones tab must reveal the ▸ coauthored bullet (D28)")
@@ -511,18 +523,22 @@ final class MeetingDetailUITests: PortavozUITestCase {
         // A real mutation crosses MeetingDetailModel's client and the scoped
         // summary observation returns the completed count to the same view.
         let todosTab = app.control(withIdentifier: "summary-tab-todos")
+        XCTAssertTrue(todosTab.waitForStableFrame(timeout: 5))
         todosTab.click()
         let actionItem = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'action-item-'"))
             .firstMatch
-        XCTAssertTrue(
-            actionItem.waitForExistence(timeout: 5),
-            "the seeded action item must expose its stable control boundary")
+        guard actionItem.waitForExistence(timeout: 10) else {
+            XCTFail("the seeded action item must expose its stable control boundary")
+            return
+        }
+        XCTAssertTrue(actionItem.waitForStableFrame(timeout: 5))
         actionItem.click()
+        let updatedTodosTab = app.control(withIdentifier: "summary-tab-todos")
         let completed = expectation(
             for: NSPredicate(format: "label CONTAINS '1/1'"),
-            evaluatedWith: todosTab)
-        wait(for: [completed], timeout: 5)
+            evaluatedWith: updatedTodosTab)
+        wait(for: [completed], timeout: 10)
         attachScreenshot(of: app, named: "meeting-detail-generated-document")
     }
 
@@ -667,11 +683,18 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             menu.waitForExistence(timeout: 10),
             "a processed meeting with a summary must surface skill offers")
+        XCTAssertTrue(app.prepareForInteraction())
+        XCTAssertTrue(
+            menu.waitForStableFrame(timeout: 5),
+            "the localized skill menu must settle before opening")
 
         // 1 · Preview: the sheet shows the exact draft before any claim.
         menu.click()
         let recapItem = app.menuItems["skill-offer-recap-draft"]
-        XCTAssertTrue(recapItem.waitForExistence(timeout: 5))
+        guard recapItem.waitForExistence(timeout: 5) else {
+            XCTFail("the open skill menu must expose the recap proposal")
+            return
+        }
         recapItem.click()
         let sheet = app.control(withIdentifier: "skill-confirm-sheet")
         XCTAssertTrue(sheet.waitForExistence(timeout: 5))
@@ -687,11 +710,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         // 2 · Confirm: the effect lands on the clipboard and the durable
         // receipt renders in the trust rail.
-        app.control(withIdentifier: "skill-confirm-submit").click()
-        let receipt = app.control(withIdentifier: "skill-receipt-recap-draft")
+        let submit = app.buttons["skill-confirm-submit"]
         XCTAssertTrue(
-            receipt.waitForExistence(timeout: 10),
-            "a confirmed run must leave its auditable receipt")
+            submit.waitForStableFrame(timeout: 5),
+            "the confirmation sheet must expose a stable submit button")
+        submit.click()
+        let receipt = app.control(withIdentifier: "skill-receipt-recap-draft")
+        guard receipt.waitForExistence(timeout: 10) else {
+            XCTFail("a confirmed run must leave its auditable receipt")
+            return
+        }
         XCTAssertTrue(
             receipt.label.contains("—"),
             "the receipt announces skill and outcome; saw '\(receipt.label)'")
@@ -925,10 +953,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             sheet.waitForExistence(timeout: 5),
             "correction must use an explicit editor instead of rewriting generated text")
-        let editor = sheet.descendants(matching: .any)
-            .matching(identifier: "summary-feedback-correction-text")
-            .firstMatch
+        let editor = sheet.textViews["summary-feedback-correction-text"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        XCTAssertTrue(editor.waitForStableFrame(timeout: 5))
         editor.click()
         editor.typeText("El rollout queda para el lunes tras QA")
         app.control(withIdentifier: "summary-feedback-save").click()
@@ -1233,11 +1260,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             menu.waitForExistence(timeout: 10),
             "a summarized meeting must offer the regenerate menu")
+        XCTAssertTrue(app.prepareForInteraction())
+        XCTAssertTrue(
+            menu.waitForStableFrame(timeout: 5),
+            "the localized regenerate menu must settle before opening")
         menu.click()
         let structure = app.menuItems["detail-structure-menu"]
-        XCTAssertTrue(
-            structure.waitForExistence(timeout: 5),
-            "the regenerate menu must offer the Structure submenu")
+        guard structure.waitForExistence(timeout: 5) else {
+            XCTFail("the regenerate menu must offer the Structure submenu")
+            return
+        }
         structure.click()
         // Every built-in id, not just the new ones: the submenu renders
         // `Recipe.all + custom()`, so a template silently dropping out of
