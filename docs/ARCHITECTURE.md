@@ -1365,7 +1365,10 @@ profile v3 and adds meeting-blocker plus decision-commitment-blocker topology
 from explicit blocker authority. The other edge families are meeting-person,
 meeting-topic, meeting-decision, meeting-commitment, and commitment-person.
 Topic edges resolve reversible observed identities to the current live
-topic-family root; the projection never rewrites immutable topic, question, or
+topic-family root. One dedicated StorageKit owner resolves the family root and
+members once per topic scope, then replaces its meeting, question, and explicit
+decision-aboutness edges in deterministic order inside the bounded batch
+transaction. The projection never rewrites immutable topic, question, or
 blocker evidence. No provider, model, embedding, score, generated label, or
 answer text participates in projection.
 

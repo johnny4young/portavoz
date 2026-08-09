@@ -1830,14 +1830,14 @@ final class ArchitectureDependencyTests: XCTestCase {
     /// a meeting — must never appear in either rebuild site, and the confirm
     /// trigger keeps the ownership check that makes the rule hold below Swift.
     func testDecisionTopicEdgeDerivesOnlyFromExplicitAuthority() throws {
-        let rebuild = try Self.contents(
-            of: "Sources/StorageKit/MeetingStore+MeetingMemoryGraph.swift")
+        let topicRebuild = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingMemoryGraphTopics.swift")
         let migration = try Self.contents(
             of: "Sources/StorageKit/Schema+DecisionTopicAuthority.swift")
         let store = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+DecisionTopicLink.swift")
 
-        XCTAssertTrue(rebuild.contains(
+        XCTAssertTrue(topicRebuild.contains(
             "func rebuildMeetingMemoryGraphDecisionTopics"))
         for insert in [
             // Decision scope selects from the authority…
@@ -1846,11 +1846,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             "SELECT DISTINCT link.decisionID, ?\n                FROM decisionTopicLink AS link",
         ] {
             XCTAssertTrue(
-                rebuild.contains(insert),
+                topicRebuild.contains(insert),
                 "decision-topic edges must derive from decisionTopicLink")
         }
         // The rebuild never reaches for co-occurrence to fill this edge.
-        XCTAssertFalse(rebuild.contains(
+        XCTAssertFalse(topicRebuild.contains(
             "INSERT OR IGNORE INTO meetingMemoryGraphDecisionTopic (\n"
                 + "                        decisionID, topicID\n"
                 + "                    )\n"
@@ -1883,6 +1883,30 @@ final class ArchitectureDependencyTests: XCTestCase {
             "swiftlint:disable:next function_body_length"))
         XCTAssertTrue(migration.contains(
             "decisionTopicLink_one_active"))
+    }
+
+    func testTopicGraphProjectionKeepsAFocusedOwner() throws {
+        let rebuild = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingMemoryGraph.swift")
+        let topicRebuild = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+MeetingMemoryGraphTopics.swift")
+
+        XCTAssertTrue(rebuild.contains(
+            "try rebuildMeetingMemoryGraphTopic(scope.id, in: database)"))
+        XCTAssertTrue(rebuild.contains(
+            "let topicEdges = try rebuildMeetingMemoryGraphDecisionTopics"))
+        for helper in [
+            "clearMeetingMemoryGraphTopicEvidenceEdges",
+            "publishMeetingMemoryGraphTopicMeetings",
+            "publishMeetingMemoryGraphTopicQuestions",
+            "rebuildMeetingMemoryGraphTopicDecisions"
+        ] {
+            XCTAssertTrue(
+                topicRebuild.contains(helper),
+                "topic graph projection keeps a focused owner: \(helper)")
+        }
+        XCTAssertFalse(topicRebuild.contains(
+            "swiftlint:disable:next function_body_length"))
     }
 
     /// GRAPH-5b: decisionConflicts and changeSince answer only from the

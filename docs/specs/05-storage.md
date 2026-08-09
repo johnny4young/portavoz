@@ -295,8 +295,12 @@ cursors. Projection high water advances only when no cursor through that
 generation remains. A snapshot is available only when profile, source
 generation, and an empty cursor set all match; partial or stale output fails
 closed. Meeting-topic edges resolve immutable observed evidence to the current
-live topic-family root. Exact evidence, revision availability, and lifecycle
-state stay authoritative in their original tables.
+live topic-family root. Topic-scope projection has one focused store owner: it
+resolves the family root and members once, clears the disposable family edges,
+then publishes meeting-topic, topic-question, and explicit decision-topic
+edges in deterministic order inside the existing batch transaction. Exact
+evidence, revision availability, and lifecycle state stay authoritative in
+their original tables.
 
 D274 adds no schema. `meetingMemoryTimeline` first requires the D273 profile,
 source generation, and empty invalidation cursor to agree, then performs the

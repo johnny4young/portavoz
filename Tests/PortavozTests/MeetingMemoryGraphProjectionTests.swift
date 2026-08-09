@@ -147,6 +147,55 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         XCTAssertFalse(requiresMaintenance)
     }
 
+    func testTopicScopeRebuildKeepsEveryFamilyEdgeOnTheLiveRoot() async throws {
+        let fixture = try await seededGraphFixture()
+        _ = try await fixture.store.confirmDecisionTopicLink(
+            DecisionTopicLinkConfirmation(
+                decisionID: fixture.decisionID,
+                topicID: fixture.rootTopicID,
+                observationID: fixture.decisionObservationID,
+                confirmedAt: Self.baseDate.addingTimeInterval(30)))
+        _ = try await projectAll(in: fixture.store)
+
+        let successor = try await fixture.store.createTopicAndLink(
+            TopicLinkProposal(
+                meetingID: fixture.meeting.id,
+                segmentID: fixture.segmentIDs[0],
+                sourceTranscriptRevision: fixture.meeting.transcriptRevision,
+                observedLabel: "Release program",
+                language: "en",
+                origin: .manual))
+        _ = try await fixture.store.mergeTopics(
+            sourceTopicID: fixture.rootTopicID,
+            into: successor.topic.id,
+            at: Self.baseDate.addingTimeInterval(60))
+
+        let published = try await fixture.store.database.write { database in
+            try MeetingStore.rebuildMeetingMemoryGraphTopic(
+                fixture.rootTopicID.rawValue.uuidString,
+                in: database)
+        }
+        let topicTargets = try await fixture.store.database.read { database in
+            (
+                try String.fetchAll(
+                    database,
+                    sql: "SELECT topicID FROM meetingMemoryGraphMeetingTopic"),
+                try String.fetchAll(
+                    database,
+                    sql: "SELECT topicID FROM meetingMemoryGraphTopicQuestion"),
+                try String.fetchAll(
+                    database,
+                    sql: "SELECT topicID FROM meetingMemoryGraphDecisionTopic")
+            )
+        }
+        let successorID = successor.topic.id.rawValue.uuidString
+
+        XCTAssertEqual(published, 3)
+        XCTAssertEqual(topicTargets.0, [successorID])
+        XCTAssertEqual(topicTargets.1, [successorID])
+        XCTAssertEqual(topicTargets.2, [successorID])
+    }
+
     func testBlockerProjectionPreservesClearedHistoryAndRemovesDeletedEndpoints()
         async throws
     {
@@ -615,6 +664,7 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         let rootTopicID: TopicID
         let observedTopicID: TopicID
         let decisionID: DecisionID
+        let decisionObservationID: SummaryDecisionID
         let commitmentID: CommitmentID
         let questionID: MeetingQuestionID
         let segmentIDs: [UUID]
@@ -689,6 +739,7 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
                 confirmedAt: baseDate.addingTimeInterval(21)))
         let decisionID = DecisionID()
         let decisionSourceID = DecisionSourceID()
+        let decisionObservationID = SummaryDecisionID()
         try await store.database.write { database in
             try database.execute(
                 sql: """
@@ -707,7 +758,7 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
                 arguments: [
                     decisionSourceID.rawValue.uuidString,
                     decisionID.rawValue.uuidString,
-                    SummaryDecisionID().rawValue.uuidString,
+                    decisionObservationID.rawValue.uuidString,
                     SummaryID().rawValue.uuidString,
                     meeting.id.rawValue.uuidString,
                     baseDate,
@@ -744,6 +795,7 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
             rootTopicID: rootTopic.topic.id,
             observedTopicID: observedTopic.observedTopic.id,
             decisionID: decisionID,
+            decisionObservationID: decisionObservationID,
             commitmentID: commitment.commitment.id,
             questionID: question.question.id,
             segmentIDs: segments.map(\.id))
