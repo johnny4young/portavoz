@@ -128,6 +128,28 @@ self-contained over system frameworks and carries no module dependency.
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
+### Database launch recovery
+
+The macOS composition root is two-stage. `AppLaunchModel` first asks the
+throwing `AppServices` constructor to open the authoritative `MeetingStore`;
+`AppServices` does that before installing telemetry or constructing any other
+runtime, model, sensitive-storage, scheduler, sync, recovery, or global-input
+owner. The root then publishes either one complete service graph or a focused
+database-unavailable state. Normal windows, Settings, commands, menu-bar
+models, and background owners are created only from the complete graph, and
+process activation is idempotent across retry.
+
+The failure state reduces arbitrary errors to content-free typed evidence. It
+can retry, export mode-`0600` diagnostics without paths or raw error text, or
+create a verified SQLite recovery copy by reading the original authority
+without modifying it. Recovery copies the authority and committed WAL into a
+hidden mode-`0700` same-destination stage, opens only that private snapshot
+read-only, runs SQLite online backup plus `PRAGMA quick_check`, creates a mode-`0600`
+database, and a unique non-overwriting rename. No path auto-deletes, repairs,
+migrates, replaces, or silently recreates the production library. The
+simulation and database-path injection used by XCUITest require the disposable
+`-use-temp-store` composition and cannot redirect a production launch.
+
 ## Application boundary
 
 `ApplicationKit` defines asynchronous Sendable workflows over narrow ports.

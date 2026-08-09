@@ -28,6 +28,12 @@ def test_id(test_class: str, method: str) -> str:
 
 
 FEATURE_TESTS: dict[str, tuple[str, ...]] = {
+    "launch-recovery": (
+        test_id(
+            "LibraryUITests",
+            "testDatabaseLaunchFailureOffersSafeRecovery",
+        ),
+    ),
     "automation-entry": (
         test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
     ),
@@ -274,6 +280,8 @@ def tests_for_ui_test_file(path: str) -> set[str]:
 
 def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
+    if lowered in {"applaunchmodel.swift", "applaunchrecoveryview.swift"}:
+        return {"launch-recovery", "main-shell"}
     if lowered == "contentview.swift":
         # Root composition changes can affect every destination, but one
         # deterministic canary per route is sufficient; do not rerun all
@@ -289,7 +297,7 @@ def app_features(filename: str) -> set[str]:
     if lowered in {"appservices.swift", "portavozapp.swift"}:
         # Process composition/startup changes need one deterministic canary per
         # route, not every feature permutation behind those destinations.
-        return {"main-shell"}
+        return {"launch-recovery", "main-shell"}
     if "commitmentreminder" in lowered:
         return {"commitment-radar", "meeting-commitments"}
     if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:
@@ -436,6 +444,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "launchrecovery" in lowered:
+        return {"launch-recovery"}
     if "skill" in lowered:
         return {"meeting-skills", "settings-skills"}
     if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:

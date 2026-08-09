@@ -23,6 +23,25 @@ class UITestScopeTests(unittest.TestCase):
     def test_empty_change_set_requires_no_ui_runner(self):
         self.assertFalse(select_paths([]).required)
 
+    def test_database_launch_recovery_selects_failure_and_normal_shell_evidence(self):
+        recovery = FEATURE_TESTS["launch-recovery"]
+        for path in (
+            "Sources/portavoz-app/AppLaunchModel.swift",
+            "Sources/portavoz-app/AppLaunchRecoveryView.swift",
+            "Sources/portavoz-app/AppServices.swift",
+            "Sources/portavoz-app/PortavozApp.swift",
+        ):
+            selection = select_paths([path])
+            self.assertTrue(set(recovery).issubset(selection.tests), path)
+            self.assertTrue(
+                set(FEATURE_TESTS["main-shell"]).issubset(selection.tests),
+                path,
+            )
+        storage = select_paths(
+            ["Sources/StorageKit/MeetingStore+LaunchRecovery.swift"]
+        )
+        self.assertEqual(storage.tests, recovery)
+
     def test_docs_governance_and_local_tooling_do_not_spend_a_ui_runner(self):
         selection = select_paths(
             [

@@ -1,8 +1,33 @@
 import Foundation
+import StorageKit
 import XCTest
 @testable import portavoz_app
 
 final class UITestDefaultsTests: XCTestCase {
+    func testProductionStoreCannotBeRedirectedByAutomationEnvironment() {
+        let policy = AppStorageIsolationPolicy(
+            arguments: ["Portavoz"],
+            environment: [
+                "PORTAVOZ_UI_TEST_DATABASE_PATH": "/tmp/untrusted.sqlite",
+            ])
+
+        XCTAssertEqual(policy.meetingStoreURL, MeetingStore.defaultDatabaseURL)
+        XCTAssertFalse(policy.simulatesDatabaseOpenFailure)
+    }
+
+    func testDisposableStoreAcceptsAnExplicitRecoveryFixturePath() {
+        let path = "/tmp/portavoz-launch-recovery-fixture.sqlite"
+        let policy = AppStorageIsolationPolicy(
+            arguments: [
+                "Portavoz", "-use-temp-store",
+                "-simulate-database-open-failure",
+            ],
+            environment: ["PORTAVOZ_UI_TEST_DATABASE_PATH": path])
+
+        XCTAssertEqual(policy.meetingStoreURL.path, path)
+        XCTAssertTrue(policy.simulatesDatabaseOpenFailure)
+    }
+
     func testStorageIsolationKeepsAutomationModelsDisposable() {
         let policy = AppStorageIsolationPolicy(
             arguments: ["Portavoz", "-use-temp-store", "-seed-demo"])

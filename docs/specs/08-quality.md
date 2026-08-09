@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,240 cases (14 environment-gated) + 70
+Status: the package inventory contains 2,253 cases (14 environment-gated) + 71
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 70
+Meeting Detail tests. The English and Spanish release gates each cover all 71
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -1488,7 +1488,7 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 70 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 71 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select bilingual evidence; the
@@ -1502,8 +1502,10 @@ policy locally against committed, staged, unstaged, and untracked paths, so a
 pre-commit smoke cannot silently select nothing; `UI_HEAD` remains an explicit
 committed-range override. `scripts/run-ui-tests.sh` performs one `build-for-testing` and
 reuses it with `test-without-building` for each selected locale, retaining an
-xcresult per locale under ignored `dist/ui-test-results/`. An empty selector is
-an explicit complete-suite request. Optional selector and locale arguments are
+xcresult per locale under ignored `dist/ui-test-results/`. Each explicit locale
+is also forwarded into the test-runner process so localized assertions and app
+launch arguments stay aligned with `-testLanguage`. An empty selector is an
+explicit complete-suite request. Optional selector and locale arguments are
 assembled without expanding empty arrays under macOS Bash 3.2; tooling tests
 cover complete, scoped, and default-locale runner arguments. Full
 `make test-ui-bilingual` remains mandatory for release and architecture
@@ -1567,10 +1569,10 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The 9 Aug 2026 field-reliability inventory is 2,240 XCTest package cases (14
-environment-gated), zero strict-lint violations across 630 production Swift
+The 9 Aug 2026 field-reliability inventory is 2,253 XCTest package cases (14
+environment-gated), zero strict-lint violations across 633 production Swift
 files, a 221-case recording/recovery selector passing 25 consecutive iterations
-(5,525 executions), and 70 XCUITest cases per locale.
+(5,525 executions), and 71 XCUITest cases per locale.
 The generic stress runner refuses fewer than 90 tests and the release wrapper
 raises that floor to 108. Release evidence requires the package inventory to
 pass without failures on a supported AppKit-capable host and strict lint to
@@ -2218,8 +2220,8 @@ genuinely need different seed flags or launch arguments; never merge cases
 across different launch configurations, because a shared launch that half
 the assertions must un-do stops being evidence.
 
-The current inventory is 70 cases per locale (140 bilingual). The Aug 7 cost
-sample above predates eight of those bilingual executions and remains a timing model,
+The current inventory is 71 cases per locale (142 bilingual). The Aug 7 cost
+sample above predates ten of those bilingual executions and remains a timing model,
 not a claim that the smaller 132-case inventory is current.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player

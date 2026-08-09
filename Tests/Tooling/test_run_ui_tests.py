@@ -25,7 +25,11 @@ class RunUITestsTests(unittest.TestCase):
             fake = binary / "xcodebuild"
             fake.write_text(
                 "#!/bin/sh\n"
-                "printf 'DEVELOPER_DIR=%s | %s\\n' \"${DEVELOPER_DIR:-unset}\" \"$*\" "
+                "printf 'DEVELOPER_DIR=%s | %s | PORTAVOZ_UI_TEST_LOCALE=%s "
+                "| TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=%s\\n' "
+                "\"${DEVELOPER_DIR:-unset}\" \"$*\" "
+                "\"${PORTAVOZ_UI_TEST_LOCALE:-unset}\" "
+                "\"${TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE:-unset}\" "
                 ">> \"$XCODEBUILD_LOG\"\n",
                 encoding="utf-8",
             )
@@ -41,6 +45,8 @@ class RunUITestsTests(unittest.TestCase):
 
             environment = os.environ.copy()
             environment.pop("DEVELOPER_DIR", None)
+            environment.pop("PORTAVOZ_UI_TEST_LOCALE", None)
+            environment.pop("TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE", None)
             environment.update(
                 {
                     "PATH": f"{binary}:{environment['PATH']}",
@@ -89,7 +95,31 @@ class RunUITestsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(len(calls), 2)
         self.assertNotIn("-testLanguage", calls[1])
+        self.assertTrue(
+            calls[1].endswith(
+                "| PORTAVOZ_UI_TEST_LOCALE=unset "
+                "| TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=unset"
+            )
+        )
         self.assertIn("Running all tests in locale: default", result.stdout)
+
+    def test_explicit_locale_reaches_each_test_runner_process(self):
+        result, calls = self.run_runner("", locales="en es")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 3)
+        self.assertTrue(
+            calls[1].endswith(
+                "| PORTAVOZ_UI_TEST_LOCALE=en "
+                "| TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=en"
+            )
+        )
+        self.assertTrue(
+            calls[2].endswith(
+                "| PORTAVOZ_UI_TEST_LOCALE=es "
+                "| TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=es"
+            )
+        )
 
     def test_active_xcode_select_toolchain_is_not_overridden(self):
         result, calls = self.run_runner("")

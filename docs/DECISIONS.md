@@ -11118,3 +11118,64 @@ ranking/similarity parity across close/reopen, while a third ratchets symlink
 resolution before volume classification. No schema migration, candidate engine,
 resident vector cache, ranking change, or new product writer is introduced;
 multi-host Sequoia/Tahoe evidence remains an independent acceptance gate.
+
+## D319 — Database launch failure is a recoverable root state, never a partial app (Aug 2026)
+
+**Context:** `AppServices.init` terminated the process with `fatalError` when
+the authoritative meeting database could not open. That prevented a misleading
+half-functional Library, but corruption, permissions, unavailable storage, or
+a failed migration also gave the user no safe way to retry, retain evidence,
+or produce support diagnostics. Constructing service owners before attempting
+the store would make a retry path equally unsafe: a failed launch could install
+global telemetry or start model, sync, scheduler, and hot-key state without its
+authority.
+
+**Decision:** `AppServices` is throwing and opens `MeetingStore` before it
+constructs any other process service. The SwiftUI root owns one observable
+`AppLaunchModel` with exactly three states: opening, one complete ready service
+graph, or database unavailable. Only the ready transition can install the
+AppKit delegate destination and start benchmark owners, pressure monitoring,
+search reconciliation, reminders, sync, backup recovery, capture/job recovery,
+provider discovery, or dictation registrations; activation is idempotent.
+Retry replaces the failed state with a newly attempted complete graph. A native
+App Intent that arrived while the database was unavailable stays buffered and
+is re-notified, not consumed, after readiness.
+
+The unavailable state exposes three bounded actions. Retry performs no repair.
+Recovery copy reads the failed authority and its committed WAL into a hidden
+private snapshot inside the user-selected destination, opens only that snapshot
+read-only, uses SQLite online backup, requires
+`PRAGMA quick_check == ok`, applies mode `0700`/`0600`, and publishes by a
+same-directory rename to a unique visible folder. It never overwrites, migrates,
+renames, deletes, or writes the source; a failed operation removes only its
+hidden stage. If the authority or WAL size/modification evidence changes while
+the private snapshot is copied, publication fails instead of claiming a
+coherent recovery point. Launch diagnostics are content-free JSON: app/build, numeric OS,
+typed failure authority/category/code, and source-file presence/size. They
+contain no path, raw SQLite message, SQL, transcript, title, identifier, or
+other library content. Diagnostics are first written to a hidden mode-`0600`
+sibling and only then atomically published, so no permissive file exists if
+permission hardening fails.
+
+The deterministic failure switch and injectable database path are accepted
+only together with `-use-temp-store`. XCUITest first materializes a valid
+disposable SQLite authority, then fails before service composition so the real
+read-only copy and diagnostics journey is exercised without touching the host
+library. Normal process environment cannot redirect the production database.
+The surface uses standard SwiftUI/AppKit APIs available from the macOS 14.4
+deployment floor; it does not adopt a Tahoe-only presentation API.
+
+**Deliberately excluded:** Portavoz does not infer corruption repair, restore a
+copy over the authority, auto-delete, silently recreate an empty production
+library, export raw errors, or present the normal app with disabled controls.
+Choosing which retained copy to restore remains an explicit future workflow;
+support can inspect the bounded diagnostic without receiving meeting content.
+
+**Consequences:** a database-open failure now leaves Portavoz running in one
+focused bilingual recovery surface with the original library unchanged.
+Unit tests prove source-byte preservation, restored meeting parity, private
+permissions, non-overwrite, corrupt-input cleanup, content-free diagnostics,
+stable retry identity, and complete-graph retry. One bilingual real-app
+XCUITest proves the process remains alive, normal Library controls remain
+absent, copy and diagnostics succeed, the source is unchanged, and a repeated
+failure returns to recovery.

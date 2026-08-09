@@ -11330,6 +11330,176 @@
           }
         }
       }
+    },
+    "Your library couldn't be opened": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo abrir tu biblioteca"
+          }
+        }
+      }
+    },
+    "Portavoz stopped before starting background work. Your original library has not been changed or deleted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz se detuvo antes de iniciar tareas en segundo plano. Tu biblioteca original no se ha modificado ni eliminado."
+          }
+        }
+      }
+    },
+    "Database file found": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se encontró el archivo de la base de datos"
+          }
+        }
+      }
+    },
+    "Database file not found": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró el archivo de la base de datos"
+          }
+        }
+      }
+    },
+    "Save recovery copy…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar copia de recuperación…"
+          }
+        }
+      }
+    },
+    "Export launch diagnostics…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar diagnósticos de inicio…"
+          }
+        }
+      }
+    },
+    "Saving recovery copy…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardando copia de recuperación…"
+          }
+        }
+      }
+    },
+    "Recovery copy saved": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia de recuperación guardada"
+          }
+        }
+      }
+    },
+    "The recovery copy couldn't be saved": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo guardar la copia de recuperación"
+          }
+        }
+      }
+    },
+    "Exporting launch diagnostics…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportando diagnósticos de inicio…"
+          }
+        }
+      }
+    },
+    "Launch diagnostics saved": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnósticos de inicio guardados"
+          }
+        }
+      }
+    },
+    "The launch diagnostics couldn't be saved": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron guardar los diagnósticos de inicio"
+          }
+        }
+      }
+    },
+    "Opening your library…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abriendo tu biblioteca…"
+          }
+        }
+      }
+    },
+    "Choose a folder for the recovery copy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una carpeta para la copia de recuperación"
+          }
+        }
+      }
+    },
+    "Export launch diagnostics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar diagnósticos de inicio"
+          }
+        }
+      }
+    },
+    "Library unavailable — open Portavoz to recover": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biblioteca no disponible — abre Portavoz para recuperarla"
+          }
+        }
+      }
+    },
+    "A recovery copy is created by reading the failed library without modifying it, verified before publication, and never overwrites an existing copy.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una copia de recuperación se crea leyendo la biblioteca que falló sin modificarla, se verifica antes de publicarse y nunca sobrescribe una copia existente."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

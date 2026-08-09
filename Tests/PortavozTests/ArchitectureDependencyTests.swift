@@ -1437,7 +1437,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices.swift")
         let app = try Self.contents(
-            of: "Sources/portavoz-app/PortavozApp.swift")
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
         let resourceAdapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
         let appAsk = try Self.contents(
@@ -2664,7 +2664,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let model = try Self.contents(
             of: "Sources/portavoz-app/CommitmentReminderModel.swift")
         let launch = try Self.contents(
-            of: "Sources/portavoz-app/PortavozApp.swift")
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
         let radarClient = try Self.contents(
             of: "Sources/portavoz-app/AppServices+CommitmentRadar.swift")
         let radarView = try Self.contents(
@@ -2965,7 +2965,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let monitor = try Self.contents(
             of: "Sources/portavoz-app/AppResourcePressureMonitor.swift")
         let app = try Self.contents(
-            of: "Sources/portavoz-app/PortavozApp.swift")
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
         let ledger = try Self.contents(
             of: "Sources/portavoz-app/AppModelResidencyLedger.swift")
 
@@ -3672,7 +3672,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let batchBench = try Self.contents(
             of: "Sources/portavoz-app/BenchMode+ResourceBatch.swift")
         let app = try Self.contents(
-            of: "Sources/portavoz-app/PortavozApp.swift")
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices.swift")
         let volatileSecrets = try Self.contents(
@@ -3769,9 +3769,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(benchMode.contains(
             "runsIsolatedResourceBenchmark"))
         let benchmarkExit = try XCTUnwrap(app.range(
-            of: "if runsIsolatedResourceBenchmark"))
+            of: "guard !runsIsolatedResourceBenchmark else { return }"))
         let normalStartup = try XCTUnwrap(app.range(
-            of: "await appServices.meetingSync.start"))
+            of: "await services.meetingSync.start"))
         XCTAssertLessThan(benchmarkExit.lowerBound, normalStartup.lowerBound)
         XCTAssertTrue(app.contains(
             "if !runsIsolatedResourceBenchmark"))
@@ -4792,7 +4792,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/RecordingRecoveryCoordinator.swift")
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+RecoverInterruptedMeetings.swift")
-        let launch = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
+        let launch = try Self.contents(
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
 
         XCTAssertTrue(coordinator.contains("services.recoverInterruptedMeetings.execute"))
         XCTAssertTrue(adapter.contains("CaptureFileRecovery"))
@@ -4806,7 +4807,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let worker = try XCTUnwrap(launch.range(of:
             "PostCaptureProcessingCoordinator.resumeAfterRecovery"))
         let recommendation = try XCTUnwrap(launch.range(of:
-            "appServices.configureInitialSummaryProviderIfNeeded"))
+            "services.configureInitialSummaryProviderIfNeeded"))
         XCTAssertLessThan(recovery.lowerBound, worker.lowerBound)
         XCTAssertLessThan(worker.lowerBound, recommendation.lowerBound)
     }
@@ -5307,7 +5308,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let model = try Self.contents(of: "Sources/portavoz-app/MenuBarModel.swift")
         let adapter = try Self.contents(of: "Sources/portavoz-app/AppServices+MenuBar.swift")
         let view = try Self.contents(of: "Sources/portavoz-app/MenuBarView.swift")
-        let app = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
+        let app = try Self.contents(
+            of: "Sources/portavoz-app/PortavozApp.swift")
         let storage = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+MenuBarObservation.swift")
 
@@ -5361,7 +5363,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/LibraryMarkdownBackupModel.swift")
         let view = try Self.contents(of: "Sources/portavoz-app/BackupSection.swift")
         let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
-        let app = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
+        let app = try Self.contents(
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
         let resourceAdapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
         let bookmark = try Self.contents(
@@ -7479,6 +7482,71 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(spotlightDelivery["protection"] as? String, "complete")
         XCTAssertEqual(spotlightDelivery["contentSource"] as? String, "synthetic-only")
         XCTAssertEqual(spotlightDelivery["cleanupSucceeded"] as? Bool, true)
+    }
+
+    func testDatabaseLaunchFailureIsRecoverablePrivateAndFailClosed() throws {
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices.swift")
+        let launch = try Self.contents(
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/AppLaunchRecoveryView.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+LaunchRecovery.swift")
+        let app = try Self.contents(
+            of: "Sources/portavoz-app/PortavozApp.swift")
+        let intents = try Self.contents(
+            of: "Sources/portavoz-app/PortavozAppIntents.swift")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+
+        XCTAssertFalse(services.contains("fatalError"))
+        XCTAssertTrue(services.contains(") throws {"))
+        let storeOpen = try XCTUnwrap(services.range(
+            of: "store = try Self.makeMeetingStore"))
+        let telemetryInstall = try XCTUnwrap(services.range(
+            of: "IntelligenceScheduler.installSharedTelemetry"))
+        XCTAssertLessThan(storeOpen.lowerBound, telemetryInstall.lowerBound)
+        XCTAssertTrue(services.contains(
+            "simulatesDatabaseOpenFailure = usesTemporaryMeetingStore"))
+
+        XCTAssertTrue(launch.contains("case databaseUnavailable"))
+        XCTAssertTrue(launch.contains("private var activatedServices = false"))
+        XCTAssertTrue(launch.contains("guard !activatedServices"))
+        XCTAssertTrue(launch.contains("func retry() async"))
+        XCTAssertTrue(launch.contains("MeetingStore.openFailureEvidence"))
+        XCTAssertFalse(launch.contains("String(describing: error)"))
+        XCTAssertFalse(launch.contains("localizedDescription"))
+        XCTAssertTrue(launch.contains(
+            "PortavozAppIntentBridge.notifyPendingStartRecordingRequest()"))
+        XCTAssertTrue(intents.contains(
+            "static func notifyPendingStartRecordingRequest()"))
+        XCTAssertTrue(app.contains("AppLaunchRecoveryView(model: model)"))
+
+        for identifier in [
+            "launch-recovery-title",
+            "launch-recovery-retry",
+            "launch-recovery-save-copy",
+            "launch-recovery-export-diagnostics",
+        ] {
+            XCTAssertTrue(view.contains(identifier))
+        }
+        XCTAssertTrue(storage.contains("sourceConfiguration.readonly = true"))
+        XCTAssertTrue(storage.contains("source.backup(to: destination"))
+        XCTAssertTrue(storage.contains("case sourceChanged"))
+        XCTAssertTrue(storage.contains("sourceSnapshotEvidence("))
+        XCTAssertTrue(storage.contains("PRAGMA quick_check"))
+        XCTAssertTrue(storage.contains(".posixPermissions: 0o700"))
+        XCTAssertTrue(storage.contains(".posixPermissions: 0o600"))
+        XCTAssertTrue(storage.contains(".portavoz-recovery-"))
+        XCTAssertTrue(storage.contains("manager.moveItem(at: stageURL, to: finalURL)"))
+        XCTAssertFalse(storage.contains("removeItem(at: canonicalSource"))
+
+        XCTAssertTrue(architecture.contains("Database launch recovery"))
+        XCTAssertTrue(decisions.contains("## D319"))
+        XCTAssertTrue(gaps.contains("T32 | ~~Database-open failure"))
+        XCTAssertTrue(gaps.contains("RESOLVED in code (D319)"))
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {

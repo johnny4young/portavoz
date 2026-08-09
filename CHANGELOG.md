@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 9, 2026
 
+- **🛟 A broken library no longer closes Portavoz** — If the database cannot open, Portavoz now stays in a focused recovery screen where you can retry, save a verified copy, or export private launch diagnostics while the original library remains untouched.
 - **⚡ Large libraries answer semantic searches faster** — Ask and Library now reuse macOS's file-backed database pages on internal storage, cutting the measured 100,000-vector p95 from 126–129 ms to 63–67 ms without loading the corpus into app memory.
 - **🎛️ One place to control every Skill** — Settings now shows what Portavoz can run today, what is still planned, a global pause, individual switches, and recent receipts. Pause never forgets your choices, and a disabled Skill is checked again before anything runs.
 - **⌨️ Global dictation handles unusual keyboard sources safely** — A missing, wrong-typed, or truncated third-party keyboard-layout property now falls back to the standard paste shortcut instead of risking an abrupt exit.

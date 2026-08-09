@@ -57,9 +57,19 @@ xcodebuild build-for-testing "${common[@]}"
 for locale in $locales; do
   test_args=("${common[@]}")
   case "$locale" in
-    default) ;;
-    en) test_args+=(-testLanguage en -testRegion US) ;;
-    es) test_args+=(-testLanguage es -testRegion ES) ;;
+    default)
+      unset PORTAVOZ_UI_TEST_LOCALE TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE
+      ;;
+    en)
+      export PORTAVOZ_UI_TEST_LOCALE=en
+      export TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=en
+      test_args+=(-testLanguage en -testRegion US)
+      ;;
+    es)
+      export PORTAVOZ_UI_TEST_LOCALE=es
+      export TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=es
+      test_args+=(-testLanguage es -testRegion ES)
+      ;;
     *) echo "Unsupported UI-test locale: $locale" >&2; exit 2 ;;
   esac
 

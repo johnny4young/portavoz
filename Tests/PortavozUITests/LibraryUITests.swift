@@ -6,6 +6,99 @@ import XCTest
 /// touches the real library.
 final class LibraryUITests: PortavozUITestCase {
     @MainActor
+    func testDatabaseLaunchFailureOffersSafeRecovery() throws {
+        let scratch = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(
+                "portavoz-launch-recovery-uitest-\(UUID().uuidString)",
+                isDirectory: true)
+        let recoveryRoot = scratch.appendingPathComponent("copies", isDirectory: true)
+        let databaseURL = scratch.appendingPathComponent("failed.sqlite")
+        let diagnosticsURL = scratch.appendingPathComponent("launch-diagnostics.json")
+        try FileManager.default.createDirectory(
+            at: recoveryRoot,
+            withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+
+        let app = XCUIApplication.portavoz()
+        app.launchArguments.append("-simulate-database-open-failure")
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_PATH"] = databaseURL.path
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DATABASE_RECOVERY_DIRECTORY"] =
+            recoveryRoot.path
+        app.launchEnvironment["PORTAVOZ_UI_TEST_LAUNCH_DIAGNOSTICS_PATH"] =
+            diagnosticsURL.path
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        let title = app.staticTexts["launch-recovery-title"]
+        XCTAssertTrue(
+            title.waitForExistence(timeout: 15),
+            "a database-open failure must render recovery instead of terminating")
+        let expectedTitle = UITestLocale.environmentLocale == "es"
+            ? "No se pudo abrir tu biblioteca"
+            : "Your library couldn't be opened"
+        XCTAssertEqual(renderedText(of: title), expectedTitle)
+        XCTAssertFalse(app.buttons["library-new-recording-button"].exists)
+        XCTAssertTrue(app.control(withIdentifier: "launch-recovery-file-evidence").exists)
+        XCTAssertTrue(app.buttons["launch-recovery-retry"].exists)
+
+        let originalDatabase = try Data(contentsOf: databaseURL)
+        app.buttons["launch-recovery-save-copy"].click()
+        let copyStatus = app.control(withIdentifier: "launch-recovery-copy-status")
+        XCTAssertTrue(copyStatus.waitForExistence(timeout: 15))
+        let expectedCopyStatus = UITestLocale.environmentLocale == "es"
+            ? "Copia de recuperación guardada"
+            : "Recovery copy saved"
+        let copyFinished = expectation(
+            for: NSPredicate(
+                format: "label == %@ OR value == %@",
+                expectedCopyStatus,
+                expectedCopyStatus),
+            evaluatedWith: copyStatus)
+        wait(for: [copyFinished], timeout: 15)
+        let copies = try FileManager.default.contentsOfDirectory(
+            at: recoveryRoot,
+            includingPropertiesForKeys: nil)
+        XCTAssertEqual(copies.count, 1)
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: copies[0].appendingPathComponent("portavoz.sqlite").path))
+        XCTAssertEqual(try Data(contentsOf: databaseURL), originalDatabase)
+
+        app.buttons["launch-recovery-export-diagnostics"].click()
+        let diagnosticsStatus = app.control(
+            withIdentifier: "launch-recovery-diagnostics-status")
+        XCTAssertTrue(diagnosticsStatus.waitForExistence(timeout: 15))
+        let expectedDiagnosticsStatus = UITestLocale.environmentLocale == "es"
+            ? "Diagnósticos de inicio guardados"
+            : "Launch diagnostics saved"
+        let diagnosticsFinished = expectation(
+            for: NSPredicate(
+                format: "label == %@ OR value == %@",
+                expectedDiagnosticsStatus,
+                expectedDiagnosticsStatus),
+            evaluatedWith: diagnosticsStatus)
+        wait(for: [diagnosticsFinished], timeout: 15)
+        let diagnostics = try String(contentsOf: diagnosticsURL, encoding: .utf8)
+        XCTAssertFalse(diagnostics.contains(databaseURL.path))
+        XCTAssertFalse(diagnostics.contains(databaseURL.lastPathComponent))
+        XCTAssertTrue(diagnostics.contains(#""filePresent" : true"#))
+
+        app.buttons["launch-recovery-retry"].click()
+        XCTAssertTrue(
+            title.waitForExistence(timeout: 15),
+            "a repeated failure must return to the bounded recovery state")
+        XCTAssertFalse(app.buttons["library-new-recording-button"].exists)
+        attachScreenshot(of: app, named: "database-launch-recovery")
+    }
+
+    @MainActor
+    private func renderedText(of element: XCUIElement) -> String {
+        guard let value = element.value as? String, !value.isEmpty else {
+            return element.label
+        }
+        return value
+    }
+
+    @MainActor
     func testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment() {
         let app = XCUIApplication.portavoz(seedDemo: true, seedBrief: true)
         app.launchPortavoz()

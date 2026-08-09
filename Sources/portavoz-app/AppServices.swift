@@ -29,8 +29,13 @@ struct AppStorageIsolationPolicy: Equatable {
     let usesTemporaryMeetingStore: Bool
     let usesTemporaryModelStore: Bool
     let usesTemporarySensitiveStore: Bool
+    let meetingStoreURL: URL
+    let simulatesDatabaseOpenFailure: Bool
 
-    init(arguments: [String]) {
+    init(
+        arguments: [String],
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) {
         usesTemporaryMeetingStore = arguments.contains("-use-temp-store")
         usesTemporarySensitiveStore = usesTemporaryMeetingStore
         let reusesVerifiedModels = arguments.contains("--bench-record")
@@ -38,8 +43,22 @@ struct AppStorageIsolationPolicy: Equatable {
             || arguments.contains("--bench-resource-summary")
         usesTemporaryModelStore =
             usesTemporaryMeetingStore && !reusesVerifiedModels
+        if usesTemporaryMeetingStore {
+            meetingStoreURL = environment["PORTAVOZ_UI_TEST_DATABASE_PATH"]
+                .flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
+                ?? FileManager.default.temporaryDirectory.appendingPathComponent(
+                    "portavoz-uitest-\(UUID().uuidString).sqlite")
+        } else {
+            meetingStoreURL = MeetingStore.defaultDatabaseURL
+        }
+        simulatesDatabaseOpenFailure = usesTemporaryMeetingStore
+            && arguments.contains("-simulate-database-open-failure")
     }
 }
+
+/// Deterministic XCUITest-only failure injected after a disposable SQLite
+/// authority has been materialized. Production launches can never select it.
+private struct AppSimulatedDatabaseOpenFailure: Error {}
 
 /// Composition root: the database, the ML engines (loaded once, shared by
 /// every recording), and cross-view invalidation. Lives on the main actor;
@@ -226,13 +245,25 @@ final class AppServices {
         return shares.reduce(0, +) / Double(shares.count)
     }
 
-    init() {
+    init(
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        storagePolicy: AppStorageIsolationPolicy? = nil
+    ) throws {
         // The UI-test host has its own bundle identity, but volatile
         // per-launch preferences still need to land before any service reads
         // defaults so every case is independent from an earlier test launch.
-        UITestDefaults.installIfNeeded()
-        let storagePolicy = AppStorageIsolationPolicy(arguments: ProcessInfo.processInfo.arguments)
+        UITestDefaults.installIfNeeded(
+            arguments: arguments,
+            environment: environment)
+        let storagePolicy = storagePolicy ?? AppStorageIsolationPolicy(
+            arguments: arguments,
+            environment: environment)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
+        // Open the authority before constructing process runtimes or installing
+        // global telemetry. A failed retry therefore leaves no half-composed
+        // service graph, model task, sensitive store, or background owner.
+        store = try Self.makeMeetingStore(storagePolicy: storagePolicy)
         let workloadTelemetry = AppResourceWorkloadTelemetry.shared.telemetry
         self.workloadTelemetry = workloadTelemetry
         IntelligenceScheduler.installSharedTelemetry(workloadTelemetry)
@@ -247,13 +278,6 @@ final class AppServices {
         secrets = ManageSecrets(storage: sensitiveStorage.secrets)
         voiceprintStore = sensitiveStorage.voiceprintStore
         voiceGallery = sensitiveStorage.voiceGallery
-        do {
-            store = try Self.makeMeetingStore(usesTemporaryStore: usesTemporaryStore)
-        } catch {
-            // No database, no app — surfacing a broken half-UI would be
-            // worse than failing loudly at launch.
-            fatalError("cannot open the Portavoz database: \(error)")
-        }
         commitmentReminders = Self.makeCommitmentReminderModel(
             store: store,
             usesTemporaryStore: usesTemporaryStore)
@@ -347,15 +371,17 @@ final class AppServices {
             VoiceGallery(secrets: secrets, directory: directory))
     }
 
-    private static func makeMeetingStore(usesTemporaryStore: Bool) throws -> MeetingStore {
-        guard usesTemporaryStore else {
-            return try MeetingStore(databaseURL: MeetingStore.defaultDatabaseURL)
+    private static func makeMeetingStore(
+        storagePolicy: AppStorageIsolationPolicy
+    ) throws -> MeetingStore {
+        if storagePolicy.simulatesDatabaseOpenFailure {
+            // XCUITest-only: materialize a valid disposable source so the
+            // recovery-copy journey exercises SQLite read-only backup, then
+            // fail before any production service is composed.
+            _ = try MeetingStore(databaseURL: storagePolicy.meetingStoreURL)
+            throw AppSimulatedDatabaseOpenFailure()
         }
-        // UI testing (`make test-ui`): a throwaway DB so a test run never
-        // touches the real library.
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("portavoz-uitest-\(UUID().uuidString).sqlite")
-        return try MeetingStore(databaseURL: url)
+        return try MeetingStore(databaseURL: storagePolicy.meetingStoreURL)
     }
 
     /// Searchable mutations wake both protected indexes. Each process owner

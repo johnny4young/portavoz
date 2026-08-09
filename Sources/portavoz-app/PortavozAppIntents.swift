@@ -36,6 +36,11 @@ enum PortavozAppIntentBridge {
 
     static func requestStartRecording() {
         hasPendingStartRecording = true
+        notifyPendingStartRecordingRequest()
+    }
+
+    static func notifyPendingStartRecordingRequest() {
+        guard hasPendingStartRecording else { return }
         NotificationCenter.default.post(
             name: startRecordingRequested,
             object: nil)
