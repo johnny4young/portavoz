@@ -15,6 +15,55 @@ public enum TranscriptionError: Error, LocalizedError, Sendable {
 #if canImport(Speech)
 import Speech
 
+/// Gives the SpeechAnalyzer input feeder lexical ownership beneath the result
+/// consumer. Leaving the scope cancels and drains the feeder before returning,
+/// including when the consumer throws or its parent task is cancelled.
+enum SpeechAnalyzerFeedScope {
+    static func run<FeederResult: Sendable>(
+        feeder: @escaping @Sendable () async -> FeederResult,
+        consuming results: () async throws -> Void
+    ) async throws -> FeederResult? {
+        try await withThrowingTaskGroup(of: FeederResult.self) { group in
+            group.addTask(operation: feeder)
+            defer { group.cancelAll() }
+
+            try await results()
+            group.cancelAll()
+            return try await group.next()
+        }
+    }
+}
+
+actor SpeechAnalyzerCancellationGate {
+    private let operation: @Sendable () async -> Void
+    private var cancellationStarted = false
+    private var cancellationFinished = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    init(operation: @escaping @Sendable () async -> Void) {
+        self.operation = operation
+    }
+
+    func cancel() async {
+        if cancellationFinished { return }
+        if cancellationStarted {
+            await withCheckedContinuation { continuation in
+                waiters.append(continuation)
+            }
+            return
+        }
+
+        cancellationStarted = true
+        await operation()
+        cancellationFinished = true
+        let pending = waiters
+        waiters.removeAll(keepingCapacity: false)
+        for continuation in pending {
+            continuation.resume()
+        }
+    }
+}
+
 /// Bridges AVFoundation's non-Sendable audio buffer into the converter's
 /// `@Sendable` input callback. The buffer is fully initialized before entering
 /// this box and is never mutated afterward; the lock serializes the callback's
@@ -128,48 +177,109 @@ public struct SpeechAnalyzerEngine: Sendable {
                         inputSequence: inputSequence,
                         modules: [transcriber],
                         analysisContext: context)
+                    let cancellationGate = SpeechAnalyzerCancellationGate {
+                        await analyzer.cancelAndFinishNow()
+                    }
 
                     // The feeder ALSO finalizes when the input ends: the
                     // results loop below only terminates when someone
                     // finalizes the analysis — sequencing the finalize
                     // after the loop deadlocked the first bench run
                     // (results parked forever once the audio ran out).
-                    let feeder = Task {
-                        var converter: AVAudioConverter?
-                        for await chunk in audio {
-                            guard
-                                let buffer = Self.pcmBuffer(
-                                    from: chunk, to: analyzerFormat, converter: &converter)
-                            else { continue }
-                            inputContinuation.yield(AnalyzerInput(buffer: buffer))
+                    let inputFinished: Bool
+                    do {
+                        inputFinished = try await withTaskCancellationHandler {
+                            try await SpeechAnalyzerFeedScope.run(
+                                feeder: {
+                                    await Self.feed(
+                                        audio,
+                                        to: analyzer,
+                                        format: analyzerFormat,
+                                        continuation: inputContinuation)
+                                },
+                                consuming: {
+                                    try await Self.consume(
+                                        transcriber,
+                                        meetingID: meetingID,
+                                        language: language
+                                            ?? locale.language.languageCode?.identifier,
+                                        continuation: continuation,
+                                        cancellationGate: cancellationGate)
+                                }) ?? false
+                        } onCancel: {
+                            Task { await cancellationGate.cancel() }
                         }
-                        inputContinuation.finish()
-                        try? await analyzer.finalizeAndFinishThroughEndOfInput()
+                    } catch {
+                        await cancellationGate.cancel()
+                        throw error
                     }
-
-                    for try await result in transcriber.results {
-                        let text = String(result.text.characters)
-                        guard !text.trimmingCharacters(in: .whitespaces).isEmpty else {
-                            continue
-                        }
-                        continuation.yield(
-                            TranscriptSegment(
-                                meetingID: meetingID,
-                                channel: .microphone,
-                                text: text,
-                                language: language ?? locale.language.languageCode?.identifier,
-                                startTime: result.range.start.seconds,
-                                endTime: result.range.end.seconds,
-                                isFinal: result.isFinal
-                            ))
+                    guard inputFinished, !Task.isCancelled else {
+                        await cancellationGate.cancel()
+                        throw CancellationError()
                     }
-                    feeder.cancel()
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)
                 }
             }
             continuation.onTermination = { _ in job.cancel() }
+        }
+    }
+
+    private static func feed(
+        _ audio: AsyncStream<AudioChunk>,
+        to analyzer: SpeechAnalyzer,
+        format: AVAudioFormat,
+        continuation: AsyncStream<AnalyzerInput>.Continuation
+    ) async -> Bool {
+        var converter: AVAudioConverter?
+        defer { continuation.finish() }
+        for await chunk in audio {
+            guard !Task.isCancelled else { return false }
+            guard
+                let buffer = pcmBuffer(
+                    from: chunk,
+                    to: format,
+                    converter: &converter)
+            else { continue }
+            continuation.yield(AnalyzerInput(buffer: buffer))
+        }
+        guard !Task.isCancelled else { return false }
+        do {
+            try await analyzer.finalizeAndFinishThroughEndOfInput()
+            return !Task.isCancelled
+        } catch {
+            return false
+        }
+    }
+
+    private static func consume(
+        _ transcriber: SpeechTranscriber,
+        meetingID: MeetingID,
+        language: String?,
+        continuation: AsyncThrowingStream<TranscriptSegment, Error>.Continuation,
+        cancellationGate: SpeechAnalyzerCancellationGate
+    ) async throws {
+        do {
+            for try await result in transcriber.results {
+                let text = String(result.text.characters)
+                guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
+                continuation.yield(
+                    TranscriptSegment(
+                        meetingID: meetingID,
+                        channel: .microphone,
+                        text: text,
+                        language: language,
+                        startTime: result.range.start.seconds,
+                        endTime: result.range.end.seconds,
+                        isFinal: result.isFinal
+                    ))
+            }
+        } catch {
+            // Cancel the analyzer before this error leaves the structured
+            // scope: its feeder may currently be awaiting finalization.
+            await cancellationGate.cancel()
+            throw error
         }
     }
 
@@ -181,6 +291,7 @@ public struct SpeechAnalyzerEngine: Sendable {
         converter: inout AVAudioConverter?
     ) -> AVAudioPCMBuffer? {
         guard
+            !chunk.samples.isEmpty,
             let sourceFormat = AVAudioFormat(
                 commonFormat: .pcmFormatFloat32,
                 sampleRate: chunk.sampleRate,
@@ -193,7 +304,8 @@ public struct SpeechAnalyzerEngine: Sendable {
         else { return nil }
         source.frameLength = AVAudioFrameCount(chunk.samples.count)
         chunk.samples.withUnsafeBufferPointer { pointer in
-            channelData[0].update(from: pointer.baseAddress!, count: chunk.samples.count)
+            guard let baseAddress = pointer.baseAddress else { return }
+            channelData[0].update(from: baseAddress, count: chunk.samples.count)
         }
 
         if sourceFormat == format { return source }

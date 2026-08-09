@@ -11179,3 +11179,43 @@ stable retry identity, and complete-graph retry. One bilingual real-app
 XCUITest proves the process remains alive, normal Library controls remain
 absent, copy and diagnostics succeed, the source is unchanged, and a repeated
 failure returns to recovery.
+
+## D320 — First Listen owns microphone and SpeechAnalyzer work as one cancellable session (Aug 2026)
+
+**Context:** Tahoe onboarding starts Apple's SpeechAnalyzer before Portavoz's
+downloaded speech models exist. The engine created an unstructured input feeder:
+cancelling or failing the result consumer finished its output but could leave
+that feeder reading a still-open audio stream and retaining the analyzer.
+First Listen also opened the microphone before awaiting Apple's optional speech
+asset, so a cold wait accumulated chunks in an unconsumed default stream. Its
+cleanup used an unawaited task, and moving from the first step did not cancel it
+because the root onboarding view itself remained mounted.
+
+**Decision:** `SpeechAnalyzerEngine` gives its input feeder lexical ownership
+inside one throwing task-group scope. Normal result completion, result failure,
+and parent cancellation cancel and drain that child before the output job ends;
+the AnalyzerInput continuation always finishes. One actor gate invokes
+`cancelAndFinishNow()` at most once and is triggered early enough to unblock a
+feeder that is finalizing. Empty chunks fail admission before buffer creation,
+and the PCM copy has no forced optional address.
+
+`FirstListenController` resolves caption readiness before it acquires the
+microphone. One injected capture boundary and one session identity own capture,
+caption delivery, teardown, and presentation publication. Continue, Skip,
+dismissal, explicit cancellation, or a newer run invalidate that identity,
+cancel the caption consumer, and await capture plus analyzer cleanup. A stale
+run cannot publish completion or failure into the current onboarding state.
+Sequoia retains the same capture lifecycle with captions unavailable; the
+SpeechAnalyzer branch remains availability-gated to macOS 26.
+
+**Consequences:** cold Tahoe preparation has no hidden microphone backlog,
+leaving First Listen stops listening, and consumer cancellation cannot retain a
+SpeechAnalyzer feeder. Twelve deterministic unit cases cover readiness ordering,
+cancel-before-capture, cancellation while awaiting captions, exactly-once
+capture teardown, available/unavailable caption outcomes, internal cancellation
+recovery, partial-sample disposal, completed-sample reuse, stale-phase exclusion,
+and structured feeder completion/error/cancellation plus coalesced cleanup
+completion. The existing
+bilingual Onboarding XCUITest remains the real-app navigation gate; microphone
+and Apple asset behavior still require real-device field evidence rather than a
+CI simulation.

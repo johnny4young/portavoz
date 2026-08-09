@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,253 cases (14 environment-gated) + 71
+Status: the package inventory contains 2,265 cases (14 environment-gated) + 71
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -31,7 +31,7 @@ documented below.
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config
 (default rules + correctness/clarity opt-ins, industry thresholds: line 120,
 function-body 60/100, cyclomatic 12/20, type-body 400/600). CI treats every
-violation as a failure. The Aug 9 acceptance run is clean across all **630
+violation as a failure. The Aug 9 acceptance run is clean across all **633
 production Swift files**. The 20 violations found by the Aug 8 audit were
 removed through cohesive Meeting Detail, graph, decision-query, processing,
 correction, job, Skills-storage, and search owner splits rather than blanket
@@ -66,6 +66,7 @@ local justification.
 | CloudMeetingSyncLifecycleTests | Zero-platform local-only launch, explicit enable/seed separation, capture-gate pause before storage, pause after one committed seed batch, signal-driven cursor resume, account loss and account-switch consent behavior, typed capability and identity failure, truthful retry/pause/remove-device semantics, exact-attempt readmission, and observable journal pending/acknowledged transitions |
 | LibraryModelTests | Complete/empty/degraded/failed Library snapshots, reload-version and search-query fences, trimmed/debounced FTS phases, rename/action/delete/restore/purge effects, degradable mutation diagnostics, import progress/success/failure, calendar access, and on-demand brief state through a database-free client fake |
 | FirstRunExperienceTests / PresentationReadModelTests | Forced/disposable/completed/existing-library welcome decisions, no unnecessary Store reads, retryable cancellation, one process-wide resolution, one restored-window presentation host, durable completion, and exact/partial local-receipt model state |
+| FirstListenControllerTests / SpeechAnalyzerLifetimeTests | Caption readiness before microphone start; available/unavailable completion; cancellation during preparation without capture; cancellation-aware caption wait; exactly-once normal/cancelled microphone teardown; internal cancellation recovery; partial-sample disposal versus completed-sample reuse; stale-phase fencing; structured SpeechAnalyzer feeder cancellation/drain on normal result completion, error, and parent cancellation; and coalesced cleanup completion without installed speech assets or a real device |
 | LocalDataLedgerTests / PresentationReadStorageTests | Concurrent exact meeting/audio/voice metrics, per-source unavailable-versus-zero behavior, cancellation, live-root counting, and one batched latest-live-General-summary projection with tombstone, recipe, superseded-version, and duplicate-ID filtering |
 | PrepareMeetingBriefTests | Shared Ask evidence ranking, batched current-summary admission, related-only bounded commitments, source-indexed navigable synthesis, weak/missing evidence, independent failure degradation, and cancellation propagation |
 | MeetingLibraryQueryTests / ManageSecretsTests | Empty and invalid request short circuits, normalized bounded list/search/open-item delegation, and async secret round-trip/delete behavior over deterministic injected ports |
@@ -1569,7 +1570,7 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The 9 Aug 2026 field-reliability inventory is 2,253 XCTest package cases (14
+The 9 Aug 2026 field-reliability inventory is 2,265 XCTest package cases (14
 environment-gated), zero strict-lint violations across 633 production Swift
 files, a 221-case recording/recovery selector passing 25 consecutive iterations
 (5,525 executions), and 71 XCUITest cases per locale.

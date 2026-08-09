@@ -119,7 +119,7 @@ self-contained over system frameworks and carries no module dependency.
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet and quality Whisper adapters, transcript scheduling, language-aware operation fingerprints, model preparation tokens, segment mapping, and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
+| `TranscriptionKit` | Live Parakeet, quality Whisper, and macOS 26 SpeechAnalyzer adapters; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
@@ -127,6 +127,22 @@ self-contained over system frameworks and carries no module dependency.
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
+
+### First-listen speech lifetime
+
+The onboarding First Listen resolves the optional macOS 26 SpeechAnalyzer asset
+before it opens the microphone, so a cold framework wait cannot accumulate an
+unconsumed audio stream. One session identity fences every asynchronous state
+publication. Leaving the first step, skipping setup, or dismissing onboarding
+cancels that identity, cancels the caption consumer, and awaits microphone and
+caption cleanup; a cancelled run cannot later publish a completed or failed
+state into a newer session.
+
+Inside `TranscriptionKit`, the SpeechAnalyzer input feeder is a structured child
+of the results consumer. Every normal, failed, or cancelled exit finishes the
+input continuation, cancels and drains that child, and uses one idempotent gate
+for `cancelAndFinishNow()`. No output consumer can leave a feeder reading a live
+`AudioChunk` stream after the analyzer has lost its presentation owner.
 
 ### Database launch recovery
 
@@ -3742,10 +3758,10 @@ The 9 Aug 2026 local acceptance snapshot is:
   its fail-closed 25-iteration gate (5,525 executions); the generic runner
   refuses fewer than 90 and the release wrapper raises that floor to 108;
   focused Thread Sanitizer and Address Sanitizer gates also pass;
-- strict SwiftLint remains a blocking CI gate and is clean across all 630
+- strict SwiftLint remains a blocking CI gate and is clean across all 633
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 70 XCUITest cases per locale define the 140-case bilingual release gate;
+- 71 XCUITest cases per locale define the 142-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

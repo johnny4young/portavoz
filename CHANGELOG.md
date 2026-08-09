@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 9, 2026
 
+- **🎙️ First Listen stops when you move on** — Continuing or skipping setup now closes its microphone and Tahoe caption work when you leave the step; cold Apple speech preparation also finishes before the mic opens, so it cannot build an unseen audio backlog.
 - **🛟 A broken library no longer closes Portavoz** — If the database cannot open, Portavoz now stays in a focused recovery screen where you can retry, save a verified copy, or export private launch diagnostics while the original library remains untouched.
 - **⚡ Large libraries answer semantic searches faster** — Ask and Library now reuse macOS's file-backed database pages on internal storage, cutting the measured 100,000-vector p95 from 126–129 ms to 63–67 ms without loading the corpus into app memory.
 - **🎛️ One place to control every Skill** — Settings now shows what Portavoz can run today, what is still planned, a global pause, individual switches, and recent receipts. Pause never forgets your choices, and a disabled Skill is checked again before anything runs.

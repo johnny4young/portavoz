@@ -35,6 +35,11 @@ struct OnboardingView: View {
             providerRecommendation = await services
                 .discoverLocalSummaryProviders().recommendation
         }
+        .onChange(of: step) { previous, current in
+            if previous == 0, current != 0 {
+                listen.cancel()
+            }
+        }
         .onDisappear { listen.cancel() }
     }
 
