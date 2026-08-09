@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,268 cases (14 environment-gated) + 72
+Status: the package inventory contains 2,276 cases (14 environment-gated) + 73
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 72
+Meeting Detail tests. The English and Spanish release gates each cover all 73
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -31,7 +31,7 @@ documented below.
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config
 (default rules + correctness/clarity opt-ins, industry thresholds: line 120,
 function-body 60/100, cyclomatic 12/20, type-body 400/600). CI treats every
-violation as a failure. The Aug 9 acceptance run is clean across all **633
+violation as a failure. The Aug 9 acceptance run is clean across all **636
 production Swift files**. The 20 violations found by the Aug 8 audit were
 removed through cohesive Meeting Detail, graph, decision-query, processing,
 correction, job, Skills-storage, and search owner splits rather than blanket
@@ -1570,10 +1570,10 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The 9 Aug 2026 field-reliability inventory is 2,268 XCTest package cases (14
-environment-gated), zero strict-lint violations across 633 production Swift
+The 9 Aug 2026 field-reliability inventory is 2,276 XCTest package cases (14
+environment-gated), zero strict-lint violations across 636 production Swift
 files, a 221-case recording/recovery selector passing 25 consecutive iterations
-(5,525 executions), and 72 XCUITest cases per locale.
+(5,525 executions), and 73 XCUITest cases per locale.
 The generic stress runner refuses fewer than 90 tests and the release wrapper
 raises that floor to 108. Release evidence requires the package inventory to
 pass without failures on a supported AppKit-capable host and strict lint to
@@ -2221,8 +2221,8 @@ genuinely need different seed flags or launch arguments; never merge cases
 across different launch configurations, because a shared launch that half
 the assertions must un-do stops being evidence.
 
-The current inventory is 72 cases per locale (144 bilingual). The Aug 7 cost
-sample above predates twelve of those bilingual executions and remains a timing model,
+The current inventory is 73 cases per locale (146 bilingual). The Aug 7 cost
+sample above predates fourteen of those bilingual executions and remains a timing model,
 not a claim that the smaller 132-case inventory is current.
 
 **D321 retry gate.** Three package cases pin the proposal UUID across model
@@ -2235,6 +2235,18 @@ second must reuse the original claim, settle a receipt, dismiss the sheet, and
 place the byte-for-byte approved artifact on the system pasteboard. Normal
 application construction cannot enable the fixture. This is retry evidence,
 not a claim about external egress, schema migration, or a real-device failure.
+
+**D322 resident brief gate.** Eight new package cases cover bounded opaque event
+identity, pause/disable/dismiss/settled offer policy, failed retry, exact
+proposal arguments, exact approved-material delivery, cancellation-fenced
+resident state, and the disposable event source; one architecture case ratchets
+no-prompt EventKit lookup, exact re-resolution, ExecuteSkill handoff, and the
+two-flag UI fixture boundary. One new real-app journey per locale mounts the
+production menu-bar content/model in a disposable main-window host, asserts the
+exact cited preview and local capabilities, confirms it, compares the result,
+requires offer retirement, and follows the receipt into Skills Settings. This
+does not automate the SystemUIServer-owned status item or prove Calendar/TCC
+behavior on a physical Sequoia or Tahoe Mac; that shell remains field evidence.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

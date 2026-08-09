@@ -285,7 +285,7 @@ struct SkillsSettingsSection: View {
         case ReminderDraftSkill.id:
             L10n.text("Will prepare a local reminder after its calendar permission flow ships.")
         case PreMeetingBriefSkill.id:
-            L10n.text("Will propose a cited brief from the upcoming calendar event.")
+            L10n.text("Proposes an exact cited brief beside your next calendar event.")
         default:
             L10n.text("No description is available.")
         }

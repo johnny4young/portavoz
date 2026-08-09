@@ -109,6 +109,7 @@ extension AppServices: LibraryModelClient {
             return LibraryModel.Agenda(
                 offerCalendar: false,
                 today: [UpcomingEvent(
+                    id: "ui-test-upcoming-rollout",
                     title: "Presupuesto rollout",
                     startDate: Date().addingTimeInterval(15 * 60),
                     attendees: ["Ana"])],

@@ -11500,6 +11500,126 @@
           }
         }
       }
+    },
+    "Proposes an exact cited brief beside your next calendar event.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Propone un brief exacto con citas junto a tu próximo evento del calendario."
+          }
+        }
+      }
+    },
+    "The brief could not be prepared. Nothing ran.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo preparar el brief. No se ejecutó nada."
+          }
+        }
+      }
+    },
+    "The brief was cancelled. Nothing ran.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se canceló el brief. No se ejecutó nada."
+          }
+        }
+      }
+    },
+    "The brief suggestion could not be dismissed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo descartar la sugerencia de brief."
+          }
+        }
+      }
+    },
+    "Prepare this brief": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar este brief"
+          }
+        }
+      }
+    },
+    "Prepare brief": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar brief"
+          }
+        }
+      }
+    },
+    "Brief ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brief listo"
+          }
+        }
+      }
+    },
+    "Dismiss brief suggestion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar sugerencia de brief"
+          }
+        }
+      }
+    },
+    "Don't suggest a brief for this event again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No volver a sugerir un brief para este evento"
+          }
+        }
+      }
+    },
+    "Brief prepared": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brief preparado"
+          }
+        }
+      }
+    },
+    "The brief could not be delivered. Nothing left Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo entregar el brief. Nada salió de Portavoz."
+          }
+        }
+      }
+    },
+    "This brief changed or is no longer on your calendar. Review it again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este brief cambió o ya no está en tu calendario. Revísalo de nuevo."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

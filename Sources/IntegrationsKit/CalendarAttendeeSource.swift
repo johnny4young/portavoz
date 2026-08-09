@@ -50,7 +50,7 @@ public struct CalendarAttendeeSource: Sendable {
         return store.events(matching: predicate)
             .filter { !$0.isAllDay && $0.endDate > now }
             .sorted { $0.startDate < $1.startDate }
-            .map(Self.upcoming(from:))
+            .compactMap(Self.upcoming(from:))
     }
 
     /// The next event, if any. Kept for callers that only need one.
@@ -58,7 +58,21 @@ public struct CalendarAttendeeSource: Sendable {
         upcomingEvents().first
     }
 
-    private static func upcoming(from event: EKEvent) -> UpcomingEvent {
+    /// Resolves the exact occurrence a proposal preview named. EventKit
+    /// identifiers are local and can disappear after a full calendar sync;
+    /// callers must treat nil as stale rather than guessing by title/time.
+    public func event(matching identifier: String) -> UpcomingEvent? {
+        guard Self.hasAccess,
+              UpcomingEvent.isValidIdentity(identifier)
+        else { return nil }
+        return Self.upcoming(from: EKEventStore().event(withIdentifier: identifier))
+    }
+
+    private static func upcoming(from event: EKEvent?) -> UpcomingEvent? {
+        guard let event,
+              let identifier = event.eventIdentifier,
+              UpcomingEvent.isValidIdentity(identifier)
+        else { return nil }
         var names: [String] = []
         var seen = Set<String>()
         for participant in event.attendees ?? [] {
@@ -72,6 +86,7 @@ public struct CalendarAttendeeSource: Sendable {
             names.append(name)
         }
         return UpcomingEvent(
+            id: identifier,
             title: event.title ?? "Meeting",
             startDate: event.startDate,
             attendees: names)

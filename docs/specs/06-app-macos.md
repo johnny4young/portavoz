@@ -4,7 +4,8 @@ Status: implemented, signed with Developer ID, and used in real meetings; public
 
 D190 distinguishes intentional cancellation from owner-leased worker death.
 Additional decisions: D320 (structured First Listen and SpeechAnalyzer
-lifetime) and D321 (durable Skill retry identity and visible recovery).
+lifetime), D321 (durable Skill retry identity and visible recovery), and D322
+(event-scoped resident pre-meeting brief proposals).
 D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
 D193 lets only the resource-benchmark process observe that same closed stream
@@ -2324,9 +2325,10 @@ receipt plus byte-for-byte clipboard artifact.
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
-catalogue marks recap draft and text-only package export as available, while
-reminder draft and pre-meeting brief render honestly as planned because their
-subject/permission surfaces are not shipped. The pane exposes an independent
+catalogue marks recap draft, text-only package export, and the resident
+pre-meeting brief as available, while reminder draft renders honestly as
+planned because its subject/permission surface is not shipped. The pane exposes
+an independent
 global pause, per-available-skill enablement, and the 20 newest content-free
 execution receipts. It never executes a skill and does not invent egress
 consent or standing rules.
@@ -2350,3 +2352,36 @@ Two bilingual XCUITest journeys cover the pane: one verifies the fail-closed
 load state; the other uses one disposable launch to disable export, pause all
 skills, prove offers stay absent, resume without losing the individual choice,
 confirm the remaining recap proposal, and observe its recent receipt.
+
+## Resident pre-meeting brief proposal (D322, Aug 2026)
+
+The existing next-meeting card now proposes the available pre-meeting brief
+Skill when Calendar access already exists. The resident surface never prompts.
+EventKit supplies one opaque `eventIdentifier`; Portavoz does not derive an
+identity from private title, attendee, or timestamp content. Identifiers may
+disappear after a full calendar sync or change when an event moves calendars,
+so exact lookup failure retires the open confirmation as stale instead of
+guessing another event.
+
+Selecting **Prepare brief** composes the same cited `MeetingBrief` used by the
+manual Library flow and shows that exact immutable artifact, its evidence, and
+the two local capabilities before confirmation. The model allocates one
+proposal UUID with that preview. Confirmation re-resolves the exact opaque
+event and compares the complete event snapshot before `ExecuteSkill` claims the
+attempt. The effect then crosses one process-owned local-draft boundary with
+the approved artifact verbatim; it does not read Calendar, Ask, storage, or a
+model after confirmation. Success retires the event-scoped offer, presents the
+same artifact, and appears in the global Skills receipt history. Failure keeps
+the original proposal retryable. A rebuilt presentation may resume only that
+failed owner; a different owner that settled or may have delivered makes the
+new preview stale. Dismissal is durable for that event, while
+pause and per-Skill disablement remain independent global controls.
+
+The confirmation, result, event actions, dismissal, errors, and capability
+chips have stable accessibility identifiers. The bilingual XCUITest journey
+mounts the exact production `MenuBarContent` and model in a disposable app
+window because `MenuBarExtra` belongs to SystemUIServer and cannot be opened
+deterministically across supported macOS versions. It proves exact preview,
+confirmation, unchanged result, offer retirement, and the global durable
+receipt without reading the host Calendar. Opening the actual status item on
+Sequoia and Tahoe remains a field-shell check, not something this host claims.

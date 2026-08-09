@@ -74,9 +74,10 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "settings-skill-reminder-draft-planned")
                 .waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-skill-pre-meeting-brief-planned")
-                .waitForExistence(timeout: 5))
+        let brief = app.control(
+            withIdentifier: "settings-skill-pre-meeting-brief-enabled")
+        XCTAssertTrue(brief.waitForExistence(timeout: 5))
+        XCTAssertTrue(Self.isOn(brief))
 
         // Individual choices survive the independent global pause override.
         export.click()

@@ -174,7 +174,7 @@ extension AppServices {
     /// A failed/confirmed/interrupted execution keeps ownership of its unique
     /// effect key even if SwiftUI reconstructs the sheet. Reattach to that
     /// durable proposal; never ask storage to transfer the claim to a new UUID.
-    private func skillProposalID(
+    func skillProposalID(
         requested: UUID,
         idempotencyKey: String
     ) async throws -> UUID {

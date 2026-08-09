@@ -156,10 +156,14 @@ final class SkillsControlCenterTests: XCTestCase {
         XCTAssertEqual(snapshot.receipts.map(\.state), [.succeeded, .succeeded, .succeeded])
         XCTAssertEqual(
             snapshot.skills.filter { $0.availability == .available }.map(\.id),
-            [RecapDraftSkill.id, MeetingPackageExportSkill.id])
+            [
+                RecapDraftSkill.id,
+                MeetingPackageExportSkill.id,
+                PreMeetingBriefSkill.id,
+            ])
         XCTAssertEqual(
             snapshot.skills.filter { $0.availability == .planned }.map(\.id),
-            [ReminderDraftSkill.id, PreMeetingBriefSkill.id])
+            [ReminderDraftSkill.id])
         XCTAssertTrue(snapshot.skills.allSatisfy(\.isEnabled))
     }
 

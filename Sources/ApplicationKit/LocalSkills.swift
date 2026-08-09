@@ -281,24 +281,25 @@ public protocol MeetingBriefDelivering: Sendable {
 }
 
 public struct PreMeetingBriefEffect: SkillEffectPerforming {
-    private let events: any UpcomingEventResolving
-    private let brief: PrepareMeetingBrief
+    private let material: MeetingBrief
     private let delivery: any MeetingBriefDelivering
 
     public init(
-        events: any UpcomingEventResolving,
-        brief: PrepareMeetingBrief,
+        material: MeetingBrief,
         delivery: any MeetingBriefDelivering
     ) {
-        self.events = events
-        self.brief = brief
+        self.material = material
         self.delivery = delivery
     }
 
     public func perform(_ proposal: SkillProposal) async throws {
         let identifier = try PreMeetingBriefSkill.event(from: proposal.arguments)
-        guard let event = try await events.upcomingEvent(matching: identifier)
+        guard material.event.hasValidIdentity,
+              identifier == material.event.id
         else { throw PreMeetingBriefError.missingEvent }
-        try await delivery.deliver(try await brief.execute(event))
+        // Preview composition already happened before confirmation. The effect
+        // hands off that exact immutable artifact rather than re-reading Ask,
+        // storage, or a model after the user approved it.
+        try await delivery.deliver(material)
     }
 }

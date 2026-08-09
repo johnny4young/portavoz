@@ -45,6 +45,12 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "meeting-brief": (
         test_id("LibraryUITests", "testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment"),
     ),
+    "menu-bar-brief": (
+        test_id(
+            "MenuBarUITests",
+            "testPreMeetingBriefMovesFromExactProposalToDurableReceipt",
+        ),
+    ),
     "recording-recovery": (
         test_id("LibraryUITests", "testRecordingStartFailureOffersTypedRecovery"),
         test_id("LibraryUITests", "testRecordingWarnsWhenRemoteAudioCallbacksStop"),
@@ -301,7 +307,7 @@ def app_features(filename: str) -> set[str]:
     if lowered in {"appservices.swift", "portavozapp.swift"}:
         # Process composition/startup changes need one deterministic canary per
         # route, not every feature permutation behind those destinations.
-        return {"launch-recovery", "main-shell"}
+        return {"launch-recovery", "main-shell", "menu-bar-brief"}
     if "commitmentreminder" in lowered:
         return {"commitment-radar", "meeting-commitments"}
     if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:
@@ -340,6 +346,8 @@ def app_features(filename: str) -> set[str]:
         return {"library", "recording-recovery"}
     if any(token in lowered for token in ("library", "trash", "voicemix")):
         return {"library"}
+    if "menubar" in lowered:
+        return {"menu-bar-brief"}
     if any(token in lowered for token in ("meetingbrief", "meetingreminder")):
         return {"meeting-brief", "library"}
     if "legacyscrollinteractiontracker" in lowered:
@@ -373,7 +381,7 @@ def app_features(filename: str) -> set[str]:
     )):
         return {"meeting-skills"}
     if "skill" in lowered:
-        return {"meeting-skills", "settings-skills"}
+        return {"meeting-skills", "menu-bar-brief", "settings-skills"}
     if "meetingdetailtrustsection" in lowered:
         return {"meeting-health", "meeting-processing", "meeting-skills"}
     if "meetingdetailactionsection" in lowered:
@@ -451,7 +459,7 @@ def lower_layer_features(path: str) -> set[str]:
     if "launchrecovery" in lowered:
         return {"launch-recovery"}
     if "skill" in lowered:
-        return {"meeting-skills", "settings-skills"}
+        return {"meeting-skills", "menu-bar-brief", "settings-skills"}
     if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:
         return {"commitment-radar"}
     if any(token in lowered for token in (
@@ -504,7 +512,7 @@ def lower_layer_features(path: str) -> set[str]:
     if "insight" in lowered:
         return {"insights"}
     if any(token in lowered for token in ("ask", "brief")):
-        return {"ask", "meeting-brief"}
+        return {"ask", "meeting-brief", "menu-bar-brief"}
     if any(token in lowered for token in ("recording", "capture", "postcapture")):
         return {"library", "recording-recovery", "settings-audio"}
     if any(token in lowered for token in ("playback", "waveform", "audio")):

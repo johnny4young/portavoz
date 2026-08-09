@@ -4111,6 +4111,54 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D321"))
     }
 
+    func testMenuBarBriefUsesOpaqueCalendarIdentityAndExactApprovedMaterial() throws {
+        let event = try Self.contents(of: "Sources/PortavozCore/UpcomingEvent.swift")
+        let calendar = try Self.contents(
+            of: "Sources/IntegrationsKit/CalendarAttendeeSource.swift")
+        let offers = try Self.contents(
+            of: "Sources/ApplicationKit/PreMeetingBriefOffers.swift")
+        let skills = try Self.contents(of: "Sources/ApplicationKit/LocalSkills.swift")
+        let model = try Self.contents(of: "Sources/portavoz-app/MenuBarModel.swift")
+        let adapter = try Self.contents(of: "Sources/portavoz-app/AppServices+MenuBar.swift")
+        let view = try Self.contents(of: "Sources/portavoz-app/MenuBarView.swift")
+        let sheets = try Self.contents(
+            of: "Sources/portavoz-app/MenuBarBriefSheets.swift")
+        let app = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(event.contains("public let id: String"))
+        XCTAssertTrue(event.contains("isValidIdentity"))
+        XCTAssertFalse(event.contains("public var id: String"))
+        XCTAssertTrue(calendar.contains("event.eventIdentifier"))
+        XCTAssertTrue(calendar.contains("event(withIdentifier: identifier)"))
+        XCTAssertTrue(calendar.contains("guard Self.hasAccess"))
+        XCTAssertTrue(offers.contains("execution.state == .failed ? offer : nil"))
+        XCTAssertTrue(offers.contains("dismissedSkillOffers"))
+        XCTAssertTrue(offers.contains("public init?(event: UpcomingEvent)"))
+        XCTAssertTrue(offers.contains("guard UpcomingEvent.isValidIdentity(eventID)"))
+        XCTAssertTrue(offers.contains("existing.skillID == PreMeetingBriefSkill.id"))
+        XCTAssertTrue(offers.contains(
+            "existing.skillVersion == PreMeetingBriefSkill.version"))
+        XCTAssertTrue(offers.contains("existing.idempotencyKey == idempotencyKey"))
+        XCTAssertTrue(offers.contains(
+            "existing.proposalID == requested || existing.state == .failed"))
+        XCTAssertTrue(skills.contains("private let material: MeetingBrief"))
+        XCTAssertTrue(skills.contains("delivery.deliver(material)"))
+        XCTAssertFalse(skills.contains("brief.execute(event)"))
+        XCTAssertTrue(model.contains("let proposalID: UUID"))
+        XCTAssertTrue(model.contains("approvedBrief: target.brief"))
+        XCTAssertTrue(adapter.contains("currentEvent == offer.event"))
+        XCTAssertTrue(adapter.contains("ExecuteSkill("))
+        XCTAssertTrue(adapter.contains(
+            "usesTemporaryStore && arguments.contains(\"-seed-brief\")"))
+        XCTAssertTrue(sheets.contains("menu-bar-brief-confirm-submit"))
+        XCTAssertTrue(view.contains("menu-bar-brief-prepare"))
+        XCTAssertTrue(view.contains("menu-bar-brief-dismiss"))
+        XCTAssertTrue(app.contains("arguments.contains(\"-use-temp-store\")"))
+        XCTAssertTrue(app.contains("arguments.contains(\"-show-menu-bar-content\")"))
+        XCTAssertTrue(decisions.contains("## D322"))
+    }
+
     func testLocalSkillsAreContractsOverExistingWorkAndStayOffTheNetwork() throws {
         let skills = try Self.contents(
             of: "Sources/ApplicationKit/LocalSkills.swift")
@@ -4120,7 +4168,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         // so a skill can never become a second implementation that drifts.
         XCTAssertTrue(skills.contains("RecapComposer.compose("))
         XCTAssertTrue(skills.contains("export.execute(ExportMeetingBundleRequest("))
-        XCTAssertTrue(skills.contains("brief.execute(event)"))
+        XCTAssertTrue(skills.contains("delivery.deliver(material)"))
 
         // No platform framework and no transport reaches this layer.
         for forbidden in [

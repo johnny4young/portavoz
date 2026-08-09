@@ -11253,3 +11253,51 @@ Unit tests cover identity routing, proposal construction, and exact durable
 owner lookup; the real app's English and Spanish XCUITest journey covers
 failure, visible recovery, retry, receipt, sheet dismissal, and byte-for-byte
 pasteboard output. No schema migration or external egress was introduced.
+
+## D322 — A resident brief proposal is scoped to one opaque calendar event (Aug 2026)
+
+**Context:** the pre-meeting brief capability already existed as a manual
+Library action and as an unexposed local Skill contract. Phase 3 needed a real
+proposal moment without making the resident menu bar prompt for Calendar,
+recomposing after confirmation, guessing event identity from private title and
+time, or bypassing the durable policy and execution authority delivered by the
+first two Skills phases. EventKit documents that its local event identifier can
+change when an event moves calendars and may be lost after a full sync.
+
+**Decision:** `UpcomingEvent` stores one bounded, byte-preserved opaque platform
+identifier. The EventKit adapter omits events without a valid identifier,
+queries only when full access already exists, and resolves a proposal with
+`event(withIdentifier:)`; it never matches title or timestamp. Missing or
+changed identity makes the proposal stale. `LoadPreMeetingBriefOffer` combines
+the next event with the shared fail-closed Skills policy, event-scoped durable
+dismissal, and existing execution state. Only no owner or the same failed owner
+is actionable. That rule is rechecked at confirmation: a rebuilt presentation
+may attach to a different UUID only when its prior effect failed; a different
+settled or potentially delivered owner cannot claim the new preview.
+
+The menu-bar model composes one exact `MeetingBrief` before it creates the
+confirmation UUID. The sheet renders that immutable artifact and declared
+local capabilities. Immediately before `ExecuteSkill`, the app re-resolves and
+compares the complete event snapshot. `PreMeetingBriefEffect` receives the
+approved brief directly and crosses one process-owned local-draft delivery
+boundary; it cannot query Calendar, Ask, storage, or a model after approval.
+Cancellation and observation identity are checked after resident async reads
+and after execution before presentation state is published. Success retires
+the offer and adds the ordinary global Skill receipt; failure retains the
+original proposal for retry; dismissal persists independently for that event.
+
+The XCUITest fixture requires both disposable storage and an explicit menu-bar
+content flag. It mounts the production content/model in the app window because
+the actual `MenuBarExtra` shell is owned by SystemUIServer and is not
+deterministically automatable across supported macOS versions. It never reads
+the host Calendar. Actual status-item, TCC, identifier-sync, and cross-version
+behavior remain an explicit Sequoia/Tahoe field gate.
+
+**Consequences:** Skills Settings now marks pre-meeting briefs available. The
+resident proposal previews and delivers the same cited artifact, never sends
+data off-device, and leaves a content-free durable receipt. Unit and
+architecture tests cover identity bounds, policy, retry, cancellation, exact
+material, exact lookup, and fixture isolation; one English and one Spanish
+real-app journey cover preview through receipt. Reminder-draft permission work,
+external egress consent, standing rules, and physical cross-version shell
+evidence remain open.

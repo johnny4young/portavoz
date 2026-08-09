@@ -43,7 +43,7 @@ public enum LocalSkillCatalogue {
             availability: .planned),
         LocalSkillCatalogueEntry(
             definition: PreMeetingBriefSkill.definition,
-            availability: .planned)
+            availability: .available)
     ]
 }
 

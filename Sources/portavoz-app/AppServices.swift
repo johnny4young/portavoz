@@ -143,6 +143,12 @@ final class AppServices {
     /// Upcoming-meeting preparation shares Ask retrieval and returns only
     /// storage-independent ApplicationKit values.
     @ObservationIgnored let meetingBriefUseCase: PrepareMeetingBrief
+    /// One no-prompt calendar boundary supplies opaque event references to
+    /// Library, reminders, and the resident brief proposal.
+    @ObservationIgnored let upcomingEventSource: AppUpcomingEventSource
+    /// Process-owned local-draft handoff for the menu-bar brief Skill.
+    @ObservationIgnored let meetingBriefSkillDelivery:
+        AppMeetingBriefSkillDelivery
     /// One process-owned recap delivery boundary keeps a failed skill attempt
     /// retryable under the same adapter and durable proposal claim.
     @ObservationIgnored let recapSkillDelivery: any RecapDraftDelivering
@@ -253,15 +259,10 @@ final class AppServices {
         environment: [String: String] = ProcessInfo.processInfo.environment,
         storagePolicy: AppStorageIsolationPolicy? = nil
     ) throws {
-        // The UI-test host has its own bundle identity, but volatile
-        // per-launch preferences still need to land before any service reads
-        // defaults so every case is independent from an earlier test launch.
-        UITestDefaults.installIfNeeded(
+        let storagePolicy = Self.prepareStoragePolicy(
             arguments: arguments,
-            environment: environment)
-        let storagePolicy = storagePolicy ?? AppStorageIsolationPolicy(
-            arguments: arguments,
-            environment: environment)
+            environment: environment,
+            override: storagePolicy)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         // Open the authority before constructing process runtimes or installing
         // global telemetry. A failed retry therefore leaves no half-composed
@@ -292,9 +293,7 @@ final class AppServices {
         memoryGraphProjectionSupervisor = semanticSearch.memoryGraphBackground
         librarySemanticSearch = semanticSearch.library
         let askUseCase = semanticSearch.ask
-        firstRun = FirstRunModel(client: AppFirstRunModelClient(
-            useCase: ResolveFirstRunExperience(
-                library: AppFirstRunLibraryReader(store: store))))
+        firstRun = Self.makeFirstRunModel(store: store)
         localDataLedger = Self.makeLocalDataLedgerModel(
             store: store,
             usesTemporaryStore: usesTemporaryStore,
@@ -302,6 +301,10 @@ final class AppServices {
             voiceprintStore: voiceprintStore)
         askClient = AppAskModelClient(useCase: askUseCase)
         recapSkillDelivery = Self.makeRecapSkillDelivery(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
+        upcomingEventSource = AppUpcomingEventSource(
+            arguments: arguments,
+            usesTemporaryStore: usesTemporaryStore)
+        meetingBriefSkillDelivery = AppMeetingBriefSkillDelivery()
         meetingBriefUseCase = PrepareMeetingBrief(
             ask: askUseCase,
             library: AppMeetingBriefLibraryReader(store: store),
@@ -319,6 +322,21 @@ final class AppServices {
             enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable,
             telemetry: workloadTelemetry)
         scheduleInitialReadinessRefresh()
+    }
+
+    private static func prepareStoragePolicy(
+        arguments: [String],
+        environment: [String: String],
+        override: AppStorageIsolationPolicy?
+    ) -> AppStorageIsolationPolicy {
+        // The UI-test host has its own bundle identity, but volatile
+        // per-launch preferences must land before any service reads defaults.
+        UITestDefaults.installIfNeeded(
+            arguments: arguments,
+            environment: environment)
+        return override ?? AppStorageIsolationPolicy(
+            arguments: arguments,
+            environment: environment)
     }
 
     private func scheduleInitialReadinessRefresh() {

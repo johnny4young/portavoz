@@ -81,11 +81,26 @@ private struct AppLaunchRootView: View {
         case .opening:
             AppLaunchOpeningView()
         case let .ready(services):
-            ContentView(services: services)
-                .environment(services)
+            if presentsMenuBarUITestFixture {
+                MenuBarContent(model: services.makeMenuBarModel())
+                    .environment(services)
+                    .task { await services.seedDemoIfRequested() }
+            } else {
+                ContentView(services: services)
+                    .environment(services)
+            }
         case .databaseUnavailable:
             AppLaunchRecoveryView(model: model)
         }
+    }
+
+    /// XCUITest cannot deterministically open a MenuBarExtra window across
+    /// macOS versions. Mount the exact production content/model in the
+    /// disposable main test window; neither flag alone can affect production.
+    private var presentsMenuBarUITestFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-use-temp-store")
+            && arguments.contains("-show-menu-bar-content")
     }
 }
 

@@ -34,6 +34,24 @@ struct MenuBarContent: View {
         .padding(12)
         .frame(width: 320)
         .task { await model.observe() }
+        .task(id: model.state.briefPreparationRequest?.id) {
+            await model.prepareRequestedBrief()
+        }
+        .sheet(item: briefConfirmationBinding) { target in
+            MenuBarBriefConfirmSheet(
+                target: target,
+                confirm: { await model.confirmBrief(target) },
+                dismiss: model.cancelBriefConfirmation)
+        }
+        .sheet(isPresented: preparedBriefBinding) {
+            if let brief = model.state.preparedBrief {
+                MenuBarPreparedBriefSheet(
+                    brief: brief,
+                    openMeeting: openPreparedMeeting,
+                    record: { recordPreparedBrief(brief) },
+                    dismiss: model.closePreparedBrief)
+            }
+        }
     }
 
     // MARK: Status
@@ -127,17 +145,43 @@ struct MenuBarContent: View {
                 .textCase(.uppercase)
                 .foregroundStyle(VoicePalette.me)
             Text(event.title).font(.callout.weight(.medium)).lineLimit(1)
-            Button {
-                openMainWindow()
-                services.pendingRoute = .recording(event)
-            } label: {
-                Text("Record when it starts")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(.white.opacity(0.08), in: Capsule())
+            HStack(spacing: 6) {
+                if let offer = model.state.briefOffer,
+                   offer.event.id == event.id {
+                    prepareBriefButton(offer)
+                    Button {
+                        Task { await model.dismissBriefOffer(offer) }
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss brief suggestion")
+                    .accessibilityIdentifier("menu-bar-brief-dismiss")
+                    .help("Don't suggest a brief for this event again")
+                } else if model.state.preparedEventID == event.id {
+                    Label("Brief prepared", systemImage: "checkmark.circle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.green)
+                        .accessibilityIdentifier("menu-bar-brief-prepared")
+                }
+                Spacer(minLength: 4)
+                Button {
+                    openMainWindow()
+                    services.pendingRoute = .recording(event)
+                } label: {
+                    Label("Record", systemImage: "record.circle")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("menu-bar-record-next")
             }
-            .buttonStyle(.plain)
+            if let failure = model.state.briefFailure {
+                Text(failure)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("menu-bar-brief-error")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(11)
@@ -146,6 +190,29 @@ struct MenuBarContent: View {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(VoicePalette.me.opacity(0.25)))
         .padding(.bottom, 10)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("menu-bar-next-meeting")
+    }
+
+    private func prepareBriefButton(
+        _ offer: PreMeetingBriefOffer
+    ) -> some View {
+        Button {
+            model.requestBrief(offer)
+        } label: {
+            if model.state.briefPreparationRequest != nil {
+                HStack(spacing: 4) {
+                    ProgressView().controlSize(.mini)
+                    Text("Preparing…")
+                }
+            } else {
+                Label("Prepare brief", systemImage: "sparkles")
+            }
+        }
+        .font(.caption.weight(.semibold))
+        .buttonStyle(.plain)
+        .disabled(model.state.briefPreparationRequest != nil)
+        .accessibilityIdentifier("menu-bar-brief-prepare")
     }
 
     // MARK: Recents
@@ -209,6 +276,31 @@ struct MenuBarContent: View {
         // Re-open the library window if the user closed it, then front it.
         openWindow(id: "main")
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private var briefConfirmationBinding:
+        Binding<MenuBarModel.BriefConfirmTarget?> {
+        Binding(
+            get: { model.state.briefConfirmTarget },
+            set: { if $0 == nil { model.cancelBriefConfirmation() } })
+    }
+
+    private var preparedBriefBinding: Binding<Bool> {
+        Binding(
+            get: { model.state.preparedBrief != nil },
+            set: { if !$0 { model.closePreparedBrief() } })
+    }
+
+    private func openPreparedMeeting(_ meetingID: MeetingID) {
+        model.closePreparedBrief()
+        openMainWindow()
+        services.pendingRoute = .meeting(meetingID)
+    }
+
+    private func recordPreparedBrief(_ brief: MeetingBrief) {
+        model.closePreparedBrief()
+        openMainWindow()
+        services.pendingRoute = .recording(brief.event)
     }
 }
 

@@ -209,17 +209,20 @@ final class LocalSkillsTests: XCTestCase {
         XCTAssertTrue(writes.isEmpty, "a failed export leaves no partial file")
     }
 
-    func testBriefEffectDeliversForTheOneResolvedEvent() async throws {
-        let events = StubUpcomingEvents(identifier: "event-42")
+    func testBriefEffectDeliversTheExactApprovedMaterial() async throws {
+        let event = UpcomingEvent(
+            id: "event-42",
+            title: "Platform sync",
+            startDate: Date(timeIntervalSince1970: 1_789_000_000),
+            attendees: ["Ana"])
+        let material = MeetingBrief(
+            event: event,
+            related: [],
+            openItems: [],
+            whatToKnow: [])
         let delivery = RecordingBriefDelivery()
         let effect = PreMeetingBriefEffect(
-            events: events,
-            brief: PrepareMeetingBrief(
-                ask: AskMeetings(
-                    retrieval: EmptyBriefRetrieval(),
-                    answering: EmptyBriefAnswering()),
-                library: EmptyBriefLibrary(),
-                synthesizer: EmptyBriefSynthesizer()),
+            material: material,
             delivery: delivery)
 
         try await effect.perform(proposal(
@@ -231,20 +234,21 @@ final class LocalSkillsTests: XCTestCase {
         XCTAssertEqual(delivered.map(\.event.title), ["Platform sync"])
     }
 
-    /// An unresolved or ambiguous event must refuse, never brief on a guess:
-    /// the brief names a meeting to the user, and briefing the wrong one is
-    /// worse than briefing none.
+    /// An ambiguous or different event must refuse, never deliver material for
+    /// a subject other than the one named by the proposal.
     func testBriefEffectRefusesRatherThanGuessingTheEvent() async {
-        let events = StubUpcomingEvents(identifier: "event-42")
+        let event = UpcomingEvent(
+            id: "event-42",
+            title: "Platform sync",
+            startDate: Date(timeIntervalSince1970: 1_789_000_000),
+            attendees: ["Ana"])
         let delivery = RecordingBriefDelivery()
         let effect = PreMeetingBriefEffect(
-            events: events,
-            brief: PrepareMeetingBrief(
-                ask: AskMeetings(
-                    retrieval: EmptyBriefRetrieval(),
-                    answering: EmptyBriefAnswering()),
-                library: EmptyBriefLibrary(),
-                synthesizer: EmptyBriefSynthesizer()),
+            material: MeetingBrief(
+                event: event,
+                related: [],
+                openItems: [],
+                whatToKnow: []),
             delivery: delivery)
 
         for arguments: [SkillArgument] in [
@@ -399,52 +403,10 @@ extension ExportMeetingBundleContent {
     }
 }
 
-// MARK: - Pre-meeting brief doubles
-
-private struct StubUpcomingEvents: UpcomingEventResolving {
-    let identifier: String
-
-    func upcomingEvent(matching candidate: String) async throws -> UpcomingEvent? {
-        guard candidate == identifier else { return nil }
-        return UpcomingEvent(
-            title: "Platform sync",
-            startDate: Date(timeIntervalSince1970: 1_789_000_000),
-            attendees: ["Ana"])
-    }
-}
-
 private actor RecordingBriefDelivery: MeetingBriefDelivering {
     private(set) var briefs: [MeetingBrief] = []
 
     func deliver(_ brief: MeetingBrief) {
         briefs.append(brief)
     }
-}
-
-private struct EmptyBriefRetrieval: AskMeetingRetrieving {
-    func search(query: String, limit: Int) async throws -> [AskSearchResult] { [] }
-    func retrieve(question: String, limit: Int) async throws -> [AskCitation] { [] }
-}
-
-private struct EmptyBriefAnswering: AskMeetingAnswering {
-    func answer(question: String, citations: [AskCitation]) async throws -> String? {
-        nil
-    }
-}
-
-private struct EmptyBriefLibrary: MeetingBriefLibraryReading {
-    func meetingBriefSummaryMarkdowns(
-        for meetingIDs: [MeetingID]
-    ) async throws -> [MeetingID: String] { [:] }
-
-    func openMeetingBriefItems(limit: Int) async throws -> [MeetingBrief.OpenItem] {
-        []
-    }
-}
-
-private struct EmptyBriefSynthesizer: MeetingBriefSynthesizing {
-    func synthesizeMeetingBrief(
-        eventTitle: String,
-        sources: [MeetingBrief.SynthesisSource]
-    ) async throws -> [MeetingBrief.SynthesisPoint] { [] }
 }

@@ -2,6 +2,14 @@ import ApplicationKit
 import Foundation
 import StorageKit
 
+extension AppServices {
+    static func makeFirstRunModel(store: MeetingStore) -> FirstRunModel {
+        FirstRunModel(client: AppFirstRunModelClient(
+            useCase: ResolveFirstRunExperience(
+                library: AppFirstRunLibraryReader(store: store))))
+    }
+}
+
 struct AppFirstRunLibraryReader: FirstRunLibraryReading {
     let store: MeetingStore
 

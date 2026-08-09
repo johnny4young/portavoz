@@ -70,6 +70,7 @@ extension XCUIApplication {
         simulateLiveTranscriptBrowsing: Bool = false,
         simulateSkillEffectFailureOnce: Bool = false,
         simulateAppIntent: Bool = false,
+        showMenuBarContent: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
         launchLocale: String? = UITestLocale.environmentLocale
@@ -141,6 +142,9 @@ extension XCUIApplication {
         }
         if simulateAppIntent {
             app.launchArguments.append("-simulate-app-intent")
+        }
+        if showMenuBarContent {
+            app.launchArguments.append("-show-menu-bar-content")
         }
         if openSettings { app.launchArguments.append("-portavoz-open-settings") }
         if showOnboarding { app.launchArguments.append("-show-onboarding") }
@@ -227,16 +231,7 @@ extension XCUIApplication {
     /// resolving against the pre-seed accessibility snapshot.
     @MainActor
     func waitForSeededLibraryToSettle(timeout: TimeInterval = 45) -> Bool {
-        guard let readyPath = launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] else {
-            return false
-        }
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline,
-              !FileManager.default.fileExists(atPath: readyPath) {
-            Thread.sleep(forTimeInterval: 0.1)
-        }
-        guard FileManager.default.fileExists(atPath: readyPath) else { return false }
-        try? FileManager.default.removeItem(atPath: readyPath)
+        guard waitForSeedFixtureReady(timeout: timeout) else { return false }
         guard prepareForInteraction(timeout: timeout) else { return false }
 
         let meeting = descendants(matching: .any)
@@ -247,6 +242,24 @@ extension XCUIApplication {
             predicate: NSPredicate(format: "isHittable == true"),
             object: meeting)
         return XCTWaiter.wait(for: [hittable], timeout: timeout) == .completed
+    }
+
+    /// Waits only for the disposable seed transaction. Menu-bar UI tests mount
+    /// the production resident content instead of Library, so they cannot use
+    /// a meeting-row accessibility element as their readiness signal.
+    @MainActor
+    func waitForSeedFixtureReady(timeout: TimeInterval = 45) -> Bool {
+        guard let readyPath = launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] else {
+            return false
+        }
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline,
+              !FileManager.default.fileExists(atPath: readyPath) {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        guard FileManager.default.fileExists(atPath: readyPath) else { return false }
+        try? FileManager.default.removeItem(atPath: readyPath)
+        return true
     }
 
     @MainActor

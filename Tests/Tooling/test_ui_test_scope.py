@@ -389,10 +389,11 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
 
     def test_skill_sources_select_the_control_and_proposal_journeys(self):
-        expected = tuple(dict.fromkeys(
+        expected_set = set(
             FEATURE_TESTS["meeting-skills"]
-            + FEATURE_TESTS["settings-skills"]
-        ))
+            + FEATURE_TESTS["menu-bar-brief"]
+            + FEATURE_TESTS["settings-skills"])
+        expected = tuple(test for test in ALL_TESTS if test in expected_set)
         for path in [
             "Sources/PortavozCore/SkillExecutionPolicy.swift",
             "Sources/ApplicationKit/SkillsControlCenter.swift",

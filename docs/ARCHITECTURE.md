@@ -262,6 +262,22 @@ succeeded or interrupted effects retain their existing no-repeat semantics.
 The still-open sheet owns presentation of a recoverable reason, so it remains
 visible beside the retry action rather than behind the modal.
 
+The resident pre-meeting brief uses the same execution authority without
+turning the existing manual Library brief into an implicit action. Its
+`UpcomingEvent` carries one bounded opaque EventKit reference; title and time
+are presentation facts, never identity. The resident source reads only when
+full Calendar access already exists and never requests permission. A durable
+offer is absent while Skills are paused or this Skill is disabled, after an
+event-scoped dismissal, or whenever an existing execution is anything other
+than failed. The menu-bar model composes one exact `MeetingBrief` before it
+allocates the confirmation proposal UUID. Immediately before claim, the app
+re-resolves the same EventKit identifier and requires every previewed event fact
+to match. Missing or changed identifiers are stale; the app never guesses by
+title or timestamp. A concurrent owner may be resumed only when its prior
+effect failed; a different settled or potentially delivered owner makes this
+preview stale. The effect receives and delivers the immutable approved
+brief rather than querying Ask, storage, Calendar, or a model again.
+
 `LocalSkillCatalogue` is the single application-owned projection for the
 Skills management surface. It distinguishes skills that have both a proposal
 surface and an effect adapter from contracts that are not yet implemented. A
@@ -386,7 +402,10 @@ failure or cancellation, and only then removes the raw channels.
 The menu-bar scene receives bounded recent-meeting and open-commitment updates
 through an app adapter. EventKit access remains in the adapter and follows the
 no-prompt resident-surface rule. The SwiftUI panel owns commands and rendering,
-not Store or calendar coordination.
+not Store or calendar coordination. Its event-scoped brief proposal adds a
+durable dismissal, exact-preview confirmation, local-draft handoff, and global
+Skills receipt without adding a second product workflow. Calendar and effect
+awaits are cancellation- and owner-fenced before the model publishes state.
 
 Global dictation has one process-scoped, main-actor owner and one UUID-fenced
 session task. Microphone duration starts only after the real stream opens;
@@ -3757,7 +3776,7 @@ The 9 Aug 2026 local acceptance snapshot is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,268 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,276 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -3765,10 +3784,10 @@ The 9 Aug 2026 local acceptance snapshot is:
   its fail-closed 25-iteration gate (5,525 executions); the generic runner
   refuses fewer than 90 and the release wrapper raises that floor to 108;
   focused Thread Sanitizer and Address Sanitizer gates also pass;
-- strict SwiftLint remains a blocking CI gate and is clean across all 633
+- strict SwiftLint remains a blocking CI gate and is clean across all 636
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 72 XCUITest cases per locale define the 144-case bilingual release gate;
+- 73 XCUITest cases per locale define the 146-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and
