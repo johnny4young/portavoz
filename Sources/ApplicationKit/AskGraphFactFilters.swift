@@ -87,80 +87,138 @@ public struct ResolvedAskGraphFactFilter: Equatable, Sendable {
         }
         switch query {
         case .commitmentBlockers(let exact):
-            guard exact.isValid,
-                  personID == nil,
-                  topicID == nil
-            else {
-                return .abstained(.invalidQuery)
-            }
-            guard let filter = exact.filter.intersection(with: factFilter) else {
-                return .abstained(.noMatchingFacts)
-            }
-            return .query(.commitmentBlockers(CommitmentBlockerQuery(
+            return applying(to: exact)
+        case .topicFirstDiscussion(let exact):
+            return applying(to: exact)
+        case .personCommitments(let exact):
+            return applying(to: exact)
+        case .decisionConflicts(let exact):
+            return applying(to: exact)
+        case .decisionHistory(let exact):
+            return applying(to: exact)
+        case .changeSince(let exact):
+            return applying(to: exact)
+        }
+    }
+
+    private func applying(
+        to exact: CommitmentBlockerQuery
+    ) -> AskGraphFactQueryApplication {
+        applying(
+            exactIsValid: exact.isValid,
+            identityIsCompatible: personID == nil && topicID == nil,
+            exactFilter: exact.filter
+        ) { filter in
+            .commitmentBlockers(CommitmentBlockerQuery(
                 commitmentID: exact.commitmentID,
                 itemLimit: exact.itemLimit,
-                filter: filter)))
-        case .topicFirstDiscussion(let exact):
-            guard exact.isValid,
-                  personID == nil,
-                  topicID == nil || topicID == exact.topicID
-            else { return .abstained(.invalidQuery) }
-            guard let filter = exact.filter.intersection(with: factFilter) else {
-                return .abstained(.noMatchingFacts)
-            }
-            return .query(.topicFirstDiscussion(TopicFirstDiscussionQuery(
+                filter: filter))
+        }
+    }
+
+    private func applying(
+        to exact: TopicFirstDiscussionQuery
+    ) -> AskGraphFactQueryApplication {
+        applyingToTopic(
+            topicID: exact.topicID,
+            exactIsValid: exact.isValid,
+            exactFilter: exact.filter
+        ) { filter in
+            .topicFirstDiscussion(TopicFirstDiscussionQuery(
                 topicID: exact.topicID,
-                filter: filter)))
-        case .personCommitments(let exact):
-            guard exact.isValid,
-                  topicID == nil,
-                  personID == nil || personID == exact.personID
-            else { return .abstained(.invalidQuery) }
-            guard let filter = exact.filter.intersection(with: factFilter) else {
-                return .abstained(.noMatchingFacts)
-            }
-            return .query(.personCommitments(PersonCommitmentsQuery(
+                filter: filter))
+        }
+    }
+
+    private func applying(
+        to exact: PersonCommitmentsQuery
+    ) -> AskGraphFactQueryApplication {
+        applying(
+            exactIsValid: exact.isValid,
+            identityIsCompatible: topicID == nil
+                && (personID == nil || personID == exact.personID),
+            exactFilter: exact.filter
+        ) { filter in
+            .personCommitments(PersonCommitmentsQuery(
                 personID: exact.personID,
                 itemLimit: exact.itemLimit,
-                filter: filter)))
-        case .decisionConflicts(let exact):
-            guard exact.isValid,
-                  personID == nil,
-                  topicID == nil || topicID == exact.topicID
-            else { return .abstained(.invalidQuery) }
-            guard let filter = exact.filter.intersection(with: factFilter) else {
-                return .abstained(.noMatchingFacts)
-            }
-            return .query(.decisionConflicts(DecisionConflictsQuery(
+                filter: filter))
+        }
+    }
+
+    private func applying(
+        to exact: DecisionConflictsQuery
+    ) -> AskGraphFactQueryApplication {
+        applyingToTopic(
+            topicID: exact.topicID,
+            exactIsValid: exact.isValid,
+            exactFilter: exact.filter
+        ) { filter in
+            .decisionConflicts(DecisionConflictsQuery(
                 topicID: exact.topicID,
                 itemLimit: exact.itemLimit,
-                filter: filter)))
-        case .decisionHistory(let exact):
-            guard exact.isValid,
-                  personID == nil,
-                  topicID == nil || topicID == exact.topicID
-            else { return .abstained(.invalidQuery) }
-            guard let filter = exact.filter.intersection(with: factFilter) else {
-                return .abstained(.noMatchingFacts)
-            }
-            return .query(.decisionHistory(DecisionHistoryQuery(
+                filter: filter))
+        }
+    }
+
+    private func applying(
+        to exact: DecisionHistoryQuery
+    ) -> AskGraphFactQueryApplication {
+        applyingToTopic(
+            topicID: exact.topicID,
+            exactIsValid: exact.isValid,
+            exactFilter: exact.filter
+        ) { filter in
+            .decisionHistory(DecisionHistoryQuery(
                 topicID: exact.topicID,
                 itemLimit: exact.itemLimit,
-                filter: filter)))
-        case .changeSince(let exact):
-            guard exact.isValid,
-                  personID == nil,
-                  topicID == nil || topicID == exact.topicID
-            else { return .abstained(.invalidQuery) }
-            guard let filter = exact.filter.intersection(with: factFilter) else {
-                return .abstained(.noMatchingFacts)
-            }
-            return .query(.changeSince(ChangeSinceQuery(
+                filter: filter))
+        }
+    }
+
+    private func applying(
+        to exact: ChangeSinceQuery
+    ) -> AskGraphFactQueryApplication {
+        applyingToTopic(
+            topicID: exact.topicID,
+            exactIsValid: exact.isValid,
+            exactFilter: exact.filter
+        ) { filter in
+            .changeSince(ChangeSinceQuery(
                 topicID: exact.topicID,
                 sinceMeetingID: exact.sinceMeetingID,
                 itemLimit: exact.itemLimit,
-                filter: filter)))
+                filter: filter))
         }
+    }
+
+    private func applyingToTopic(
+        topicID exactTopicID: TopicID,
+        exactIsValid: Bool,
+        exactFilter: MeetingMemoryGraphFactFilter,
+        makeQuery: (MeetingMemoryGraphFactFilter) -> AskGraphFactQuery
+    ) -> AskGraphFactQueryApplication {
+        applying(
+            exactIsValid: exactIsValid,
+            identityIsCompatible: personID == nil
+                && (topicID == nil || topicID == exactTopicID),
+            exactFilter: exactFilter,
+            makeQuery: makeQuery)
+    }
+
+    private func applying(
+        exactIsValid: Bool,
+        identityIsCompatible: Bool,
+        exactFilter: MeetingMemoryGraphFactFilter,
+        makeQuery: (MeetingMemoryGraphFactFilter) -> AskGraphFactQuery
+    ) -> AskGraphFactQueryApplication {
+        guard exactIsValid, identityIsCompatible else {
+            return .abstained(.invalidQuery)
+        }
+        guard let filter = exactFilter.intersection(with: factFilter) else {
+            return .abstained(.noMatchingFacts)
+        }
+        return .query(makeQuery(filter))
     }
 }
 

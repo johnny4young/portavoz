@@ -74,11 +74,92 @@ final class AskGraphFactFilterTests: XCTestCase {
     func testResolvedFilterRejectsInvalidExactQueryBeforeIntersection() {
         let filter = ResolvedAskGraphFactFilter(
             factFilter: MeetingMemoryGraphFactFilter(status: .active))
+        let invalidExactFilter = MeetingMemoryGraphFactFilter(
+            occurredAtOrAfter: Date(timeIntervalSinceReferenceDate: .infinity))
+        let queries = AskGraphFactQuerySamples().all(filter: invalidExactFilter)
 
         XCTAssertEqual(
-            filter.applying(to: .personCommitments(PersonCommitmentsQuery(
-                personID: PersonID(),
-                itemLimit: 0))),
+            queries.map(filter.applying),
+            Array(
+                repeating: .abstained(.invalidQuery),
+                count: queries.count))
+    }
+
+    func testResolvedFilterIntersectsEveryExactQueryWithoutLosingFields() {
+        let samples = AskGraphFactQuerySamples()
+        let start = Date(timeIntervalSince1970: 1_000)
+        let exactFilter = MeetingMemoryGraphFactFilter(
+            occurredAtOrAfter: start,
+            occurredBefore: start.addingTimeInterval(40))
+        let requestedFilter = MeetingMemoryGraphFactFilter(
+            occurredAtOrAfter: start.addingTimeInterval(10),
+            occurredBefore: start.addingTimeInterval(30),
+            status: .active)
+        let resolved = ResolvedAskGraphFactFilter(factFilter: requestedFilter)
+        let expected = samples.all(filter: requestedFilter)
+            .map(AskGraphFactQueryApplication.query)
+
+        XCTAssertEqual(
+            samples.all(filter: exactFilter).map(resolved.applying),
+            expected)
+    }
+
+    func testResolvedFilterAbstainsForDisjointConstraintsInEveryGraphJob() {
+        let samples = AskGraphFactQuerySamples()
+        let exactFilter = MeetingMemoryGraphFactFilter(status: .active)
+        let resolved = ResolvedAskGraphFactFilter(
+            factFilter: MeetingMemoryGraphFactFilter(status: .confirmed))
+        let queries = samples.all(filter: exactFilter)
+
+        XCTAssertEqual(
+            queries.map(resolved.applying),
+            Array(
+                repeating: .abstained(.noMatchingFacts),
+                count: queries.count))
+    }
+
+    func testResolvedPersonIdentityOnlyAppliesToMatchingPersonQuery() {
+        let samples = AskGraphFactQuerySamples()
+        let matching = ResolvedAskGraphFactFilter(personID: samples.personID)
+        let mismatching = ResolvedAskGraphFactFilter(personID: PersonID())
+        let exact = samples.personCommitments()
+
+        XCTAssertEqual(matching.applying(to: exact), .query(exact))
+        XCTAssertEqual(
+            mismatching.applying(to: exact),
+            .abstained(.invalidQuery))
+        for incompatible in samples.queriesWithoutPersonIdentity() {
+            XCTAssertEqual(
+                matching.applying(to: incompatible),
+                .abstained(.invalidQuery))
+        }
+    }
+
+    func testResolvedTopicIdentityOnlyAppliesToMatchingTopicQueries() {
+        let samples = AskGraphFactQuerySamples()
+        let matching = ResolvedAskGraphFactFilter(topicID: samples.topicID)
+        let mismatching = ResolvedAskGraphFactFilter(topicID: TopicID())
+
+        for exact in samples.topicQueries() {
+            XCTAssertEqual(matching.applying(to: exact), .query(exact))
+            XCTAssertEqual(
+                mismatching.applying(to: exact),
+                .abstained(.invalidQuery))
+        }
+        for incompatible in samples.queriesWithoutTopicIdentity() {
+            XCTAssertEqual(
+                matching.applying(to: incompatible),
+                .abstained(.invalidQuery))
+        }
+    }
+
+    func testResolvedFilterRejectsCombinedIdentityDimensions() {
+        let invalid = ResolvedAskGraphFactFilter(
+            personID: PersonID(),
+            topicID: TopicID())
+
+        XCTAssertEqual(
+            invalid.applying(to: AskGraphFactQuerySamples().personCommitments()),
             .abstained(.invalidQuery))
     }
 
@@ -167,7 +248,7 @@ final class AskGraphFactFilterTests: XCTestCase {
             people: [],
             topics: [
                 Topic(preferredLabel: "Atlas"),
-                Topic(preferredLabel: "Atlas"),
+                Topic(preferredLabel: "Atlas")
             ])
         let resolver = LocalAskGraphFactFilterResolver(
             people: candidates,
@@ -299,6 +380,97 @@ final class AskGraphFactFilterTests: XCTestCase {
         let requests = await resolver.requests
         XCTAssertTrue(queries.isEmpty)
         XCTAssertTrue(requests.isEmpty)
+    }
+}
+
+private struct AskGraphFactQuerySamples {
+    let commitmentID = CommitmentID()
+    let topicID = TopicID()
+    let personID = PersonID()
+    let sinceMeetingID = MeetingID()
+
+    func all(
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) -> [AskGraphFactQuery] {
+        [
+            commitmentBlockers(filter: filter),
+            topicFirstDiscussion(filter: filter),
+            personCommitments(filter: filter),
+            decisionConflicts(filter: filter),
+            decisionHistory(filter: filter),
+            changeSince(filter: filter)
+        ]
+    }
+
+    func topicQueries() -> [AskGraphFactQuery] {
+        [
+            topicFirstDiscussion(),
+            decisionConflicts(),
+            decisionHistory(),
+            changeSince()
+        ]
+    }
+
+    func queriesWithoutPersonIdentity() -> [AskGraphFactQuery] {
+        [commitmentBlockers()] + topicQueries()
+    }
+
+    func queriesWithoutTopicIdentity() -> [AskGraphFactQuery] {
+        [commitmentBlockers(), personCommitments()]
+    }
+
+    func commitmentBlockers(
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) -> AskGraphFactQuery {
+        .commitmentBlockers(CommitmentBlockerQuery(
+            commitmentID: commitmentID,
+            itemLimit: 7,
+            filter: filter))
+    }
+
+    func topicFirstDiscussion(
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) -> AskGraphFactQuery {
+        .topicFirstDiscussion(TopicFirstDiscussionQuery(
+            topicID: topicID,
+            filter: filter))
+    }
+
+    func personCommitments(
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) -> AskGraphFactQuery {
+        .personCommitments(PersonCommitmentsQuery(
+            personID: personID,
+            itemLimit: 8,
+            filter: filter))
+    }
+
+    func decisionConflicts(
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) -> AskGraphFactQuery {
+        .decisionConflicts(DecisionConflictsQuery(
+            topicID: topicID,
+            itemLimit: 9,
+            filter: filter))
+    }
+
+    func decisionHistory(
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) -> AskGraphFactQuery {
+        .decisionHistory(DecisionHistoryQuery(
+            topicID: topicID,
+            itemLimit: 10,
+            filter: filter))
+    }
+
+    func changeSince(
+        filter: MeetingMemoryGraphFactFilter = MeetingMemoryGraphFactFilter()
+    ) -> AskGraphFactQuery {
+        .changeSince(ChangeSinceQuery(
+            topicID: topicID,
+            sinceMeetingID: sinceMeetingID,
+            itemLimit: 11,
+            filter: filter))
     }
 }
 
