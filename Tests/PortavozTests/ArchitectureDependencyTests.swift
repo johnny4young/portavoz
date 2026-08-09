@@ -1858,6 +1858,18 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(migration.contains(
             "owned.summaryDecisionID = source.summaryDecisionID"),
             "the confirm trigger keeps its evidence-ownership check")
+        for helper in [
+            "createDecisionTopicLinkProjectionImmutabilityTriggers",
+            "createDecisionTopicLinkHistoryImmutabilityTriggers",
+            "createDecisionTopicLinkConfirmationSourceTrigger",
+            "createDecisionTopicLinkRetractionTrigger"
+        ] {
+            XCTAssertTrue(
+                migration.contains(helper),
+                "decision-topic schema constraints keep a focused owner: \(helper)")
+        }
+        XCTAssertFalse(migration.contains(
+            "swiftlint:disable:next function_body_length"))
         XCTAssertTrue(store.contains(
             "evidence must already belong to the decision"))
         XCTAssertTrue(migration.contains(

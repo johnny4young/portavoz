@@ -611,7 +611,8 @@ The current schema version is 34. It includes:
   bounded invalidation cursor, and independently leased maintenance ownership;
 - an append-only skill-execution event log with its bounded state projection;
 - the decision-topic aboutness authority: immutable link sources, append-only
-  confirm/retract events, and trigger-enforced evidence ownership;
+  confirm/retract events, and narrowly separated schema triggers for projection
+  immutability, append-only history, evidence ownership, and valid retraction;
 - a disposable per-segment corrected-text search projection (one row per
   active text replacement, FTS-mirrored, rebuilt transactionally with every
   correction write);

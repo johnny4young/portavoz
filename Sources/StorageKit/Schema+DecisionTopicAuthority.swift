@@ -117,6 +117,15 @@ extension StorageSchema {
     private static func createDecisionTopicLinkImmutabilityTriggers(
         in database: Database
     ) throws {
+        try createDecisionTopicLinkProjectionImmutabilityTriggers(in: database)
+        try createDecisionTopicLinkHistoryImmutabilityTriggers(in: database)
+        try createDecisionTopicLinkConfirmationSourceTrigger(in: database)
+        try createDecisionTopicLinkRetractionTrigger(in: database)
+    }
+
+    private static func createDecisionTopicLinkProjectionImmutabilityTriggers(
+        in database: Database
+    ) throws {
         try createTrigger(
             "decisionTopicLink_immutable_identity_bu",
             timing: "BEFORE UPDATE OF id, decisionID, topicID, createdAt",
@@ -143,6 +152,11 @@ extension StorageSchema {
                 """,
             when: valuesChanged(["status", "updatedAt"]),
             in: database)
+    }
+
+    private static func createDecisionTopicLinkHistoryImmutabilityTriggers(
+        in database: Database
+    ) throws {
         for table in ["decisionTopicLinkSource", "decisionTopicLinkEvent"] {
             try createTrigger(
                 "\(table)_immutable_bu",
@@ -151,6 +165,11 @@ extension StorageSchema {
                 body: "SELECT RAISE(ABORT, 'decision-topic link history is immutable');",
                 in: database)
         }
+    }
+
+    private static func createDecisionTopicLinkConfirmationSourceTrigger(
+        in database: Database
+    ) throws {
         // The structural aboutness guarantee, enforced below Swift: a confirm
         // event is legal only over a source that (a) belongs to this link,
         // (b) quotes the decision's own statement, and (c) names a generated
@@ -188,6 +207,11 @@ extension StorageSchema {
                 ) THEN RAISE(ABORT, 'decision-topic confirmation source is foreign') END;
                 """,
             in: database)
+    }
+
+    private static func createDecisionTopicLinkRetractionTrigger(
+        in database: Database
+    ) throws {
         try createTrigger(
             "decisionTopicLinkEvent_retract_bi",
             timing: "BEFORE INSERT",
