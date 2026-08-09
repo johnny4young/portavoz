@@ -115,6 +115,8 @@ struct SettingsView: View {
                     agendaSection
                     AutomationSection()
                     titleSection
+                case .skills:
+                    SkillsSettingsSection()
                 case .integrations:
                     byokSection
                     GitHubSection()

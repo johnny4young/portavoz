@@ -1,5 +1,6 @@
 import ApplicationKit
 import Foundation
+import GRDB
 import PortavozCore
 import XCTest
 
@@ -27,6 +28,7 @@ final class ExecuteSkillTests: XCTestCase {
         let instant = now
         return ExecuteSkill(
             claims: store,
+            policy: store,
             effects: [
                 ReminderDraftSkill.id: ReminderDraftEffect(delivery: delivery)
             ],
@@ -116,6 +118,72 @@ final class ExecuteSkillTests: XCTestCase {
 
         XCTAssertEqual(outcome, .refused(.invalidDefinition))
         let history = try await store.skillExecutionHistory(proposalID: subject.id)
+        XCTAssertTrue(history.isEmpty)
+    }
+
+    func testGlobalPauseIsRecheckedBeforeClaiming() async throws {
+        let store = try MeetingStore.inMemory()
+        try await store.setAllSkillsPaused(true, at: now)
+        let delivery = RecordingReminderDelivery()
+        let subject = proposal()
+
+        let outcome = try await executor(store: store, delivery: delivery)
+            .execute(request(subject))
+
+        XCTAssertEqual(outcome, .refused(.allSkillsPaused))
+        let delivered = await delivery.drafts
+        let history = try await store.skillExecutionHistory(
+            proposalID: subject.id)
+        XCTAssertTrue(delivered.isEmpty)
+        XCTAssertTrue(
+            history.isEmpty,
+            "a pause refusal must happen before the durable claim")
+    }
+
+    func testIndividualDisablementIsRecheckedBeforeClaiming() async throws {
+        let store = try MeetingStore.inMemory()
+        try await store.setSkill(
+            ReminderDraftSkill.id,
+            isEnabled: false,
+            at: now)
+        let delivery = RecordingReminderDelivery()
+        let subject = proposal()
+
+        let outcome = try await executor(store: store, delivery: delivery)
+            .execute(request(subject))
+
+        XCTAssertEqual(outcome, .refused(.skillDisabled))
+        let delivered = await delivery.drafts
+        let history = try await store.skillExecutionHistory(
+            proposalID: subject.id)
+        XCTAssertTrue(delivered.isEmpty)
+        XCTAssertTrue(history.isEmpty)
+    }
+
+    func testUnreadablePolicyStopsBeforeClaimingOrDelivery() async throws {
+        let store = try MeetingStore.inMemory()
+        try await store.database.write { database in
+            try database.execute(sql: "DELETE FROM skillControl WHERE id = 1")
+        }
+        let delivery = RecordingReminderDelivery()
+        let subject = proposal()
+
+        do {
+            _ = try await executor(store: store, delivery: delivery)
+                .execute(request(subject))
+            XCTFail("missing durable authority must fail closed")
+        } catch let error as StorageError {
+            guard case .invalidPersistedValue(
+                table: "skillControl",
+                column: "id",
+                value: "missing singleton") = error
+            else { return XCTFail("unexpected error: \(error)") }
+        }
+
+        let delivered = await delivery.drafts
+        let history = try await store.skillExecutionHistory(
+            proposalID: subject.id)
+        XCTAssertTrue(delivered.isEmpty)
         XCTAssertTrue(history.isEmpty)
     }
 
@@ -238,6 +306,7 @@ final class ExecuteSkillTests: XCTestCase {
         let instant = now
         let executor = ExecuteSkill(
             claims: claims,
+            policy: store,
             effects: [
                 ReminderDraftSkill.id: ReminderDraftEffect(delivery: delivery)
             ],

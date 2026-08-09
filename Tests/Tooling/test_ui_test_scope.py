@@ -369,6 +369,22 @@ class UITestScopeTests(unittest.TestCase):
             )
             self.assertEqual(selection.locales, ("en",), path)
 
+    def test_skill_sources_select_the_control_and_proposal_journeys(self):
+        expected = tuple(dict.fromkeys(
+            FEATURE_TESTS["meeting-skills"]
+            + FEATURE_TESTS["settings-skills"]
+        ))
+        for path in [
+            "Sources/PortavozCore/SkillExecutionPolicy.swift",
+            "Sources/ApplicationKit/SkillsControlCenter.swift",
+            "Sources/StorageKit/MeetingStore+SkillControl.swift",
+            "Sources/portavoz-app/AppServices+MeetingSkills.swift",
+            "Sources/portavoz-app/SkillsSettingsSection.swift",
+        ]:
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+
     def test_harness_change_selects_three_bilingual_canaries(self):
         selection = select_paths(["Makefile"])
         self.assertEqual(selection.tests, HARNESS_TESTS)

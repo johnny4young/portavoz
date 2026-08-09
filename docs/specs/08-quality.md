@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,205 cases (14 environment-gated) + 68
+Status: the package inventory contains 2,237 cases (14 environment-gated) + 70
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,14 +11,15 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 68
+Meeting Detail tests. The English and Spanish release gates each cover all 70
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
 revision-fenced Meeting Detail metadata and explicit name suggestions, claim
 review, overview/decision/action-item/Apuntador source navigation, confirmed-
 person memory, 5k/20k-segment scale detail, full Ask and command-palette
-answer/citation navigation, source-grounded meeting preparation, exact local-
+answer/citation navigation, source-grounded meeting preparation, durable Skills
+policy failure and control-center journeys, exact local-
 data receipts, correction-stale Summary/Apuntador evidence and explicit
 regeneration, Library/search, Insights, post-meeting mirror, proactive Whisper
 Settings, Sequoia intelligence setup, explicit private-sync opt-in/older-
@@ -30,12 +31,12 @@ documented below.
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config
 (default rules + correctness/clarity opt-ins, industry thresholds: line 120,
 function-body 60/100, cyclomatic 12/20, type-body 400/600). CI treats every
-violation as a failure. The Aug 8 audit found **20 unsuppressed first-party
-violations**: large or complex Meeting Detail, graph, decision-query,
-processing, correction, and search units plus one long identifier and one
-`for`/`where` style defect. They are merge-blocking refactoring debt, not a
-green lint claim. Existing inherent exceptions remain suppressed inline with
-their local justification.
+violation as a failure. The Aug 9 acceptance run is clean across all **630
+production Swift files**. The 20 violations found by the Aug 8 audit were
+removed through cohesive Meeting Detail, graph, decision-query, processing,
+correction, job, Skills-storage, and search owner splits rather than blanket
+suppressions. Existing inherent exceptions remain suppressed inline with their
+local justification.
 
 ## Test suite — `Tests/PortavozTests/`
 
@@ -1487,7 +1488,7 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 68 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 70 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select bilingual evidence; the
@@ -1566,10 +1567,10 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The 9 Aug 2026 field-reliability inventory is 2,205 XCTest package cases (14
-environment-gated), 20 unsuppressed strict-lint violations across 618
-first-party Swift source files, a 221-case recording/recovery selector passing
-25 consecutive iterations (5,525 executions), and 68 XCUITest cases per locale.
+The 9 Aug 2026 field-reliability inventory is 2,237 XCTest package cases (14
+environment-gated), zero strict-lint violations across 630 production Swift
+files, a 221-case recording/recovery selector passing 25 consecutive iterations
+(5,525 executions), and 70 XCUITest cases per locale.
 The generic stress runner refuses fewer than 90 tests and the release wrapper
 raises that floor to 108. Release evidence requires the package inventory to
 pass without failures on a supported AppKit-capable host and strict lint to
@@ -2202,8 +2203,8 @@ genuinely need different seed flags or launch arguments; never merge cases
 across different launch configurations, because a shared launch that half
 the assertions must un-do stops being evidence.
 
-The current inventory is 68 cases per locale (136 bilingual). The Aug 7 cost
-sample above predates four of those bilingual cases and remains a timing model,
+The current inventory is 70 cases per locale (140 bilingual). The Aug 7 cost
+sample above predates eight of those bilingual executions and remains a timing model,
 not a claim that the smaller 132-case inventory is current.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player

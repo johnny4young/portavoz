@@ -50,7 +50,7 @@ public enum MeetingSkillPreview: Equatable, Sendable {
 }
 
 /// The slice of MeetingStore the offer policy reads.
-public protocol MeetingSkillOfferStore: Sendable {
+public protocol MeetingSkillOfferStore: SkillExecutionPolicyReading, Sendable {
     func dismissedSkillOffers(offerKeys: [String]) async throws -> Set<String>
     func skillExecutions(
         idempotencyKeyPrefix prefix: String
@@ -91,6 +91,8 @@ public struct LoadMeetingSkillOffers: ApplicationUseCase {
         let meetingID = request.meetingID
         let hasSummary = request.hasSummary
         guard hasSummary else { return [] }
+        let policy = try await store.skillExecutionPolicy()
+        guard !policy.isPaused else { return [] }
         let candidates = [
             MeetingSkillOffer(kind: .recapDraft, meetingID: meetingID),
             MeetingSkillOffer(kind: .packageExport, meetingID: meetingID)
@@ -99,6 +101,8 @@ public struct LoadMeetingSkillOffers: ApplicationUseCase {
             offerKeys: candidates.map(\.offerKey))
         var offers: [MeetingSkillOffer] = []
         for offer in candidates {
+            guard policy.isIndividuallyEnabled(skillID: offer.skillID)
+            else { continue }
             guard !dismissed.contains(offer.offerKey) else { continue }
             if offer.kind == .recapDraft {
                 let executions = try await store.skillExecutions(

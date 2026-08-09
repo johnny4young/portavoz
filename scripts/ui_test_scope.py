@@ -176,6 +176,16 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
         test_id("SettingsUITests", "testLanguageToggleSwitchesVisibleTextWithoutRelaunch"),
     ),
+    "settings-skills": (
+        test_id(
+            "SkillsSettingsUITests",
+            "testSkillsPaneFailsClosedWhenDurablePolicyCannotLoad",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
+            "testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt",
+        ),
+    ),
     "settings-data": (
         test_id("SettingsUITests", "testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy"),
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
@@ -350,6 +360,8 @@ def app_features(filename: str) -> set[str]:
         "skillofferbanner", "skillconfirmsheet", "meetingdetailcoordinator+skills"
     )):
         return {"meeting-skills"}
+    if "skill" in lowered:
+        return {"meeting-skills", "settings-skills"}
     if "meetingdetailtrustsection" in lowered:
         return {"meeting-health", "meeting-processing", "meeting-skills"}
     if "meetingdetailactionsection" in lowered:
@@ -424,6 +436,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "skill" in lowered:
+        return {"meeting-skills", "settings-skills"}
     if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:
         return {"commitment-radar"}
     if any(token in lowered for token in (

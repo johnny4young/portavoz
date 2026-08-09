@@ -91,6 +91,26 @@ final class SkillAdmissionTests: XCTestCase {
 
     // MARK: - Confirmation
 
+    func testDurableControlsRefuseBeforeConfirmationPolicy() {
+        XCTAssertEqual(
+            SkillAdmissionPolicy.admit(
+                proposal(),
+                isConfirmedByUser: false,
+                egressIsPermitted: false,
+                executionPolicy: SkillExecutionPolicy(isPaused: true),
+                at: now),
+            .refused(.allSkillsPaused))
+        XCTAssertEqual(
+            SkillAdmissionPolicy.admit(
+                proposal(),
+                isConfirmedByUser: true,
+                egressIsPermitted: false,
+                executionPolicy: SkillExecutionPolicy(
+                    disabledSkillIDs: ["reminder-draft"]),
+                at: now),
+            .refused(.skillDisabled))
+    }
+
     func testExplicitPolicyRefusesWithoutUserConfirmation() {
         XCTAssertEqual(
             SkillAdmissionPolicy.admit(

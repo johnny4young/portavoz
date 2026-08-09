@@ -1840,8 +1840,8 @@ retry/cancellation outcomes; terminal action and engine-release timing; and
 the next scheduled wake. Its public store/capability ports, configuration
 snapshots, progress events, issues, and request/result envelopes live in a
 separate ApplicationKit contract owner; executable policy retains private
-dependencies in the workflow implementation. Intentional workflow
-cancellation returns the owned job to pending through the ApplicationKit store
+dependencies in the workflow implementation. Intentional workflow cancellation
+returns the owned job to pending through the ApplicationKit store
 port before emitting a `suspended` telemetry outcome. StorageKit clears its
 lease and refunds the claim attempt, and the current drain invocation stops
 before claiming more
@@ -2275,3 +2275,34 @@ XCUITest covers the whole journey in one launch
 (`testSkillProposalJourneyFromBannerToReceipt`, EN+ES): offer menu → exact
 preview → confirm → clipboard artifact → receipt → offer retirement →
 durable dismissal.
+
+## Skills control center in Settings (D317, Aug 2026)
+
+Settings now includes a dedicated Skills pane driven by
+`LoadSkillControlCenter`, not preferences or view-owned policy. Its central
+catalogue marks recap draft and text-only package export as available, while
+reminder draft and pre-meeting brief render honestly as planned because their
+subject/permission surfaces are not shipped. The pane exposes an independent
+global pause, per-available-skill enablement, and the 20 newest content-free
+execution receipts. It never executes a skill and does not invent egress
+consent or standing rules.
+
+The switches write SQLite v35 state. Global pause leaves every individual
+choice intact; resuming restores those choices. Meeting proposals read the
+same state and disappear while paused or disabled. A confirmation sheet that
+was already open still has no stale authority: `ExecuteSkill` re-reads policy
+immediately before admission and before any durable claim or effect. Missing
+or corrupt singleton state fails closed. A Settings read failure shows an
+explicit unavailable/retry state and never renders an implicit enabled
+control.
+
+Recent receipts are bounded before materialization (20 by default, 50 maximum
+through the application request, 100 at the storage boundary) and ordered by a
+matching `(updatedAt DESC, proposalID ASC)` index. Malformed durable proposal
+identities fail the projection instead of silently disappearing from the
+audit surface.
+
+Two bilingual XCUITest journeys cover the pane: one verifies the fail-closed
+load state; the other uses one disposable launch to disable export, pause all
+skills, prove offers stay absent, resume without losing the individual choice,
+confirm the remaining recap proposal, and observe its recent receipt.

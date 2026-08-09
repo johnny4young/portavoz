@@ -44,6 +44,32 @@ final class MeetingSkillOfferTests: XCTestCase {
             "only the dismissed offer disappears")
     }
 
+    func testDurableControlsRemoveOffersWithoutChangingDismissals() async throws {
+        let store = try MeetingStore.inMemory()
+        let meetingID = MeetingID()
+
+        try await store.setSkill(
+            RecapDraftSkill.id,
+            isEnabled: false,
+            at: Date())
+        let oneEnabled = try await LoadMeetingSkillOffers(store: store).execute(
+            LoadMeetingSkillOffersRequest(meetingID: meetingID, hasSummary: true))
+        XCTAssertEqual(oneEnabled.map(\.kind), [.packageExport])
+
+        try await store.setAllSkillsPaused(true, at: Date())
+        let paused = try await LoadMeetingSkillOffers(store: store).execute(
+            LoadMeetingSkillOffersRequest(meetingID: meetingID, hasSummary: true))
+        XCTAssertTrue(paused.isEmpty)
+
+        try await store.setAllSkillsPaused(false, at: Date())
+        let resumed = try await LoadMeetingSkillOffers(store: store).execute(
+            LoadMeetingSkillOffersRequest(meetingID: meetingID, hasSummary: true))
+        XCTAssertEqual(
+            resumed.map(\.kind),
+            [.packageExport],
+            "resuming must preserve the individual choice")
+    }
+
     /// The full confirmed loop against the real claims store: execute leaves a
     /// succeeded receipt, the recap offer retires, and export keeps offering
     /// because each destination is a distinct intended effect.
@@ -56,6 +82,7 @@ final class MeetingSkillOfferTests: XCTestCase {
 
         let outcome = try await ExecuteSkill(
             claims: store,
+            policy: store,
             effects: [RecapDraftSkill.id: NoopSkillEffect()]
         ).execute(ExecuteSkillRequest(
             proposal: proposal,
@@ -94,6 +121,7 @@ final class MeetingSkillOfferTests: XCTestCase {
                     at: Date())
             _ = try await ExecuteSkill(
                 claims: store,
+                policy: store,
                 effects: [MeetingPackageExportSkill.id: NoopSkillEffect()]
             ).execute(ExecuteSkillRequest(
                 proposal: proposal,
@@ -127,6 +155,7 @@ final class MeetingSkillOfferTests: XCTestCase {
 
         let outcome = try await ExecuteSkill(
             claims: store,
+            policy: store,
             effects: [RecapDraftSkill.id: FailingSkillEffect()]
         ).execute(ExecuteSkillRequest(
             proposal: proposal,
@@ -207,6 +236,7 @@ final class MeetingSkillOfferTests: XCTestCase {
                 at: Date())
         _ = try await ExecuteSkill(
             claims: store,
+            policy: store,
             effects: [MeetingPackageExportSkill.id: NoopSkillEffect()]
         ).execute(ExecuteSkillRequest(
             proposal: proposal,

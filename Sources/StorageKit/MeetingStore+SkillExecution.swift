@@ -285,6 +285,30 @@ extension MeetingStore {
             updatedAt: row["updatedAt"])
     }
 
+    /// One strict decoder for list projections. Receipt history is audit
+    /// evidence: a malformed durable identity must fail the read rather than
+    /// silently disappearing from the UI.
+    static func skillExecutionRecord(
+        from row: Row
+    ) throws -> SkillExecutionRecord {
+        let rawProposalID: String = row["proposalID"]
+        guard let proposalID = UUID(uuidString: rawProposalID) else {
+            throw StorageError.invalidPersistedUUID(
+                table: "skillExecutionState",
+                column: "proposalID",
+                value: rawProposalID)
+        }
+        let rawState: String = row["state"]
+        return SkillExecutionRecord(
+            proposalID: proposalID,
+            skillID: row["skillID"],
+            skillVersion: row["skillVersion"],
+            idempotencyKey: row["idempotencyKey"],
+            state: skillExecutionState(from: rawState),
+            attempt: row["attempt"],
+            updatedAt: row["updatedAt"])
+    }
+
     /// One fail-closed decoder for every projection of durable skill state.
     ///
     /// Storage spells a pre-handoff cancellation `cancelled`, while the

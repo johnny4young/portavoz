@@ -114,15 +114,26 @@ extension AppServices {
         }
         let outcome = try await ExecuteSkill(
             claims: store,
+            policy: store,
             effects: effects
         ).execute(ExecuteSkillRequest(
             proposal: proposal,
             isConfirmedByUser: true,
             egressIsPermitted: false,
             idempotencyKey: idempotencyKey))
+        return meetingSkillFailure(for: outcome)
+    }
+
+    private func meetingSkillFailure(
+        for outcome: SkillExecutionOutcome
+    ) -> String? {
         switch outcome {
         case .performed, .alreadySettled(.succeeded):
             return nil
+        case .refused(.allSkillsPaused):
+            return L10n.text("Skills are paused in Settings.")
+        case .refused(.skillDisabled):
+            return L10n.text("This skill is disabled in Settings.")
         case .alreadySettled, .refused, .rejected:
             return staleSkillProposalFailure
         case .failed:

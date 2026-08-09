@@ -180,6 +180,8 @@ public struct SkillExecution: Equatable, Sendable {
 public enum SkillAdmissionRefusal: String, Equatable, Sendable {
     case invalidDefinition = "invalid-definition"
     case invalidArgument = "invalid-argument"
+    case allSkillsPaused = "all-skills-paused"
+    case skillDisabled = "skill-disabled"
     case undeclaredCapability = "undeclared-capability"
     case noRequestedCapability = "no-requested-capability"
     case egressNotPermitted = "egress-not-permitted"
@@ -211,10 +213,19 @@ public enum SkillAdmissionPolicy {
         _ proposal: SkillProposal,
         isConfirmedByUser: Bool,
         egressIsPermitted: Bool,
+        executionPolicy: SkillExecutionPolicy = SkillExecutionPolicy(),
         at now: Date
     ) -> SkillAdmission {
         guard proposal.definition.isValid else {
             return .refused(.invalidDefinition)
+        }
+        guard !executionPolicy.isPaused else {
+            return .refused(.allSkillsPaused)
+        }
+        guard executionPolicy.isIndividuallyEnabled(
+            skillID: proposal.definition.id
+        ) else {
+            return .refused(.skillDisabled)
         }
         guard proposal.arguments.allSatisfy(\.isValid) else {
             return .refused(.invalidArgument)

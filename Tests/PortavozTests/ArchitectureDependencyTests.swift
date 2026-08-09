@@ -1821,7 +1821,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 34"))
+        XCTAssertTrue(schema.contains("public static let version = 35"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -2907,7 +2907,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 34"))
+        XCTAssertTrue(schema.contains("public static let version = 35"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -2949,7 +2949,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
-        XCTAssertTrue(architecture.contains("current schema version is 34"))
+        XCTAssertTrue(architecture.contains("current schema version is 35"))
         XCTAssertTrue(architecture.contains(
             "Every persisted semantic vector also carries one SHA-256"))
         XCTAssertTrue(decisions.contains("## D199"))
@@ -4026,10 +4026,13 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         // Refusal must precede the durable claim: a refused proposal that
         // wrote a claim would be an execution nobody can settle.
+        let policyIndex = try XCTUnwrap(
+            executor.range(of: "policy.skillExecutionPolicy")?.lowerBound)
         let admitIndex = try XCTUnwrap(
             executor.range(of: "SkillAdmissionPolicy.admit")?.lowerBound)
         let claimIndex = try XCTUnwrap(
             executor.range(of: "claims.confirmSkillExecution")?.lowerBound)
+        XCTAssertLessThan(policyIndex, admitIndex)
         XCTAssertLessThan(admitIndex, claimIndex)
         let effectIndex = try XCTUnwrap(
             executor.range(of: "effect.perform(proposal)")?.lowerBound)
@@ -4056,6 +4059,33 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D292"))
         XCTAssertTrue(decisions.contains("## D293"))
         XCTAssertTrue(decisions.contains("## D294"))
+    }
+
+    func testSkillsControlCenterSharesDurableFailClosedAuthority() throws {
+        let control = try Self.contents(
+            of: "Sources/ApplicationKit/SkillsControlCenter.swift")
+        let store = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SkillControl.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+SkillControl.swift")
+        let offers = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingSkillOffers.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SkillsSettingsSection.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(control.contains("enum LocalSkillCatalogue"))
+        XCTAssertTrue(control.contains("availability: .planned"))
+        XCTAssertTrue(control.contains("maximumReceiptLimit = 50"))
+        XCTAssertTrue(store.contains("maximumRecentSkillExecutionCount = 100"))
+        XCTAssertTrue(store.contains("ORDER BY updatedAt DESC, proposalID ASC"))
+        XCTAssertTrue(schema.contains("CREATE INDEX skillExecutionState_on_recent"))
+        XCTAssertTrue(schema.contains("updatedAt DESC, proposalID ASC"))
+        XCTAssertTrue(offers.contains("store.skillExecutionPolicy()"))
+        XCTAssertTrue(settings.contains("settings-skills-pause-all"))
+        XCTAssertTrue(settings.contains("settings-skill-\\(skill.id)-enabled"))
+        XCTAssertFalse(settings.contains("UserDefaults"))
+        XCTAssertTrue(decisions.contains("## D317"))
     }
 
     func testLocalSkillsAreContractsOverExistingWorkAndStayOffTheNetwork() throws {

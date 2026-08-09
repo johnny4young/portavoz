@@ -10960,6 +10960,376 @@
           }
         }
       }
+    },
+    "A receipt appears here only after you confirm a skill.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí aparece un recibo solo después de que confirmes un skill."
+          }
+        }
+      }
+    },
+    "All skills are paused": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos los skills están en pausa"
+          }
+        }
+      }
+    },
+    "Available now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponibles ahora"
+          }
+        }
+      }
+    },
+    "Cancelled — nothing ran": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelado — no se ejecutó nada"
+          }
+        }
+      }
+    },
+    "Coming later": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más adelante"
+          }
+        }
+      }
+    },
+    "Confirmed — waiting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmado — en espera"
+          }
+        }
+      }
+    },
+    "Control": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Control"
+          }
+        }
+      }
+    },
+    "Failed — retry is available": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falló — puedes reintentar"
+          }
+        }
+      }
+    },
+    "Loading skills…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando skills…"
+          }
+        }
+      }
+    },
+    "Needs review after interruption": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requiere revisión tras una interrupción"
+          }
+        }
+      }
+    },
+    "No description is available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay una descripción disponible."
+          }
+        }
+      }
+    },
+    "No skill runs yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay ejecuciones de skills"
+          }
+        }
+      }
+    },
+    "Nothing can be changed until Portavoz reads the durable policy.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede cambiar nada hasta que Portavoz lea la política persistente."
+          }
+        }
+      }
+    },
+    "On this Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este Mac"
+          }
+        }
+      }
+    },
+    "Pause all skills": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar todos los skills"
+          }
+        }
+      }
+    },
+    "Pause · enable · recent receipts": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar · activar · recibos recientes"
+          }
+        }
+      }
+    },
+    "Paused skills disappear from proposal surfaces and are refused again immediately before execution. Your individual choices stay saved.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los skills en pausa desaparecen de las propuestas y se rechazan de nuevo justo antes de ejecutarse. Tus opciones individuales quedan guardadas."
+          }
+        }
+      }
+    },
+    "Planned": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Planificado"
+          }
+        }
+      }
+    },
+    "Pre-meeting brief": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brief previo a la reunión"
+          }
+        }
+      }
+    },
+    "Prepares the exact recap for your clipboard after confirmation.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepara el recap exacto para el portapapeles después de tu confirmación."
+          }
+        }
+      }
+    },
+    "Previewed — nothing ran": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previsualizado — no se ejecutó nada"
+          }
+        }
+      }
+    },
+    "Proposed — nothing ran": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Propuesto — no se ejecutó nada"
+          }
+        }
+      }
+    },
+    "Recent receipts": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recibos recientes"
+          }
+        }
+      }
+    },
+    "Reminder draft": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrador de recordatorio"
+          }
+        }
+      }
+    },
+    "Shows the 20 most recent runs on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra las 20 ejecuciones más recientes en este Mac."
+          }
+        }
+      }
+    },
+    "Skill controls are unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los controles de Skills no están disponibles"
+          }
+        }
+      }
+    },
+    "Skills": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skills"
+          }
+        }
+      }
+    },
+    "Skills are paused in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los skills están en pausa en Configuración."
+          }
+        }
+      }
+    },
+    "Succeeded": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completado"
+          }
+        }
+      }
+    },
+    "Text-only meeting package": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paquete de reunión solo texto"
+          }
+        }
+      }
+    },
+    "This skill is disabled in Settings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este skill está desactivado en Configuración."
+          }
+        }
+      }
+    },
+    "Unknown skill": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skill desconocido"
+          }
+        }
+      }
+    },
+    "Will prepare a local reminder after its calendar permission flow ships.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparará un recordatorio local cuando esté listo el flujo de permiso del calendario."
+          }
+        }
+      }
+    },
+    "Will propose a cited brief from the upcoming calendar event.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Propondrá un brief con citas a partir del próximo evento del calendario."
+          }
+        }
+      }
+    },
+    "Writes a text-only package to the destination you approve.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guarda un paquete solo texto en el destino que apruebes."
+          }
+        }
+      }
+    },
+    "skills automation pause enable receipts local drafts exports": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "skills automatización pausar activar recibos local borradores exportaciones"
+          }
+        }
+      }
+    },
+    "The last change could not be verified. Close and reopen Settings before trying again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar el último cambio. Cierra y vuelve a abrir Configuración antes de intentarlo de nuevo."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

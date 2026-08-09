@@ -11037,3 +11037,41 @@ verification cost is documented in the roadmap).
 **Consequences:** a user can now run a skill end to end — proposal, exact
 preview, explicit confirmation, durable receipt — with nothing leaving the
 Mac, and the phase-2 pane will be born with real receipts in it.
+
+## D317 — Skills controls are durable execution authority, not preferences (Aug 2026)
+
+**Context:** phase 1 made two local skills reachable and left durable receipts,
+but there was no central place to understand or stop them. A Settings-only
+`UserDefaults` switch would let the app, CLI, and future process surfaces
+disagree. A pane listing all four declared contracts as runnable would also be
+dishonest: reminder delivery and the event-scoped brief surface have not
+shipped. Finally, a switch evaluated only when a proposal is rendered cannot
+revoke an already-open confirmation sheet.
+
+**Decision:** `LocalSkillCatalogue` is the central ApplicationKit projection.
+It marks recap draft and text-only package export `available`, and reminder
+draft plus pre-meeting brief `planned`. Schema v35 stores content-free policy
+beside execution authority: singleton `skillControl` owns global pause and
+sparse `skillDisablement` rows own individual choices. Missing disablement
+means enabled; global pause is an independent override and never rewrites the
+sparse set. Missing or corrupt singleton state fails closed.
+
+Meeting offer loading consults this policy before presenting proposals.
+`ExecuteSkill` independently reads it again immediately before admission and
+before the durable claim, so an old pane snapshot or open confirmation sheet
+cannot authorize an effect. The Settings pane writes through
+`ManageSkillControl`, which accepts only known, available catalogue entries.
+It projects 20 recent content-free receipts by default; application requests
+are clamped to 50, storage refuses more than 100, and SQLite serves
+`updatedAt DESC, proposalID ASC` through a direction-matched index. Malformed
+persisted receipt identities fail the read instead of disappearing.
+
+Egress consent and standing-rule controls remain absent until a real egress
+adapter exists. Irreversible package export keeps explicit confirmation per
+destination. Planned entries are labels, not disabled switches that imply an
+implementation.
+
+**Consequences:** the management pane, proposal surface, and final execution
+gate share one durable authority across processes; pause is reversible without
+forgetting individual choices; receipt cost stays bounded as history grows;
+and Phase 2 does not over-promise reminder, brief, or network automation.

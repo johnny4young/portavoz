@@ -84,15 +84,18 @@ public struct ExecuteSkillRequest: Sendable {
 /// one.
 public struct ExecuteSkill: ApplicationUseCase {
     private let claims: any SkillExecutionClaiming
+    private let policy: any SkillExecutionPolicyReading
     private let effects: [String: any SkillEffectPerforming]
     private let now: @Sendable () -> Date
 
     public init(
         claims: any SkillExecutionClaiming,
+        policy: any SkillExecutionPolicyReading,
         effects: [String: any SkillEffectPerforming],
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.claims = claims
+        self.policy = policy
         self.effects = effects
         self.now = now
     }
@@ -104,10 +107,15 @@ public struct ExecuteSkill: ApplicationUseCase {
         // user never authorizing the proposal: no durable claim, no effect.
         try Task.checkCancellation()
         let proposal = request.proposal
+        // Re-read the durable switchboard for every attempt. A pane snapshot
+        // or an already-open confirmation sheet is never authority to run.
+        let executionPolicy = try await policy.skillExecutionPolicy()
+        try Task.checkCancellation()
         switch SkillAdmissionPolicy.admit(
             proposal,
             isConfirmedByUser: request.isConfirmedByUser,
             egressIsPermitted: request.egressIsPermitted,
+            executionPolicy: executionPolicy,
             at: now()
         ) {
         case .refused(let reason):

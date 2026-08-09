@@ -58,19 +58,7 @@ extension MeetingStore {
                     ORDER BY updatedAt DESC, proposalID
                     """,
                 arguments: ["\(escaped)%"]
-            ).compactMap { row in
-                guard let proposalRaw = UUID(uuidString: row["proposalID"] ?? "")
-                else { return nil }
-                let rawState: String = row["state"]
-                return SkillExecutionRecord(
-                    proposalID: proposalRaw,
-                    skillID: row["skillID"],
-                    skillVersion: row["skillVersion"],
-                    idempotencyKey: row["idempotencyKey"],
-                    state: Self.skillExecutionState(from: rawState),
-                    attempt: row["attempt"],
-                    updatedAt: row["updatedAt"])
-            }
+            ).map(Self.skillExecutionRecord(from:))
         }
     }
 }

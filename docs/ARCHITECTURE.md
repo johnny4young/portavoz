@@ -217,6 +217,19 @@ that snapshot for delivery. A changed preview is refused before a claim, and
 the pasteboard adapter treats an unsuccessful write as a failed effect rather
 than a successful receipt.
 
+`LocalSkillCatalogue` is the single application-owned projection for the
+Skills management surface. It distinguishes skills that have both a proposal
+surface and an effect adapter from contracts that are not yet implemented. A
+device-local SQLite policy supplies one independent global pause plus a sparse
+set of per-skill disablements; missing or corrupt policy state is an error, not
+implicit permission. Meeting Detail reads that policy before presenting
+offers, and `ExecuteSkill` reads it again immediately before admission and the
+durable claim. The Settings snapshot combines the catalogue with at most 50
+content-free recent receipts (20 by default); storage itself refuses reads
+above 100 and serves the newest-first order from a direction-matched index.
+No egress consent or standing-rule control exists until a real egress adapter
+defines the corresponding authority.
+
 Application failures cross into presentation as bounded categories or stable
 workflow codes. Raw filesystem paths, localized dependency errors, model
 payloads, and storage implementation details do not form the UI contract.
@@ -243,6 +256,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | Global dictation | `DictationController` | application process |
 | Private sync | `MeetingSyncModel` | application process |
 | Whole-library backup | `LibraryMarkdownBackupModel` | application process |
+| Skills Settings | `SkillsSettingsSection` snapshot | one Settings window |
 | Spotlight reconciliation | `SpotlightIndexer` | application process |
 | Post-capture processing | `PostCaptureProcessingSupervisor` | application process |
 | Whisper preparation | shared readiness owner | application process |
@@ -587,7 +601,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 34. It includes:
+The current schema version is 35. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -625,6 +639,9 @@ The current schema version is 34. It includes:
   correction write);
 - durable skill-offer dismissal keyed by stable intent identity, so a
   declined proposal never returns;
+- one content-free device-local skill-control singleton, a sparse disablement
+  set, and a direction-matched recent-execution index shared by proposal and
+  execution admission;
 - immutable generation-run provenance;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);
@@ -3686,7 +3703,7 @@ The 9 Aug 2026 local acceptance snapshot is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,205 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,237 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -3694,10 +3711,10 @@ The 9 Aug 2026 local acceptance snapshot is:
   its fail-closed 25-iteration gate (5,525 executions); the generic runner
   refuses fewer than 90 and the release wrapper raises that floor to 108;
   focused Thread Sanitizer and Address Sanitizer gates also pass;
-- strict SwiftLint remains a blocking CI gate; the Aug 8 audit found 20
-  unsuppressed first-party violations (large/complex orchestration and query
-  units), so this branch is not merge-ready until those are refactored;
-- 68 XCUITest cases per locale define the 136-case bilingual release gate;
+- strict SwiftLint remains a blocking CI gate and is clean across all 630
+  production Swift files after the audited orchestration and query owners were
+  split without blanket suppressions;
+- 70 XCUITest cases per locale define the 140-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and
