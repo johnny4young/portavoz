@@ -143,6 +143,9 @@ final class AppServices {
     /// Upcoming-meeting preparation shares Ask retrieval and returns only
     /// storage-independent ApplicationKit values.
     @ObservationIgnored let meetingBriefUseCase: PrepareMeetingBrief
+    /// One process-owned recap delivery boundary keeps a failed skill attempt
+    /// retryable under the same adapter and durable proposal claim.
+    @ObservationIgnored let recapSkillDelivery: any RecapDraftDelivering
     /// Whole-library export state outlives Settings windows so closing a pane
     /// cannot cancel publication or start a competing backup.
     let libraryMarkdownBackup: LibraryMarkdownBackupModel
@@ -298,6 +301,7 @@ final class AppServices {
             voiceGallery: voiceGallery,
             voiceprintStore: voiceprintStore)
         askClient = AppAskModelClient(useCase: askUseCase)
+        recapSkillDelivery = Self.makeRecapSkillDelivery(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         meetingBriefUseCase = PrepareMeetingBrief(
             ask: askUseCase,
             library: AppMeetingBriefLibraryReader(store: store),

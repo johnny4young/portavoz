@@ -253,7 +253,14 @@ Meeting Detail recap confirmation captures one durable material snapshot,
 compares its composed artifact with the preview the user approved, and reuses
 that snapshot for delivery. A changed preview is refused before a claim, and
 the pasteboard adapter treats an unsuccessful write as a failed effect rather
-than a successful receipt.
+than a successful receipt. The confirmation target allocates its proposal UUID
+with that preview and keeps it across repeated Confirm attempts. If SwiftUI
+later reconstructs the sheet, the app resolves the unique idempotency key back
+to its original durable proposal instead of attempting to transfer the claim to
+a new UUID. Failed effects can therefore increment the original attempt while
+succeeded or interrupted effects retain their existing no-repeat semantics.
+The still-open sheet owns presentation of a recoverable reason, so it remains
+visible beside the retry action rather than behind the modal.
 
 `LocalSkillCatalogue` is the single application-owned projection for the
 Skills management surface. It distinguishes skills that have both a proposal
@@ -3750,7 +3757,7 @@ The 9 Aug 2026 local acceptance snapshot is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,240 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,268 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -3761,7 +3768,7 @@ The 9 Aug 2026 local acceptance snapshot is:
 - strict SwiftLint remains a blocking CI gate and is clean across all 633
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 71 XCUITest cases per locale define the 142-case bilingual release gate;
+- 72 XCUITest cases per locale define the 144-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

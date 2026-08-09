@@ -65,7 +65,8 @@ struct MeetingDetailFlowActions {
             async -> Bool
     let linkableTopics: [LinkableTopic]
     let confirmSkill:
-        @MainActor (MeetingDetailFlowState.SkillConfirmTarget) async -> Bool
+        @MainActor (MeetingDetailFlowState.SkillConfirmTarget)
+            async -> MeetingDetailFlowState.SkillConfirmationResult
 }
 
 /// Presentation host for all Meeting Detail sheets, dialogs, alerts, and

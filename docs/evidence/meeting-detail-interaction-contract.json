@@ -1889,6 +1889,12 @@
     {
       "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-error\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"skill-confirm-preview-body\")",
       "occurrences": 1
     },
@@ -1926,6 +1932,12 @@
       "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
       "category": "keyboard",
       "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "state",
+      "source": "@State private var failure: String?",
       "occurrences": 1
     },
     {
@@ -2734,6 +2746,7 @@
     {
       "feature": "skill-proposals",
       "tests": [
+        "testFailedSkillEffectRetriesItsOriginalProposal",
         "testSkillProposalJourneyFromBannerToReceipt"
       ],
       "sourceAnchors": [
@@ -2751,7 +2764,8 @@
         }
       ],
       "screenshots": [
-        "meeting-detail-skill-receipt"
+        "meeting-detail-skill-receipt",
+        "meeting-detail-skill-retry-receipt"
       ]
     },
     {

@@ -11219,3 +11219,37 @@ completion. The existing
 bilingual Onboarding XCUITest remains the real-app navigation gate; microphone
 and Apple asset behavior still require real-device field evidence rather than a
 CI simulation.
+
+## D321 — A Skill retry resumes its original durable proposal (Aug 2026)
+
+**Context:** storage gives one proposal exclusive ownership of an idempotency
+key. Meeting Detail previously created the proposal only when the user pressed
+Confirm, so a recoverable effect failure left its durable claim under one UUID
+while the next press manufactured another. Storage correctly rejected that
+second UUID as a competing claim. The confirmation sheet and failure state
+therefore promised a retry that the application could not execute.
+
+**Decision:** Meeting Detail allocates the proposal UUID with the exact preview
+and carries it through the coordinator, model, app client, and proposal factory
+for every Confirm press. The effect key remains the durable identity of the
+intended action and can never transfer to another proposal. If SwiftUI
+reconstructs the presentation after an attempt, an exact StorageKit lookup by
+that key returns its original owner and the app reattaches to that UUID.
+
+Preview revalidation still happens before claim lookup or execution. The
+existing executor remains the only authority that distinguishes a failed
+attempt, which may increment and retry, from a succeeded, dismissed, or
+interrupted attempt, which must not repeat. Recap delivery is process-owned so
+an adapter's retry state survives presentation work. A disposable-store-only
+XCUITest adapter rejects its first pasteboard handoff and delegates the second
+to the real system pasteboard; production construction cannot select it. The
+sheet renders the recoverable reason beside the retry control rather than only
+behind the modal presentation.
+
+**Consequences:** a failed recap advances the original attempt and delivers the
+same artifact the user approved. A fresh competing proposal is still rejected,
+and an already succeeded or potentially interrupted effect is never repeated.
+Unit tests cover identity routing, proposal construction, and exact durable
+owner lookup; the real app's English and Spanish XCUITest journey covers
+failure, visible recovery, retry, receipt, sheet dismissal, and byte-for-byte
+pasteboard output. No schema migration or external egress was introduced.

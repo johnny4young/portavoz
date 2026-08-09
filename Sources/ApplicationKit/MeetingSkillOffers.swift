@@ -170,11 +170,13 @@ public struct LoadMeetingSkillReceipts: ApplicationUseCase {
 /// pin the arguments and the idempotency key without a store.
 public enum MeetingSkillProposalFactory {
     public static func recapProposal(
+        proposalID: UUID = UUID(),
         meetingID: MeetingID,
         at now: Date
     ) -> (proposal: SkillProposal, idempotencyKey: String) {
         (
             SkillProposal(
+                id: proposalID,
                 definition: RecapDraftSkill.definition,
                 requestedCapabilities: [.readMeetingMaterial, .writeLocalDraft],
                 arguments: [.meeting(meetingID)],
@@ -184,12 +186,14 @@ public enum MeetingSkillProposalFactory {
     }
 
     public static func packageExportProposal(
+        proposalID: UUID = UUID(),
         meetingID: MeetingID,
         destination: String,
         at now: Date
     ) -> (proposal: SkillProposal, idempotencyKey: String) {
         (
             SkillProposal(
+                id: proposalID,
                 definition: MeetingPackageExportSkill.definition,
                 requestedCapabilities: [.readMeetingMaterial, .writeLocalFile],
                 arguments: [.meeting(meetingID), .text(destination)],

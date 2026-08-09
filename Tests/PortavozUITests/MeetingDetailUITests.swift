@@ -78,6 +78,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         unnamedSpeaker: Bool = false,
         aiSuggestions: Bool = false,
         abandonedSummary: Bool = false,
+        simulateSkillEffectFailureOnce: Bool = false,
         summaryEngine: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication.portavoz(
@@ -89,7 +90,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
             seedWithoutSummary: withoutSummary,
             seedStaleDerived: staleDerived,
             seedCommitmentInbox: commitmentInbox,
-            simulateSequoiaCapabilities: simulateSequoiaCapabilities)
+            simulateSequoiaCapabilities: simulateSequoiaCapabilities,
+            simulateSkillEffectFailureOnce: simulateSkillEffectFailureOnce)
         if justRecorded {
             app.launchArguments += ["-mirrorAfterMeeting", "true"]
         }
@@ -745,6 +747,60 @@ final class MeetingDetailUITests: PortavozUITestCase {
             evaluatedWith: menu)
         wait(for: [gone], timeout: 5)
         attachScreenshot(of: app, named: "meeting-detail-skill-receipt")
+    }
+
+    /// D321 — a failed effect keeps the sheet and retries the original durable
+    /// proposal. A fresh proposal UUID would collide with the claimed
+    /// idempotency key, so this real-app journey fails against the old wiring.
+    @MainActor
+    func testFailedSkillEffectRetriesItsOriginalProposal() {
+        let app = launchOnSeededMeeting(simulateSkillEffectFailureOnce: true)
+        defer { app.terminate() }
+
+        let menu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
+        menu.click()
+        let recap = app.menuItems["skill-offer-recap-draft"]
+        XCTAssertTrue(recap.waitForExistence(timeout: 5))
+        recap.click()
+
+        let sheet = app.control(withIdentifier: "skill-confirm-sheet")
+        let submit = app.buttons["skill-confirm-submit"]
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.prepareForInteraction())
+        XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
+        let previewBody = app.control(withIdentifier: "skill-confirm-preview-body")
+        let previewSubject = app.control(
+            withIdentifier: "skill-confirm-preview-subject")
+        let body = (previewBody.value as? String) ?? previewBody.label
+        let subject = (previewSubject.value as? String) ?? previewSubject.label
+
+        submit.click()
+        let failure = app.control(withIdentifier: "skill-confirm-error")
+        XCTAssertTrue(
+            failure.waitForExistence(timeout: 10),
+            "the recoverable failure must be visible inside the open sheet")
+        let retryReady = expectation(
+            for: NSPredicate(format: "exists == true AND enabled == true"),
+            evaluatedWith: submit)
+        wait(for: [retryReady], timeout: 10)
+        XCTAssertTrue(
+            sheet.exists,
+            "a failed effect must keep its exact preview available for retry")
+
+        XCTAssertTrue(app.prepareForInteraction())
+        XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
+        submit.click()
+        let receipt = app.control(withIdentifier: "skill-receipt-recap-draft")
+        XCTAssertTrue(
+            receipt.waitForExistence(timeout: 10),
+            "the retry must settle the original claim as succeeded")
+        XCTAssertFalse(sheet.exists)
+        XCTAssertEqual(
+            NSPasteboard.general.string(forType: .string),
+            "\(subject)\n\n\(body)",
+            "retry must deliver the same preview that was confirmed")
+        attachScreenshot(of: app, named: "meeting-detail-skill-retry-receipt")
     }
 
     @MainActor

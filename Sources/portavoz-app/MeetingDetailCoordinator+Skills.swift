@@ -40,14 +40,19 @@ extension MeetingDetailCoordinator {
     /// when the durable outcome is actually success.
     func confirmSkill(
         _ target: MeetingDetailFlowState.SkillConfirmTarget
-    ) async -> Bool {
+    ) async -> MeetingDetailFlowState.SkillConfirmationResult {
         let effect = await model.send(
             .performSkill(
                 target.offer,
+                proposalID: target.proposalID,
                 preview: target.preview,
                 destination: target.destination))
-        guard case .skillPerformed = effect else { return false }
-        return true
+        guard case .skillPerformed = effect else {
+            return .failed(
+                model.state.lastActionError
+                    ?? L10n.text("The skill could not run. Nothing left Portavoz."))
+        }
+        return .succeeded
     }
 
     private func presentSkillSheet(
@@ -60,6 +65,7 @@ extension MeetingDetailCoordinator {
                 destination: destination)
             else { return }
             flow.skillConfirmTarget = MeetingDetailFlowState.SkillConfirmTarget(
+                proposalID: UUID(),
                 offer: offer,
                 preview: preview,
                 destination: destination)

@@ -7,16 +7,24 @@ import SwiftUI
 /// way an effect runs, and the durable receipt is written before it does.
 struct SkillConfirmSheet: View {
     let target: MeetingDetailFlowState.SkillConfirmTarget
-    let confirm: () async -> Bool
+    let confirm: () async -> MeetingDetailFlowState.SkillConfirmationResult
     let dismiss: @MainActor () -> Void
 
     @State private var running = false
+    @State private var failure: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title).font(.headline)
             preview
             capabilities
+            if let failure {
+                Label(failure, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("skill-confirm-error")
+            }
             HStack {
                 Spacer()
                 Button(L10n.text("Cancel"), action: dismiss)
@@ -25,10 +33,16 @@ struct SkillConfirmSheet: View {
                     .accessibilityIdentifier("skill-confirm-cancel")
                 Button {
                     running = true
+                    failure = nil
                     Task {
-                        let done = await confirm()
+                        let result = await confirm()
                         running = false
-                        if done { dismiss() }
+                        switch result {
+                        case .succeeded:
+                            dismiss()
+                        case .failed(let message):
+                            failure = message
+                        }
                     }
                 } label: {
                     if running {

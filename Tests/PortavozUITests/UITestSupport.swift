@@ -68,6 +68,7 @@ extension XCUIApplication {
         simulateSystemAudioClipping: Bool = false,
         simulateLiveTranscriptionAttach: Bool = false,
         simulateLiveTranscriptBrowsing: Bool = false,
+        simulateSkillEffectFailureOnce: Bool = false,
         simulateAppIntent: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
@@ -134,6 +135,9 @@ extension XCUIApplication {
                 NSTemporaryDirectory() + "portavoz-live-resume-\(signalID)"
             app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH"] =
                 NSTemporaryDirectory() + "portavoz-live-complete-\(signalID)"
+        }
+        if simulateSkillEffectFailureOnce {
+            app.launchArguments.append("-simulate-skill-effect-failure-once")
         }
         if simulateAppIntent {
             app.launchArguments.append("-simulate-app-intent")

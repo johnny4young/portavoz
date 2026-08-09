@@ -31,6 +31,7 @@ extension MeetingDetailModel {
         case retractDecisionTopic(DecisionTopicLinkRetraction)
         case performSkill(
             MeetingSkillOffer,
+            proposalID: UUID,
             preview: MeetingSkillPreview,
             destination: String?)
         case dismissSkillOffer(MeetingSkillOffer)
@@ -162,11 +163,13 @@ extension MeetingDetailModel {
 
         static func performSkill(
             _ offer: MeetingSkillOffer,
+            proposalID: UUID,
             preview: MeetingSkillPreview,
             destination: String?
         ) -> Self {
             .content(.artifact(.performSkill(
                 offer,
+                proposalID: proposalID,
                 preview: preview,
                 destination: destination)))
         }

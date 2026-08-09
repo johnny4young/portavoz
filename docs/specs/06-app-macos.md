@@ -3,7 +3,8 @@
 Status: implemented, signed with Developer ID, and used in real meetings; public release 0.7.0 independently notarizes and staples both the app bundle and DMG. D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (atomic Stop handoff), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D287/D302 (pure clear-playback volume schedule, ordered on the timescale it is delivered on), D145 (exact-first Library semantic augmentation), D157–D189 (pure resource policy, generation-fenced residency, one composition owner, pinned model-family leases, pressure-driven idle release, capture-exclusive Whisper/MLX admission, bounded persisted-level presentation, signal-driven bounded live translation, recording-scoped bounded live Apuntador generation, signal-driven bounded live-summary delivery, deterministic generated-intelligence admission, observational clipping evidence, policy-owned live-caption presentation bounds, route-cancellable bounded waveform delivery, one shared bounded semantic-indexing flight, capture-prioritized semantic checkpoints, signal-driven semantic maintenance, capture-safe existing-library sync admission, staged whole-library backup checkpoints, crash-safe stage ownership, bounded backup-destination identity, durable publication evidence, strict staged-source adoption, successful-publication source checkpoints, fail-closed pending-publication reconciliation, durable typed backup failure outcomes, and fail-closed launch continuation), D224–D234 (Meeting Detail decomposition, correction editing, derived-artifact lineage, correction-aware export, and protected private-sync convergence), D238 (source-bound commitment-review read foundation), D273 (signal-driven typed memory-graph projection), D319 (fail-closed database launch recovery).
 
 D190 distinguishes intentional cancellation from owner-leased worker death.
-Additional decision: D320 (structured First Listen and SpeechAnalyzer lifetime).
+Additional decisions: D320 (structured First Listen and SpeechAnalyzer
+lifetime) and D321 (durable Skill retry identity and visible recovery).
 D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
 D193 lets only the resource-benchmark process observe that same closed stream
@@ -2287,6 +2288,16 @@ run keeps offering because retry is legitimate. Recap delivery is the
 pasteboard — the same act as the manual sheet's Copy — and the export writes
 one atomic text-only `.portavoz` file.
 
+The exact preview owns one proposal UUID for its complete presentation
+lifetime. A failed Confirm leaves the sheet on that UUID, so retry advances the
+same durable attempt rather than colliding with its idempotency key. If the
+sheet is reconstructed after failure, the app looks up the exact key and
+reattaches to its original proposal owner; it never transfers a claim between
+UUIDs. The fail-once XCUITest adapter exists only with disposable storage and
+hands the second attempt to the real pasteboard boundary. A recoverable reason
+is rendered inside the still-open confirmation sheet beside the retry control,
+not only on Meeting Detail behind the modal.
+
 The preview remains load-bearing until handoff. Confirmation re-composes the
 current durable recap and compares it with the approved subject/body before it
 writes a claim; changed material returns a stale-proposal failure and requires
@@ -2305,7 +2316,9 @@ menu could never learn it has offers to show.
 XCUITest covers the whole journey in one launch
 (`testSkillProposalJourneyFromBannerToReceipt`, EN+ES): offer menu → exact
 preview → confirm → clipboard artifact → receipt → offer retirement →
-durable dismissal.
+durable dismissal. D321 adds a second bilingual journey that refuses the first
+pasteboard handoff, retries the unchanged preview, and requires the successful
+receipt plus byte-for-byte clipboard artifact.
 
 ## Skills control center in Settings (D317, Aug 2026)
 

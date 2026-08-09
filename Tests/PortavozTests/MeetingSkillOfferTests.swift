@@ -201,10 +201,14 @@ final class MeetingSkillOfferTests: XCTestCase {
 
     func testProposalFactoryPinsArgumentsAndIdempotency() {
         let meetingID = MeetingID()
+        let recapProposalID = UUID()
+        let exportProposalID = UUID()
         let now = Date(timeIntervalSince1970: 500)
 
         let recap = MeetingSkillProposalFactory.recapProposal(
+            proposalID: recapProposalID,
             meetingID: meetingID, at: now)
+        XCTAssertEqual(recap.proposal.id, recapProposalID)
         XCTAssertEqual(recap.proposal.definition.id, RecapDraftSkill.id)
         XCTAssertEqual(recap.proposal.arguments, [.meeting(meetingID)])
         XCTAssertEqual(
@@ -212,7 +216,9 @@ final class MeetingSkillOfferTests: XCTestCase {
             RecapDraftSkill.idempotencyKey(for: meetingID))
 
         let export = MeetingSkillProposalFactory.packageExportProposal(
+            proposalID: exportProposalID,
             meetingID: meetingID, destination: " /tmp/x.portavoz ", at: now)
+        XCTAssertEqual(export.proposal.id, exportProposalID)
         XCTAssertEqual(
             export.proposal.arguments,
             [.meeting(meetingID), .text(" /tmp/x.portavoz ")])

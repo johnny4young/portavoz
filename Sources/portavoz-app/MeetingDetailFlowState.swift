@@ -37,9 +37,21 @@ final class MeetingDetailFlowState {
     /// preview it will show and, for export, the destination the user already
     /// chose in the save panel.
     struct SkillConfirmTarget {
+        /// Allocated with the preview and retained for every retry. Storage
+        /// permits a failed execution to retry only under its original claim;
+        /// a fresh UUID would correctly be rejected as a competing proposal.
+        let proposalID: UUID
         let offer: MeetingSkillOffer
         let preview: MeetingSkillPreview
         let destination: String?
+    }
+
+    /// The confirmation sheet owns presentation of a recoverable failure.
+    /// Returning the reason with the outcome keeps it visible above the retry
+    /// control instead of publishing it only behind the modal sheet.
+    enum SkillConfirmationResult: Equatable {
+        case succeeded
+        case failed(String)
     }
 
     /// The generated decision the confirm sheet is acting on. Route payload

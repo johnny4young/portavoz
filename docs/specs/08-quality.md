@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,265 cases (14 environment-gated) + 71
+Status: the package inventory contains 2,268 cases (14 environment-gated) + 72
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 71
+Meeting Detail tests. The English and Spanish release gates each cover all 72
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -1489,7 +1489,7 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 71 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 72 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select bilingual evidence; the
@@ -1570,10 +1570,10 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The 9 Aug 2026 field-reliability inventory is 2,265 XCTest package cases (14
+The 9 Aug 2026 field-reliability inventory is 2,268 XCTest package cases (14
 environment-gated), zero strict-lint violations across 633 production Swift
 files, a 221-case recording/recovery selector passing 25 consecutive iterations
-(5,525 executions), and 71 XCUITest cases per locale.
+(5,525 executions), and 72 XCUITest cases per locale.
 The generic stress runner refuses fewer than 90 tests and the release wrapper
 raises that floor to 108. Release evidence requires the package inventory to
 pass without failures on a supported AppKit-capable host and strict lint to
@@ -2221,9 +2221,20 @@ genuinely need different seed flags or launch arguments; never merge cases
 across different launch configurations, because a shared launch that half
 the assertions must un-do stops being evidence.
 
-The current inventory is 71 cases per locale (142 bilingual). The Aug 7 cost
-sample above predates ten of those bilingual executions and remains a timing model,
+The current inventory is 72 cases per locale (144 bilingual). The Aug 7 cost
+sample above predates twelve of those bilingual executions and remains a timing model,
 not a claim that the smaller 132-case inventory is current.
+
+**D321 retry gate.** Three package cases pin the proposal UUID across model
+routing, resolve the exact durable idempotency-key owner after presentation
+reconstruction, and ratchet the as-built decision; the existing proposal
+factory case also verifies that an injected UUID is preserved. One real-app
+journey per locale uses a disposable-store-only fail-once pasteboard boundary:
+the first handoff must leave the exact preview open with a visible failure, the
+second must reuse the original claim, settle a receipt, dismiss the sheet, and
+place the byte-for-byte approved artifact on the system pasteboard. Normal
+application construction cannot enable the fixture. This is retry evidence,
+not a claim about external egress, schema migration, or a real-device failure.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

@@ -250,6 +250,31 @@ extension MeetingStore {
         }
     }
 
+    /// Resolves the one durable owner of an intended effect. Presentation may
+    /// reconstruct a confirmation sheet after a failed attempt, but the unique
+    /// idempotency key still belongs to the original proposal UUID; retry must
+    /// resume that owner rather than manufacture a competing claim.
+    public func skillExecution(
+        idempotencyKey: String
+    ) async throws -> SkillExecutionRecord? {
+        let trimmed = idempotencyKey.trimmingCharacters(
+            in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed == idempotencyKey else { return nil }
+        return try await database.read { database in
+            guard let row = try Row.fetchOne(
+                database,
+                sql: """
+                    SELECT proposalID, skillID, skillVersion, idempotencyKey,
+                           state, attempt, updatedAt
+                    FROM skillExecutionState
+                    WHERE idempotencyKey = ?
+                    """,
+                arguments: [idempotencyKey])
+            else { return nil }
+            return try Self.skillExecutionRecord(from: row)
+        }
+    }
+
     // MARK: - Internals
 
     private static func skillExecution(

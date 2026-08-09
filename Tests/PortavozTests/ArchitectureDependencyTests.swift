@@ -4088,6 +4088,29 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D317"))
     }
 
+    func testSkillRetryKeepsOneProposalIdentityFromPreviewToEffect() throws {
+        let flow = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailFlowState.swift")
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator+Skills.swift")
+        let appAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingSkills.swift")
+        let sheet = try Self.contents(
+            of: "Sources/portavoz-app/SkillConfirmSheet.swift")
+        let factory = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingSkillOffers.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(flow.contains("let proposalID: UUID"))
+        XCTAssertTrue(coordinator.contains("proposalID: target.proposalID"))
+        XCTAssertTrue(appAdapter.contains("skillExecution(idempotencyKey:"))
+        XCTAssertTrue(appAdapter.contains("guard usesTemporaryStore,"))
+        XCTAssertTrue(sheet.contains("skill-confirm-error"))
+        XCTAssertTrue(factory.contains("proposalID: UUID = UUID()"))
+        XCTAssertTrue(factory.contains("id: proposalID"))
+        XCTAssertTrue(decisions.contains("## D321"))
+    }
+
     func testLocalSkillsAreContractsOverExistingWorkAndStayOffTheNetwork() throws {
         let skills = try Self.contents(
             of: "Sources/ApplicationKit/LocalSkills.swift")
@@ -7272,7 +7295,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            409)
+            411)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             14)

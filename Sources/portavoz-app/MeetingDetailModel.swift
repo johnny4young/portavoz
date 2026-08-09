@@ -165,9 +165,10 @@ final class MeetingDetailModel {
         case .retractDecisionTopic(let retraction):
             await retractDecisionTopic(retraction)
             return nil
-        case .performSkill(let offer, let preview, let destination):
+        case .performSkill(let offer, let proposalID, let preview, let destination):
             return await performSkill(
                 offer,
+                proposalID: proposalID,
                 preview: preview,
                 destination: destination)
         case .dismissSkillOffer(let offer):
@@ -491,12 +492,14 @@ private extension MeetingDetailModel {
     /// reflects the durable outcome. Returns the effect the sheet closes on.
     func performSkill(
         _ offer: MeetingSkillOffer,
+        proposalID: UUID,
         preview: MeetingSkillPreview,
         destination: String?
     ) async -> Effect? {
         do {
             let failure = try await client.performMeetingDetailSkill(
                 offer,
+                proposalID: proposalID,
                 preview: preview,
                 destination: destination)
             state.lastActionError = failure

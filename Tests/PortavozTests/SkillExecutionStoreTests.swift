@@ -56,6 +56,25 @@ final class SkillExecutionStoreTests: XCTestCase {
         XCTAssertEqual(other, .rejected(.idempotencyKeyClaimed))
     }
 
+    func testIdempotencyKeyResolvesItsOriginalProposalForReconstructedUI() async throws {
+        let store = try store()
+        let proposal = UUID()
+        _ = try await confirm(
+            store,
+            proposalID: proposal,
+            key: "recap-draft:retry")
+
+        let owner = try await store.skillExecution(
+            idempotencyKey: "recap-draft:retry")
+        let missing = try await store.skillExecution(idempotencyKey: "missing")
+        let invalid = try await store.skillExecution(idempotencyKey: " invalid ")
+
+        XCTAssertEqual(owner?.proposalID, proposal)
+        XCTAssertEqual(owner?.state, .confirmed)
+        XCTAssertNil(missing)
+        XCTAssertNil(invalid)
+    }
+
     func testChangingTheKeyForOneProposalIsRejected() async throws {
         let store = try store()
         let proposal = UUID()
