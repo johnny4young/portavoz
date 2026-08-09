@@ -200,6 +200,19 @@ The implemented application workflows include:
 - scoped Library, Insights, Meeting Detail, and resident menu-bar read contracts;
 - meeting-review, brief, reminder, mirror, and Insights policies.
 
+The local skill boundary is one of those application workflows, not a second
+implementation of product behavior. `ExecuteSkill` admits a typed proposal,
+durably confirms it, honours cancellation before the effect handoff, claims
+the attempt, delegates through a registered effect port, and settles a typed
+outcome. A pre-handoff cancellation is stored as `cancelled` and projected as
+the domain's terminal no-effect `dismissed` state by one fail-closed decoder;
+unknown future states project as `executing`, never as retryable failure.
+Meeting Detail recap confirmation captures one durable material snapshot,
+compares its composed artifact with the preview the user approved, and reuses
+that snapshot for delivery. A changed preview is refused before a claim, and
+the pasteboard adapter treats an unsuccessful write as a failed effect rather
+than a successful receipt.
+
 Application failures cross into presentation as bounded categories or stable
 workflow codes. Raw filesystem paths, localized dependency errors, model
 payloads, and storage implementation details do not form the UI contract.

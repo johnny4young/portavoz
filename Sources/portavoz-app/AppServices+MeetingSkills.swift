@@ -47,13 +47,7 @@ extension AppServices {
             guard let source = try await AppRecapMaterialReader(store: store)
                 .recapMaterial(for: offer.meetingID)
             else { throw RecapDraftError.noSummaryToRecap }
-            let recap = RecapComposer.compose(
-                meeting: source.meeting,
-                speakers: source.speakers,
-                summary: source.summary)
-            return .recap(
-                subject: recap.subject,
-                body: MeetingExporter.render(recap.markdown, format: .plainText))
+            return AppConfirmedRecapMaterial(source: source).preview
         case .packageExport:
             guard let destination else {
                 throw MeetingPackageExportError.missingDestination
@@ -69,35 +63,58 @@ extension AppServices {
     /// Returns nil on success, or the localized failure the sheet shows.
     func performMeetingDetailSkill(
         _ offer: MeetingSkillOffer,
+        preview: MeetingSkillPreview,
         destination: String?
     ) async throws -> String? {
         let now = Date()
         let proposal: SkillProposal
         let idempotencyKey: String
+        let effects: [String: any SkillEffectPerforming]
         switch offer.kind {
         case .recapDraft:
+            guard let source = try await AppRecapMaterialReader(store: store)
+                .recapMaterial(for: offer.meetingID)
+            else { throw RecapDraftError.noSummaryToRecap }
+            guard let confirmed = AppConfirmedRecapMaterial(
+                source: source,
+                approvedPreview: preview
+            ) else {
+                return staleSkillProposalFailure
+            }
+            // The sheet confirms an immutable artifact, not merely a meeting.
+            // If durable truth changed while the sheet was open, refuse before
+            // writing a claim and make the user review a fresh preview.
             (proposal, idempotencyKey) = MeetingSkillProposalFactory
                 .recapProposal(meetingID: offer.meetingID, at: now)
+            effects = [
+                RecapDraftSkill.id: RecapDraftEffect(
+                    material: confirmed,
+                    delivery: AppRecapPasteboardDelivery())
+            ]
         case .packageExport:
             guard let destination else {
                 throw MeetingPackageExportError.missingDestination
+            }
+            guard try await meetingDetailSkillPreview(
+                offer,
+                destination: destination
+            ) == preview else {
+                return staleSkillProposalFailure
             }
             (proposal, idempotencyKey) = MeetingSkillProposalFactory
                 .packageExportProposal(
                     meetingID: offer.meetingID,
                     destination: destination,
                     at: now)
+            effects = [
+                MeetingPackageExportSkill.id: MeetingPackageExportEffect(
+                    export: exportMeetingBundleUseCaseForSkills,
+                    destination: AppMeetingPackageWriter())
+            ]
         }
         let outcome = try await ExecuteSkill(
             claims: store,
-            effects: [
-                RecapDraftSkill.id: RecapDraftEffect(
-                    material: AppRecapMaterialReader(store: store),
-                    delivery: AppRecapPasteboardDelivery()),
-                MeetingPackageExportSkill.id: MeetingPackageExportEffect(
-                    export: exportMeetingBundleUseCaseForSkills,
-                    destination: AppMeetingPackageWriter()),
-            ]
+            effects: effects
         ).execute(ExecuteSkillRequest(
             proposal: proposal,
             isConfirmedByUser: true,
@@ -107,8 +124,7 @@ extension AppServices {
         case .performed, .alreadySettled(.succeeded):
             return nil
         case .alreadySettled, .refused, .rejected:
-            return L10n.text(
-                "This skill run could not start. Its proposal may be stale.")
+            return staleSkillProposalFailure
         case .failed:
             return L10n.text("The skill ran and failed. Nothing left Portavoz.")
         }
@@ -121,6 +137,11 @@ extension AppServices {
             // audio, and the effect itself also requests includeAudio: false.
             files: AppSkillExportBundleFiles(),
             documents: AppSkillExportBundleDocuments())
+    }
+
+    private var staleSkillProposalFailure: String {
+        L10n.text(
+            "This skill run could not start. Its proposal may be stale.")
     }
 }
 
@@ -138,15 +159,81 @@ struct AppRecapMaterialReader: RecapMaterialReading {
     }
 }
 
+/// The durable recap material captured at confirmation. Reusing this exact
+/// snapshot inside the effect prevents a second store read from changing the
+/// artifact after the user approved it.
+struct AppConfirmedRecapMaterial: RecapMaterialReading {
+    let meeting: Meeting
+    let speakers: [Speaker]
+    let summary: SummaryDraft
+    let preview: MeetingSkillPreview
+
+    init(
+        source: (meeting: Meeting, speakers: [Speaker], summary: SummaryDraft)
+    ) {
+        meeting = source.meeting
+        speakers = source.speakers
+        summary = source.summary
+        let recap = RecapComposer.compose(
+            meeting: source.meeting,
+            speakers: source.speakers,
+            summary: source.summary)
+        preview = .recap(
+            subject: recap.subject,
+            body: MeetingExporter.render(recap.markdown, format: .plainText))
+    }
+
+    init?(
+        source: (meeting: Meeting, speakers: [Speaker], summary: SummaryDraft),
+        approvedPreview: MeetingSkillPreview
+    ) {
+        self.init(source: source)
+        guard preview == approvedPreview else { return nil }
+    }
+
+    func recapMaterial(
+        for meetingID: MeetingID
+    ) async throws -> (meeting: Meeting, speakers: [Speaker], summary: SummaryDraft)? {
+        guard meeting.id == meetingID else { return nil }
+        return (meeting, speakers, summary)
+    }
+}
+
+protocol RecapPasteboardWriting: Sendable {
+    func replaceString(_ string: String) async -> Bool
+}
+
+struct SystemRecapPasteboard: RecapPasteboardWriting {
+    func replaceString(_ string: String) async -> Bool {
+        await MainActor.run {
+            NSPasteboard.general.clearContents()
+            return NSPasteboard.general.setString(string, forType: .string)
+        }
+    }
+}
+
+enum AppRecapPasteboardError: Error, CategorizedFailure {
+    case writeRejected
+
+    var category: FailureCategory { .recoverable }
+}
+
 /// The local draft destination for a confirmed recap: the pasteboard, exactly
 /// what the manual sheet's Copy does — the user still sends it themselves.
 struct AppRecapPasteboardDelivery: RecapDraftDelivering {
+    let pasteboard: any RecapPasteboardWriting
+
+    init(
+        pasteboard: any RecapPasteboardWriting = SystemRecapPasteboard()
+    ) {
+        self.pasteboard = pasteboard
+    }
+
     func deliver(_ recap: MeetingRecap) async throws {
         let text = "\(recap.subject)\n\n"
             + MeetingExporter.render(recap.markdown, format: .plainText)
-        await MainActor.run {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
+        guard await pasteboard.replaceString(text) else {
+            throw AppRecapPasteboardError.writeRejected
         }
     }
 }

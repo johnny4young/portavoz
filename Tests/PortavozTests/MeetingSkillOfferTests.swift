@@ -145,6 +145,31 @@ final class MeetingSkillOfferTests: XCTestCase {
         XCTAssertEqual(receipts.map(\.state), [.failed])
     }
 
+    /// Storage spells a pre-handoff cancellation `cancelled`; the domain
+    /// projects that as the terminal no-effect state `dismissed`. Receipts
+    /// must keep it visible instead of dropping an unknown raw value.
+    func testCancelledConfirmationRemainsVisibleAsADismissedReceipt() async throws {
+        let store = try MeetingStore.inMemory()
+        let meetingID = MeetingID()
+        let (proposal, key) = MeetingSkillProposalFactory.recapProposal(
+            meetingID: meetingID,
+            at: Date(timeIntervalSince1970: 100))
+
+        _ = try await store.confirmSkillExecution(
+            proposalID: proposal.id,
+            skillID: proposal.definition.id,
+            skillVersion: proposal.definition.version,
+            idempotencyKey: key,
+            at: Date(timeIntervalSince1970: 100))
+        _ = try await store.cancelSkillExecution(
+            proposalID: proposal.id,
+            at: Date(timeIntervalSince1970: 101))
+
+        let receipts = try await LoadMeetingSkillReceipts(store: store)
+            .execute(meetingID)
+        XCTAssertEqual(receipts.map(\.state), [.dismissed])
+    }
+
     func testProposalFactoryPinsArgumentsAndIdempotency() {
         let meetingID = MeetingID()
         let now = Date(timeIntervalSince1970: 500)

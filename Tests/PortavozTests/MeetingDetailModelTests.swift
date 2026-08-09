@@ -224,9 +224,15 @@ final class MeetingDetailModelTests: XCTestCase {
         let offer = MeetingSkillOffer(
             kind: .packageExport,
             meetingID: fixture.meeting.id)
+        let preview = MeetingSkillPreview.packageExport(
+            meetingTitle: fixture.meeting.title,
+            destination: "/tmp/x.portavoz")
 
         let effect = await model.send(
-            .performSkill(offer, destination: "/tmp/x.portavoz"))
+            .performSkill(
+                offer,
+                preview: preview,
+                destination: "/tmp/x.portavoz"))
         await model.send(.dismissSkillOffer(offer))
 
         guard case .skillPerformed(let performed) = effect else {
@@ -234,7 +240,7 @@ final class MeetingDetailModelTests: XCTestCase {
         }
         XCTAssertEqual(performed.offerKey, offer.offerKey)
         XCTAssertTrue(client.calls.contains(
-            .performSkill(offer.offerKey, "/tmp/x.portavoz")))
+            .performSkill(offer.offerKey, preview, "/tmp/x.portavoz")))
         XCTAssertTrue(client.calls.contains(.dismissSkillOffer(offer.offerKey)))
         XCTAssertNil(model.state.lastActionError)
     }
@@ -1080,9 +1086,10 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
 
     func performMeetingDetailSkill(
         _ offer: MeetingSkillOffer,
+        preview: MeetingSkillPreview,
         destination: String?
     ) throws -> String? {
-        calls.append(.performSkill(offer.offerKey, destination))
+        calls.append(.performSkill(offer.offerKey, preview, destination))
         return nil
     }
 
@@ -1285,6 +1292,6 @@ private enum MeetingDetailModelCall: Equatable {
     case rememberVoice(MeetingID, SpeakerID)
     case retractDecisionTopic(DecisionTopicLinkID)
     case loadSkillOffers(MeetingID, Bool)
-    case performSkill(String, String?)
+    case performSkill(String, MeetingSkillPreview, String?)
     case dismissSkillOffer(String)
 }

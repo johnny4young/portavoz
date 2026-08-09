@@ -59,15 +59,15 @@ extension MeetingStore {
                     """,
                 arguments: ["\(escaped)%"]
             ).compactMap { row in
-                guard let proposalRaw = UUID(uuidString: row["proposalID"] ?? ""),
-                      let state = SkillExecutionState(rawValue: row["state"] ?? "")
+                guard let proposalRaw = UUID(uuidString: row["proposalID"] ?? "")
                 else { return nil }
+                let rawState: String = row["state"]
                 return SkillExecutionRecord(
                     proposalID: proposalRaw,
                     skillID: row["skillID"],
                     skillVersion: row["skillVersion"],
                     idempotencyKey: row["idempotencyKey"],
-                    state: state,
+                    state: Self.skillExecutionState(from: rawState),
                     attempt: row["attempt"],
                     updatedAt: row["updatedAt"])
             }

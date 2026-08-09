@@ -1883,6 +1883,12 @@
     {
       "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-cancel\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"skill-confirm-preview-body\")",
       "occurrences": 1
     },

@@ -21,6 +21,8 @@ struct SkillConfirmSheet: View {
                 Spacer()
                 Button(L10n.text("Cancel"), action: dismiss)
                     .keyboardShortcut(.cancelAction)
+                    .disabled(running)
+                    .accessibilityIdentifier("skill-confirm-cancel")
                 Button {
                     running = true
                     Task {
@@ -42,6 +44,7 @@ struct SkillConfirmSheet: View {
         }
         .padding(20)
         .frame(width: 480)
+        .interactiveDismissDisabled(running)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("skill-confirm-sheet")
     }

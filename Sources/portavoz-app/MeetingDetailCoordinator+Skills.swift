@@ -42,7 +42,10 @@ extension MeetingDetailCoordinator {
         _ target: MeetingDetailFlowState.SkillConfirmTarget
     ) async -> Bool {
         let effect = await model.send(
-            .performSkill(target.offer, destination: target.destination))
+            .performSkill(
+                target.offer,
+                preview: target.preview,
+                destination: target.destination))
         guard case .skillPerformed = effect else { return false }
         return true
     }

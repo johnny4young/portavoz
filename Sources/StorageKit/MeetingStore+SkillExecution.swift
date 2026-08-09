@@ -270,10 +270,7 @@ extension MeetingStore {
         // treats as retryable, so defaulting there would let a row written by a
         // newer build be re-run. `.executing` is the fail-closed reading — the
         // caller reconciles instead of repeating.
-        let state: SkillExecutionState = switch raw {
-        case "cancelled": .dismissed
-        default: SkillExecutionState(rawValue: raw) ?? .executing
-        }
+        let state = skillExecutionState(from: raw)
         return SkillExecutionRecord(
             proposalID: proposalID,
             skillID: row["skillID"],
@@ -282,6 +279,19 @@ extension MeetingStore {
             state: state,
             attempt: row["attempt"],
             updatedAt: row["updatedAt"])
+    }
+
+    /// One fail-closed decoder for every projection of durable skill state.
+    ///
+    /// Storage spells a pre-handoff cancellation `cancelled`, while the
+    /// domain calls that terminal no-effect state `dismissed`. Keeping this
+    /// translation here also means a state written by a newer build can never
+    /// disappear from receipts or accidentally become retryable.
+    static func skillExecutionState(from raw: String) -> SkillExecutionState {
+        switch raw {
+        case "cancelled": .dismissed
+        default: SkillExecutionState(rawValue: raw) ?? .executing
+        }
     }
 
     private static func appendSkillEvent(

@@ -10997,6 +10997,16 @@ the proposal exists, so the confirmed proposal never resolves a path behind
 the user's back; recap delivery is the pasteboard — exactly what the manual
 sheet's Copy does, and the user still sends it themselves.
 
+The exact-preview contract crosses confirmation as an immutable snapshot, not
+as permission to re-read the meeting later. Confirmation re-composes current
+durable material and compares it with the sheet's preview before any claim; a
+changed meeting requires a fresh preview. The accepted material snapshot then
+feeds the effect, so a second store read cannot change the copied draft.
+Pasteboard rejection is a typed failed effect, not a successful receipt.
+Cancellation remains available only before the durable begin/handoff: the
+executor records that no-effect terminal state, while the sheet disables both
+cancel and interactive dismissal once execution is running.
+
 Dismissal became durable state (schema v34, `skillOfferDismissal`): the AUTO
 contract makes `dismissed` terminal from `proposed`, but the execution tables
 only begin at confirmation. The offer key is the stable intent identity

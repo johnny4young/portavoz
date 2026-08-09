@@ -2218,7 +2218,7 @@ guard is load-bearing.)
 ## Skill proposals in Meeting Detail (D316, Aug 2026)
 
 The no-egress skill tier's first surface anchors proposals to their subject
-at zero vertical cost. `SkillOfferMenu` (in SkillOfferBanner.swift) renders a
+at zero vertical cost. `SkillOfferMenu` (in `SkillOfferBanner.swift`) renders a
 badged sparkles menu beside the document actions once the meeting has a
 summary, offering the meeting-scoped skills: recap draft and text-only
 package export. The placement is load-bearing: Meeting Detail's column is
@@ -2239,6 +2239,16 @@ recap retires its offer, export keeps offering per destination, and a failed
 run keeps offering because retry is legitimate. Recap delivery is the
 pasteboard — the same act as the manual sheet's Copy — and the export writes
 one atomic text-only `.portavoz` file.
+
+The preview remains load-bearing until handoff. Confirmation re-composes the
+current durable recap and compares it with the approved subject/body before it
+writes a claim; changed material returns a stale-proposal failure and requires
+a fresh sheet. The accepted material is then captured for the effect, so no
+second store read can change the clipboard artifact. `NSPasteboard.setString`
+returning false settles the run as a typed recoverable failure. Once execution
+starts, Cancel and interactive sheet dismissal are disabled; cancellation in
+the smaller confirmed-before-begin gap records a visible terminal no-effect
+receipt instead of stranding the run.
 
 One SwiftUI constraint is load-bearing here: an empty ViewBuilder branch is
 never installed, so the menu renders a hidden 1×1 anchor while empty —

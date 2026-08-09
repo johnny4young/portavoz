@@ -18,6 +18,11 @@ public protocol SkillExecutionClaiming: Sendable {
         at now: Date
     ) async throws -> SkillExecutionAdmission
 
+    func cancelSkillExecution(
+        proposalID: UUID,
+        at now: Date
+    ) async throws -> SkillExecutionAdmission
+
     func settleSkillExecution(
         proposalID: UUID,
         succeeded: Bool,
@@ -95,6 +100,9 @@ public struct ExecuteSkill: ApplicationUseCase {
     public func execute(
         _ request: ExecuteSkillRequest
     ) async throws -> SkillExecutionOutcome {
+        // Cancellation before confirmation must be indistinguishable from the
+        // user never authorizing the proposal: no durable claim, no effect.
+        try Task.checkCancellation()
         let proposal = request.proposal
         switch SkillAdmissionPolicy.admit(
             proposal,
@@ -133,6 +141,8 @@ public struct ExecuteSkill: ApplicationUseCase {
             break
         }
 
+        try await checkCancellationBeforeHandoff(proposalID: proposal.id)
+
         switch try await claims.beginSkillExecution(
             proposalID: proposal.id,
             at: now()
@@ -163,6 +173,29 @@ public struct ExecuteSkill: ApplicationUseCase {
             failureCategory: nil,
             at: now())
         return .performed
+    }
+
+    /// Confirmation and irreversible handoff are separate durable states.
+    /// Honour cancellation in that gap and terminally record that no effect
+    /// ran, rather than leaving a confirmed execution stranded forever.
+    private func checkCancellationBeforeHandoff(
+        proposalID: UUID
+    ) async throws {
+        do {
+            try Task.checkCancellation()
+        } catch {
+            // Database writers may themselves observe the caller's cancelled
+            // task. Finalize from a fresh unstructured task so cancellation
+            // cannot suppress the durable "nothing ran" transition.
+            let claims = self.claims
+            let cancelledAt = now()
+            _ = try? await Task {
+                try await claims.cancelSkillExecution(
+                    proposalID: proposalID,
+                    at: cancelledAt)
+            }.value
+            throw error
+        }
     }
 }
 

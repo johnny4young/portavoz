@@ -228,6 +228,42 @@ final class ExecuteSkillTests: XCTestCase {
         XCTAssertTrue(delivered.isEmpty, "the effect may already exist")
     }
 
+    /// Cancellation after durable confirmation but before the effect handoff
+    /// must close the claim as no-effect, not strand it in `confirmed`.
+    func testCancellationBeforeHandoffIsDurablyDismissed() async throws {
+        let store = try MeetingStore.inMemory()
+        let claims = GatedSkillClaims(store: store)
+        let delivery = RecordingReminderDelivery()
+        let subject = proposal()
+        let instant = now
+        let executor = ExecuteSkill(
+            claims: claims,
+            effects: [
+                ReminderDraftSkill.id: ReminderDraftEffect(delivery: delivery)
+            ],
+            now: { instant })
+        let executionRequest = request(subject)
+
+        let task = Task {
+            try await executor.execute(executionRequest)
+        }
+        await claims.waitUntilConfirmed()
+        task.cancel()
+        await claims.releaseConfirmation()
+
+        do {
+            _ = try await task.value
+            XCTFail("cancellation before handoff must propagate")
+        } catch is CancellationError {
+            // Expected.
+        }
+        let delivered = await delivery.drafts
+        XCTAssertTrue(delivered.isEmpty)
+        let history = try await store.skillExecutionHistory(
+            proposalID: subject.id)
+        XCTAssertEqual(history.map(\.kind), ["confirm", "cancel"])
+    }
+
     // MARK: - The pure projection
 
     func testDraftProjectionReadsOnlyTypedArguments() throws {
@@ -296,3 +332,71 @@ private struct TypedDeliveryFailure: CategorizedFailure {
 }
 
 private struct UntypedDeliveryFailure: Error {}
+
+private actor GatedSkillClaims: SkillExecutionClaiming {
+    private let store: MeetingStore
+    private var didConfirm = false
+    private var confirmationWaiter: CheckedContinuation<Void, Never>?
+    private var release: CheckedContinuation<Void, Never>?
+
+    init(store: MeetingStore) {
+        self.store = store
+    }
+
+    func waitUntilConfirmed() async {
+        guard !didConfirm else { return }
+        await withCheckedContinuation { confirmationWaiter = $0 }
+    }
+
+    func releaseConfirmation() {
+        release?.resume()
+        release = nil
+    }
+
+    func confirmSkillExecution(
+        proposalID: UUID,
+        skillID: String,
+        skillVersion: Int,
+        idempotencyKey: String,
+        at now: Date
+    ) async throws -> SkillExecutionAdmission {
+        let admission = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: skillID,
+            skillVersion: skillVersion,
+            idempotencyKey: idempotencyKey,
+            at: now)
+        didConfirm = true
+        confirmationWaiter?.resume()
+        confirmationWaiter = nil
+        await withCheckedContinuation { release = $0 }
+        return admission
+    }
+
+    func beginSkillExecution(
+        proposalID: UUID,
+        at now: Date
+    ) async throws -> SkillExecutionAdmission {
+        try await store.beginSkillExecution(proposalID: proposalID, at: now)
+    }
+
+    func cancelSkillExecution(
+        proposalID: UUID,
+        at now: Date
+    ) async throws -> SkillExecutionAdmission {
+        try await store.cancelSkillExecution(proposalID: proposalID, at: now)
+    }
+
+    func settleSkillExecution(
+        proposalID: UUID,
+        succeeded: Bool,
+        failureCategory: FailureCategory?,
+        at now: Date
+    ) async throws -> SkillExecutionAdmission {
+        try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: succeeded,
+            failureCategory: failureCategory,
+            at: now)
+    }
+}

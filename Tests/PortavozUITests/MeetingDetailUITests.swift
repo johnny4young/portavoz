@@ -675,8 +675,15 @@ final class MeetingDetailUITests: PortavozUITestCase {
         recapItem.click()
         let sheet = app.control(withIdentifier: "skill-confirm-sheet")
         XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        let cancel = app.buttons["skill-confirm-cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 5))
+        XCTAssertTrue(cancel.isEnabled)
         let body = app.control(withIdentifier: "skill-confirm-preview-body")
         XCTAssertTrue(body.waitForExistence(timeout: 5))
+        let subjectElement = app.control(
+            withIdentifier: "skill-confirm-preview-subject")
+        let subject = (subjectElement.value as? String) ?? subjectElement.label
+        let previewBody = (body.value as? String) ?? body.label
 
         // 2 · Confirm: the effect lands on the clipboard and the durable
         // receipt renders in the trust rail.
@@ -689,9 +696,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
             receipt.label.contains("—"),
             "the receipt announces skill and outcome; saw '\(receipt.label)'")
         let copied = NSPasteboard.general.string(forType: .string) ?? ""
-        XCTAssertFalse(
-            copied.isEmpty,
-            "the confirmed recap must actually reach the clipboard")
+        XCTAssertEqual(
+            copied,
+            "\(subject)\n\n\(previewBody)",
+            "the clipboard must contain the exact artifact the user approved")
 
         // 3 · A succeeded recap retires its offer; export keeps offering.
         // 4 · Dismissing the last offer is terminal: the menu itself leaves.

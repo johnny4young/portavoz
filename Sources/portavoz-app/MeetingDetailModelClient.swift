@@ -58,6 +58,7 @@ protocol MeetingDetailModelClient: AnyObject {
     ) async throws -> MeetingSkillPreview
     func performMeetingDetailSkill(
         _ offer: MeetingSkillOffer,
+        preview: MeetingSkillPreview,
         destination: String?
     ) async throws -> String?
     func dismissMeetingDetailSkillOffer(_ offer: MeetingSkillOffer) async throws

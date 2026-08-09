@@ -26,7 +26,10 @@ extension MeetingDetailModel {
         case removeCompanionCard(UUID)
         case confirmDecision(ConfirmDecisionAboutTopicRequest)
         case retractDecisionTopic(DecisionTopicLinkRetraction)
-        case performSkill(MeetingSkillOffer, destination: String?)
+        case performSkill(
+            MeetingSkillOffer,
+            preview: MeetingSkillPreview,
+            destination: String?)
         case dismissSkillOffer(MeetingSkillOffer)
     }
 
@@ -139,9 +142,13 @@ extension MeetingDetailModel {
 
         static func performSkill(
             _ offer: MeetingSkillOffer,
+            preview: MeetingSkillPreview,
             destination: String?
         ) -> Self {
-            .content(.performSkill(offer, destination: destination))
+            .content(.performSkill(
+                offer,
+                preview: preview,
+                destination: destination))
         }
 
         static func dismissSkillOffer(_ offer: MeetingSkillOffer) -> Self {
