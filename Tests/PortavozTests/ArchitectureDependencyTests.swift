@@ -3962,6 +3962,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/ExecuteSkill.swift")
         let skill = try Self.contents(
             of: "Sources/ApplicationKit/ReminderDraftSkill.swift")
+        let executionStore = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SkillExecution.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         // Admission is decided from the declaration alone, so the policy never
@@ -3986,6 +3988,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         // One authority for which states may proceed.
         XCTAssertTrue(executor.contains("case .admitted, .alreadySettled:"))
         XCTAssertFalse(executor.contains("record.state == .confirmed"))
+
+        // Storage transitions carry one typed event/state/category command,
+        // so a parameter list cannot cross-wire a terminal event and state.
+        XCTAssertTrue(executionStore.contains("private struct SkillExecutionEventWrite"))
+        XCTAssertTrue(executionStore.contains("private struct SkillExecutionTransition"))
+        XCTAssertTrue(executionStore.contains("case failed(FailureCategory)"))
+        XCTAssertTrue(executionStore.contains("transition.event(previousEventID: previous)"))
+        XCTAssertFalse(executionStore.contains("kind: String,\n        state: String,"))
 
         // Platform effects stay behind ports.
         for forbidden in ["import EventKit", "import SwiftUI", "import AppKit"] {

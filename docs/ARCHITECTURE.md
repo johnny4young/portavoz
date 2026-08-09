@@ -207,6 +207,10 @@ the attempt, delegates through a registered effect port, and settles a typed
 outcome. A pre-handoff cancellation is stored as `cancelled` and projected as
 the domain's terminal no-effect `dismissed` state by one fail-closed decoder;
 unknown future states project as `executing`, never as retryable failure.
+Storage appends confirmation through one typed event write and represents every
+later transition as one typed command whose case determines the persisted event
+kind, state, and optional failure category. The event and current projection
+therefore cannot drift through independently ordered string parameters.
 Meeting Detail recap confirmation captures one durable material snapshot,
 compares its composed artifact with the preview the user approved, and reuses
 that snapshot for delivery. A changed preview is refused before a claim, and

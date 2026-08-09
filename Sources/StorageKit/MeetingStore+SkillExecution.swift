@@ -89,12 +89,13 @@ extension MeetingStore {
             guard !claimed else { return .rejected(.idempotencyKeyClaimed) }
 
             let eventID = try Self.appendSkillEvent(
-                proposalID: proposalID,
-                previousEventID: nil,
-                kind: "confirm",
-                attempt: 1,
-                failureCategory: nil,
-                at: now,
+                SkillExecutionEventWrite(
+                    proposalID: proposalID,
+                    previousEventID: nil,
+                    kind: .confirm,
+                    attempt: 1,
+                    failureCategory: nil,
+                    occurredAt: now),
                 in: database)
             try database.execute(
                 sql: """
@@ -145,12 +146,11 @@ extension MeetingStore {
                 ? existing.attempt + 1
                 : existing.attempt
             try Self.advanceSkillExecution(
-                proposalID: proposalID,
-                kind: "begin",
-                state: "executing",
-                attempt: attempt,
-                failureCategory: nil,
-                at: now,
+                SkillExecutionTransition(
+                    proposalID: proposalID,
+                    transition: .begin,
+                    attempt: attempt,
+                    occurredAt: now),
                 in: database)
             guard let record = try Self.skillExecution(proposalID, in: database)
             else { return .rejected(.unknownExecution) }
@@ -172,16 +172,21 @@ extension MeetingStore {
             guard existing.state == .executing else {
                 return .rejected(.illegalTransition)
             }
-            guard succeeded == (failureCategory == nil) else {
+            let transition: PersistedSkillExecutionTransition
+            switch (succeeded, failureCategory) {
+            case (true, nil):
+                transition = .succeeded
+            case (false, .some(let category)):
+                transition = .failed(category)
+            default:
                 return .rejected(.illegalTransition)
             }
             try Self.advanceSkillExecution(
-                proposalID: proposalID,
-                kind: succeeded ? "succeed" : "fail",
-                state: succeeded ? "succeeded" : "failed",
-                attempt: existing.attempt,
-                failureCategory: failureCategory?.rawValue,
-                at: now,
+                SkillExecutionTransition(
+                    proposalID: proposalID,
+                    transition: transition,
+                    attempt: existing.attempt,
+                    occurredAt: now),
                 in: database)
             guard let record = try Self.skillExecution(proposalID, in: database)
             else { return .rejected(.unknownExecution) }
@@ -203,12 +208,11 @@ extension MeetingStore {
                 return .rejected(.illegalTransition)
             }
             try Self.advanceSkillExecution(
-                proposalID: proposalID,
-                kind: "cancel",
-                state: "cancelled",
-                attempt: existing.attempt,
-                failureCategory: nil,
-                at: now,
+                SkillExecutionTransition(
+                    proposalID: proposalID,
+                    transition: .cancelled,
+                    attempt: existing.attempt,
+                    occurredAt: now),
                 in: database)
             guard let record = try Self.skillExecution(proposalID, in: database)
             else { return .rejected(.unknownExecution) }
@@ -295,12 +299,7 @@ extension MeetingStore {
     }
 
     private static func appendSkillEvent(
-        proposalID: UUID,
-        previousEventID: String?,
-        kind: String,
-        attempt: Int,
-        failureCategory: String?,
-        at now: Date,
+        _ event: SkillExecutionEventWrite,
         in database: Database
     ) throws -> String {
         let eventID = UUID().uuidString
@@ -312,32 +311,23 @@ extension MeetingStore {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
             arguments: [
-                eventID, proposalID.uuidString, previousEventID, kind,
-                attempt, failureCategory, now
+                eventID, event.proposalID.uuidString, event.previousEventID,
+                event.kind.rawValue, event.attempt,
+                event.failureCategory?.rawValue, event.occurredAt
             ])
         return eventID
     }
 
     private static func advanceSkillExecution(
-        proposalID: UUID,
-        kind: String,
-        state: String,
-        attempt: Int,
-        failureCategory: String?,
-        at now: Date,
+        _ transition: SkillExecutionTransition,
         in database: Database
     ) throws {
         let previous = try String.fetchOne(
             database,
             sql: "SELECT latestEventID FROM skillExecutionState WHERE proposalID = ?",
-            arguments: [proposalID.uuidString])
+            arguments: [transition.proposalID.uuidString])
         let eventID = try appendSkillEvent(
-            proposalID: proposalID,
-            previousEventID: previous,
-            kind: kind,
-            attempt: attempt,
-            failureCategory: failureCategory,
-            at: now,
+            transition.event(previousEventID: previous),
             in: database)
         // The projection's updatedAt is monotonic, clamped in SQL rather than
         // trusted from the wall clock. A backward clock step between confirm
@@ -353,7 +343,79 @@ extension MeetingStore {
                     updatedAt = MAX(?, updatedAt)
                 WHERE proposalID = ?
                 """,
-            arguments: [state, attempt, eventID, now, proposalID.uuidString])
+            arguments: [
+                transition.transition.state,
+                transition.attempt,
+                eventID,
+                transition.occurredAt,
+                transition.proposalID.uuidString
+            ])
+    }
+}
+
+private struct SkillExecutionEventWrite {
+    let proposalID: UUID
+    let previousEventID: String?
+    let kind: PersistedSkillExecutionEventKind
+    let attempt: Int
+    let failureCategory: FailureCategory?
+    let occurredAt: Date
+}
+
+private struct SkillExecutionTransition {
+    let proposalID: UUID
+    let transition: PersistedSkillExecutionTransition
+    let attempt: Int
+    let occurredAt: Date
+
+    func event(previousEventID: String?) -> SkillExecutionEventWrite {
+        SkillExecutionEventWrite(
+            proposalID: proposalID,
+            previousEventID: previousEventID,
+            kind: transition.eventKind,
+            attempt: attempt,
+            failureCategory: transition.failureCategory,
+            occurredAt: occurredAt)
+    }
+}
+
+private enum PersistedSkillExecutionEventKind: String {
+    case confirm
+    case begin
+    case succeed
+    case fail
+    case cancel
+}
+
+private enum PersistedSkillExecutionTransition {
+    case begin
+    case succeeded
+    case failed(FailureCategory)
+    case cancelled
+
+    var eventKind: PersistedSkillExecutionEventKind {
+        switch self {
+        case .begin: .begin
+        case .succeeded: .succeed
+        case .failed: .fail
+        case .cancelled: .cancel
+        }
+    }
+
+    var state: String {
+        switch self {
+        case .begin: "executing"
+        case .succeeded: "succeeded"
+        case .failed: "failed"
+        case .cancelled: "cancelled"
+        }
+    }
+
+    var failureCategory: FailureCategory? {
+        switch self {
+        case .failed(let category): category
+        case .begin, .succeeded, .cancelled: nil
+        }
     }
 }
 
