@@ -74,6 +74,22 @@ extension MeetingStore {
                 existing: existing,
                 in: database)
         }
+        try validateUnusedDecisionTopicLinkConfirmationIdentities(
+            confirmation,
+            in: database)
+        let context = try decisionTopicLinkConfirmationContext(
+            confirmation,
+            in: database)
+        let write = try decisionTopicLinkConfirmationWrite(
+            confirmation,
+            context: context)
+        return try write.insert(in: database)
+    }
+
+    private static func validateUnusedDecisionTopicLinkConfirmationIdentities(
+        _ confirmation: DecisionTopicLinkConfirmation,
+        in database: Database
+    ) throws {
         guard try DecisionTopicLinkSourceRecord.fetchOne(
             database,
             key: confirmation.sourceID.rawValue.uuidString) == nil,
@@ -84,7 +100,12 @@ extension MeetingStore {
             throw StorageError.invalidDecisionContinuity(
                 "decision-topic link identities are already in use")
         }
+    }
 
+    private static func decisionTopicLinkConfirmationContext(
+        _ confirmation: DecisionTopicLinkConfirmation,
+        in database: Database
+    ) throws -> DecisionTopicLinkConfirmationContext {
         // The observation must already be evidence the decision itself owns —
         // this is what keeps aboutness from being founded on co-occurrence.
         // The v32 trigger enforces the same condition below Swift.
@@ -123,7 +144,16 @@ extension MeetingStore {
             throw StorageError.invalidDecisionContinuity(
                 "decision-topic pair is already actively linked")
         }
+        return DecisionTopicLinkConfirmationContext(
+            ownedSource: owned,
+            topic: topic)
+    }
 
+    private static func decisionTopicLinkConfirmationWrite(
+        _ confirmation: DecisionTopicLinkConfirmation,
+        context: DecisionTopicLinkConfirmationContext
+    ) throws -> DecisionTopicLinkConfirmationWrite {
+        let owned = context.ownedSource
         let timestamp = max(
             canonicalDecisionDate(confirmation.confirmedAt),
             canonicalDecisionDate(owned.observedAt))
@@ -148,7 +178,7 @@ extension MeetingStore {
             summaryID: SummaryID(rawValue: summaryRaw),
             meetingID: MeetingID(rawValue: meetingRaw),
             observedStatement: owned.observedStatement,
-            observedTopicLabel: topic.preferredLabel,
+            observedTopicLabel: context.topic.preferredLabel,
             sourceTranscriptRevision: owned.sourceTranscriptRevision,
             observedAt: owned.observedAt,
             linkedAt: timestamp)
@@ -158,13 +188,10 @@ extension MeetingStore {
             kind: .confirm,
             sourceID: confirmation.sourceID,
             occurredAt: timestamp)
-        try DecisionTopicLinkRecord(link).insert(database)
-        try DecisionTopicLinkSourceRecord(source).insert(database)
-        try DecisionTopicLinkEventRecord(event).insert(database)
-        return try DecisionTopicLinkContinuity(
+        return DecisionTopicLinkConfirmationWrite(
             link: link,
             source: source,
-            events: [event])
+            event: event)
     }
 
     static func retractDecisionTopicLink(
@@ -279,5 +306,26 @@ extension MeetingStore {
         return requested > bound
             ? requested
             : canonicalDecisionDate(bound.addingTimeInterval(0.001))
+    }
+}
+
+private struct DecisionTopicLinkConfirmationContext {
+    let ownedSource: DecisionContinuitySourceRecord
+    let topic: TopicRecord
+}
+
+private struct DecisionTopicLinkConfirmationWrite {
+    let link: DecisionTopicLink
+    let source: DecisionTopicLinkSource
+    let event: DecisionTopicLinkEvent
+
+    func insert(in database: Database) throws -> DecisionTopicLinkContinuity {
+        try DecisionTopicLinkRecord(link).insert(database)
+        try DecisionTopicLinkSourceRecord(source).insert(database)
+        try DecisionTopicLinkEventRecord(event).insert(database)
+        return try DecisionTopicLinkContinuity(
+            link: link,
+            source: source,
+            events: [event])
     }
 }

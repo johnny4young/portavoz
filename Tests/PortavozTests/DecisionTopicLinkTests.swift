@@ -169,6 +169,46 @@ final class DecisionTopicLinkTests: XCTestCase {
         }
     }
 
+    func testReusedChildIdentitiesLeaveNoPartialAuthority() async throws {
+        let fixture = try await seededDecisionAndTopic()
+        let confirmation = DecisionTopicLinkConfirmation(
+            decisionID: fixture.decisionID,
+            topicID: fixture.topicID,
+            observationID: fixture.observationID,
+            confirmedAt: baseDate.addingTimeInterval(60))
+        let confirmed = try await fixture.store.confirmDecisionTopicLink(confirmation)
+        _ = try await fixture.store.retractDecisionTopicLink(
+            DecisionTopicLinkRetraction(
+                linkID: confirmed.link.id,
+                retractedAt: baseDate.addingTimeInterval(120)))
+        let baseline = try await decisionTopicAuthorityRowCounts(in: fixture.store)
+
+        await assertRefused {
+            _ = try await fixture.store.confirmDecisionTopicLink(
+                DecisionTopicLinkConfirmation(
+                    sourceID: confirmation.sourceID,
+                    decisionID: fixture.decisionID,
+                    topicID: fixture.topicID,
+                    observationID: fixture.observationID,
+                    confirmedAt: self.baseDate.addingTimeInterval(180)))
+        }
+        await assertRefused {
+            _ = try await fixture.store.confirmDecisionTopicLink(
+                DecisionTopicLinkConfirmation(
+                    eventID: confirmation.eventID,
+                    decisionID: fixture.decisionID,
+                    topicID: fixture.topicID,
+                    observationID: fixture.observationID,
+                    confirmedAt: self.baseDate.addingTimeInterval(240)))
+        }
+
+        let finalCounts = try await decisionTopicAuthorityRowCounts(in: fixture.store)
+        XCTAssertEqual(
+            finalCounts,
+            baseline,
+            "child-identity collisions must roll back every candidate row")
+    }
+
     // MARK: - Retraction
 
     func testRetractionIsTerminalAndThePairCanBeRelinked() async throws {
@@ -495,6 +535,18 @@ final class DecisionTopicLinkTests: XCTestCase {
     }
 
     private var projectionRuns = 0
+
+    private func decisionTopicAuthorityRowCounts(
+        in store: MeetingStore
+    ) async throws -> [Int] {
+        try await store.database.read { database in
+            [
+                try DecisionTopicLinkRecord.fetchCount(database),
+                try DecisionTopicLinkSourceRecord.fetchCount(database),
+                try DecisionTopicLinkEventRecord.fetchCount(database)
+            ]
+        }
+    }
 
     @discardableResult
     private func projectAll(

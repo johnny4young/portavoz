@@ -1872,6 +1872,15 @@ final class ArchitectureDependencyTests: XCTestCase {
             "swiftlint:disable:next function_body_length"))
         XCTAssertTrue(store.contains(
             "evidence must already belong to the decision"))
+        XCTAssertTrue(store.contains(
+            "private struct DecisionTopicLinkConfirmationWrite"))
+        XCTAssertTrue(store.contains(
+            "validateUnusedDecisionTopicLinkConfirmationIdentities"))
+        XCTAssertTrue(store.contains(
+            "let context = try decisionTopicLinkConfirmationContext"))
+        XCTAssertTrue(store.contains("return try write.insert(in: database)"))
+        XCTAssertFalse(store.contains(
+            "swiftlint:disable:next function_body_length"))
         XCTAssertTrue(migration.contains(
             "decisionTopicLink_one_active"))
     }

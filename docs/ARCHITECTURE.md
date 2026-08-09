@@ -613,6 +613,8 @@ The current schema version is 34. It includes:
 - the decision-topic aboutness authority: immutable link sources, append-only
   confirm/retract events, and narrowly separated schema triggers for projection
   immutability, append-only history, evidence ownership, and valid retraction;
+  confirmation preserves that validation order before constructing one typed
+  link/source/event write committed inside the existing GRDB transaction;
 - a disposable per-segment corrected-text search projection (one row per
   active text replacement, FTS-mirrored, rebuilt transactionally with every
   correction write);
