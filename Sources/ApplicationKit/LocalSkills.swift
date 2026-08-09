@@ -14,7 +14,7 @@ public enum LocalSkills {
             ReminderDraftSkill.definition,
             RecapDraftSkill.definition,
             MeetingPackageExportSkill.definition,
-            PreMeetingBriefSkill.definition,
+            PreMeetingBriefSkill.definition
         ]
     }
 

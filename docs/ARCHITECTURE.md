@@ -3612,18 +3612,22 @@ silently.
 
 ## Quality evidence
 
-The current local acceptance baseline is:
+The 9 Aug 2026 local acceptance snapshot is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,035 XCTest package cases pass, with 13 real-model/environment cases gated;
+- 2,205 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
-- the 108-test recording/recovery corpus has a fail-closed 25-iteration stress
-  gate and passes both Thread Sanitizer and Address Sanitizer;
-- strict SwiftLint reports zero violations across 587 first-party Swift source files;
-- 65 XCUITest cases define the English and Spanish release gate;
+- the recording/recovery selector executes 221 tests per iteration and passed
+  its fail-closed 25-iteration gate (5,525 executions); the generic runner
+  refuses fewer than 90 and the release wrapper raises that floor to 108;
+  focused Thread Sanitizer and Address Sanitizer gates also pass;
+- strict SwiftLint remains a blocking CI gate; the Aug 8 audit found 20
+  unsuppressed first-party violations (large/complex orchestration and query
+  units), so this branch is not merge-ready until those are refactored;
+- 68 XCUITest cases per locale define the 136-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

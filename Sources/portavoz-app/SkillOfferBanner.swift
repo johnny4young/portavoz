@@ -62,6 +62,9 @@ struct SkillOfferMenu: View {
             .accessibilityLabel(L10n.text("Skill suggestions"))
             .accessibilityIdentifier("skill-offer-menu")
             .help(L10n.text(
+                // Keep the catalog key as one literal: LocalizationTests deliberately
+                // scans call-site prose rather than evaluating Swift concatenation.
+                // swiftlint:disable:next line_length
                 "Things Portavoz can prepare from this meeting — always previewed, always confirmed by you, nothing leaves this Mac."))
         }
     }

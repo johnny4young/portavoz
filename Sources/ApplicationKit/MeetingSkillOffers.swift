@@ -93,7 +93,7 @@ public struct LoadMeetingSkillOffers: ApplicationUseCase {
         guard hasSummary else { return [] }
         let candidates = [
             MeetingSkillOffer(kind: .recapDraft, meetingID: meetingID),
-            MeetingSkillOffer(kind: .packageExport, meetingID: meetingID),
+            MeetingSkillOffer(kind: .packageExport, meetingID: meetingID)
         ]
         let dismissed = try await store.dismissedSkillOffers(
             offerKeys: candidates.map(\.offerKey))
@@ -146,7 +146,7 @@ public struct LoadMeetingSkillReceipts: ApplicationUseCase {
         var records: [SkillExecutionRecord] = []
         for prefix in [
             "\(RecapDraftSkill.id):\(key)",
-            "\(MeetingPackageExportSkill.id):\(key):",
+            "\(MeetingPackageExportSkill.id):\(key):"
         ] {
             records += try await store.skillExecutions(
                 idempotencyKeyPrefix: prefix)

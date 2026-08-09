@@ -391,10 +391,23 @@ effort (D65).
 2. **⚠️ Hangs in CLI processes without a bundle**: `SpeechTranscriber.supportedLocale(equivalentTo:)` (first await) suspends FOREVER in `portavoz-cli` — sample shows the cooperative pool empty and the run loop parked (the Speech daemon never responds to a process without bundle/TCC context). **The live-role benchmark must run INSIDE the app** — `NSSpeechRecognitionUsageDescription` has already been added to Info.plist.
 3. **Shared harness**: `LiveTranscriptionBench` (TranscriptionKit) paces the file in real time (1 s chunks) and measures finalization lag. Entry points: `portavoz-cli bench-live --engine parakeet` and, for speech, `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds] [--language]` (hidden launch argument: runs in-bundle, prints to stdout, exits).
 4. **Accuracy lane (MODEL-001, Jul 2026)**: `TranscriptionAccuracy` (TranscriptionKit, pure, 5 tests) computes WER and CER with rolling-buffer Levenshtein over normalization that keeps Spanish accents — they are phonemic ("papa" vs "papá" is a real error), while case, punctuation, and whitespace are not. The bench result now carries every final row (`Result.hypothesis`), and `bench-live` gains `--reference <txt>` (scores WER/CER against a plain-text transcript) and `--output <json>` (one evidence artifact per run, same convention as the scale benches), so an engine comparison leaves committed numbers instead of prose. The quality spec's rule stands: third-party accuracy tables are citations, never our measurements.
-5. **Qwen3-ASR candidate (MODEL-001 verdict, Jul 2026)**: FluidInference ships a CoreML port of Qwen3-ASR-0.6B (encoder + 28-layer stateful decoder via MLState, macOS 15+) and FluidAudio `main` has `Qwen3AsrManager` — but the latest tagged release (0.15.5, exactly what D-pinning allows) does not contain it. Integrating today would mean depending on an untagged `main`, which the pinned-dependency rule forbids. Deferred with an explicit re-visit trigger: when FluidAudio tags a release containing `Qwen3AsrManager`, run `bench-live` with `--reference`/`--output` on Spanish fixtures against Parakeet v3, and swap the live lane only if it wins on WER without losing the latency budget.
-4. **⚠️ Finalization bug (fixed)**: `finalizeAndFinishThroughEndOfInput()` is called by the FEEDER when the input is exhausted — sequencing it after the `transcriber.results` loop deadlocks (results ends only when someone finalizes; the first benchmark remained parked forever).
-5. **AVAudioConverter concurrency boundary**: the converter's `@Sendable` input callback receives its fully initialized, immutable source through one private lock-protected one-shot box. The localized `@unchecked Sendable` proof avoids mutable captures and does not suppress AVFoundation concurrency checking at import scope (D118).
-6. **Measured comparison (same 60 s of a real EN meeting, system channel, M4 Max)**:
+5. **Nemotron challenger (MODEL-001 audit, Aug 2026)**: FluidAudio
+   0.15.5—the exact resolved dependency—contains
+   `StreamingNemotronMultilingualAsrManager` and tagged downloadable Nemotron
+   3.5 ASR Streaming Multilingual 0.6B CoreML variants. The Latin-vocabulary
+   ship serves English and Spanish, and the upstream benchmark documentation
+   identifies 560/1120/2240 ms tiers targeting macOS 14+/iOS 17+. This
+   supersedes the earlier Qwen3 wait: FluidAudio 0.15.3
+   explicitly removed that experimental backend. No upstream WER/RTFx value is
+   a Portavoz result. The next step is a **non-serving, sha256-pinned 1120 ms
+   Latin adapter** through `bench-live --reference/--output`, tested against
+   Parakeet v3 on the same owner-reviewed bilingual accents, code-switching,
+   names, digits, latency, thermal, and resident-memory corpus. Product routing
+   stays unchanged until that evidence wins within D7/D137 resource budgets and
+   the OpenMDW-1.1 redistribution/attribution terms pass review.
+6. **⚠️ Finalization bug (fixed)**: `finalizeAndFinishThroughEndOfInput()` is called by the FEEDER when the input is exhausted — sequencing it after the `transcriber.results` loop deadlocks (results ends only when someone finalizes; the first benchmark remained parked forever).
+7. **AVAudioConverter concurrency boundary**: the converter's `@Sendable` input callback receives its fully initialized, immutable source through one private lock-protected one-shot box. The localized `@unchecked Sendable` proof avoids mutable captures and does not suppress AVFoundation concurrency checking at import scope (D118).
+8. **Measured comparison (same 60 s of a real EN meeting, system channel, M4 Max)**:
 
 | | Parakeet v3 (CLI) | SpeechAnalyzer en_US (in-app) |
 |---|---|---|

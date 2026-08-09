@@ -67,7 +67,7 @@ jobs:
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
         run: brew install swiftlint
       # Strict (`strict: true` in .swiftlint.yml): ANY violation breaks
-      # the build. Source code currently passes with zero violations.
+      # the build; local acceptance must run this exact command before review.
       - name: SwiftLint
         run: swiftlint lint --strict --no-cache --reporter github-actions-logging
 

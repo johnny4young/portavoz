@@ -45,7 +45,6 @@ struct MeetingDetailSummaryPlaceholder: View {
         case "processing.input.superseded":
             L10n.text(
                 // One-line UI explanation.
-                // swiftlint:disable:next line_length
                 "The automatic summary stopped because this transcript changed. Nothing was lost.")
         case "processing.summary.unavailable":
             L10n.text("The automatic summary could not run with the configured engine.")

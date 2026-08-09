@@ -144,6 +144,12 @@ The moments that make people say "no one else does this" — each maps to a mile
 | Diarization DER (4 speakers) | < 15%; user contributions 100% | ✅ AMI 7.6%; real meeting pending corrected RTTM |
 | Refine (Whisper batch) | > 15x real time | ✅ 23–42x |
 
+The performance table preserves the accepted July baseline. It is not a claim
+that every current checkout remains green: the authoritative 8 Aug Tahoe audit
+measured semantic retrieval at **139.64/141.98 ms** wall/CPU against the 100 ms
+budget, with no later passing run yet. `docs/GAPS.md` T5 owns that release
+blocker and its cross-host acceptance criteria.
+
 ## Security (commitments)
 
 Keychain for secrets; `NSFileProtectionComplete` (iOS) / optional SQLCipher
