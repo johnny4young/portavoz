@@ -1518,6 +1518,12 @@ reporting stale/unavailable omissions outside the visible page. The bounded
 behavior is characterized directly alongside the canonical bilingual product
 corpus.
 
+Decision-relationship pages apply the same boundary after exact anchor and
+fact filtering: the complete filtered event count determines overflow, while
+only enough ordered events to fill the visible page rehydrate both endpoint
+decisions and their evidence. Evidence outside that page cannot add work or
+misstate its omission disclosure.
+
 Ask now has a **separate exact graph-fact evidence lane** beside transcript
 retrieval. `AskGraphFactQuery` can carry only one already-resolved blocker,
 topic-first-discussion, or person-commitment query. A local adapter delegates

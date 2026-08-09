@@ -1899,6 +1899,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("loadDecisionContinuity"))
         XCTAssertTrue(storage.contains("timelineEvidence(for:"))
         XCTAssertTrue(storage.contains("graphContainsDecisionTopicEdge"))
+        XCTAssertTrue(storage.contains("private struct DecisionRelationshipPage"))
+        XCTAssertTrue(storage.contains("guard page.needsHydration else { break }"))
+        XCTAssertFalse(storage.contains("swiftlint:disable:next function_body_length"))
         XCTAssertTrue(
             storage.contains("return .abstained(.missingTemporalBaseline)"),
             "an unresolvable anchor abstains before topology")

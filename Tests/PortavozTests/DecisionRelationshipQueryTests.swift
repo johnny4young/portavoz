@@ -166,6 +166,63 @@ final class DecisionRelationshipQueryTests: XCTestCase {
         XCTAssertEqual(page.omittedUnavailableCount, 0)
     }
 
+    func testDecisionRelationshipsDoNotHydrateBeyondThePage() async throws {
+        let fixture = try await seededRelationship()
+        let laterOld = try await DecisionContinuityTests.seedObservation(
+            fixture.store,
+            statement: "Keep the second atlas-100 plan.",
+            evidenceTexts: ["The second atlas-100 plan stands."],
+            startedAt: baseDate.addingTimeInterval(1_200),
+            summaryCreatedAt: baseDate.addingTimeInterval(1_210))
+        let laterNew = try await DecisionContinuityTests.seedObservation(
+            fixture.store,
+            statement: "Replace the second atlas-100 plan.",
+            evidenceTexts: ["Replace that second atlas-100 plan."],
+            startedAt: baseDate.addingTimeInterval(1_800),
+            summaryCreatedAt: baseDate.addingTimeInterval(1_810))
+        let oldConfirmation = DecisionConfirmation(
+            observationID: laterOld.observationID,
+            confirmedAt: baseDate.addingTimeInterval(1_300))
+        let newConfirmation = DecisionConfirmation(
+            observationID: laterNew.observationID,
+            confirmedAt: baseDate.addingTimeInterval(1_900))
+        _ = try await fixture.store.confirmDecision(oldConfirmation)
+        _ = try await fixture.store.confirmDecision(newConfirmation)
+        for confirmation in [oldConfirmation, newConfirmation] {
+            _ = try await fixture.store.confirmDecisionTopicLink(
+                DecisionTopicLinkConfirmation(
+                    decisionID: confirmation.decisionID,
+                    topicID: fixture.topicID,
+                    observationID: confirmation.observationID,
+                    confirmedAt: baseDate.addingTimeInterval(2_000)))
+        }
+        _ = try await fixture.store.confirmDecisionRelationship(
+            DecisionRelationshipConfirmation(
+                targetDecisionID: oldConfirmation.decisionID,
+                successorDecisionID: newConfirmation.decisionID,
+                kind: .supersede,
+                confirmedAt: baseDate.addingTimeInterval(2_200)))
+
+        var staleMeeting = laterOld.meeting
+        staleMeeting.transcriptRevision += 1
+        try await fixture.store.save(staleMeeting)
+        try await Self.projectGraph(
+            in: fixture.store,
+            at: baseDate.addingTimeInterval(40_000))
+
+        let result = try await fixture.store.decisionConflicts(
+            DecisionConflictsQuery(topicID: fixture.topicID, itemLimit: 1))
+        guard case .facts(let page) = result else {
+            return XCTFail("the first current relationship must fill the page")
+        }
+        XCTAssertEqual(
+            page.facts.map(\.subjectText),
+            ["Ship atlas-100 every ten minutes."])
+        XCTAssertTrue(page.hasMore)
+        XCTAssertEqual(page.omittedStaleCount, 0)
+        XCTAssertEqual(page.omittedUnavailableCount, 0)
+    }
+
     // MARK: - Fixture
 
     private struct Fixture {
