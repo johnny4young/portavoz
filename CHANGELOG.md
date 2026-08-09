@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 9, 2026
 
+- **⌨️ Global dictation handles unusual keyboard sources safely** — A missing, wrong-typed, or truncated third-party keyboard-layout property now falls back to the standard paste shortcut instead of risking an abrupt exit.
 - **🧾 Skill previews now mean exactly what they show** — If a meeting changes while a skill confirmation is open, Portavoz asks you to review the fresh result instead of copying different text; a rejected clipboard write is reported as a failure, and a run cannot be dismissed while it is already executing.
 
 ## August 8, 2026

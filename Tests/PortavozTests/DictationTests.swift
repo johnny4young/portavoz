@@ -1,4 +1,5 @@
 import AppKit
+import CoreFoundation
 import XCTest
 
 @testable import TranscriptionKit
@@ -95,6 +96,48 @@ final class SecureFieldGateTests: XCTestCase {
         XCTAssertEqual(
             TextInserter.classifyFocusedField(role: nil, subrole: nil),
             .unavailable)
+    }
+}
+
+final class TextInputSourcePropertyTests: XCTestCase {
+    func testPromotesExpectedBorrowedCoreFoundationType() {
+        let sourceID = "com.apple.keylayout.US" as CFString
+        let pointer = Unmanaged.passUnretained(sourceID).toOpaque()
+
+        let bridged: CFString? = withExtendedLifetime(sourceID) {
+            TextInserter.typedUnretainedCFProperty(
+                pointer,
+                as: .string)
+        }
+
+        XCTAssertEqual(bridged as String?, "com.apple.keylayout.US")
+    }
+
+    func testRejectsUnexpectedCoreFoundationTypeBeforeTypedAccess() {
+        let sourceID = "not keyboard layout data" as CFString
+        let pointer = Unmanaged.passUnretained(sourceID).toOpaque()
+
+        let bridged: CFData? = withExtendedLifetime(sourceID) {
+            TextInserter.typedUnretainedCFProperty(
+                pointer,
+                as: .data)
+        }
+
+        XCTAssertNil(bridged)
+    }
+
+    func testMissingPropertyFailsClosed() {
+        let bridged: CFData? = TextInserter.typedUnretainedCFProperty(
+            nil,
+            as: .data)
+
+        XCTAssertNil(bridged)
+    }
+
+    func testRejectsTruncatedKeyboardLayoutBeforeCarbonTranslation() {
+        let truncated = CFDataCreate(nil, nil, 0)!
+
+        XCTAssertNil(TextInserter.keyCode(for: "v", in: truncated))
     }
 }
 

@@ -8,6 +8,14 @@ import Carbon.HIToolbox
 /// Accessibility permission; `canInsert` checks it and (optionally)
 /// triggers the system prompt.
 enum TextInserter {
+    struct BorrowedCFPropertyType<Value: AnyObject> {
+        fileprivate let typeID: CFTypeID
+
+        fileprivate init(typeID: CFTypeID) {
+            self.typeID = typeID
+        }
+    }
+
     enum InsertionResult: Equatable {
         case inserted
         case secureField
@@ -205,47 +213,93 @@ enum TextInserter {
     }
 
     private static func currentLayoutUsesQwertyCommandPositions() -> Bool {
-        guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
-            let idPointer = TISGetInputSourceProperty(source, kTISPropertyInputSourceID)
+        guard let sourceID: CFString = currentInputSourceProperty(
+            kTISPropertyInputSourceID,
+            as: .string)
         else { return true }
-        let sourceID = Unmanaged<CFString>.fromOpaque(idPointer)
-            .takeUnretainedValue() as String
         let qwertyCommandLayouts = [
             "DVORAK-QWERTY", "US", "ABC", "AUSTRALIAN", "BRITISH", "CANADIAN",
             "USINTERNATIONAL"
         ]
-        let upper = sourceID.uppercased()
+        let upper = (sourceID as String).uppercased()
         return qwertyCommandLayouts.contains { upper.contains($0) }
     }
 
     private static func keyCode(for character: Character) -> CGKeyCode? {
-        guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
-            let layoutPointer = TISGetInputSourceProperty(
-                source, kTISPropertyUnicodeKeyLayoutData)
+        guard let layoutData: CFData = currentInputSourceProperty(
+            kTISPropertyUnicodeKeyLayoutData,
+            as: .data)
         else { return nil }
-        let layoutData = unsafeBitCast(layoutPointer, to: CFData.self)
-        guard let bytes = CFDataGetBytePtr(layoutData) else { return nil }
+        return keyCode(for: character, in: layoutData)
+    }
+
+    static func keyCode(
+        for character: Character,
+        in layoutData: CFData
+    ) -> CGKeyCode? {
+        guard CFDataGetLength(layoutData) >= MemoryLayout<UCKeyboardLayout>.size,
+            let bytes = CFDataGetBytePtr(layoutData)
+        else { return nil }
         let layout = UnsafeRawPointer(bytes)
             .assumingMemoryBound(to: UCKeyboardLayout.self)
         let target = character.lowercased()
         // Letter keys all live in the 0...50 virtual-keycode range.
-        for candidate: UInt16 in 0...50 {
-            var deadKeyState: UInt32 = 0
-            var chars = [UniChar](repeating: 0, count: 4)
-            var length = 0
-            let status = UCKeyTranslate(
-                layout, candidate, UInt16(kUCKeyActionDisplay), 0,
-                UInt32(LMGetKbdType()), UInt32(kUCKeyTranslateNoDeadKeysBit),
-                &deadKeyState, chars.count, &length, &chars)
-            guard status == noErr, length > 0,
-                let scalar = UnicodeScalar(chars[0])
-            else { continue }
-            if Character(scalar).lowercased() == target {
-                return CGKeyCode(candidate)
+        return withExtendedLifetime(layoutData) {
+            for candidate: UInt16 in 0...50 {
+                var deadKeyState: UInt32 = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+                var length = 0
+                let status = UCKeyTranslate(
+                    layout, candidate, UInt16(kUCKeyActionDisplay), 0,
+                    UInt32(LMGetKbdType()), UInt32(kUCKeyTranslateNoDeadKeysBit),
+                    &deadKeyState, chars.count, &length, &chars)
+                guard status == noErr, length > 0,
+                    let scalar = UnicodeScalar(chars[0])
+                else { continue }
+                if Character(scalar).lowercased() == target {
+                    return CGKeyCode(candidate)
+                }
             }
+            return nil
         }
-        return nil
     }
+
+    /// TIS properties are borrowed, untyped C pointers. Promote the value to
+    /// a strong Swift reference while the retained input source is alive, and
+    /// reject a wrong-typed third-party property before any typed CF operation.
+    private static func currentInputSourceProperty<Property: AnyObject>(
+        _ key: CFString,
+        as propertyType: BorrowedCFPropertyType<Property>
+    ) -> Property? {
+        guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else {
+            return nil
+        }
+        return withExtendedLifetime(source) {
+            typedUnretainedCFProperty(
+                TISGetInputSourceProperty(source, key),
+                as: propertyType)
+        }
+    }
+
+    /// Accepts only CF object pointers supplied by APIs such as
+    /// `TISGetInputSourceProperty`; the exact runtime type must still match.
+    static func typedUnretainedCFProperty<Property: AnyObject>(
+        _ pointer: UnsafeMutableRawPointer?,
+        as propertyType: BorrowedCFPropertyType<Property>
+    ) -> Property? {
+        guard let pointer else { return nil }
+        let value = Unmanaged<CFTypeRef>.fromOpaque(pointer).takeUnretainedValue()
+        guard CFGetTypeID(value) == propertyType.typeID else { return nil }
+        return value as? Property
+    }
+}
+
+extension TextInserter.BorrowedCFPropertyType where Value == CFString {
+    static var string: Self { Self(typeID: CFStringGetTypeID()) }
+}
+
+extension TextInserter.BorrowedCFPropertyType where Value == CFData {
+    static var data: Self { Self(typeID: CFDataGetTypeID()) }
 }
 
 /// Full multi-type snapshot of the pasteboard. Saving only the plain string
