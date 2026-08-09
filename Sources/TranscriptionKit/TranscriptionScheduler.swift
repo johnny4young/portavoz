@@ -8,8 +8,13 @@ import PortavozCore
 /// the ANE instead of racing it. Pattern borrowed from MacParakeet
 /// (studied, not ported — it's GPL).
 public actor TranscriptionScheduler {
+    private struct BatchWaiter {
+        let id: UUID
+        let continuation: CheckedContinuation<Void, Error>
+    }
+
     private var batchBusy = false
-    private var batchWaiters: [CheckedContinuation<Void, Never>] = []
+    private var batchWaiters: [BatchWaiter] = []
     private let telemetry: ResourceWorkloadTelemetry
 
     public init(telemetry: ResourceWorkloadTelemetry = .disabled) {
@@ -42,9 +47,28 @@ public actor TranscriptionScheduler {
             workloadClass: workloadClass,
             kind: .qualityTranscription,
             operation: .queueWait))
-        await acquireBatchSlot()
-        telemetry.finish(queueSpan, outcome: .completed)
+        do {
+            try Task.checkCancellation()
+            try await acquireBatchSlot()
+        } catch {
+            telemetry.finish(
+                queueSpan,
+                outcome: ResourceWorkloadOutcome(error: error))
+            throw error
+        }
+        // Slot handoff and caller cancellation can race. Install cleanup
+        // before the second check so a cancelled handoff cannot strand the
+        // serial lane or reach the detached job.
         defer { releaseBatchSlot() }
+        do {
+            try Task.checkCancellation()
+            telemetry.finish(queueSpan, outcome: .completed)
+        } catch {
+            telemetry.finish(
+                queueSpan,
+                outcome: ResourceWorkloadOutcome(error: error))
+            throw error
+        }
 
         let executionSpan = telemetry.begin(ResourceWorkloadDescriptor(
             workloadClass: workloadClass,
@@ -69,21 +93,45 @@ public actor TranscriptionScheduler {
         }
     }
 
-    private func acquireBatchSlot() async {
+    /// Queued + running batch work, exposed internally for deterministic tests.
+    var pendingBatchCount: Int { batchWaiters.count + (batchBusy ? 1 : 0) }
+
+    private func acquireBatchSlot() async throws {
         if !batchBusy {
             batchBusy = true
             return
         }
-        await withCheckedContinuation { continuation in
-            batchWaiters.append(continuation)
+
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                batchWaiters.append(BatchWaiter(
+                    id: id,
+                    continuation: continuation))
+            }
+        } onCancel: {
+            // The handler is synchronous and nonisolated. Its task cannot
+            // mutate this actor until the continuation closure above has
+            // either enqueued the waiter or the slot has already handed off.
+            Task { await self.cancelBatchWaiter(id: id) }
         }
+    }
+
+    private func cancelBatchWaiter(id: UUID) {
+        guard let index = batchWaiters.firstIndex(where: { $0.id == id }) else {
+            // A concurrent release may already have handed over the slot. The
+            // resumed caller's post-acquire cancellation check owns that race.
+            return
+        }
+        let waiter = batchWaiters.remove(at: index)
+        waiter.continuation.resume(throwing: CancellationError())
     }
 
     private func releaseBatchSlot() {
         if batchWaiters.isEmpty {
             batchBusy = false
         } else {
-            batchWaiters.removeFirst().resume()
+            batchWaiters.removeFirst().continuation.resume()
         }
     }
 }

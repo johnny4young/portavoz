@@ -152,7 +152,21 @@ invoke this composer and corrected text remains intentionally unmaterialized.
 - Custom sliding window **left 11 s / chunk 1.0 s / right 0.4 s** (≤ 15 s model limit). FluidAudio's `.streaming` preset does NOT work: its `hypothesisChunkSeconds` is dead code (it emits only on `chunkSeconds` = 11 s → 13+ s latency).
 - **Custom delta filter** (`ParakeetSegmentMapper`): upstream dedup fails with small chunks (re-emits ~all left context). Updates' `tokenTimings` use absolute stream time → filter `startTime > last emitted boundary` and reconstruct text with `joinedText` (handles SentencePiece `▁`).
 - Batch: long-form disk-backed `AsrManager`, `parallelChunkConcurrency: 1` (courtesy to the live slot), `melChunkContext: false` (recommended for multilingual v3). Sentence segments by punctuation (TDT timings contain no gaps: pause splitting almost never triggers; `sentenceTerminators` + 0.5 s pauseSplit + 15 s max).
-- `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in `Task.detached(priority: .utility)`. In the macOS recording path, the private `StartRecordingRuntime` creates one bounded, non-suspending feed per selected channel before capture. A recording-scoped attacher owns one pinned Parakeet runtime lease, connects direct streams immediately when the verified engine is resident, or joins the process-owned load and connects them later; these streams never enter or wait for the serial batch slot. File imports, Refine, and durable first-pass recovery remain serial batch work.
+- `TranscriptionScheduler` (D7): immediate live lane; serial FIFO batch slot in
+  `Task.detached(priority: .utility)`. Queued batch callers carry identified
+  throwing continuations and are removed immediately on cancellation,
+  including cancellation that races the actor enqueue; a cancelled caller is
+  never retained behind an unrelated long transcription. Actor serialization
+  installs each continuation before the nonisolated cancellation handler can
+  mutate the queue; a second check after slot handoff releases the lane instead
+  of admitting a cancelled caller to its job. In the macOS recording path, the
+  private `StartRecordingRuntime` creates
+  one bounded, non-suspending feed per selected channel before capture. A
+  recording-scoped attacher owns one pinned Parakeet runtime lease, connects
+  direct streams immediately when the verified engine is resident, or joins
+  the process-owned load and connects them later; these streams never enter or
+  wait for the serial batch slot. File imports, Refine, and durable first-pass
+  recovery remain serial batch work.
 - D148 measures the live execution lane separately from batch queue wait and
   execution. The app also measures verified Parakeet and Whisper
   prepare/load/release plus actual Refine, Import, durable-recovery, and live
