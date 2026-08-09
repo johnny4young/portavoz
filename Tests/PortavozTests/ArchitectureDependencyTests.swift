@@ -4936,7 +4936,6 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(workflow.contains("if execution.shouldStop { break }"))
         XCTAssertTrue(jobs.contains("suspendProcessingJob"))
         XCTAssertTrue(jobs.contains("record.attempt -= 1"))
-        XCTAssertTrue(jobs.contains("processing.lease.expired"))
         XCTAssertTrue(semanticWorkflow.contains("return .paused"))
         XCTAssertTrue(semanticWorkflow.contains("heartbeatTask"))
         XCTAssertTrue(semanticStore.contains("suspendSemanticCorpusMaintenance"))
@@ -4955,6 +4954,33 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D190"))
         XCTAssertTrue(storageSpec.contains("Intentional suspension"))
         XCTAssertTrue(appSpec.contains("Intentional workflow cancellation"))
+    }
+
+    func testProcessingJobSchedulingOwnsDurableWakeAndLeaseRecovery() throws {
+        let scheduling = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+ProcessingJobScheduling.swift")
+        let jobs = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+ProcessingJobs.swift")
+
+        for wakePolicy in [
+            "public func nextScheduledProcessingDate",
+            "SELECT MIN(wakeAt)",
+            "SELECT notBefore AS wakeAt",
+            "SELECT leaseExpiresAt AS wakeAt"
+        ] {
+            XCTAssertTrue(scheduling.contains(wakePolicy))
+        }
+        for recoveryPolicy in [
+            "static func recoverExpiredProcessingJobs",
+            "processing.lease.expired",
+            "processing.lease.exhausted"
+        ] {
+            XCTAssertTrue(scheduling.contains(recoveryPolicy))
+        }
+        XCTAssertTrue(jobs.contains(
+            "try Self.recoverExpiredProcessingJobs(at: timestamp, in: db)"))
+        XCTAssertFalse(scheduling.contains("Timer"))
+        XCTAssertFalse(scheduling.contains("Task.sleep"))
     }
 
     func testAppMeetingBundleImportEntersThroughApplicationKit() throws {

@@ -865,9 +865,12 @@ The first 1D-b2b control-plane unit adds owner-leased cancellation and scheduled
 wake discovery. Cancellation records a terminal reason without claiming an
 artifact exists; because it represents intentionally degradable or superseded
 work, it does not make the aggregate fail. `nextScheduledProcessingDate`
-returns the earliest future `notBefore` for explicit worker capabilities while
-excluding deleted meetings and exhausted attempts, allowing workers to sleep
-without polling.
+returns the earliest future wake across pending `notBefore` retry dates and
+running `leaseExpiresAt` deadlines for explicit worker capabilities. It
+excludes deleted meetings and exhausted pending attempts, allowing workers to
+sleep without polling. The focused scheduling owner also performs repeat-safe
+expired-lease recovery; claim invokes that recovery in its own write before
+selecting due work, so a lease that expired after launch is still reclaimed.
 
 Slice 1D-b1 adds `installRecoveredCaptureAssets`, a repeat-safe transaction
 for the filesystem/SQLite Saga. It replaces the exact pending reservation set

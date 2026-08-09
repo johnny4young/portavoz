@@ -1117,6 +1117,47 @@ final class ProcessingJobPersistenceTests: XCTestCase {
             "the lease expiry is the durable wake-up")
     }
 
+    func testNextScheduledDateChoosesTheEarliestPendingOrLeaseWake() async throws {
+        let store = try MeetingStore.inMemory()
+        let subject = meeting()
+        let summaryWake = now.addingTimeInterval(90)
+        try await store.save(subject)
+        _ = try await store.enqueueProcessingJobs(
+            for: subject.id,
+            requests: [
+                ProcessingJobRequest(
+                    kind: .summary,
+                    inputFingerprint: "summary:scheduled-arbitration",
+                    notBefore: summaryWake),
+                ProcessingJobRequest(
+                    kind: .diarization,
+                    inputFingerprint: "diarization:lease-arbitration"),
+            ],
+            at: now)
+        let claimedValue = try await store.claimNextProcessingJob(
+            kinds: [.diarization],
+            owner: "worker",
+            leaseDuration: 30,
+            at: now)
+        let claimed = try XCTUnwrap(claimedValue)
+
+        let leaseFirst = try await store.nextScheduledProcessingDate(
+            kinds: [.summary, .diarization],
+            after: now)
+        _ = try await store.heartbeatProcessingJob(
+            claimed.id,
+            owner: "worker",
+            progress: 0.5,
+            leaseDuration: 120,
+            at: now.addingTimeInterval(1))
+        let pendingFirst = try await store.nextScheduledProcessingDate(
+            kinds: [.summary, .diarization],
+            after: now.addingTimeInterval(1))
+
+        XCTAssertEqual(leaseFirst, now.addingTimeInterval(30))
+        XCTAssertEqual(pendingFirst, summaryWake)
+    }
+
     func testNextScheduledDateIgnoresADeletedMeetingsLease() async throws {
         let store = try MeetingStore.inMemory()
         let subject = meeting()
@@ -1139,4 +1180,3 @@ final class ProcessingJobPersistenceTests: XCTestCase {
         XCTAssertNil(wake, "a tombstoned meeting must not wake the worker")
     }
 }
-

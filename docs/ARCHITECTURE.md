@@ -948,6 +948,15 @@ same or later pending work. Suspension therefore cannot be misclassified as
 worker death or exhaust the retry budget; only an actually expired running
 lease enters launch recovery.
 
+StorageKit isolates durable processing scheduling from job mutation. Its
+scheduling owner chooses one future wake by taking the minimum across pending
+`notBefore` retry dates and running `leaseExpiresAt` deadlines, limited to the
+worker's supported kinds and live meetings. The same owner performs repeat-safe
+expired-lease recovery, while the claim transaction invokes that recovery
+inline before selecting due work. The supervisor can therefore sleep without
+polling and still reclaim a dead worker even when launch recovery ran before
+the lease expired.
+
 The private macOS filesystem adapter
 revalidates staged/final files and reconciles them with persisted lifecycle
 state. Usable audio remains playable and exportable when derived work fails.
