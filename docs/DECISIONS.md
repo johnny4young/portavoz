@@ -11075,3 +11075,46 @@ implementation.
 gate share one durable authority across processes; pause is reversible without
 forgetting individual choices; receipt cost stays bounded as history grows;
 and Phase 2 does not over-promise reminder, brief, or network automation.
+
+## D318 — Map only local-internal Portavoz databases for exact semantic reads (Aug 2026)
+
+**Context:** the authoritative 8 Aug release ledger measured the exact
+100,000-vector scan at 139.64 ms wall / 141.98 ms CPU p95 against a 100 ms
+budget. Reproduction on the current clean parent produced two stable misses at
+128.16/129.30 ms and 126.44/127.29 ms. A Release CPU sample located the work:
+5,535 of 6,330 search frames were inside `sqlite3_step`, 2,997 samples ended in
+`pread`, and only 117 ended in Accelerate's dot product. Ranking, bounded top-k,
+and winner hydration were not the first bottleneck; SQLite was copying the same
+large sequential BLOB pages through its private page cache on every query.
+
+**Decision:** keep `AccelerateExactSemanticIndex`, the normalized Float32 BLOB
+schema, one-cursor multi-query scan, correction fences, and authoritative
+hydration unchanged. A file-backed macOS `MeetingStore` configures only
+`main.mmap_size` to a hard application cap of 512 MiB when Foundation reports
+that the symlink-resolved database directory belongs to a local, internal
+volume. SQLite may clamp or ignore the advisory request and uses ordinary reads
+beyond it. The mapping is read-only, virtual, file-backed, and demand-paged; it
+is not an eager 512 MiB heap allocation. In-memory stores, other platforms, and
+non-local, removable, or unclassified volumes retain the default `xRead` path.
+
+This is deliberately narrower than enabling mmap for arbitrary SQLite files.
+SQLite documents that an underlying I/O fault on a mapped page becomes a
+process signal instead of a recoverable database error. The shipped database
+is one app-owned file under internal Application Support, with no selectable
+external location or second process writer; the volume guard excludes the
+known network/removable cache-consistency hazards. Any future external library
+location, attached authority database, or multi-process writer must revisit
+this decision. The residual local-media I/O-signal risk remains explicit rather
+than being misreported as eliminated.
+
+**Consequences:** three independently seeded 20-query Release runs at
+100,000 × 512 dimensions measured wall p95 67.25/63.98/63.49 ms and CPU p95
+68.07/64.90/64.30 ms, with 9.22–9.47 MiB baseline process footprint and
+0.16–0.19 MiB incremental p95. The canonical 9 Aug release ledger then measured
+63.53/64.54 ms wall/CPU p95 and 0.17 MiB incremental footprint on the same
+Tahoe reference host while every other measured journey remained within its
+budget. Two file-store characterizations assert the effective bound and exact
+ranking/similarity parity across close/reopen, while a third ratchets symlink
+resolution before volume classification. No schema migration, candidate engine,
+resident vector cache, ranking change, or new product writer is introduced;
+multi-host Sequoia/Tahoe evidence remains an independent acceptance gate.

@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,237 cases (14 environment-gated) + 70
+Status: the package inventory contains 2,240 cases (14 environment-gated) + 70
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1567,7 +1567,7 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The 9 Aug 2026 field-reliability inventory is 2,237 XCTest package cases (14
+The 9 Aug 2026 field-reliability inventory is 2,240 XCTest package cases (14
 environment-gated), zero strict-lint violations across 630 production Swift
 files, a 221-case recording/recovery selector passing 25 consecutive iterations
 (5,525 executions), and 70 XCUITest cases per locale.
@@ -2115,6 +2115,20 @@ reference, which is only a PERF-008 candidate until three stable runs agree.
 Waveform, detail UI, launch, and model/hardware journeys were not measured in
 that invocation and therefore received no claim.
 
+D318 profiled the current exact path before changing it: 5,535 of 6,330 sampled
+search frames were inside `sqlite3_step`, with 2,997 top-stack `pread` samples
+and only 117 in `vDSP_dotpr`. Two stable clean-parent runs still missed at
+128.16/129.30 ms and 126.44/127.29 ms wall/CPU p95; a third was visibly
+contended. After enabling a local-internal-only 512 MiB `main.mmap_size`, three
+independently seeded 20-query Release runs measured wall p95
+67.25/63.98/63.49 ms and CPU p95 68.07/64.90/64.30 ms. Incremental process
+footprint p95 was 0.16–0.19 MiB because the pages remain file-backed and
+demand-paged. The 9 Aug canonical ledger on the same 36 GiB Tahoe reference
+host then measured 63.53/64.54 ms wall/CPU p95 and 0.17 MiB incremental
+footprint; exact FTS, lexical Ask, and Spotlight also passed their declared
+budgets. These same-host synthetic runs prove the implementation effect;
+Sequoia and the required 8/16 GiB profiles remain separate gates.
+
 The comparison reference moved forward on 26 Jul 2026 to
 `docs/evidence/{scale-baseline,semantic-scale,spotlight-scale}-20260726.json`:
 one authoritative run of the same machine, in release, with the toolchain
@@ -2141,6 +2155,7 @@ against.
 | Exact FTS at 100k segments | p95 < 50 ms | **p50 30.25 ms / p95 30.99 ms** (`bench-scale`, D81) |
 | Lexical Ask at 100k segments | p95 < 100 ms | **p50 66.45 ms / p95 66.89 ms**, down from 111.19 ms through bounded per-term RRF (D81) |
 | Semantic cosine at 100k × 512 dimensions | p95 < 100 ms | ✅ **wall p50/p95 88.81/90.22 ms; CPU p50/p95 89.93/91.26 ms**, down from 307.05/325.41 and 311.46/328.43 ms; **8.42 MiB** incremental footprint p95 (D83) |
+| Semantic cosine with bounded local mapping at 100k × 512 dimensions | p95 < 100 ms | ✅ 9 Aug canonical Release ledger: **wall/CPU p95 63.53/64.54 ms; 0.17 MiB incremental process footprint**; three independent A/B runs also held wall p95 63.49–67.25 ms and CPU p95 64.30–68.07 ms (D318) |
 | Waveform, 55.9-minute dual channel / 600 buckets | first wall < 150 ms; repeat wall/CPU p95 < 100 ms | ✅ first wall/CPU **109.25/94.81 ms**; repeat wall/CPU p50 **69.22/70.10 ms**, p95 **70.11/71.33 ms**, down from 747.53/754.79 ms; **0.33 MiB** incremental footprint p95; exact fingerprint preserved and replacement changes it (D84) |
 | Spotlight projection, 100k meetings | wall/CPU p95 < 500 ms; absolute/incremental footprint < 160/96 MiB | ✅ wall/CPU p95 **425.64/423.58 ms**, down from 22,085.35/22,720.40 ms; **141.14/76.03 MiB** absolute/incremental footprint p95; exact fingerprint preserved. Synthetic 1k protected named-index delivery: **21.19 ms**, cleanup succeeded (D85) |
 | Detail core read, 2 h / 5k segments | diagnostic | **p50 16.31 ms / p95 17.22 ms** |

@@ -175,6 +175,12 @@ public struct SearchHit: Sendable {
 /// `MeetingStore+Search.swift`, and `MeetingStore+Retention.swift` — this
 /// core file keeps the meeting/speaker/segment and context-item paths.
 public final class MeetingStore: Sendable {
+    /// Bound SQLite's file-backed mapping so large, sequential embedding reads
+    /// avoid rebuilding the page cache on every exact semantic query. The
+    /// mapping reserves virtual address space; macOS pages content on demand,
+    /// and SQLite falls back to ordinary reads beyond this cap.
+    static let maximumMemoryMappedDatabaseBytes: Int64 = 512 * 1_024 * 1_024
+
     /// Internal (not `private`) so the extension files above can reach it;
     /// still never exposed publicly.
     let database: DatabaseQueue
@@ -191,7 +197,9 @@ public final class MeetingStore: Sendable {
     public init(databaseURL: URL) throws {
         try FileManager.default.createDirectory(
             at: databaseURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        self.database = try DatabaseQueue(path: databaseURL.path)
+        self.database = try DatabaseQueue(
+            path: databaseURL.path,
+            configuration: Self.databaseConfiguration(for: databaseURL))
         try StorageSchema.migrator().migrate(database)
     }
 
@@ -203,6 +211,32 @@ public final class MeetingStore: Sendable {
     private init(database: DatabaseQueue) throws {
         self.database = database
         try StorageSchema.migrator().migrate(database)
+    }
+
+    private static func databaseConfiguration(for databaseURL: URL) -> Configuration {
+        var configuration = Configuration()
+        #if os(macOS)
+        // SQLite documents mmap as a local-filesystem optimization. Fail
+        // closed for network, removable, or unclassified volumes so the
+        // ordinary xRead path remains the portable authority.
+        let directory = memoryMappedDatabaseDirectory(for: databaseURL)
+        let volume = try? directory.resourceValues(
+            forKeys: [.volumeIsLocalKey, .volumeIsInternalKey])
+        guard volume?.volumeIsLocal == true,
+              volume?.volumeIsInternal == true
+        else { return configuration }
+        configuration.prepareDatabase { database in
+            try database.execute(
+                sql: "PRAGMA main.mmap_size = \(Self.maximumMemoryMappedDatabaseBytes)")
+        }
+        #endif
+        return configuration
+    }
+
+    static func memoryMappedDatabaseDirectory(for databaseURL: URL) -> URL {
+        databaseURL.standardizedFileURL
+            .resolvingSymlinksInPath()
+            .deletingLastPathComponent()
     }
 
     // MARK: - Meetings

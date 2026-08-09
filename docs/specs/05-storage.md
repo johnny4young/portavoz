@@ -1512,6 +1512,29 @@ cross-variant ranking inputs.
 The 100k wall/CPU path is 72.3%/72.2% faster and passes both targets. D83
 retains exact schema-v7 Float32 BLOBs and rejects sqlite-vec, a new embedding
 table, and approximation at the measured scale.
+
+D318 removes the later repeated page-copy regression without changing that
+storage or ranking contract. A file-backed macOS `MeetingStore` asks SQLite to
+map at most the first 512 MiB of `main` only when its symlink-resolved directory
+is on an internal local volume. SQLite maps file pages on demand, may clamp or
+ignore the request, and falls back to ordinary reads beyond the effective cap.
+Every other platform and volume keeps the default path. Three independent 20-query Release
+runs at 100,000 × 512 dimensions measured wall p95 67.25/63.98/63.49 ms and CPU
+p95 68.07/64.90/64.30 ms; baseline process footprint stayed 9.22–9.47 MiB and
+incremental p95 stayed 0.16–0.19 MiB. File-backed semantic ranking and scores
+are characterized across close/reopen, and the effective SQLite limit is
+asserted on an internal macOS test volume; a separate location ratchet proves
+that a database-file symlink is resolved before volume classification. The
+canonical 9 Aug release ledger confirmed 63.53/64.54 ms wall/CPU p95 and
+0.17 MiB incremental footprint while every other measured journey stayed
+inside its budget.
+
+The scope guard is deliberate. SQLite warns that an underlying I/O fault on a
+mapped page is delivered as a process signal instead of a recoverable SQLite
+error. Portavoz therefore does not map network, removable, unclassified, or
+externally attached databases; its shipped library path is app-owned internal
+Application Support. A future selectable library database, multi-process
+writer, or non-macOS adoption must revisit D318 instead of inheriting it.
 D176–D178 and D196–D200 retain `NULL` embedding rows as the durable retry
 ledger while ApplicationKit coalesces redundant background-maintenance flights,
 pauses between committed batches, and resumes from explicit app

@@ -2872,6 +2872,15 @@ StorageKit normalizes usable variants into one immutable batch before entering
 the database read. One cursor owner maintains a bounded candidate list per
 variant, then exact hydration maps current hits back to their original result
 positions without shifting unusable variants.
+On macOS, a file-backed store enables SQLite's read-only memory-mapped I/O for
+the `main` database up to 512 MiB only when Foundation identifies the volume as
+both local and internal after resolving path symlinks. This is a virtual,
+demand-paged cap rather than an eager resident allocation. Non-local,
+removable, unclassified, non-macOS, or SQLite-disabled stores retain SQLite's
+ordinary `xRead` path; a lower SQLite effective limit falls back to `xRead`
+beyond that limit. The application database remains the same app-owned file
+under Application Support; mapping does not add a cache, schema, second writer,
+or alternate citation authority.
 The default composition remains exact control, so ranking, fusion, corpus
 maintenance, storage schema, asset policy, and UI behavior are unchanged. This
 is the Strangler seam for later shadow candidates; it does not authorize a
@@ -3703,7 +3712,7 @@ The 9 Aug 2026 local acceptance snapshot is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,237 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,240 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
