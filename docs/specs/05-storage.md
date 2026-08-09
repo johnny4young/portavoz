@@ -120,6 +120,15 @@ The whole projection is scale-gated (D312): at 10k meetings every longitudinal j
 
 `MeetingStore+DecisionRelationshipQuery` (D309) serves `decisionConflicts` and `changeSince` from that authority: candidates come only from `decisionTopicLink`, the projection edge is cross-checked (a missing edge abstains as inconsistency), and each fact rehydrates both decisions' statements and current evidence — replaced first, successor second — through decision continuity. `changeSince` resolves its exact anchor meeting before any topology and abstains `missingTemporalBaseline` on an unknown baseline; a topic whose decisions carry no confirmed relationship abstains `unsupportedConflict`.
 
+`MeetingStore+DecisionHistoryQuery` (D310) serves only current confirmed
+decisions linked to the exact topic family. It excludes superseded/reversed and
+filtered decisions before visible pagination, cross-checks every authority link
+against the disposable projection, and rehydrates exact current evidence only
+while the requested page still has capacity. Later matches still determine
+`hasMore`; they do not add evidence reads or omission counts outside that page.
+An empty hydrated page preserves typed stale, unavailable, or insufficient-
+confirmation abstention instead of weakening the evidence contract.
+
 Schema v16 adds the partial
 `meeting_on_live_startedAt_id(startedAt DESC, id ASC)` index for deterministic
 newest-first keyset scans. It contains no new data and is copied into a backup

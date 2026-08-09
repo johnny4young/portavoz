@@ -1890,6 +1890,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(
             history.contains("continuity.decision.status == .confirmed"),
             "superseded truth never answers what was decided")
+        XCTAssertTrue(history.contains("private struct DecisionHistoryPage"))
+        XCTAssertTrue(history.contains("guard page.needsHydration else { continue }"))
         XCTAssertTrue(storage.contains("FROM decisionTopicLink AS link"))
         XCTAssertFalse(
             storage.contains("topicMeetingEvidence"),

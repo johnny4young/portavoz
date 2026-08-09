@@ -1500,6 +1500,24 @@ therefore abstain without either exact-person query running. Ask does not yet
 compose this workflow; alias extraction, answer synthesis, UI, scale evidence,
 sync/export, CLI, and MCP remain separate gates.
 
+Explicit decision-topic aboutness also serves three exact source-backed reads.
+`decisionConflicts` and `changeSince` select only confirmed supersession or
+reversal events whose decision endpoints belong to the requested topic family;
+the anchored form resolves its exact meeting boundary before consulting graph
+topology. `decisionHistory` instead returns only the current confirmed decisions
+linked to that family, so an older superseded decision keeps its relationship
+history without answering what stands now. Every reader cross-checks the
+disposable decision-topic projection, rehydrates current continuity and exact
+transcript evidence in one SQLite snapshot, and abstains on missing authority,
+inconsistent topology, or unusable evidence.
+
+Decision-history page assembly counts every matching current decision for
+overflow, but hydrates evidence only until the requested page is full. Later
+matches therefore set `hasMore` without spending unbounded evidence reads or
+reporting stale/unavailable omissions outside the visible page. The bounded
+behavior is characterized directly alongside the canonical bilingual product
+corpus.
+
 Ask now has a **separate exact graph-fact evidence lane** beside transcript
 retrieval. `AskGraphFactQuery` can carry only one already-resolved blocker,
 topic-first-discussion, or person-commitment query. A local adapter delegates

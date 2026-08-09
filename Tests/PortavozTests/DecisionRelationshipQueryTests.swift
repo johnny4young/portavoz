@@ -124,6 +124,48 @@ final class DecisionRelationshipQueryTests: XCTestCase {
             "only the topic's own relationship answers; the co-occurring one stays out")
     }
 
+    /// Once a page has enough current facts, later matches still determine
+    /// `hasMore` but do not spend evidence reads or report omissions outside
+    /// the requested page.
+    func testDecisionHistoryCountsButDoesNotHydrateBeyondThePage() async throws {
+        let fixture = try await seededRelationship()
+        let later = try await DecisionContinuityTests.seedObservation(
+            fixture.store,
+            statement: "Keep an additional atlas-100 decision.",
+            evidenceTexts: ["The additional atlas-100 decision stands."],
+            startedAt: baseDate.addingTimeInterval(1_200),
+            summaryCreatedAt: baseDate.addingTimeInterval(1_210))
+        let confirmation = DecisionConfirmation(
+            observationID: later.observationID,
+            confirmedAt: baseDate.addingTimeInterval(1_300))
+        _ = try await fixture.store.confirmDecision(confirmation)
+        _ = try await fixture.store.confirmDecisionTopicLink(
+            DecisionTopicLinkConfirmation(
+                decisionID: confirmation.decisionID,
+                topicID: fixture.topicID,
+                observationID: confirmation.observationID,
+                confirmedAt: baseDate.addingTimeInterval(1_400)))
+
+        var staleMeeting = later.meeting
+        staleMeeting.transcriptRevision += 1
+        try await fixture.store.save(staleMeeting)
+        try await Self.projectGraph(
+            in: fixture.store,
+            at: baseDate.addingTimeInterval(30_000))
+
+        let result = try await fixture.store.decisionHistory(
+            DecisionHistoryQuery(topicID: fixture.topicID, itemLimit: 1))
+        guard case .facts(let page) = result else {
+            return XCTFail("the first current decision must fill the page")
+        }
+        XCTAssertEqual(
+            page.facts.map(\.subjectText),
+            ["Ship atlas-100 every ten minutes."])
+        XCTAssertTrue(page.hasMore)
+        XCTAssertEqual(page.omittedStaleCount, 0)
+        XCTAssertEqual(page.omittedUnavailableCount, 0)
+    }
+
     // MARK: - Fixture
 
     private struct Fixture {
