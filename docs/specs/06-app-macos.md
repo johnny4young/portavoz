@@ -1837,10 +1837,14 @@ maps typed issues to OSLog and one broad invalidation. Only after the awaited pa
 transcription, diarization, and summary claims; lease heartbeats; exact input
 fingerprints; cleanup, attribution, and dependency admission; provenance;
 retry/cancellation outcomes; terminal action and engine-release timing; and
-the next scheduled wake. Intentional workflow cancellation returns the owned
-job to pending through the ApplicationKit store port before emitting a
-`suspended` telemetry outcome. StorageKit clears its lease and refunds the
-claim attempt, and the current drain invocation stops before claiming more
+the next scheduled wake. Its public store/capability ports, configuration
+snapshots, progress events, issues, and request/result envelopes live in a
+separate ApplicationKit contract owner; executable policy retains private
+dependencies in the workflow implementation. Intentional workflow
+cancellation returns the owned job to pending through the ApplicationKit store
+port before emitting a `suspended` telemetry outcome. StorageKit clears its
+lease and refunds the claim attempt, and the current drain invocation stops
+before claiming more
 work; a crashed or otherwise lost worker instead leaves `running` evidence
 whose lease expiration is recovered at launch. This preserves the bounded
 retry budget and makes suspension distinguishable from worker death

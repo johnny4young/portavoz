@@ -4909,6 +4909,34 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testPostCaptureContractsStaySeparateFromWorkflowPolicy() throws {
+        let contracts = try Self.contents(
+            of: "Sources/ApplicationKit/PostCaptureProcessingContracts.swift")
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/ProcessPostCaptureJobs.swift")
+
+        for contract in [
+            "public protocol PostCaptureProcessingStore",
+            "public protocol PostCaptureAudioProcessing",
+            "public protocol PostCaptureSummaryConfiguration",
+            "public protocol PostCaptureCompletionActions",
+            "public struct PostCaptureSummaryProviderSelection",
+            "public struct ProcessPostCaptureJobsRequest",
+            "public struct ProcessPostCaptureJobsResult"
+        ] {
+            XCTAssertTrue(contracts.contains(contract))
+            XCTAssertFalse(workflow.contains(contract))
+        }
+        for policy in [
+            "public struct ProcessPostCaptureJobs: ApplicationUseCase",
+            "processTranscription", "processDiarization", "processSummary",
+            "preserveFailure", "heartbeatTask"
+        ] {
+            XCTAssertTrue(workflow.contains(policy))
+            XCTAssertFalse(contracts.contains(policy))
+        }
+    }
+
     func testDurableWorkOwnershipMatchesItsRecoveryGranularity() throws {
         let workflow = try Self.contents(
             of: "Sources/ApplicationKit/ProcessPostCaptureJobs.swift")

@@ -431,6 +431,11 @@ summary provenance, retries, cancellations, lifecycle outcomes, and
 post-meeting action timing. The app adapter owns concrete recording paths,
 filesystem checks, model loading, user preferences, Shortcut invocation, idle
 engine release, deterministic UI fixtures, and content-free signposts.
+ApplicationKit keeps the workflow's public store and capability ports,
+configuration snapshots, progress events, issues, and result envelopes in one
+contract owner separate from executable policy. This makes the composition
+surface inspectable without widening the workflow's private dependencies or
+letting adapters absorb product decisions.
 
 Meeting Detail document actions also enter the application boundary. One
 workflow loads the selected meeting and latest General summary coherently,
