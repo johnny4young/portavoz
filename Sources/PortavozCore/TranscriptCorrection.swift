@@ -499,9 +499,8 @@ public struct TranscriptCorrectionDomainIndex: Sendable {
         events.reserveCapacity(history.count)
         var duplicated = false
         for event in history {
-            if events.updateValue(event, forKey: event.id) != nil {
-                duplicated = true
-            }
+            let previous = events.updateValue(event, forKey: event.id)
+            duplicated = duplicated || previous != nil
         }
         self.events = events
         hasDuplicateID = duplicated

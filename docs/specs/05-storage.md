@@ -578,6 +578,11 @@ tombstones a source segment, and restore remains retained while releasing its
 target from active correction ownership. Persistence independently rejects
 foreign-meeting or nonaccepted targets and requires merge targets to remain
 ordered, contiguous, same-speaker, same-channel, and time-monotonic.
+Correction persistence separates those write-side rules from strict reading:
+one read owner fetches the parent and child rows in bounded groups, validates
+ordered targets and parts, decodes every typed payload, and reconstructs
+portable events before complete-history validation. Malformed persisted state
+fails closed through privacy-safe storage errors.
 
 D233 derives one effective correction revision from immutable history inside the
 same database snapshot. Append, tombstone, and format-2 sync replay compare the
@@ -1468,6 +1473,13 @@ bounded top-k candidates. It excludes tombstoned meetings through a single
 subquery rather than a join per vector; a second bounded query materializes
 complete segment text only for winners. Wrong-width/non-finite vectors, empty
 queries, and non-positive limits return no invalid hits. Comparable results:
+
+D290 extends the exact adapter with a positional multi-query entry point. The
+store normalizes all usable variants before opening its database read, streams
+the corpus through one cursor owner, maintains one bounded top-k per variant,
+and hydrates current winners before restoring the caller's original positions.
+Wrong-dimension or non-finite variants retain an empty slot instead of shifting
+cross-variant ranking inputs.
 
 | Corpus | Wall p95 | CPU p95 | Incremental footprint p95 | Absolute peak p95 |
 |---:|---:|---:|---:|---:|

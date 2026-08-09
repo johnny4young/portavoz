@@ -35,7 +35,7 @@ extension MeetingStore {
     /// untouched, so the line (and its unchanged embedding) stays findable.
     /// Text-replaced segments are served from `segmentCorrectedText` instead.
     /// Evidence and continuity lanes keep the stricter predicate above.
-    static let acceptedSegmentHasNoActiveTextAffectingCorrectionSQL = """
+    static let acceptedSegmentHasNoActiveTextCorrectionSQL = """
         NOT EXISTS (
             SELECT 1
             FROM transcriptCorrectionTarget AS correctionTarget

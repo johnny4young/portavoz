@@ -6067,6 +6067,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/PortavozCore/TranscriptCorrectionRevision.swift")
         let store = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+TranscriptCorrections.swift")
+        let readingStore = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+TranscriptCorrectionReading.swift")
         let projection = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+TranscriptProjection.swift")
         let schema = try Self.contents(
@@ -6116,6 +6118,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(store.contains("tombstoneTranscriptCorrection("))
         XCTAssertTrue(store.contains("transcriptCorrectionSyncEnvelope("))
         XCTAssertTrue(store.contains("invalidateAcceptedOnlyDerivedWork("))
+        XCTAssertFalse(store.contains("assembleTranscriptCorrections("))
+        XCTAssertTrue(readingStore.contains("fetchTranscriptCorrectionHistory("))
+        XCTAssertTrue(readingStore.contains("fetchTranscriptCorrection("))
+        XCTAssertTrue(readingStore.contains("assembleTranscriptCorrections("))
+        XCTAssertTrue(readingStore.contains("validatePortable(event)"))
+        XCTAssertTrue(readingStore.contains("requireContiguousOrdinals("))
         XCTAssertTrue(projection.contains("acceptedSegmentHasNoActiveCorrectionSQL"))
         XCTAssertTrue(projection.contains("kind IN ('summary', 'index')"))
         XCTAssertFalse(projection.contains("kind IN ('transcription', 'diarization')"))
@@ -7034,6 +7042,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(search.contains("candidates.count == limit"))
         XCTAssertTrue(search.contains("Self.semanticHits("))
         XCTAssertTrue(search.contains("stride(from: 0, to: rowIDs.count, by: 500)"))
+        XCTAssertTrue(search.contains("private struct SemanticQueryBatch: Sendable"))
+        XCTAssertTrue(search.contains("let batch = SemanticQueryBatch("))
+        XCTAssertTrue(search.contains("semanticCandidates(for: batch, in: database)"))
         // Every query variant is scored inside one corpus traversal: a single
         // cursor, one bounded candidate list per variant.
         XCTAssertEqual(

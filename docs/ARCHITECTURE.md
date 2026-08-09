@@ -1859,6 +1859,12 @@ accepted/composed snapshot pair, so row rendering performs constant-time
 context lookups instead of repeatedly scanning transcript and correction
 history while the user scrolls.
 
+StorageKit keeps correction append, tombstone, validation, and canonicalization
+on the write side while a separate read owner fetches child rows, decodes typed
+payloads, validates contiguous ordinals and portable events, and reconstructs
+complete histories. Persisted corruption still fails closed without exposing
+raw correction identities.
+
 Meeting Detail observes correction history and composes current-revision text
 and speaker changes. Malformed or stale composition falls back to accepted
 material. Correction inserts and tombstones advance the meeting journal exactly
@@ -2797,6 +2803,10 @@ positionally; the exact adapter scores them during one corpus traversal, so
 bilingual expansion no longer multiplies streamed BLOB volume by the variant
 count. Adapters that do not fuse the work inherit a default that loops the
 single-query call.
+StorageKit normalizes usable variants into one immutable batch before entering
+the database read. One cursor owner maintains a bounded candidate list per
+variant, then exact hydration maps current hits back to their original result
+positions without shifting unusable variants.
 The default composition remains exact control, so ranking, fusion, corpus
 maintenance, storage schema, asset policy, and UI behavior are unchanged. This
 is the Strangler seam for later shadow candidates; it does not authorize a

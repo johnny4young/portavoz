@@ -108,7 +108,7 @@ extension MeetingStore {
                     WHERE segmentSearch MATCH ?
                       AND segment.deletedAt IS NULL
                       AND meeting.deletedAt IS NULL
-                      AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
+                      AND \(Self.acceptedSegmentHasNoActiveTextCorrectionSQL)
                     -- FTS5's hidden rank column defaults to bm25(), but unlike
                     -- calling bm25() here it can abandon scoring after LIMIT.
                     ORDER BY rank
@@ -183,7 +183,7 @@ extension MeetingStore {
                         JOIN meeting ON meeting.id = segment.meetingID
                         WHERE segment.deletedAt IS NULL
                           AND meeting.deletedAt IS NULL
-                          AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
+                          AND \(Self.acceptedSegmentHasNoActiveTextCorrectionSQL)
                         LIMIT 1
                     )
                     """) ?? false
@@ -209,7 +209,7 @@ extension MeetingStore {
                         JOIN meeting ON meeting.id = segment.meetingID
                         WHERE segment.deletedAt IS NULL
                           AND meeting.deletedAt IS NULL
-                          AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
+                          AND \(Self.acceptedSegmentHasNoActiveTextCorrectionSQL)
                           AND (
                               segment.embedding IS NULL
                               OR segment.embeddingFingerprint IS NOT ?
@@ -258,7 +258,7 @@ extension MeetingStore {
                     FROM segment
                     JOIN meeting ON meeting.id = segment.meetingID AND meeting.deletedAt IS NULL
                     WHERE segment.embedding IS NULL AND segment.deletedAt IS NULL
-                      AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
+                      AND \(Self.acceptedSegmentHasNoActiveTextCorrectionSQL)
                     ORDER BY segment.createdAt, segment.rowid
                     LIMIT ?
                     """,
@@ -322,7 +322,7 @@ extension MeetingStore {
                                 AND meeting.deletedAt IS NULL
                                 AND meeting.transcriptRevision = ?
                           )
-                          AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
+                          AND \(Self.acceptedSegmentHasNoActiveTextCorrectionSQL)
                         """,
                     arguments: [
                         Self.blob(from: vector),
@@ -368,92 +368,93 @@ extension MeetingStore {
         profile: SemanticEmbeddingProfile,
         limit: Int = 8
     ) async throws -> [[SearchHit]] {
-        let empty = [[SearchHit]](repeating: [], count: queries.count)
-        guard profile.isValid, limit > 0, !queries.isEmpty else { return empty }
-        let (expectedBytes, overflow) = profile.vectorDimension
-            .multipliedReportingOverflow(by: MemoryLayout<Float>.size)
-        guard !overflow else { return empty }
-
-        // Scoring positions, so an unusable variant keeps its caller's index.
-        let scored = queries.indices.filter { index in
-            queries[index].count == profile.vectorDimension
-                && queries[index].allSatisfy(\.isFinite)
-        }
-        guard !scored.isEmpty else { return empty }
-        let flattened = scored.flatMap { queries[$0] }
-        let dimension = profile.vectorDimension
-
+        guard let batch = SemanticQueryBatch(
+            queries: queries,
+            profile: profile,
+            limit: limit)
+        else { return [[SearchHit]](repeating: [], count: queries.count) }
         return try await database.read { db in
-            let rows = try Row.fetchCursor(
-                db,
-                sql: """
-                    SELECT segment.embedding AS embedding,
-                           segment.rowid AS rowID
-                    FROM segment
-                    WHERE segment.embedding IS NOT NULL
-                      AND segment.embeddingFingerprint = ?
-                      AND segment.deletedAt IS NULL
-                      AND segment.meetingID NOT IN (
-                          SELECT meeting.id FROM meeting WHERE meeting.deletedAt IS NOT NULL
-                      )
-                      AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
-                    ORDER BY segment.rowid ASC
-                    """,
-                arguments: [profile.fingerprint])
-            var candidates = [[SemanticCandidate]](
-                repeating: [], count: scored.count)
-            for slot in candidates.indices {
-                candidates[slot].reserveCapacity(min(limit, 64))
-            }
-            var traversalOrder = 0
+            try Self.searchSemantic(batch, in: db)
+        }
+    }
 
-            try flattened.withUnsafeBufferPointer { queryBuffer in
-                // Slice each variant once. Rebasing per row multiplied pointer
-                // work by the corpus size for no benefit.
-                let variants = (0..<scored.count).map { slot in
-                    UnsafeBufferPointer(
-                        rebasing: queryBuffer[
-                            (slot * dimension)..<((slot + 1) * dimension)])
-                }
-                // Direct element access: `&candidates[slot]` in the row loop
-                // pays a bounds and exclusivity check per row per variant,
-                // which is what made one variant cost more than before.
-                try candidates.withUnsafeMutableBufferPointer { admitted in
-                    while let row = try rows.next() {
-                        let order = traversalOrder
-                        traversalOrder += 1
-                        try row.withUnsafeData(atIndex: 0) { blob in
-                            guard let blob else { return }
-                            let rowID: Int64 = row["rowID"]
-                            for slot in variants.indices {
-                                // A variant that cannot be scored skips only
-                                // itself, exactly as the single-query scan
-                                // skipped only that query's row.
-                                guard let score = Self.semanticDotProduct(
-                                    blob,
-                                    query: variants[slot],
-                                    expectedBytes: expectedBytes)
-                                else { continue }
-                                Self.admit(
-                                    score: score,
-                                    order: order,
-                                    rowID: rowID,
-                                    into: &admitted[slot],
-                                    limit: limit)
-                            }
+    private static func searchSemantic(
+        _ batch: SemanticQueryBatch,
+        in database: Database
+    ) throws -> [[SearchHit]] {
+        let candidates = try semanticCandidates(for: batch, in: database)
+        var results = [[SearchHit]](
+            repeating: [],
+            count: batch.resultCount)
+        for (slot, resultIndex) in batch.scoredIndices.enumerated() {
+            results[resultIndex] = try Self.semanticHits(
+                in: database,
+                candidates: candidates[slot])
+        }
+        return results
+    }
+
+    private static func semanticCandidates(
+        for batch: SemanticQueryBatch,
+        in database: Database
+    ) throws -> [[SemanticCandidate]] {
+        let rows = try Row.fetchCursor(
+            database,
+            sql: """
+                SELECT segment.embedding AS embedding,
+                       segment.rowid AS rowID
+                FROM segment
+                WHERE segment.embedding IS NOT NULL
+                  AND segment.embeddingFingerprint = ?
+                  AND segment.deletedAt IS NULL
+                  AND segment.meetingID NOT IN (
+                      SELECT meeting.id FROM meeting WHERE meeting.deletedAt IS NOT NULL
+                  )
+                  AND \(acceptedSegmentHasNoActiveTextCorrectionSQL)
+                ORDER BY segment.rowid ASC
+                """,
+            arguments: [batch.profileFingerprint])
+        var candidates = [[SemanticCandidate]](
+            repeating: [],
+            count: batch.scoredIndices.count)
+        for slot in candidates.indices {
+            candidates[slot].reserveCapacity(min(batch.limit, 64))
+        }
+        var traversalOrder = 0
+
+        try batch.flattenedQueries.withUnsafeBufferPointer { queryBuffer in
+            // Slice each variant once and mutate candidate slots through one
+            // buffer; rebasing or inout subscripting per row multiplies work.
+            let variants = (0..<batch.scoredIndices.count).map { slot in
+                UnsafeBufferPointer(
+                    rebasing: queryBuffer[
+                        (slot * batch.dimension)..<((slot + 1) * batch.dimension)])
+            }
+            try candidates.withUnsafeMutableBufferPointer { admitted in
+                while let row = try rows.next() {
+                    let order = traversalOrder
+                    traversalOrder += 1
+                    try row.withUnsafeData(atIndex: 0) { blob in
+                        guard let blob else { return }
+                        let rowID: Int64 = row["rowID"]
+                        for slot in variants.indices {
+                            guard let score = semanticDotProduct(
+                                blob,
+                                query: variants[slot],
+                                expectedBytes: batch.expectedBytes)
+                            else { continue }
+                            admit(
+                                score: score,
+                                order: order,
+                                rowID: rowID,
+                                into: &admitted[slot],
+                                limit: batch.limit)
                         }
                     }
                 }
             }
-
-            var results = empty
-            for (slot, index) in scored.enumerated() {
-                results[index] = try Self.semanticHits(
-                    in: db,
-                    candidates: candidates[slot])
-            }
-            return results
         }
+        return candidates
     }
 
     /// Bounded insertion into one variant's top-k, preserving the exact
@@ -515,7 +516,7 @@ extension MeetingStore {
                         AND meeting.deletedAt IS NULL
                     WHERE segment.id IN (\(databaseQuestionMarks(count: segmentKeys.count)))
                       AND segment.deletedAt IS NULL
-                      AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
+                      AND \(Self.acceptedSegmentHasNoActiveTextCorrectionSQL)
                     """,
                 arguments: StatementArguments(segmentKeys))
             var current: [UUID: SearchHit] = [:]
@@ -595,7 +596,7 @@ extension MeetingStore {
                     JOIN meeting ON meeting.id = segment.meetingID AND meeting.deletedAt IS NULL
                     WHERE segment.rowid IN (\(databaseQuestionMarks(count: chunk.count)))
                       AND segment.deletedAt IS NULL
-                      AND \(Self.acceptedSegmentHasNoActiveTextAffectingCorrectionSQL)
+                      AND \(Self.acceptedSegmentHasNoActiveTextCorrectionSQL)
                     """,
                 arguments: StatementArguments(chunk))
             for row in rows {
@@ -636,6 +637,43 @@ extension MeetingStore {
         data.withUnsafeBytes { raw in
             Array(raw.bindMemory(to: Float.self))
         }
+    }
+}
+
+private struct SemanticQueryBatch: Sendable {
+    let resultCount: Int
+    let scoredIndices: [Int]
+    let flattenedQueries: [Float]
+    let dimension: Int
+    let expectedBytes: Int
+    let profileFingerprint: String
+    let limit: Int
+
+    init?(
+        queries: [[Float]],
+        profile: SemanticEmbeddingProfile,
+        limit: Int
+    ) {
+        guard profile.isValid, limit > 0, !queries.isEmpty else { return nil }
+        let (expectedBytes, overflow) = profile.vectorDimension
+            .multipliedReportingOverflow(by: MemoryLayout<Float>.size)
+        guard !overflow else { return nil }
+
+        // Preserve positions so one unusable variant contributes an empty slot
+        // instead of shifting the caller's cross-variant ranking inputs.
+        let scoredIndices = queries.indices.filter { index in
+            queries[index].count == profile.vectorDimension
+                && queries[index].allSatisfy(\.isFinite)
+        }
+        guard !scoredIndices.isEmpty else { return nil }
+
+        resultCount = queries.count
+        self.scoredIndices = scoredIndices
+        flattenedQueries = scoredIndices.flatMap { queries[$0] }
+        dimension = profile.vectorDimension
+        self.expectedBytes = expectedBytes
+        profileFingerprint = profile.fingerprint
+        self.limit = limit
     }
 }
 
