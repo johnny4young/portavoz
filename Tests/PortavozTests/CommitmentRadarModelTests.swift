@@ -151,6 +151,7 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertEqual(model.state.page, completed)
         XCTAssertNil(model.state.mutatingCommitmentID)
         XCTAssertFalse(model.state.mutationFailed)
+        XCTAssertEqual(client.searchReindexRequests, 1)
     }
 
     func testMutationFailurePreservesVisiblePageAndCanBeDismissed() async {
@@ -166,6 +167,7 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertEqual(model.state.page, page)
         XCTAssertEqual(model.state.phase, .loaded)
         XCTAssertTrue(model.state.mutationFailed)
+        XCTAssertEqual(client.searchReindexRequests, 0)
         await model.send(.dismissMutationFailure)
         XCTAssertFalse(model.state.mutationFailed)
     }
@@ -460,6 +462,7 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     var reviewRequests: [LoadCommitmentReviewQueueRequest] = []
     var reviewMutations: [ReviewMeetingCommitmentRequest] = []
     var qualityRequestCount = 0
+    var searchReindexRequests = 0
     var presentationRequests: [RecordCommitmentFieldPresentationRequest] = []
     var events: [String] = []
     let presentationResponseDelay: Duration
@@ -512,6 +515,10 @@ private final class CommitmentRadarModelClientFake: CommitmentRadarModelClient {
     ) async throws {
         mutations.append(request)
         return try mutationResponses.removeFirst().get()
+    }
+
+    func requestCommitmentRadarSearchReindex() {
+        searchReindexRequests += 1
     }
 
     func loadCommitmentReviewQueue(

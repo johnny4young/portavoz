@@ -120,6 +120,7 @@ final class AutomationEntityCatalogTests: XCTestCase {
         XCTAssertEqual(entities.map(\.id), [meeting.id.rawValue.uuidString])
         XCTAssertEqual(entities.map(\.title), [meeting.title])
         XCTAssertFalse(entities[0].dateDescription.isEmpty)
+        XCTAssertEqual(entities[0].startedAt, meeting.startedAt)
     }
 
     private func confirm(

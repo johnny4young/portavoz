@@ -1,4 +1,5 @@
 import AppIntents
+import CoreSpotlight
 import Foundation
 
 /// Native App Intents let Shortcuts, Spotlight, and Siri drive Portavoz
@@ -125,6 +126,22 @@ struct PortavozMeetingEntity: AppEntity, Equatable {
     let id: String
     let title: String
     let dateDescription: String
+    let startedAt: Date?
+    let searchableContent: String?
+
+    init(
+        id: String,
+        title: String,
+        dateDescription: String,
+        startedAt: Date? = nil,
+        searchableContent: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.dateDescription = dateDescription
+        self.startedAt = startedAt
+        self.searchableContent = searchableContent
+    }
 
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(
@@ -135,7 +152,15 @@ struct PortavozMeetingEntity: AppEntity, Equatable {
 }
 
 @available(macOS 15.0, *)
-extension PortavozMeetingEntity: IndexedEntity {}
+extension PortavozMeetingEntity: IndexedEntity {
+    var attributeSet: CSSearchableItemAttributeSet {
+        let attributes = defaultAttributeSet
+        attributes.title = title
+        attributes.contentCreationDate = startedAt
+        attributes.contentDescription = searchableContent
+        return attributes
+    }
+}
 
 struct PortavozMeetingEntityQuery: EntityStringQuery {
     @AppDependency(default: UnavailablePortavozAppEntityCatalog())
@@ -180,7 +205,13 @@ struct PortavozPersonEntity: AppEntity, Equatable {
 }
 
 @available(macOS 15.0, *)
-extension PortavozPersonEntity: IndexedEntity {}
+extension PortavozPersonEntity: IndexedEntity {
+    var attributeSet: CSSearchableItemAttributeSet {
+        let attributes = defaultAttributeSet
+        attributes.title = name
+        return attributes
+    }
+}
 
 struct PortavozPersonEntityQuery: EntityStringQuery {
     @AppDependency(default: UnavailablePortavozAppEntityCatalog())
@@ -217,6 +248,19 @@ struct PortavozCommitmentEntity: AppEntity, Equatable {
     let id: String
     let title: String
     let dueDescription: String?
+    let dueAt: Date?
+
+    init(
+        id: String,
+        title: String,
+        dueDescription: String?,
+        dueAt: Date? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.dueDescription = dueDescription
+        self.dueAt = dueAt
+    }
 
     var displayRepresentation: DisplayRepresentation {
         if let dueDescription {
@@ -233,7 +277,15 @@ struct PortavozCommitmentEntity: AppEntity, Equatable {
 }
 
 @available(macOS 15.0, *)
-extension PortavozCommitmentEntity: IndexedEntity {}
+extension PortavozCommitmentEntity: IndexedEntity {
+    var attributeSet: CSSearchableItemAttributeSet {
+        let attributes = defaultAttributeSet
+        attributes.title = title
+        attributes.dueDate = dueAt
+        attributes.contentDescription = dueDescription
+        return attributes
+    }
+}
 
 struct PortavozCommitmentEntityQuery: EntityStringQuery {
     @AppDependency(default: UnavailablePortavozAppEntityCatalog())

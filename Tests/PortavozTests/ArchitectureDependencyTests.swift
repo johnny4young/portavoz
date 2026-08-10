@@ -1663,8 +1663,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(model.contains("case complete(CommitmentID)"))
         XCTAssertTrue(model.contains("case reopen(CommitmentID)"))
         XCTAssertTrue(model.contains("case reschedule(CommitmentID, Date?)"))
+        XCTAssertTrue(model.contains("requestCommitmentRadarSearchReindex"))
         XCTAssertTrue(composition.contains("LoadCommitmentRadar(repository: store)"))
         XCTAssertTrue(composition.contains("ManageCommitmentRadar(repository: store)"))
+        XCTAssertTrue(composition.contains("requestSearchReconciliation()"))
         XCTAssertTrue(root.contains("@State private var commitmentRadarModel"))
         XCTAssertTrue(root.contains("case .commitments(let focus):"))
         XCTAssertTrue(view.contains(
@@ -4711,7 +4713,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         // App Intents metadata (D139). An import of any project module would
         // break that compile — at release time, not at test time — so the
         // SDK-only diet is enforced here.
-        let allowedImports: Set<String> = ["AppIntents", "AppKit", "Foundation"]
+        let allowedImports: Set<String> = [
+            "AppIntents", "AppKit", "CoreSpotlight", "Foundation",
+        ]
         // Tokenize rather than prefix-match: an indented `import` (inside
         // #if) must not slip through, and a trailing comment or a kind
         // import (`import struct Foundation.URL`) must not mis-parse.
@@ -4783,6 +4787,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(appDelegate.contains(
             "PortavozAppIntentBridge.consumeNavigationRequest()"))
         XCTAssertTrue(intents.contains("@AppDependency(default:"))
+        XCTAssertTrue(intents.contains("import CoreSpotlight"))
+        XCTAssertEqual(
+            intents.components(separatedBy:
+                "var attributeSet: CSSearchableItemAttributeSet").count - 1,
+            3)
         XCTAssertTrue(entityAdapter.contains("AppDependencyManager.shared.add"))
         XCTAssertTrue(entityAdapter.contains("LoadAutomationEntities(catalog: store)"))
         XCTAssertTrue(appLaunch.contains("services.installAutomationEntityCatalog()"))
@@ -4841,6 +4850,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D141"))
         XCTAssertTrue(decisions.contains("## D324"))
         XCTAssertTrue(decisions.contains("## D325"))
+        XCTAssertTrue(decisions.contains("## D326"))
     }
 
     func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {
@@ -7414,10 +7424,15 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(waveform.contains("vDSP_maxmgv"))
         XCTAssertFalse(waveform.contains("WaveformCache"))
         XCTAssertTrue(spotlightProjection.contains("func spotlightDocuments()"))
+        XCTAssertTrue(spotlightProjection.contains("func spotlightIndexSnapshot()"))
         XCTAssertTrue(spotlightProjection.contains("ROW_NUMBER() OVER"))
         XCTAssertTrue(spotlightProjection.contains("segmentRank <= 40"))
         XCTAssertTrue(spotlightIndexer.contains("actor SpotlightIndexer"))
-        XCTAssertTrue(spotlightIndexer.contains(#"indexName = "app.portavoz.meetings.v2""#))
+        XCTAssertTrue(spotlightIndexer.contains(#"indexName = "app.portavoz.search.v3""#))
+        XCTAssertTrue(spotlightIndexer.contains("case meetingDocuments"))
+        XCTAssertTrue(spotlightIndexer.contains("case appEntities"))
+        XCTAssertTrue(spotlightIndexer.contains("index.indexAppEntities("))
+        XCTAssertTrue(spotlightIndexer.contains("index.indexSearchableItems("))
         XCTAssertTrue(spotlightIndexer.contains("protectionClass: .complete"))
         XCTAssertTrue(spotlightIndexer.contains("index.beginBatch()"))
         XCTAssertTrue(spotlightIndexer.contains("endBatch(withClientState:"))

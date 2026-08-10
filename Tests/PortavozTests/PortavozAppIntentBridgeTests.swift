@@ -4,6 +4,38 @@ import XCTest
 @testable import portavoz_app
 
 final class PortavozAppIntentBridgeTests: XCTestCase {
+    func testIndexedEntityAttributesKeepSearchMaterialNarrowAndTyped() {
+        guard #available(macOS 15.0, *) else { return }
+        let startedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let dueAt = Date(timeIntervalSince1970: 1_700_086_400)
+        let meeting = PortavozMeetingEntity(
+            id: UUID().uuidString,
+            title: "Search title",
+            dateDescription: "Nov 14, 2023",
+            startedAt: startedAt,
+            searchableContent: "Capped transcript material")
+        let person = PortavozPersonEntity(
+            id: UUID().uuidString,
+            name: "Ana")
+        let commitment = PortavozCommitmentEntity(
+            id: UUID().uuidString,
+            title: "Send brief",
+            dueDescription: "Nov 15, 2023",
+            dueAt: dueAt)
+
+        XCTAssertEqual(meeting.attributeSet.title, meeting.title)
+        XCTAssertEqual(meeting.attributeSet.contentCreationDate, startedAt)
+        XCTAssertEqual(
+            meeting.attributeSet.contentDescription,
+            meeting.searchableContent)
+        XCTAssertEqual(person.attributeSet.title, person.name)
+        XCTAssertEqual(commitment.attributeSet.title, commitment.title)
+        XCTAssertEqual(commitment.attributeSet.dueDate, dueAt)
+        XCTAssertEqual(
+            commitment.attributeSet.contentDescription,
+            commitment.dueDescription)
+    }
+
     @MainActor
     func testLatestBufferedEntityNavigationWinsAndIsConsumedOnce() {
         _ = PortavozAppIntentBridge.consumeNavigationRequest()

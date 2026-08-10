@@ -15,6 +15,8 @@ protocol CommitmentRadarModelClient: AnyObject {
         _ request: ManageCommitmentRadarRequest
     ) async throws
 
+    func requestCommitmentRadarSearchReindex()
+
     func loadCommitmentReviewQueue(
         _ request: LoadCommitmentReviewQueueRequest
     ) async throws -> CommitmentReviewQueuePage
@@ -340,6 +342,7 @@ private extension CommitmentRadarModel {
             try await client.mutateCommitmentRadar(ManageCommitmentRadarRequest(
                 commitmentID: commitmentID,
                 mutation: mutation))
+            client.requestCommitmentRadarSearchReindex()
             await loadRadar(showProgress: false)
         } catch is CancellationError {
             // Route teardown owns cancellation; no failure banner is useful.

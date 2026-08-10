@@ -26,7 +26,8 @@ struct AppAutomationEntityCatalog: PortavozAppEntityCatalog {
                 title: $0.title,
                 dateDescription: $0.startedAt.formatted(
                     date: .abbreviated,
-                    time: .shortened))
+                    time: .shortened),
+                startedAt: $0.startedAt)
         }
     }
 
@@ -61,7 +62,8 @@ struct AppAutomationEntityCatalog: PortavozAppEntityCatalog {
                 title: $0.title,
                 dueDescription: $0.dueAt?.formatted(
                     date: .abbreviated,
-                    time: .omitted))
+                    time: .omitted),
+                dueAt: $0.dueAt)
         }
     }
 }

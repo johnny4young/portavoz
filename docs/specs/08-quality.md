@@ -2305,9 +2305,27 @@ isolated disposable launches through the same production SDK-only open-action
 logic used by each `OpenIntent`: meeting
 opens exact Detail, person shows only the canonical owner's commitments, and
 commitment opens one exact item before **Show all** restores unrelated Radar
-content. This is local app/navigation evidence; physical Shortcuts/Siri
-registration, system picker search, cold database recovery, entity-native
-Spotlight publication, and Sequoia/Tahoe parity remain separate gates.
+content. This is D325 app/navigation evidence; D326 below closes the local
+entity-publication implementation. Physical Shortcuts/Siri registration,
+system picker/search presentation, cold database recovery, and Sequoia/Tahoe
+parity remain separate gates.
+
+**D326 protected entity-publication gate.** The Spotlight package boundary now
+adds one consistent meeting/person/commitment projection case, two client-state
+mode and coverage cases, one production App-Entity mapping/attribute case, and
+the existing coalescing, unchanged-state, retry-exhaustion, recovery, cleanup-
+relaunch, and content-free telemetry cases. App Entity attributes separately
+prove meeting title/date/capped body, canonical-person name, and commitment
+title/due date. The source compiles under strict Swift 6 with the 14.4 target;
+the macOS 15 backend is availability-gated and keeps the non-Sendable
+AppIntents index receiver task-local. Metadata must remain exactly five actions,
+three entities, and three queries. Bilingual XCUITest reuses the exact entity
+open-route journey because temporary stores deliberately suppress host Spotlight
+publication. Feature-owner tests also require successful commitment confirmation
+and Radar mutations to wake search reconciliation while failed writes stay
+silent. This proves app handoff and invalidation without contaminating the
+user's index; physical results, picker registration, Siri disambiguation, and
+cold recovery remain Sequoia/Tahoe field gates.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

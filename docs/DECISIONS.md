@@ -11458,3 +11458,42 @@ and one Spanish real-app journey cover all three destinations. Physical
 Shortcuts picker/search, Siri disambiguation, cold database recovery, native
 entity Spotlight publication, and registration on Sequoia and Tahoe remain
 field or later AUTO-3 evidence; AUTO-3 is not closed by local metadata alone.
+
+## D326 — One protected Spotlight generation changes shape by OS capability (Aug 2026)
+
+**Context:** D325 supplied three native App Entities but did not publish them.
+Adding a second entity index beside the released meeting-document index would
+show duplicate meetings and schedule two competing full-library workers.
+Replacing document search outright would regress the macOS 14.4 deployment
+floor, where App-Entity indexing is unavailable. A native entity snapshot must
+also preserve the released capped meeting-body search instead of becoming a
+title-only regression.
+
+**Decision:** one process-scoped `SpotlightIndexer` now owns one protected named
+`app.portavoz.search.v3` generation. On macOS 15 and later it publishes meeting,
+canonical-person, and non-dismissed confirmed/done commitment values through
+`CSSearchableIndex.indexAppEntities`; on 14.4 it publishes the existing meeting
+documents. Both modes replace the complete index in 500-value batches and use
+different versioned SHA-256 client-state prefixes, so an OS capability change
+cannot mistake the other representation for current data. Meeting App Entities
+reuse the D85 title, date, newest cross-recipe summary, and first 40 live
+segments under the same 4,000-character cap. People carry only canonical name;
+commitments carry only title and optional due date.
+
+StorageKit supplies one transactionally consistent, platform-neutral snapshot
+for the entity mode. Tombstones and dismissed commitments remain excluded.
+The worker retains burst coalescing, bounded retry, launch repair, content-free
+telemetry, and no-content logging. The new AppIntents overlay does not mark its
+async index receiver Sendable under strict Swift 6, so the entity backend uses
+a task-local named `CSSearchableIndex` rather than transferring an actor-owned
+framework reference. Only after v3 has valid client state does cleanup remove
+the older named and default indexes; the old named index receives a foreign
+migration state so an older app rebuilds rather than accepting an empty index.
+
+**Consequences:** Sequoia and Tahoe have one native private entity search
+generation instead of duplicate meeting results, while Sonoma retains released
+meeting search. Local tests prove projection fences, mode-state separation,
+retry/coalescing/migration behavior, and exact searchable attributes. Metadata
+and bilingual real-app navigation remain necessary but do not prove system
+result presentation, picker registration, Siri disambiguation, or cold recovery
+on physical Sequoia and Tahoe; those field gates keep AUTO-3 open.

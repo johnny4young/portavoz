@@ -96,4 +96,42 @@ final class SpotlightProjectionTests: XCTestCase {
         let documents = try await store.spotlightDocuments()
         XCTAssertTrue(documents.isEmpty)
     }
+
+    func testUnifiedSnapshotIncludesOnlyLiveCanonicalEntities() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(
+            title: "Entity source",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        let speaker = Speaker(meetingID: meeting.id, label: "S1")
+        try await store.save(meeting)
+        try await store.save([speaker])
+        let person = try await store.createPersonAndLink(
+            speakerID: speaker.id,
+            preferredName: "Ana",
+            source: .manualName).person
+        let visible = try await store.confirmCommitment(
+            CommitmentConfirmation(
+                title: "Send the brief",
+                origin: .manual(meetingID: meeting.id)),
+            at: Date(timeIntervalSince1970: 1_700_000_100)).commitment
+        let dismissed = try await store.confirmCommitment(
+            CommitmentConfirmation(
+                title: "Discard this",
+                origin: .manual(meetingID: meeting.id)),
+            at: Date(timeIntervalSince1970: 1_700_000_200)).commitment
+        _ = try await store.applyCommitmentTransition(
+            .dismiss,
+            to: dismissed.id,
+            at: Date(timeIntervalSince1970: 1_700_000_300))
+
+        let snapshot = try await store.spotlightIndexSnapshot()
+
+        XCTAssertEqual(snapshot.meetings.map(\.meetingID), [meeting.id])
+        XCTAssertEqual(snapshot.people, [SpotlightPersonDocument(
+            personID: person.id,
+            preferredName: person.preferredName)])
+        XCTAssertEqual(snapshot.commitments.map(\.commitmentID), [visible.id])
+        XCTAssertEqual(snapshot.commitments.map(\.title), [visible.title])
+        XCTAssertFalse(snapshot.commitments.contains { $0.commitmentID == dismissed.id })
+    }
 }

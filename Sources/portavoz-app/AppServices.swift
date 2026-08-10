@@ -410,9 +410,9 @@ final class AppServices {
         return try MeetingStore(databaseURL: storagePolicy.meetingStoreURL)
     }
 
-    /// Searchable mutations wake both protected indexes. Each process owner
-    /// coalesces bursts; semantic maintenance remains storage-resumable and
-    /// does not poll while no signal is pending.
+    /// Searchable mutations wake both local search projections. Each process
+    /// owner coalesces bursts; semantic maintenance remains storage-resumable
+    /// and does not poll while no signal is pending.
     func requestSearchReconciliation() {
         let indexer = spotlightIndexer
         Task { await indexer.requestReindex() }

@@ -2,8 +2,9 @@
 
 Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence), D81 (production lexical candidate benchmark), D82 (isolated semantic resource benchmark), D83 (comparable semantic after matrix), D84 (copied real-audio waveform evidence), D85 (protected measured Spotlight reconciliation), D87 (portable typed evidence), D88 (portable current claim feedback), D89 (portable decision evidence), D90 (portable action-item evidence), D91 (portable role-separated Apuntador evidence), D100 (shared Ask workflow across app, CLI, and MCP), D102 (one executable composition and bounded meeting reads), D103 (terminal product workflows enter ApplicationKit), D115 (private-iCloud receipt evidence), D116 (filesystem-capability-safe private publication), D179 (capture-safe existing-library sync admission), D183 (bounded backup destination identity), D184 (durable backup publication evidence), D185 (strict staged-source adoption), D186 (successful-publication source checkpoints), D187 (fail-closed pending-publication reconciliation), D188 (durable typed backup failure outcomes), D189 (fail-closed backup launch continuation), D233 (correction-lineage invalidation before composed interfaces), D234 (correction-aware documents and protected correction replay), D237 (transport-neutral confirmed commitment replay).
 
-Native automation decisions: D324 (honest Start/Stop actions) and D325
-(bounded meeting/person/commitment App Entities and exact open routes).
+Native automation decisions: D324 (honest Start/Stop actions), D325 (bounded
+meeting/person/commitment App Entities and exact open routes), and D326
+(availability-shaped protected entity publication).
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
@@ -201,9 +202,10 @@ privacy receipt as the only in-product network-egress truth.
    are implemented and field-verified. The native Stop action is implemented
    and locally verified. Meeting, canonical-person, and confirmed-commitment
    App Entities and exact open actions are implemented and locally verified.
-   Stop plus entity picker/search, Siri disambiguation, cold recovery, native
-   entity Spotlight publication, and registration still need physical
-   Sequoia/Tahoe evidence.
+   Their protected native publication is implemented and deterministically
+   verified at the storage, adapter, metadata, and app-route boundaries. Stop
+   plus physical entity picker/search result presentation, Siri disambiguation,
+   cold recovery, and registration still need Sequoia/Tahoe evidence.
 
 ## M16 automation (Jul 2026)
 
@@ -256,11 +258,37 @@ privacy receipt as the only in-product network-egress truth.
   require the recording controller's typed recovery. The saved Start Shortcut
   was field-verified from Shortcuts, Spotlight, and Siri on July 27, 2026; Stop
   and the App Entity surface remain physical Sequoia/Tahoe field gates.
-  App Entity queries retain the macOS 14.4 deployment floor and add
-  availability-gated `IndexedEntity` conformance on macOS 15+, but D325 does
-  not publish people or commitments into Core Spotlight and makes no native
-  entity-indexing closure claim.
-- **Spotlight** (`SpotlightIndexer`, Jul 2026): local Core Spotlight search uses one process-scoped actor and one consistent StorageKit snapshot. Launch and searchable mutations request a reconciliation; 250 ms burst coalescing, compact SHA-256 client state, and retries make it independent of a SwiftUI window. Publication replaces the meeting domain in a named `app.portavoz.meetings.v2` index with complete file protection and 500-item batches, then removes the released default-index domain only after the protected index is ready. Legacy cleanup retries after failure and records a versioned local migration marker after success; unchanged state therefore neither republishes documents nor repeatedly deletes the same old domain during this or later app launches. `-use-temp-store` suppresses OS indexing. Each item retains title + date + newest cross-recipe summary + first 40 ordered live segments (cap 4,000 characters), with the meeting UUID as identifier. A measured 100,000-meeting projection is 425.64 ms wall p95 versus 22,085.35 ms for the legacy N+1 path, so D85 rejects an outbox consumer at the measured scale. The hit still navigates via `onContinueUserActivity(CSSearchableItemActionType)` → `Route.meeting`. **Double GOTCHA (field, Jul 2026)**: (1) without `NSUserActivityTypes: [com.apple.corespotlightitem]` in Info.plist, macOS discards the continuation; (2) even with it, SwiftUI's `onContinueUserActivity` does NOT fire on macOS — the activity reaches the classic `NSApplicationDelegate`. `PortavozAppDelegate.application(_:continue:)` (via `@NSApplicationDelegateAdaptor`) parses the identifier and navigates through `AppServices.pendingRoute` (the banner channel); ContentView also applies any `pendingRoute` present WHEN MOUNTING (cold start: the activity may arrive before the window, and `onChange` does not fire for the initial value).
+  App Entity queries retain the macOS 14.4 deployment floor. On macOS 15+,
+  D326 publishes all three `IndexedEntity` values through one protected named
+  index; 14.4 keeps the released meeting-document representation in that same
+  versioned index. This local implementation evidence does not close physical
+  system presentation or registration.
+- **Spotlight** (`SpotlightIndexer`, D85/D326): local Core Spotlight search uses
+  one process-scoped actor and one consistent StorageKit projection. Launch and
+  searchable mutations request reconciliation; 250 ms burst coalescing,
+  mode-versioned SHA-256 client state, and bounded retry make it independent of
+  a SwiftUI window. One named `app.portavoz.search.v3` index uses complete
+  protection and 500-value replacement batches. On macOS 15+ it publishes
+  native meeting, canonical-person, and confirmed/done commitment App Entities;
+  on 14.4 it publishes meeting documents. Meeting entity attributes retain
+  title + date + newest cross-recipe summary + first 40 ordered live segments
+  under the released 4,000-character cap. People retain only canonical name;
+  commitments retain only title and optional due date. Distinct state prefixes
+  force replacement when OS capability changes, while one index prevents
+  duplicate meeting results. Only after v3 is ready does retryable, marker-
+  guarded cleanup remove `app.portavoz.meetings.v2` and the released default
+  domain. `-use-temp-store` suppresses OS indexing.
+  The measured 100,000-meeting D85 projection remains 425.64 ms wall p95 versus
+  22,085.35 ms for the legacy N+1 path, so no outbox consumer is introduced.
+  The 14.4 document hit navigates through
+  `CSSearchableItemActionType` → `Route.meeting`; entity hits use their exact
+  `OpenIntent`. **Double GOTCHA (field, Jul 2026):** (1) without
+  `NSUserActivityTypes: [com.apple.corespotlightitem]` in Info.plist, macOS
+  discards a document continuation; (2) even with it, SwiftUI's
+  `onContinueUserActivity` does not fire on macOS. The activity reaches the
+  classic `NSApplicationDelegate`, which parses identity into
+  `AppServices.pendingRoute`; ContentView also consumes a route already present
+  when it mounts so cold launch cannot strand it.
 - **`.portavoz` bundle** (`MeetingBundle`, IntegrationsKit, Jul 2026 — M15 L0): versioned JSON (ISO8601, sortedKeys) with meeting+speakers+segments+summary+typed overview/decision/action-item evidence+current overview feedback+action items+notes+Apuntador cards with optional question/answer evidence and optional audio; `audioDirectory` is ALWAYS cleared on export (D4). Readers reject a future `formatVersion` with a clear error; unknown future fields are ignored. All later fields remain optional/additive under formatVersion 1, so older readers import the subset they understand. `remappedForImport()` mints fresh IDs for every imported entity while preserving relationships: feedback follows its remapped overview claim, each decision keeps its rendered coordinate, action evidence follows its fresh task identity, Apuntador evidence follows its fresh card identity, and every evidence link follows its fresh segment — importing twice creates two independent meetings. Foreign or malformed nested Apuntador evidence is dropped without losing the card or legitimizing the wrong relation. UI: export from the detail menu (without audio / **with audio**), import through the open panel (UTI `app.portavoz.meeting-bundle`, extension `.portavoz`), and double-click routing. Import decoding/remapping remains a private IntegrationsKit adapter and runs off the MainActor. Its ApplicationKit handoff rejects path-shaped/unknown channel names, unsupported extensions, duplicate channels, and foreign evidence; only system/microphone m4a/caf/wav attachments can materialize as canonical files under `Audio/<fresh-uuid>/`. Meeting, cast, transcript, immutable summary/actions/evidence/feedback, notes, and Apuntador cards/evidence then commit as one aggregate; a final evidence-link failure rolls back the transaction, compensates staged audio, and never publishes a partial Library entry (D51). Export now loads that content from one live StorageKit snapshot, strips the local directory in ApplicationKit, and performs optional full-channel reads plus IntegrationsKit format-v1 encoding at utility priority; missing/unreadable channels remain omitted and SwiftUI retains the native save panel (D52/D87/D88/D89/D90/D91). For email-sized files, compress with AAC before exporting.
 - **Confirmed commitment replay** (`CommitmentContinuityEnvelope`, PortavozCore/StorageKit, Aug 2026): canonical format-1 JSON-domain shape for one confirmed continuity aggregate, its exact source/evidence rows, and append-only lifecycle events. StorageKit export returns the validated persisted projection; replay canonicalizes millisecond timestamps, is idempotent for exact retries, and rejects conflicting identity or missing/mismatched local source, evidence, meeting, or person truth before inserting anything. This is an internal transport-neutral representation only. It is deliberately absent from `.portavoz` meeting bundles, meeting-sync envelopes, CloudKit records, CLI, MCP, and SwiftUI until a separately reviewed library-global transport and confirmation UX exist (D237).
 - **Meeting sync codecs** (`MeetingSyncEnvelopeCodec` + `CloudMeetingRecordCodec`, IntegrationsKit, Bands 6B1–6B2A): deterministic sorted-key JSON with millisecond timestamps wraps StorageKit's exact-generation text-first envelope. One dormant private-zone `MeetingReplica` stores payloads within a conservative 512 KiB policy in `encryptedValues`; larger payloads use a private CKAsset staging file whose content CloudKit encrypts by default. Content-free `0600` probes in the destination directory independently apply and read back complete protection and backup exclusion. Supported metadata is applied while the staging sibling is empty; only direct or wrapped `EINVAL`/`ENOTSUP` omits the unavailable key, and every other failure stays closed. One POSIX descriptor then handles partial writes and `EINTR`, synchronizes with `fsync`, closes, and verifies exact size plus owner-only permissions before one same-volume atomic rename. Supported metadata is also verified, no Foundation reopen occurs, and partial content never occupies the final path. The digest is encrypted, matching records are reused to preserve system fields, malformed records fail closed, and deletion remains a saved tombstone. The envelope carries every live portable summary/evidence version but no audio, local paths, embeddings, canonical people, generation provenance, jobs, receipts, secrets, or voiceprints (D93/D94/D116).

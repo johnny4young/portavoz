@@ -3307,12 +3307,16 @@ each request and applies the currently selected clear/original mix, so a
 completed compression cannot leave stale URLs behind.
 
 Spotlight indexing is a process-scoped, protected, coalescing reconciler. It
-compares compact client state, publishes bounded batches to a named index,
-retries transient failures, and repairs missed work at launch without exposing
-meeting content to logs. Removal of the obsolete default-index domain retries
-until successful, then records a versioned local migration marker so neither
-later reconciliations nor future app launches wake Core Spotlight for the same
-one-way cleanup.
+compares compact mode-versioned client state, publishes bounded batches to one
+named index, retries transient failures, and repairs missed work at launch
+without exposing content to logs. On macOS 15 and later the protected index is
+one native generation of meeting, canonical-person, and confirmed-commitment
+App Entities. The meeting entity retains the released capped summary/transcript
+search body. The macOS 14.4 compatibility path publishes meeting documents to
+the same index; its distinct client-state prefix forces replacement when OS
+capability changes. Removal of the obsolete named/default indexes retries until
+successful, then records a versioned local migration marker so neither later
+reconciliations nor future app launches repeat the one-way cleanup.
 
 ## Open-format export and backup
 
@@ -3642,10 +3646,15 @@ identity and read failure route to an explicit Library or Radar recovery rather
 than terminating or leaving a blank destination.
 
 `AppEntity` and its string query keep the macOS 14.4 deployment floor.
-`IndexedEntity` conformance is availability-gated to macOS 15, but no person or
-commitment entity is published to Core Spotlight by this implementation. The
-protected meeting-document index remains independent, so local metadata and
-XCUITest do not close native entity indexing or physical system registration.
+`IndexedEntity` conformance and native publication are availability-gated to
+macOS 15. One process-scoped reconciler maps the transactionally consistent
+StorageKit projection into homogeneous 500-entity batches in a named index with
+complete protection; meeting attributes preserve capped full-text search,
+people contain only canonical names, and commitments contain only title and
+optional due date. A 14.4 document fallback shares the index under a different
+client-state version, avoiding duplicate meetings without dropping the older OS
+surface. Local metadata, deterministic tests, and XCUITest still do not prove
+physical Spotlight presentation or system registration.
 
 macOS publishes only those native actions in the Shortcuts action picker: it
 deliberately omits `AppShortcutsProvider`, because automatic App Shortcuts are

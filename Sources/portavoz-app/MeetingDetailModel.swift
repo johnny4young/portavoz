@@ -393,6 +393,7 @@ private extension MeetingDetailModel {
         do {
             let commitment = try await client.confirmMeetingDetailCommitment(request)
             state.lastActionError = nil
+            client.requestMeetingDetailSearchReindex()
             client.requestMeetingDetailMemoryGraphReindex()
             return .commitmentConfirmed(commitment)
         } catch {

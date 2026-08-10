@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## August 10, 2026
+
+- **🔎 Your private work is native in Spotlight** — Find meetings, canonical people, and confirmed commitments through one protected local index on Sequoia and Tahoe, without duplicate meeting results or exposing extra evidence fields.
+
 ## August 9, 2026
 
 - **🧭 Open exact work from Shortcuts** — Choose a meeting, person, or confirmed commitment and Portavoz opens its exact private destination with clear recovery if it changed.

@@ -7,7 +7,8 @@ Additional decisions: D320 (structured First Listen and SpeechAnalyzer
 lifetime), D321 (durable Skill retry identity and visible recovery), and D322
 (event-scoped resident pre-meeting brief proposals), D323 (exact Reminder Draft
 permission/effect), D324 (honest Start/Stop App Intents), and D325 (bounded App
-Entities with exact reversible routes).
+Entities with exact reversible routes), and D326 (one availability-shaped
+protected Spotlight generation).
 D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
 D193 lets only the resource-benchmark process observe that same closed stream
@@ -1197,20 +1198,24 @@ task. `MeetingReminderController` retains only minute scheduling, session
 deduplication, floating-panel lifecycle, and the recording route. Optional
 calendar failures remain a silent no-notice result, matching the released UX.
 
-`AppServices` also owns one process-scoped `SpotlightIndexer` actor (D85).
+`AppServices` also owns one process-scoped `SpotlightIndexer` actor (D85/D326).
 Launch and every searchable mutation call `requestSpotlightReindex()`; requests
 coalesce for 250 ms and are not tied to a `ContentView` lifecycle. The actor
-loads one consistent StorageKit projection, hashes its exact documents into a
-compact client state, skips unchanged publication, and retries failures after
-one and five seconds. Its private backend serializes access to the named
-`app.portavoz.meetings.v2` index, uses complete file protection and 500-item
-batches, and removes the released default-index domain only after the protected
-index is ready. A failed legacy cleanup remains retryable; the first success
-records a versioned local migration marker instead of issuing the same delete
-on every unchanged reconciliation or future app launch. Temporary UI-test
-stores disable OS indexing. Internal status
-and content-free OSLog attempts are diagnostic only; no meeting content is
-logged. A new request after terminal retry exhaustion starts a fresh recovery.
+loads one consistent StorageKit projection, hashes every published field into
+a compact mode-versioned client state, skips unchanged publication, and retries
+failures after one and five seconds. Its private backend replaces the named
+`app.portavoz.search.v3` index under complete protection in 500-value batches.
+On macOS 15+ those values are native meeting/person/commitment App Entities; on
+14.4 they are released meeting documents. The distinct state prefixes make an
+OS capability transition repair the representation instead of accepting stale
+state, while one index avoids duplicate meeting results. The entity adapter
+uses task-local Core Spotlight references to satisfy strict Swift 6 isolation.
+It removes the older named/default indexes only after v3 is ready. Failed
+cleanup remains retryable; the first success records a versioned marker instead
+of issuing the same delete on every unchanged reconciliation or future launch.
+Temporary UI-test stores disable OS indexing. Internal status and content-free
+OSLog attempts are diagnostic only; no meeting content is logged. A new request
+after terminal retry exhaustion starts a fresh recovery.
 
 `AppServices` also owns one process-scoped `MeetingSyncModel` (D97). Production
 composition creates the platform-neutral D96 lifecycle and an inert

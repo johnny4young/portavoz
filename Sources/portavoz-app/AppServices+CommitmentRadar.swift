@@ -21,6 +21,10 @@ extension AppServices: CommitmentRadarModelClient {
         commitmentReminders.kick()
     }
 
+    func requestCommitmentRadarSearchReindex() {
+        requestSearchReconciliation()
+    }
+
     func loadCommitmentReviewQueue(
         _ request: LoadCommitmentReviewQueueRequest
     ) async throws -> CommitmentReviewQueuePage {

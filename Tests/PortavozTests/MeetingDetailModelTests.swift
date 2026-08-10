@@ -313,13 +313,15 @@ final class MeetingDetailModelTests: XCTestCase {
             .confirmCommitment(confirmation),
             .reviewCommitment(review),
         ])
-        XCTAssertEqual(client.searchReindexRequests, 0)
+        XCTAssertEqual(client.searchReindexRequests, 1)
         XCTAssertEqual(client.memoryGraphReindexRequests, 1)
         XCTAssertNil(model.state.lastActionError)
 
         client.failures = [.confirmCommitment, .reviewCommitment]
         let failedConfirmation = await model.send(.confirmCommitment(confirmation))
         XCTAssertNil(failedConfirmation)
+        XCTAssertEqual(client.searchReindexRequests, 1)
+        XCTAssertEqual(client.memoryGraphReindexRequests, 1)
         XCTAssertNotNil(model.state.lastActionError)
         let failedReview = await model.send(.reviewCommitment(review))
         XCTAssertNil(failedReview)

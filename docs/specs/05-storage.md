@@ -13,6 +13,8 @@ D235 adds correction transaction and replica-replay recovery gates without a
 schema change.
 D325 adds bounded literal meeting, canonical-person, and confirmed-commitment
 catalog reads for native App Entity resolution without a schema change.
+D326 adds one transactionally consistent platform-neutral Spotlight snapshot
+for meeting, person, and commitment entity publication without a schema change.
 D239 adopts the existing v21 review and confirmation transactions through a
 narrow ApplicationKit repository; it adds no schema or presentation-owned SQL.
 D243 adds an explicit append-only cross-meeting source link; it reuses schema
@@ -1115,6 +1117,13 @@ and their summary-plus-transcript description retains the released 4,000-
 character cap. Tombstoned meetings, summaries, and segments are excluded.
 StorageKit returns platform-neutral `SpotlightDocument` values; Core Spotlight
 batching, protection, retry, and cleanup remain private app adapter concerns.
+`spotlightIndexSnapshot()` performs that meeting projection plus canonical-
+person and non-dismissed confirmed/done commitment reads inside the same
+`DatabaseQueue.read`. Its `SpotlightPersonDocument` contains only stable person
+identity and preferred name; its `SpotlightCommitmentDocument` contains only
+stable commitment identity, title, and optional due date. The deterministic
+orders and strict persisted-identity decoding make the complete snapshot safe
+to hash and retry without exposing AppIntents or Core Spotlight to StorageKit.
 
 `automationMeetings`, `automationPeople`, and `automationCommitments` are the
 D325 read-side catalog for native App Entity queries. Every call clamps output
