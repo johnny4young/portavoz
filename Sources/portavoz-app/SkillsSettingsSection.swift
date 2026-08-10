@@ -26,9 +26,11 @@ struct SkillsSettingsSection: View {
                     }
                 }
 
-                Section("Coming later") {
-                    ForEach(plannedSkills) { skill in
-                        plannedSkillRow(skill)
+                if !plannedSkills.isEmpty {
+                    Section("Coming later") {
+                        ForEach(plannedSkills) { skill in
+                            plannedSkillRow(skill)
+                        }
                     }
                 }
 
@@ -283,7 +285,7 @@ struct SkillsSettingsSection: View {
         case MeetingPackageExportSkill.id:
             L10n.text("Writes a text-only package to the destination you approve.")
         case ReminderDraftSkill.id:
-            L10n.text("Will prepare a local reminder after its calendar permission flow ships.")
+            L10n.text("Creates one local reminder from a confirmed commitment after you approve it.")
         case PreMeetingBriefSkill.id:
             L10n.text("Proposes an exact cited brief beside your next calendar event.")
         default:

@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,276 cases (14 environment-gated) + 73
+Status: the package inventory contains 2,298 cases (14 environment-gated) + 74
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 73
+Meeting Detail tests. The English and Spanish release gates each cover all 74
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -31,7 +31,7 @@ documented below.
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config
 (default rules + correctness/clarity opt-ins, industry thresholds: line 120,
 function-body 60/100, cyclomatic 12/20, type-body 400/600). CI treats every
-violation as a failure. The Aug 9 acceptance run is clean across all **636
+violation as a failure. The Aug 9 acceptance run is clean across all **642
 production Swift files**. The 20 violations found by the Aug 8 audit were
 removed through cohesive Meeting Detail, graph, decision-query, processing,
 correction, job, Skills-storage, and search owner splits rather than blanket
@@ -1570,10 +1570,10 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The 9 Aug 2026 field-reliability inventory is 2,276 XCTest package cases (14
-environment-gated), zero strict-lint violations across 636 production Swift
+The 9 Aug 2026 field-reliability inventory is 2,298 XCTest package cases (14
+environment-gated), zero strict-lint violations across 642 production Swift
 files, a 221-case recording/recovery selector passing 25 consecutive iterations
-(5,525 executions), and 73 XCUITest cases per locale.
+(5,525 executions), and 74 XCUITest cases per locale.
 The generic stress runner refuses fewer than 90 tests and the release wrapper
 raises that floor to 108. Release evidence requires the package inventory to
 pass without failures on a supported AppKit-capable host and strict lint to
@@ -2200,6 +2200,17 @@ an agent's computer-use session: 3 consecutive attempts failed during init,
 and the same code passed 7/7 in a cycle without that session. This is not a
 code failure: run the UITests without concurrent automation clients.
 
+**Environment flake — foreground ownership (Aug 2026):** an unrelated app can
+raise a window after Portavoz has activated but before XCUITest synthesizes its
+next event. The result bundle then names that external window as an
+interrupting element; Command-comma or the pending click can be consumed
+without exercising the intended Portavoz control. Shared Settings helpers
+reassert foreground ownership and make one bounded retry, verifying the exact
+destination before continuing. They defer the assertion until both attempts
+are exhausted so a recovered interaction can actually recover the test. This
+does not make concurrent automation supported: classify the result from its
+activity tree and rerun with other UI-test clients idle.
+
 ## UI-suite cost model and the journey pattern (Aug 2026)
 
 Measured on the full bilingual run of Aug 7 (132 cases, ~1,940 s of test
@@ -2221,8 +2232,8 @@ genuinely need different seed flags or launch arguments; never merge cases
 across different launch configurations, because a shared launch that half
 the assertions must un-do stops being evidence.
 
-The current inventory is 73 cases per locale (146 bilingual). The Aug 7 cost
-sample above predates fourteen of those bilingual executions and remains a timing model,
+The current inventory is 74 cases per locale (148 bilingual). The Aug 7 cost
+sample above predates sixteen of those bilingual executions and remains a timing model,
 not a claim that the smaller 132-case inventory is current.
 
 **D321 retry gate.** Three package cases pin the proposal UUID across model
@@ -2247,6 +2258,25 @@ exact cited preview and local capabilities, confirms it, compares the result,
 requires offer retirement, and follows the receipt into Skills Settings. This
 does not automate the SystemUIServer-owned status item or prove Calendar/TCC
 behavior on a physical Sequoia or Tahoe Mac; that shell remains field evidence.
+
+**D323 Reminder Draft gate.** Twenty-one package cases cover the bounded batch
+surface, pause/disable/dismiss/receipt policy, exact canonical proposal,
+durable retry ownership, per-window permission state machine, target bounds,
+success and ambiguous-outcome verification, adapter authorization, exact
+destination drift, and one same-store save. One architecture ratchet pins
+platform isolation, the 200-row
+ceiling, explicit permission control, exact target, purpose strings in both app
+bundle paths, and D323. One new real-app journey per locale starts with the
+disposable permission state undetermined, proves no confirm action exists
+before the explicit access control, shows the exact fake Reminders list,
+confirms one seeded commitment, requires subject offer retirement and receipt,
+then verifies the same durable receipt in Skills Settings. The fake never
+touches host TCC or Reminders; physical Sequoia/Tahoe permission and save
+behavior are a separate field gate.
+
+The exact D323 closure passed all 74 real-app cases in English and all 74 in
+Spanish with zero failures or skips on Apple Silicon macOS 26.5.2. This host
+evidence covers Tahoe only; it does not close the physical Sequoia field gate.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

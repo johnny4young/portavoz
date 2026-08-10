@@ -108,6 +108,81 @@ final class CommitmentRadarUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedCommitmentRadar: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        let radar = app.buttons["library-commitment-radar-button"]
+        XCTAssertTrue(radar.waitForExistence(timeout: 10))
+        radar.click()
+
+        let mineID = "B5D10000-0000-4000-8000-000000000002"
+        let create = app.control(
+            withIdentifier: "commitment-radar-reminder-create-\(mineID)")
+        XCTAssertTrue(
+            create.waitForExistence(timeout: 10),
+            "a confirmed commitment must expose its local reminder proposal")
+        create.click()
+
+        let sheet = app.control(withIdentifier: "reminder-draft-sheet")
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.control(withIdentifier: "reminder-draft-preview-title").exists)
+        XCTAssertTrue(
+            sheet.staticTexts["Recheck the launch checklist"]
+                .waitForExistence(timeout: 5),
+            "the permission sheet must expose the exact commitment title")
+        let allow = app.control(
+            withIdentifier: "reminder-draft-allow-access")
+        XCTAssertTrue(
+            allow.waitForExistence(timeout: 5),
+            "opening a proposal must inspect permission without prompting")
+        XCTAssertFalse(
+            app.control(withIdentifier: "reminder-draft-confirm").exists,
+            "no reminder may be created before the separate permission action")
+        attachScreenshot(of: app, named: "reminder-draft-permission-moment")
+
+        XCTAssertTrue(app.prepareForInteraction())
+        allow.click()
+        let target = app.control(withIdentifier: "reminder-draft-target-list")
+        XCTAssertTrue(target.waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            sheet.staticTexts["Reminders"].waitForExistence(timeout: 5),
+            "the exact fake destination must be visible before confirmation")
+        let refresh = app.control(withIdentifier: "reminder-draft-refresh-list")
+        XCTAssertTrue(refresh.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.prepareForInteraction())
+        refresh.click()
+        XCTAssertTrue(target.waitForExistence(timeout: 10))
+        XCTAssertTrue(sheet.staticTexts["Reminders"].exists)
+        let confirm = app.control(withIdentifier: "reminder-draft-confirm")
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.prepareForInteraction())
+        confirm.click()
+
+        let created = app.control(
+            withIdentifier: "commitment-radar-reminder-created-\(mineID)")
+        XCTAssertTrue(
+            created.waitForExistence(timeout: 10),
+            "the subject surface must rehydrate the durable succeeded receipt")
+        XCTAssertFalse(create.exists)
+
+        XCTAssertTrue(
+            app.openSettingsWindow(),
+            "the production Settings command must open its window")
+        XCTAssertTrue(
+            app.openSettingsCategory(
+                "settings-category-skills",
+                revealing: "settings-skill-receipt-reminder-draft"),
+            "the global control center must project the same durable receipt")
+        attachScreenshot(of: app, named: "reminder-draft-durable-receipt")
+    }
+
+    @MainActor
     func testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence() {
         let app = XCUIApplication.portavoz(
             seedDemo: true,

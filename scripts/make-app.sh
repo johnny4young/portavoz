@@ -172,6 +172,8 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <string>Portavoz captures system audio to transcribe other meeting participants. Audio never leaves your Mac.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>Portavoz reads calendar attendees only to suggest meeting speaker names. Nothing leaves your Mac.</string>
+    <key>NSRemindersFullAccessUsageDescription</key>
+    <string>Portavoz creates a reminder only after you preview and confirm it. Nothing leaves your Mac.</string>
     <key>NSDesktopFolderUsageDescription</key>
     <string>Portavoz stores meeting audio in the folder you choose.</string>
     <key>NSDocumentsFolderUsageDescription</key>

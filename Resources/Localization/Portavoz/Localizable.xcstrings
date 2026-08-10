@@ -11281,12 +11281,12 @@
         }
       }
     },
-    "Will prepare a local reminder after its calendar permission flow ships.": {
+    "Creates one local reminder from a confirmed commitment after you approve it.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preparará un recordatorio local cuando esté listo el flujo de permiso del calendario."
+            "value": "Crea un recordatorio local a partir de un compromiso confirmado después de que lo apruebes."
           }
         }
       }
@@ -11617,6 +11617,306 @@
           "stringUnit": {
             "state": "translated",
             "value": "Este brief cambió o ya no está en tu calendario. Revísalo de nuevo."
+          }
+        }
+      }
+    },
+    "Could not dismiss this reminder suggestion.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo descartar esta sugerencia de recordatorio."
+          }
+        }
+      }
+    },
+    "Portavoz could not find your default Reminders list. Choose one in Reminders, then check again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo encontrar tu lista predeterminada de Recordatorios. Elige una en Recordatorios y vuelve a comprobar."
+          }
+        }
+      }
+    },
+    "Portavoz could not verify whether the reminder was created. Check Reminders before retrying.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo verificar si se creó el recordatorio. Comprueba Recordatorios antes de volver a intentarlo."
+          }
+        }
+      }
+    },
+    "Reminders access could not be checked. Try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo comprobar el acceso a Recordatorios. Inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "The reminder could not be created. Nothing else changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo crear el recordatorio. Nada más cambió."
+          }
+        }
+      }
+    },
+    "The reminder result could not be verified. Check Reminders before trying again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar el resultado del recordatorio. Comprueba Recordatorios antes de volver a intentarlo."
+          }
+        }
+      }
+    },
+    "Reminders access or the destination changed. Check again before creating it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El acceso a Recordatorios o el destino cambiaron. Vuelve a comprobarlos antes de crearlo."
+          }
+        }
+      }
+    },
+    "The reminder was not created. You can retry this exact draft.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se creó el recordatorio. Puedes volver a intentar este mismo borrador."
+          }
+        }
+      }
+    },
+    "This reminder draft changed or already ran. Open a fresh preview.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este borrador de recordatorio cambió o ya se ejecutó. Abre una vista previa nueva."
+          }
+        }
+      }
+    },
+    "Allow Reminders Access": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir acceso a Recordatorios"
+          }
+        }
+      }
+    },
+    "Checking Reminders access without prompting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando el acceso a Recordatorios sin solicitar permiso…"
+          }
+        }
+      }
+    },
+    "Create reminder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear recordatorio"
+          }
+        }
+      }
+    },
+    "Create this reminder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear este recordatorio"
+          }
+        }
+      }
+    },
+    "Portavoz will ask only when you choose Allow Reminders Access.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz solo solicitará acceso cuando elijas Permitir acceso a Recordatorios."
+          }
+        }
+      }
+    },
+    "Reminder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recordatorio"
+          }
+        }
+      }
+    },
+    "Reminders access is off. Nothing was created.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El acceso a Recordatorios está desactivado. No se creó nada."
+          }
+        }
+      }
+    },
+    "Reminders list": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lista de Recordatorios"
+          }
+        }
+      }
+    },
+    "Waiting for your Reminders choice…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando tu elección sobre Recordatorios…"
+          }
+        }
+      }
+    },
+    "creates one local reminder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "crea un recordatorio local"
+          }
+        }
+      }
+    },
+    "reads one confirmed commitment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lee un compromiso confirmado"
+          }
+        }
+      }
+    },
+    "Couldn’t update reminder suggestion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo actualizar la sugerencia de recordatorio"
+          }
+        }
+      }
+    },
+    "Create in Reminders": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear en Recordatorios"
+          }
+        }
+      }
+    },
+    "Created in Reminders": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creado en Recordatorios"
+          }
+        }
+      }
+    },
+    "Don't suggest this reminder again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No volver a sugerir este recordatorio"
+          }
+        }
+      }
+    },
+    "Reminder failed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El recordatorio falló"
+          }
+        }
+      }
+    },
+    "Reminder needs review": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El recordatorio necesita revisión"
+          }
+        }
+      }
+    },
+    "Reminder not created": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recordatorio no creado"
+          }
+        }
+      }
+    },
+    "Retry in Reminders": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a intentar en Recordatorios"
+          }
+        }
+      }
+    },
+    "Reminder suggestions are unavailable. Your commitments are unchanged. Reopen Radar to try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las sugerencias de recordatorios no están disponibles. Tus compromisos no cambiaron. Vuelve a abrir Radar para intentarlo de nuevo."
+          }
+        }
+      }
+    },
+    "Refresh list": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar lista"
           }
         }
       }

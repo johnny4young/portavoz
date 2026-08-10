@@ -40,7 +40,7 @@ public enum LocalSkillCatalogue {
             availability: .available),
         LocalSkillCatalogueEntry(
             definition: ReminderDraftSkill.definition,
-            availability: .planned),
+            availability: .available),
         LocalSkillCatalogueEntry(
             definition: PreMeetingBriefSkill.definition,
             availability: .available)

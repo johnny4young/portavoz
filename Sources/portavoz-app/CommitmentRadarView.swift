@@ -6,6 +6,7 @@ import SwiftUI
 struct CommitmentRadarView: View {
     let model: CommitmentRadarModel
     let reminders: CommitmentReminderModel
+    let reminderDrafts: ReminderDraftModel
     let onOpenMeeting: (MeetingID, TimeInterval?) -> Void
 
     @State private var expandedItems: Set<CommitmentID> = []
@@ -35,6 +36,9 @@ struct CommitmentRadarView: View {
         }
         .accessibilityIdentifier("commitment-radar")
         .task { await model.send(.load) }
+        .task(id: reminderDraftLoadIdentity) {
+            await reminderDrafts.load(commitments: reminderDraftCommitments)
+        }
         .sheet(item: $rescheduleItem) { item in
             CommitmentRadarDueDateSheet(
                 item: item,
@@ -63,6 +67,19 @@ struct CommitmentRadarView: View {
             .accessibilityIdentifier("commitment-review-mutation-error-dismiss")
         } message: {
             Text("The suggestion is still safe on this Mac. Try again.")
+        }
+        .alert(
+            "Couldn’t update reminder suggestion",
+            isPresented: reminderDraftFailureBinding
+        ) {
+            Button("OK") { reminderDrafts.clearSurfaceFailure() }
+                .accessibilityIdentifier(
+                    "commitment-radar-reminder-dismiss-error")
+        } message: {
+            Text(reminderDrafts.state.surfaceFailure ?? "")
+        }
+        .sheet(isPresented: reminderDraftSheetBinding) {
+            ReminderDraftSheet(model: reminderDrafts)
         }
     }
 }
@@ -337,6 +354,7 @@ private extension CommitmentRadarView {
     @ViewBuilder func radarActions(_ item: CommitmentRadarItem) -> some View {
         HStack(spacing: 8) {
             Spacer()
+            reminderDraftAction(item)
             switch item.commitment.status {
             case .confirmed:
                 Button("Due date") {

@@ -159,11 +159,12 @@ final class SkillsControlCenterTests: XCTestCase {
             [
                 RecapDraftSkill.id,
                 MeetingPackageExportSkill.id,
+                ReminderDraftSkill.id,
                 PreMeetingBriefSkill.id,
             ])
         XCTAssertEqual(
             snapshot.skills.filter { $0.availability == .planned }.map(\.id),
-            [ReminderDraftSkill.id])
+            [])
         XCTAssertTrue(snapshot.skills.allSatisfy(\.isEnabled))
     }
 
@@ -179,7 +180,7 @@ final class SkillsControlCenterTests: XCTestCase {
             [SkillControlCenterSnapshot.maximumReceiptLimit])
     }
 
-    func testOnlyAvailableKnownSkillsCanBeChanged() async throws {
+    func testOnlyKnownAvailableSkillsCanBeChanged() async throws {
         let store = try MeetingStore.inMemory()
         let instant = now
         let manager = ManageSkillControl(store: store, now: { instant })
@@ -187,18 +188,20 @@ final class SkillsControlCenterTests: XCTestCase {
         let unknown = try await manager.execute(.setSkillEnabled(
             skillID: "not-in-the-catalogue",
             isEnabled: false))
-        let unavailable = try await manager.execute(.setSkillEnabled(
+        let reminderUpdated = try await manager.execute(.setSkillEnabled(
             skillID: ReminderDraftSkill.id,
             isEnabled: false))
         let updated = try await manager.execute(.setSkillEnabled(
             skillID: RecapDraftSkill.id,
             isEnabled: false))
         XCTAssertEqual(unknown, .rejected(.unknownSkill))
-        XCTAssertEqual(unavailable, .rejected(.unavailableSkill))
+        XCTAssertEqual(reminderUpdated, .updated)
         XCTAssertEqual(updated, .updated)
 
         let policy = try await store.skillExecutionPolicy()
-        XCTAssertEqual(policy.disabledSkillIDs, [RecapDraftSkill.id])
+        XCTAssertEqual(
+            policy.disabledSkillIDs,
+            [RecapDraftSkill.id, ReminderDraftSkill.id])
     }
 
     func testRecentReceiptQueryHasItsDedicatedIndex() async throws {

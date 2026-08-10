@@ -29,6 +29,9 @@ INFO_PLIST_KEYS_BY_SOURCE = {
     "Portavoz reads calendar attendees only to suggest meeting speaker names. Nothing leaves your Mac.": [
         "NSCalendarsFullAccessUsageDescription",
     ],
+    "Portavoz creates a reminder only after you preview and confirm it. Nothing leaves your Mac.": [
+        "NSRemindersFullAccessUsageDescription",
+    ],
     "Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac.": [
         "NSMicrophoneUsageDescription",
     ],

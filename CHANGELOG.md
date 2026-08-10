@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 9, 2026
 
+- **⏰ Commitments can become reminders** — Preview one exact confirmed commitment, grant Reminders access only when you choose, verify the destination list, and keep a durable local receipt after creation.
 - **🗓️ Your next meeting comes with a brief** — The menu bar now proposes one exact cited preparation for the next calendar event; review it before anything runs, dismiss it for that event, or confirm it locally and keep a durable receipt in Skills Settings.
 - **🔁 A failed Skill can really try again** — If a local draft handoff fails, its reason stays beside the confirmation and retry keeps the original durable attempt instead of getting blocked as a duplicate.
 - **🎙️ First Listen stops when you move on** — Continuing or skipping setup now closes its microphone and Tahoe caption work when you leave the step; cold Apple speech preparation also finishes before the mic opens, so it cannot build an unseen audio backlog.

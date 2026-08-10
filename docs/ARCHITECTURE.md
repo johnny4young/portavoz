@@ -278,6 +278,22 @@ effect failed; a different settled or potentially delivered owner makes this
 preview stale. The effect receives and delivers the immutable approved
 brief rather than querying Ask, storage, Calendar, or a model again.
 
+Commitment Radar projects the reminder-draft Skill over at most 200 exact,
+confirmed, live commitments. ApplicationKit performs one bounded batch
+execution read beside policy and dismissal reads, so the surface does not
+issue one durable-state query per row. A per-window `ReminderDraftModel` opens
+the exact projected title and due date without requesting permission. Only the
+explicit **Allow Reminders Access** action may ask for TCC access. Full access
+must resolve one bounded opaque calendar identity plus display title, and both
+are shown before confirmation. The process-owned EventKit actor uses one
+`EKEventStore` to resolve that default Reminders list, construct the
+`EKReminder`, and save it. Confirmation re-reads the commitment, policy,
+durable execution owner, authorization, and exact list; removal, rename, or
+permission drift fails closed with no fallback list. Success retires the offer
+and leaves the content-free receipt both beside the commitment and in Skills
+Settings. The disposable UI-test platform follows the same explicit permission
+transition without reading host TCC or Reminders.
+
 `LocalSkillCatalogue` is the single application-owned projection for the
 Skills management surface. It distinguishes skills that have both a proposal
 surface and an effect adapter from contracts that are not yet implemented. A
@@ -307,7 +323,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 |---|---|---|
 | Library | `LibraryModel` | one main window |
 | Insights | `InsightsModel` | one main window |
-| Commitment Radar | `CommitmentRadarModel` | one main window |
+| Commitment Radar | `CommitmentRadarModel` + `ReminderDraftModel` | one main window |
 | Meeting Detail | `MeetingDetailScene` + `MeetingDetailModel` | one selected meeting route |
 | Ask conversation | `AskModel` | one main window |
 | Command palette | `CommandPaletteModel` | application process |
@@ -3776,7 +3792,7 @@ The 9 Aug 2026 local acceptance snapshot is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,276 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,298 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -3784,10 +3800,10 @@ The 9 Aug 2026 local acceptance snapshot is:
   its fail-closed 25-iteration gate (5,525 executions); the generic runner
   refuses fewer than 90 and the release wrapper raises that floor to 108;
   focused Thread Sanitizer and Address Sanitizer gates also pass;
-- strict SwiftLint remains a blocking CI gate and is clean across all 636
+- strict SwiftLint remains a blocking CI gate and is clean across all 642
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 73 XCUITest cases per locale define the 146-case bilingual release gate;
+- 74 XCUITest cases per locale define the 148-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

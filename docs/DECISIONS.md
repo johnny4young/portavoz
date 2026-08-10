@@ -11301,3 +11301,48 @@ material, exact lookup, and fixture isolation; one English and one Spanish
 real-app journey cover preview through receipt. Reminder-draft permission work,
 external egress consent, standing rules, and physical cross-version shell
 evidence remain open.
+
+## D323 — A reminder proposal binds one confirmed commitment to one exact list (Aug 2026)
+
+**Context:** the local Reminder Draft Skill contract and durable execution
+authority already existed, but no subject surface or EventKit effect adapter
+could run it. Reusing notification reminders would conflate content-free alert
+history with a user-authored Reminders item. Prompting from a resident load,
+selecting a fallback list after preview, or querying one execution per Radar
+row would also violate explicit consent, exact-preview, and bounded-read rules.
+
+**Decision:** Commitment Radar projects at most 200 confirmed, non-deleted
+commitments through one ApplicationKit use case. Policy, dismissal, and durable
+execution state are read in three bounded operations, including one batch
+idempotency-key query. A per-window `ReminderDraftModel` previews the canonical
+title and due date and inspects authorization without prompting. Only the
+explicit **Allow Reminders Access** action may request full Reminders access.
+Full access resolves the default list to a bounded, byte-preserved opaque
+identifier plus display title, both of which remain attached to the preview.
+
+Confirmation re-reads the exact commitment, proposal surface, Skill policy,
+durable owner, authorization, and destination. Only the same failed durable
+owner is retryable. One process-owned actor retains a single `EKEventStore` for
+default-list lookup, exact identifier re-resolution, `EKReminder` construction,
+and save. Permission, list removal, or title drift fails closed; no title match
+or alternative list is allowed. An explicit list refresh rebinds and displays
+the current default before another confirmation, avoiding a retry loop against
+stale destination data. The canonical preview arguments are the exact effect
+arguments. Success retires the offer and leaves the content-free receipt
+on the commitment and in Skills Settings; dismissal is scoped to that
+commitment and never removes a receipt.
+
+The disposable UI-test boundary starts authorization undetermined and grants it
+only through the production permission action. It exposes one fake list and
+never reaches host TCC or Reminders. The shipping and UI-host bundles both carry
+the localized full-access purpose string.
+
+**Consequences:** all four local Skills are now honestly available in the
+central catalogue, so Settings omits its empty planned section. Unit and
+architecture tests cover bounds, batching, canonical arguments, durable retry,
+state fencing, permission, destination drift, same-store save, fixture
+isolation, and bundle configuration. One English and one Spanish real-app
+journey cover explicit access through subject and global receipts. Actual TCC
+prompt text, default-list behavior, save semantics, and permission/list drift
+on physical Sequoia and Tahoe Macs remain an explicit field gate; external
+egress consent, standing rules, and AUTO-3 through AUTO-6 remain open.

@@ -65,14 +65,13 @@ final class MenuBarUITests: PortavozUITestCase {
                 .waitForExistence(timeout: 5))
         XCTAssertFalse(prepare.exists)
 
-        app.typeKey(",", modifierFlags: .command)
-        let category = app.control(withIdentifier: "settings-category-skills")
-        XCTAssertTrue(category.waitForExistence(timeout: 10))
-        category.click()
         XCTAssertTrue(
-            app.control(
-                withIdentifier: "settings-skill-receipt-pre-meeting-brief")
-                .waitForExistence(timeout: 10),
+            app.openSettingsWindow(),
+            "the production Settings command must open its window")
+        XCTAssertTrue(
+            app.openSettingsCategory(
+                "settings-category-skills",
+                revealing: "settings-skill-receipt-pre-meeting-brief"),
             "the menu-bar handoff must land in the global durable receipt history")
         attachScreenshot(of: app, named: "menu-bar-pre-meeting-brief-receipt")
     }

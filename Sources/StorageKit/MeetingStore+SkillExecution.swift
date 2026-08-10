@@ -275,6 +275,36 @@ extension MeetingStore {
         }
     }
 
+    /// Bounded batch lookup for subject surfaces. One Radar render must not
+    /// become one SQLite query per commitment as the page grows.
+    public func skillExecutions(
+        idempotencyKeys: [String]
+    ) async throws -> [SkillExecutionRecord] {
+        guard !idempotencyKeys.isEmpty,
+              idempotencyKeys.count <= 200,
+              Set(idempotencyKeys).count == idempotencyKeys.count,
+              idempotencyKeys.allSatisfy({ key in
+                  let trimmed = key.trimmingCharacters(
+                      in: .whitespacesAndNewlines)
+                  return !trimmed.isEmpty && trimmed == key
+              })
+        else { return [] }
+        return try await database.read { database in
+            try Row.fetchAll(
+                database,
+                sql: """
+                    SELECT proposalID, skillID, skillVersion, idempotencyKey,
+                           state, attempt, updatedAt
+                    FROM skillExecutionState
+                    WHERE idempotencyKey IN (
+                        \(databaseQuestionMarks(count: idempotencyKeys.count))
+                    )
+                    """,
+                arguments: StatementArguments(idempotencyKeys)
+            ).map(Self.skillExecutionRecord(from:))
+        }
+    }
+
     // MARK: - Internals
 
     private static func skillExecution(

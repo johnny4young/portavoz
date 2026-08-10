@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var insightsModel: InsightsModel
     @State private var askModel: AskModel
     @State private var commitmentRadarModel: CommitmentRadarModel
+    @State private var reminderDraftModel: ReminderDraftModel
     @State private var reminder = MeetingReminderController()
     @State private var firstRunHostID = UUID()
 
@@ -31,6 +32,8 @@ struct ContentView: View {
         _askModel = State(initialValue: services.makeAskModel())
         _commitmentRadarModel = State(
             initialValue: services.makeCommitmentRadarModel())
+        _reminderDraftModel = State(
+            initialValue: services.makeReminderDraftModel())
     }
 
     var body: some View {
@@ -74,6 +77,7 @@ struct ContentView: View {
                     CommitmentRadarView(
                         model: commitmentRadarModel,
                         reminders: services.commitmentReminders,
+                        reminderDrafts: reminderDraftModel,
                         onOpenMeeting: { meetingID, timestamp in
                             if let timestamp {
                                 services.requestMeetingSeek(

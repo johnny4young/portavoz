@@ -127,6 +127,12 @@ final class LocalizationTests: XCTestCase {
         XCTAssertEqual(
             spanishInfo["NSMicrophoneUsageDescription"],
             "Portavoz graba tu micrófono para transcribir tus intervenciones en la reunión. El audio nunca sale de tu Mac.")
+        XCTAssertEqual(
+            englishInfo["NSRemindersFullAccessUsageDescription"],
+            "Portavoz creates a reminder only after you preview and confirm it. Nothing leaves your Mac.")
+        XCTAssertEqual(
+            spanishInfo["NSRemindersFullAccessUsageDescription"],
+            "Portavoz crea un recordatorio solo después de que lo revises y confirmes. Nada sale de tu Mac.")
         XCTAssertEqual(spanishInfo["CFBundleDisplayName"], "Portavoz")
         XCTAssertNil(
             spanishInfo["Portavoz records your microphone to transcribe your side of the meeting. Audio never leaves your Mac."],

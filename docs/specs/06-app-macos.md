@@ -2385,3 +2385,39 @@ deterministically across supported macOS versions. It proves exact preview,
 confirmation, unchanged result, offer retirement, and the global durable
 receipt without reading the host Calendar. Opening the actual status item on
 Sequoia and Tahoe remains a field-shell check, not something this host claims.
+
+## Confirmed commitment to Reminders proposal (D323, Aug 2026)
+
+Commitment Radar now projects the Reminder Draft Skill only for confirmed,
+non-deleted commitments on the current bounded page. `LoadReminderDraftSurface`
+combines one policy read, one bounded dismissal read, and one batch execution
+read for at most 200 exact idempotency keys. A succeeded receipt remains on the
+commitment even while Skills are paused or disabled; only an actionable offer
+disappears. A failed durable owner is the only retryable state, and retry keeps
+that owner's proposal identity.
+
+Selecting **Create in Reminders** opens the exact projected title and due date,
+then inspects authorization without prompting. Portavoz requests Reminders
+full access only after the explicit **Allow Reminders Access** action. When
+authorized, it binds the preview to the default list's bounded opaque EventKit
+identifier and visible title; no fallback list is selected. Immediately before
+execution, the app re-reads the exact commitment and Skill policy, verifies the
+durable owner, and re-resolves the approved list. The EventKit boundary checks
+authorization and list identity again, constructs the reminder and saves it
+through the same process-owned `EKEventStore`. A removed or renamed list,
+permission change, stale commitment, or competing durable owner fails closed.
+The sheet keeps an explicit **Refresh list** recovery action so a rename,
+removal, or new system default can be re-resolved and shown before another
+confirmation instead of trapping the user in a retry loop against stale data.
+An external save error is deliberately reported as unverified rather than as a
+known non-creation: the user is told to check Reminders before retrying because
+an external store can fail after the handoff boundary becomes ambiguous.
+
+Success retires the subject offer and leaves one content-free receipt both in
+Radar and Skills Settings. Dismissal is durable only for that commitment. The
+disposable XCUITest platform starts undetermined, grants access only through
+the production permission action, exposes one exact fake list, and never reads
+or writes host Reminders or TCC. The bilingual real-app journey covers preview,
+explicit access, exact destination, confirmation, offer retirement, and both
+receipt surfaces. Physical Sequoia/Tahoe TCC prompt, default-list, and save
+behavior remain field evidence.

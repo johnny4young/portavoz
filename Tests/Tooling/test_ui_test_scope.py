@@ -345,6 +345,11 @@ class UITestScopeTests(unittest.TestCase):
             "Sources/portavoz-app/AppServices+CommitmentRadar.swift",
             "Sources/portavoz-app/CommitmentRadarModel.swift",
             "Sources/portavoz-app/CommitmentRadarView.swift",
+            "Sources/portavoz-app/CommitmentRadarView+ReminderDraft.swift",
+            "Sources/portavoz-app/ReminderDraftModel.swift",
+            "Sources/portavoz-app/ReminderDraftSheet.swift",
+            "Sources/portavoz-app/AppReminderDraftEventKitAdapter.swift",
+            "Sources/portavoz-app/AppServices+ReminderDraft.swift",
         ]:
             selection = select_paths([path])
             self.assertEqual(selection.tests, expected, path)
@@ -390,7 +395,8 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_skill_sources_select_the_control_and_proposal_journeys(self):
         expected_set = set(
-            FEATURE_TESTS["meeting-skills"]
+            FEATURE_TESTS["commitment-radar"]
+            + FEATURE_TESTS["meeting-skills"]
             + FEATURE_TESTS["menu-bar-brief"]
             + FEATURE_TESTS["settings-skills"])
         expected = tuple(test for test in ALL_TESTS if test in expected_set)

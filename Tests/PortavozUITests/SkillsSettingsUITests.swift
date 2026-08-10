@@ -11,14 +11,10 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let category = app.control(
-            withIdentifier: "settings-category-skills")
-        XCTAssertTrue(category.waitForExistence(timeout: 10))
-        category.click()
-
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-skills-load-error")
-                .waitForExistence(timeout: 10))
+            app.openSettingsCategory(
+                "settings-category-skills",
+                revealing: "settings-skills-load-error"))
         let retry = app.buttons["settings-skills-retry"]
         XCTAssertTrue(retry.waitForExistence(timeout: 5))
         XCTAssertFalse(
@@ -71,9 +67,16 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertFalse(Self.isOn(pause))
         XCTAssertTrue(Self.isOn(recap))
         XCTAssertTrue(Self.isOn(export))
+        let reminderDraft = app.control(
+            withIdentifier: "settings-skill-reminder-draft-enabled")
+        XCTAssertTrue(reminderDraft.waitForExistence(timeout: 5))
+        XCTAssertTrue(Self.isOn(reminderDraft))
+        let reminderDescription = UITestLocale.environmentLocale == "es"
+            ? "Crea un recordatorio local a partir de un compromiso confirmado después de que lo apruebes."
+            : "Creates one local reminder from a confirmed commitment after you approve it."
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-skill-reminder-draft-planned")
-                .waitForExistence(timeout: 5))
+            app.staticTexts[reminderDescription].waitForExistence(timeout: 5),
+            "the available Reminder Draft row must not retain planned-feature copy")
         let brief = app.control(
             withIdentifier: "settings-skill-pre-meeting-brief-enabled")
         XCTAssertTrue(brief.waitForExistence(timeout: 5))
@@ -141,11 +144,14 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     private func openSkillsSettings(in app: XCUIApplication) {
-        app.typeKey(",", modifierFlags: .command)
-        let category = app.control(
-            withIdentifier: "settings-category-skills")
-        XCTAssertTrue(category.waitForExistence(timeout: 10))
-        category.click()
+        XCTAssertTrue(
+            app.openSettingsWindow(),
+            "the production Settings command must open its window")
+        XCTAssertTrue(
+            app.openSettingsCategory(
+                "settings-category-skills",
+                revealing: "settings-skills-pause-all"),
+            "the Skills category must reveal its durable controls")
     }
 
     @MainActor

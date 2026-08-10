@@ -200,10 +200,8 @@ extension XCUIApplication {
                 buttons["library-new-recording-button"]
                     .waitForStableFrame(timeout: 20),
                 "the library must finish its cold-start layout before opening Settings")
-            typeKey(",", modifierFlags: .command)
             XCTAssertTrue(
-                descendants(matching: .any)["settings-category-general"]
-                    .waitForExistence(timeout: 10),
+                openSettingsWindow(),
                 "the Settings command must open the settings window")
         }
     }
@@ -224,6 +222,48 @@ extension XCUIApplication {
     func prepareForInteraction(timeout: TimeInterval = 10) -> Bool {
         activate()
         return wait(for: .runningForeground, timeout: timeout)
+    }
+
+    /// Ensures the production Settings window is open without dismissing or
+    /// terminating an unrelated foreground app. A single bounded retry covers
+    /// the case where macOS consumes Command-comma only to reactivate Portavoz.
+    @MainActor
+    func openSettingsWindow(timeout: TimeInterval = 10) -> Bool {
+        let general = control(withIdentifier: "settings-category-general")
+        if general.exists {
+            return prepareForInteraction(timeout: timeout)
+        }
+
+        for attempt in 0..<2 {
+            guard prepareForInteraction(timeout: timeout) else { continue }
+            typeKey(",", modifierFlags: .command)
+            if general.waitForExistence(timeout: attempt == 0 ? 2 : timeout) {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Selects a Settings category and proves its exact destination appeared.
+    /// The first missed interaction is retried without recording a premature
+    /// assertion failure; a persistent product failure still fails the caller.
+    @MainActor
+    func openSettingsCategory(
+        _ identifier: String,
+        revealing expectedControlIdentifier: String,
+        timeout: TimeInterval = 10
+    ) -> Bool {
+        let category = control(withIdentifier: identifier)
+        let expectedControl = control(withIdentifier: expectedControlIdentifier)
+        for attempt in 0..<2 {
+            guard prepareForInteraction(timeout: timeout) else { continue }
+            guard category.waitForStableFrame(timeout: timeout) else { continue }
+            category.click()
+            if expectedControl.waitForExistence(timeout: attempt == 0 ? 2 : 5) {
+                return true
+            }
+        }
+        return false
     }
 
     /// Seeded-library launches mutate the sidebar once after the first frame.

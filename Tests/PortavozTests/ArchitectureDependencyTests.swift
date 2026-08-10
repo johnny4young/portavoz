@@ -4075,7 +4075,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(control.contains("enum LocalSkillCatalogue"))
-        XCTAssertTrue(control.contains("availability: .planned"))
+        XCTAssertFalse(control.contains("availability: .planned"))
         XCTAssertTrue(control.contains("maximumReceiptLimit = 50"))
         XCTAssertTrue(store.contains("maximumRecentSkillExecutionCount = 100"))
         XCTAssertTrue(store.contains("ORDER BY updatedAt DESC, proposalID ASC"))
@@ -4157,6 +4157,47 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(app.contains("arguments.contains(\"-use-temp-store\")"))
         XCTAssertTrue(app.contains("arguments.contains(\"-show-menu-bar-content\")"))
         XCTAssertTrue(decisions.contains("## D322"))
+    }
+
+    func testReminderDraftUsesExplicitPermissionExactTargetAndBoundedReads() throws {
+        let offers = try Self.contents(
+            of: "Sources/ApplicationKit/ReminderDraftOffers.swift")
+        let executionStore = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SkillExecution.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/ReminderDraftModel.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppReminderDraftEventKitAdapter.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ReminderDraft.swift")
+        let sheet = try Self.contents(
+            of: "Sources/portavoz-app/ReminderDraftSheet.swift")
+        let shipping = try Self.contents(of: "scripts/make-app.sh")
+        let uiHost = try Self.contents(of: "project.yml")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        for forbidden in ["import EventKit", "import SwiftUI", "import AppKit"] {
+            XCTAssertFalse(offers.contains(forbidden), forbidden)
+            XCTAssertFalse(model.contains(forbidden), forbidden)
+        }
+        XCTAssertTrue(offers.contains("maximumCommitmentCount = 200"))
+        XCTAssertTrue(offers.contains("store.skillExecutions(idempotencyKeys: keys)"))
+        XCTAssertTrue(executionStore.contains("idempotencyKeys.count <= 200"))
+        XCTAssertTrue(adapter.contains("private let eventStore = EKEventStore()"))
+        XCTAssertTrue(adapter.contains("defaultCalendarForNewReminders()"))
+        XCTAssertTrue(adapter.contains("EKReminder(eventStore: eventStore)"))
+        XCTAssertTrue(adapter.contains("eventStore.save(reminder, commit: true)"))
+        XCTAssertTrue(adapter.contains("guard current == target"))
+        XCTAssertTrue(services.contains("UITestReminderDraftPlatform()"))
+        XCTAssertTrue(services.contains(": AppReminderDraftEventKitAdapter()"))
+        XCTAssertTrue(services.contains("current == request.offer.commitment"))
+        XCTAssertTrue(services.contains("identifier: request.target.identifier"))
+        XCTAssertTrue(sheet.contains("reminder-draft-allow-access"))
+        XCTAssertTrue(sheet.contains("reminder-draft-target-list"))
+        XCTAssertTrue(sheet.contains("reminder-draft-confirm"))
+        XCTAssertTrue(shipping.contains("NSRemindersFullAccessUsageDescription"))
+        XCTAssertTrue(uiHost.contains("NSRemindersFullAccessUsageDescription"))
+        XCTAssertTrue(decisions.contains("## D323"))
     }
 
     func testLocalSkillsAreContractsOverExistingWorkAndStayOffTheNetwork() throws {

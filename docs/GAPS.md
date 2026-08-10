@@ -238,6 +238,18 @@ visible release blocker rather than being inferred from deterministic tests.
   receipt in Skills Settings. Repeat once after a full calendar sync because
   EventKit identifiers may disappear or change. No title/time fallback is
   acceptable.
+- **Reminder Draft system boundary (D323)**: deterministic bilingual XCUITest
+  drives the production Radar, model, permission action, exact target preview,
+  ExecuteSkill path, and durable receipts through a disposable in-memory
+  platform; it deliberately does not touch host TCC or Reminders. On both
+  Sequoia and Tahoe, deny and grant Reminders full access from a clean TCC
+  state, verify the prompt uses the localized purpose string, confirm that the
+  displayed default list receives exactly one reminder with the approved title
+  and due date, then rename/remove that list and revoke access before separate
+  confirmations to require visible fail-closed recovery with no fallback or
+  duplicate. Inject or observe a save error and verify the UI reports an
+  unverified outcome, then check the target list before any retry. Repeat after
+  relaunch and after changing the system default list.
 - **Real export**: `export --gist` / "Publicar como Gist" with a token; `issues --github/--linear` with tokens against a test repo.
 - **Summary fingerprint drift (D288)**: two of 47 real local meetings had their
   only automatic summary job cancelled as `processing.input.superseded` seconds

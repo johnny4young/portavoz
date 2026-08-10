@@ -81,6 +81,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "CommitmentRadarUITests",
+            "testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt",
+        ),
+        test_id(
+            "CommitmentRadarUITests",
             "testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence",
         ),
         test_id(
@@ -310,7 +314,11 @@ def app_features(filename: str) -> set[str]:
         return {"launch-recovery", "main-shell", "menu-bar-brief"}
     if "commitmentreminder" in lowered:
         return {"commitment-radar", "meeting-commitments"}
-    if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:
+    if any(token in lowered for token in (
+        "commitmentradar",
+        "commitmentfieldquality",
+        "reminderdraft",
+    )):
         return {"commitment-radar"}
     if any(token in lowered for token in ("l10n", "applanguage")):
         return set(ALL_FEATURES)
@@ -381,7 +389,14 @@ def app_features(filename: str) -> set[str]:
     )):
         return {"meeting-skills"}
     if "skill" in lowered:
-        return {"meeting-skills", "menu-bar-brief", "settings-skills"}
+        return {
+            "commitment-radar",
+            "meeting-skills",
+            "menu-bar-brief",
+            "settings-skills",
+        }
+    if "reminderdraft" in lowered:
+        return {"commitment-radar"}
     if "meetingdetailtrustsection" in lowered:
         return {"meeting-health", "meeting-processing", "meeting-skills"}
     if "meetingdetailactionsection" in lowered:
@@ -459,7 +474,14 @@ def lower_layer_features(path: str) -> set[str]:
     if "launchrecovery" in lowered:
         return {"launch-recovery"}
     if "skill" in lowered:
-        return {"meeting-skills", "menu-bar-brief", "settings-skills"}
+        return {
+            "commitment-radar",
+            "meeting-skills",
+            "menu-bar-brief",
+            "settings-skills",
+        }
+    if "reminderdraft" in lowered:
+        return {"commitment-radar"}
     if "commitmentradar" in lowered or "commitmentfieldquality" in lowered:
         return {"commitment-radar"}
     if any(token in lowered for token in (

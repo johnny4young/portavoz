@@ -12,9 +12,10 @@ final class SettingsUITests: PortavozUITestCase {
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.typeKey(",", modifierFlags: .command)
-        let data = app.control(withIdentifier: "settings-category-data")
-        XCTAssertTrue(data.waitForExistence(timeout: 10))
-        data.click()
+        openCategory(
+            "settings-category-data",
+            revealing: "settings-privacy-seal",
+            in: app)
 
         let localFirstSeal = Locale.current.identifier.hasPrefix("es")
             ? "Local primero"
@@ -53,16 +54,15 @@ final class SettingsUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         // The nav renders every category…
-        let intelligence = app.control(withIdentifier: "settings-category-intelligence")
-        XCTAssertTrue(
-            intelligence.waitForExistence(timeout: 10),
-            "the Settings category sidebar must render (2a)")
+        openCategory(
+            "settings-category-intelligence",
+            revealing: "settings-summary-engine-picker",
+            in: app)
         XCTAssertTrue(app.control(withIdentifier: "settings-category-data").exists)
         XCTAssertTrue(app.control(withIdentifier: "settings-category-sync").exists)
 
         // …and picking Intelligence reveals the summary-engine picker, which
         // now lives in that pane rather than one long scroll (M12).
-        intelligence.click()
         XCTAssertTrue(
             app.control(withIdentifier: "settings-summary-engine-picker").waitForExistence(timeout: 5),
             "the Intelligence pane must show the summary-engine picker")
@@ -109,7 +109,10 @@ final class SettingsUITests: PortavozUITestCase {
         add(attachment)
 
         // Your data shows the export action.
-        app.control(withIdentifier: "settings-category-data").click()
+        openCategory(
+            "settings-category-data",
+            revealing: "settings-export-all-button",
+            in: app)
         XCTAssertTrue(
             app.buttons["settings-export-all-button"].waitForExistence(timeout: 5),
             "the Your-data pane must show the export-all action")
@@ -125,11 +128,10 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let sync = app.control(withIdentifier: "settings-category-sync")
-        XCTAssertTrue(
-            sync.waitForExistence(timeout: 10),
-            "Settings must expose a dedicated iCloud sync pane")
-        sync.click()
+        openCategory(
+            "settings-category-sync",
+            revealing: "settings-sync-status",
+            in: app)
 
         XCTAssertTrue(
             app.staticTexts["settings-sync-status"].waitForExistence(timeout: 5),
@@ -172,9 +174,10 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let dataCategory = app.control(withIdentifier: "settings-category-data")
-        XCTAssertTrue(dataCategory.waitForExistence(timeout: 10))
-        dataCategory.click()
+        openCategory(
+            "settings-category-data",
+            revealing: "settings-export-diagnostics",
+            in: app)
 
         let export = app.buttons["settings-export-diagnostics"]
         XCTAssertTrue(
@@ -208,9 +211,10 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let dataCategory = app.control(withIdentifier: "settings-category-data")
-        XCTAssertTrue(dataCategory.waitForExistence(timeout: 10))
-        dataCategory.click()
+        openCategory(
+            "settings-category-data",
+            revealing: "settings-export-all-button",
+            in: app)
 
         let export = app.buttons["settings-export-all-button"]
         XCTAssertTrue(export.waitForExistence(timeout: 5))
@@ -247,9 +251,10 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let intelligence = app.control(withIdentifier: "settings-category-intelligence")
-        XCTAssertTrue(intelligence.waitForExistence(timeout: 10))
-        intelligence.click()
+        openCategory(
+            "settings-category-intelligence",
+            revealing: "settings-add-structure",
+            in: app)
 
         let add = app.buttons["settings-add-structure"]
         XCTAssertTrue(
@@ -270,9 +275,10 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let audio = app.control(withIdentifier: "settings-category-audio")
-        XCTAssertTrue(audio.waitForExistence(timeout: 10))
-        audio.click()
+        openCategory(
+            "settings-category-audio",
+            revealing: "settings-mic-device",
+            in: app)
 
         XCTAssertTrue(
             app.control(withIdentifier: "settings-mic-device").waitForExistence(timeout: 5),
@@ -296,14 +302,18 @@ final class SettingsUITests: PortavozUITestCase {
         // AppServices merges these values into the process's volatile
         // NSArgumentDomain under -use-temp-store. The real preference domain
         // is neither read for these keys nor mutated by the test.
-        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
-            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"dictationReplacements":"[{\"trigger\":\"codex fixture\",\"replacement\":\"Codex Fixture\"}]"}"#
+        let dictationDefaults =
+            #"{"globalDictationEnabled":true,"dictationMouseButton":0,"#
+            + #""dictationReplacements":"[{\"trigger\":\"codex fixture\","#
+            + #"\"replacement\":\"Codex Fixture\"}]"}"#
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] = dictationDefaults
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let audio = app.control(withIdentifier: "settings-category-audio")
-        XCTAssertTrue(audio.waitForExistence(timeout: 10))
-        audio.click()
+        openCategory(
+            "settings-category-audio",
+            revealing: "settings-dictation-toggle",
+            in: app)
 
         let toggle = app.control(withIdentifier: "settings-dictation-toggle")
         XCTAssertTrue(
@@ -346,9 +356,10 @@ final class SettingsUITests: PortavozUITestCase {
         app.launchPortavoz()
         defer { app.terminate() }
 
-        let voice = app.control(withIdentifier: "settings-category-voice")
-        XCTAssertTrue(voice.waitForExistence(timeout: 10))
-        voice.click()
+        openCategory(
+            "settings-category-voice",
+            revealing: "settings-mirror-after-meeting",
+            in: app)
 
         let mirror = app.control(withIdentifier: "settings-mirror-after-meeting")
         XCTAssertTrue(
@@ -364,11 +375,11 @@ final class SettingsUITests: PortavozUITestCase {
     func testLanguageToggleSwitchesVisibleTextWithoutRelaunch() {
         // The standalone Settings window (⌘,), not the test sheet: the sheet
         // clips the trailing-edge toggle, the real window lays it out fully.
-        let app = XCUIApplication.portavoz(launchLocale: "en")
+        let app = XCUIApplication.portavoz(
+            openSettings: true,
+            launchLocale: "en")
         app.launchPortavoz()
         defer { app.terminate() }
-        XCTAssertTrue(app.buttons["library-new-recording-button"].waitForExistence(timeout: 15))
-        app.typeKey(",", modifierFlags: .command)  // open Settings
 
         let systemToggle = app.control(withIdentifier: "settings-language-system-toggle")
         XCTAssertTrue(systemToggle.waitForExistence(timeout: 10))
@@ -385,6 +396,22 @@ final class SettingsUITests: PortavozUITestCase {
         systemToggle.click()  // back to launch/system English
         XCTAssertTrue(app.staticTexts["Use system language"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["General & language"].exists)
+    }
+
+    /// Settings lives in its own macOS window, so a category can exist while
+    /// another app owns the foreground or its activation frame is still moving.
+    @MainActor
+    private func openCategory(
+        _ identifier: String,
+        revealing expectedControlIdentifier: String,
+        in app: XCUIApplication
+    ) {
+        XCTAssertTrue(
+            app.openSettingsCategory(
+                identifier,
+                revealing: expectedControlIdentifier),
+            "the Settings category \(identifier) must reveal "
+                + expectedControlIdentifier)
     }
 
     /// A macOS checkbox reports its state as "1"/1 through Accessibility.

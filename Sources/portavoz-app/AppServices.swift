@@ -146,6 +146,10 @@ final class AppServices {
     /// One no-prompt calendar boundary supplies opaque event references to
     /// Library, reminders, and the resident brief proposal.
     @ObservationIgnored let upcomingEventSource: AppUpcomingEventSource
+    /// One process-owned Reminders boundary. Disposable automation always
+    /// receives an in-memory fake and can never reach host TCC or EventKit.
+    @ObservationIgnored let reminderDraftPlatform:
+        any AppReminderDraftPlatform
     /// Process-owned local-draft handoff for the menu-bar brief Skill.
     @ObservationIgnored let meetingBriefSkillDelivery:
         AppMeetingBriefSkillDelivery
@@ -302,8 +306,8 @@ final class AppServices {
         askClient = AppAskModelClient(useCase: askUseCase)
         recapSkillDelivery = Self.makeRecapSkillDelivery(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         upcomingEventSource = AppUpcomingEventSource(
-            arguments: arguments,
-            usesTemporaryStore: usesTemporaryStore)
+            arguments: arguments, usesTemporaryStore: usesTemporaryStore)
+        reminderDraftPlatform = Self.makeReminderDraftPlatform(usesTemporaryStore: usesTemporaryStore)
         meetingBriefSkillDelivery = AppMeetingBriefSkillDelivery()
         meetingBriefUseCase = PrepareMeetingBrief(
             ask: askUseCase,
