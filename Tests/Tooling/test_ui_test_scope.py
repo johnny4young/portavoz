@@ -416,7 +416,7 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.tests, HARNESS_TESTS)
         self.assertEqual(selection.locales, ("en", "es"))
 
-    def test_app_intents_selects_only_the_external_recording_handoff(self):
+    def test_app_intents_selects_only_the_bilingual_recording_handoff(self):
         selection = select_paths(
             ["Sources/portavoz-app/PortavozAppIntents.swift"]
         )
@@ -424,7 +424,7 @@ class UITestScopeTests(unittest.TestCase):
             selection.tests,
             FEATURE_TESTS["automation-entry"],
         )
-        self.assertEqual(selection.locales, ("en",))
+        self.assertEqual(selection.locales, ("en", "es"))
 
     def test_recording_toolbar_selects_geometry_and_live_control_contracts(self):
         selection = select_paths(

@@ -11920,6 +11920,76 @@
           }
         }
       }
+    },
+    "Stops the current Portavoz meeting recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detiene la grabación actual de la reunión en Portavoz."
+          }
+        }
+      }
+    },
+    "Portavoz will handle the stop request after it finishes opening.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz procesará la solicitud de detención cuando termine de abrirse."
+          }
+        }
+      }
+    },
+    "Portavoz is stopping the current recording.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz está deteniendo la grabación actual."
+          }
+        }
+      }
+    },
+    "No recording is active. Use Start recording to begin one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ninguna grabación activa. Usa Iniciar grabación para comenzar una."
+          }
+        }
+      }
+    },
+    "Portavoz is still starting the recording. Run Stop recording again when the live controls appear.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz todavía está iniciando la grabación. Ejecuta Detener la grabación de nuevo cuando aparezcan los controles en vivo."
+          }
+        }
+      }
+    },
+    "Portavoz is already stopping the recording. Open Portavoz to view progress.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz ya está deteniendo la grabación. Abre Portavoz para ver el progreso."
+          }
+        }
+      }
+    },
+    "The recording needs attention. Open Portavoz and use the recovery action shown.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La grabación necesita atención. Abre Portavoz y usa la acción de recuperación que se muestra."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

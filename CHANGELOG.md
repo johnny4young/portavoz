@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 9, 2026
 
+- **⏹️ Stop a recording from Siri or Shortcuts** — Portavoz now exposes a native Stop action beside Start, brings the live session forward, prevents competing stops, and tells you exactly what to do when capture is not ready or needs recovery.
 - **⏰ Commitments can become reminders** — Preview one exact confirmed commitment, grant Reminders access only when you choose, verify the destination list, and keep a durable local receipt after creation.
 - **🗓️ Your next meeting comes with a brief** — The menu bar now proposes one exact cited preparation for the next calendar event; review it before anything runs, dismiss it for that event, or confirm it locally and keep a durable receipt in Skills Settings.
 - **🔁 A failed Skill can really try again** — If a local draft handoff fails, its reason stays beside the confirmation and retry keeps the original durable attempt instead of getting blocked as a duplicate.

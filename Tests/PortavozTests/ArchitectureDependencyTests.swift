@@ -4687,6 +4687,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/PortavozAppIntents.swift")
         let appDelegate = try Self.contents(
             of: "Sources/portavoz-app/PortavozAppDelegate.swift")
+        let contentView = try Self.contents(
+            of: "Sources/portavoz-app/ContentView.swift")
+        let recordingView = try Self.contents(
+            of: "Sources/portavoz-app/RecordingView.swift")
         let extractor = try Self.contents(
             of: "scripts/build-appintents-metadata.sh")
         let packager = try Self.contents(of: "scripts/make-app.sh")
@@ -4728,15 +4732,35 @@ final class ArchitectureDependencyTests: XCTestCase {
         // The extractor uses the SHIPPING module name, and the packager
         // fails the build rather than shipping silently without intents.
         XCTAssertTrue(extractor.contains("-module-name portavoz_app"))
-        XCTAssertTrue(extractor.contains("declares no actions"))
+        XCTAssertTrue(extractor.contains(
+            "expected_actions = {\"StartRecordingIntent\", \"StopRecordingIntent\"}"))
         XCTAssertTrue(packager.contains("scripts/build-appintents-metadata.sh"))
         XCTAssertFalse(
             intents.contains("NSWorkspace.shared.open"),
             "the intent must route inside its owning process, not ask LaunchServices to choose a URL handler")
         XCTAssertTrue(intents.contains(
             "PortavozAppIntentBridge.requestStartRecording()"))
+        XCTAssertTrue(intents.contains(
+            "PortavozAppIntentBridge.requestStopRecording()"))
         XCTAssertTrue(appDelegate.contains(
             "PortavozAppIntentBridge.consumeStartRecordingRequest()"))
+        XCTAssertTrue(appDelegate.contains(
+            "PortavozAppIntentBridge.consumeStopRecordingRequest("))
+        XCTAssertTrue(contentView.contains("case recordingRecovery"))
+        XCTAssertTrue(appDelegate.contains(
+            "services.pendingRoute = .recordingRecovery"))
+        XCTAssertTrue(recordingView.contains("guard startsAutomatically else { return }"))
+        XCTAssertEqual(
+            intents.components(separatedBy:
+                "static let supportedModes: IntentModes = [.foreground(.immediate)]")
+                .count - 1,
+            2,
+            "Start and Stop must use Tahoe's immediate foreground mode")
+        XCTAssertEqual(
+            intents.components(separatedBy: "static var openAppWhenRun: Bool { true }")
+                .count - 1,
+            2,
+            "Start and Stop must preserve the pre-Tahoe foreground contract")
         XCTAssertFalse(
             intents.contains("AppShortcutsProvider"),
             "macOS publishes the action only; an App Shortcut duplicates it in the picker")
@@ -4746,6 +4770,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(extractor.contains("must not publish unsupported App Shortcuts"))
         XCTAssertTrue(decisions.contains("## D139"))
         XCTAssertTrue(decisions.contains("## D141"))
+        XCTAssertTrue(decisions.contains("## D324"))
     }
 
     func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {

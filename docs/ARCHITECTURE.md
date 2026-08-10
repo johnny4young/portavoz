@@ -3605,23 +3605,39 @@ consumed by the reliability ledger; it never emits a receipt for a
 partially verified artifact.
 The script-built app also carries native App Intents metadata extracted
 separately from one SDK-only source under the shipping module name. Packaging
-fails if the metadata declares no action. `openAppWhenRun` foregrounds the
-intent-owning bundle; `perform()` therefore uses a buffered process-local
-handoff consumed by `PortavozAppDelegate`, never a LaunchServices URL lookup.
-The delegate routes through the same process-scoped pending route used by other
-external entry points. macOS publishes only that native action in the Shortcuts
-action picker: it deliberately omits `AppShortcutsProvider`, because automatic
-App Shortcuts are not a supported macOS product surface and otherwise duplicate
-the identically titled action. Spotlight and Siri use a user-created Shortcut
-containing the Portavoz-icon action. The XcodeGen-only test app registers the
-public `portavoz://record` adapter, and one focused XCUITest directs that URL to
-the exact disposable app bundle and proves the handoff enters a visible
-recording.
-App Intent source changes select only this boundary case instead of the broad
-recording-recovery suite; shared harness changes retain three bilingual
-canaries. `make-app.sh` also verifies the complete nested signature before it
-reports a successful package, so a malformed Sparkle component or application
-seal fails at the packaging boundary rather than during installation.
+fails unless metadata declares exactly `StartRecordingIntent` and
+`StopRecordingIntent`. On macOS 26+, both declare
+`supportedModes = [.foreground(.immediate)]`; the SDK-documented deprecated
+compatibility property preserves the same foreground behavior on the macOS
+14.4/15 deployment range. `perform()` uses a buffered process-local handoff
+consumed by `PortavozAppDelegate`, never a LaunchServices URL lookup.
+
+Start routes through the existing pending recording route. Stop receives one
+synchronous disposition from the owning process: accepted, queued until the
+complete service graph exists, no active capture, still preparing, already
+stopping, or recovery required. Only accepted work creates one fenced task over
+the process-owned `RecordingController`; it brings the recording route forward
+before durable finalization so processing and typed failure recovery remain
+visible. Preparing and already-stopping dispositions bring the live route
+forward; recovery-required uses a dedicated non-starting route that reuses the
+typed failure UI and leaves retry to its explicit control. Its dialog says that
+Portavoz is stopping, never that
+persistence has already completed, and every non-actionable state names one
+next step. A second request cannot schedule a competing stop.
+
+macOS publishes only those native actions in the Shortcuts action picker: it
+deliberately omits `AppShortcutsProvider`, because automatic App Shortcuts are
+not a supported macOS product surface and otherwise duplicate identically
+titled actions. Spotlight and Siri use a user-created Shortcut containing a
+Portavoz-icon action. The XcodeGen-only test app registers the public
+`portavoz://record` adapter, and one bilingual focused XCUITest directs that URL
+to the exact disposable app, proves Start enters a visible recording, then
+executes the native Stop handoff after `.recording` and requires the existing
+typed no-audio recovery. App Intent source changes select this boundary in both
+locales; shared harness changes retain three bilingual canaries. `make-app.sh`
+also verifies the complete nested signature before it reports a successful
+package, so a malformed Sparkle component or application seal fails at the
+packaging boundary rather than during installation.
 Production remains non-sandboxed because capture, CLI/MCP visibility, custom
 folders, Sparkle, and local automation do not yet have a proven parity-preserving
 sandbox composition.

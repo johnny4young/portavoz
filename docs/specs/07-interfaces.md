@@ -193,34 +193,47 @@ privacy receipt as the only in-product network-egress truth.
 
 1. MCP without auth (local process over stdio — acceptable; the security plan requires localhost+token if a network transport is ever added).
 2. `issues` and `export --gist` verified offline; real publishing with the user's tokens pending.
-3. The native `StartRecordingIntent`, URL route, post-meeting Shortcut hook,
-   Spotlight indexing, and user-created Shortcut invocation from Spotlight
-   and Siri are implemented and field-verified.
+3. The native Start action, URL route, post-meeting Shortcut hook, Spotlight
+   indexing, and user-created Start Shortcut invocation from Spotlight and Siri
+   are implemented and field-verified. The native Stop action is implemented
+   and locally verified; picker, Siri, and Shortcut invocation still need
+   physical Sequoia/Tahoe evidence.
 
 ## M16 automation (Jul 2026)
 
 - **Post-meeting hook**: `PostMeetingShortcut.runIfConfigured(markdown:)` — when stop reaches `.done`, if Ajustes → Automation has a Shortcut name, runs `/usr/bin/shortcuts run <name> --input-path <tmp.md>` with the complete Markdown export (MeetingExporter). Deliberately fire-and-forget: it never blocks or delays the pipeline; Shortcut failures are visible in Shortcuts (the meeting is saved regardless).
 - **URL scheme** `portavoz://record` (CFBundleURLTypes in make-app.sh): opens the app and STARTS a recording — always visible (window + mic indicator; nothing records while hidden). Verified E2E: `open "portavoz://record"` launches, navigates, and records. Combined with Shortcuts automations (time/calendar), this provides scheduled auto-recording.
-- **AppIntents/Siri**: `StartRecordingIntent` uses `openAppWhenRun`, then posts
-  one buffered process-local request that `PortavozAppDelegate` consumes into
-  the existing pending-route channel. It never reopens `portavoz://record`,
-  because a URL lookup could select another installed handler after the system
-  already chose the intent-owning bundle. The macOS build deliberately omits
-  `AppShortcutsProvider`: automatic App Shortcuts are not a supported macOS
-  product surface and field testing showed that publishing one beside the
-  native action creates two identically titled picker rows.
+- **AppIntents/Siri**: `StartRecordingIntent` and `StopRecordingIntent` use
+  immediate foreground execution on macOS 26+ and retain the framework's
+  deprecated compatibility property for macOS 14.4/15. Each posts one buffered
+  process-local request that `PortavozAppDelegate` consumes only after the
+  complete service graph exists. Neither reopens a URL, because a LaunchServices
+  lookup could select another installed handler after the system already chose
+  the intent-owning bundle. Start enters the existing pending recording route.
+  Stop synchronously returns one honest disposition: accepted, queued, no
+  active recording, still preparing, already stopping, or recovery required.
+  Accepted work is fenced to one task over the process-owned recording
+  controller and brings the recording surface forward before finalization; the
+  result says **stopping**, never **stopped**, and every other state names one
+  recovery. The macOS build deliberately omits `AppShortcutsProvider`:
+  automatic App Shortcuts are not a supported macOS product surface and field
+  testing showed that publishing one beside a native action creates duplicate
+  picker rows.
   The SPM shipping path compiles the SDK-only intents source under the shipping
   module name and runs `appintentsmetadataprocessor` out of band;
-  `make-app.sh` fails if the resulting `Metadata.appintents` declares no action.
+  `make-app.sh` fails unless the resulting `Metadata.appintents` declares exactly
+  the Start and Stop actions.
   Stable, Dev, and XcodeGen hosts use separate bundle identifiers; Dev is
   force-registered only after its rewritten localized name and final signature
   verify. On macOS the action is selected from the Shortcuts action picker; a
   user-created Shortcut containing it is the reliable Spotlight/Siri adapter
   because direct App Shortcut surfacing is not a supported macOS product
-  contract. XCUITest targets the generated test app explicitly and verifies
-  that the public production URL adapter enters a visible active recording.
-  The saved Shortcut was field-verified from Shortcuts, Spotlight, and Siri on
-  July 27, 2026.
+  contract. XCUITest targets the generated test app explicitly, verifies that
+  the public production URL and native Start handoff enter a visible active
+  recording, and drives the native Stop handoff only after `.recording` to
+  require the recording controller's typed recovery. The saved Start Shortcut
+  was field-verified from Shortcuts, Spotlight, and Siri on July 27, 2026; Stop
+  remains a physical Sequoia/Tahoe field gate.
 - **Spotlight** (`SpotlightIndexer`, Jul 2026): local Core Spotlight search uses one process-scoped actor and one consistent StorageKit snapshot. Launch and searchable mutations request a reconciliation; 250 ms burst coalescing, compact SHA-256 client state, and retries make it independent of a SwiftUI window. Publication replaces the meeting domain in a named `app.portavoz.meetings.v2` index with complete file protection and 500-item batches, then removes the released default-index domain only after the protected index is ready. Legacy cleanup retries after failure and records a versioned local migration marker after success; unchanged state therefore neither republishes documents nor repeatedly deletes the same old domain during this or later app launches. `-use-temp-store` suppresses OS indexing. Each item retains title + date + newest cross-recipe summary + first 40 ordered live segments (cap 4,000 characters), with the meeting UUID as identifier. A measured 100,000-meeting projection is 425.64 ms wall p95 versus 22,085.35 ms for the legacy N+1 path, so D85 rejects an outbox consumer at the measured scale. The hit still navigates via `onContinueUserActivity(CSSearchableItemActionType)` → `Route.meeting`. **Double GOTCHA (field, Jul 2026)**: (1) without `NSUserActivityTypes: [com.apple.corespotlightitem]` in Info.plist, macOS discards the continuation; (2) even with it, SwiftUI's `onContinueUserActivity` does NOT fire on macOS — the activity reaches the classic `NSApplicationDelegate`. `PortavozAppDelegate.application(_:continue:)` (via `@NSApplicationDelegateAdaptor`) parses the identifier and navigates through `AppServices.pendingRoute` (the banner channel); ContentView also applies any `pendingRoute` present WHEN MOUNTING (cold start: the activity may arrive before the window, and `onChange` does not fire for the initial value).
 - **`.portavoz` bundle** (`MeetingBundle`, IntegrationsKit, Jul 2026 — M15 L0): versioned JSON (ISO8601, sortedKeys) with meeting+speakers+segments+summary+typed overview/decision/action-item evidence+current overview feedback+action items+notes+Apuntador cards with optional question/answer evidence and optional audio; `audioDirectory` is ALWAYS cleared on export (D4). Readers reject a future `formatVersion` with a clear error; unknown future fields are ignored. All later fields remain optional/additive under formatVersion 1, so older readers import the subset they understand. `remappedForImport()` mints fresh IDs for every imported entity while preserving relationships: feedback follows its remapped overview claim, each decision keeps its rendered coordinate, action evidence follows its fresh task identity, Apuntador evidence follows its fresh card identity, and every evidence link follows its fresh segment — importing twice creates two independent meetings. Foreign or malformed nested Apuntador evidence is dropped without losing the card or legitimizing the wrong relation. UI: export from the detail menu (without audio / **with audio**), import through the open panel (UTI `app.portavoz.meeting-bundle`, extension `.portavoz`), and double-click routing. Import decoding/remapping remains a private IntegrationsKit adapter and runs off the MainActor. Its ApplicationKit handoff rejects path-shaped/unknown channel names, unsupported extensions, duplicate channels, and foreign evidence; only system/microphone m4a/caf/wav attachments can materialize as canonical files under `Audio/<fresh-uuid>/`. Meeting, cast, transcript, immutable summary/actions/evidence/feedback, notes, and Apuntador cards/evidence then commit as one aggregate; a final evidence-link failure rolls back the transaction, compensates staged audio, and never publishes a partial Library entry (D51). Export now loads that content from one live StorageKit snapshot, strips the local directory in ApplicationKit, and performs optional full-channel reads plus IntegrationsKit format-v1 encoding at utility priority; missing/unreadable channels remain omitted and SwiftUI retains the native save panel (D52/D87/D88/D89/D90/D91). For email-sized files, compress with AAC before exporting.
 - **Confirmed commitment replay** (`CommitmentContinuityEnvelope`, PortavozCore/StorageKit, Aug 2026): canonical format-1 JSON-domain shape for one confirmed continuity aggregate, its exact source/evidence rows, and append-only lifecycle events. StorageKit export returns the validated persisted projection; replay canonicalizes millisecond timestamps, is idempotent for exact retries, and rejects conflicting identity or missing/mismatched local source, evidence, meeting, or person truth before inserting anything. This is an internal transport-neutral representation only. It is deliberately absent from `.portavoz` meeting bundles, meeting-sync envelopes, CloudKit records, CLI, MCP, and SwiftUI until a separately reviewed library-global transport and confirmation UX exist (D237).

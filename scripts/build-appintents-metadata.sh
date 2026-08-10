@@ -83,12 +83,16 @@ python3 - "$WORK/out/Metadata.appintents/extract.actionsdata" <<'PY'
 import json, sys
 metadata = json.load(open(sys.argv[1]))
 actions = metadata.get("actions") or {}
-if not actions:
-    raise SystemExit("error: extracted App Intents metadata declares no actions")
+expected_actions = {"StartRecordingIntent", "StopRecordingIntent"}
+actual_actions = set(actions)
+if actual_actions != expected_actions:
+    raise SystemExit(
+        "error: extracted App Intents metadata actions differ: "
+        f"expected {sorted(expected_actions)}, got {sorted(actual_actions)}")
 if metadata.get("autoShortcuts"):
     raise SystemExit(
         "error: macOS metadata must not publish unsupported App Shortcuts")
-print(f"App Intents metadata: {', '.join(sorted(actions))}")
+print(f"App Intents metadata: {', '.join(sorted(actual_actions))}")
 PY
 
 rm -rf "$RESOURCES_DIR/Metadata.appintents"

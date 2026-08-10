@@ -11346,3 +11346,56 @@ journey cover explicit access through subject and global receipts. Actual TCC
 prompt text, default-list behavior, save semantics, and permission/list drift
 on physical Sequoia and Tahoe Macs remain an explicit field gate; external
 egress consent, standing rules, and AUTO-3 through AUTO-6 remain open.
+
+## D324 — Native recording actions foreground one process and never invent Stop success (Aug 2026)
+
+**Context:** the first native App Intent could start recording, but AUTO-3 had
+no system action for ending the live session. Its foreground contract also used
+`openAppWhenRun`, which the macOS 26 SDK deprecates in favor of
+`supportedModes`; replacing it outright would break the macOS 14.4 deployment
+floor because `IntentModes` itself starts at macOS 26. A Stop action cannot
+honestly return success merely because it posted a notification: the app may be
+opening, the database may still be unavailable, capture may be preparing or
+already finalizing, and the durable stop workflow can still expose typed
+recovery.
+
+**Decision:** Start and Stop declare immediate foreground execution on macOS
+26+ and retain Apple's documented deprecated compatibility property for earlier
+supported macOS versions. The SDK-only intents file remains the single metadata
+source. Packaging accepts exactly `StartRecordingIntent` and
+`StopRecordingIntent`; no App Shortcuts provider, URL lookup, project-module
+import, or second recording controller is introduced.
+
+Stop posts one buffered process-local request. If the complete service graph is
+not ready, that request survives launch or database recovery. Once ready, the
+AppKit delegate consumes it with exactly one synchronous disposition: accepted,
+no active recording, recording still preparing, already stopping, or recovery
+required. An invocation that returns before a delegate exists says only that
+Portavoz will handle the request after opening. Each non-actionable result names
+one next step. Accepted work is fenced by one delegate-owned task, navigates to
+the live recording surface, and calls the process-owned
+`RecordingController.stop`; the dialog says **stopping**, never **stopped**.
+Preparing and already-stopping states also bring the live surface forward.
+Recovery-required uses a distinct non-starting route that reuses the typed
+failure UI; only its explicit retry control can begin another capture.
+Processing and typed failure recovery therefore remain visible, and a repeated
+action cannot start a competing finalization. The
+accepted task strongly owns the service graph until Stop returns, while its
+weak delegate reference prevents an ownership cycle.
+
+The disposable real-app fixture requests Stop only after the production Start
+workflow has returned in `.recording`; it then requires capture to leave the
+live state and surface the existing typed no-audio recovery. Unit tests cover
+cold republishing, synchronous one-shot resolution, duplicate fencing, and all
+recording-phase dispositions. App Intent source changes select that one journey
+in English and Spanish. The stable, Dev, and UI-test bundle identities remain
+separate.
+
+**Consequences:** user-created Shortcuts can now start and stop Portavoz without
+addressing capture hardware or persistence outside the app. Sequoia keeps the
+released foreground behavior while Tahoe adopts the modern API. Local metadata,
+package, and bilingual UI evidence do not prove physical Shortcuts picker, Siri,
+Spotlight, cold database recovery, or cross-version registration behavior for
+Stop; those remain explicit Sequoia/Tahoe field gates. Meeting, person, and
+confirmed-commitment App Entities and the remaining AUTO-3 through AUTO-6 work
+are still open.

@@ -69,7 +69,7 @@ license gate is implemented today. Current implementation status lives in
 | GitHub/Linear/Jira export, ADRs | — | ✅ |
 | Local MCP server | — | ✅ |
 | Clips (mark / export) | mark | export |
-| Post-meeting automations + native Start Recording App Intent | — | ✅ |
+| Post-meeting automations + native Start/Stop Recording App Intents | — | ✅ |
 | Meeting health (talk-time, interruptions) | — | ✅ |
 | Watch "you were mentioned" + iPad PiP captions | — | ✅ |
 

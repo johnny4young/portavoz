@@ -35,7 +35,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
     ),
     "automation-entry": (
-        test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
+        test_id(
+            "AutomationUITests",
+            "testRecordingAutomationRoutesStartAndStopThroughVisibleApp",
+        ),
     ),
     "library": (
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
@@ -93,7 +96,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
     ),
     "main-shell": (
-        test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
+        test_id(
+            "AutomationUITests",
+            "testRecordingAutomationRoutesStartAndStopThroughVisibleApp",
+        ),
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
         test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
         test_id("InsightsUITests", "testInsightsRendersHeatmap"),
@@ -238,7 +244,10 @@ MEETING_FEATURES = frozenset(
 )
 SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("settings-"))
 HARNESS_TESTS = (
-    test_id("AutomationUITests", "testRecordURLRoutesIntoAVisibleRecording"),
+    test_id(
+        "AutomationUITests",
+        "testRecordingAutomationRoutesStartAndStopThroughVisibleApp",
+    ),
     test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
     test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
 )
@@ -590,8 +599,11 @@ def select_paths(paths: Iterable[str]) -> Selection:
             continue
 
         if path.startswith("Sources/portavoz-app/") and path.endswith(".swift"):
-            features = app_features(Path(path).name)
+            file_name = Path(path).name
+            features = app_features(file_name)
             selected.update(feature_tests(features))
+            if file_name == "PortavozAppIntents.swift":
+                locales.add("es")
             reasons.append(f"{path}: {', '.join(sorted(features))}")
             continue
 

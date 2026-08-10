@@ -7,6 +7,8 @@ enum Route: Hashable {
     /// nil = blank recording; an event links the recording to the calendar
     /// meeting it came from (real title instead of the timestamp template).
     case recording(UpcomingEvent?)
+    /// Reveals an existing typed recording failure without starting capture.
+    case recordingRecovery
     case meeting(MeetingID)
     case ask
     case insights
@@ -57,7 +59,15 @@ struct ContentView: View {
             Group {
                 switch route {
                 case .recording(let event):
-                    RecordingView(route: $route, event: event)
+                    RecordingView(
+                        route: $route,
+                        event: event,
+                        startsAutomatically: true)
+                case .recordingRecovery:
+                    RecordingView(
+                        route: $route,
+                        event: nil,
+                        startsAutomatically: false)
                 case .meeting(let id):
                     MeetingDetailScene(
                         services: services,

@@ -70,6 +70,7 @@ extension XCUIApplication {
         simulateLiveTranscriptBrowsing: Bool = false,
         simulateSkillEffectFailureOnce: Bool = false,
         simulateAppIntent: Bool = false,
+        simulateStopAppIntent: Bool = false,
         showMenuBarContent: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
@@ -142,6 +143,9 @@ extension XCUIApplication {
         }
         if simulateAppIntent {
             app.launchArguments.append("-simulate-app-intent")
+        }
+        if simulateStopAppIntent {
+            app.launchArguments.append("-simulate-stop-app-intent")
         }
         if showMenuBarContent {
             app.launchArguments.append("-show-menu-bar-content")

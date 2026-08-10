@@ -16,6 +16,7 @@ final class PortavozAppDelegate:
     /// Wired by `PortavozApp.init` — the delegate is instantiated by the
     /// adaptor before any scene exists.
     @MainActor static weak var services: AppServices?
+    @MainActor private var stopRecordingIntentTask: Task<Void, Never>?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         _ = notification
@@ -33,8 +34,14 @@ final class PortavozAppDelegate:
             selector: #selector(startRecordingIntentRequested(_:)),
             name: PortavozAppIntentBridge.startRecordingRequested,
             object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(stopRecordingIntentRequested(_:)),
+            name: PortavozAppIntentBridge.stopRecordingRequested,
+            object: nil)
         MainActor.assumeIsolated {
             routePendingStartRecordingIntent()
+            routePendingStopRecordingIntent()
             routeSimulatedReminderIfRequested()
         }
     }
@@ -60,6 +67,12 @@ final class PortavozAppDelegate:
         routePendingStartRecordingIntent()
     }
 
+    @MainActor @objc
+    private func stopRecordingIntentRequested(_ notification: Notification) {
+        _ = notification
+        routePendingStopRecordingIntent()
+    }
+
     @MainActor
     private func routePendingStartRecordingIntent() {
         // Do not consume the one-shot request until its destination exists.
@@ -71,6 +84,58 @@ final class PortavozAppDelegate:
         }
         services.pendingRoute = .recording(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @MainActor
+    private func routePendingStopRecordingIntent() {
+        // Preserve a cold-launch request until the complete service graph
+        // exists. Once it does, consume exactly one disposition synchronously
+        // so Shortcuts/Siri receive an honest result from perform().
+        guard let services = Self.services else { return }
+        let disposition = Self.stopRecordingIntentDisposition(
+            for: services.recording.phase,
+            stopTaskIsRunning: stopRecordingIntentTask != nil)
+        guard PortavozAppIntentBridge.consumeStopRecordingRequest(
+            as: disposition
+        ) else { return }
+
+        NSApp.activate(ignoringOtherApps: true)
+        switch disposition {
+        case .accepted:
+            // Keep durable finalization and any typed recovery visible even if
+            // the user invoked the action while browsing another meeting.
+            services.pendingRoute = .recording(nil)
+            stopRecordingIntentTask = Task { @MainActor [weak self] in
+                await services.recording.stop(services: services)
+                self?.stopRecordingIntentTask = nil
+            }
+        case .recordingIsPreparing, .alreadyStopping:
+            services.pendingRoute = .recording(nil)
+        case .recoveryRequired:
+            services.pendingRoute = .recordingRecovery
+        case .queued, .noActiveRecording:
+            break
+        }
+    }
+
+    @MainActor
+    static func stopRecordingIntentDisposition(
+        for phase: RecordingPhase,
+        stopTaskIsRunning: Bool
+    ) -> PortavozAppIntentBridge.StopRecordingRequestDisposition {
+        if stopTaskIsRunning { return .alreadyStopping }
+        return switch phase {
+        case .idle, .done:
+            .noActiveRecording
+        case .preparing:
+            .recordingIsPreparing
+        case .recording:
+            .accepted
+        case .processing:
+            .alreadyStopping
+        case .failed:
+            .recoveryRequired
+        }
     }
 
     /// Double-clicking a `.portavoz` file: import it as a new meeting and

@@ -195,6 +195,7 @@ final class AppLaunchModel {
         // while the database was unavailable. Re-publish, without consuming,
         // any buffered App Intent now that its route destination exists.
         PortavozAppIntentBridge.notifyPendingStartRecordingRequest()
+        PortavozAppIntentBridge.notifyPendingStopRecordingRequest()
     }
 }
 

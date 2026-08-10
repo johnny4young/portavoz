@@ -12,6 +12,9 @@ struct RecordingView: View {
     /// Calendar event this recording came from (brief's "Record this
     /// meeting") — nil for a blank recording.
     let event: UpcomingEvent?
+    /// Recovery routing reuses the exact failure UI but must never trigger a
+    /// new capture merely because SwiftUI constructed the destination.
+    let startsAutomatically: Bool
     /// Shared with the menu bar and the HUD (AppServices): the session
     /// must be visible and stoppable from outside this view.
     private var controller: RecordingController { services.recording }
@@ -138,8 +141,25 @@ struct RecordingView: View {
         }
         .navigationTitle("Recording")
         .liveTranslation(controller)
-        .task { await controller.start(services: services, event: event) }
+        .task { await startRecording() }
         .onDisappear { hud.close() }
+    }
+
+    @MainActor
+    private func startRecording() async {
+        guard startsAutomatically else { return }
+        await controller.start(services: services, event: event)
+
+        // Deterministic real-app proof of the native Stop handoff. It is
+        // reachable only inside the disposable UI-test composition and fires
+        // after Start has returned, so the delegate must observe `.recording`
+        // rather than accidentally treating a cold launch as idle/preparing.
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("-use-temp-store"),
+              arguments.contains("-simulate-stop-app-intent"),
+              controller.phase == .recording
+        else { return }
+        _ = PortavozAppIntentBridge.requestStopRecording()
     }
 
     private var recordingBar: some View {

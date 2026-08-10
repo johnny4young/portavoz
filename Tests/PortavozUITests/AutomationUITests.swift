@@ -3,7 +3,7 @@ import XCTest
 
 final class AutomationUITests: PortavozUITestCase {
     @MainActor
-    func testRecordURLRoutesIntoAVisibleRecording() async throws {
+    func testRecordingAutomationRoutesStartAndStopThroughVisibleApp() async throws {
         let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
         defer {
@@ -46,10 +46,35 @@ final class AutomationUITests: PortavozUITestCase {
             simulateLiveTranscriptionAttach: true,
             simulateAppIntent: true)
         intentApp.launchPortavoz()
-        defer { intentApp.terminate() }
 
         assertVisibleRecording(in: intentApp, route: "native intent")
         attachScreenshot(of: intentApp, named: "native-intent-visible-recording")
+        intentApp.terminate()
+        XCTAssertTrue(
+            intentApp.wait(for: .notRunning, timeout: 10),
+            "the native Start process must terminate before the Stop proof")
+
+        let stopIntentApp = XCUIApplication.portavoz(
+            simulateLiveTranscriptionAttach: true,
+            simulateAppIntent: true,
+            simulateStopAppIntent: true)
+        stopIntentApp.launchPortavoz()
+        defer { stopIntentApp.terminate() }
+
+        XCTAssertTrue(
+            stopIntentApp.control(withIdentifier: "recording-failure")
+                .waitForExistence(timeout: 15),
+            "the native Stop handoff must leave active capture and surface the deterministic no-audio recovery")
+        XCTAssertFalse(
+            stopIntentApp.control(withIdentifier: "recording-stop").exists,
+            "Stop must not remain actionable after the intent closes capture")
+        let expectedReference = UITestLocale.environmentLocale == "es"
+            ? "Referencia del error: recording.stop.no-audio"
+            : "Error reference: recording.stop.no-audio"
+        XCTAssertTrue(
+            stopIntentApp.staticTexts[expectedReference].waitForExistence(timeout: 5),
+            "the Stop action must preserve the recording controller's typed recovery")
+        attachScreenshot(of: stopIntentApp, named: "native-intent-stop-recovery")
     }
 
     @MainActor
