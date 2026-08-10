@@ -7,9 +7,12 @@ struct CommitmentRadarView: View {
     let model: CommitmentRadarModel
     let reminders: CommitmentReminderModel
     let reminderDrafts: ReminderDraftModel
+    let focus: CommitmentRadarRouteFocus?
+    let onClearFocus: () -> Void
     let onOpenMeeting: (MeetingID, TimeInterval?) -> Void
 
     @State private var expandedItems: Set<CommitmentID> = []
+    @State private var appliedInitialRouteFocus = false
     @State private var rescheduleItem: CommitmentRadarItem?
 
     private var state: CommitmentRadarModel.State { model.state }
@@ -20,6 +23,7 @@ struct CommitmentRadarView: View {
                 header
                 modePicker
                 if state.mode == .confirmed {
+                    appEntityFocusBanner
                     CommitmentReminderStatusCard(model: reminders)
                     filters
                     confirmedContent
@@ -35,7 +39,21 @@ struct CommitmentRadarView: View {
             .frame(maxWidth: 980, alignment: .leading)
         }
         .accessibilityIdentifier("commitment-radar")
-        .task { await model.send(.load) }
+        .task(id: focus) {
+            // The route-owned model outlives this conditional view. Refresh an
+            // unchanged focus when Radar is mounted again, but do not start a
+            // duplicate read when a same-view clear/filter action already
+            // applied the new focus before updating the parent route.
+            let refreshesRemountedRoute = !appliedInitialRouteFocus
+                && model.state.phase != .idle
+                && model.state.routeFocus == focus
+            appliedInitialRouteFocus = true
+            if refreshesRemountedRoute {
+                await model.send(.load)
+            } else {
+                await model.send(.routeFocusChanged(focus))
+            }
+        }
         .task(id: reminderDraftLoadIdentity) {
             await reminderDrafts.load(commitments: reminderDraftCommitments)
         }
@@ -85,6 +103,21 @@ struct CommitmentRadarView: View {
 }
 
 private extension CommitmentRadarView {
+    @ViewBuilder
+    var appEntityFocusBanner: some View {
+        if state.routeFocus != nil {
+            CommitmentRadarAppEntityFocusBanner(
+                focus: state.routeFocus,
+                page: state.page,
+                clear: {
+                    Task {
+                        await model.send(.clearRouteFocus)
+                        onClearFocus()
+                    }
+                })
+        }
+    }
+
     var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
@@ -519,7 +552,12 @@ private extension CommitmentRadarView {
     var modeBinding: Binding<CommitmentRadarModel.Mode> {
         Binding(
             get: { state.mode },
-            set: { mode in Task { await model.send(.modeChanged(mode)) } })
+            set: { mode in
+                Task {
+                    await model.send(.modeChanged(mode))
+                    onClearFocus()
+                }
+            })
     }
 
     var ownerSelectionTitle: String {
@@ -560,19 +598,34 @@ private extension CommitmentRadarView {
     var ownerBinding: Binding<CommitmentRadarModel.OwnerSelection> {
         Binding(
             get: { state.owner },
-            set: { owner in Task { await model.send(.ownerChanged(owner)) } })
+            set: { owner in
+                Task {
+                    await model.send(.ownerChanged(owner))
+                    onClearFocus()
+                }
+            })
     }
 
     var dueBinding: Binding<CommitmentRadarModel.DueSelection> {
         Binding(
             get: { state.due },
-            set: { due in Task { await model.send(.dueChanged(due)) } })
+            set: { due in
+                Task {
+                    await model.send(.dueChanged(due))
+                    onClearFocus()
+                }
+            })
     }
 
     var activityBinding: Binding<CommitmentRadarModel.ActivitySelection> {
         Binding(
             get: { state.activity },
-            set: { activity in Task { await model.send(.activityChanged(activity)) } })
+            set: { activity in
+                Task {
+                    await model.send(.activityChanged(activity))
+                    onClearFocus()
+                }
+            })
     }
 
     var groupingBinding: Binding<CommitmentRadarModel.Grouping> {
@@ -645,55 +698,6 @@ private extension CommitmentRadarView {
             } else {
                 ("meeting-unavailable", L10n.text("Source unavailable"))
             }
-        }
-    }
-
-    func ownerName(_ item: CommitmentRadarItem) -> String {
-        switch item.commitment.assignee {
-        case .me:
-            L10n.text("Me")
-        case .unassigned:
-            L10n.text("Unassigned")
-        case .person:
-            item.assigneeDisplayName ?? L10n.text("Unknown person")
-        }
-    }
-
-    func dueLabel(_ date: Date?) -> String {
-        guard let date else { return L10n.text("No due date") }
-        return L10n.format("Due %@", shortDate(date))
-    }
-
-    func shortDate(_ date: Date) -> String {
-        date.formatted(date: .abbreviated, time: .omitted)
-    }
-
-    func activityLabel(_ activity: CommitmentRadarActivity) -> String {
-        switch activity {
-        case .new: L10n.text("New")
-        case .unchanged: L10n.text("Unchanged")
-        case .completed: L10n.text("Completed")
-        case .reopened: L10n.text("Reopened")
-        }
-    }
-
-    func historyLabel(_ kind: CommitmentEventKind) -> String {
-        switch kind {
-        case .confirm: L10n.text("Confirmed")
-        case .reassign: L10n.text("Reassigned")
-        case .reschedule: L10n.text("Rescheduled")
-        case .complete: L10n.text("Completed")
-        case .reopen: L10n.text("Reopened")
-        case .dismiss: L10n.text("Dismissed")
-        }
-    }
-
-    func activityColor(_ activity: CommitmentRadarActivity) -> Color {
-        switch activity {
-        case .new: PVDesign.accent
-        case .unchanged: .secondary
-        case .completed: .green
-        case .reopened: PVDesign.brandAmber
         }
     }
 

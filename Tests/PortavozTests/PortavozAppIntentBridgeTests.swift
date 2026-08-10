@@ -5,6 +5,115 @@ import XCTest
 
 final class PortavozAppIntentBridgeTests: XCTestCase {
     @MainActor
+    func testLatestBufferedEntityNavigationWinsAndIsConsumedOnce() {
+        _ = PortavozAppIntentBridge.consumeNavigationRequest()
+        PortavozAppIntentBridge.requestNavigation(.meeting(UUID().uuidString))
+        PortavozAppIntentBridge.requestNavigation(.commitments)
+
+        XCTAssertEqual(
+            PortavozAppIntentBridge.consumeNavigationRequest(),
+            .commitments)
+        XCTAssertNil(PortavozAppIntentBridge.consumeNavigationRequest())
+    }
+
+    @MainActor
+    func testEntityNavigationRejectsMalformedTypedIdentifiersToRecoveryRoutes() {
+        XCTAssertEqual(
+            PortavozAppDelegate.route(for: .meeting("invalid")),
+            .library)
+        XCTAssertEqual(
+            PortavozAppDelegate.route(for: .person("invalid")),
+            .commitments(nil))
+        XCTAssertEqual(
+            PortavozAppDelegate.route(for: .commitment("invalid")),
+            .commitments(nil))
+    }
+
+    @MainActor
+    func testEntityOpenActionsRevalidateAndPublishEveryExactRoute() async {
+        _ = PortavozAppIntentBridge.consumeNavigationRequest()
+        let meeting = PortavozMeetingEntity(
+            id: UUID().uuidString,
+            title: "Stored meeting",
+            dateDescription: "Today")
+        let person = PortavozPersonEntity(
+            id: UUID().uuidString,
+            name: "Stored person")
+        let commitment = PortavozCommitmentEntity(
+            id: UUID().uuidString,
+            title: "Stored commitment",
+            dueDescription: nil)
+        let catalog = StubPortavozAppEntityCatalog(
+            meetingValues: [meeting],
+            personValues: [person],
+            commitmentValues: [commitment])
+
+        _ = await PortavozAppEntityOpenAction.openMeeting(
+            meeting,
+            catalog: catalog)
+        XCTAssertEqual(
+            PortavozAppIntentBridge.consumeNavigationRequest(),
+            .meeting(meeting.id))
+
+        _ = await PortavozAppEntityOpenAction.showPersonCommitments(
+            person,
+            catalog: catalog)
+        XCTAssertEqual(
+            PortavozAppIntentBridge.consumeNavigationRequest(),
+            .person(person.id))
+
+        _ = await PortavozAppEntityOpenAction.openCommitment(
+            commitment,
+            catalog: catalog)
+        XCTAssertEqual(
+            PortavozAppIntentBridge.consumeNavigationRequest(),
+            .commitment(commitment.id))
+        XCTAssertNil(PortavozAppIntentBridge.consumeNavigationRequest())
+    }
+
+    @MainActor
+    func testEntityOpenActionsRecoverFromMissingAndUnreadableCatalogValues() async {
+        _ = PortavozAppIntentBridge.consumeNavigationRequest()
+        let meeting = PortavozMeetingEntity(
+            id: UUID().uuidString,
+            title: "Missing meeting",
+            dateDescription: "Today")
+        let person = PortavozPersonEntity(
+            id: UUID().uuidString,
+            name: "Missing person")
+        let commitment = PortavozCommitmentEntity(
+            id: UUID().uuidString,
+            title: "Missing commitment",
+            dueDescription: nil)
+        let missingCatalog = StubPortavozAppEntityCatalog()
+        let unreadableCatalog = StubPortavozAppEntityCatalog(shouldFail: true)
+
+        for catalog in [missingCatalog, unreadableCatalog] {
+            _ = await PortavozAppEntityOpenAction.openMeeting(
+                meeting,
+                catalog: catalog)
+            XCTAssertEqual(
+                PortavozAppIntentBridge.consumeNavigationRequest(),
+                .library)
+
+            _ = await PortavozAppEntityOpenAction.showPersonCommitments(
+                person,
+                catalog: catalog)
+            XCTAssertEqual(
+                PortavozAppIntentBridge.consumeNavigationRequest(),
+                .commitments)
+
+            _ = await PortavozAppEntityOpenAction.openCommitment(
+                commitment,
+                catalog: catalog)
+            XCTAssertEqual(
+                PortavozAppIntentBridge.consumeNavigationRequest(),
+                .commitments)
+        }
+        XCTAssertNil(PortavozAppIntentBridge.consumeNavigationRequest())
+    }
+
+    @MainActor
     func testPendingRequestCanBeRepublishedAfterServicesBecomeReady() {
         _ = PortavozAppIntentBridge.consumeStartRecordingRequest()
         var deliveries = 0
@@ -133,4 +242,45 @@ final class PortavozAppIntentBridgeTests: XCTestCase {
             "the in-flight fence must win before another stop can schedule")
     }
 
+}
+
+private struct StubPortavozAppEntityCatalog: PortavozAppEntityCatalog {
+    enum Failure: Error {
+        case unreadable
+    }
+
+    var meetingValues: [PortavozMeetingEntity] = []
+    var personValues: [PortavozPersonEntity] = []
+    var commitmentValues: [PortavozCommitmentEntity] = []
+    var shouldFail = false
+
+    func meetings(
+        identifiers: [String]?,
+        matching: String?,
+        limit: Int
+    ) async throws -> [PortavozMeetingEntity] {
+        _ = (identifiers, matching, limit)
+        if shouldFail { throw Failure.unreadable }
+        return meetingValues
+    }
+
+    func people(
+        identifiers: [String]?,
+        matching: String?,
+        limit: Int
+    ) async throws -> [PortavozPersonEntity] {
+        _ = (identifiers, matching, limit)
+        if shouldFail { throw Failure.unreadable }
+        return personValues
+    }
+
+    func commitments(
+        identifiers: [String]?,
+        matching: String?,
+        limit: Int
+    ) async throws -> [PortavozCommitmentEntity] {
+        _ = (identifiers, matching, limit)
+        if shouldFail { throw Failure.unreadable }
+        return commitmentValues
+    }
 }

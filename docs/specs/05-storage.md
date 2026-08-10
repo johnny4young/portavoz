@@ -11,6 +11,8 @@ D200 adds content-free, independently leased scheduling for semantic
 maintenance without changing meeting lifecycle or replacing the vector cursor.
 D235 adds correction transaction and replica-replay recovery gates without a
 schema change.
+D325 adds bounded literal meeting, canonical-person, and confirmed-commitment
+catalog reads for native App Entity resolution without a schema change.
 D239 adopts the existing v21 review and confirmation transactions through a
 narrow ApplicationKit repository; it adds no schema or presentation-owned SQL.
 D243 adds an explicit append-only cross-meeting source link; it reuses schema
@@ -1113,6 +1115,20 @@ and their summary-plus-transcript description retains the released 4,000-
 character cap. Tombstoned meetings, summaries, and segments are excluded.
 StorageKit returns platform-neutral `SpotlightDocument` values; Core Spotlight
 batching, protection, retry, and cleanup remain private app adapter concerns.
+
+`automationMeetings`, `automationPeople`, and `automationCommitments` are the
+D325 read-side catalog for native App Entity queries. Every call clamps output
+to 50 rows. Exact resolution deduplicates IDs, preserves caller order, and
+omits unknown or deleted truth; commitment resolution also omits dismissed
+values. ApplicationKit rejects a request that mixes exact IDs with text.
+Suggestion and text requests stay inside SQLite, escape `\\`, `%`, and
+`_` before a literal `LIKE` match, and order meetings newest-first, people by
+canonical name, and commitments newest-updated. The adapter materializes only
+bounded `Meeting`, `Person`, or `Commitment` rows; it never joins or fetches
+transcript segments, audio bytes, summaries, sources, evidence, aliases, or
+lifecycle history. Exact Commitment Radar identity similarly takes precedence
+over presentation filters while retaining the existing live/dismissed fences,
+so a valid external route cannot disappear behind stale window state.
 
 Privacy evidence adds `recordDataEgressEvent(_:)`,
 `dataEgressEvents(for:)`, and `privacyReceipt(for:)`. The first is the

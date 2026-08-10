@@ -39,9 +39,15 @@ final class PortavozAppDelegate:
             selector: #selector(stopRecordingIntentRequested(_:)),
             name: PortavozAppIntentBridge.stopRecordingRequested,
             object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(navigationIntentRequested(_:)),
+            name: PortavozAppIntentBridge.navigationRequested,
+            object: nil)
         MainActor.assumeIsolated {
             routePendingStartRecordingIntent()
             routePendingStopRecordingIntent()
+            routePendingNavigationIntent()
             routeSimulatedReminderIfRequested()
         }
     }
@@ -71,6 +77,12 @@ final class PortavozAppDelegate:
     private func stopRecordingIntentRequested(_ notification: Notification) {
         _ = notification
         routePendingStopRecordingIntent()
+    }
+
+    @MainActor @objc
+    private func navigationIntentRequested(_ notification: Notification) {
+        _ = notification
+        routePendingNavigationIntent()
     }
 
     @MainActor
@@ -115,6 +127,39 @@ final class PortavozAppDelegate:
             services.pendingRoute = .recordingRecovery
         case .queued, .noActiveRecording:
             break
+        }
+    }
+
+    @MainActor
+    private func routePendingNavigationIntent() {
+        guard let services = Self.services,
+              let request = PortavozAppIntentBridge.consumeNavigationRequest()
+        else { return }
+
+        services.pendingRoute = Self.route(for: request)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @MainActor
+    static func route(
+        for request: PortavozAppIntentBridge.NavigationRequest
+    ) -> Route {
+        switch request {
+        case .library:
+            .library
+        case .commitments:
+            .commitments(nil)
+        case .meeting(let value):
+            UUID(uuidString: value).map { .meeting(MeetingID(rawValue: $0)) }
+                ?? .library
+        case .person(let value):
+            UUID(uuidString: value).map {
+                .commitments(.person(PersonID(rawValue: $0)))
+            } ?? .commitments(nil)
+        case .commitment(let value):
+            UUID(uuidString: value).map {
+                .commitments(.commitment(CommitmentID(rawValue: $0)))
+            } ?? .commitments(nil)
         }
     }
 
@@ -255,7 +300,7 @@ private extension PortavozAppDelegate {
         _ record: AppReminderNotificationRecord
     ) async {
         await services?.commitmentReminders.recordPresentation(record)
-        services?.pendingRoute = .commitments
+        services?.pendingRoute = .commitments(.commitment(record.commitmentID))
         NSApp.activate(ignoringOtherApps: true)
     }
 

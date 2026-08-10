@@ -1666,7 +1666,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(composition.contains("LoadCommitmentRadar(repository: store)"))
         XCTAssertTrue(composition.contains("ManageCommitmentRadar(repository: store)"))
         XCTAssertTrue(root.contains("@State private var commitmentRadarModel"))
-        XCTAssertTrue(root.contains("case .commitments:"))
+        XCTAssertTrue(root.contains("case .commitments(let focus):"))
         XCTAssertTrue(view.contains(
             "let onOpenMeeting: (MeetingID, TimeInterval?) -> Void"))
         XCTAssertTrue(view.contains("case .owner:"))
@@ -2726,7 +2726,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "case UNNotificationDefaultActionIdentifier:"))
         XCTAssertTrue(adapter.contains(".openRadar"))
         XCTAssertTrue(delegate.contains("case .openRadar:"))
-        XCTAssertTrue(delegate.contains("pendingRoute = .commitments"))
+        XCTAssertTrue(delegate.contains(
+            "pendingRoute = .commitments(.commitment(record.commitmentID))"))
         XCTAssertTrue(decisions.contains("## D261"))
     }
 
@@ -4691,6 +4692,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/ContentView.swift")
         let recordingView = try Self.contents(
             of: "Sources/portavoz-app/RecordingView.swift")
+        let entityAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+AutomationEntities.swift")
+        let entityLoader = try Self.contents(
+            of: "Sources/ApplicationKit/LoadAutomationEntities.swift")
+        let entityStorage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+AutomationEntities.swift")
+        let entityFixture = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+AutomationEntityUITestFixture.swift")
+        let appLaunch = try Self.contents(
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
         let extractor = try Self.contents(
             of: "scripts/build-appintents-metadata.sh")
         let packager = try Self.contents(of: "scripts/make-app.sh")
@@ -4732,8 +4743,31 @@ final class ArchitectureDependencyTests: XCTestCase {
         // The extractor uses the SHIPPING module name, and the packager
         // fails the build rather than shipping silently without intents.
         XCTAssertTrue(extractor.contains("-module-name portavoz_app"))
-        XCTAssertTrue(extractor.contains(
-            "expected_actions = {\"StartRecordingIntent\", \"StopRecordingIntent\"}"))
+        for action in [
+            "OpenCommitmentIntent",
+            "OpenMeetingIntent",
+            "ShowPersonCommitmentsIntent",
+            "StartRecordingIntent",
+            "StopRecordingIntent",
+        ] {
+            XCTAssertTrue(extractor.contains("\"\(action)\""))
+        }
+        for entity in [
+            "PortavozCommitmentEntity",
+            "PortavozMeetingEntity",
+            "PortavozPersonEntity",
+        ] {
+            XCTAssertTrue(extractor.contains("\"\(entity)\""))
+            XCTAssertTrue(intents.contains("struct \(entity): AppEntity"))
+        }
+        for query in [
+            "PortavozCommitmentEntityQuery",
+            "PortavozMeetingEntityQuery",
+            "PortavozPersonEntityQuery",
+        ] {
+            XCTAssertTrue(extractor.contains("\"\(query)\""))
+            XCTAssertTrue(intents.contains("struct \(query): EntityStringQuery"))
+        }
         XCTAssertTrue(packager.contains("scripts/build-appintents-metadata.sh"))
         XCTAssertFalse(
             intents.contains("NSWorkspace.shared.open"),
@@ -4746,6 +4780,41 @@ final class ArchitectureDependencyTests: XCTestCase {
             "PortavozAppIntentBridge.consumeStartRecordingRequest()"))
         XCTAssertTrue(appDelegate.contains(
             "PortavozAppIntentBridge.consumeStopRecordingRequest("))
+        XCTAssertTrue(appDelegate.contains(
+            "PortavozAppIntentBridge.consumeNavigationRequest()"))
+        XCTAssertTrue(intents.contains("@AppDependency(default:"))
+        XCTAssertTrue(entityAdapter.contains("AppDependencyManager.shared.add"))
+        XCTAssertTrue(entityAdapter.contains("LoadAutomationEntities(catalog: store)"))
+        XCTAssertTrue(appLaunch.contains("services.installAutomationEntityCatalog()"))
+        XCTAssertTrue(entityLoader.contains("maximumResultCount: Int { 50 }"))
+        XCTAssertTrue(entityLoader.contains(
+            "maximumQueryCharacterCount: Int { 120 }"))
+        XCTAssertTrue(entityStorage.contains("maximumAutomationEntityCount = 50"))
+        XCTAssertTrue(entityStorage.contains("ESCAPE '\\\\' COLLATE NOCASE"))
+        XCTAssertFalse(intents.contains("CSSearchableIndex"))
+        XCTAssertFalse(entityAdapter.contains("CSSearchableIndex"))
+        XCTAssertTrue(entityFixture.contains("arguments.contains(\"-use-temp-store\")"))
+        XCTAssertTrue(entityFixture.contains("AppAutomationEntityCatalog(store: store)"))
+        XCTAssertTrue(entityFixture.contains(
+            "PortavozAppEntityOpenAction.openMeeting("))
+        XCTAssertTrue(entityFixture.contains(
+            "PortavozAppEntityOpenAction.showPersonCommitments("))
+        XCTAssertTrue(entityFixture.contains(
+            "PortavozAppEntityOpenAction.openCommitment("))
+        XCTAssertFalse(
+            entityFixture.contains(".perform()"),
+            "AppDependency is initialized only inside a system-owned intent perform flow")
+        XCTAssertEqual(
+            intents.components(separatedBy: "extension PortavozMeetingEntity: IndexedEntity")
+                .count - 1,
+            1)
+        XCTAssertTrue(intents.contains("struct OpenMeetingIntent: OpenIntent"))
+        XCTAssertTrue(intents.contains(
+            "struct ShowPersonCommitmentsIntent: OpenIntent"))
+        XCTAssertTrue(intents.contains("struct OpenCommitmentIntent: OpenIntent"))
+        XCTAssertTrue(contentView.contains("case library"))
+        XCTAssertTrue(contentView.contains("case person(PersonID)"))
+        XCTAssertTrue(contentView.contains("case commitment(CommitmentID)"))
         XCTAssertTrue(contentView.contains("case recordingRecovery"))
         XCTAssertTrue(appDelegate.contains(
             "services.pendingRoute = .recordingRecovery"))
@@ -4771,6 +4840,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D139"))
         XCTAssertTrue(decisions.contains("## D141"))
         XCTAssertTrue(decisions.contains("## D324"))
+        XCTAssertTrue(decisions.contains("## D325"))
     }
 
     func testRecordingLifecycleFailuresStayTypedUntilPresentation() throws {

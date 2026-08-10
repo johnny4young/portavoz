@@ -73,9 +73,9 @@ struct LibraryView: View {
                     actionChip(
                         "Radar", systemImage: "scope",
                         id: "library-commitment-radar-button",
-                        active: route == .commitments,
+                        active: route?.isCommitmentRadar == true,
                         help: "Confirmed commitments, deadlines, sources and changes — kept on your Mac"
-                    ) { route = .commitments }
+                    ) { route = .commitments(nil) }
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 8)

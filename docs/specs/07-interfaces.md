@@ -2,6 +2,9 @@
 
 Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence), D81 (production lexical candidate benchmark), D82 (isolated semantic resource benchmark), D83 (comparable semantic after matrix), D84 (copied real-audio waveform evidence), D85 (protected measured Spotlight reconciliation), D87 (portable typed evidence), D88 (portable current claim feedback), D89 (portable decision evidence), D90 (portable action-item evidence), D91 (portable role-separated Apuntador evidence), D100 (shared Ask workflow across app, CLI, and MCP), D102 (one executable composition and bounded meeting reads), D103 (terminal product workflows enter ApplicationKit), D115 (private-iCloud receipt evidence), D116 (filesystem-capability-safe private publication), D179 (capture-safe existing-library sync admission), D183 (bounded backup destination identity), D184 (durable backup publication evidence), D185 (strict staged-source adoption), D186 (successful-publication source checkpoints), D187 (fail-closed pending-publication reconciliation), D188 (durable typed backup failure outcomes), D189 (fail-closed backup launch continuation), D233 (correction-lineage invalidation before composed interfaces), D234 (correction-aware documents and protected correction replay), D237 (transport-neutral confirmed commitment replay).
 
+Native automation decisions: D324 (honest Start/Stop actions) and D325
+(bounded meeting/person/commitment App Entities and exact open routes).
+
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
 SPM binary (`swift build --product portavoz-cli` → `.build/debug/portavoz-cli`). Shares the DB and models with the app (including the configurable recordings folder, via `RecordingsLocation`).
@@ -196,8 +199,11 @@ privacy receipt as the only in-product network-egress truth.
 3. The native Start action, URL route, post-meeting Shortcut hook, Spotlight
    indexing, and user-created Start Shortcut invocation from Spotlight and Siri
    are implemented and field-verified. The native Stop action is implemented
-   and locally verified; picker, Siri, and Shortcut invocation still need
-   physical Sequoia/Tahoe evidence.
+   and locally verified. Meeting, canonical-person, and confirmed-commitment
+   App Entities and exact open actions are implemented and locally verified.
+   Stop plus entity picker/search, Siri disambiguation, cold recovery, native
+   entity Spotlight publication, and registration still need physical
+   Sequoia/Tahoe evidence.
 
 ## M16 automation (Jul 2026)
 
@@ -222,7 +228,23 @@ privacy receipt as the only in-product network-egress truth.
   The SPM shipping path compiles the SDK-only intents source under the shipping
   module name and runs `appintentsmetadataprocessor` out of band;
   `make-app.sh` fails unless the resulting `Metadata.appintents` declares exactly
-  the Start and Stop actions.
+  five actions, three App Entities, and their three string queries.
+  `PortavozMeetingEntity`, `PortavozPersonEntity`, and
+  `PortavozCommitmentEntity` expose only a display title/name plus meeting date
+  or optional commitment due date. Their standard `AppDependency` catalog is
+  installed only after the database opens. ApplicationKit caps resolution at
+  50 identifiers/results and normalized text at 120 characters; system
+  suggestions use 20 rows and mixed exact/text selectors are rejected.
+  StorageKit escapes literal wildcard input, excludes
+  deleted/dismissed truth, preserves requested identity order, and does not
+  load transcript, audio, summary, or evidence content.
+  `OpenMeetingIntent`, `ShowPersonCommitmentsIntent`, and
+  `OpenCommitmentIntent` revalidate one exact value before a latest-wins,
+  consume-once process route. Meeting opens Detail; person opens a visible,
+  reversible owner focus in Commitment Radar; commitment identity opens only
+  that live item and overrides stale window filters until **Show all** restores
+  them. Missing/malformed values and catalog failure route to Library or
+  unfiltered Radar with explicit recovery instead of exiting.
   Stable, Dev, and XcodeGen hosts use separate bundle identifiers; Dev is
   force-registered only after its rewritten localized name and final signature
   verify. On macOS the action is selected from the Shortcuts action picker; a
@@ -233,7 +255,11 @@ privacy receipt as the only in-product network-egress truth.
   recording, and drives the native Stop handoff only after `.recording` to
   require the recording controller's typed recovery. The saved Start Shortcut
   was field-verified from Shortcuts, Spotlight, and Siri on July 27, 2026; Stop
-  remains a physical Sequoia/Tahoe field gate.
+  and the App Entity surface remain physical Sequoia/Tahoe field gates.
+  App Entity queries retain the macOS 14.4 deployment floor and add
+  availability-gated `IndexedEntity` conformance on macOS 15+, but D325 does
+  not publish people or commitments into Core Spotlight and makes no native
+  entity-indexing closure claim.
 - **Spotlight** (`SpotlightIndexer`, Jul 2026): local Core Spotlight search uses one process-scoped actor and one consistent StorageKit snapshot. Launch and searchable mutations request a reconciliation; 250 ms burst coalescing, compact SHA-256 client state, and retries make it independent of a SwiftUI window. Publication replaces the meeting domain in a named `app.portavoz.meetings.v2` index with complete file protection and 500-item batches, then removes the released default-index domain only after the protected index is ready. Legacy cleanup retries after failure and records a versioned local migration marker after success; unchanged state therefore neither republishes documents nor repeatedly deletes the same old domain during this or later app launches. `-use-temp-store` suppresses OS indexing. Each item retains title + date + newest cross-recipe summary + first 40 ordered live segments (cap 4,000 characters), with the meeting UUID as identifier. A measured 100,000-meeting projection is 425.64 ms wall p95 versus 22,085.35 ms for the legacy N+1 path, so D85 rejects an outbox consumer at the measured scale. The hit still navigates via `onContinueUserActivity(CSSearchableItemActionType)` → `Route.meeting`. **Double GOTCHA (field, Jul 2026)**: (1) without `NSUserActivityTypes: [com.apple.corespotlightitem]` in Info.plist, macOS discards the continuation; (2) even with it, SwiftUI's `onContinueUserActivity` does NOT fire on macOS — the activity reaches the classic `NSApplicationDelegate`. `PortavozAppDelegate.application(_:continue:)` (via `@NSApplicationDelegateAdaptor`) parses the identifier and navigates through `AppServices.pendingRoute` (the banner channel); ContentView also applies any `pendingRoute` present WHEN MOUNTING (cold start: the activity may arrive before the window, and `onChange` does not fire for the initial value).
 - **`.portavoz` bundle** (`MeetingBundle`, IntegrationsKit, Jul 2026 — M15 L0): versioned JSON (ISO8601, sortedKeys) with meeting+speakers+segments+summary+typed overview/decision/action-item evidence+current overview feedback+action items+notes+Apuntador cards with optional question/answer evidence and optional audio; `audioDirectory` is ALWAYS cleared on export (D4). Readers reject a future `formatVersion` with a clear error; unknown future fields are ignored. All later fields remain optional/additive under formatVersion 1, so older readers import the subset they understand. `remappedForImport()` mints fresh IDs for every imported entity while preserving relationships: feedback follows its remapped overview claim, each decision keeps its rendered coordinate, action evidence follows its fresh task identity, Apuntador evidence follows its fresh card identity, and every evidence link follows its fresh segment — importing twice creates two independent meetings. Foreign or malformed nested Apuntador evidence is dropped without losing the card or legitimizing the wrong relation. UI: export from the detail menu (without audio / **with audio**), import through the open panel (UTI `app.portavoz.meeting-bundle`, extension `.portavoz`), and double-click routing. Import decoding/remapping remains a private IntegrationsKit adapter and runs off the MainActor. Its ApplicationKit handoff rejects path-shaped/unknown channel names, unsupported extensions, duplicate channels, and foreign evidence; only system/microphone m4a/caf/wav attachments can materialize as canonical files under `Audio/<fresh-uuid>/`. Meeting, cast, transcript, immutable summary/actions/evidence/feedback, notes, and Apuntador cards/evidence then commit as one aggregate; a final evidence-link failure rolls back the transaction, compensates staged audio, and never publishes a partial Library entry (D51). Export now loads that content from one live StorageKit snapshot, strips the local directory in ApplicationKit, and performs optional full-channel reads plus IntegrationsKit format-v1 encoding at utility priority; missing/unreadable channels remain omitted and SwiftUI retains the native save panel (D52/D87/D88/D89/D90/D91). For email-sized files, compress with AAC before exporting.
 - **Confirmed commitment replay** (`CommitmentContinuityEnvelope`, PortavozCore/StorageKit, Aug 2026): canonical format-1 JSON-domain shape for one confirmed continuity aggregate, its exact source/evidence rows, and append-only lifecycle events. StorageKit export returns the validated persisted projection; replay canonicalizes millisecond timestamps, is idempotent for exact retries, and rejects conflicting identity or missing/mismatched local source, evidence, meeting, or person truth before inserting anything. This is an internal transport-neutral representation only. It is deliberately absent from `.portavoz` meeting bundles, meeting-sync envelopes, CloudKit records, CLI, MCP, and SwiftUI until a separately reviewed library-global transport and confirmation UX exist (D237).

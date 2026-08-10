@@ -426,6 +426,28 @@ class UITestScopeTests(unittest.TestCase):
         )
         self.assertEqual(selection.locales, ("en", "es"))
 
+    def test_app_entity_catalog_files_select_only_entry_and_radar(self):
+        expected_set = set(
+            FEATURE_TESTS["automation-entry"]
+            + FEATURE_TESTS["commitment-radar"]
+        )
+        expected = tuple(test for test in ALL_TESTS if test in expected_set)
+        for path in [
+            "Sources/ApplicationKit/LoadAutomationEntities.swift",
+            "Sources/StorageKit/MeetingStore+AutomationEntities.swift",
+            "Sources/portavoz-app/AppServices+AutomationEntities.swift",
+            "Sources/portavoz-app/AppServices+AutomationEntityUITestFixture.swift",
+        ]:
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
+
+        focus = select_paths([
+            "Sources/portavoz-app/CommitmentRadarAppEntityFocusBanner.swift"
+        ])
+        self.assertEqual(focus.tests, FEATURE_TESTS["commitment-radar"])
+
     def test_recording_toolbar_selects_geometry_and_live_control_contracts(self):
         selection = select_paths(
             ["Sources/portavoz-app/RecordingToolbar.swift"]

@@ -4,6 +4,7 @@ import PortavozCore
 import SwiftUI
 
 enum Route: Hashable {
+    case library
     /// nil = blank recording; an event links the recording to the calendar
     /// meeting it came from (real title instead of the timestamp template).
     case recording(UpcomingEvent?)
@@ -12,7 +13,19 @@ enum Route: Hashable {
     case meeting(MeetingID)
     case ask
     case insights
-    case commitments
+    case commitments(CommitmentRadarRouteFocus?)
+}
+
+extension Route {
+    var isCommitmentRadar: Bool {
+        guard case .commitments = self else { return false }
+        return true
+    }
+}
+
+enum CommitmentRadarRouteFocus: Hashable {
+    case person(PersonID)
+    case commitment(CommitmentID)
 }
 
 struct ContentView: View {
@@ -83,11 +96,13 @@ struct ContentView: View {
                         })
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)
-                case .commitments:
+                case .commitments(let focus):
                     CommitmentRadarView(
                         model: commitmentRadarModel,
                         reminders: services.commitmentReminders,
                         reminderDrafts: reminderDraftModel,
+                        focus: focus,
+                        onClearFocus: { route = .commitments(nil) },
                         onOpenMeeting: { meetingID, timestamp in
                             if let timestamp {
                                 services.requestMeetingSeek(
@@ -96,7 +111,7 @@ struct ContentView: View {
                             }
                             route = .meeting(meetingID)
                         })
-                case nil:
+                case .library, nil:
                     ContentUnavailableView(
                         "Portavoz",
                         systemImage: "waveform.badge.mic",
@@ -127,7 +142,10 @@ struct ContentView: View {
                 services.pendingRoute = .meeting(citation.meetingID)
             }
         }
-        .task { await services.seedDemoIfRequested() }
+        .task {
+            await services.seedDemoIfRequested()
+            await services.routeAutomationEntityIfRequested()
+        }
         .task { await services.seedScaleBenchmarkIfRequested() }
         .task { positionUITestWindowIfNeeded() }
         .task { await services.purgeExpiredTrash() }

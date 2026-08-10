@@ -11990,6 +11990,216 @@
           }
         }
       }
+    },
+    "Meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reunión"
+          }
+        }
+      }
+    },
+    "Person": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Persona"
+          }
+        }
+      }
+    },
+    "Confirmed commitment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromiso confirmado"
+          }
+        }
+      }
+    },
+    "Open meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir reunión"
+          }
+        }
+      }
+    },
+    "Which meeting?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué reunión?"
+          }
+        }
+      }
+    },
+    "That meeting is no longer available. Open Portavoz and choose another meeting from Library.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esa reunión ya no está disponible. Abre Portavoz y elige otra reunión en la Biblioteca."
+          }
+        }
+      }
+    },
+    "Opening %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abriendo %@."
+          }
+        }
+      }
+    },
+    "Show person's commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar los compromisos de una persona"
+          }
+        }
+      }
+    },
+    "Whose commitments?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Los compromisos de quién?"
+          }
+        }
+      }
+    },
+    "That person is no longer available. Open Commitment Radar and choose another owner.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esa persona ya no está disponible. Abre el Radar de compromisos y elige otro responsable."
+          }
+        }
+      }
+    },
+    "Showing commitments for %@.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrando los compromisos de %@."
+          }
+        }
+      }
+    },
+    "Open commitment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir compromiso"
+          }
+        }
+      }
+    },
+    "Which commitment?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Qué compromiso?"
+          }
+        }
+      }
+    },
+    "That commitment is no longer available. Open Commitment Radar and choose another commitment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ese compromiso ya no está disponible. Abre el Radar de compromisos y elige otro compromiso."
+          }
+        }
+      }
+    },
+    "Portavoz could not read the library. Open Portavoz and use the recovery action shown.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo leer la biblioteca. Abre Portavoz y usa la acción de recuperación que se muestra."
+          }
+        }
+      }
+    },
+    "Portavoz could not read commitments. Open Portavoz and use the recovery action shown.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo leer los compromisos. Abre Portavoz y usa la acción de recuperación que se muestra."
+          }
+        }
+      }
+    },
+    "Show all": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar todo"
+          }
+        }
+      }
+    },
+    "Selected person": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Persona seleccionada"
+          }
+        }
+      }
+    },
+    "Commitments for %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromisos de %@"
+          }
+        }
+      }
+    },
+    "Selected commitment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromiso seleccionado"
+          }
+        }
+      }
+    },
+    "Opened commitment: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromiso abierto: %@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

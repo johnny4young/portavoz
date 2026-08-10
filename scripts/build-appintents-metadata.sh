@@ -76,23 +76,53 @@ if [[ ! -f "$WORK/out/Metadata.appintents/extract.actionsdata" ]]; then
   echo "error: appintentsmetadataprocessor produced no actionsdata." >&2
   exit 70
 fi
-# The extraction must carry exactly the native action surface needed on macOS.
+# The extraction must carry exactly the native action and entity surface needed on macOS.
 # App Shortcuts are not a supported macOS product surface; emitting one beside
 # the raw action produces two identically titled rows in the action picker.
 python3 - "$WORK/out/Metadata.appintents/extract.actionsdata" <<'PY'
 import json, sys
 metadata = json.load(open(sys.argv[1]))
 actions = metadata.get("actions") or {}
-expected_actions = {"StartRecordingIntent", "StopRecordingIntent"}
+expected_actions = {
+    "OpenCommitmentIntent",
+    "OpenMeetingIntent",
+    "ShowPersonCommitmentsIntent",
+    "StartRecordingIntent",
+    "StopRecordingIntent",
+}
 actual_actions = set(actions)
 if actual_actions != expected_actions:
     raise SystemExit(
         "error: extracted App Intents metadata actions differ: "
         f"expected {sorted(expected_actions)}, got {sorted(actual_actions)}")
+expected_entities = {
+    "PortavozCommitmentEntity",
+    "PortavozMeetingEntity",
+    "PortavozPersonEntity",
+}
+actual_entities = set(metadata.get("entities") or {})
+if actual_entities != expected_entities:
+    raise SystemExit(
+        "error: extracted App Intents metadata entities differ: "
+        f"expected {sorted(expected_entities)}, got {sorted(actual_entities)}")
+expected_queries = {
+    "PortavozCommitmentEntityQuery",
+    "PortavozMeetingEntityQuery",
+    "PortavozPersonEntityQuery",
+}
+actual_queries = set(metadata.get("queries") or {})
+if actual_queries != expected_queries:
+    raise SystemExit(
+        "error: extracted App Intents metadata queries differ: "
+        f"expected {sorted(expected_queries)}, got {sorted(actual_queries)}")
 if metadata.get("autoShortcuts"):
     raise SystemExit(
         "error: macOS metadata must not publish unsupported App Shortcuts")
-print(f"App Intents metadata: {', '.join(sorted(actual_actions))}")
+print(
+    "App Intents metadata: "
+    f"{len(actual_actions)} actions, "
+    f"{len(actual_entities)} entities, "
+    f"{len(actual_queries)} queries")
 PY
 
 rm -rf "$RESOURCES_DIR/Metadata.appintents"

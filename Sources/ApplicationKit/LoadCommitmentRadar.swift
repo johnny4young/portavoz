@@ -12,6 +12,7 @@ extension MeetingStore: CommitmentRadarReading {}
 
 public struct LoadCommitmentRadarRequest: Sendable, Equatable {
     public let owner: CommitmentRadarOwnerFilter
+    public let commitmentID: CommitmentID?
     public let due: CommitmentRadarDueFilter
     public let activity: CommitmentRadarActivityFilter
     public let itemLimit: Int
@@ -20,6 +21,7 @@ public struct LoadCommitmentRadarRequest: Sendable, Equatable {
 
     public init(
         owner: CommitmentRadarOwnerFilter = .all,
+        commitmentID: CommitmentID? = nil,
         due: CommitmentRadarDueFilter = .all,
         activity: CommitmentRadarActivityFilter = .all,
         itemLimit: Int = 100,
@@ -27,6 +29,7 @@ public struct LoadCommitmentRadarRequest: Sendable, Equatable {
         historyLimitPerItem: Int = 8
     ) {
         self.owner = owner
+        self.commitmentID = commitmentID
         self.due = due
         self.activity = activity
         self.itemLimit = itemLimit
@@ -76,6 +79,7 @@ public struct LoadCommitmentRadar: ApplicationUseCase {
 
         return try await repository.commitmentRadar(CommitmentRadarQuery(
             owner: request.owner,
+            commitmentID: request.commitmentID,
             due: request.due,
             activity: request.activity,
             dayStart: dayStart,

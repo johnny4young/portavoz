@@ -39,6 +39,7 @@ final class CommitmentRadarQueryTests: XCTestCase {
             day: 2,
             hour: 15)))
         let repository = CommitmentRadarRepositoryFake()
+        let commitmentID = CommitmentID()
         let useCase = LoadCommitmentRadar(
             repository: repository,
             calendar: calendar,
@@ -46,6 +47,7 @@ final class CommitmentRadarQueryTests: XCTestCase {
 
         _ = try await useCase.execute(LoadCommitmentRadarRequest(
             owner: .mine,
+            commitmentID: commitmentID,
             due: .overdue,
             activity: .activity(.unchanged),
             itemLimit: 41,
@@ -56,6 +58,7 @@ final class CommitmentRadarQueryTests: XCTestCase {
         let query = try XCTUnwrap(queries.first)
         let dayStart = calendar.startOfDay(for: now)
         XCTAssertEqual(query.owner, .mine)
+        XCTAssertEqual(query.commitmentID, commitmentID)
         XCTAssertEqual(query.due, .overdue)
         XCTAssertEqual(query.activity, .activity(.unchanged))
         XCTAssertEqual(query.dayStart, dayStart)
@@ -240,6 +243,30 @@ final class CommitmentRadarStorageTests: XCTestCase {
         XCTAssertEqual(item.history.first?.isSourceMeetingAvailable, true)
     }
 
+    func testExactCommitmentIdentityOverridesWindowFilters() async throws {
+        let store = try MeetingStore.inMemory()
+        let exact = try await confirm(
+            "Exact external route",
+            assignee: .unassigned,
+            at: dayStart.addingTimeInterval(-10 * 86_400),
+            store: store)
+        _ = try await confirm(
+            "Unrelated owner",
+            assignee: .me,
+            at: dayStart,
+            store: store)
+
+        let result = try await page(
+            store,
+            commitmentID: exact.id,
+            owner: .mine,
+            due: .dueSoon,
+            activity: .activity(.new))
+
+        XCTAssertEqual(result.items.map(\.id), [exact.id])
+        XCTAssertEqual(result.totalCount, 1)
+    }
+
     func testRadarUsesFourSelectsIndependentOfRootCount() async throws {
         let store = try MeetingStore.inMemory()
         let person = Person(preferredName: "Query Counter")
@@ -291,6 +318,7 @@ final class CommitmentRadarStorageTests: XCTestCase {
 
     private func page(
         _ store: MeetingStore,
+        commitmentID: CommitmentID? = nil,
         owner: CommitmentRadarOwnerFilter = .all,
         due: CommitmentRadarDueFilter = .all,
         activity: CommitmentRadarActivityFilter = .all,
@@ -300,6 +328,7 @@ final class CommitmentRadarStorageTests: XCTestCase {
     ) async throws -> CommitmentRadarPage {
         try await store.commitmentRadar(CommitmentRadarQuery(
             owner: owner,
+            commitmentID: commitmentID,
             due: due,
             activity: activity,
             dayStart: dayStart,

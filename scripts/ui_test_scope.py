@@ -37,6 +37,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "automation-entry": (
         test_id(
             "AutomationUITests",
+            "testAppEntitiesOpenExactVisibleDestinations",
+        ),
+        test_id(
+            "AutomationUITests",
             "testRecordingAutomationRoutesStartAndStopThroughVisibleApp",
         ),
     ),
@@ -303,6 +307,8 @@ def tests_for_ui_test_file(path: str) -> set[str]:
 
 def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
+    if "automationentit" in lowered:
+        return {"automation-entry", "commitment-radar"}
     if lowered in {"applaunchmodel.swift", "applaunchrecoveryview.swift"}:
         return {"launch-recovery", "main-shell"}
     if lowered == "contentview.swift":
@@ -480,6 +486,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "automationentit" in lowered:
+        return {"automation-entry", "commitment-radar"}
     if "launchrecovery" in lowered:
         return {"launch-recovery"}
     if "skill" in lowered:

@@ -39,6 +39,7 @@ public struct CommitmentRadarQuery: Sendable, Equatable {
     public static let maximumRelatedRowCount = 20
 
     public let owner: CommitmentRadarOwnerFilter
+    public let commitmentID: CommitmentID?
     public let due: CommitmentRadarDueFilter
     public let activity: CommitmentRadarActivityFilter
     public let dayStart: Date
@@ -50,6 +51,7 @@ public struct CommitmentRadarQuery: Sendable, Equatable {
 
     public init(
         owner: CommitmentRadarOwnerFilter = .all,
+        commitmentID: CommitmentID? = nil,
         due: CommitmentRadarDueFilter = .all,
         activity: CommitmentRadarActivityFilter = .all,
         dayStart: Date,
@@ -71,6 +73,7 @@ public struct CommitmentRadarQuery: Sendable, Equatable {
         else { throw CommitmentRadarQueryError.invalidLimit }
 
         self.owner = owner
+        self.commitmentID = commitmentID
         self.due = due
         self.activity = activity
         self.dayStart = dayStart

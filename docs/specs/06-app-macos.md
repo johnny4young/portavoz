@@ -5,7 +5,9 @@ Status: implemented, signed with Developer ID, and used in real meetings; public
 D190 distinguishes intentional cancellation from owner-leased worker death.
 Additional decisions: D320 (structured First Listen and SpeechAnalyzer
 lifetime), D321 (durable Skill retry identity and visible recovery), and D322
-(event-scoped resident pre-meeting brief proposals).
+(event-scoped resident pre-meeting brief proposals), D323 (exact Reminder Draft
+permission/effect), D324 (honest Start/Stop App Intents), and D325 (bounded App
+Entities with exact reversible routes).
 D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
 D193 lets only the resource-benchmark process observe that same closed stream
@@ -1524,22 +1526,37 @@ regeneration's setup-issue mapping and reporting `.unchanged`/`.noNotes`
 honestly inline. Generation stays view-side like summary regeneration; the raw
 notes are never modified.
 
-Native App Intents (D139): `openAppWhenRun` foregrounds the bundle that owns
-`StartRecordingIntent`, which publishes a buffered process-local request
-consumed by `PortavozAppDelegate`; it does not reopen the public
-`portavoz://record` adapter through LaunchServices. Portavoz publishes no
-`AppShortcutsProvider` on macOS: the unsupported automatic shortcut duplicated
-the raw action in the picker, while reliable Spotlight and Siri invocation
-already comes from a user-created Shortcut. The metadata Xcode would extract
-during its build is produced out of band by
+Native App Intents (D139/D324/D325): Start and Stop foreground the exact bundle
+that owns the action and publish buffered process-local requests consumed by
+`PortavozAppDelegate`; neither reopens the public `portavoz://record` adapter
+through LaunchServices. On macOS 26+ both use immediate foreground modes; the
+documented compatibility property preserves foreground behavior on the macOS
+14.4/15 deployment range. Portavoz publishes no `AppShortcutsProvider` on
+macOS: the unsupported automatic shortcut duplicated the raw action in the
+picker, while reliable Spotlight and Siri invocation already comes from a
+user-created Shortcut. The metadata Xcode would extract during its build is
+produced out of band by
 `scripts/build-appintents-metadata.sh` — a standalone compile of the SDK-only
 `PortavozAppIntents.swift` under the shipping module name, then
 `appintentsmetadataprocessor`, then `Metadata.appintents` into
 `Contents/Resources` — and `make-app.sh` fails rather than ship without exactly
-the native action and without automatic App Shortcuts.
+five native actions, three entities, three queries, or without the deliberate
+absence of automatic App Shortcuts.
 The intents file's SDK-only import diet is pinned by
 `ArchitectureDependencyTests`, because a project import would break the
 release pipeline at packaging time instead of test time.
+
+D325 adds meeting, canonical-person, and confirmed-commitment `AppEntity`
+snapshots with bounded string queries. `AppServices` installs their standard
+`AppDependencyManager` catalog only after the database opens. Every open action
+revalidates its identity and uses one latest-wins process route: meeting opens
+Detail, person opens a visible reversible canonical-owner Radar focus, and
+commitment opens only the exact live Radar item. Exact focus temporarily
+overrides stale window filters; **Show all** restores them. Malformed/missing
+identity and read failure take one explicit Library/Radar recovery route.
+`IndexedEntity` conformance is available only on macOS 15+, and this slice does
+not publish entity-native Core Spotlight records; the D85 meeting-document
+index stays separate.
 
 D77 keeps recording lifecycle error identity stable until presentation. Core's
 `FailureCategory` and `CodedFailure` define the small shared taxonomy;
@@ -1949,6 +1966,14 @@ exercises this same production path in the durable-resume XCUITest (D63).
   tokens, observation identities, source IDs, or meeting content—and explicitly
   labels them private and advisory. No metric can mutate a candidate, schedule
   a reminder, automate a decision, or approve a serving threshold.
+- **External App Entity focus (D325):** the same per-window Radar model accepts
+  a typed canonical-person or exact-commitment focus without turning it into a
+  durable filter. Person focus temporarily uses that exact owner across all
+  due/activity states; commitment identity takes precedence over all prior
+  filters. A visible banner names the current item/person when available and
+  exposes identified **Show all** to restore the window's preserved owner,
+  due, and activity selections. The focused storage read remains bounded and
+  does not hydrate unrelated Radar roots.
 - **Durable Radar actions (D256):** each confirmed card can change its due date
   or be completed, and each completed card can be restored. The window model
   serializes one mutation, preserves the visible page on failure, and reloads

@@ -43,6 +43,12 @@ enum UITestLocale {
     }
 }
 
+enum AutomationEntityUITestRoute: String {
+    case meeting
+    case person
+    case commitment
+}
+
 extension XCUIApplication {
     @MainActor
     static func portavoz(
@@ -71,6 +77,7 @@ extension XCUIApplication {
         simulateSkillEffectFailureOnce: Bool = false,
         simulateAppIntent: Bool = false,
         simulateStopAppIntent: Bool = false,
+        simulateAppEntityRoute: AutomationEntityUITestRoute? = nil,
         showMenuBarContent: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
@@ -147,6 +154,7 @@ extension XCUIApplication {
         if simulateStopAppIntent {
             app.launchArguments.append("-simulate-stop-app-intent")
         }
+        appendAppEntityRoute(simulateAppEntityRoute, to: app)
         if showMenuBarContent {
             app.launchArguments.append("-show-menu-bar-content")
         }
@@ -167,6 +175,15 @@ extension XCUIApplication {
             NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)"
         UITestLocale.apply(launchLocale, to: app)
         return app
+    }
+
+    @MainActor
+    private static func appendAppEntityRoute(
+        _ route: AutomationEntityUITestRoute?,
+        to app: XCUIApplication
+    ) {
+        guard let route else { return }
+        app.launchArguments += ["-simulate-app-entity-route", route.rawValue]
     }
 
     @MainActor

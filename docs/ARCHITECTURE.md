@@ -3605,8 +3605,9 @@ consumed by the reliability ledger; it never emits a receipt for a
 partially verified artifact.
 The script-built app also carries native App Intents metadata extracted
 separately from one SDK-only source under the shipping module name. Packaging
-fails unless metadata declares exactly `StartRecordingIntent` and
-`StopRecordingIntent`. On macOS 26+, both declare
+fails unless metadata declares exactly five actions — Start/Stop recording and
+open meeting/person commitments/confirmed commitment — plus the three entity
+types and their three string queries. On macOS 26+, Start and Stop declare
 `supportedModes = [.foreground(.immediate)]`; the SDK-documented deprecated
 compatibility property preserves the same foreground behavior on the macOS
 14.4/15 deployment range. `perform()` uses a buffered process-local handoff
@@ -3624,6 +3625,27 @@ typed failure UI and leaves retry to its explicit control. Its dialog says that
 Portavoz is stopping, never that
 persistence has already completed, and every non-actionable state names one
 next step. A second request cannot schedule a competing stop.
+
+The other three actions use narrow SDK-only `AppEntity` snapshots backed by an
+ApplicationKit catalog installed through `AppDependencyManager` only after the
+database opens. Meeting, canonical-person, and confirmed-commitment queries
+normalize text to 120 characters, validate limits at 50, use 20 suggestions,
+and ask StorageKit for escaped literal SQL matches. Storage excludes deleted
+meetings/people and deleted or dismissed commitments, preserves exact
+identifier order, and never hydrates transcript, audio, summary, or evidence
+content for the picker. Each `OpenIntent` re-resolves its exact identity before
+posting one latest-wins, one-shot route. Meeting opens Detail; person opens a
+visible, clearable canonical-owner focus in Commitment Radar; commitment opens
+only the exact live item. Exact identity temporarily takes precedence over the
+window's prior filters, and clearing focus restores them. Missing/malformed
+identity and read failure route to an explicit Library or Radar recovery rather
+than terminating or leaving a blank destination.
+
+`AppEntity` and its string query keep the macOS 14.4 deployment floor.
+`IndexedEntity` conformance is availability-gated to macOS 15, but no person or
+commitment entity is published to Core Spotlight by this implementation. The
+protected meeting-document index remains independent, so local metadata and
+XCUITest do not close native entity indexing or physical system registration.
 
 macOS publishes only those native actions in the Shortcuts action picker: it
 deliberately omits `AppShortcutsProvider`, because automatic App Shortcuts are
@@ -3808,7 +3830,7 @@ The 9 Aug 2026 local acceptance snapshot is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,298 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,312 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -3816,10 +3838,10 @@ The 9 Aug 2026 local acceptance snapshot is:
   its fail-closed 25-iteration gate (5,525 executions); the generic runner
   refuses fewer than 90 and the release wrapper raises that floor to 108;
   focused Thread Sanitizer and Address Sanitizer gates also pass;
-- strict SwiftLint remains a blocking CI gate and is clean across all 642
+- strict SwiftLint remains a blocking CI gate and is clean across all 648
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 74 XCUITest cases per locale define the 148-case bilingual release gate;
+- 75 XCUITest cases per locale define the 150-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

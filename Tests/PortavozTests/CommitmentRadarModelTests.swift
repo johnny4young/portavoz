@@ -46,6 +46,70 @@ final class CommitmentRadarModelTests: XCTestCase {
         XCTAssertEqual(model.state.phase, .idle)
     }
 
+    func testAppEntityFocusMapsToExactBoundedRadarRequestsAndClears() async {
+        let page = Self.page(title: "Send the rollout brief")
+        let client = CommitmentRadarModelClientFake(
+            responses: [
+                .success(page),
+                .success(page),
+                .success(page),
+                .success(page),
+                .success(page),
+                .success(page),
+            ],
+            mutationResponses: [])
+        let model = CommitmentRadarModel(client: client)
+        let personID = PersonID()
+        let commitmentID = page.items[0].id
+
+        await model.send(.ownerChanged(.mine))
+        await model.send(.dueChanged(.overdue))
+        await model.send(.activityChanged(.reopened))
+        await model.send(.routeFocusChanged(.person(personID)))
+        await model.send(.routeFocusChanged(.commitment(commitmentID)))
+        await model.send(.clearRouteFocus)
+
+        let personRequest = client.requests[3]
+        XCTAssertEqual(personRequest.owner, .person(personID))
+        XCTAssertNil(personRequest.commitmentID)
+        XCTAssertEqual(personRequest.due, .all)
+        XCTAssertEqual(personRequest.activity, .all)
+
+        let commitmentRequest = client.requests[4]
+        XCTAssertEqual(commitmentRequest.owner, .all)
+        XCTAssertEqual(commitmentRequest.commitmentID, commitmentID)
+        XCTAssertEqual(commitmentRequest.due, .all)
+        XCTAssertEqual(commitmentRequest.activity, .all)
+
+        XCTAssertEqual(client.requests[5], LoadCommitmentRadarRequest(
+            owner: .mine,
+            due: .overdue,
+            activity: .activity(.reopened)))
+        XCTAssertNil(model.state.routeFocus)
+    }
+
+    func testChangingModeClearsExternalRouteFocus() async {
+        let page = Self.page(title: "Send the rollout brief")
+        let client = CommitmentRadarModelClientFake(
+            responses: [.success(page)],
+            mutationResponses: [],
+            reviewResponses: [
+                .success(CommitmentReviewQueuePage(items: [], totalCount: 0)),
+            ],
+            reviewMutationResponses: [])
+        let model = CommitmentRadarModel(client: client)
+        let personID = PersonID()
+
+        await model.send(.routeFocusChanged(.person(personID)))
+        XCTAssertEqual(model.state.routeFocus, .person(personID))
+
+        await model.send(.modeChanged(.review))
+
+        XCTAssertNil(model.state.routeFocus)
+        XCTAssertEqual(model.state.mode, .review)
+        XCTAssertEqual(client.reviewRequests.count, 1)
+    }
+
     func testFailureClearsStalePageAndRetryCanRecover() async {
         let page = Self.page(title: "Recheck the launch checklist")
         let client = CommitmentRadarModelClientFake(responses: [

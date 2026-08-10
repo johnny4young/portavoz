@@ -155,6 +155,7 @@ final class AppLaunchModel {
         let runsIsolatedResourceBenchmark =
             BenchMode.runsIsolatedResourceBenchmark(arguments: arguments)
         if !runsIsolatedResourceBenchmark {
+            services.installAutomationEntityCatalog()
             PortavozAppDelegate.services = services
         }
 
@@ -196,6 +197,7 @@ final class AppLaunchModel {
         // any buffered App Intent now that its route destination exists.
         PortavozAppIntentBridge.notifyPendingStartRecordingRequest()
         PortavozAppIntentBridge.notifyPendingStopRecordingRequest()
+        PortavozAppIntentBridge.notifyPendingNavigationRequest()
     }
 }
 

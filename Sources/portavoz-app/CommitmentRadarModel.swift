@@ -119,6 +119,7 @@ final class CommitmentRadarModel {
         fileprivate(set) var due: DueSelection = .all
         fileprivate(set) var activity: ActivitySelection = .all
         fileprivate(set) var grouping: Grouping = .owner
+        fileprivate(set) var routeFocus: CommitmentRadarRouteFocus?
         fileprivate(set) var page: CommitmentRadarPage?
         fileprivate(set) var mutatingCommitmentID: CommitmentID?
         fileprivate(set) var mutationFailed = false
@@ -133,6 +134,8 @@ final class CommitmentRadarModel {
 
     enum Action {
         case load
+        case routeFocusChanged(CommitmentRadarRouteFocus?)
+        case clearRouteFocus
         case modeChanged(Mode)
         case ownerChanged(OwnerSelection)
         case dueChanged(DueSelection)
@@ -173,11 +176,25 @@ private extension CommitmentRadarModel {
         case .load:
             await loadCurrentMode()
             return true
+        case .routeFocusChanged(let focus):
+            guard state.routeFocus != focus || state.phase == .idle else {
+                return true
+            }
+            state.routeFocus = focus
+            state.mode = .confirmed
+            await loadRadar()
+            return true
+        case .clearRouteFocus:
+            guard state.routeFocus != nil else { return true }
+            state.routeFocus = nil
+            await loadRadar()
+            return true
         case .modeChanged(let mode):
             guard state.mode != mode else { return true }
             radarRequestID = UUID()
             reviewRequestID = UUID()
             qualityRequestID = UUID()
+            state.routeFocus = nil
             state.mode = mode
             await loadCurrentMode()
             return true
@@ -189,12 +206,15 @@ private extension CommitmentRadarModel {
     func handleConfirmedAction(_ action: Action) async -> Bool {
         switch action {
         case .ownerChanged(let owner):
+            state.routeFocus = nil
             state.owner = owner
             await loadRadar()
         case .dueChanged(let due):
+            state.routeFocus = nil
             state.due = due
             await loadRadar()
         case .activityChanged(let activity):
+            state.routeFocus = nil
             state.activity = activity
             await loadRadar()
         case .groupingChanged(let grouping):
@@ -260,9 +280,10 @@ private extension CommitmentRadarModel {
         if showProgress { state.phase = .loading }
         do {
             let page = try await client.loadCommitmentRadar(LoadCommitmentRadarRequest(
-                owner: state.owner.filter,
-                due: state.due.filter,
-                activity: state.activity.filter))
+                owner: focusedOwnerFilter,
+                commitmentID: focusedCommitmentID,
+                due: focusedDueFilter,
+                activity: focusedActivityFilter))
             guard radarRequestID == currentRequestID,
                   state.mode == .confirmed,
                   !Task.isCancelled
@@ -279,6 +300,32 @@ private extension CommitmentRadarModel {
             state.page = nil
             state.phase = .failed
         }
+    }
+
+    var focusedOwnerFilter: CommitmentRadarOwnerFilter {
+        switch state.routeFocus {
+        case .person(let personID):
+            return .person(personID)
+        case .commitment:
+            return .all
+        case nil:
+            return state.owner.filter
+        }
+    }
+
+    var focusedCommitmentID: CommitmentID? {
+        guard case .commitment(let commitmentID) = state.routeFocus else {
+            return nil
+        }
+        return commitmentID
+    }
+
+    var focusedDueFilter: CommitmentRadarDueFilter {
+        state.routeFocus == nil ? state.due.filter : .all
+    }
+
+    var focusedActivityFilter: CommitmentRadarActivityFilter {
+        state.routeFocus == nil ? state.activity.filter : .all
     }
 
     func mutate(

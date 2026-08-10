@@ -70,6 +70,7 @@ private extension MeetingStore {
     ) throws -> [CommitmentRadarRootRow] {
         let predicates = commitmentRadarRootPredicates(query)
         let arguments: StatementArguments = [
+            "commitmentID": query.commitmentID?.rawValue.uuidString,
             "personID": commitmentRadarPersonID(query.owner),
             "dayStart": query.dayStart,
             "dueSoonEnd": query.dueSoonEnd,
@@ -132,6 +133,13 @@ private extension MeetingStore {
             "c.deletedAt IS NULL",
             "c.status != 'dismissed'"
         ]
+        if query.commitmentID != nil {
+            predicates.append("c.id = :commitmentID")
+            // An external exact-identity route must not disappear behind the
+            // window's previous owner/due/activity filters. The identity is
+            // still fenced by live, confirmed commitment truth above.
+            return predicates
+        }
         if let owner = commitmentRadarOwnerPredicate(query.owner) {
             predicates.append(owner)
         }

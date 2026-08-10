@@ -11399,3 +11399,62 @@ Spotlight, cold database recovery, or cross-version registration behavior for
 Stop; those remain explicit Sequoia/Tahoe field gates. Meeting, person, and
 confirmed-commitment App Entities and the remaining AUTO-3 through AUTO-6 work
 are still open.
+
+## D325 — App Entities resolve bounded private identity into one exact app route (Aug 2026)
+
+**Context:** AUTO-3 still lacked native values for choosing a meeting, a
+canonical person, or a user-confirmed commitment from Shortcuts and Siri.
+Mirroring persistence models into App Intents would expose unrelated private
+fields, while loading a complete library for every picker keystroke would make
+system queries unbounded. A second retained service registry would also compete
+with the database lifecycle already owned by `AppServices`. Finally, opening a
+commitment behind the Radar window's previous filters could make a valid exact
+route look missing.
+
+**Decision:** the SDK-only metadata source declares three narrow `AppEntity`
+values and `EntityStringQuery` types: meeting title/date, canonical-person
+name, and confirmed-commitment title/optional due date. Entity resolution uses
+Apple's standard `AppDependencyManager`; the application installs one
+database-backed catalog only after the authoritative store opens. Its
+ApplicationKit request rejects more than 50 identifiers, result limits outside
+1...50, normalized text over 120 characters, and mixed exact/text selectors.
+StorageKit performs escaped literal SQL matching, excludes tombstones and
+dismissed commitments, preserves
+exact identifier order, and returns at most the requested bound without
+hydrating transcripts, audio, summaries, or evidence. System suggestions use
+20 rows.
+
+Three foreground `OpenIntent`s re-read the exact identity immediately before
+handoff. A meeting opens its Detail, a person opens Commitment Radar with a
+visible reversible canonical-owner focus, and a commitment opens only that
+exact Radar item. Exact commitment identity overrides prior Radar owner, due,
+and activity filters; person focus temporarily overrides owner and uses all
+due/activity states. **Show all** restores the window's previous filters.
+Missing values route to Library or unfiltered Radar with one explicit recovery
+sentence; database failure opens the same surfaces so their existing recovery
+state remains reachable. The process bridge keeps only the latest destination
+while launch is blocked, consumes it once after the complete service graph
+exists, validates every UUID before constructing a typed route, and never
+builds an unbounded navigation queue.
+
+`AppEntity`/`EntityStringQuery` remain compatible with the macOS 14.4
+deployment floor. `IndexedEntity` conformance is availability-gated to macOS
+15+, but this slice does not publish person or commitment entities through
+Core Spotlight and therefore makes no native Spotlight-indexing claim. The
+existing protected meeting-document index remains separate. Packaging now
+fails unless metadata contains exactly five actions, three entities, and three
+queries, and still rejects automatic App Shortcuts. The disposable UI fixture
+invokes the same SDK-only open-action logic as each production `OpenIntent`
+after seeding, passes its disposable catalog explicitly, and never queries the
+user's real library. It does not call `perform()` directly because App Intents
+initializes `@AppDependency` only inside the system-owned execution flow.
+
+**Consequences:** user-created Shortcuts can choose and open one local meeting,
+canonical person, or confirmed commitment through a bounded private catalog,
+with exact visible navigation and reversible focus. Unit tests cover bounds,
+literal wildcard handling, tombstone/dismissal exclusion, canonical identity,
+exact order, forged IDs, filter precedence, and one-shot recovery. One English
+and one Spanish real-app journey cover all three destinations. Physical
+Shortcuts picker/search, Siri disambiguation, cold database recovery, native
+entity Spotlight publication, and registration on Sequoia and Tahoe remain
+field or later AUTO-3 evidence; AUTO-3 is not closed by local metadata alone.

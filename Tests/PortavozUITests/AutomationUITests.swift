@@ -3,6 +3,78 @@ import XCTest
 
 final class AutomationUITests: PortavozUITestCase {
     @MainActor
+    func testAppEntitiesOpenExactVisibleDestinations() {
+        let meetingApp = launchEntityRoute(.meeting)
+        assertMeetingEntityRoute(in: meetingApp)
+        meetingApp.terminate()
+        XCTAssertTrue(meetingApp.wait(for: .notRunning, timeout: 10))
+
+        let personApp = launchEntityRoute(.person)
+        assertPersonEntityRoute(in: personApp)
+        personApp.terminate()
+        XCTAssertTrue(personApp.wait(for: .notRunning, timeout: 10))
+
+        let commitmentApp = launchEntityRoute(.commitment)
+        defer { commitmentApp.terminate() }
+        assertCommitmentEntityRoute(in: commitmentApp)
+        attachScreenshot(of: commitmentApp, named: "app-entity-commitment-route")
+    }
+
+    @MainActor
+    private func assertMeetingEntityRoute(in app: XCUIApplication) {
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-header-section")
+                .waitForExistence(timeout: 10),
+            "the Meeting entity must open its exact visible detail")
+        XCTAssertTrue(app.staticTexts["Test meeting"].exists)
+    }
+
+    @MainActor
+    private func assertPersonEntityRoute(in app: XCUIApplication) {
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-radar-app-entity-focus")
+                .waitForExistence(timeout: 10),
+            "the Person entity must expose a visible, clearable focus")
+        XCTAssertTrue(
+            app.control(withIdentifier: "commitment-radar-item-\(personCommitmentID)")
+                .waitForExistence(timeout: 10))
+        XCTAssertFalse(
+            app.control(withIdentifier: "commitment-radar-item-\(otherCommitmentID)")
+                .exists,
+            "the Person entity must not mix another owner's work")
+    }
+
+    @MainActor
+    private func assertCommitmentEntityRoute(in app: XCUIApplication) {
+        XCTAssertTrue(
+            app.control(
+                withIdentifier: "commitment-radar-item-\(personCommitmentID)")
+                .waitForExistence(timeout: 10),
+            "the Commitment entity must open its exact Radar item")
+        XCTAssertFalse(
+            app.control(
+                withIdentifier: "commitment-radar-item-\(otherCommitmentID)").exists,
+            "an exact Commitment route must not hydrate unrelated items")
+        let showAll = app.control(
+            withIdentifier: "commitment-radar-clear-app-entity-focus")
+        XCTAssertTrue(showAll.waitForExistence(timeout: 5) && showAll.isHittable)
+        showAll.click()
+        XCTAssertTrue(
+            app.control(
+                withIdentifier: "commitment-radar-item-\(otherCommitmentID)")
+                .waitForExistence(timeout: 10),
+            "Show all must clear the system focus without losing Radar state")
+    }
+
+    private var personCommitmentID: String {
+        "B5D10000-0000-4000-8000-000000000001"
+    }
+
+    private var otherCommitmentID: String {
+        "B5D10000-0000-4000-8000-000000000002"
+    }
+
+    @MainActor
     func testRecordingAutomationRoutesStartAndStopThroughVisibleApp() async throws {
         let app = XCUIApplication.portavoz(simulateLiveTranscriptionAttach: true)
         app.launchPortavoz()
@@ -120,5 +192,20 @@ final class AutomationUITests: PortavozUITestCase {
             "the responsive recording controls must keep Stop inside the window",
             file: file,
             line: line)
+    }
+
+    @MainActor
+    private func launchEntityRoute(
+        _ route: AutomationEntityUITestRoute
+    ) -> XCUIApplication {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedCommitmentRadar: true,
+            simulateAppEntityRoute: route)
+        app.launchPortavoz()
+        XCTAssertTrue(
+            app.waitForSeedFixtureReady(),
+            "the disposable entity catalog must exist before route assertions")
+        return app
     }
 }
