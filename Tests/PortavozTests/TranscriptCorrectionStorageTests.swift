@@ -632,7 +632,13 @@ final class TranscriptCorrectionStorageTests: XCTestCase {
         let correctedHits = try await fixture.store.search("Segment 1")
         let correctedCandidates = try await fixture.store.segmentsNeedingEmbeddings()
         XCTAssertTrue(correctedHits.isEmpty)
-        XCTAssertEqual(correctedCandidates.map(\.id), [fixture.segments[1].id])
+        XCTAssertEqual(
+            correctedCandidates.map(\.id),
+            [fixture.segments[0].id, fixture.segments[1].id])
+        XCTAssertEqual(
+            correctedCandidates.map(\.source),
+            [.corrected(correctionID: replacement.id), .accepted])
+        XCTAssertEqual(correctedCandidates.first?.text, "Corrected source")
         let generationAfterCorrection = try await semanticSourceGeneration(fixture)
         XCTAssertEqual(generationAfterCorrection, generationBefore + 1)
         let updatedAtAfterCorrection = try await semanticSourceUpdatedAt(fixture)

@@ -173,6 +173,51 @@ final class SemanticCorpusIndexingTests: XCTestCase {
         XCTAssertTrue(pendingAfterResume.isEmpty)
     }
 
+    func testBackgroundMaintenanceIndexesCorrectedTextAndRestoreReusesAcceptedVector() async throws {
+        let acceptedText = "The release remains scheduled for Friday afternoon."
+        let correctedText = "The release now moves to Monday morning after review."
+        let (store, segments) = try await seededStore(texts: [acceptedText])
+        let operation = IndexSemanticCorpus(store: store)
+        _ = try await operation.all(using: DeterministicSemanticEmbedder())
+        let segment = try XCTUnwrap(segments.first)
+        let correction = TranscriptCorrectionEvent(
+            meetingID: segment.meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [segment.id],
+            kind: .replaceText(text: correctedText, language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_100))
+        _ = try await store.appendTranscriptCorrection(correction)
+
+        let requiresCorrectionIndex = try await store.semanticIndexRequiresMaintenance(
+            for: semanticTestProfile())
+        let indexed = try await operation.nextBatch(
+            using: DeterministicSemanticEmbedder(),
+            limit: 1)
+        let correctedHits = try await store.searchSemantic([1, 0], limit: 1)
+        let pendingAfterCorrection = try await store.segmentsNeedingEmbeddings()
+        XCTAssertTrue(requiresCorrectionIndex)
+        XCTAssertEqual(indexed.embeddedSegments, 1)
+        XCTAssertEqual(correctedHits.map(\.text), [correctedText])
+        XCTAssertTrue(pendingAfterCorrection.isEmpty)
+
+        let restore = TranscriptCorrectionEvent(
+            meetingID: segment.meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [segment.id],
+            kind: .restore,
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_101),
+            supersedesCorrectionID: correction.id)
+        _ = try await store.appendTranscriptCorrection(restore)
+
+        let requiresRestoreIndex = try await store.semanticIndexRequiresMaintenance(
+            for: semanticTestProfile())
+        let restoredHits = try await store.searchSemantic([1, 0], limit: 1)
+        XCTAssertFalse(requiresRestoreIndex)
+        XCTAssertEqual(restoredHits.map(\.text), [acceptedText])
+    }
+
     func testProfileChangeInvalidatesAndRebuildsTheCompleteCorpus() async throws {
         let (store, segments) = try await seededStore(texts: [
             "The first semantic source must move into the new vector space.",

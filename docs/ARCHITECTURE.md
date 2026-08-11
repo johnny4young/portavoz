@@ -730,7 +730,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 36. It includes:
+The current schema version is 37. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -765,8 +765,9 @@ The current schema version is 36. It includes:
   link/source/event write committed inside the existing GRDB transaction;
 - a disposable per-segment corrected-text search projection (one row per
   active text replacement, FTS-mirrored, rebuilt transactionally with every
-  correction write) plus sparse per-meeting correction lineage for revision-
-  fenced local and system search;
+  correction write) with an optional profile-fingerprinted semantic vector,
+  plus sparse per-meeting correction lineage for revision-fenced local and
+  system search;
 - durable skill-offer dismissal keyed by stable intent identity, so a
   declined proposal never returns;
 - one content-free device-local skill-control singleton, a sparse disablement
@@ -2095,13 +2096,29 @@ also requires a linked run with matching lineage; malformed metadata fails
 closed, while legacy metadata is current only for an uncorrected revision-zero
 meeting.
 
-Accepted-only retrieval uses one shared SQL predicate. A source row with an
-active correction is removed from FTS candidates, semantic reads, embedding
-candidates, and vector publication, while unaffected rows remain searchable.
-Restore makes the accepted row eligible again and the semantic source-generation
-wake lets background maintenance reconsider it. Corrected text is not yet
-materialized into either index, so search never presents stale accepted text but
-does not claim the corrected row is searchable.
+Correction-aware retrieval uses one shared text-affecting SQL predicate. An
+accepted row owned by an active replace, split, merge, or suppress event is
+removed from FTS candidates, semantic reads, embedding candidates, and vector
+publication, while speaker-only changes and unaffected rows keep their accepted
+text. Active replacement text serves immediately from the transactional
+corrected FTS projection. It also owns a corrected semantic lane whose vector
+is produced by the existing background owner and stored beside that disposable
+projection; readiness returns to partial until the current corrected source has
+the active profile. Candidate selection and publication revalidate the accepted
+revision, exact text, correction identity, terminal-event ownership, sparse
+correction state, and live meeting/segment before accepting the derived value.
+
+The immutable accepted vector remains cached on the accepted segment. Restore
+therefore makes that row eligible again without rebuilding it. Exact semantic
+search performs one snapshot-local corrected-vector probe: accepted-only
+libraries retain the established single-stream traversal, while libraries with
+a current corrected vector score an ordered accepted-plus-corrected union once
+per query batch. Result materialization revalidates current source state and
+returns corrected text under the accepted segment ID. Split, merge, and
+suppress composed rows still lack a shared search identity and remain excluded.
+The non-serving research projection also stays accepted-only because its
+segment/revision identity does not carry correction lineage; it drops an active
+replacement rather than projecting a stale rank onto new text.
 
 Explicit summary regeneration and review-metadata suggestions consume the
 composed transcript. Generated row evidence is projected back to ordered,
@@ -2155,10 +2172,10 @@ The test-only Release composition harness owns a synthetic mixed-language
 permutations, emits only host/configuration/count/timing aggregates, and fails
 when p95 exceeds 250 ms. The Aug 2026 reference observation records p50
 168.85 ms and p95/max 175.20 ms, with 19,867 visible rows. This is a pure
-composition budget, not a claim about combined Meeting Detail rendering or a
-reason to materialize corrected text in search. Exact and semantic retrieval
-remain unchanged because actively corrected accepted rows still fail closed
-until a later correction-local indexing decision.
+composition budget, not a claim about combined Meeting Detail rendering or
+correction-heavy search cost. Replacement text now has FTS and background-
+maintained semantic lanes, while structural composed output remains excluded
+until it has a shared result-identity contract.
 
 The complete docked playback surface enters SwiftUI through
 `MeetingDetailPlayerSection`. The section receives the current application-
@@ -3299,12 +3316,16 @@ corpus-read-only: both publish exact FTS first and may augment it only with
 vectors already committed by background maintenance.
 
 Every selected semantic row carries its segment ID, meeting ID, transcript
-revision, and exact source text through embedding. StorageKit accepts the
-result only when the same live row is still unembedded, its meeting remains
-live at that revision, and its text is unchanged. A concurrent correction,
-replacement, deletion, or duplicate publication is therefore a content-free
-skip; it cannot attach a stale vector to a reused identity, and the current
-live row remains on the `NULL` cursor for a later pass.
+revision, exact source text, and accepted-or-corrected lane through embedding;
+the corrected lane also carries its correction ID. StorageKit accepts an
+accepted result only when the same live row is still unembedded, its meeting
+remains live at that revision, its text is unchanged, and no text-affecting
+correction owns it. A corrected result additionally requires the exact live
+projection row, current sparse correction state, and terminal replacement
+event. A concurrent correction, replacement, deletion, profile change, or
+duplicate publication is therefore a content-free skip; it cannot attach a
+stale vector to a reused identity, and any still-current source remains on its
+`NULL` cursor for a later pass.
 
 Every persisted semantic vector also carries one SHA-256 compatibility
 fingerprint derived from the concrete model identifier and revision, vector

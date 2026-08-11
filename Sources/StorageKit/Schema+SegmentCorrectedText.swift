@@ -52,4 +52,18 @@ extension StorageSchema {
             }
         }
     }
+
+    /// v37 (D330): a device-local semantic vector for the current corrected
+    /// text lane. Accepted vectors remain on `segment`, so restore can expose
+    /// the immutable accepted representation without rebuilding it.
+    static func registerSegmentCorrectedEmbeddingMigration(
+        in migrator: inout DatabaseMigrator
+    ) {
+        migrator.registerMigration("v37") { database in
+            try database.alter(table: "segmentCorrectedText") { table in
+                table.add(column: "embedding", .blob)
+                table.add(column: "embeddingFingerprint", .text)
+            }
+        }
+    }
 }

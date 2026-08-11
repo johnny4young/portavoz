@@ -131,6 +131,55 @@ final class SemanticCorpusReadinessTests: XCTestCase {
         XCTAssertEqual(firstProfileHits.count, 1)
     }
 
+    func testCurrentCorrectedTextReturnsReadinessToPartialUntilItsVectorPublishes() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(
+            title: "Corrected semantic readiness fixture",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "The accepted launch remains scheduled for Friday afternoon.",
+            startTime: 0,
+            endTime: 4,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([segment])
+        let acceptedCandidates = try await store.segmentsNeedingEmbeddings()
+        _ = try await store.storeEmbeddings(
+            [segment.id: [1, 0]],
+            for: acceptedCandidates)
+        let correction = TranscriptCorrectionEvent(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            targetSegmentIDs: [segment.id],
+            kind: .replaceText(
+                text: "The corrected launch remains scheduled for Monday afternoon.",
+                language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_010))
+        _ = try await store.appendTranscriptCorrection(correction)
+        let runtime = ReadinessSemanticRuntime(assetsAvailable: true)
+        let resolver = ResolveSemanticCorpusReadiness(store: store, runtime: runtime)
+
+        let pendingReadiness = try await resolver.current()
+        let correctedCandidates = try await store.segmentsNeedingEmbeddings()
+        let requiresMaintenance = try await store.semanticIndexRequiresMaintenance(
+            for: semanticTestProfile())
+
+        XCTAssertEqual(pendingReadiness, .partial)
+        XCTAssertTrue(requiresMaintenance)
+        XCTAssertEqual(correctedCandidates.map(\.source), [
+            .corrected(correctionID: correction.id)
+        ])
+
+        _ = try await store.storeEmbeddings(
+            [segment.id: [1, 0]],
+            for: correctedCandidates)
+        let publishedReadiness = try await resolver.current()
+        XCTAssertEqual(publishedReadiness, .ready)
+    }
+
     private func seededStore() async throws -> MeetingStore {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(

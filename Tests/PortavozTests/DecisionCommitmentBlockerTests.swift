@@ -98,12 +98,12 @@ final class DecisionCommitmentBlockerStorageTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 36)
+            XCTAssertEqual(StorageSchema.version, 37)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v36")
+                "v37")
             XCTAssertEqual(
                 try Set(database.columns(in: "decisionCommitmentBlocker").map(\.name)),
                 [

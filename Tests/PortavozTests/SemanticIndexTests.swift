@@ -379,6 +379,38 @@ final class SemanticIndexTests: XCTestCase {
         XCTAssertEqual(requestLimits, [2])
     }
 
+    func testIdentityOnlyShadowRankDropsAnActivelyCorrectedSegment() async throws {
+        let fixture = try await Self.fixture()
+        let acceptedHits = try await fixture.store.search("launch")
+        let accepted = try XCTUnwrap(acceptedHits.first)
+        let candidate = ProjectedSemanticIndexShadowCandidate(
+            ranker: RecordingShadowRanker(
+                adapter: .sqliteVecExact,
+                candidates: [SemanticSearchCandidateIdentity(
+                    segmentID: accepted.segmentID,
+                    transcriptRevision: accepted.transcriptRevision)]),
+            store: fixture.store)
+        let correction = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [accepted.segmentID],
+            kind: .replaceText(
+                text: "The corrected release date moved to Tuesday.",
+                language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_009))
+        _ = try await fixture.store.appendTranscriptCorrection(correction)
+
+        let projected = try await candidate.search(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 1)
+
+        XCTAssertTrue(
+            projected.isEmpty,
+            "segment/revision-only research ranks cannot prove corrected-source identity")
+    }
+
     func testProjectedShadowCandidateDropsEvidenceFromDeletedMeeting() async throws {
         let fixture = try await Self.fixture()
         let storedHits = try await fixture.store.search("launch")
@@ -413,22 +445,67 @@ final class SemanticIndexTests: XCTestCase {
 
         _ = try await fixture.store.appendTranscriptCorrection(replacement)
 
-        // D313: exact search serves the corrected text under the accepted
-        // segment identity; the replaced wording stops matching; the semantic
-        // lane still refuses the row because its vector describes the
-        // original text.
+        // D330: exact search serves the corrected text immediately. Semantic
+        // search drops the accepted vector until background maintenance
+        // publishes a vector for that exact corrected source.
         let correctedExact = try await fixture.store.search("launch")
         let staleExact = try await fixture.store.search("Friday")
         let unaffectedExact = try await fixture.store.search("archive")
-        let correctedSemantic = try await fixture.store.searchSemantic(
+        let semanticBeforeIndexing = try await fixture.store.searchSemantic(
             [1, 0],
             profile: fixture.profile,
             limit: 2)
+        let correctedCandidates = try await fixture.store.segmentsNeedingEmbeddings()
         XCTAssertEqual(correctedExact.map(\.segmentID), [fixture.first.id])
         XCTAssertEqual(correctedExact.map(\.text), ["The launch moved to Monday."])
         XCTAssertTrue(staleExact.isEmpty)
         XCTAssertEqual(unaffectedExact.map(\.segmentID), [fixture.second.id])
-        XCTAssertFalse(correctedSemantic.contains { $0.segmentID == fixture.first.id })
+        XCTAssertFalse(semanticBeforeIndexing.contains { $0.segmentID == fixture.first.id })
+        XCTAssertEqual(correctedCandidates.map(\.id), [fixture.first.id])
+        XCTAssertEqual(correctedCandidates.map(\.text), ["The launch moved to Monday."])
+        XCTAssertEqual(
+            correctedCandidates.map(\.source),
+            [.corrected(correctionID: replacement.id)])
+
+        let publication = try await fixture.store.storeEmbeddings(
+            [fixture.first.id: [1, 0]],
+            for: correctedCandidates,
+            profile: fixture.profile)
+        let correctedSemantic = try await fixture.store.searchSemantic(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 2)
+        let projected = try await fixture.store.projectSemanticSearchCandidates(
+            [SemanticSearchCandidateIdentity(
+                segmentID: fixture.first.id,
+                transcriptRevision: fixture.meeting.transcriptRevision)],
+            limit: 1)
+        XCTAssertEqual(publication.publishedSegmentIDs, [fixture.first.id])
+        XCTAssertEqual(correctedSemantic.first?.segmentID, fixture.first.id)
+        XCTAssertEqual(correctedSemantic.first?.text, "The launch moved to Monday.")
+        XCTAssertTrue(
+            projected.isEmpty,
+            "identity-only research projection lacks the correction source fence")
+
+        // Rebuilding the meeting projection for an unrelated correction must
+        // preserve the still-current corrected vector instead of creating
+        // avoidable background work.
+        let unrelatedReplacement = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.second.id],
+            kind: .replaceText(text: "The archive remains available.", language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_010.5))
+        _ = try await fixture.store.appendTranscriptCorrection(unrelatedReplacement)
+        let pendingAfterUnrelated = try await fixture.store.segmentsNeedingEmbeddings()
+        let semanticAfterUnrelated = try await fixture.store.searchSemantic(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 2)
+        XCTAssertEqual(pendingAfterUnrelated.map(\.id), [fixture.second.id])
+        XCTAssertEqual(semanticAfterUnrelated.first?.segmentID, fixture.first.id)
+        XCTAssertEqual(semanticAfterUnrelated.first?.text, "The launch moved to Monday.")
 
         let restore = TranscriptCorrectionEvent(
             meetingID: fixture.meeting.id,
@@ -450,37 +527,93 @@ final class SemanticIndexTests: XCTestCase {
             restoredSemantic.map(\.segmentID),
             [fixture.first.id],
             "restore reuses the immutable accepted row and its cached vector")
+    }
 
-        let secondReplacement = TranscriptCorrectionEvent(
+    func testCorrectedEmbeddingPublicationRejectsSupersededAndUnfencedSources() async throws {
+        let fixture = try await Self.fixture()
+        let firstCorrection = TranscriptCorrectionEvent(
             meetingID: fixture.meeting.id,
             baseTranscriptRevision: fixture.meeting.transcriptRevision,
             targetSegmentIDs: [fixture.first.id],
-            kind: .replaceText(text: "The launch moved again.", language: "en"),
+            kind: .replaceText(text: "The launch moved to Monday.", language: "en"),
             sourceDeviceID: UUID(),
-            createdAt: Date(timeIntervalSince1970: 1_700_000_012),
-            supersedesCorrectionID: restore.id)
-        _ = try await fixture.store.appendTranscriptCorrection(secondReplacement)
+            createdAt: Date(timeIntervalSince1970: 1_700_000_020))
+        _ = try await fixture.store.appendTranscriptCorrection(firstCorrection)
+        let staleCandidates = try await fixture.store.segmentsNeedingEmbeddings()
+        let staleCandidate = try XCTUnwrap(staleCandidates.first)
+
+        let secondCorrection = TranscriptCorrectionEvent(
+            meetingID: fixture.meeting.id,
+            baseTranscriptRevision: fixture.meeting.transcriptRevision,
+            targetSegmentIDs: [fixture.first.id],
+            kind: .replaceText(text: "The launch moved to Tuesday.", language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_021),
+            supersedesCorrectionID: firstCorrection.id)
+        _ = try await fixture.store.appendTranscriptCorrection(secondCorrection)
+
+        let stalePublication = try await fixture.store.storeEmbeddings(
+            [staleCandidate.id: [1, 0]],
+            for: [staleCandidate],
+            profile: fixture.profile)
+        let currentCandidates = try await fixture.store.segmentsNeedingEmbeddings()
+        let currentCandidate = try XCTUnwrap(currentCandidates.first)
+        XCTAssertTrue(stalePublication.publishedSegmentIDs.isEmpty)
+        XCTAssertEqual(stalePublication.skippedSegmentIDs, [fixture.first.id])
+        XCTAssertEqual(currentCandidate.text, "The launch moved to Tuesday.")
+        XCTAssertEqual(
+            currentCandidate.source,
+            .corrected(correctionID: secondCorrection.id))
+
         try await fixture.store.database.write { database in
             try database.execute(
-                sql: "UPDATE segment SET embedding = NULL, embeddingFingerprint = NULL WHERE id = ?",
-                arguments: [fixture.first.id.uuidString])
+                sql: "DELETE FROM transcriptCorrectionSearchState WHERE meetingID = ?",
+                arguments: [fixture.meeting.id.rawValue.uuidString])
         }
-        let correctedCandidates = try await fixture.store.segmentsNeedingEmbeddings()
-        XCTAssertTrue(correctedCandidates.isEmpty)
+        let unfencedPublication = try await fixture.store.storeEmbeddings(
+            [currentCandidate.id: [1, 0]],
+            for: [currentCandidate],
+            profile: fixture.profile)
+        let pendingWithoutState = try await fixture.store.segmentsNeedingEmbeddings()
+        let semanticWithoutState = try await fixture.store.searchSemantic(
+            [1, 0],
+            profile: fixture.profile,
+            limit: 2)
+        XCTAssertTrue(unfencedPublication.publishedSegmentIDs.isEmpty)
+        XCTAssertEqual(unfencedPublication.skippedSegmentIDs, [fixture.first.id])
+        XCTAssertTrue(pendingWithoutState.isEmpty)
+        XCTAssertFalse(semanticWithoutState.contains { $0.segmentID == fixture.first.id })
+    }
 
-        let secondRestore = TranscriptCorrectionEvent(
+    func testCorrectedSemanticMaintenanceIsProfileAwareAndLimitBounded() async throws {
+        let fixture = try await Self.fixture()
+        let correction = TranscriptCorrectionEvent(
             meetingID: fixture.meeting.id,
             baseTranscriptRevision: fixture.meeting.transcriptRevision,
             targetSegmentIDs: [fixture.first.id],
-            kind: .restore,
+            kind: .replaceText(text: "The launch moved to Monday.", language: "en"),
             sourceDeviceID: UUID(),
-            createdAt: Date(timeIntervalSince1970: 1_700_000_013),
-            supersedesCorrectionID: secondReplacement.id)
-        _ = try await fixture.store.appendTranscriptCorrection(secondRestore)
-        let restoredCandidates = try await fixture.store.segmentsNeedingEmbeddings()
+            createdAt: Date(timeIntervalSince1970: 1_700_000_030))
+        _ = try await fixture.store.appendTranscriptCorrection(correction)
+        let corrected = try await fixture.store.segmentsNeedingEmbeddings()
+        _ = try await fixture.store.storeEmbeddings(
+            [fixture.first.id: [1, 0]],
+            for: corrected,
+            profile: fixture.profile)
+
+        let nextProfile = semanticTestProfile(modelRevision: 2)
+        let invalidated = try await fixture.store.invalidateSemanticEmbeddings(
+            incompatibleWith: nextProfile)
+        let pending = try await fixture.store.segmentsNeedingEmbeddings()
+        let zero = try await fixture.store.segmentsNeedingEmbeddings(limit: 0)
+        let negative = try await fixture.store.segmentsNeedingEmbeddings(limit: -1)
+        XCTAssertEqual(invalidated, 3)
+        XCTAssertEqual(Set(pending.map(\.id)), [fixture.first.id, fixture.second.id])
         XCTAssertEqual(
-            restoredCandidates.map(\.id),
-            [fixture.first.id])
+            pending.first(where: { $0.id == fixture.first.id })?.source,
+            .corrected(correctionID: correction.id))
+        XCTAssertTrue(zero.isEmpty)
+        XCTAssertTrue(negative.isEmpty)
     }
 
     func testSQLiteVecRankerRunsBehindProjectionAndAggregateShadowOnly() async throws {

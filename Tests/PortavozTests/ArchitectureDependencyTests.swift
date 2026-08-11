@@ -497,7 +497,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
 
         let storage = try Self.contents(
-            of: "Sources/StorageKit/MeetingStore+Search.swift")
+            of: "Sources/StorageKit/MeetingStore+SemanticEmbedding.swift")
+            + Self.contents(
+                of: "Sources/StorageKit/MeetingStore+SemanticSearch.swift")
         for required in [
             "struct SemanticSearchCandidateIdentity",
             "func projectSemanticSearchCandidates(",
@@ -1512,7 +1514,7 @@ final class ArchitectureDependencyTests: XCTestCase {
 
     func testSemanticPublicationIsFencedByExactTranscriptSource() throws {
         let store = try Self.contents(
-            of: "Sources/StorageKit/MeetingStore+Search.swift")
+            of: "Sources/StorageKit/MeetingStore+SemanticEmbedding.swift")
         let operation = try Self.contents(
             of: "Sources/ApplicationKit/IndexSemanticCorpus.swift")
         let workflow = try Self.contents(
@@ -1542,7 +1544,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         XCTAssertTrue(architecture.contains(
-            "live row remains on the `NULL` cursor"))
+            "any still-current source remains on its"))
         XCTAssertTrue(decisions.contains("## D198"))
         XCTAssertTrue(intelligenceSpec.contains(
             "### Revision-fenced semantic publication (D198)"))
@@ -1823,7 +1825,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 36"))
+        XCTAssertTrue(schema.contains("public static let version = 37"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -2880,7 +2882,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         let schemaMigration = try Self.contents(
             of: "Sources/StorageKit/Schema+SemanticEmbedding.swift")
         let store = try Self.contents(
-            of: "Sources/StorageKit/MeetingStore+Search.swift")
+            of: "Sources/StorageKit/MeetingStore+SemanticEmbedding.swift")
+            + Self.contents(
+                of: "Sources/StorageKit/MeetingStore+SemanticSearch.swift")
         let operation = try Self.contents(
             of: "Sources/ApplicationKit/IndexSemanticCorpus.swift")
         let readiness = try Self.contents(
@@ -2910,7 +2914,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 36"))
+        XCTAssertTrue(schema.contains("public static let version = 37"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -2952,7 +2956,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
-        XCTAssertTrue(architecture.contains("current schema version is 36"))
+        XCTAssertTrue(architecture.contains("current schema version is 37"))
         XCTAssertTrue(architecture.contains(
             "Every persisted semantic vector also carries one SHA-256"))
         XCTAssertTrue(decisions.contains("## D199"))
@@ -6643,7 +6647,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(gaps.contains(
             "Meeting Detail composes current-revision text, speaker, split, explicit adjacent merge"))
         XCTAssertTrue(gaps.contains(
-            "split/merge/suppress composed content stays out of search and Spotlight"))
+            "split/merge/suppress composed content stays out of search, semantic search, and Spotlight"))
 
         for forbidden in [
             "import SwiftUI", "import StorageKit", "import GRDB",
@@ -7416,7 +7420,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 36"))
+        XCTAssertTrue(schema.contains("public static let version = 37"))
         XCTAssertTrue(schema.contains("registerTranscriptCorrectionSearchMigration"))
         XCTAssertTrue(correctionSchema.contains("transcriptCorrectionSearchState"))
         XCTAssertTrue(correctionSchema.contains("SELECT DISTINCT meetingID"))
@@ -7439,6 +7443,52 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(spotlight.contains("meetingLibraryDetail"))
         XCTAssertTrue(decisions.contains(
             "## D329 — Spotlight adopts correction-fenced text without expanding identity"))
+    }
+
+    func testD330CorrectedSemanticLaneIsFencedBoundedAndStorageOwned() throws {
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let correctedSchema = try Self.contents(
+            of: "Sources/StorageKit/Schema+SegmentCorrectedText.swift")
+        let correctionProjection = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SegmentCorrectedText.swift")
+        let embedding = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SemanticEmbedding.swift")
+        let search = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SemanticSearch.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+
+        XCTAssertTrue(schema.contains("public static let version = 37"))
+        XCTAssertTrue(schema.contains("registerSegmentCorrectedEmbeddingMigration"))
+        XCTAssertTrue(correctedSchema.contains("registerMigration(\"v37\")"))
+        XCTAssertTrue(correctedSchema.contains("table.add(column: \"embedding\", .blob)"))
+        XCTAssertTrue(correctedSchema.contains(
+            "table.add(column: \"embeddingFingerprint\", .text)"))
+        XCTAssertTrue(correctionProjection.contains("preservedCorrectedEmbeddings"))
+        XCTAssertTrue(correctionProjection.contains("existing.matches("))
+        XCTAssertTrue(embedding.contains("case corrected(correctionID: UUID)"))
+        XCTAssertTrue(embedding.contains("guard limit > 0 else { return [] }"))
+        XCTAssertTrue(embedding.contains("currentCorrectedTextSourceSQL"))
+        XCTAssertTrue(embedding.contains("corrected.correctionID = ?"))
+        XCTAssertTrue(embedding.contains("corrected.text = ?"))
+        XCTAssertTrue(embedding.contains("UPDATE segmentCorrectedText"))
+        XCTAssertTrue(search.contains("acceptedSemanticScanSQL"))
+        XCTAssertTrue(search.contains("correctedSemanticScanSQL"))
+        XCTAssertTrue(search.contains("let hasCorrectedVectors"))
+        XCTAssertTrue(search.contains("UNION ALL"))
+        XCTAssertTrue(search.contains("currentCorrectedTextSourceSQL"))
+        XCTAssertTrue(search.contains(
+            "research identity carries no correction UUID/revision"))
+        XCTAssertFalse(embedding.contains("import ApplicationKit"))
+        XCTAssertFalse(search.contains("import ApplicationKit"))
+        XCTAssertTrue(decisions.contains(
+            "## D330 — Corrected transcript text owns a fenced semantic lane"))
+        XCTAssertTrue(architecture.contains("corrected semantic lane"))
+        XCTAssertTrue(storageSpec.contains("Corrected semantic lane (D330)"))
+        XCTAssertTrue(intelligenceSpec.contains("Correction-aware semantic maintenance (D330)"))
     }
 
     func testBandFourScaleBaselineStaysMeasuredAndDisposable() throws {
@@ -7467,6 +7517,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let model = try Self.meetingDetailModelContents()
         let health = try Self.contents(of: "Sources/IntelligenceKit/MeetingHealth.swift")
         let search = try Self.contents(of: "Sources/StorageKit/MeetingStore+Search.swift")
+            + Self.contents(
+                of: "Sources/StorageKit/MeetingStore+SemanticSearch.swift")
         let ask = try Self.contents(
             of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
         let waveform = try Self.contents(of: "Sources/AudioPlaybackKit/Waveform.swift")

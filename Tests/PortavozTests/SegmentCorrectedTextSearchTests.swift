@@ -203,6 +203,57 @@ final class SegmentCorrectedTextSearchTests: XCTestCase {
         XCTAssertEqual(hits.count, 1, "reopening runs v33 and its backfill")
     }
 
+    /// v37 is additive over the disposable v33 projection: an existing
+    /// corrected row survives the upgrade and immediately becomes a bounded
+    /// semantic-maintenance candidate without another correction write.
+    func testMigrationV37AddsCorrectedSemanticLaneToExistingProjection() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("segment-corrected-semantic-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let databaseURL = directory.appendingPathComponent("library.sqlite")
+        let segmentID: UUID
+        let correctionID: UUID
+
+        do {
+            let fixture = try await makeFixture(
+                texts: ["the original wording stands"],
+                databaseURL: databaseURL)
+            let correction = event(
+                210,
+                fixture: fixture,
+                targets: [fixture.segments[0].id],
+                kind: .replaceText(
+                    text: "the corrected semantic wording stands",
+                    language: "en"))
+            _ = try await fixture.store.appendTranscriptCorrection(correction)
+            segmentID = fixture.segments[0].id
+            correctionID = correction.id
+
+            // Simulate the exact v36 table shape and migration ledger.
+            try await fixture.store.database.write { database in
+                try database.execute(
+                    sql: "ALTER TABLE segmentCorrectedText DROP COLUMN embeddingFingerprint")
+                try database.execute(
+                    sql: "ALTER TABLE segmentCorrectedText DROP COLUMN embedding")
+                try database.execute(
+                    sql: "DELETE FROM grdb_migrations WHERE identifier = 'v37'")
+            }
+        }
+
+        let reopened = try MeetingStore(databaseURL: databaseURL)
+        let columns = try await reopened.database.read { database in
+            try Set(database.columns(in: "segmentCorrectedText").map(\.name))
+        }
+        let candidates = try await reopened.segmentsNeedingEmbeddings(limit: 2)
+
+        XCTAssertTrue(columns.isSuperset(of: ["embedding", "embeddingFingerprint"]))
+        XCTAssertEqual(candidates.map(\.id), [segmentID])
+        XCTAssertEqual(candidates.map(\.text), ["the corrected semantic wording stands"])
+        XCTAssertEqual(candidates.map(\.source), [.corrected(correctionID: correctionID)])
+    }
+
     // MARK: - Pure projection policy
 
     /// Two active replacements over one segment are an invalid history

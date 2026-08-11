@@ -11697,3 +11697,63 @@ known-stale summary stops matching system search. Structural composed content,
 semantic re-embedding, and Apuntador regeneration remain explicit T28 gaps.
 Deterministic projection/backend tests do not prove physical result presentation
 or Core Spotlight recovery on Sequoia and Tahoe; those remain field evidence.
+
+## D330 — Corrected transcript text owns a fenced semantic lane (Aug 2026)
+
+**Context:** D313 made active `replaceText` corrections immediately findable by
+FTS, and D329 reused that projection for bounded Spotlight documents. Semantic
+maintenance still excluded the accepted segment as soon as its text changed,
+but had no current corrected source to embed or search. Replacing the accepted
+vector would make restore unnecessarily rebuild immutable material; scanning a
+second lane for every accepted-only library would also put the established
+100,000-vector exact-path budget at risk.
+
+**Decision:** schema v37 adds nullable `embedding` and
+`embeddingFingerprint` columns to the disposable `segmentCorrectedText`
+projection. The immutable accepted vector remains on `segment`. Exactly one
+source lane is eligible for a segment: accepted text when no active
+text-affecting correction owns it, or the current corrected row when a live
+terminal `replaceText` event, sparse correction state, and accepted transcript
+revision all agree. Restore therefore exposes the already cached accepted
+vector without re-embedding it.
+
+Semantic candidates carry an explicit accepted/corrected source identity; the
+corrected identity includes the correction UUID. Publication is one
+compare-and-swap update over segment ID, meeting ID, correction ID, accepted
+revision, exact corrected text, missing vector state, live meeting/segment,
+current sparse state, and terminal correction ownership. A superseded,
+structural, deleted, stale, conflicting, or unfenced source is a content-free
+skip and remains on the durable `NULL` cursor only if a current lane still
+exists. Non-positive candidate limits return no rows rather than reaching
+SQLite's negative-`LIMIT` unbounded behavior.
+
+Correction projection refresh preserves an existing corrected vector only when
+correction ID, accepted revision, corrected text, and language all still match;
+unrelated correction activity cannot force needless re-embedding, while any
+source drift clears the derived value. Profile invalidation covers both tables.
+The existing background semantic owner, capture checkpoints, durable lease,
+bounded batches, readiness states, and no-download policy need no second
+scheduler or cursor.
+
+Exact search performs one content-free probe inside the same GRDB read
+snapshot. If no current corrected vector exists, it retains the accepted-only
+stream and deterministic fingerprint/order. Otherwise one ordered `UNION ALL`
+stream scores accepted and corrected vectors once per query batch. Hit
+materialization revalidates the same current corrected source and returns its
+text under the accepted segment ID, so citation/navigation identity does not
+expand. Storage code is decomposed into lexical search, semantic maintenance,
+and semantic retrieval owners; no ApplicationKit or app composition enters the
+database path. The D210 research projection remains accepted-only because its
+identity carries segment ID and accepted revision but no correction lineage;
+an actively corrected row is omitted rather than applying a stale candidate
+rank to different text.
+
+**Consequences:** an accepted word replaced by the user becomes semantically
+findable after ordinary background maintenance, readiness honestly returns to
+partial while that vector is pending, and undo reuses the accepted vector.
+Active split, merge, and suppress output still has no shared search-result
+identity and remains excluded; automatic Apuntador regeneration also remains
+separate. Deterministic migration, correction, publication, readiness, search,
+restore, and bilingual app tests do not prove model assets, correction-heavy
+latency, or memory behavior on physical Sequoia/Tahoe hosts, so those remain
+explicit performance and field-evidence gates.

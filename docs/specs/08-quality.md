@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,346 cases (14 environment-gated) + 77
+Status: the package inventory contains 2,353 cases (14 environment-gated) + 77
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -31,7 +31,7 @@ documented below.
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config
 (default rules + correctness/clarity opt-ins, industry thresholds: line 120,
 function-body 60/100, cyclomatic 12/20, type-body 400/600). CI treats every
-violation as a failure. The Aug 11 acceptance run is clean across all **650
+violation as a failure. The Aug 11 acceptance run is clean across all **652
 production Swift files**. The 20 violations found by the Aug 8 audit were
 removed through cohesive Meeting Detail, graph, decision-query, processing,
 correction, job, Skills-storage, and search owner splits rather than blanket
@@ -1571,10 +1571,12 @@ the repository-hygiene gate always runs them. An architecture ratchet pins the
 contract, proof classes, fail-closed predicate, distribution receipt ordering,
 and D147.
 
-The 9 Aug 2026 field-reliability inventory is 2,312 XCTest package cases (14
-environment-gated), zero strict-lint violations across 648 production Swift
+The 11 Aug 2026 development inventory is 2,353 XCTest package cases (14
+environment-gated), zero strict-lint violations across 652 production Swift
 files, a 221-case recording/recovery selector passing 25 consecutive iterations
-(5,525 executions), and 75 XCUITest cases per locale.
+(5,525 executions), 353 deterministic tooling cases, and 77 XCUITest cases per
+locale. This inventory is local automation evidence, not a release reliability
+receipt or physical Sequoia/Tahoe field evidence.
 The generic stress runner refuses fewer than 90 tests and the release wrapper
 raises that floor to 108. Release evidence requires the package inventory to
 pass without failures on a supported AppKit-capable host and strict lint to
@@ -2160,6 +2162,7 @@ against.
 | Lexical Ask at 100k segments | p95 < 100 ms | **p50 66.45 ms / p95 66.89 ms**, down from 111.19 ms through bounded per-term RRF (D81) |
 | Semantic cosine at 100k × 512 dimensions | p95 < 100 ms | ✅ **wall p50/p95 88.81/90.22 ms; CPU p50/p95 89.93/91.26 ms**, down from 307.05/325.41 and 311.46/328.43 ms; **8.42 MiB** incremental footprint p95 (D83) |
 | Semantic cosine with bounded local mapping at 100k × 512 dimensions | p95 < 100 ms | ✅ 9 Aug canonical Release ledger: **wall/CPU p95 63.53/64.54 ms; 0.17 MiB incremental process footprint**; three independent A/B runs also held wall p95 63.49–67.25 ms and CPU p95 64.30–68.07 ms (D318) |
+| D330 accepted-only semantic regression check at 100k × 512 dimensions | p95 < 100 ms | ✅ 11 Aug 20-sample Release development check: **wall/CPU p95 77.09/78.29 ms; 0.16 MiB incremental process footprint; 12/12 results**. This preserves the accepted fast-path budget but is not a correction-heavy or multi-host field baseline. |
 | Waveform, 55.9-minute dual channel / 600 buckets | first wall < 150 ms; repeat wall/CPU p95 < 100 ms | ✅ first wall/CPU **109.25/94.81 ms**; repeat wall/CPU p50 **69.22/70.10 ms**, p95 **70.11/71.33 ms**, down from 747.53/754.79 ms; **0.33 MiB** incremental footprint p95; exact fingerprint preserved and replacement changes it (D84) |
 | Spotlight projection, 100k meetings | wall/CPU p95 < 500 ms; absolute/incremental footprint < 160/96 MiB | ✅ wall/CPU p95 **425.64/423.58 ms**, down from 22,085.35/22,720.40 ms; **141.14/76.03 MiB** absolute/incremental footprint p95; exact fingerprint preserved. Synthetic 1k protected named-index delivery: **21.19 ms**, cleanup succeeded (D85) |
 | Detail core read, 2 h / 5k segments | diagnostic | **p50 16.31 ms / p95 17.22 ms** |
@@ -2349,6 +2352,27 @@ ApplicationKit composition or per-meeting reads. Bilingual XCUITest reuses the
 exact App Entity route because
 temporary stores suppress host indexing; physical result matching and cold
 recovery on Sequoia/Tahoe remain field evidence.
+
+**D330 correction-aware semantic gate.** Seven package cases cover the additive
+v37 corrected-vector migration, correction-source candidate identity, exact
+text and revision fencing, superseded-source rejection, profile invalidation,
+non-positive limit bounds, background maintenance, readiness degradation and
+recovery, accepted-vector reuse after restore, and the deliberate exclusion of
+actively corrected segments from the older identity-only research shadow lane.
+The direct exact semantic path reads rank and source-grounded corrected text in
+one database snapshot; accepted-only queries retain their sparse probe and
+single-table scan. The complete package gate is 2,353 cases (14 environment-
+gated), the deterministic tooling gate is 353 cases, and strict SwiftLint is
+clean across 652 production Swift files. A 20-sample 100k × 512 Release check
+kept the accepted-only path below its 100 ms budget at 77.09/78.29 ms wall/CPU
+p95 with 0.16 MiB incremental peak footprint and 12/12 results. That run does
+not characterize a correction-heavy corpus, physical Sequoia/Tahoe hosts, or
+8/16 GiB memory profiles; those remain explicit field and performance gaps.
+Bilingual XCUITest reuses all 77 real-app journeys because D330 changes no
+interactive control or presentation structure. The final gate passed 77/77
+English cases in one finalized result bundle and the exact duplicate-free
+25 + 33 + 19 Spanish catalog partition in three finalized bundles, with zero
+failed, skipped, or expected-failure cases in either locale.
 
 **D327 review-first email gate.** Eleven package cases pin the separate external
 registry and intact local no-egress invariant, irreversible explicit capability
