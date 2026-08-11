@@ -64,7 +64,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v29` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v36` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -99,6 +99,7 @@ Singular camelCase tables, 1:1 with Codable records:
 | `segmentSearch` | FTS5 external-content over segment.text, synchronized by ai/ad/au triggers |
 | `segmentCorrectedText` (v33) | segmentID (TEXT PK, FK cascade), meetingID (FK cascade, indexed), correctionID (UNIQUE, FK cascade), baseTranscriptRevision, non-empty text, optional language, updatedAt; disposable one-row-per-segment projection of the active `replaceText` correction (D313), rebuilt transactionally with every correction/revision write and backfilled at migration |
 | `segmentCorrectedSearch` (v33) | FTS5 external-content over segmentCorrectedText.text, synchronized by GRDB triggers exactly like `segmentSearch` |
+| `transcriptCorrectionSearchState` (v36) | meetingID (TEXT PK, FK cascade), baseTranscriptRevision, 64-character effective correctionRevision; sparse content-free lineage for active overlays only, rebuilt in the same transaction as corrected text and used to fence Spotlight summaries/text (D329) |
 | `skillExecutionEvent` (v31) | append-only predecessor-linked confirmation/begin/succeed/fail/cancel history with attempt, typed failure category, and unclamped occurrence time; no message or meeting-derived content (D293) |
 | `skillExecutionState` (v31) | one idempotency-keyed current projection per proposal with the latest event, attempt, and monotonic updatedAt; unknown future states fail closed as possibly executed rather than retryable (D293) |
 | `skillOfferDismissal` (v34) | offerKey (TEXT PK, stable skill+subject intent identity), skillID, dismissedAt; durable terminal "the user said no" for one skill offer (D316) — deliberately keyed by intent, never by the per-render proposal ID |
@@ -648,15 +649,18 @@ transaction that changes correction state or the accepted revision (append,
 tombstone, replica merge, sync replay, refine, re-transcription; sync replay
 refreshes unconditionally because hard-deleted segments cascade the rows away
 even when the correction fingerprint is unchanged), and backfilled by the v33
-migration itself. `search` unions both lanes under one bm25 ordering with a
+migration itself. The same refresh owns v36's sparse
+`transcriptCorrectionSearchState`: accepted readings have no row; an active
+overlay stores only its accepted revision and opaque correction revision.
+`search` unions both text lanes under one bm25 ordering with a
 query-time revision fence; a segment can never serve from both, and citation
 identity stays the accepted `segmentID`. Restored rows become eligible again.
 Summary and Apuntador publication
 now require exact current accepted-transcript and correction revisions from
 the linked `GenerationRun`. Summary cache lookup applies the same requirement,
-and malformed provenance fails closed. No further correction schema migration
-is needed: the existing history and generation/maintenance tables already hold
-the authority.
+and malformed provenance fails closed. Schema v36 adds only the sparse derived
+lineage needed by bounded Spotlight reads; the existing history and
+generation/maintenance tables remain the authority.
 
 D235 proves the correction transaction's crash boundary with an injected
 `BEFORE UPDATE` abort on the semantic-maintenance generation. An append that has
@@ -1109,10 +1113,22 @@ and permanently supersede the derived work fenced against them. Every
 `uuidString` shares the same 8-4-4-4-12 shape, so SQLite's byte-wise comparison
 reproduces the Swift comparator exactly.
 
-`spotlightDocuments()` is the D85 read-side projection for local OS search. A
-single `DatabaseQueue.read` uses ranked CTEs to select every live meeting, its
-newest live summary across all recipes, and its first 40 live segments ordered
-by start time and rowid. Documents are ordered by meeting start and identity,
+`spotlightDocuments()` is the D85/D329 read-side projection for local OS search.
+One `DatabaseQueue.read` first executes a bounded content-free overlay probe. An
+accepted-only library keeps D85's fast transcript statement while still
+validating D329 summary provenance; active correction history or sparse state
+selects the correction-aware CTEs in the same SQLite snapshot. Both set-based
+paths select every live meeting, its newest eligible summary across all recipes,
+and its first 40 text rows ordered by accepted start time and rowid; neither
+performs per-meeting reads. The corrected text union
+reuses D313: unaffected accepted rows and current-revision
+`segmentCorrectedText` rows serve together; speaker-only changes retain text;
+active split/merge/suppress targets remain omitted; restore reactivates accepted
+text. Direct/legacy summaries serve only for an accepted reading, while a
+generated corrected summary must carry the exact sparse v36 revision. Invalid
+JSON, missing runs, stale lineage, or active history without current sparse
+state omits the summary rather than failing the library read or publishing stale
+words. Documents remain ordered by meeting start and identity,
 and their summary-plus-transcript description retains the released 4,000-
 character cap. Tombstoned meetings, summaries, and segments are excluded.
 StorageKit returns platform-neutral `SpotlightDocument` values; Core Spotlight

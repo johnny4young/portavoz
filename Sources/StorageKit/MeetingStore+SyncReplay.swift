@@ -205,7 +205,9 @@ extension MeetingStore {
         }
         // Unconditional: replay hard-deletes segments (cascading the corrected
         // rows away) even when the correction fingerprint did not change.
-        try refreshSegmentCorrectedText(meetingID: meetingID, in: db)
+        try refreshTranscriptCorrectionSearchProjection(
+            meetingID: meetingID,
+            in: db)
     }
 
     static func meetingSyncLocalState(

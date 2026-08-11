@@ -122,7 +122,7 @@ self-contained over system frameworks and carries no module dependency.
 | `TranscriptionKit` | Live Parakeet, quality Whisper, and macOS 26 SpeechAnalyzer adapters; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
-| `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and Spotlight projections. |
+| `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing validated on the timescale it is delivered on, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
@@ -730,7 +730,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 35. It includes:
+The current schema version is 36. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -765,7 +765,8 @@ The current schema version is 35. It includes:
   link/source/event write committed inside the existing GRDB transaction;
 - a disposable per-segment corrected-text search projection (one row per
   active text replacement, FTS-mirrored, rebuilt transactionally with every
-  correction write);
+  correction write) plus sparse per-meeting correction lineage for revision-
+  fenced local and system search;
 - durable skill-offer dismissal keyed by stable intent identity, so a
   declined proposal never returns;
 - one content-free device-local skill-control singleton, a sparse disablement
@@ -791,7 +792,15 @@ Query-specific projections use explicit scope and ordering. Whole-library
 backup first copies one immutable SQLite stage through bounded GRDB backup
 pages, then uses the copied live-root ordering index to load one newest-first
 aggregate at a time from that stage without offset rescans.
-Spotlight uses a bounded projection and client-state reconciliation. Library,
+Spotlight uses a bounded correction-fenced projection and client-state
+reconciliation. Its meeting body shares the lexical search policy: current
+text replacements substitute accepted rows, structural targets stay omitted,
+and only summaries matching the effective correction revision are admitted. A
+snapshot-local bounded overlay probe preserves the established fast transcript
+path for accepted-only libraries—while retaining summary validation—and selects
+the correction-aware CTE only when current history or sparse state requires it;
+neither path performs per-meeting reads.
+Library,
 Insights, Meeting Detail, and the menu bar use independent GRDB observations
 sized to their surface.
 Library search expands a small deterministic English/Spanish meeting lexicon
@@ -3361,7 +3370,13 @@ named index, retries transient failures, and repairs missed work at launch
 without exposing content to logs. On macOS 15 and later the protected index is
 one native generation of meeting, canonical-person, and confirmed-commitment
 App Entities. The meeting entity retains the released capped summary/transcript
-search body. The macOS 14.4 compatibility path publishes meeting documents to
+search body, now selected from the same revision-fenced corrected-text lane as
+local lexical search. A sparse storage projection admits only a correction-
+current summary; stale or malformed provenance is omitted, and missing derived
+state fails closed instead of restoring accepted words. Split, merge, and
+suppress targets remain excluded rather than inventing a structural search
+identity. Successful correction writes wake reconciliation after persistence.
+The macOS 14.4 compatibility path publishes meeting documents to
 the same index; its distinct client-state prefix forces replacement when OS
 capability changes. Removal of the obsolete named/default indexes retries until
 successful, then records a versioned local migration marker so neither later
@@ -3884,22 +3899,23 @@ silently.
 
 ## Quality evidence
 
-The 9 Aug 2026 local acceptance snapshot is:
+The current 11 Aug 2026 local acceptance inventory, with longer-running
+reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,312 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,346 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
-- the recording/recovery selector executes 221 tests per iteration and passed
-  its fail-closed 25-iteration gate (5,525 executions); the generic runner
-  refuses fewer than 90 and the release wrapper raises that floor to 108;
-  focused Thread Sanitizer and Address Sanitizer gates also pass;
-- strict SwiftLint remains a blocking CI gate and is clean across all 648
+- the 9 Aug recording/recovery selector executed 221 tests per iteration and
+  passed its fail-closed 25-iteration gate (5,525 executions); the generic
+  runner refuses fewer than 90 and the release wrapper raises that floor to
+  108; focused Thread Sanitizer and Address Sanitizer gates also passed;
+- strict SwiftLint remains a blocking CI gate and is clean across all 650
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 75 XCUITest cases per locale define the 150-case bilingual release gate;
+- 77 XCUITest cases per locale define the 154-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

@@ -159,7 +159,7 @@ final class SegmentCorrectedTextSearchTests: XCTestCase {
         XCTAssertTrue(wiped.isEmpty)
 
         try await fixture.store.database.write { database in
-            try MeetingStore.refreshSegmentCorrectedText(
+            try MeetingStore.refreshTranscriptCorrectionSearchProjection(
                 meetingID: meetingID,
                 in: database)
         }
@@ -187,12 +187,14 @@ final class SegmentCorrectedTextSearchTests: XCTestCase {
                 targets: [fixture.segments[0].id],
                 kind: .replaceText(
                     text: "the corrected wording stands", language: "en")))
-            // Simulate a pre-v33 library: history exists, projection does not.
+            // Simulate a pre-v33 library: history exists and neither search
+            // projection does. v33 must run before v36 creates sparse state.
             try await fixture.store.database.write { database in
+                try database.execute(sql: "DROP TABLE transcriptCorrectionSearchState")
                 try database.execute(sql: "DROP TABLE segmentCorrectedSearch")
                 try database.execute(sql: "DROP TABLE segmentCorrectedText")
                 try database.execute(
-                    sql: "DELETE FROM grdb_migrations WHERE identifier = 'v33'")
+                    sql: "DELETE FROM grdb_migrations WHERE identifier IN ('v33', 'v36')")
             }
         }
 

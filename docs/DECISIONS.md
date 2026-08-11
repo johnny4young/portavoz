@@ -11632,3 +11632,68 @@ Sequoia/Tahoe availability split. Real GitHub authentication, provider response,
 network interruption, browser opening, and result presentation on physical
 Sequoia and Tahoe remain explicit field evidence and must not be inferred from
 the disposable adapter.
+
+## D329 — Spotlight adopts correction-fenced text without expanding identity (Aug 2026)
+
+**Context:** the D85 Spotlight snapshot met its 100,000-meeting budget by
+selecting every meeting, one summary, and only 40 transcript rows in one SQL
+read. It still indexed accepted segment text after D313 gave lexical search a
+transactional corrected-text lane, and it continued to publish a known-stale
+summary after the correction overlay changed. Moving full transcript
+composition into the app indexer would either load complete libraries or
+restore per-meeting reads. Publishing split or merge rows as segment results
+would also reopen the unresolved citation-identity contract that D313 kept out
+of search.
+
+**Decision:** Spotlight keeps one result identity per meeting and adopts the
+same bounded text policy as lexical search. Its transcript CTE unions accepted
+segments that have no active text-affecting correction with current-revision
+`segmentCorrectedText` rows, ranks that union by the accepted segment timeline,
+and then applies the existing first-40 and 4,000-character caps. Speaker-only
+corrections retain the accepted text. Active split, merge, and suppress targets
+are omitted; their composed replacement rows remain outside search until a
+shared structural identity contract exists. Restore makes the accepted row
+eligible again.
+
+Schema v36 adds sparse `transcriptCorrectionSearchState`: one meeting ID,
+accepted transcript revision, and opaque effective correction revision only
+while an active overlay exists. The same transaction that refreshes D313 text
+now deletes and rebuilds both projections for append, tombstone, replica merge,
+sync replay, Refine, and re-transcription; migration backfills only meetings
+that have correction history. The row contains no transcript, summary, speaker,
+provider, or destination content.
+
+The Spotlight summary CTE publishes only provenance that matches that sparse
+revision. A direct or legacy summary is eligible only for an accepted reading;
+a generated summary for a corrected meeting must carry the exact current
+`sourceCorrectionRevision`. Invalid JSON, a missing generation run, a stale
+revision, or active history without current sparse state omits the summary
+instead of failing the complete snapshot or serving stale words. Corrected
+transcript rows also require the current sparse revision and
+their live terminal replacement event. The published fields remain unchanged,
+so the existing SHA-256 client state naturally replaces the index only when
+the actual title/date/body or entity catalog changes.
+
+The storage read begins with one content-free `EXISTS` probe inside the same
+SQLite snapshot. With no active correction history or sparse state it retains
+D85's fast transcript statement plus D329's unconditional summary-provenance
+checks; otherwise it runs the correction-aware CTEs above. This keeps the common
+100,000-meeting path within its established performance budget without
+weakening missing-state or malformed-provenance fail-closed behavior. Both
+routes remain set based and bounded; the probe does not restore per-meeting
+reads.
+
+Successful Meeting Detail text and structural correction writes now wake the
+shared search-reconciliation funnel; failed writes do not. The process actor,
+protected v3 index, 500-value batches, mode split, retry policy, launch repair,
+and macOS 14.4/15 availability boundary stay unchanged. Tests cover corrected
+and stale text, current/stale/malformed summary lineage, structural omission,
+restore, missing-state fail-closed behavior, migration backfill, client-state
+replacement, and success-only invalidation.
+
+**Consequences:** a corrected word can reach both lexical search and the
+meeting's Spotlight body without reviving the D85 N+1 architecture, while a
+known-stale summary stops matching system search. Structural composed content,
+semantic re-embedding, and Apuntador regeneration remain explicit T28 gaps.
+Deterministic projection/backend tests do not prove physical result presentation
+or Core Spotlight recovery on Sequoia and Tahoe; those remain field evidence.

@@ -8,7 +8,7 @@ extension StorageSchema {
     ///
     /// This is a disposable projection over the immutable correction tables:
     /// every correction write rebuilds the affected meeting's rows in the
-    /// same transaction, and `refreshSegmentCorrectedText` can rebuild it
+    /// same transaction, and the correction-search refresh can rebuild it
     /// from history at any time. The FTS mirror is maintained by
     /// GRDB-generated triggers, exactly like v1's `segmentSearch`.
     static func registerSegmentCorrectedTextMigration(
@@ -46,7 +46,7 @@ extension StorageSchema {
                 sql: "SELECT DISTINCT meetingID FROM transcriptCorrection")
             for key in meetingKeys {
                 guard let uuid = UUID(uuidString: key) else { continue }
-                try MeetingStore.refreshSegmentCorrectedText(
+                try MeetingStore.refreshTranscriptCorrectionSearchProjection(
                     meetingID: MeetingID(rawValue: uuid),
                     in: database)
             }

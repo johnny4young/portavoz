@@ -44,7 +44,9 @@ extension MeetingStore {
             current: currentProjection,
             at: merged.map(\.updatedAt).max() ?? Date(),
             in: database)
-        try refreshSegmentCorrectedText(meetingID: meetingID, in: database)
+        try refreshTranscriptCorrectionSearchProjection(
+            meetingID: meetingID,
+            in: database)
         return true
     }
 

@@ -280,6 +280,50 @@ final class SpotlightIndexerTests: XCTestCase {
         XCTAssertEqual(documentSnapshot.commitmentCounts, [0])
     }
 
+    func testCorrectionChangesClientStateAndReplacesPublishedMeetingBody() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(
+            title: "Correction",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            channel: .system,
+            text: "original rollout",
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
+        try await store.save(meeting)
+        try await store.save([segment])
+        let backend = SpotlightBackendSpy(mode: .appEntities)
+        let indexer = SpotlightIndexer(
+            store: store,
+            enabled: true,
+            backend: backend,
+            legacyCleanupState: SpotlightLegacyCleanupStateSpy(),
+            debounce: .zero,
+            retryDelays: [],
+            sleep: { _ in })
+
+        await indexer.requestReindex()
+        await indexer.waitUntilIdle()
+        _ = try await store.appendTranscriptCorrection(TranscriptCorrectionEvent(
+            meetingID: meeting.id,
+            baseTranscriptRevision: meeting.transcriptRevision,
+            targetSegmentIDs: [segment.id],
+            kind: .replaceText(text: "corrected deployment", language: "en"),
+            sourceDeviceID: UUID(),
+            createdAt: Date()))
+        await indexer.requestReindex()
+        await indexer.waitUntilIdle()
+
+        let snapshot = await backend.snapshot()
+        XCTAssertEqual(snapshot.replacements, 2)
+        XCTAssertEqual(snapshot.meetingContentDescriptions, [
+            ["original rollout"],
+            ["corrected deployment"]
+        ])
+    }
+
     func testEntityClientStateCoversEveryPublishedProjection() {
         let baseline = Self.clientStateBaseline()
         let meeting = baseline.meetings[0]
@@ -441,6 +485,7 @@ private actor SpotlightBackendSpy: SpotlightIndexBackend {
         let meetingCounts: [Int]
         let personCounts: [Int]
         let commitmentCounts: [Int]
+        let meetingContentDescriptions: [[String]]
         let legacyRemovals: Int
     }
 
@@ -452,6 +497,7 @@ private actor SpotlightBackendSpy: SpotlightIndexBackend {
     private var meetingCounts: [Int] = []
     private var personCounts: [Int] = []
     private var commitmentCounts: [Int] = []
+    private var meetingContentDescriptions: [[String]] = []
     private var legacyRemovalCount = 0
 
     init(
@@ -473,6 +519,7 @@ private actor SpotlightBackendSpy: SpotlightIndexBackend {
         meetingCounts.append(snapshot.meetings.count)
         personCounts.append(snapshot.people.count)
         commitmentCounts.append(snapshot.commitments.count)
+        meetingContentDescriptions.append(snapshot.meetings.map(\.contentDescription))
         if remainingReplacementFailures > 0 {
             remainingReplacementFailures -= 1
             throw SpotlightBackendSpyError.injectedFailure
@@ -494,6 +541,7 @@ private actor SpotlightBackendSpy: SpotlightIndexBackend {
             meetingCounts: meetingCounts,
             personCounts: personCounts,
             commitmentCounts: commitmentCounts,
+            meetingContentDescriptions: meetingContentDescriptions,
             legacyRemovals: legacyRemovalCount)
     }
 }

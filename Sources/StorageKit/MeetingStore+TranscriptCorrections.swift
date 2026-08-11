@@ -130,7 +130,7 @@ extension MeetingStore {
                 current: currentProjection,
                 at: timestamp,
                 in: database)
-            try Self.refreshSegmentCorrectedText(
+            try Self.refreshTranscriptCorrectionSearchProjection(
                 meetingID: meetingID,
                 in: database)
             return tombstone
@@ -187,6 +187,18 @@ private extension MeetingStore {
             histories[event.meetingID] = history + [persisted]
             persistedEvents.append(persisted)
         }
+        try finalizeTranscriptCorrectionProjections(
+            originalProjections,
+            persistedEvents: persistedEvents,
+            in: database)
+        return persistedEvents
+    }
+
+    static func finalizeTranscriptCorrectionProjections(
+        _ originalProjections: [MeetingID: TranscriptCorrectionRevision],
+        persistedEvents: [TranscriptCorrectionEvent],
+        in database: Database
+    ) throws {
         for (meetingID, previousProjection) in originalProjections {
             let currentProjection = try transcriptCorrectionRevision(
                 meetingID: meetingID,
@@ -201,9 +213,10 @@ private extension MeetingStore {
                 current: currentProjection,
                 at: timestamp,
                 in: database)
-            try refreshSegmentCorrectedText(meetingID: meetingID, in: database)
+            try refreshTranscriptCorrectionSearchProjection(
+                meetingID: meetingID,
+                in: database)
         }
-        return persistedEvents
     }
 }
 

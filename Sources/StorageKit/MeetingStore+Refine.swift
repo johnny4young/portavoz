@@ -83,7 +83,9 @@ private extension MeetingStore {
         try meeting.update(db)
         // The revision bump makes every prior correction stale; the corrected
         // search rows must leave with it.
-        try refreshSegmentCorrectedText(meetingID: install.meetingID, in: db)
+        try refreshTranscriptCorrectionSearchProjection(
+            meetingID: install.meetingID,
+            in: db)
     }
 
     static func tombstoneRefinedCast(

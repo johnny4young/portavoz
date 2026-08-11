@@ -1823,7 +1823,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 35"))
+        XCTAssertTrue(schema.contains("public static let version = 36"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -2910,7 +2910,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 35"))
+        XCTAssertTrue(schema.contains("public static let version = 36"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -2952,7 +2952,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
-        XCTAssertTrue(architecture.contains("current schema version is 35"))
+        XCTAssertTrue(architecture.contains("current schema version is 36"))
         XCTAssertTrue(architecture.contains(
             "Every persisted semantic vector also carries one SHA-256"))
         XCTAssertTrue(decisions.contains("## D199"))
@@ -6643,7 +6643,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(gaps.contains(
             "Meeting Detail composes current-revision text, speaker, split, explicit adjacent merge"))
         XCTAssertTrue(gaps.contains(
-            "Transcript corrections are not yet searchable or exposed through MCP as composed material"))
+            "split/merge/suppress composed content stays out of search and Spotlight"))
 
         for forbidden in [
             "import SwiftUI", "import StorageKit", "import GRDB",
@@ -7404,6 +7404,41 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(signpostedExecution.contains("job.id"))
         XCTAssertFalse(signpostedExecution.contains("job.meetingID"))
         XCTAssertFalse(signpostedExecution.contains("localizedDescription"))
+    }
+
+    func testD329CorrectionFencedSpotlightStaysBoundedAndStorageOwned() throws {
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let correctionSchema = try Self.contents(
+            of: "Sources/StorageKit/Schema+TranscriptCorrectionSearch.swift")
+        let correctionProjection = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SegmentCorrectedText.swift")
+        let spotlight = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(schema.contains("public static let version = 36"))
+        XCTAssertTrue(schema.contains("registerTranscriptCorrectionSearchMigration"))
+        XCTAssertTrue(correctionSchema.contains("transcriptCorrectionSearchState"))
+        XCTAssertTrue(correctionSchema.contains("SELECT DISTINCT meetingID"))
+        XCTAssertTrue(correctionProjection.contains(
+            "refreshTranscriptCorrectionSearchProjection"))
+        XCTAssertTrue(correctionProjection.contains("TranscriptCorrectionRevision.current"))
+        XCTAssertTrue(correctionProjection.contains(
+            "if hasCorrectionState, !correctionRevision.isAccepted"))
+        XCTAssertTrue(spotlight.contains("activeCorrectionMeeting"))
+        XCTAssertTrue(spotlight.contains("spotlightRequiresCorrectionProjectionSQL"))
+        XCTAssertTrue(spotlight.contains("spotlightAcceptedDocumentsSQL"))
+        XCTAssertTrue(spotlight.contains("correctionAwareSegment"))
+        XCTAssertTrue(spotlight.contains("segmentCorrectedText AS corrected"))
+        XCTAssertTrue(spotlight.contains("acceptedSegmentHasNoActiveTextCorrectionSQL"))
+        XCTAssertTrue(spotlight.contains("json_valid(generationRun.configJSON)"))
+        XCTAssertTrue(spotlight.contains("segmentRank <= 40"))
+        XCTAssertTrue(spotlight.contains("prefix(4_000)"))
+        XCTAssertFalse(spotlight.contains("import ApplicationKit"))
+        XCTAssertFalse(spotlight.contains("ComposeTranscript"))
+        XCTAssertFalse(spotlight.contains("meetingLibraryDetail"))
+        XCTAssertTrue(decisions.contains(
+            "## D329 — Spotlight adopts correction-fenced text without expanding identity"))
     }
 
     func testBandFourScaleBaselineStaysMeasuredAndDisposable() throws {

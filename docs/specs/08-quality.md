@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,339 cases (14 environment-gated) + 77
+Status: the package inventory contains 2,346 cases (14 environment-gated) + 77
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -31,7 +31,7 @@ documented below.
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config
 (default rules + correctness/clarity opt-ins, industry thresholds: line 120,
 function-body 60/100, cyclomatic 12/20, type-body 400/600). CI treats every
-violation as a failure. The Aug 10 acceptance run is clean across all **649
+violation as a failure. The Aug 11 acceptance run is clean across all **650
 production Swift files**. The 20 violations found by the Aug 8 audit were
 removed through cohesive Meeting Detail, graph, decision-query, processing,
 correction, job, Skills-storage, and search owner splits rather than blanket
@@ -117,6 +117,7 @@ local justification.
 | InsightsModelTests | complete/empty/degraded/failed phases, one read snapshot, section-local replacement, scope restart, and no-global-version behavior through a database-free client fake |
 | InsightsObservationTests | independent live-rooted meeting/fact/voice/finding observations, delete/restore conservation, and active-scope finding bounds through real `MeetingStore` adaptation |
 | MeetingDetailModelTests | complete/degraded/missing/failed review phases, one storage-independent projection, section-local replacement including privacy receipts, explicit persistence, correction-aware derived freshness and metadata reset, canonical-person, document, transcript/calendar-name, participant-voice, and playback/clip actions and effects, route-owned suggestion/audio state, exact silent versus visible failure/degradation policy, and Spotlight reconciliation requests through a database-free client fake |
+| SpotlightProjectionTests / SpotlightIndexerTests | Newest correction-current summary selection, accepted/corrected transcript union, speaker/structural/restore policy, missing-state and malformed-provenance fail-closed behavior, v36 backfill, deterministic first-40 order, tombstone and 4,000-character bounds, complete entity snapshot, correction-driven client-state replacement, coalescing, retry, cleanup, mode separation, and exact App Entity attributes |
 | SuggestMeetingSpeakerNamesTests / NameSuggestionFilterTests | coherent meeting admission, eligible remote-label short circuiting, attendee forwarding, complete-token verification without substring false positives, typed locally derived transcript/calendar evidence, label deduplication, typed missing meetings, and visible generation failure without EventKit or a model |
 | MeetingDetailObservationTests | live-rooted transcript/cast/correction revision, newest-summary/action-item and correction provenance, Apuntador card/evidence/provenance, and privacy-receipt observations; evidence-link-only and independent event updates; lifecycle conservation; card/event cascades; and newest cross-recipe selection through real `MeetingStore` adaptation |
 | BriefRelevanceTests / ReminderPolicyTests / MeetingReminderWorkflowTests / MirrorStatsTests | explainable passage ranking and weak-match rejection, order-independent reminder lead window/session deduplication/off state, disabled-source short circuit, one-sampled-time countdown, failure propagation, mirror qualification/notable delta, and factual English/Spanish synthesis |
@@ -2329,6 +2330,25 @@ and Radar mutations to wake search reconciliation while failed writes stay
 silent. This proves app handoff and invalidation without contaminating the
 user's index; physical results, picker registration, Siri disambiguation, and
 cold recovery remain Sequoia/Tahoe field gates.
+
+**D329 correction-fenced Spotlight gate.** Five new real-Store projection cases
+require an active text replacement to remove the accepted wording, publish its
+current corrected text, and drop a stale summary; a regenerated summary with
+the exact correction revision becomes eligible. Structural targets remain
+absent and allow later accepted rows to fill the 40-row budget; restore returns
+the accepted summary/text. Deleting the sparse v36 state makes both correction
+lanes fail closed until a transactional rebuild, and reopening a simulated
+pre-v36 corrected library backfills that state before the first Spotlight read.
+Malformed generation JSON is omitted without failing the library snapshot.
+One actor/backend case proves the corrected body changes client state and
+causes replacement, while Meeting Detail model cases require successful text
+and structural writes—but not failed writes—to request reconciliation. The
+architecture ratchet retains the snapshot-local bounded probe and selected
+set-based CTE, caps, D313 lane reuse, sparse content-free state, and absence of
+ApplicationKit composition or per-meeting reads. Bilingual XCUITest reuses the
+exact App Entity route because
+temporary stores suppress host indexing; physical result matching and cold
+recovery on Sequoia/Tahoe remain field evidence.
 
 **D327 review-first email gate.** Eleven package cases pin the separate external
 registry and intact local no-egress invariant, irreversible explicit capability

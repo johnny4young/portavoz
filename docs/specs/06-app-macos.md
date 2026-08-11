@@ -1200,8 +1200,9 @@ task. `MeetingReminderController` retains only minute scheduling, session
 deduplication, floating-panel lifecycle, and the recording route. Optional
 calendar failures remain a silent no-notice result, matching the released UX.
 
-`AppServices` also owns one process-scoped `SpotlightIndexer` actor (D85/D326).
-Launch and every searchable mutation call `requestSpotlightReindex()`; requests
+`AppServices` also owns one process-scoped `SpotlightIndexer` actor
+(D85/D326/D329). Launch and every searchable mutation call
+`requestSearchReconciliation()`; requests
 coalesce for 250 ms and are not tied to a `ContentView` lifecycle. The actor
 loads one consistent StorageKit projection, hashes every published field into
 a compact mode-versioned client state, skips unchanged publication, and retries
@@ -1218,6 +1219,19 @@ of issuing the same delete on every unchanged reconciliation or future launch.
 Temporary UI-test stores disable OS indexing. Internal status and content-free
 OSLog attempts are diagnostic only; no meeting content is logged. A new request
 after terminal retry exhaustion starts a fresh recovery.
+
+Meeting bodies are correction-fenced before they reach either backend (D329).
+StorageKit contributes accepted text only when no active text-affecting edit
+owns that source row and substitutes current `replaceText` material through the
+same D313 projection used by Library search. Speaker-only edits preserve text;
+split/merge/suppress targets remain absent until structural search identity is
+defined; restore makes accepted text eligible again. Summaries publish only
+when their generation provenance matches the effective overlay, so a known-
+stale or malformed summary cannot remain findable after a transcript edit.
+Successful text and structural correction actions wake reconciliation only
+after persistence; failed actions do not. The index attributes and availability
+boundary do not change, and the existing client-state digest observes the
+resulting body without retaining correction metadata.
 
 `AppServices` also owns one process-scoped `MeetingSyncModel` (D97). Production
 composition creates the platform-neutral D96 lifecycle and an inert

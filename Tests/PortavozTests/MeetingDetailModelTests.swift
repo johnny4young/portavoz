@@ -377,7 +377,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertNotNil(model.state.lastActionError)
     }
 
-    func testTranscriptCorrectionReturnsTypedEffectWithoutReindexingAcceptedSearch() async {
+    func testTranscriptCorrectionReturnsTypedEffectAndReindexesCorrectedSearch() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
         let correction = TranscriptCorrectionEvent(
@@ -414,7 +414,7 @@ final class MeetingDetailModelTests: XCTestCase {
         }
         XCTAssertEqual(result.events, [correction])
         XCTAssertEqual(client.calls, [.correctTranscript(request)])
-        XCTAssertEqual(client.searchReindexRequests, 0)
+        XCTAssertEqual(client.searchReindexRequests, 1)
         XCTAssertNil(model.state.lastActionError)
 
         client.failures.insert(.correctTranscript)
@@ -422,10 +422,11 @@ final class MeetingDetailModelTests: XCTestCase {
         guard case .operationFailed = failed else {
             return XCTFail("persistence failures must stay visible to the editor")
         }
+        XCTAssertEqual(client.searchReindexRequests, 1)
         XCTAssertNotNil(model.state.lastActionError)
     }
 
-    func testTranscriptRestructureReturnsTypedEffectWithoutReindexingAcceptedSearch() async {
+    func testTranscriptRestructureReturnsTypedEffectAndReindexesCorrectedSearch() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
         let accepted = MeetingTranscriptContent.accepted(
@@ -455,7 +456,7 @@ final class MeetingDetailModelTests: XCTestCase {
         }
         XCTAssertEqual(result.event, correction)
         XCTAssertEqual(client.calls, [.restructureTranscript(request)])
-        XCTAssertEqual(client.searchReindexRequests, 0)
+        XCTAssertEqual(client.searchReindexRequests, 1)
         XCTAssertNil(model.state.lastActionError)
 
         client.failures.insert(.restructureTranscript)
@@ -463,6 +464,7 @@ final class MeetingDetailModelTests: XCTestCase {
         guard case .operationFailed = failed else {
             return XCTFail("structural persistence failures must remain visible")
         }
+        XCTAssertEqual(client.searchReindexRequests, 1)
         XCTAssertNotNil(model.state.lastActionError)
     }
 

@@ -315,6 +315,7 @@ private extension MeetingDetailModel {
         do {
             let result = try await client.correctMeetingDetailTranscript(request)
             state.lastActionError = nil
+            client.requestMeetingDetailSearchReindex()
             return .transcriptCorrected(result)
         } catch {
             let message = L10n.format(
@@ -331,6 +332,7 @@ private extension MeetingDetailModel {
         do {
             let result = try await client.restructureMeetingDetailTranscript(request)
             state.lastActionError = nil
+            client.requestMeetingDetailSearchReindex()
             return .transcriptRestructured(result)
         } catch {
             let message = L10n.format(
@@ -774,8 +776,7 @@ private extension MeetingDetailModel {
     func publish(_ update: MeetingReviewUpdate) {
         // Reject optional intelligence generated from an older projection.
         let transition = reviewAccumulator.apply(update)
-        metadataSuggestionState.invalidate(
-            correctionRevisionChanged: transition.correctionRevisionChanged)
+        metadataSuggestionState.invalidate(correctionRevisionChanged: transition.correctionRevisionChanged)
         if transition.correctionRevisionChanged {
             state.chapterTitles = [:]
             state.suggestedTitle = nil
