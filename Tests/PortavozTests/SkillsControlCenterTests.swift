@@ -162,6 +162,7 @@ final class SkillsControlCenterTests: XCTestCase {
                 ReminderDraftSkill.id,
                 PreMeetingBriefSkill.id,
                 EmailRecapDraftSkill.id,
+                SecretGistPublishSkill.id
             ])
         XCTAssertEqual(
             snapshot.skills.filter { $0.availability == .planned }.map(\.id),
@@ -195,12 +196,16 @@ final class SkillsControlCenterTests: XCTestCase {
         let emailUpdated = try await manager.execute(.setSkillEnabled(
             skillID: EmailRecapDraftSkill.id,
             isEnabled: false))
+        let gistUpdated = try await manager.execute(.setSkillEnabled(
+            skillID: SecretGistPublishSkill.id,
+            isEnabled: false))
         let updated = try await manager.execute(.setSkillEnabled(
             skillID: RecapDraftSkill.id,
             isEnabled: false))
         XCTAssertEqual(unknown, .rejected(.unknownSkill))
         XCTAssertEqual(reminderUpdated, .updated)
         XCTAssertEqual(emailUpdated, .updated)
+        XCTAssertEqual(gistUpdated, .updated)
         XCTAssertEqual(updated, .updated)
 
         let policy = try await store.skillExecutionPolicy()
@@ -210,6 +215,7 @@ final class SkillsControlCenterTests: XCTestCase {
                 EmailRecapDraftSkill.id,
                 RecapDraftSkill.id,
                 ReminderDraftSkill.id,
+                SecretGistPublishSkill.id
             ])
     }
 

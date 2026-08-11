@@ -239,10 +239,11 @@ final class MeetingDetailModelTests: XCTestCase {
                 destination: "/tmp/x.portavoz"))
         await model.send(.dismissSkillOffer(offer))
 
-        guard case .skillPerformed(let performed) = effect else {
+        guard case .skillPerformed(let performed, let outputURL) = effect else {
             return XCTFail("a successful run must report its effect")
         }
         XCTAssertEqual(performed.offerKey, offer.offerKey)
+        XCTAssertNil(outputURL)
         XCTAssertTrue(client.calls.contains(
             .performSkill(
                 offer.offerKey,
@@ -293,6 +294,45 @@ final class MeetingDetailModelTests: XCTestCase {
         }
         XCTAssertEqual(attempts.map(\.0), [proposalID, proposalID])
         XCTAssertEqual(attempts.map(\.1), [proposedAt, proposedAt])
+    }
+
+    func testAmbiguousGistResultClosesRetryPathAndPreservesKnownURL() async {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let outputURL = URL(string: "https://gist.github.com/example/result")
+        client.skillExecutionResult = .outcomeUnknown(
+            message: "Check GitHub",
+            outputURL: outputURL)
+        let model = MeetingDetailModel(
+            meetingID: fixture.meeting.id,
+            client: client)
+        let offer = MeetingSkillOffer(
+            kind: .secretGistPublish,
+            meetingID: fixture.meeting.id)
+        let preview = MeetingSkillPreview.secretGist(SecretGistDraft(
+            meetingID: fixture.meeting.id,
+            markdown: "# Approved",
+            filename: "approved.md",
+            description: "Approved"))
+
+        let effect = await model.send(.performSkill(
+            offer,
+            proposalID: UUID(),
+            proposedAt: Date(),
+            preview: preview,
+            destination: nil))
+
+        guard case .skillOutcomeUnknown(
+            let performed,
+            let message,
+            let preservedURL
+        ) = effect else {
+            return XCTFail("ambiguous remote work must not become retryable")
+        }
+        XCTAssertEqual(performed, offer)
+        XCTAssertEqual(message, "Check GitHub")
+        XCTAssertEqual(preservedURL, outputURL)
+        XCTAssertNil(model.state.lastActionError)
     }
 
     func testCommitmentAdmissionAndReviewStayBehindTheFeatureOwner() async {
@@ -972,6 +1012,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var preparedPlaybackResult: PreparedMeetingPlayback?
     var compressionResult = MeetingAudioCompressionResult(bytesFreed: 1_024)
     var skillFailuresRemaining = 0
+    var skillExecutionResult: MeetingDetailSkillExecutionResult?
     var confirmedCommitmentResult = Commitment(
         title: "Prepare the rollout",
         createdAt: Date(timeIntervalSince1970: 1_700_000_000))
@@ -1143,7 +1184,7 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
         proposedAt: Date,
         preview: MeetingSkillPreview,
         destination: String?
-    ) throws -> String? {
+    ) throws -> MeetingDetailSkillExecutionResult {
         calls.append(.performSkill(
             offer.offerKey,
             proposalID,
@@ -1152,9 +1193,9 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
             destination))
         if skillFailuresRemaining > 0 {
             skillFailuresRemaining -= 1
-            return "failed"
+            return .retryableFailure("failed")
         }
-        return nil
+        return skillExecutionResult ?? .succeeded(outputURL: nil)
     }
 
     func dismissMeetingDetailSkillOffer(_ offer: MeetingSkillOffer) throws {

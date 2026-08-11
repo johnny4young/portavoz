@@ -11,6 +11,7 @@ public struct MeetingSkillOffer: Equatable, Sendable, Identifiable {
     public enum Kind: String, Sendable {
         case recapDraft = "recap-draft"
         case emailRecapDraft = "email-recap-draft"
+        case secretGistPublish = "secret-gist-publish"
         case packageExport = "package-export"
     }
 
@@ -28,6 +29,8 @@ public struct MeetingSkillOffer: Equatable, Sendable, Identifiable {
             offerKey = RecapDraftSkill.idempotencyKey(for: meetingID)
         case .emailRecapDraft:
             offerKey = EmailRecapDraftSkill.idempotencyKey(for: meetingID)
+        case .secretGistPublish:
+            offerKey = SecretGistPublishSkill.idempotencyKey(for: meetingID)
         case .packageExport:
             // Deliberately destination-free: the export key includes the path
             // the user picks at confirm time, but "stop offering this" is a
@@ -40,6 +43,7 @@ public struct MeetingSkillOffer: Equatable, Sendable, Identifiable {
         switch kind {
         case .recapDraft: RecapDraftSkill.id
         case .emailRecapDraft: EmailRecapDraftSkill.id
+        case .secretGistPublish: SecretGistPublishSkill.id
         case .packageExport: MeetingPackageExportSkill.id
         }
     }
@@ -51,6 +55,7 @@ public struct MeetingSkillOffer: Equatable, Sendable, Identifiable {
 public enum MeetingSkillPreview: Equatable, Sendable {
     case recap(subject: String, body: String)
     case emailDraft(subject: String, body: String)
+    case secretGist(SecretGistDraft)
     case packageExport(meetingTitle: String, destination: String)
 }
 
@@ -104,6 +109,7 @@ public struct LoadMeetingSkillOffers: ApplicationUseCase {
         let candidates = [
             MeetingSkillOffer(kind: .recapDraft, meetingID: meetingID),
             MeetingSkillOffer(kind: .emailRecapDraft, meetingID: meetingID),
+            MeetingSkillOffer(kind: .secretGistPublish, meetingID: meetingID),
             MeetingSkillOffer(kind: .packageExport, meetingID: meetingID)
         ]
         let dismissed = try await store.dismissedSkillOffers(
@@ -114,15 +120,21 @@ public struct LoadMeetingSkillOffers: ApplicationUseCase {
         }
         let oneShotKeys = eligible.compactMap { offer in
             switch offer.kind {
-            case .recapDraft, .emailRecapDraft: offer.offerKey
+            case .recapDraft, .emailRecapDraft, .secretGistPublish:
+                offer.offerKey
             case .packageExport: nil
             }
         }
         let oneShotExecutions = try await store.skillExecutions(
             idempotencyKeys: oneShotKeys)
-        let unavailableOneShotKeys = Set(oneShotExecutions.compactMap {
-            $0.state == .succeeded || $0.state == .executing
-                ? $0.idempotencyKey
+        let unavailableOneShotKeys = Set(oneShotExecutions.compactMap { record in
+            let mayHaveCompleted = record.state == .succeeded
+                || record.state == .executing
+            let remoteMutationIsAmbiguous =
+                record.skillID == SecretGistPublishSkill.id
+                && record.state == .failed
+            return mayHaveCompleted || remoteMutationIsAmbiguous
+                ? record.idempotencyKey
                 : nil
         })
         return eligible.filter {
@@ -164,7 +176,8 @@ public struct LoadMeetingSkillReceipts: ApplicationUseCase {
         let key = meetingID.rawValue.uuidString
         var records = try await store.skillExecutions(idempotencyKeys: [
             "\(RecapDraftSkill.id):\(key)",
-            "\(EmailRecapDraftSkill.id):\(key)"
+            "\(EmailRecapDraftSkill.id):\(key)",
+            "\(SecretGistPublishSkill.id):\(key)"
         ])
         records += try await store.skillExecutions(
             idempotencyKeyPrefix: "\(MeetingPackageExportSkill.id):\(key):")
@@ -230,6 +243,22 @@ public enum MeetingSkillProposalFactory {
                 arguments: [.meeting(meetingID)],
                 proposedAt: now),
             EmailRecapDraftSkill.idempotencyKey(for: meetingID)
+        )
+    }
+
+    public static func secretGistPublishProposal(
+        proposalID: UUID = UUID(),
+        meetingID: MeetingID,
+        at now: Date
+    ) -> (proposal: SkillProposal, idempotencyKey: String) {
+        (
+            SkillProposal(
+                id: proposalID,
+                definition: SecretGistPublishSkill.definition,
+                requestedCapabilities: [.readMeetingMaterial, .sendRemote],
+                arguments: [.meeting(meetingID)],
+                proposedAt: now),
+            SecretGistPublishSkill.idempotencyKey(for: meetingID)
         )
     }
 }

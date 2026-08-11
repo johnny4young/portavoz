@@ -2,6 +2,7 @@ import Foundation
 @testable import IntegrationsKit
 @testable import IntelligenceKit
 import PortavozCore
+import StorageKit
 import XCTest
 
 final class DataEgressGatewayTests: XCTestCase {
@@ -542,6 +543,52 @@ final class DataEgressGatewayTests: XCTestCase {
         XCTAssertEqual(events.count, 1)
     }
 
+    func testStableAttemptIDStopsGistRetryBeforeSecondTransport() async throws {
+        let state = ReceiptTransportState.shared
+        state.reset(error: URLError(.cannotConnectToHost))
+        let store = try MeetingStore.inMemory()
+        try await store.save(Meeting(
+            id: meetingID,
+            title: "Gist duplicate fence",
+            startedAt: Date(timeIntervalSince1970: 1_800_000_000)))
+        let session = receiptSession()
+        defer { session.invalidateAndCancel(); state.reset() }
+        let eventID = DataEgressEventID(rawValue: UUID(
+            uuidString: "E6000000-0000-0000-0000-000000000098")!)
+        let gateway = URLSessionDataEgressGateway(
+            session: session,
+            receiptRecorder: store,
+            makeEventID: { eventID })
+        let request = try GistPublisher.request(
+            markdown: "# Exact approved draft",
+            filename: "approved.md",
+            description: "Approved",
+            isPublic: false,
+            token: "test-token")
+        let metadata = publishingMetadata(
+            operation: .publishGitHubGist,
+            destination: try XCTUnwrap(request.url),
+            meetingID: meetingID,
+            classification: .meetingExportDocument,
+            consentSource: .explicitGistPublish,
+            providerID: "api.github.com")
+
+        await XCTAssertThrowsErrorAsync(
+            try await gateway.perform(request, metadata: metadata)) { error in
+                XCTAssertEqual((error as? URLError)?.code, .cannotConnectToHost)
+            }
+        await XCTAssertThrowsErrorAsync(
+            try await gateway.perform(request, metadata: metadata)) { error in
+                XCTAssertNil(
+                    error as? URLError,
+                    "the duplicate receipt must fail before URLSession")
+            }
+
+        XCTAssertEqual(state.snapshot().requestCount, 1)
+        let events = try await store.dataEgressEvents(for: meetingID)
+        XCTAssertEqual(events.map(\.id), [eventID])
+    }
+
     func testInvalidMetadataCreatesNeitherReceiptNorTransport() async throws {
         let state = ReceiptTransportState.shared
         state.reset()
@@ -844,4 +891,18 @@ actor CapturingDataEgressGateway: DataEgressGateway {
     }
 
     func snapshot() -> Capture? { capture }
+}
+
+private func XCTAssertThrowsErrorAsync<T>(
+    _ expression: @autoclosure () async throws -> T,
+    _ errorHandler: (any Error) -> Void,
+    file: StaticString = #filePath,
+    line: UInt = #line
+) async {
+    do {
+        _ = try await expression()
+        XCTFail("Expected expression to throw", file: file, line: line)
+    } catch {
+        errorHandler(error)
+    }
 }

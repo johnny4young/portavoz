@@ -731,11 +731,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "\(subject)\n\n\(previewBody)",
             "the clipboard must contain the exact artifact the user approved")
 
-        // 3 · A succeeded recap retires only that offer; the email and export
+        // 3 · A succeeded recap retires only that offer; external and export
         // adapters remain independent user intents.
         menu.click()
         let emailDismiss = app.menuItems[
             "skill-offer-dismiss-email-recap-draft"]
+        let gistDismiss = app.menuItems[
+            "skill-offer-dismiss-secret-gist-publish"]
         let exportDismiss = app.menuItems["skill-offer-dismiss-package-export"]
         XCTAssertTrue(
             emailDismiss.waitForExistence(timeout: 5),
@@ -743,13 +745,20 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             exportDismiss.waitForExistence(timeout: 5),
             "each export destination is a new intent, so export keeps offering")
+        XCTAssertTrue(
+            gistDismiss.waitForExistence(timeout: 5),
+            "remote Gist publication remains an independent unperformed intent")
         XCTAssertFalse(
             app.menuItems["skill-offer-recap-draft"].exists,
             "the draft exists — the offer must not ask again")
         emailDismiss.click()
 
-        // 4 · Dismissing the last remaining offer is terminal: the menu itself
+        // 4 · Dismissing every remaining offer is terminal: the menu itself
         // leaves only after every independent intent is settled or dismissed.
+        XCTAssertTrue(menu.waitForStableFrame(timeout: 5))
+        menu.click()
+        XCTAssertTrue(gistDismiss.waitForExistence(timeout: 5))
+        gistDismiss.click()
         XCTAssertTrue(menu.waitForStableFrame(timeout: 5))
         menu.click()
         XCTAssertTrue(exportDismiss.waitForExistence(timeout: 5))
@@ -852,6 +861,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.menuItems["skill-offer-email-recap-draft"].exists,
             "a successful handoff retires only the email intent")
         XCTAssertTrue(app.menuItems["skill-offer-recap-draft"].exists)
+        XCTAssertTrue(app.menuItems["skill-offer-secret-gist-publish"].exists)
         XCTAssertTrue(app.menuItems["skill-offer-package-export"].exists)
         attachScreenshot(of: app, named: "meeting-detail-email-recap-handoff")
 
@@ -872,6 +882,115 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             settingsReceiptText.contains(expectedSettingsReceipt),
             "Settings must describe the external boundary as a handoff; got: \(settingsReceiptText)")
+    }
+
+    /// D328 — exact canonical Markdown is visible before the single GitHub
+    /// mutation. The disposable gateway writes the real content-free egress
+    /// receipt and returns a provider-shaped URL without touching network.
+    @MainActor
+    func testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument() {
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let menu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
+        menu.click()
+        let gist = app.menuItems["skill-offer-secret-gist-publish"]
+        guard gist.waitForExistence(timeout: 5) else {
+            XCTFail("the meeting must expose one review-first Gist proposal")
+            return
+        }
+        gist.click()
+
+        let sheet = app.control(withIdentifier: "skill-confirm-sheet")
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        let destination = app.control(
+            withIdentifier: "skill-confirm-gist-destination")
+        let body = app.control(withIdentifier: "skill-confirm-preview-body")
+        let boundary = app.control(
+            withIdentifier: "skill-confirm-gist-boundary")
+        XCTAssertTrue(destination.waitForExistence(timeout: 5))
+        XCTAssertTrue(body.waitForExistence(timeout: 5))
+        XCTAssertTrue(boundary.waitForExistence(timeout: 5))
+        let destinationText = accessibleText(of: destination)
+        XCTAssertTrue(destinationText.contains("test-meeting.md"))
+        XCTAssertTrue(destinationText.contains("api.github.com"))
+        let bodyText = accessibleText(of: body)
+        XCTAssertTrue(bodyText.contains("# Test meeting"))
+        XCTAssertTrue(
+            bodyText.contains("El rollout del modelo queda para el viernes."),
+            "the exact canonical document must include the seeded transcript")
+        let expectedBoundary = UITestLocale.environmentLocale == "es"
+            ? "Cualquier persona con el enlace puede leerlo."
+            : "Anyone with the link can read it."
+        XCTAssertTrue(
+            accessibleText(of: boundary).contains(expectedBoundary),
+            "the remote audience boundary must be explicit")
+
+        let submit = app.buttons["skill-confirm-submit"]
+        XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
+        let expectedSubmit = UITestLocale.environmentLocale == "es"
+            ? "Publicar Gist secreto"
+            : "Publish secret Gist"
+        XCTAssertEqual(submit.label, expectedSubmit)
+        submit.click()
+
+        let resultURL = app.control(withIdentifier: "gist-result-url")
+        XCTAssertTrue(
+            resultURL.waitForExistence(timeout: 10),
+            "successful publication must return its transient provider URL")
+        XCTAssertTrue(accessibleText(of: resultURL).contains(
+            "https://gist.github.com/portavoz/skill-preview"))
+        XCTAssertTrue(app.buttons["gist-result-copy-link"].exists)
+        XCTAssertTrue(app.buttons["gist-result-open-link"].exists)
+        let dismissResult = app.buttons["gist-result-dismiss"]
+        XCTAssertTrue(dismissResult.exists)
+        dismissResult.click()
+
+        let receipt = app.control(
+            withIdentifier: "skill-receipt-secret-gist-publish")
+        XCTAssertTrue(
+            receipt.waitForExistence(timeout: 10),
+            "the remote mutation must leave one durable Skill receipt")
+        let expectedReceipt = UITestLocale.environmentLocale == "es"
+            ? "publicado"
+            : "published"
+        XCTAssertTrue(
+            receipt.label.localizedCaseInsensitiveContains(expectedReceipt))
+        let remoteReceipts = app.staticTexts.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'privacy-remote-event-'"))
+        XCTAssertTrue(
+            remoteReceipts.element(boundBy: 1).waitForExistence(timeout: 10),
+            "the same run must record the content-free GitHub egress attempt")
+        let remoteReceiptTexts = (0..<remoteReceipts.count).map {
+            accessibleText(of: remoteReceipts.element(boundBy: $0))
+        }
+        XCTAssertTrue(
+            remoteReceiptTexts.contains { $0.contains("api.github.com") },
+            "the egress ledger must include api.github.com; got: \(remoteReceiptTexts)")
+
+        menu.click()
+        XCTAssertFalse(
+            app.menuItems["skill-offer-secret-gist-publish"].exists,
+            "one remote creation must retire its proposal")
+        XCTAssertTrue(app.menuItems["skill-offer-recap-draft"].exists)
+        XCTAssertTrue(app.menuItems["skill-offer-email-recap-draft"].exists)
+        XCTAssertTrue(app.menuItems["skill-offer-package-export"].exists)
+        attachScreenshot(of: app, named: "meeting-detail-secret-gist-receipts")
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(app.openSettingsWindow())
+        XCTAssertTrue(app.openSettingsCategory(
+            "settings-category-skills",
+            revealing: "settings-skills-pause-all"))
+        let settingsReceipt = app.control(
+            withIdentifier: "settings-skill-receipt-secret-gist-publish")
+        XCTAssertTrue(settingsReceipt.waitForExistence(timeout: 10))
+        let expectedSettingsStatus = UITestLocale.environmentLocale == "es"
+            ? "Gist secreto publicado"
+            : "Secret Gist published"
+        XCTAssertTrue(
+            accessibleText(of: settingsReceipt).contains(expectedSettingsStatus))
     }
 
     @MainActor

@@ -5,7 +5,8 @@ Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing
 Native automation decisions: D324 (honest Start/Stop actions), D325 (bounded
 meeting/person/commitment App Entities and exact open routes), and D326
 (availability-shaped protected entity publication). D327 adds one review-first
-email-composer handoff without adding an email transport.
+email-composer handoff without adding an email transport. D328 adds one exact
+secret-Gist Skill through the existing protected Gist transport.
 
 The email recap Skill is an AppKit interface adapter, not a network
 integration. ApplicationKit composes one summary-derived `MeetingRecap` behind
@@ -18,6 +19,20 @@ Portavoz stores no destination, credential, or reusable consent, performs no
 request, and never invokes Send. The resulting receipt means only that the
 system composer handoff was requested; whether the external client saves,
 syncs, edits, or sends remains visibly under user control.
+
+The secret-Gist Skill is the networked interface counterpart. ApplicationKit
+owns the immutable `SecretGistDraft` and explicit `sendRemote` proposal; the
+app composes it through the canonical correction-aware Markdown workflow,
+compares the complete approved draft before claim, and prepares the existing
+Keychain-backed publisher. `GistPublisher` still owns the exact
+`https://api.github.com/gists` request, secret-by-default payload, and response
+codec, while `URLSessionDataEgressGateway` still validates the endpoint,
+classification, provider disclosure, meeting identity, and consent source.
+The proposal UUID is injected as the data-egress event UUID, so its durable
+pre-transport insert is also the local no-duplicate fence. Missing credentials
+are retryable before claim; every later failure is outcome unknown and never
+authorizes another automatic request. The returned Gist URL is immediate UI
+output, not durable receipt content.
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 

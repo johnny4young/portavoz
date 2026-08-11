@@ -251,7 +251,11 @@ extension MeetingDetailModel {
         case commitmentReviewSaved
         case summaryClaimFeedbackSaved(SummaryClaimID)
         case decisionConfirmed(DecisionAboutTopicOutcome)
-        case skillPerformed(MeetingSkillOffer)
+        case skillPerformed(MeetingSkillOffer, outputURL: URL?)
+        case skillOutcomeUnknown(
+            MeetingSkillOffer,
+            message: String,
+            outputURL: URL?)
         case meetingDeleted(MeetingID)
         case documentPrepared(PreparedMeetingDocument)
         case gistPublished(URL)

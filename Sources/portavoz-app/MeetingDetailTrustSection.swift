@@ -129,6 +129,19 @@ struct MeetingDetailTrustSection: View {
                     L10n.text("Email recap draft"))
             }
         }
+        if receipt.skillID == SecretGistPublishSkill.id {
+            switch receipt.state {
+            case .succeeded:
+                return L10n.text("Secret Gist — published")
+            case .failed, .executing:
+                return L10n.text(
+                    "Secret Gist — outcome unknown, check GitHub")
+            case .proposed, .previewed, .confirmed, .dismissed:
+                return L10n.format(
+                    "%@ — did not finish",
+                    L10n.text("Secret Gist publication"))
+            }
+        }
         let name = switch receipt.skillID {
         case "recap-draft": L10n.text("Recap draft")
         case "meeting-package-export": L10n.text("Package export")

@@ -287,6 +287,27 @@ prefix read; adding the external adapter does not add per-offer SQLite queries.
 Disposable UI automation traverses the same proposal/effect path through an
 inert opener and can never launch the host email client.
 
+The second external effect publishes one reviewed secret GitHub Gist without
+adding a document or transport path. Meeting Detail prepares the canonical
+correction-aware Markdown, filename, description, and fixed `api.github.com`
+destination as one immutable `SecretGistDraft`; confirmation re-renders and
+compares that complete draft before any durable claim. The Keychain token is
+prepared before `ExecuteSkill`, so a missing credential remains a known
+pre-egress recovery. Production then enters the existing `GistPublisher`
+through `URLSessionDataEgressGateway`. The proposal UUID is also the
+`DataEgressEventID`, whose primary-key row is inserted before transport; a
+reconstructed or retried ambiguous attempt therefore fails locally before a
+second request. Because GitHub create-Gist has no caller idempotency token,
+every provider, transport, decode, settlement, or interruption failure after
+that point is reported as outcome unknown and suppresses the offer instead of
+inviting retry. A returned URL is transient presentation state; Skill and
+privacy receipts remain content-free. Disposable automation keeps the same
+renderer, request codec, metadata validation, execution state, and receipt
+paths but substitutes a no-network provider-shaped response. The exact
+potentially long Markdown preview uses one read-only selectable TextKit
+viewport rather than one monolithic SwiftUI `Text` layout; it does not truncate
+the approved bytes to gain responsiveness.
+
 The resident pre-meeting brief uses the same execution authority without
 turning the existing manual Library brief into an implicit action. Its
 `UpcomingEvent` carries one bounded opaque EventKit reference; title and time
@@ -329,9 +350,11 @@ offers, and `ExecuteSkill` reads it again immediately before admission and the
 durable claim. The Settings snapshot combines the catalogue with at most 50
 content-free recent receipts (20 by default); storage itself refuses reads
 above 100 and serves the newest-first order from a direction-matched index.
-The external email adapter stores no reusable consent: the complete preview,
-boundary warning, and submit action supply authority for that proposal only.
-No standing-rule control exists for irreversible or external work.
+The external email and Secret Gist adapters store no reusable consent: each
+complete preview, boundary warning, and submit action supplies authority for
+that proposal only. No standing-rule control exists for irreversible or
+external work, and an ambiguous remote attempt is never made retryable merely
+because the provider outcome is unavailable.
 
 Application failures cross into presentation as bounded categories or stable
 workflow codes. Raw filesystem paths, localized dependency errors, model

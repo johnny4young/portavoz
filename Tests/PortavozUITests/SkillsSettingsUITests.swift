@@ -92,6 +92,17 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.staticTexts[emailDescription].waitForExistence(timeout: 5),
             "the external skill must disclose its exact email-app boundary")
+        let gist = app.control(
+            withIdentifier: "settings-skill-secret-gist-publish-enabled")
+        scrollToVisible(gist, in: app)
+        XCTAssertTrue(gist.waitForExistence(timeout: 5))
+        XCTAssertTrue(Self.isOn(gist))
+        let gistDescription = UITestLocale.environmentLocale == "es"
+            ? "Publica el documento exacto que revisaste como un Gist secreto de GitHub. Cada ejecución vuelve a pedir confirmación."
+            : "Publishes the exact reviewed meeting document as one secret GitHub Gist. Every run asks first."
+        XCTAssertTrue(
+            app.staticTexts[gistDescription].waitForExistence(timeout: 5),
+            "the Gist row must disclose both exact review and per-run consent")
 
         // Individual choices survive the independent global pause override.
         export.click()

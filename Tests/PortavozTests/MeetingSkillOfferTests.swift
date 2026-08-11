@@ -21,7 +21,7 @@ final class MeetingSkillOfferTests: XCTestCase {
             LoadMeetingSkillOffersRequest(meetingID: meetingID, hasSummary: true))
         XCTAssertEqual(
             offers.map(\.kind),
-            [.recapDraft, .emailRecapDraft, .packageExport])
+            [.recapDraft, .emailRecapDraft, .secretGistPublish, .packageExport])
     }
 
     func testOneShotOfferAndReceiptReadsStayBatchedAsAdaptersGrow() async throws {
@@ -34,12 +34,13 @@ final class MeetingSkillOfferTests: XCTestCase {
                 hasSummary: true))
         XCTAssertEqual(
             offers.map(\.kind),
-            [.recapDraft, .emailRecapDraft, .packageExport])
+            [.recapDraft, .emailRecapDraft, .secretGistPublish, .packageExport])
         var exactReads = await store.exactReads
         var prefixReads = await store.prefixReads
         XCTAssertEqual(exactReads, [[
             RecapDraftSkill.idempotencyKey(for: meetingID),
             EmailRecapDraftSkill.idempotencyKey(for: meetingID),
+            SecretGistPublishSkill.idempotencyKey(for: meetingID)
         ]])
         XCTAssertTrue(prefixReads.isEmpty)
 
@@ -50,6 +51,7 @@ final class MeetingSkillOfferTests: XCTestCase {
         XCTAssertEqual(exactReads.last, [
             RecapDraftSkill.idempotencyKey(for: meetingID),
             EmailRecapDraftSkill.idempotencyKey(for: meetingID),
+            SecretGistPublishSkill.idempotencyKey(for: meetingID)
         ])
         XCTAssertEqual(prefixReads, [
             "\(MeetingPackageExportSkill.id):\(meetingID.rawValue.uuidString):",
@@ -74,7 +76,8 @@ final class MeetingSkillOfferTests: XCTestCase {
         let offers = try await LoadMeetingSkillOffers(store: store).execute(
             LoadMeetingSkillOffersRequest(meetingID: meetingID, hasSummary: true))
         XCTAssertEqual(
-            offers.map(\.kind), [.emailRecapDraft, .packageExport],
+            offers.map(\.kind),
+            [.emailRecapDraft, .secretGistPublish, .packageExport],
             "only the dismissed offer disappears")
     }
 
@@ -90,7 +93,7 @@ final class MeetingSkillOfferTests: XCTestCase {
             LoadMeetingSkillOffersRequest(meetingID: meetingID, hasSummary: true))
         XCTAssertEqual(
             oneEnabled.map(\.kind),
-            [.emailRecapDraft, .packageExport])
+            [.emailRecapDraft, .secretGistPublish, .packageExport])
 
         try await store.setAllSkillsPaused(true, at: Date())
         let paused = try await LoadMeetingSkillOffers(store: store).execute(
@@ -102,7 +105,7 @@ final class MeetingSkillOfferTests: XCTestCase {
             LoadMeetingSkillOffersRequest(meetingID: meetingID, hasSummary: true))
         XCTAssertEqual(
             resumed.map(\.kind),
-            [.emailRecapDraft, .packageExport],
+            [.emailRecapDraft, .secretGistPublish, .packageExport],
             "resuming must preserve the individual choice")
     }
 
@@ -132,7 +135,8 @@ final class MeetingSkillOfferTests: XCTestCase {
         let offers = try await LoadMeetingSkillOffers(store: store).execute(
             LoadMeetingSkillOffersRequest(meetingID: meetingID, hasSummary: true))
         XCTAssertEqual(
-            offers.map(\.kind), [.emailRecapDraft, .packageExport],
+            offers.map(\.kind),
+            [.emailRecapDraft, .secretGistPublish, .packageExport],
             "the draft exists; re-drafting is the manual sheet's job")
 
         let receipts = try await LoadMeetingSkillReceipts(store: store)
@@ -183,7 +187,9 @@ final class MeetingSkillOfferTests: XCTestCase {
             LoadMeetingSkillOffersRequest(
                 meetingID: meetingID,
                 hasSummary: true))
-        XCTAssertEqual(offers.map(\.kind), [.recapDraft, .packageExport])
+        XCTAssertEqual(
+            offers.map(\.kind),
+            [.recapDraft, .secretGistPublish, .packageExport])
         let receipts = try await LoadMeetingSkillReceipts(store: store)
             .execute(meetingID)
         XCTAssertEqual(receipts.map(\.skillID), [EmailRecapDraftSkill.id])
@@ -259,9 +265,44 @@ final class MeetingSkillOfferTests: XCTestCase {
         XCTAssertEqual(receipts.map(\.state), [.failed])
     }
 
+    /// A remote create request has no provider idempotency key. Once its
+    /// effect reports an external/ambiguous failure, the durable proposal owns
+    /// the attempt and the offer must not invite a second GitHub mutation.
+    func testFailedSecretGistDoesNotInviteDuplicateRemotePublication() async throws {
+        let store = try MeetingStore.inMemory()
+        let meetingID = MeetingID()
+        let (proposal, key) = MeetingSkillProposalFactory
+            .secretGistPublishProposal(
+                meetingID: meetingID,
+                at: Date())
+
+        let outcome = try await ExecuteSkill(
+            claims: store,
+            policy: store,
+            effects: [
+                SecretGistPublishSkill.id: UnknownRemoteOutcomeSkillEffect()
+            ]
+        ).execute(ExecuteSkillRequest(
+            proposal: proposal,
+            isConfirmedByUser: true,
+            egressIsPermitted: true,
+            idempotencyKey: key))
+        XCTAssertEqual(outcome, .failed(.external))
+
+        let offers = try await LoadMeetingSkillOffers(store: store).execute(
+            LoadMeetingSkillOffersRequest(
+                meetingID: meetingID,
+                hasSummary: true))
+        XCTAssertFalse(offers.contains { $0.kind == .secretGistPublish })
+        let receipts = try await LoadMeetingSkillReceipts(store: store)
+            .execute(meetingID)
+        XCTAssertEqual(receipts.map(\.skillID), [SecretGistPublishSkill.id])
+        XCTAssertEqual(receipts.map(\.state), [.failed])
+    }
+
     /// An executing record means the process may have crossed the handoff
-    /// before it stopped. Re-offering either one-shot draft would invite a
-    /// duplicate clipboard write or external composer with no safe evidence.
+    /// before it stopped. Re-offering any one-shot draft/publication would
+    /// invite a duplicate local handoff or remote mutation with no evidence.
     func testInterruptedOneShotDraftsDoNotInviteDuplicateHandoffs() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
@@ -272,6 +313,9 @@ final class MeetingSkillOfferTests: XCTestCase {
             MeetingSkillProposalFactory.emailRecapDraftProposal(
                 meetingID: meetingID,
                 at: Date(timeIntervalSince1970: 101)),
+            MeetingSkillProposalFactory.secretGistPublishProposal(
+                meetingID: meetingID,
+                at: Date(timeIntervalSince1970: 102))
         ]
         for item in proposals {
             _ = try await store.confirmSkillExecution(
@@ -296,6 +340,7 @@ final class MeetingSkillOfferTests: XCTestCase {
         XCTAssertEqual(Set(receipts.map(\.skillID)), [
             EmailRecapDraftSkill.id,
             RecapDraftSkill.id,
+            SecretGistPublishSkill.id
         ])
         XCTAssertTrue(receipts.allSatisfy { $0.state == .executing })
     }
@@ -329,6 +374,7 @@ final class MeetingSkillOfferTests: XCTestCase {
         let meetingID = MeetingID()
         let recapProposalID = UUID()
         let emailProposalID = UUID()
+        let gistProposalID = UUID()
         let exportProposalID = UUID()
         let now = Date(timeIntervalSince1970: 500)
 
@@ -359,6 +405,23 @@ final class MeetingSkillOfferTests: XCTestCase {
         XCTAssertEqual(
             email.idempotencyKey,
             EmailRecapDraftSkill.idempotencyKey(for: meetingID))
+
+        let gist = MeetingSkillProposalFactory.secretGistPublishProposal(
+            proposalID: gistProposalID,
+            meetingID: meetingID,
+            at: now)
+        XCTAssertEqual(gist.proposal.id, gistProposalID)
+        XCTAssertEqual(gist.proposal.proposedAt, now)
+        XCTAssertEqual(
+            gist.proposal.definition,
+            SecretGistPublishSkill.definition)
+        XCTAssertEqual(
+            gist.proposal.requestedCapabilities,
+            [.readMeetingMaterial, .sendRemote])
+        XCTAssertEqual(gist.proposal.arguments, [.meeting(meetingID)])
+        XCTAssertEqual(
+            gist.idempotencyKey,
+            SecretGistPublishSkill.idempotencyKey(for: meetingID))
 
         let export = MeetingSkillProposalFactory.packageExportProposal(
             proposalID: exportProposalID,
@@ -425,6 +488,12 @@ private struct FailingSkillEffect: SkillEffectPerforming {
 
     func perform(_ proposal: SkillProposal) async throws {
         throw Failure()
+    }
+}
+
+private struct UnknownRemoteOutcomeSkillEffect: SkillEffectPerforming {
+    func perform(_ proposal: SkillProposal) async throws {
+        throw SecretGistPublishError.outcomeUnknown
     }
 }
 

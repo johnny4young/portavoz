@@ -27,6 +27,12 @@ enum UseCaseErrorMessages {
             L10n.text("The meeting does not exist or has no summary.")
         case ExportMeetingDocumentError.meetingNotFound:
             L10n.text("The meeting could not be found.")
+        case AppMeetingDocumentError.missingGitHubToken:
+            L10n.text("Configure your GitHub token in Settings (⌘,) first.")
+        case SecretGistPublishError.invalidDraft,
+             SecretGistPublishError.missingMeeting:
+            L10n.text(
+                "The Gist preview could not be verified. Review a fresh proposal.")
         default:
             error.localizedDescription
         }

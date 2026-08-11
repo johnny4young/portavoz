@@ -169,6 +169,8 @@ struct MeetingDetailFlowHost<Content: View>: View {
                 SkillConfirmSheet(
                     target: target,
                     confirm: { await actions.confirmSkill(target) },
+                    copyText: actions.copyText,
+                    openURL: actions.openURL,
                     dismiss: {
                         flow.skillConfirmTarget = nil
                         flow.sheet = nil
@@ -268,11 +270,16 @@ struct MeetingDetailFlowHost<Content: View>: View {
 
     private var alertMessage: String {
         switch flow.alert {
-        case .gistPublished(let url): url.absoluteString
-        case .summaryNotice(let message), .failure(let message): message
-        case .summarySetup(let issue): issue.message
-        case .renameSpeaker(let speaker): L10n.format("Current label: %@", speaker.label)
-        case nil: ""
+        case .gistPublished(let url):
+            return url.absoluteString
+        case .summaryNotice(let message), .failure(let message):
+            return message
+        case .summarySetup(let issue):
+            return issue.message
+        case .renameSpeaker(let speaker):
+            return L10n.format("Current label: %@", speaker.label)
+        case nil:
+            return ""
         }
     }
 
@@ -281,8 +288,11 @@ struct MeetingDetailFlowHost<Content: View>: View {
         switch flow.alert {
         case .gistPublished(let url):
             Button("Copy link") { actions.copyText(url.absoluteString) }
+                .accessibilityIdentifier("gist-result-copy-link")
             Button("Open") { actions.openURL(url) }
+                .accessibilityIdentifier("gist-result-open-link")
             Button("OK", role: .cancel) {}
+                .accessibilityIdentifier("gist-result-dismiss")
         case .summaryNotice, .failure:
             Button("OK", role: .cancel) {}
         case .summarySetup:

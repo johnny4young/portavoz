@@ -24,12 +24,16 @@ final class PublishMeetingContentUseCaseTests: XCTestCase {
             format: .vtt))
 
         XCTAssertEqual(markdown.filename, "Weekly Sync / Q3.md")
+        XCTAssertEqual(markdown.meetingTitle, "Weekly Sync / Q3")
         XCTAssertEqual(markdown.data, Data("# Weekly Sync".utf8))
         XCTAssertEqual(pdf.filename, "Weekly Sync / Q3.pdf")
+        XCTAssertEqual(pdf.meetingTitle, "Weekly Sync / Q3")
         XCTAssertEqual(pdf.data, Data([1, 2, 3]))
         XCTAssertEqual(srt.filename, "Weekly Sync / Q3.srt")
+        XCTAssertEqual(srt.meetingTitle, "Weekly Sync / Q3")
         XCTAssertEqual(srt.data, Data("1\nfixture".utf8))
         XCTAssertEqual(vtt.filename, "Weekly Sync / Q3.vtt")
+        XCTAssertEqual(vtt.meetingTitle, "Weekly Sync / Q3")
         XCTAssertEqual(vtt.data, Data("WEBVTT\n\nfixture".utf8))
     }
 

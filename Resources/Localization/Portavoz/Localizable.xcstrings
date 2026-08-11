@@ -12380,6 +12380,176 @@
           }
         }
       }
+    },
+    "Don't suggest the Gist again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No volver a sugerir el Gist"
+          }
+        }
+      }
+    },
+    "GitHub may have created the Gist. Check your Gists before publishing again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puede que GitHub haya creado el Gist. Revisa tus Gists antes de volver a publicar."
+          }
+        }
+      }
+    },
+    "Publish a secret Gist…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publicar un Gist secreto…"
+          }
+        }
+      }
+    },
+    "Publish secret Gist": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publicar Gist secreto"
+          }
+        }
+      }
+    },
+    "Publish this secret Gist": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publicar este Gist secreto"
+          }
+        }
+      }
+    },
+    "Publication outcome unknown — check GitHub": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resultado de publicación desconocido — revisa GitHub"
+          }
+        }
+      }
+    },
+    "Publishes this full document as a secret (unlisted) GitHub Gist. Anyone with the link can read it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al publicar, este documento completo se envía a GitHub como un Gist secreto (no listado). Cualquier persona con el enlace puede leerlo."
+          }
+        }
+      }
+    },
+    "Publishes the exact reviewed meeting document as one secret GitHub Gist. Every run asks first.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publica el documento exacto que revisaste como un Gist secreto de GitHub. Cada ejecución vuelve a pedir confirmación."
+          }
+        }
+      }
+    },
+    "Secret Gist publication": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publicación de Gist secreto"
+          }
+        }
+      }
+    },
+    "Secret Gist published": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gist secreto publicado"
+          }
+        }
+      }
+    },
+    "Secret Gist — outcome unknown, check GitHub": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gist secreto — resultado desconocido, revisa GitHub"
+          }
+        }
+      }
+    },
+    "Secret Gist — published": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gist secreto — publicado"
+          }
+        }
+      }
+    },
+    "The Gist preview could not be verified. Review a fresh proposal.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar la vista previa del Gist. Revisa una propuesta nueva."
+          }
+        }
+      }
+    },
+    "The Gist was created, but its local receipt is incomplete. Check GitHub before continuing.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El Gist se creó, pero su recibo local está incompleto. Revisa GitHub antes de continuar."
+          }
+        }
+      }
+    },
+    "This Gist attempt may have reached GitHub. Check your Gists before publishing again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este intento de Gist puede haber llegado a GitHub. Revisa tus Gists antes de volver a publicar."
+          }
+        }
+      }
+    },
+    "creates one secret GitHub Gist": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "crea un Gist secreto de GitHub"
+          }
+        }
+      }
+    },
+    "the full document leaves this Mac": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "el documento completo sale de esta Mac"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

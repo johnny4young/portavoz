@@ -54,6 +54,8 @@ final class MeetingDetailFlowState {
     /// control instead of publishing it only behind the modal sheet.
     enum SkillConfirmationResult: Equatable {
         case succeeded
+        case gistPublished(URL)
+        case gistOutcomeUnknown(outputURL: URL?, message: String)
         case failed(String)
     }
 

@@ -165,10 +165,19 @@ public enum ExportMeetingDocumentResult: Equatable, Sendable {
 public struct PreparedMeetingDocument: Equatable, Sendable {
     public let data: Data
     public let filename: String
+    /// The exact title from the read-consistent projection. Remote publication
+    /// uses it as the description instead of trying to recover product data
+    /// from a filesystem-safe suggested filename.
+    public let meetingTitle: String
 
-    public init(data: Data, filename: String) {
+    public init(
+        data: Data,
+        filename: String,
+        meetingTitle: String = ""
+    ) {
         self.data = data
         self.filename = filename
+        self.meetingTitle = meetingTitle
     }
 }
 
@@ -217,12 +226,14 @@ public struct PrepareMeetingDocument: ApplicationUseCase {
             let markdown = try await documents.markdown(from: content)
             return PreparedMeetingDocument(
                 data: Data(markdown.utf8),
-                filename: "\(detail.meeting.title).md")
+                filename: "\(detail.meeting.title).md",
+                meetingTitle: detail.meeting.title)
         case .pdf:
             let markdown = try await documents.markdown(from: content)
             return PreparedMeetingDocument(
                 data: try await documents.pdf(fromMarkdown: markdown),
-                filename: "\(detail.meeting.title).pdf")
+                filename: "\(detail.meeting.title).pdf",
+                meetingTitle: detail.meeting.title)
         case .srt, .vtt:
             guard let subtitleFormat = request.format.subtitleFormat else {
                 preconditionFailure("subtitle branch requires a subtitle format")
@@ -231,7 +242,8 @@ public struct PrepareMeetingDocument: ApplicationUseCase {
                 from: content, format: subtitleFormat)
             return PreparedMeetingDocument(
                 data: Data(subtitles.utf8),
-                filename: "\(detail.meeting.title).\(request.format.filenameExtension)")
+                filename: "\(detail.meeting.title).\(request.format.filenameExtension)",
+                meetingTitle: detail.meeting.title)
         }
     }
 }

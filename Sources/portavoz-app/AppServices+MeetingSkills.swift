@@ -5,7 +5,7 @@ import IntegrationsKit
 import PortavozCore
 import StorageKit
 
-/// Q12/D316/D327 — app-side composition of meeting-scoped Skills.
+/// Q12/D316/D327/D328 — app-side composition of meeting-scoped Skills.
 ///
 /// Everything here is an adapter: ApplicationKit owns policy and execution;
 /// the app contributes pasteboard, file-system, email-composer, and store
@@ -53,6 +53,9 @@ extension AppServices {
                 .recapMaterial(for: offer.meetingID)
             else { throw EmailRecapDraftError.noSummaryToRecap }
             return AppConfirmedEmailRecapMaterial(source: source).preview
+        case .secretGistPublish:
+            return .secretGist(try await secretGistDraft(
+                for: offer.meetingID))
         case .packageExport:
             guard let destination else {
                 throw MeetingPackageExportError.missingDestination
@@ -64,32 +67,57 @@ extension AppServices {
         }
     }
 
-    /// Runs one confirmed offer through the durable execution machinery.
-    /// Returns nil on success, or the localized failure the sheet shows.
+    /// Runs one confirmed offer through the durable execution machinery and
+    /// distinguishes retryable local failures from ambiguous remote outcomes.
     func performMeetingDetailSkill(
         _ offer: MeetingSkillOffer,
         proposalID: UUID,
         proposedAt: Date,
         preview: MeetingSkillPreview,
         destination: String?
-    ) async throws -> String? {
+    ) async throws -> MeetingDetailSkillExecutionResult {
         guard let plan = try await meetingSkillExecutionPlan(
             offer,
             requestedProposalID: proposalID,
             proposedAt: proposedAt,
             preview: preview,
             destination: destination)
-        else { return staleSkillProposalFailure }
-        let outcome = try await ExecuteSkill(
-            claims: store,
-            policy: store,
-            effects: plan.effects
-        ).execute(ExecuteSkillRequest(
-            proposal: plan.proposal,
-            isConfirmedByUser: true,
-            egressIsPermitted: plan.egressIsPermitted,
-            idempotencyKey: plan.idempotencyKey))
-        return meetingSkillFailure(for: outcome, offer: offer)
+        else { return .retryableFailure(staleSkillProposalFailure) }
+        let outcome: SkillExecutionOutcome
+        do {
+            outcome = try await ExecuteSkill(
+                claims: store,
+                policy: store,
+                effects: plan.effects
+            ).execute(ExecuteSkillRequest(
+                proposal: plan.proposal,
+                isConfirmedByUser: true,
+                egressIsPermitted: plan.egressIsPermitted,
+                idempotencyKey: plan.idempotencyKey))
+        } catch {
+            if offer.kind == .secretGistPublish,
+               let output = plan.output,
+               await output.remoteAttemptStarted() {
+                // Once the effect starts, a transport or settlement failure
+                // cannot prove that GitHub created nothing. Keep the attempt
+                // non-retryable even when no response URL reached the actor.
+                let outputURL = await output.outputURL()
+                return .outcomeUnknown(
+                    message: outputURL == nil
+                        ? L10n.text(
+                            "This Gist attempt may have reached GitHub. Check your Gists before publishing again.")
+                        : L10n.text(
+                            // swiftlint:disable:next line_length
+                            "The Gist was created, but its local receipt is incomplete. Check GitHub before continuing."),
+                    outputURL: outputURL)
+            }
+            throw error
+        }
+        let outputURL = await plan.output?.outputURL()
+        return meetingSkillResult(
+            for: outcome,
+            offer: offer,
+            outputURL: outputURL)
     }
 
     private func meetingSkillExecutionPlan(
@@ -108,6 +136,12 @@ extension AppServices {
                 preview: preview)
         case .emailRecapDraft:
             try await emailRecapSkillExecutionPlan(
+                offer,
+                requestedProposalID: requestedProposalID,
+                proposedAt: proposedAt,
+                preview: preview)
+        case .secretGistPublish:
+            try await secretGistSkillExecutionPlan(
                 offer,
                 requestedProposalID: requestedProposalID,
                 proposedAt: proposedAt,
@@ -225,6 +259,81 @@ extension AppServices {
             ])
     }
 
+    private func secretGistSkillExecutionPlan(
+        _ offer: MeetingSkillOffer,
+        requestedProposalID: UUID,
+        proposedAt: Date,
+        preview: MeetingSkillPreview
+    ) async throws -> AppMeetingSkillExecutionPlan? {
+        let draft = try await secretGistDraft(for: offer.meetingID)
+        guard preview == .secretGist(draft) else { return nil }
+        let key = SecretGistPublishSkill.idempotencyKey(
+            for: offer.meetingID)
+        let durableProposalID = try await skillProposalID(
+            requested: requestedProposalID,
+            idempotencyKey: key)
+        let proposal = MeetingSkillProposalFactory.secretGistPublishProposal(
+            proposalID: durableProposalID,
+            meetingID: offer.meetingID,
+            at: proposedAt).proposal
+        let publisher = AppSecretGistSkillPublisher(
+            documents: gistDocumentPublisherForSkill(
+                proposalID: durableProposalID))
+        // Credential failure is known to be pre-egress and remains safely
+        // retryable. Once this succeeds, the effect wraps every later failure
+        // as outcome-unknown because the attempt receipt precedes URLSession.
+        try await publisher.prepare()
+        return AppMeetingSkillExecutionPlan(
+            proposal: proposal,
+            idempotencyKey: key,
+            egressIsPermitted: true,
+            effects: [
+                SecretGistPublishSkill.id: SecretGistPublishEffect(
+                    draft: draft,
+                    publisher: publisher)
+            ],
+            output: publisher)
+    }
+
+    private func secretGistDraft(
+        for meetingID: MeetingID
+    ) async throws -> SecretGistDraft {
+        let document = try await prepareMeetingDetailDocument(
+            meetingID,
+            format: .markdown,
+            options: MeetingDocumentOptions())
+        guard let markdown = String(data: document.data, encoding: .utf8),
+              !document.meetingTitle.isEmpty
+        else { throw SecretGistPublishError.invalidDraft }
+        let draft = SecretGistDraft(
+            meetingID: meetingID,
+            markdown: markdown,
+            filename: "\(ExportMeetingDocument.slug(document.meetingTitle)).md",
+            description: document.meetingTitle)
+        guard draft.isValid else { throw SecretGistPublishError.invalidDraft }
+        return draft
+    }
+
+    private func gistDocumentPublisherForSkill(
+        proposalID: UUID
+    ) -> any MeetingDocumentPublishing {
+        let eventID = DataEgressEventID(rawValue: proposalID)
+        guard !usesTemporaryMeetingStore else {
+            return AppDisposableGistDocumentPublisher(
+                store: store,
+                eventID: eventID)
+        }
+        // The proposal UUID is also the immutable egress-attempt UUID. The
+        // dataEgressEvent primary key is written before URLSession, so retrying
+        // an ambiguous remote attempt fails closed before a second transport.
+        let gateway = URLSessionDataEgressGateway(
+            receiptRecorder: store,
+            makeEventID: { eventID })
+        return AppGistDocumentPublisher(
+            secrets: secrets,
+            gateway: gateway)
+    }
+
     /// A failed/confirmed/interrupted execution keeps ownership of its unique
     /// effect key even if SwiftUI reconstructs the sheet. Reattach to that
     /// durable proposal; never ask storage to transfer the claim to a new UUID.
@@ -236,24 +345,40 @@ extension AppServices {
             .proposalID ?? requested
     }
 
-    private func meetingSkillFailure(
+    private func meetingSkillResult(
         for outcome: SkillExecutionOutcome,
-        offer: MeetingSkillOffer
-    ) -> String? {
+        offer: MeetingSkillOffer,
+        outputURL: URL?
+    ) -> MeetingDetailSkillExecutionResult {
         switch outcome {
         case .performed, .alreadySettled(.succeeded):
-            return nil
+            return .succeeded(outputURL: outputURL)
+        case .failed(.external) where offer.kind == .secretGistPublish:
+            return .outcomeUnknown(
+                message: L10n.text(
+                    "GitHub may have created the Gist. Check your Gists before publishing again."),
+                outputURL: outputURL)
+        case .alreadySettled(.executing)
+            where offer.kind == .secretGistPublish,
+             .alreadySettled(.failed)
+            where offer.kind == .secretGistPublish:
+            return .outcomeUnknown(
+                message: L10n.text(
+                    "This Gist attempt may have reached GitHub. Check your Gists before publishing again."),
+                outputURL: outputURL)
         case .refused(.allSkillsPaused):
-            return L10n.text("Skills are paused in Settings.")
+            return .retryableFailure(L10n.text("Skills are paused in Settings."))
         case .refused(.skillDisabled):
-            return L10n.text("This skill is disabled in Settings.")
+            return .retryableFailure(L10n.text(
+                "This skill is disabled in Settings."))
         case .alreadySettled, .refused, .rejected:
-            return staleSkillProposalFailure
+            return .retryableFailure(staleSkillProposalFailure)
         case .failed where offer.kind == .emailRecapDraft:
-            return L10n.text(
-                "The email draft could not be opened. Portavoz did not send it.")
+            return .retryableFailure(L10n.text(
+                "The email draft could not be opened. Portavoz did not send it."))
         case .failed:
-            return L10n.text("The skill ran and failed. Nothing left Portavoz.")
+            return .retryableFailure(L10n.text(
+                "The skill ran and failed. Nothing left Portavoz."))
         }
     }
 
@@ -277,6 +402,121 @@ private struct AppMeetingSkillExecutionPlan {
     let idempotencyKey: String
     let egressIsPermitted: Bool
     let effects: [String: any SkillEffectPerforming]
+    let output: (any AppMeetingSkillOutputReading)?
+
+    init(
+        proposal: SkillProposal,
+        idempotencyKey: String,
+        egressIsPermitted: Bool,
+        effects: [String: any SkillEffectPerforming],
+        output: (any AppMeetingSkillOutputReading)? = nil
+    ) {
+        self.proposal = proposal
+        self.idempotencyKey = idempotencyKey
+        self.egressIsPermitted = egressIsPermitted
+        self.effects = effects
+        self.output = output
+    }
+}
+
+protocol AppMeetingSkillOutputReading: Sendable {
+    func remoteAttemptStarted() async -> Bool
+    func outputURL() async -> URL?
+}
+
+/// Adapts the existing canonical Gist publisher to one exact approved Skill
+/// draft and retains only the transient response URL for immediate UI output.
+actor AppSecretGistSkillPublisher: SecretGistPublishing,
+    AppMeetingSkillOutputReading {
+    private let documents: any MeetingDocumentPublishing
+    private var didStartRemoteAttempt = false
+    private var resultURL: URL?
+
+    init(documents: any MeetingDocumentPublishing) {
+        self.documents = documents
+    }
+
+    func prepare() async throws {
+        try await documents.prepare()
+    }
+
+    func publish(_ draft: SecretGistDraft) async throws -> URL {
+        didStartRemoteAttempt = true
+        do {
+            let url = try await documents.publish(
+                meetingID: draft.meetingID,
+                markdown: draft.markdown,
+                filename: draft.filename,
+                description: draft.description)
+            resultURL = url
+            return url
+        } catch {
+            throw SecretGistPublishError.outcomeUnknown
+        }
+    }
+
+    func remoteAttemptStarted() async -> Bool { didStartRemoteAttempt }
+    func outputURL() async -> URL? { resultURL }
+}
+
+/// UI automation publishes nowhere. It still consumes the exact canonical
+/// draft through the same application/effect stack and returns a stable URL.
+private struct AppDisposableGistDocumentPublisher: MeetingDocumentPublishing {
+    let store: MeetingStore
+    let eventID: DataEgressEventID
+
+    func publish(
+        meetingID: MeetingID,
+        markdown: String,
+        filename: String,
+        description: String
+    ) async throws -> URL {
+        guard !markdown.isEmpty,
+              filename.hasSuffix(".md"),
+              !description.isEmpty
+        else { throw SecretGistPublishError.invalidDraft }
+        return try await GistPublisher(
+            token: "disposable-uitest-token",
+            gateway: AppDisposableGistEgressGateway(
+                store: store,
+                eventID: eventID)
+        ).publish(
+            meetingID: meetingID,
+            markdown: markdown,
+            filename: filename,
+            description: description)
+    }
+}
+
+/// Deterministic transport substitute for disposable stores. It records the
+/// same content-free egress attempt as production, validates the fixed Gist
+/// contract, and returns a provider-shaped response without touching network.
+private struct AppDisposableGistEgressGateway: DataEgressGateway {
+    let store: MeetingStore
+    let eventID: DataEgressEventID
+
+    func perform(
+        _ networkRequest: URLRequest,
+        metadata: DataEgressRequest
+    ) async throws -> DataEgressResponse {
+        guard networkRequest.url == URL(string: "https://api.github.com/gists"),
+              networkRequest.httpMethod == "POST",
+              networkRequest.httpBody?.isEmpty == false,
+              metadata.operation == .publishGitHubGist,
+              metadata.dataClassification == .meetingExportDocument,
+              metadata.consentSource == .explicitGistPublish,
+              metadata.destination.url == networkRequest.url,
+              metadata.providerDisclosure.providerID == SecretGistDraft.destinationHost,
+              metadata.meetingID != nil
+        else { throw SecretGistPublishError.invalidDraft }
+        try await store.recordDataEgressEvent(DataEgressEvent(
+            id: eventID,
+            request: metadata,
+            attemptedAt: Date()))
+        let payload = Data(
+            #"{"html_url":"https://gist.github.com/portavoz/skill-preview"}"#.utf8)
+        return DataEgressResponse(data: payload, statusCode: 201)
+    }
 }
 
 extension AppServices {

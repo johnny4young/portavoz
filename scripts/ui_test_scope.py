@@ -177,6 +177,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "MeetingDetailUITests",
+            "testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument",
+        ),
+        test_id(
+            "MeetingDetailUITests",
             "testFailedSkillEffectRetriesItsOriginalProposal",
         ),
     ),

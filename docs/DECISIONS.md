@@ -11560,3 +11560,75 @@ standing rule, unattended egress, recipient automation, or background network
 work. Physical default-client availability, draft presentation, and handoff on
 Sequoia and Tahoe remain explicit field evidence; local automation must not be
 reported as proof of those system-owned surfaces.
+
+## D328 — A secret-Gist Skill is exact, one-shot, and fail-closed after egress (Aug 2026)
+
+**Context:** Portavoz already had a manual GitHub Gist exporter, a Keychain
+token, a canonical correction-aware Markdown renderer, and a data-egress
+gateway that persists a content-free attempt before `URLSession`. AUTO-4b
+needed to make that capability proposal-driven without adding another
+renderer, a second network stack, reusable consent, or a false promise that a
+timed-out `POST /gists` did not create anything. GitHub's create-Gist endpoint
+does not accept a caller-owned idempotency key, so ordinary automatic retry is
+not safe after transport becomes possible.
+
+**Decision:** `SecretGistPublishSkill` is the second definition in
+`ExternalSkills`. It declares `readMeetingMaterial` and `sendRemote`, requires
+`explicitPerProposal` confirmation, accepts exactly one meeting UUID, and owns
+one meeting-scoped one-shot key. The confirmation preview is a typed
+`SecretGistDraft`: the exact canonical Markdown bytes, slugged `.md` filename,
+meeting-title description, and fixed `api.github.com` destination. It states
+that the Gist is secret only in GitHub's unlisted sense and that anyone holding
+the URL can read it. Enabling the Settings row never authorizes publication.
+The complete Markdown stays selectable in a read-only TextKit viewport, which
+avoids one monolithic SwiftUI `Text` layout for long transcripts without
+truncating or changing the material being approved.
+
+Preview and effect reuse `PrepareMeetingDocument`, `AppGistDocumentPublisher`,
+`GistPublisher`, and `URLSessionDataEgressGateway`. Confirmation re-renders the
+current meeting and compares the complete typed draft before resolving or
+writing any Skill claim. The GitHub token is loaded from Keychain during
+publisher preparation before `ExecuteSkill`; a missing token is therefore a
+known pre-egress failure and can be retried after configuration. No token,
+Markdown, filename, description, or returned URL enters a durable Skill or
+privacy receipt.
+
+The exact proposal UUID also becomes the `DataEgressEventID`. The gateway
+inserts that UUID into `dataEgressEvent` before `URLSession` can observe the
+request. If confirmation is reconstructed or a prior attempt is replayed, the
+stable Skill key reattaches to its original proposal owner; a duplicate egress
+UUID then fails at the local primary key before a second transport. This is a
+fail-closed duplicate fence, not a claim that GitHub supports request
+idempotency.
+
+After publisher preparation, every provider, response-decoding, settlement,
+interruption, or transport failure is conservatively **outcome unknown**. A
+failed or still-executing Gist receipt suppresses the offer and never exposes
+an automatic or in-sheet retry; the UI tells the user to inspect GitHub first.
+When GitHub returned a URL but local success settlement failed, that URL remains
+available only in the confirmation sheet's terminal result surface while the
+receipt stays honest. A clean 201 plus local settlement transitions that same
+sheet to the returned URL and records both the content-free egress attempt and
+the ordinary Skill success. Keeping the terminal result inside the existing
+sheet avoids racing a second presentation controller against sheet dismissal.
+
+Disposable UI composition still runs the real proposal, canonical renderer,
+`GistPublisher` request codec, egress metadata checks, durable disposable
+receipts, effect, and settlement. Its gateway substitutes only transport with
+a provider-shaped 201 response and stable fake URL; it cannot touch the host
+network or Keychain. Unit and architecture gates pin exact preview/effect
+identity, pre-claim drift refusal, proposal-to-egress UUID equality, no second
+transport after replay, typed ambiguous outcomes, canonical endpoint reuse,
+and removal of endpoint force unwraps. Bilingual XCUITest pins the complete
+Markdown, filename, host, audience warning, localized action, result URL,
+Skill receipt, privacy egress receipt, Settings status, and independent offer
+retirement.
+
+**Consequences:** Portavoz can publish exactly one reviewed secret Gist without
+becoming an autonomous exporter. There is no new schema, token store, renderer,
+transport, standing rule, background task, or unattended retry. The code uses
+only APIs available at the macOS 14 deployment target, so it introduces no new
+Sequoia/Tahoe availability split. Real GitHub authentication, provider response,
+network interruption, browser opening, and result presentation on physical
+Sequoia and Tahoe remain explicit field evidence and must not be inferred from
+the disposable adapter.

@@ -273,6 +273,7 @@ struct SkillsSettingsSection: View {
         switch skillID {
         case RecapDraftSkill.id: L10n.text("Recap draft")
         case EmailRecapDraftSkill.id: L10n.text("Email recap draft")
+        case SecretGistPublishSkill.id: L10n.text("Secret Gist publication")
         case MeetingPackageExportSkill.id: L10n.text("Text-only meeting package")
         case ReminderDraftSkill.id: L10n.text("Reminder draft")
         case PreMeetingBriefSkill.id: L10n.text("Pre-meeting brief")
@@ -287,6 +288,9 @@ struct SkillsSettingsSection: View {
         case EmailRecapDraftSkill.id:
             L10n.text(
                 "Opens the exact reviewed recap in your email app with no recipients. Portavoz never sends it.")
+        case SecretGistPublishSkill.id:
+            L10n.text(
+                "Publishes the exact reviewed meeting document as one secret GitHub Gist. Every run asks first.")
         case MeetingPackageExportSkill.id:
             L10n.text("Writes a text-only package to the destination you approve.")
         case ReminderDraftSkill.id:
@@ -302,6 +306,7 @@ struct SkillsSettingsSection: View {
         switch skillID {
         case RecapDraftSkill.id: "doc.on.clipboard"
         case EmailRecapDraftSkill.id: "envelope.open"
+        case SecretGistPublishSkill.id: "chevron.left.forwardslash.chevron.right"
         case MeetingPackageExportSkill.id: "shippingbox"
         case ReminderDraftSkill.id: "checklist"
         case PreMeetingBriefSkill.id: "calendar.badge.clock"
@@ -310,13 +315,8 @@ struct SkillsSettingsSection: View {
     }
 
     private func receiptStatus(_ receipt: SkillControlCenterReceipt) -> String {
-        if receipt.skillID == EmailRecapDraftSkill.id {
-            switch receipt.state {
-            case .succeeded: return L10n.text("Handoff requested")
-            case .failed: return L10n.text("Email app did not open")
-            case .executing: return L10n.text("Handoff status unknown")
-            default: break
-            }
+        if let externalStatus = externalReceiptStatus(receipt) {
+            return externalStatus
         }
         return switch receipt.state {
         case .proposed: L10n.text("Proposed — nothing ran")
@@ -326,6 +326,26 @@ struct SkillsSettingsSection: View {
         case .succeeded: L10n.text("Succeeded")
         case .failed: L10n.text("Failed — retry is available")
         case .dismissed: L10n.text("Cancelled — nothing ran")
+        }
+    }
+
+    private func externalReceiptStatus(
+        _ receipt: SkillControlCenterReceipt
+    ) -> String? {
+        switch (receipt.skillID, receipt.state) {
+        case (EmailRecapDraftSkill.id, .succeeded):
+            L10n.text("Handoff requested")
+        case (EmailRecapDraftSkill.id, .failed):
+            L10n.text("Email app did not open")
+        case (EmailRecapDraftSkill.id, .executing):
+            L10n.text("Handoff status unknown")
+        case (SecretGistPublishSkill.id, .succeeded):
+            L10n.text("Secret Gist published")
+        case (SecretGistPublishSkill.id, .failed),
+             (SecretGistPublishSkill.id, .executing):
+            L10n.text("Publication outcome unknown — check GitHub")
+        default:
+            nil
         }
     }
 

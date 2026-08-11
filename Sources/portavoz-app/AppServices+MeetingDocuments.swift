@@ -89,7 +89,7 @@ private struct AppMeetingDocumentRenderer: MeetingDocumentRendering {
     }
 }
 
-private actor AppGistDocumentPublisher: MeetingDocumentPublishing {
+actor AppGistDocumentPublisher: MeetingDocumentPublishing {
     let secrets: ManageSecrets
     let gateway: any DataEgressGateway
     private var publisher: GistPublisher?

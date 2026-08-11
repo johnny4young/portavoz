@@ -261,7 +261,20 @@ visible release blocker rather than being inferred from deterministic tests.
   different default client if available, and with composition unavailable to
   require a visible recoverable failure rather than a success claim. Never use
   the notarized release app or a real private meeting for this proof.
-- **Real export**: `export --gist` / "Publicar como Gist" with a token; `issues --github/--linear` with tokens against a test repo.
+- **Review-first Secret Gist and real export (D328/D69)**: deterministic
+  bilingual XCUITest executes the canonical renderer, Gist request codec,
+  egress metadata, durable Skill/privacy receipts, and provider-shaped success
+  through a disposable gateway, but never reads the host token or reaches
+  GitHub. On physical Sequoia and Tahoe Dev builds, configure a test-only token
+  and copied/test meeting, verify the complete Markdown/filename/host/audience
+  preview, publish once, and require one secret Gist with byte-for-byte content,
+  a working returned URL, one Skill success, and one matching privacy event.
+  Repeat with a missing token (known retryable before claim), a revoked token,
+  offline transport, and an interrupted/late response; every post-attempt
+  failure must say outcome unknown, retire the offer, and require inspecting
+  GitHub before any manual retry. Then exercise `export --gist` and
+  `issues --github/--linear` with test repositories. Never use the notarized
+  release app, production credentials, or a real private meeting for this proof.
 - **Summary fingerprint drift (D288)**: two of 47 real local meetings had their
   only automatic summary job cancelled as `processing.input.superseded` seconds
   after capture, with no transcript correction in their history. Recomputing

@@ -46,6 +46,9 @@ public enum SkillCatalogue {
             availability: .available),
         SkillCatalogueEntry(
             definition: EmailRecapDraftSkill.definition,
+            availability: .available),
+        SkillCatalogueEntry(
+            definition: SecretGistPublishSkill.definition,
             availability: .available)
     ]
 }

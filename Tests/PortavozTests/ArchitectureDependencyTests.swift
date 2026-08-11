@@ -4258,14 +4258,21 @@ final class ArchitectureDependencyTests: XCTestCase {
             XCTAssertFalse(external.contains(forbidden), forbidden)
         }
 
-        XCTAssertTrue(appAdapter.contains(
+        let systemOpenerStart = try XCTUnwrap(
+            appAdapter.range(of: "struct AppSystemEmailDraftOpener"))
+        let disposableOpenerStart = try XCTUnwrap(appAdapter.range(
+            of: "private struct AppDisposableEmailDraftOpener",
+            range: systemOpenerStart.upperBound..<appAdapter.endIndex))
+        let systemOpener = appAdapter[
+            systemOpenerStart.lowerBound..<disposableOpenerStart.lowerBound]
+        XCTAssertTrue(systemOpener.contains(
             "let service = NSSharingService(named: .composeEmail)"))
-        XCTAssertTrue(appAdapter.contains("service.recipients = []"))
-        XCTAssertTrue(appAdapter.contains("service.subject = subject"))
-        XCTAssertTrue(appAdapter.contains("service.perform(withItems: items)"))
+        XCTAssertTrue(systemOpener.contains("service.recipients = []"))
+        XCTAssertTrue(systemOpener.contains("service.subject = subject"))
+        XCTAssertTrue(systemOpener.contains("service.perform(withItems: items)"))
         XCTAssertTrue(appAdapter.contains("AppDisposableEmailDraftOpener"))
-        XCTAssertFalse(appAdapter.contains("URLSession"))
-        XCTAssertFalse(appAdapter.contains("NSAppleScript"))
+        XCTAssertFalse(systemOpener.contains("URLSession"))
+        XCTAssertFalse(systemOpener.contains("NSAppleScript"))
 
         XCTAssertTrue(sheet.contains(
             "skill-confirm-email-recipient-policy"))
@@ -4275,6 +4282,59 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Email recap draft — handoff status unknown"))
         XCTAssertTrue(settings.contains("Handoff status unknown"))
         XCTAssertTrue(decisions.contains("## D327"))
+    }
+
+    func testSecretGistSkillReusesCanonicalEgressAndCannotDuplicateTransport() throws {
+        let external = try Self.contents(
+            of: "Sources/ApplicationKit/ExternalSkills.swift")
+        let appAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingSkills.swift")
+        let documents = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingDocuments.swift")
+        let publisher = try Self.contents(
+            of: "Sources/IntegrationsKit/GistPublisher.swift")
+        let sheet = try Self.contents(
+            of: "Sources/portavoz-app/SkillConfirmSheet.swift")
+        let coordinator = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailCoordinator+Skills.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(external.contains("SecretGistPublishSkill.definition"))
+        XCTAssertTrue(external.contains("SecretGistPublishing"))
+        XCTAssertTrue(external.contains("case outcomeUnknown"))
+        XCTAssertFalse(external.contains("GistPublisher("))
+        XCTAssertFalse(external.contains("URLSession"))
+        XCTAssertTrue(appAdapter.contains(
+            "let eventID = DataEgressEventID(rawValue: proposalID)"))
+        XCTAssertTrue(appAdapter.contains(
+            "URLSessionDataEgressGateway("))
+        XCTAssertTrue(appAdapter.contains("makeEventID: { eventID }"))
+        XCTAssertTrue(appAdapter.contains("AppSecretGistSkillPublisher"))
+        XCTAssertTrue(appAdapter.contains("didStartRemoteAttempt = true"))
+        XCTAssertTrue(appAdapter.contains("await output.remoteAttemptStarted()"))
+        XCTAssertTrue(appAdapter.contains("AppDisposableGistEgressGateway"))
+        XCTAssertTrue(documents.contains("GistPublisher(token: token, gateway: gateway)"))
+        XCTAssertFalse(appAdapter.contains("URLSession.shared"))
+        XCTAssertFalse(appAdapter.contains("NSAppleScript"))
+        XCTAssertFalse(publisher.contains("request.url!"))
+        XCTAssertFalse(publisher.contains(
+            "URL(string: \"https://api.github.com/gists\")!"))
+        XCTAssertTrue(sheet.contains("skill-confirm-gist-destination"))
+        XCTAssertTrue(sheet.contains("skill-confirm-gist-boundary"))
+        XCTAssertTrue(sheet.contains("the full document leaves this Mac"))
+        XCTAssertTrue(sheet.contains("ReadOnlySkillDocumentText"))
+        XCTAssertTrue(sheet.contains("textView.isEditable = false"))
+        XCTAssertTrue(sheet.contains("textView.isSelectable = true"))
+        for resultControl in [
+            "gist-result-url", "gist-result-copy-link",
+            "gist-result-open-link", "gist-result-dismiss",
+        ] {
+            XCTAssertTrue(sheet.contains(resultControl), resultControl)
+        }
+        XCTAssertTrue(coordinator.contains("return .gistPublished(outputURL)"))
+        XCTAssertTrue(coordinator.contains("return .gistOutcomeUnknown("))
+        XCTAssertFalse(coordinator.contains("flow.alert"))
+        XCTAssertTrue(decisions.contains("## D328"))
     }
 
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {
@@ -7543,7 +7603,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            413)
+            429)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             14)

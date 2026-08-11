@@ -160,6 +160,9 @@ final class AppServices {
     /// automation receives an inert recorder and cannot open the host client.
     @ObservationIgnored let emailRecapDraftDelivery:
         any EmailRecapDraftDelivering
+    /// Retained only as a composition decision. Disposable automation must
+    /// never resolve a real GitHub credential or transport.
+    @ObservationIgnored let usesTemporaryMeetingStore: Bool
     /// Whole-library export state outlives Settings windows so closing a pane
     /// cannot cancel publication or start a competing backup.
     let libraryMarkdownBackup: LibraryMarkdownBackupModel
@@ -272,14 +275,14 @@ final class AppServices {
             environment: environment,
             override: storagePolicy)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
+        usesTemporaryMeetingStore = usesTemporaryStore
         // Open the authority before constructing process runtimes or installing
         // global telemetry. A failed retry therefore leaves no half-composed
         // service graph, model task, sensitive store, or background owner.
         store = try Self.makeMeetingStore(storagePolicy: storagePolicy)
         let workloadTelemetry = AppResourceWorkloadTelemetry.shared.telemetry
         self.workloadTelemetry = workloadTelemetry
-        IntelligenceScheduler.installSharedTelemetry(workloadTelemetry)
-        transcriptionScheduler = TranscriptionScheduler(telemetry: workloadTelemetry)
+        transcriptionScheduler = Self.makeTranscriptionScheduler(telemetry: workloadTelemetry)
         let modelStore = Self.makeModelStore(usesTemporaryStore: storagePolicy.usesTemporaryModelStore)
         self.modelStore = modelStore
         modelLifecycle = VerifiedModelLifecycle(store: modelStore)
@@ -292,9 +295,9 @@ final class AppServices {
         voiceGallery = sensitiveStorage.voiceGallery
         commitmentReminders = Self.makeCommitmentReminderModel(
             store: store,
-            usesTemporaryStore: usesTemporaryStore)
+            usesTemporaryStore: usesTemporaryMeetingStore)
         let semanticSearch = Self.makeSemanticSearchComposition(
-            store: store, usesTemporaryStore: usesTemporaryStore,
+            store: store, usesTemporaryStore: usesTemporaryMeetingStore,
             semanticRuntime: semanticEmbeddingRuntime, telemetry: workloadTelemetry, captureState: resourceCaptureState)
         semanticIndexingCoordinator = semanticSearch.coordinator
         semanticIndexingSupervisor = semanticSearch.background
@@ -330,6 +333,13 @@ final class AppServices {
             enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable,
             telemetry: workloadTelemetry)
         scheduleInitialReadinessRefresh()
+    }
+
+    private static func makeTranscriptionScheduler(
+        telemetry: ResourceWorkloadTelemetry
+    ) -> TranscriptionScheduler {
+        IntelligenceScheduler.installSharedTelemetry(telemetry)
+        return TranscriptionScheduler(telemetry: telemetry)
     }
 
     private static func prepareStoragePolicy(

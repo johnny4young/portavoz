@@ -13,7 +13,7 @@ extension MeetingDetailCoordinator {
         detail: MeetingReviewReadModel
     ) {
         switch offer.kind {
-        case .recapDraft, .emailRecapDraft:
+        case .recapDraft, .emailRecapDraft, .secretGistPublish:
             presentSkillSheet(offer, destination: nil)
         case .packageExport:
             let panel = NSSavePanel()
@@ -48,12 +48,30 @@ extension MeetingDetailCoordinator {
                 proposedAt: target.proposedAt,
                 preview: target.preview,
                 destination: target.destination))
-        guard case .skillPerformed = effect else {
+        switch effect {
+        case .skillPerformed(let offer, let outputURL):
+            guard offer.kind == .secretGistPublish else {
+                return .succeeded
+            }
+            guard let outputURL else {
+                return .gistOutcomeUnknown(
+                    outputURL: nil,
+                    message: L10n.text(
+                        "This Gist attempt may have reached GitHub. Check your Gists before publishing again."))
+            }
+            return .gistPublished(outputURL)
+        case .skillOutcomeUnknown(let offer, let message, let outputURL):
+            guard offer.kind == .secretGistPublish else {
+                return .failed(message)
+            }
+            return .gistOutcomeUnknown(
+                outputURL: outputURL,
+                message: message)
+        default:
             return .failed(
                 model.state.lastActionError
                     ?? L10n.text("The skill could not run. Nothing left Portavoz."))
         }
-        return .succeeded
     }
 
     private func presentSkillSheet(

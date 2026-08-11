@@ -2,6 +2,15 @@ import ApplicationKit
 import Foundation
 import PortavozCore
 
+enum MeetingDetailSkillExecutionResult: Equatable, Sendable {
+    case succeeded(outputURL: URL?)
+    case retryableFailure(String)
+    /// A remote mutation may have completed. Automatic and in-sheet retry are
+    /// both forbidden; an optional URL is only available when the provider
+    /// responded before local settlement failed.
+    case outcomeUnknown(message: String, outputURL: URL?)
+}
+
 /// Narrow read/write contract for one Meeting Detail feature instance.
 /// Platform capabilities stay behind `AppServices`; the model sees only
 /// application requests, read projections, and typed results.
@@ -62,7 +71,7 @@ protocol MeetingDetailModelClient: AnyObject {
         proposedAt: Date,
         preview: MeetingSkillPreview,
         destination: String?
-    ) async throws -> String?
+    ) async throws -> MeetingDetailSkillExecutionResult
     func dismissMeetingDetailSkillOffer(_ offer: MeetingSkillOffer) async throws
     func deleteMeetingDetailCompanionCard(_ id: UUID) async throws
     func deleteMeetingDetail(_ id: MeetingID) async throws

@@ -487,23 +487,30 @@ private extension MeetingDetailModel {
 
     /// Runs one confirmed offer and re-reads offers and receipts so the UI
     /// reflects the durable outcome. Returns the effect the sheet closes on.
-    func performSkill(
-        _ offer: MeetingSkillOffer,
-        context: SkillExecutionContext
-    ) async -> Effect? {
+    func performSkill(_ offer: MeetingSkillOffer, context: SkillExecutionContext) async -> Effect? {
         do {
-            let failure = try await client.performMeetingDetailSkill(
-                offer,
-                proposalID: context.proposalID,
-                proposedAt: context.proposedAt,
-                preview: context.preview,
+            let result = try await client.performMeetingDetailSkill(
+                offer, proposalID: context.proposalID,
+                proposedAt: context.proposedAt, preview: context.preview,
                 destination: context.destination)
-            state.lastActionError = failure
-            await loadSkillOffers()
-            return failure == nil ? .skillPerformed(offer) : nil
+            switch result {
+            case .succeeded(let outputURL):
+                state.lastActionError = nil
+                await loadSkillOffers()
+                return .skillPerformed(offer, outputURL: outputURL)
+            case .retryableFailure(let message):
+                state.lastActionError = message
+                await loadSkillOffers()
+                return nil
+            case .outcomeUnknown(let message, let outputURL):
+                state.lastActionError = nil
+                await loadSkillOffers()
+                return .skillOutcomeUnknown(offer, message: message, outputURL: outputURL)
+            }
         } catch {
-            state.lastActionError = L10n.text(
-                "The skill could not run. Nothing left Portavoz.")
+            state.lastActionError = offer.kind == .secretGistPublish
+                ? UseCaseErrorMessages.describe(error)
+                : L10n.text("The skill could not run. Nothing left Portavoz.")
             return nil
         }
     }
@@ -750,10 +757,7 @@ private extension MeetingDetailModel {
 extension MeetingDetailModel {
     /// The exact artifact one offer would produce — read-only, computed for
     /// the confirmation sheet before anything durable exists.
-    func skillPreview(
-        _ offer: MeetingSkillOffer,
-        destination: String?
-    ) async -> MeetingSkillPreview? {
+    func skillPreview(_ offer: MeetingSkillOffer, destination: String?) async -> MeetingSkillPreview? {
         do {
             return try await client.meetingDetailSkillPreview(
                 offer,

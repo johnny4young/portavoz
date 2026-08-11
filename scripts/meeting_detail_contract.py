@@ -167,6 +167,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "tests": [
             "testEmailRecapSkillPreviewsAndHandsOffWithoutSending",
             "testFailedSkillEffectRetriesItsOriginalProposal",
+            "testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument",
             "testSkillProposalJourneyFromBannerToReceipt",
         ],
         "sourceAnchors": [

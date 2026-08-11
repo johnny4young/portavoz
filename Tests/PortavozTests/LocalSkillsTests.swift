@@ -44,6 +44,7 @@ final class LocalSkillsTests: XCTestCase {
         XCTAssertTrue(ExternalSkills.requiresExplicitEgress)
         XCTAssertEqual(ExternalSkills.definitions, [
             EmailRecapDraftSkill.definition,
+            SecretGistPublishSkill.definition
         ])
         for definition in ExternalSkills.definitions {
             XCTAssertTrue(definition.isValid, definition.id)
@@ -70,6 +71,7 @@ final class LocalSkillsTests: XCTestCase {
         XCTAssertTrue(ReminderDraftSkill.definition.isReversible)
         XCTAssertTrue(PreMeetingBriefSkill.definition.isReversible)
         XCTAssertFalse(EmailRecapDraftSkill.definition.isReversible)
+        XCTAssertFalse(SecretGistPublishSkill.definition.isReversible)
 
         let automated = SkillDefinition(
             id: MeetingPackageExportSkill.id,
@@ -113,6 +115,12 @@ final class LocalSkillsTests: XCTestCase {
             EmailRecapDraftSkill.idempotencyKey(for: second))
         XCTAssertEqual(
             EmailRecapDraftSkill.idempotencyKey(for: first),
+            EmailRecapDraftSkill.idempotencyKey(for: first))
+        XCTAssertNotEqual(
+            SecretGistPublishSkill.idempotencyKey(for: first),
+            SecretGistPublishSkill.idempotencyKey(for: second))
+        XCTAssertNotEqual(
+            SecretGistPublishSkill.idempotencyKey(for: first),
             EmailRecapDraftSkill.idempotencyKey(for: first))
 
         // The key normalizes the destination exactly as the projection does,
@@ -186,6 +194,28 @@ final class LocalSkillsTests: XCTestCase {
             ) { error in
                 XCTAssertEqual(
                     error as? EmailRecapDraftError,
+                    .missingMeeting)
+            }
+        }
+    }
+
+    func testSecretGistRequiresExactlyOneMeeting() throws {
+        let meeting = MeetingID()
+        XCTAssertEqual(
+            try SecretGistPublishSkill.meeting(from: [
+                .meeting(meeting), .text("inert material")
+            ]),
+            meeting)
+
+        for arguments in [
+            [SkillArgument.text("no meeting")],
+            [.meeting(MeetingID()), .meeting(MeetingID())]
+        ] {
+            XCTAssertThrowsError(
+                try SecretGistPublishSkill.meeting(from: arguments)
+            ) { error in
+                XCTAssertEqual(
+                    error as? SecretGistPublishError,
                     .missingMeeting)
             }
         }
@@ -436,6 +466,61 @@ final class LocalSkillsTests: XCTestCase {
         let delivered = await delivery.recaps
         XCTAssertTrue(delivered.isEmpty)
     }
+
+    func testSecretGistEffectPublishesOnlyTheExactApprovedDraft() async throws {
+        let meetingID = MeetingID()
+        let draft = SecretGistDraft(
+            meetingID: meetingID,
+            markdown: "# Platform sync\n\nExact approved transcript.",
+            filename: "platform-sync.md",
+            description: "Platform sync")
+        let publisher = RecordingSecretGistPublisher()
+        let effect = SecretGistPublishEffect(
+            draft: draft,
+            publisher: publisher)
+
+        try await effect.perform(proposal(
+            SecretGistPublishSkill.definition,
+            requesting: [.readMeetingMaterial, .sendRemote],
+            arguments: [.meeting(meetingID)]))
+
+        let published = await publisher.drafts
+        XCTAssertEqual(published, [draft])
+    }
+
+    func testSecretGistEffectRejectsInvalidOrDifferentMeetingDrafts() async {
+        let meetingID = MeetingID()
+        let publisher = RecordingSecretGistPublisher()
+        for draft in [
+            SecretGistDraft(
+                meetingID: MeetingID(),
+                markdown: "# Other",
+                filename: "other.md",
+                description: "Other"),
+            SecretGistDraft(
+                meetingID: meetingID,
+                markdown: "",
+                filename: "empty.md",
+                description: "Empty")
+        ] {
+            let effect = SecretGistPublishEffect(
+                draft: draft,
+                publisher: publisher)
+            do {
+                try await effect.perform(proposal(
+                    SecretGistPublishSkill.definition,
+                    requesting: [.readMeetingMaterial, .sendRemote],
+                    arguments: [.meeting(meetingID)]))
+                XCTFail("an unapproved draft must never publish")
+            } catch {
+                XCTAssertEqual(
+                    error as? SecretGistPublishError,
+                    .invalidDraft)
+            }
+        }
+        let published = await publisher.drafts
+        XCTAssertTrue(published.isEmpty)
+    }
 }
 
 private struct StubRecapMaterial: RecapMaterialReading {
@@ -464,6 +549,17 @@ private actor RecordingEmailRecapDelivery: EmailRecapDraftDelivering {
 
     func deliver(_ recap: MeetingRecap) {
         recaps.append(recap)
+    }
+}
+
+private actor RecordingSecretGistPublisher: SecretGistPublishing {
+    private(set) var drafts: [SecretGistDraft] = []
+
+    func publish(_ draft: SecretGistDraft) throws -> URL {
+        drafts.append(draft)
+        guard let url = URL(string: "https://gist.github.com/example/approved")
+        else { throw SecretGistPublishError.invalidDraft }
+        return url
     }
 }
 

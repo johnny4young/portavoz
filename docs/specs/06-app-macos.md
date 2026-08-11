@@ -9,6 +9,8 @@ lifetime), D321 (durable Skill retry identity and visible recovery), and D322
 permission/effect), D324 (honest Start/Stop App Intents), and D325 (bounded App
 Entities with exact reversible routes), and D326 (one availability-shaped
 protected Spotlight generation).
+D327 adds a review-first system email-composer handoff; D328 adds exact
+one-shot secret-Gist publication with a pre-transport duplicate fence.
 D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
 D193 lets only the resource-benchmark process observe that same closed stream
@@ -2294,22 +2296,23 @@ a turn raises and lowers the microphone at the same instant, so its instructions
 do nothing. (Keeping it would still pass the check; only the representable
 guard is load-bearing.)
 
-## Skill proposals in Meeting Detail (D316/D327, Aug 2026)
+## Skill proposals in Meeting Detail (D316/D327/D328, Aug 2026)
 
 The skill tier's first surface anchors proposals to their subject at zero
 vertical cost. `SkillOfferMenu` (in `SkillOfferBanner.swift`) renders a badged
 sparkles menu beside the document actions once the meeting has a summary,
-offering three meeting-scoped skills: local recap draft, review-first email
-recap draft, and text-only package export. The placement is load-bearing:
+offering four meeting-scoped skills: local recap draft, review-first email
+recap draft, secret GitHub Gist publication, and text-only package export. The
+placement is load-bearing:
 Meeting Detail's column is
 deliberately packed — a banner inside the height-ratcheted artifacts viewport
 pushed the document's own controls out of the box (seven gates failed), and a
 banner above it displaced the sections below (four more) — so proposals
 occupy a slot that exists whether or not they do. Each row opens `SkillConfirmSheet`, which shows the exact
-artifact — the composed recap verbatim, or the meeting title plus the
-destination already chosen in the native save panel — and the declared
-capability chips. Confirming runs `ExecuteSkill` (claim before effect, typed
-failure categories); the durable receipts render in
+artifact — the composed recap verbatim, complete Gist Markdown/filename/host,
+or the meeting title plus the destination already chosen in the native save
+panel — and the declared capability chips. Confirming runs `ExecuteSkill`
+(claim before effect, typed failure categories); the durable receipts render in
 `MeetingDetailTrustSection` beside the privacy receipt as
 `skill-receipt-<skillID>` rows.
 
@@ -2320,7 +2323,7 @@ started stays out rather than inviting a duplicate, export keeps offering per
 destination, and a failed run keeps offering because retry is legitimate.
 Recap delivery is the pasteboard — the same act as the manual sheet's Copy —
 and the export writes
-one atomic text-only `.portavoz` file. The local and email one-shot execution
+one atomic text-only `.portavoz` file. The local, email, and Gist one-shot execution
 keys are read in one bounded exact-key batch; meeting receipts reuse that batch
 plus one literal package-prefix read instead of one query per Skill.
 
@@ -2400,17 +2403,55 @@ the localized submit boundary, unchanged clipboard, foreground app ownership,
 receipt, and per-offer retirement. Physical default-client presentation and
 handoff behavior on Sequoia and Tahoe remain field evidence.
 
+## Review-first secret Gist publication (D328, Aug 2026)
+
+`SecretGistPublishSkill` is a separate external definition with
+`readMeetingMaterial`, `sendRemote`, and explicit per-proposal confirmation.
+Its one typed argument and stable one-shot key are the meeting UUID. Meeting
+Detail uses `PrepareMeetingDocument` to render the current canonical Markdown,
+then previews the complete bytes, slugged filename, title description, and
+fixed `api.github.com` host in a `SecretGistDraft`. The sheet explicitly says
+that GitHub's secret Gist is unlisted rather than access-controlled: anyone
+with the link can read it. Confirmation re-renders and compares the entire
+draft before any claim, so changed meeting material requires a fresh review.
+The potentially long exact body uses a selectable, read-only TextKit viewport
+instead of a monolithic SwiftUI `Text`; the optimization does not truncate the
+approved document.
+
+The app prepares the existing Keychain-backed `AppGistDocumentPublisher`
+before `ExecuteSkill`; a missing GitHub token is therefore a pre-egress
+recoverable setup error. The exact proposal UUID becomes the
+`DataEgressEventID` used by `URLSessionDataEgressGateway`. That event is
+inserted before `URLSession`, so replaying the same stable proposal after an
+ambiguous attempt hits the local primary key before a second request. GitHub
+does not provide a create-Gist idempotency key, so every failure after publisher
+preparation is intentionally shown as **outcome unknown**. Failed, interrupted,
+or executing Gist receipts suppress re-offer and expose no retry action; the
+user is directed to inspect GitHub first.
+
+A successful 201 and local settlement shows the returned URL and leaves both
+the content-free `publish-github-gist` privacy event and the ordinary Skill
+receipt. If the URL arrived but settlement failed, it remains available only
+in the confirmation sheet's terminal unknown-outcome surface; durable state
+never stores the URL, token, or document. Disposable XCUITest composition
+executes the same renderer, request codec, egress metadata validation,
+proposal, effect, settlement, and store receipts but replaces network
+transport with a stable
+provider-shaped response. That proves app behavior, not physical GitHub,
+browser, Keychain, or network behavior on Sequoia or Tahoe.
+
 ## Skills control center in Settings (D317, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
-catalogue marks recap draft, review-first email recap, text-only package
-export, resident pre-meeting brief, and confirmed-commitment reminder draft as
-available. The pane exposes an independent
+catalogue marks recap draft, review-first email recap, secret Gist publication,
+text-only package export, resident pre-meeting brief, and confirmed-commitment
+reminder draft as available. The pane exposes an independent
 global pause, per-available-skill enablement, and the 20 newest content-free
 execution receipts. It never executes a skill and does not invent egress
-consent or standing rules; enabling the email row is not permission to hand off
-content, because that authority exists only on the exact confirmation sheet.
+consent or standing rules; enabling an external row is not permission to hand
+off content, because that authority exists only on the exact confirmation
+sheet.
 
 The switches write SQLite v35 state. Global pause leaves every individual
 choice intact; resuming restores those choices. Meeting proposals read the

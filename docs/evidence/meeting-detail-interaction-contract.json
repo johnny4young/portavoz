@@ -809,6 +809,24 @@
     {
       "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-copy-link\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-dismiss\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-open-link\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"person-create-distinct\")",
       "occurrences": 1
     },
@@ -1882,6 +1900,60 @@
     },
     {
       "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Copy link\")) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Done\"), action: dismiss)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Open\")) { openURL(outputURL) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-copy-link\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-dismiss\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-message\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-open-link\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-title\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"gist-result-url\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"skill-confirm-cancel\")",
       "occurrences": 1
@@ -1907,6 +1979,18 @@
     {
       "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-gist-boundary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-gist-destination\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"skill-confirm-preview-body\")",
       "occurrences": 1
     },
@@ -1920,7 +2004,7 @@
       "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"skill-confirm-preview-subject\")",
-      "occurrences": 1
+      "occurrences": 2
     },
     {
       "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
@@ -1936,6 +2020,12 @@
     },
     {
       "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": "textView.setAccessibilityIdentifier(\"skill-confirm-preview-body\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
       "category": "keyboard",
       "source": ".keyboardShortcut(.cancelAction)",
       "occurrences": 1
@@ -1944,6 +2034,12 @@
       "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
       "category": "keyboard",
       "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "state",
+      "source": "@State private var completion: MeetingDetailFlowState.SkillConfirmationResult?",
       "occurrences": 1
     },
     {
@@ -2760,6 +2856,7 @@
       "tests": [
         "testEmailRecapSkillPreviewsAndHandsOffWithoutSending",
         "testFailedSkillEffectRetriesItsOriginalProposal",
+        "testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument",
         "testSkillProposalJourneyFromBannerToReceipt"
       ],
       "sourceAnchors": [
@@ -2778,6 +2875,7 @@
       ],
       "screenshots": [
         "meeting-detail-email-recap-handoff",
+        "meeting-detail-secret-gist-receipts",
         "meeting-detail-skill-receipt",
         "meeting-detail-skill-retry-receipt"
       ]

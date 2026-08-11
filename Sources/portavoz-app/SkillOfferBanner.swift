@@ -72,6 +72,7 @@ struct SkillOfferMenu: View {
         switch offer.kind {
         case .recapDraft: L10n.text("Draft the recap…")
         case .emailRecapDraft: L10n.text("Open an email recap draft…")
+        case .secretGistPublish: L10n.text("Publish a secret Gist…")
         case .packageExport: L10n.text("Export a text-only package…")
         }
     }
@@ -80,6 +81,7 @@ struct SkillOfferMenu: View {
         switch offer.kind {
         case .recapDraft: L10n.text("Don't suggest the recap again")
         case .emailRecapDraft: L10n.text("Don't suggest the email draft again")
+        case .secretGistPublish: L10n.text("Don't suggest the Gist again")
         case .packageExport: L10n.text("Don't suggest the export again")
         }
     }
