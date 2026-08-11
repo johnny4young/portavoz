@@ -5,11 +5,11 @@ import IntegrationsKit
 import PortavozCore
 import StorageKit
 
-/// Q12/D316 — the app-side composition of the no-egress meeting skills.
+/// Q12/D316/D327 — app-side composition of meeting-scoped Skills.
 ///
-/// Everything here is an adapter: the offer policy, the proposal factory, and
-/// the execution machinery live in ApplicationKit; the pasteboard, the file
-/// system, and the store are what the app contributes.
+/// Everything here is an adapter: ApplicationKit owns policy and execution;
+/// the app contributes pasteboard, file-system, email-composer, and store
+/// boundaries.
 extension AppServices {
     func meetingDetailSkillOffers(
         meetingID: MeetingID,
@@ -48,6 +48,11 @@ extension AppServices {
                 .recapMaterial(for: offer.meetingID)
             else { throw RecapDraftError.noSummaryToRecap }
             return AppConfirmedRecapMaterial(source: source).preview
+        case .emailRecapDraft:
+            guard let source = try await AppRecapMaterialReader(store: store)
+                .recapMaterial(for: offer.meetingID)
+            else { throw EmailRecapDraftError.noSummaryToRecap }
+            return AppConfirmedEmailRecapMaterial(source: source).preview
         case .packageExport:
             guard let destination else {
                 throw MeetingPackageExportError.missingDestination
@@ -64,12 +69,14 @@ extension AppServices {
     func performMeetingDetailSkill(
         _ offer: MeetingSkillOffer,
         proposalID: UUID,
+        proposedAt: Date,
         preview: MeetingSkillPreview,
         destination: String?
     ) async throws -> String? {
         guard let plan = try await meetingSkillExecutionPlan(
             offer,
             requestedProposalID: proposalID,
+            proposedAt: proposedAt,
             preview: preview,
             destination: destination)
         else { return staleSkillProposalFailure }
@@ -80,14 +87,15 @@ extension AppServices {
         ).execute(ExecuteSkillRequest(
             proposal: plan.proposal,
             isConfirmedByUser: true,
-            egressIsPermitted: false,
+            egressIsPermitted: plan.egressIsPermitted,
             idempotencyKey: plan.idempotencyKey))
-        return meetingSkillFailure(for: outcome)
+        return meetingSkillFailure(for: outcome, offer: offer)
     }
 
     private func meetingSkillExecutionPlan(
         _ offer: MeetingSkillOffer,
         requestedProposalID: UUID,
+        proposedAt: Date,
         preview: MeetingSkillPreview,
         destination: String?
     ) async throws -> AppMeetingSkillExecutionPlan? {
@@ -96,11 +104,19 @@ extension AppServices {
             try await recapSkillExecutionPlan(
                 offer,
                 requestedProposalID: requestedProposalID,
+                proposedAt: proposedAt,
+                preview: preview)
+        case .emailRecapDraft:
+            try await emailRecapSkillExecutionPlan(
+                offer,
+                requestedProposalID: requestedProposalID,
+                proposedAt: proposedAt,
                 preview: preview)
         case .packageExport:
             try await packageSkillExecutionPlan(
                 offer,
                 requestedProposalID: requestedProposalID,
+                proposedAt: proposedAt,
                 preview: preview,
                 destination: destination)
         }
@@ -109,6 +125,7 @@ extension AppServices {
     private func recapSkillExecutionPlan(
         _ offer: MeetingSkillOffer,
         requestedProposalID: UUID,
+        proposedAt: Date,
         preview: MeetingSkillPreview
     ) async throws -> AppMeetingSkillExecutionPlan? {
         guard let source = try await AppRecapMaterialReader(store: store)
@@ -126,10 +143,11 @@ extension AppServices {
         let proposal = MeetingSkillProposalFactory.recapProposal(
             proposalID: durableProposalID,
             meetingID: offer.meetingID,
-            at: Date()).proposal
+            at: proposedAt).proposal
         return AppMeetingSkillExecutionPlan(
             proposal: proposal,
             idempotencyKey: key,
+            egressIsPermitted: false,
             effects: [
                 RecapDraftSkill.id: RecapDraftEffect(
                     material: confirmed,
@@ -137,9 +155,44 @@ extension AppServices {
             ])
     }
 
+    private func emailRecapSkillExecutionPlan(
+        _ offer: MeetingSkillOffer,
+        requestedProposalID: UUID,
+        proposedAt: Date,
+        preview: MeetingSkillPreview
+    ) async throws -> AppMeetingSkillExecutionPlan? {
+        guard let source = try await AppRecapMaterialReader(store: store)
+            .recapMaterial(for: offer.meetingID)
+        else { throw EmailRecapDraftError.noSummaryToRecap }
+        guard let confirmed = AppConfirmedEmailRecapMaterial(
+            source: source,
+            approvedPreview: preview
+        ) else { return nil }
+        let key = EmailRecapDraftSkill.idempotencyKey(for: offer.meetingID)
+        let durableProposalID = try await skillProposalID(
+            requested: requestedProposalID,
+            idempotencyKey: key)
+        let proposal = MeetingSkillProposalFactory.emailRecapDraftProposal(
+            proposalID: durableProposalID,
+            meetingID: offer.meetingID,
+            at: proposedAt).proposal
+        return AppMeetingSkillExecutionPlan(
+            proposal: proposal,
+            idempotencyKey: key,
+            // The submit action is the exact per-proposal egress permission:
+            // the sheet shows the full text and the email-app boundary first.
+            egressIsPermitted: true,
+            effects: [
+                EmailRecapDraftSkill.id: EmailRecapDraftEffect(
+                    material: confirmed,
+                    delivery: emailRecapDraftDelivery)
+            ])
+    }
+
     private func packageSkillExecutionPlan(
         _ offer: MeetingSkillOffer,
         requestedProposalID: UUID,
+        proposedAt: Date,
         preview: MeetingSkillPreview,
         destination: String?
     ) async throws -> AppMeetingSkillExecutionPlan? {
@@ -160,10 +213,11 @@ extension AppServices {
             proposalID: durableProposalID,
             meetingID: offer.meetingID,
             destination: destination,
-            at: Date()).proposal
+            at: proposedAt).proposal
         return AppMeetingSkillExecutionPlan(
             proposal: proposal,
             idempotencyKey: key,
+            egressIsPermitted: false,
             effects: [
                 MeetingPackageExportSkill.id: MeetingPackageExportEffect(
                     export: exportMeetingBundleUseCaseForSkills,
@@ -183,7 +237,8 @@ extension AppServices {
     }
 
     private func meetingSkillFailure(
-        for outcome: SkillExecutionOutcome
+        for outcome: SkillExecutionOutcome,
+        offer: MeetingSkillOffer
     ) -> String? {
         switch outcome {
         case .performed, .alreadySettled(.succeeded):
@@ -194,6 +249,9 @@ extension AppServices {
             return L10n.text("This skill is disabled in Settings.")
         case .alreadySettled, .refused, .rejected:
             return staleSkillProposalFailure
+        case .failed where offer.kind == .emailRecapDraft:
+            return L10n.text(
+                "The email draft could not be opened. Portavoz did not send it.")
         case .failed:
             return L10n.text("The skill ran and failed. Nothing left Portavoz.")
         }
@@ -217,6 +275,7 @@ extension AppServices {
 private struct AppMeetingSkillExecutionPlan {
     let proposal: SkillProposal
     let idempotencyKey: String
+    let egressIsPermitted: Bool
     let effects: [String: any SkillEffectPerforming]
 }
 
@@ -230,6 +289,15 @@ extension AppServices {
         else { return AppRecapPasteboardDelivery() }
         return AppRecapPasteboardDelivery(
             pasteboard: AppFailingOnceRecapPasteboard())
+    }
+
+    static func makeEmailRecapDraftDelivery(
+        usesTemporaryStore: Bool
+    ) -> any EmailRecapDraftDelivering {
+        let opener: any AppEmailDraftOpening = usesTemporaryStore
+            ? AppDisposableEmailDraftOpener()
+            : AppSystemEmailDraftOpener()
+        return AppEmailRecapDraftDelivery(opener: opener)
     }
 }
 
@@ -254,6 +322,7 @@ struct AppConfirmedRecapMaterial: RecapMaterialReading {
     let meeting: Meeting
     let speakers: [Speaker]
     let summary: SummaryDraft
+    let recap: MeetingRecap
     let preview: MeetingSkillPreview
 
     init(
@@ -262,7 +331,7 @@ struct AppConfirmedRecapMaterial: RecapMaterialReading {
         meeting = source.meeting
         speakers = source.speakers
         summary = source.summary
-        let recap = RecapComposer.compose(
+        recap = RecapComposer.compose(
             meeting: source.meeting,
             speakers: source.speakers,
             summary: source.summary)
@@ -284,6 +353,40 @@ struct AppConfirmedRecapMaterial: RecapMaterialReading {
     ) async throws -> (meeting: Meeting, speakers: [Speaker], summary: SummaryDraft)? {
         guard meeting.id == meetingID else { return nil }
         return (meeting, speakers, summary)
+    }
+}
+
+/// The same captured recap material, expressed as an email-specific preview so
+/// a clipboard approval can never be reused as permission for an external-app
+/// handoff (or vice versa).
+struct AppConfirmedEmailRecapMaterial: RecapMaterialReading {
+    let material: AppConfirmedRecapMaterial
+    let preview: MeetingSkillPreview
+
+    init(
+        source: (meeting: Meeting, speakers: [Speaker], summary: SummaryDraft)
+    ) {
+        let material = AppConfirmedRecapMaterial(source: source)
+        self.material = material
+        preview = .emailDraft(
+            subject: material.recap.subject,
+            body: MeetingExporter.render(
+                material.recap.markdown,
+                format: .plainText))
+    }
+
+    init?(
+        source: (meeting: Meeting, speakers: [Speaker], summary: SummaryDraft),
+        approvedPreview: MeetingSkillPreview
+    ) {
+        self.init(source: source)
+        guard preview == approvedPreview else { return nil }
+    }
+
+    func recapMaterial(
+        for meetingID: MeetingID
+    ) async throws -> (meeting: Meeting, speakers: [Speaker], summary: SummaryDraft)? {
+        try await material.recapMaterial(for: meetingID)
     }
 }
 
@@ -338,6 +441,52 @@ struct AppRecapPasteboardDelivery: RecapDraftDelivering {
         guard await pasteboard.replaceString(text) else {
             throw AppRecapPasteboardError.writeRejected
         }
+    }
+}
+
+protocol AppEmailDraftOpening: Sendable {
+    func openDraft(subject: String, body: String) async -> Bool
+}
+
+/// Creates the AppKit service only inside MainActor work. The framework object
+/// is non-Sendable and must never become process-owned state under Swift 6.
+struct AppSystemEmailDraftOpener: AppEmailDraftOpening {
+    func openDraft(subject: String, body: String) async -> Bool {
+        await MainActor.run {
+            let items: [Any] = [body]
+            guard let service = NSSharingService(named: .composeEmail),
+                  service.canPerform(withItems: items)
+            else { return false }
+            // Audience selection belongs to the user in their email app.
+            service.recipients = []
+            service.subject = subject
+            service.perform(withItems: items)
+            return true
+        }
+    }
+}
+
+/// Disposable UI automation crosses the real application/effect path but not
+/// the host email client. Production composition cannot select this adapter.
+private struct AppDisposableEmailDraftOpener: AppEmailDraftOpening {
+    func openDraft(subject: String, body: String) async -> Bool {
+        !subject.isEmpty && !body.isEmpty
+    }
+}
+
+enum AppEmailRecapDraftError: Error, CategorizedFailure {
+    case handoffUnavailable
+
+    var category: FailureCategory { .recoverable }
+}
+
+struct AppEmailRecapDraftDelivery: EmailRecapDraftDelivering {
+    let opener: any AppEmailDraftOpening
+
+    func deliver(_ recap: MeetingRecap) async throws {
+        let body = MeetingExporter.render(recap.markdown, format: .plainText)
+        guard await opener.openDraft(subject: recap.subject, body: body)
+        else { throw AppEmailRecapDraftError.handoffUnavailable }
     }
 }
 

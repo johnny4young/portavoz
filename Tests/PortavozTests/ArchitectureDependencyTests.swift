@@ -4077,7 +4077,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/SkillsSettingsSection.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(control.contains("enum LocalSkillCatalogue"))
+        XCTAssertTrue(control.contains("enum SkillCatalogue"))
         XCTAssertFalse(control.contains("availability: .planned"))
         XCTAssertTrue(control.contains("maximumReceiptLimit = 50"))
         XCTAssertTrue(store.contains("maximumRecentSkillExecutionCount = 100"))
@@ -4085,6 +4085,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(schema.contains("CREATE INDEX skillExecutionState_on_recent"))
         XCTAssertTrue(schema.contains("updatedAt DESC, proposalID ASC"))
         XCTAssertTrue(offers.contains("store.skillExecutionPolicy()"))
+        XCTAssertTrue(offers.contains(
+            "store.skillExecutions(\n            idempotencyKeys: oneShotKeys)"))
         XCTAssertTrue(settings.contains("settings-skills-pause-all"))
         XCTAssertTrue(settings.contains("settings-skill-\\(skill.id)-enabled"))
         XCTAssertFalse(settings.contains("UserDefaults"))
@@ -4105,8 +4107,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(flow.contains("let proposalID: UUID"))
+        XCTAssertTrue(flow.contains("let proposedAt: Date"))
         XCTAssertTrue(coordinator.contains("proposalID: target.proposalID"))
+        XCTAssertTrue(coordinator.contains("proposedAt: target.proposedAt"))
         XCTAssertTrue(appAdapter.contains("skillExecution(idempotencyKey:"))
+        XCTAssertTrue(appAdapter.contains("at: proposedAt).proposal"))
+        XCTAssertFalse(appAdapter.contains("at: Date()).proposal"))
         XCTAssertTrue(appAdapter.contains("guard usesTemporaryStore,"))
         XCTAssertTrue(sheet.contains("skill-confirm-error"))
         XCTAssertTrue(factory.contains("proposalID: UUID = UUID()"))
@@ -4226,6 +4232,49 @@ final class ArchitectureDependencyTests: XCTestCase {
         // Audio would move far more than one confirmation previewed.
         XCTAssertTrue(skills.contains("includeAudio: false"))
         XCTAssertTrue(decisions.contains("## D295"))
+    }
+
+    func testEmailRecapEgressIsExplicitPreviewedAndPlatformBounded() throws {
+        let external = try Self.contents(
+            of: "Sources/ApplicationKit/ExternalSkills.swift")
+        let appAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MeetingSkills.swift")
+        let sheet = try Self.contents(
+            of: "Sources/portavoz-app/SkillConfirmSheet.swift")
+        let trust = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailTrustSection.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SkillsSettingsSection.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(external.contains("enum ExternalSkills"))
+        XCTAssertTrue(external.contains("EmailRecapDraftSkill.definition"))
+        XCTAssertTrue(external.contains(".sendRemote"))
+        XCTAssertTrue(external.contains(".explicitPerProposal"))
+        XCTAssertTrue(external.contains("RecapComposer.compose("))
+        for forbidden in [
+            "import AppKit", "import SwiftUI", "URLSession", "URLRequest",
+        ] {
+            XCTAssertFalse(external.contains(forbidden), forbidden)
+        }
+
+        XCTAssertTrue(appAdapter.contains(
+            "let service = NSSharingService(named: .composeEmail)"))
+        XCTAssertTrue(appAdapter.contains("service.recipients = []"))
+        XCTAssertTrue(appAdapter.contains("service.subject = subject"))
+        XCTAssertTrue(appAdapter.contains("service.perform(withItems: items)"))
+        XCTAssertTrue(appAdapter.contains("AppDisposableEmailDraftOpener"))
+        XCTAssertFalse(appAdapter.contains("URLSession"))
+        XCTAssertFalse(appAdapter.contains("NSAppleScript"))
+
+        XCTAssertTrue(sheet.contains(
+            "skill-confirm-email-recipient-policy"))
+        XCTAssertTrue(sheet.contains("skill-confirm-email-boundary"))
+        XCTAssertTrue(sheet.contains("you still press Send"))
+        XCTAssertTrue(trust.contains(
+            "Email recap draft — handoff status unknown"))
+        XCTAssertTrue(settings.contains("Handoff status unknown"))
+        XCTAssertTrue(decisions.contains("## D327"))
     }
 
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {
@@ -7494,7 +7543,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            411)
+            413)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             14)

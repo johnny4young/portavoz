@@ -81,6 +81,17 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-skill-pre-meeting-brief-enabled")
         XCTAssertTrue(brief.waitForExistence(timeout: 5))
         XCTAssertTrue(Self.isOn(brief))
+        let email = app.control(
+            withIdentifier: "settings-skill-email-recap-draft-enabled")
+        XCTAssertTrue(email.waitForExistence(timeout: 5))
+        XCTAssertTrue(Self.isOn(email))
+        scrollToVisible(email, in: app)
+        let emailDescription = UITestLocale.environmentLocale == "es"
+            ? "Abre el recap exacto que revisaste en tu app de correo, sin destinatarios. Portavoz nunca lo envía."
+            : "Opens the exact reviewed recap in your email app with no recipients. Portavoz never sends it."
+        XCTAssertTrue(
+            app.staticTexts[emailDescription].waitForExistence(timeout: 5),
+            "the external skill must disclose its exact email-app boundary")
 
         // Individual choices survive the independent global pause override.
         export.click()

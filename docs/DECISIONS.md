@@ -11497,3 +11497,66 @@ retry/coalescing/migration behavior, and exact searchable attributes. Metadata
 and bilingual real-app navigation remain necessary but do not prove system
 result presentation, picker registration, Siri disambiguation, or cold recovery
 on physical Sequoia and Tahoe; those field gates keep AUTO-3 open.
+
+## D327 — An email Skill opens one reviewed draft and never owns Send (Aug 2026)
+
+**Context:** Portavoz already has a manual editable recap and system ShareLink,
+but the confirmed-Skill surface had only local effects. The first AUTO-4 adapter
+must prove a real external boundary without inventing recipients, reusable
+consent, delivery success, or a parallel recap implementation. Treating an
+email composer as local would also be misleading: the external client may save
+or sync meeting-derived text as soon as it receives the draft.
+
+**Decision:** `EmailRecapDraftSkill` is the single definition in a new
+`ExternalSkills` registry, leaving `LocalSkills.isEntirelyLocal` intact. It
+declares `readMeetingMaterial` and `sendRemote`, is irreversible, and requires
+`explicitPerProposal` confirmation. One meeting UUID is the complete typed
+argument and scopes the stable meeting-level idempotency key; no recipient,
+address book, account, or destination is inferred or stored.
+
+The skill delegates to the existing summary-only `RecapComposer` and renders
+its Markdown through the existing plain-text exporter. Meeting Detail captures
+the exact durable meeting/speaker/summary material shown in the sheet and uses
+an email-specific preview shape, so a clipboard recap approval cannot authorize
+an external-app handoff. Confirmation re-reads and recomposes the material
+before any claim and refuses a changed subject, body, or preview kind. The
+sheet shows the complete subject/body, explicitly states that recipients are
+empty, warns that the email app may save or sync the text, and says that the
+user still presses Send. The Settings toggle enables proposals only; it is not
+egress consent. The sheet's submit action alone supplies the exact proposal's
+egress permission to `ExecuteSkill`. Its UUID and `proposedAt` timestamp are
+captured with the preview and retained across clicks; confirmation cannot mint
+a fresh timestamp to extend the 15-minute admission window.
+
+The macOS adapter creates `NSSharingService(.composeEmail)` task-locally on the
+main actor, verifies it can accept the approved body, assigns an empty
+`recipients` array plus the approved subject, and performs that handoff. It
+contains no network client, email SDK, credential, AppleScript, recipient
+lookup, or Send command. An unavailable composer is a recoverable failed
+effect. AppKit provides no synchronous proof that the external client saved or
+sent a message, so a successful content-free receipt means **composer handoff
+requested**, never delivered or sent. That success retires only the email offer;
+a failed attempt keeps the original durable proposal retryable. An interrupted
+`executing` owner remains receipted but is not offered again because the
+composer may already have opened; ambiguity never authorizes a duplicate.
+Its UI says that the handoff status is unknown rather than claiming the client
+did not open.
+Meeting Detail reads the local and external one-shot execution keys in one
+bounded exact-key batch, and combines that with one literal package-prefix
+receipt read, so adding this adapter does not create a per-offer query loop.
+
+Disposable UI automation injects an inert opener which exercises the real
+proposal, admission, claim, effect, settlement, and receipt path without
+launching the host email client. Unit coverage pins the external registry,
+capabilities, one-meeting projection, exact composer reuse, egress refusal
+before claim, preview separation, delivery failure, and receipt retirement.
+Bilingual XCUITest pins the full preview, no-recipient/sync disclosures,
+localized action, unchanged clipboard, foreground app, receipt, and independent
+offer retirement.
+
+**Consequences:** Portavoz gains one useful external Skill while remaining a
+drafting assistant rather than an email sender. There is no schema, credential,
+standing rule, unattended egress, recipient automation, or background network
+work. Physical default-client availability, draft presentation, and handoff on
+Sequoia and Tahoe remain explicit field evidence; local automation must not be
+reported as proof of those system-owned surfaces.

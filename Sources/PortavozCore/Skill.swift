@@ -10,8 +10,8 @@ public enum SkillCapability: String, Codable, Sendable, CaseIterable {
     case writeLocalDraft = "write-local-draft"
     /// Writes a file the user chose a destination for.
     case writeLocalFile = "write-local-file"
-    /// Moves meeting-derived content off this Mac. No skill in the no-egress
-    /// tier may declare it.
+    /// Hands meeting-derived content outside Portavoz to a destination that
+    /// may transmit or sync it. No skill in the no-egress tier may declare it.
     case sendRemote = "send-remote"
 
     /// Whether the capability can change anything outside Portavoz.

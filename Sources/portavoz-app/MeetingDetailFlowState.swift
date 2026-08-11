@@ -41,6 +41,9 @@ final class MeetingDetailFlowState {
         /// permits a failed execution to retry only under its original claim;
         /// a fresh UUID would correctly be rejected as a competing proposal.
         let proposalID: UUID
+        /// Captured with the preview. Rebuilding a proposal at Confirm time
+        /// would silently renew the admission window on every retry.
+        let proposedAt: Date
         let offer: MeetingSkillOffer
         let preview: MeetingSkillPreview
         let destination: String?

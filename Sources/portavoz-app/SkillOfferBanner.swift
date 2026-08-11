@@ -64,14 +64,14 @@ struct SkillOfferMenu: View {
             .help(L10n.text(
                 // Keep the catalog key as one literal: LocalizationTests deliberately
                 // scans call-site prose rather than evaluating Swift concatenation.
-                // swiftlint:disable:next line_length
-                "Things Portavoz can prepare from this meeting — always previewed, always confirmed by you, nothing leaves this Mac."))
+                "Things Portavoz can prepare from this meeting — always previewed and always confirmed by you."))
         }
     }
 
     private func openTitle(for offer: MeetingSkillOffer) -> String {
         switch offer.kind {
         case .recapDraft: L10n.text("Draft the recap…")
+        case .emailRecapDraft: L10n.text("Open an email recap draft…")
         case .packageExport: L10n.text("Export a text-only package…")
         }
     }
@@ -79,6 +79,7 @@ struct SkillOfferMenu: View {
     private func dismissTitle(for offer: MeetingSkillOffer) -> String {
         switch offer.kind {
         case .recapDraft: L10n.text("Don't suggest the recap again")
+        case .emailRecapDraft: L10n.text("Don't suggest the email draft again")
         case .packageExport: L10n.text("Don't suggest the export again")
         }
     }

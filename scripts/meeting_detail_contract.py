@@ -165,8 +165,9 @@ DEFAULT_FEATURE_OWNERSHIP = (
     {
         "feature": "skill-proposals",
         "tests": [
-            "testSkillProposalJourneyFromBannerToReceipt",
+            "testEmailRecapSkillPreviewsAndHandsOffWithoutSending",
             "testFailedSkillEffectRetriesItsOriginalProposal",
+            "testSkillProposalJourneyFromBannerToReceipt",
         ],
         "sourceAnchors": [
             {

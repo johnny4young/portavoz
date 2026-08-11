@@ -114,6 +114,21 @@ struct MeetingDetailTrustSection: View {
     }
 
     private func skillReceiptTitle(_ receipt: MeetingSkillReceipt) -> String {
+        if receipt.skillID == EmailRecapDraftSkill.id {
+            switch receipt.state {
+            case .succeeded:
+                return L10n.text("Email recap draft — handoff requested")
+            case .failed:
+                return L10n.text("Email recap draft — did not open")
+            case .executing:
+                return L10n.text(
+                    "Email recap draft — handoff status unknown")
+            case .proposed, .previewed, .confirmed, .dismissed:
+                return L10n.format(
+                    "%@ — did not finish",
+                    L10n.text("Email recap draft"))
+            }
+        }
         let name = switch receipt.skillID {
         case "recap-draft": L10n.text("Recap draft")
         case "meeting-package-export": L10n.text("Package export")

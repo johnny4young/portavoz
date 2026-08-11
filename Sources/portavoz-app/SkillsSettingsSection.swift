@@ -221,7 +221,7 @@ struct SkillsSettingsSection: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(skillTitle(receipt.skillID))
                     .font(.callout.weight(.medium))
-                Text(receiptStatus(receipt.state))
+                Text(receiptStatus(receipt))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -231,6 +231,7 @@ struct SkillsSettingsSection: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(receiptAccessibilityLabel(receipt))
         .accessibilityIdentifier(
             "settings-skill-receipt-\(receipt.skillID)")
     }
@@ -271,6 +272,7 @@ struct SkillsSettingsSection: View {
     private func skillTitle(_ skillID: String) -> String {
         switch skillID {
         case RecapDraftSkill.id: L10n.text("Recap draft")
+        case EmailRecapDraftSkill.id: L10n.text("Email recap draft")
         case MeetingPackageExportSkill.id: L10n.text("Text-only meeting package")
         case ReminderDraftSkill.id: L10n.text("Reminder draft")
         case PreMeetingBriefSkill.id: L10n.text("Pre-meeting brief")
@@ -282,6 +284,9 @@ struct SkillsSettingsSection: View {
         switch skillID {
         case RecapDraftSkill.id:
             L10n.text("Prepares the exact recap for your clipboard after confirmation.")
+        case EmailRecapDraftSkill.id:
+            L10n.text(
+                "Opens the exact reviewed recap in your email app with no recipients. Portavoz never sends it.")
         case MeetingPackageExportSkill.id:
             L10n.text("Writes a text-only package to the destination you approve.")
         case ReminderDraftSkill.id:
@@ -296,6 +301,7 @@ struct SkillsSettingsSection: View {
     private func iconName(_ skillID: String) -> String {
         switch skillID {
         case RecapDraftSkill.id: "doc.on.clipboard"
+        case EmailRecapDraftSkill.id: "envelope.open"
         case MeetingPackageExportSkill.id: "shippingbox"
         case ReminderDraftSkill.id: "checklist"
         case PreMeetingBriefSkill.id: "calendar.badge.clock"
@@ -303,8 +309,16 @@ struct SkillsSettingsSection: View {
         }
     }
 
-    private func receiptStatus(_ state: SkillExecutionState) -> String {
-        switch state {
+    private func receiptStatus(_ receipt: SkillControlCenterReceipt) -> String {
+        if receipt.skillID == EmailRecapDraftSkill.id {
+            switch receipt.state {
+            case .succeeded: return L10n.text("Handoff requested")
+            case .failed: return L10n.text("Email app did not open")
+            case .executing: return L10n.text("Handoff status unknown")
+            default: break
+            }
+        }
+        return switch receipt.state {
         case .proposed: L10n.text("Proposed — nothing ran")
         case .previewed: L10n.text("Previewed — nothing ran")
         case .confirmed: L10n.text("Confirmed — waiting")
@@ -313,6 +327,12 @@ struct SkillsSettingsSection: View {
         case .failed: L10n.text("Failed — retry is available")
         case .dismissed: L10n.text("Cancelled — nothing ran")
         }
+    }
+
+    private func receiptAccessibilityLabel(
+        _ receipt: SkillControlCenterReceipt
+    ) -> String {
+        "\(skillTitle(receipt.skillID)). \(receiptStatus(receipt))"
     }
 
     private func receiptIcon(_ state: SkillExecutionState) -> String {

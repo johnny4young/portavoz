@@ -238,7 +238,7 @@ The implemented application workflows include:
 - scoped Library, Insights, Meeting Detail, and resident menu-bar read contracts;
 - meeting-review, brief, reminder, mirror, and Insights policies.
 
-The local skill boundary is one of those application workflows, not a second
+The skill boundary is one of those application workflows, not a second
 implementation of product behavior. `ExecuteSkill` admits a typed proposal,
 durably confirms it, honours cancellation before the effect handoff, claims
 the attempt, delegates through a registered effect port, and settles a typed
@@ -254,13 +254,38 @@ compares its composed artifact with the preview the user approved, and reuses
 that snapshot for delivery. A changed preview is refused before a claim, and
 the pasteboard adapter treats an unsuccessful write as a failed effect rather
 than a successful receipt. The confirmation target allocates its proposal UUID
-with that preview and keeps it across repeated Confirm attempts. If SwiftUI
+and `proposedAt` timestamp with that preview and keeps both across repeated
+Confirm attempts. The 15-minute admission window therefore expires from what
+the user actually reviewed; rebuilding the proposal at button-press time cannot
+silently renew an old sheet. If SwiftUI
 later reconstructs the sheet, the app resolves the unique idempotency key back
 to its original durable proposal instead of attempting to transfer the claim to
 a new UUID. Failed effects can therefore increment the original attempt while
 succeeded or interrupted effects retain their existing no-repeat semantics.
 The still-open sheet owns presentation of a recoverable reason, so it remains
 visible beside the retry action rather than behind the modal.
+
+External skills remain a separate application-owned registry, so the
+`LocalSkills` registry's executable no-egress invariant cannot weaken as new
+adapters land.
+The first external effect derives an email subject and plain-text body through
+the existing summary-only `RecapComposer`, captures the exact material shown in
+the confirmation sheet, requests both meeting-read and remote-handoff
+capabilities, and admits the effect only when that same submit action supplies
+per-proposal egress permission. It never infers recipients. The production
+adapter constructs a task-local `NSSharingService` on the main actor, assigns
+an empty recipient list and the approved subject, and hands over the approved
+body. Portavoz owns no email transport or Send operation; the email client may
+still save or sync the handed-off text, so the capability and UI conservatively
+treat the boundary as egress. A succeeded receipt means the system composer
+accepted the handoff request, not that the user saved or sent a message.
+An interrupted `executing` receipt keeps the one-shot email and clipboard
+offers absent because either handoff may already have happened; only a typed
+failed attempt is safe to re-offer. Both meeting-scoped one-shot keys are read
+through one bounded exact-key batch, while package receipts retain one literal
+prefix read; adding the external adapter does not add per-offer SQLite queries.
+Disposable UI automation traverses the same proposal/effect path through an
+inert opener and can never launch the host email client.
 
 The resident pre-meeting brief uses the same execution authority without
 turning the existing manual Library brief into an implicit action. Its
@@ -294,7 +319,7 @@ and leaves the content-free receipt both beside the commitment and in Skills
 Settings. The disposable UI-test platform follows the same explicit permission
 transition without reading host TCC or Reminders.
 
-`LocalSkillCatalogue` is the single application-owned projection for the
+`SkillCatalogue` is the single application-owned projection for the
 Skills management surface. It distinguishes skills that have both a proposal
 surface and an effect adapter from contracts that are not yet implemented. A
 device-local SQLite policy supplies one independent global pause plus a sparse
@@ -304,8 +329,9 @@ offers, and `ExecuteSkill` reads it again immediately before admission and the
 durable claim. The Settings snapshot combines the catalogue with at most 50
 content-free recent receipts (20 by default); storage itself refuses reads
 above 100 and serves the newest-first order from a direction-matched index.
-No egress consent or standing-rule control exists until a real egress adapter
-defines the corresponding authority.
+The external email adapter stores no reusable consent: the complete preview,
+boundary warning, and submit action supply authority for that proposal only.
+No standing-rule control exists for irreversible or external work.
 
 Application failures cross into presentation as bounded categories or stable
 workflow codes. Raw filesystem paths, localized dependency errors, model

@@ -165,12 +165,8 @@ final class MeetingDetailModel {
         case .retractDecisionTopic(let retraction):
             await retractDecisionTopic(retraction)
             return nil
-        case .performSkill(let offer, let proposalID, let preview, let destination):
-            return await performSkill(
-                offer,
-                proposalID: proposalID,
-                preview: preview,
-                destination: destination)
+        case .performSkill(let offer, let context):
+            return await performSkill(offer, context: context)
         case .dismissSkillOffer(let offer):
             await dismissSkillOffer(offer)
             return nil
@@ -493,16 +489,15 @@ private extension MeetingDetailModel {
     /// reflects the durable outcome. Returns the effect the sheet closes on.
     func performSkill(
         _ offer: MeetingSkillOffer,
-        proposalID: UUID,
-        preview: MeetingSkillPreview,
-        destination: String?
+        context: SkillExecutionContext
     ) async -> Effect? {
         do {
             let failure = try await client.performMeetingDetailSkill(
                 offer,
-                proposalID: proposalID,
-                preview: preview,
-                destination: destination)
+                proposalID: context.proposalID,
+                proposedAt: context.proposedAt,
+                preview: context.preview,
+                destination: context.destination)
             state.lastActionError = failure
             await loadSkillOffers()
             return failure == nil ? .skillPerformed(offer) : nil
@@ -752,6 +747,25 @@ private extension MeetingDetailModel {
     }
 }
 
+extension MeetingDetailModel {
+    /// The exact artifact one offer would produce — read-only, computed for
+    /// the confirmation sheet before anything durable exists.
+    func skillPreview(
+        _ offer: MeetingSkillOffer,
+        destination: String?
+    ) async -> MeetingSkillPreview? {
+        do {
+            return try await client.meetingDetailSkillPreview(
+                offer,
+                destination: destination)
+        } catch {
+            state.lastActionError = L10n.text(
+                "Could not build this skill's preview.")
+            return nil
+        }
+    }
+}
+
 private extension MeetingDetailModel {
     func publish(_ update: MeetingReviewUpdate) {
         // Reject optional intelligence generated from an older projection.
@@ -769,24 +783,5 @@ private extension MeetingDetailModel {
         state.readModel = transition.readModel
         state.phase = transition.phase
         state.revision += 1
-    }
-}
-
-extension MeetingDetailModel {
-    /// The exact artifact one offer would produce — read-only, computed for
-    /// the confirmation sheet before anything durable exists.
-    func skillPreview(
-        _ offer: MeetingSkillOffer,
-        destination: String?
-    ) async -> MeetingSkillPreview? {
-        do {
-            return try await client.meetingDetailSkillPreview(
-                offer,
-                destination: destination)
-        } catch {
-            state.lastActionError = L10n.text(
-                "Could not build this skill's preview.")
-            return nil
-        }
     }
 }

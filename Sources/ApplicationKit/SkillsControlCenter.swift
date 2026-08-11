@@ -2,7 +2,7 @@ import Foundation
 import PortavozCore
 import StorageKit
 
-public enum LocalSkillAvailability: Equatable, Sendable {
+public enum SkillAvailability: Equatable, Sendable {
     /// A production proposal surface and effect adapter both exist.
     case available
     /// The skill contract exists, but its user-facing subject or platform
@@ -10,46 +10,59 @@ public enum LocalSkillAvailability: Equatable, Sendable {
     case planned
 }
 
-public struct LocalSkillCatalogueEntry: Equatable, Sendable, Identifiable {
+public struct SkillCatalogueEntry: Equatable, Sendable, Identifiable {
     public let definition: SkillDefinition
-    public let availability: LocalSkillAvailability
+    public let availability: SkillAvailability
 
     public var id: String { definition.id }
 
     public init(
         definition: SkillDefinition,
-        availability: LocalSkillAvailability
+        availability: SkillAvailability
     ) {
         self.definition = definition
         self.availability = availability
     }
 }
 
-/// The one catalogue projected into the Phase-2 management pane.
+/// The one catalogue projected into the Skills management pane.
 ///
 /// Contracts can predate surfaces. Keeping availability explicit prevents a
 /// settings toggle from promising that reminder or calendar-event delivery is
 /// wired merely because its pure skill definition already exists.
-public enum LocalSkillCatalogue {
-    public static let entries: [LocalSkillCatalogueEntry] = [
-        LocalSkillCatalogueEntry(
+public enum SkillCatalogue {
+    public static let entries: [SkillCatalogueEntry] = [
+        SkillCatalogueEntry(
             definition: RecapDraftSkill.definition,
             availability: .available),
-        LocalSkillCatalogueEntry(
+        SkillCatalogueEntry(
             definition: MeetingPackageExportSkill.definition,
             availability: .available),
-        LocalSkillCatalogueEntry(
+        SkillCatalogueEntry(
             definition: ReminderDraftSkill.definition,
             availability: .available),
-        LocalSkillCatalogueEntry(
+        SkillCatalogueEntry(
             definition: PreMeetingBriefSkill.definition,
+            availability: .available),
+        SkillCatalogueEntry(
+            definition: EmailRecapDraftSkill.definition,
             availability: .available)
     ]
 }
 
+// ApplicationKit is a public SwiftPM library. Keep the former Phase-2 names as
+// source-compatible migration shims even though the catalogue now contains an
+// explicitly external Skill as well as local-only Skills.
+@available(*, deprecated, renamed: "SkillAvailability")
+public typealias LocalSkillAvailability = SkillAvailability
+@available(*, deprecated, renamed: "SkillCatalogueEntry")
+public typealias LocalSkillCatalogueEntry = SkillCatalogueEntry
+@available(*, deprecated, renamed: "SkillCatalogue")
+public typealias LocalSkillCatalogue = SkillCatalogue
+
 public struct SkillControlCenterItem: Equatable, Sendable, Identifiable {
     public let definition: SkillDefinition
-    public let availability: LocalSkillAvailability
+    public let availability: SkillAvailability
     /// The individual choice, independent from the global pause override.
     public let isEnabled: Bool
 
@@ -139,7 +152,7 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
         let (resolvedPolicy, resolvedRecords) = try await (policy, records)
         return SkillControlCenterSnapshot(
             isPaused: resolvedPolicy.isPaused,
-            skills: LocalSkillCatalogue.entries.map { entry in
+            skills: SkillCatalogue.entries.map { entry in
                 SkillControlCenterItem(
                     definition: entry.definition,
                     availability: entry.availability,
@@ -184,7 +197,7 @@ public struct ManageSkillControl: ApplicationUseCase {
         case .setPaused(let isPaused):
             try await store.setAllSkillsPaused(isPaused, at: now())
         case .setSkillEnabled(let skillID, let isEnabled):
-            guard let entry = LocalSkillCatalogue.entries.first(where: {
+            guard let entry = SkillCatalogue.entries.first(where: {
                 $0.id == skillID
             }) else { return .rejected(.unknownSkill) }
             guard entry.availability == .available else {

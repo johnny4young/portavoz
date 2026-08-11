@@ -2294,13 +2294,14 @@ a turn raises and lowers the microphone at the same instant, so its instructions
 do nothing. (Keeping it would still pass the check; only the representable
 guard is load-bearing.)
 
-## Skill proposals in Meeting Detail (D316, Aug 2026)
+## Skill proposals in Meeting Detail (D316/D327, Aug 2026)
 
-The no-egress skill tier's first surface anchors proposals to their subject
-at zero vertical cost. `SkillOfferMenu` (in `SkillOfferBanner.swift`) renders a
-badged sparkles menu beside the document actions once the meeting has a
-summary, offering the meeting-scoped skills: recap draft and text-only
-package export. The placement is load-bearing: Meeting Detail's column is
+The skill tier's first surface anchors proposals to their subject at zero
+vertical cost. `SkillOfferMenu` (in `SkillOfferBanner.swift`) renders a badged
+sparkles menu beside the document actions once the meeting has a summary,
+offering three meeting-scoped skills: local recap draft, review-first email
+recap draft, and text-only package export. The placement is load-bearing:
+Meeting Detail's column is
 deliberately packed — a banner inside the height-ratcheted artifacts viewport
 pushed the document's own controls out of the box (seven gates failed), and a
 banner above it displaced the sections below (four more) — so proposals
@@ -2314,14 +2315,19 @@ failure categories); the durable receipts render in
 
 Offer policy is durable state, never session memory: dismissal writes
 `skillOfferDismissal` (v34) keyed by the stable intent identity, a succeeded
-recap retires its offer, export keeps offering per destination, and a failed
-run keeps offering because retry is legitimate. Recap delivery is the
-pasteboard — the same act as the manual sheet's Copy — and the export writes
-one atomic text-only `.portavoz` file.
+recap retires its offer, an interrupted one-shot draft whose effect may have
+started stays out rather than inviting a duplicate, export keeps offering per
+destination, and a failed run keeps offering because retry is legitimate.
+Recap delivery is the pasteboard — the same act as the manual sheet's Copy —
+and the export writes
+one atomic text-only `.portavoz` file. The local and email one-shot execution
+keys are read in one bounded exact-key batch; meeting receipts reuse that batch
+plus one literal package-prefix read instead of one query per Skill.
 
-The exact preview owns one proposal UUID for its complete presentation
-lifetime. A failed Confirm leaves the sheet on that UUID, so retry advances the
-same durable attempt rather than colliding with its idempotency key. If the
+The exact preview owns one proposal UUID and one proposal timestamp for its
+complete presentation lifetime. A failed Confirm leaves the sheet on both, so
+retry advances the same durable attempt without renewing the 15-minute
+confirmation window or colliding with its idempotency key. If the
 sheet is reconstructed after failure, the app looks up the exact key and
 reattaches to its original proposal owner; it never transfers a claim between
 UUIDs. The fail-once XCUITest adapter exists only with disposable storage and
@@ -2351,17 +2357,60 @@ durable dismissal. D321 adds a second bilingual journey that refuses the first
 pasteboard handoff, retries the unchanged preview, and requires the successful
 receipt plus byte-for-byte clipboard artifact.
 
+## Review-first email recap handoff (D327, Aug 2026)
+
+The first external Skill is deliberately a draft handoff, not an email sender.
+`EmailRecapDraftSkill` lives in `ExternalSkills`, separate from the four local
+definitions whose no-egress invariant remains executable. It declares
+`readMeetingMaterial` plus `sendRemote`, is irreversible, and requires explicit
+confirmation for every proposal. The meeting UUID is its only typed argument
+and its stable idempotency key; recipients never enter the proposal because
+Portavoz does not infer an audience.
+
+Preview and execution reuse the existing summary-only `RecapComposer`. The app
+captures one durable meeting/speaker/summary snapshot, renders the subject and
+plain-text body, and tags the preview as email-specific so approval of a local
+clipboard recap cannot authorize this boundary. Confirmation re-reads and
+recomposes current material before the durable claim. Any subject/body or
+surface mismatch fails stale with no handoff. The sheet displays the entire
+subject and body, states that there are no recipients, and warns that the email
+app may save or sync the text while Portavoz never sends it. The longer
+capability labels adapt vertically when the localized row does not fit.
+
+Only that sheet's **Open email draft** action supplies egress permission to
+`ExecuteSkill`. Production creates `NSSharingService(.composeEmail)` inside
+one main-actor operation, verifies that it can accept the body, explicitly
+sets an empty recipient list and the approved subject, then performs the
+handoff. No email SDK, network request, credential, AppleScript, recipient
+lookup, or Send command exists. AppKit offers no synchronous proof that the
+user saved or sent the draft, so success and its content-free receipt mean only
+that the composer handoff was requested. An unavailable service settles as a
+recoverable failure and keeps the original proposal retryable. A successful
+handoff retires this meeting-scoped offer independently of local recap and
+package export. An interrupted `executing` owner also keeps the offer absent:
+the system composer may already have opened, so a duplicate cannot be proved
+safe; its content-free receipt remains the recovery evidence instead.
+That ambiguous receipt is labeled **handoff status unknown**, never **did not
+open**.
+
+Disposable XCUITest composition selects an inert opener that accepts non-empty
+approved material but cannot launch the host email client. The bilingual
+journey proves exact seeded-summary content, recipient and sync disclosures,
+the localized submit boundary, unchanged clipboard, foreground app ownership,
+receipt, and per-offer retirement. Physical default-client presentation and
+handoff behavior on Sequoia and Tahoe remain field evidence.
+
 ## Skills control center in Settings (D317, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
-catalogue marks recap draft, text-only package export, and the resident
-pre-meeting brief as available, while reminder draft renders honestly as
-planned because its subject/permission surface is not shipped. The pane exposes
-an independent
+catalogue marks recap draft, review-first email recap, text-only package
+export, resident pre-meeting brief, and confirmed-commitment reminder draft as
+available. The pane exposes an independent
 global pause, per-available-skill enablement, and the 20 newest content-free
 execution receipts. It never executes a skill and does not invent egress
-consent or standing rules.
+consent or standing rules; enabling the email row is not permission to hand off
+content, because that authority exists only on the exact confirmation sheet.
 
 The switches write SQLite v35 state. Global pause leaves every individual
 choice intact; resuming restores those choices. Meeting proposals read the

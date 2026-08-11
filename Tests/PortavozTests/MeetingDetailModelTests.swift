@@ -228,11 +228,13 @@ final class MeetingDetailModelTests: XCTestCase {
             meetingTitle: fixture.meeting.title,
             destination: "/tmp/x.portavoz")
         let proposalID = UUID()
+        let proposedAt = Date(timeIntervalSince1970: 100)
 
         let effect = await model.send(
             .performSkill(
                 offer,
                 proposalID: proposalID,
+                proposedAt: proposedAt,
                 preview: preview,
                 destination: "/tmp/x.portavoz"))
         await model.send(.dismissSkillOffer(offer))
@@ -245,6 +247,7 @@ final class MeetingDetailModelTests: XCTestCase {
             .performSkill(
                 offer.offerKey,
                 proposalID,
+                proposedAt,
                 preview,
                 "/tmp/x.portavoz")))
         XCTAssertTrue(client.calls.contains(.dismissSkillOffer(offer.offerKey)))
@@ -261,15 +264,18 @@ final class MeetingDetailModelTests: XCTestCase {
             meetingID: fixture.meeting.id)
         let preview = MeetingSkillPreview.recap(subject: "Recap", body: "Body")
         let proposalID = UUID()
+        let proposedAt = Date(timeIntervalSince1970: 100)
 
         let first = await model.send(.performSkill(
             offer,
             proposalID: proposalID,
+            proposedAt: proposedAt,
             preview: preview,
             destination: nil))
         let retry = await model.send(.performSkill(
             offer,
             proposalID: proposalID,
+            proposedAt: proposedAt,
             preview: preview,
             destination: nil))
 
@@ -277,13 +283,16 @@ final class MeetingDetailModelTests: XCTestCase {
         guard case .skillPerformed = retry else {
             return XCTFail("the original proposal must remain retryable")
         }
-        let attempts = client.calls.compactMap { call -> UUID? in
-            guard case .performSkill(_, let routedID, _, _) = call else {
+        let attempts = client.calls.compactMap { call -> (UUID, Date)? in
+            guard case .performSkill(
+                _, let routedID, let routedDate, _, _
+            ) = call else {
                 return nil
             }
-            return routedID
+            return (routedID, routedDate)
         }
-        XCTAssertEqual(attempts, [proposalID, proposalID])
+        XCTAssertEqual(attempts.map(\.0), [proposalID, proposalID])
+        XCTAssertEqual(attempts.map(\.1), [proposedAt, proposedAt])
     }
 
     func testCommitmentAdmissionAndReviewStayBehindTheFeatureOwner() async {
@@ -1131,12 +1140,14 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     func performMeetingDetailSkill(
         _ offer: MeetingSkillOffer,
         proposalID: UUID,
+        proposedAt: Date,
         preview: MeetingSkillPreview,
         destination: String?
     ) throws -> String? {
         calls.append(.performSkill(
             offer.offerKey,
             proposalID,
+            proposedAt,
             preview,
             destination))
         if skillFailuresRemaining > 0 {
@@ -1345,6 +1356,6 @@ private enum MeetingDetailModelCall: Equatable {
     case rememberVoice(MeetingID, SpeakerID)
     case retractDecisionTopic(DecisionTopicLinkID)
     case loadSkillOffers(MeetingID, Bool)
-    case performSkill(String, UUID, MeetingSkillPreview, String?)
+    case performSkill(String, UUID, Date, MeetingSkillPreview, String?)
     case dismissSkillOffer(String)
 }

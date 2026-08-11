@@ -16,7 +16,7 @@ Resolved gaps are kept as one-line entries so the ledger stays complete; their f
 | 6 | ~~**No onboarding**~~ | **RESOLVED (Jul 2026)**. | — | ✅ |
 | 7 | ~~**Macs without Apple Intelligence = no local summary**~~ | **RESOLVED (Jul 2026)**. | — | ✅ |
 | 8 | ~~**External audio import without UI**~~ | **RESOLVED (Jul 2026)**. | — | ✅ |
-| 9 | ~~**No recap email**~~ | **RESOLVED (Jul 25, 2026)**. See D136. | — | ✅ |
+| 9 | ~~**No recap email**~~ | **RESOLVED (Jul 25, 2026)** by the editable recap/share surface (D136); the confirmed review-first email-draft Skill was added in Aug 2026 (D327). | Physical composer handoff remains field evidence below, not missing product UI | ✅ |
 | 10 | Native App Intents, App Entities, and protected entity Spotlight ✅ / Quick Look remains absent | **Start field-verified Jul 27; Stop and bounded entities implemented Aug 9; protected entity publication implemented Aug 10, 2026.** The SDK-only shipping source extracts exactly five actions, three entities, and three queries: Start/Stop plus exact open actions for meeting, canonical person, and confirmed commitment (D139/D140/D324–D326). Tahoe+ uses immediate foreground modes while the compatibility property preserves Sequoia. Entity lookups are bounded, literal, database-backed, and route inside the chosen process with explicit recovery. On macOS 15+, one coalescing reconciler publishes all three entity types in a named complete-protection index from one consistent narrow snapshot; meeting entities preserve the released capped full-text body. The 14.4 path publishes meeting documents to that same versioned index, so there is no duplicate meeting surface. Stable, Dev, and UI-test identities remain distinct. Start's user-created Shortcut was field-verified from Shortcuts, Spotlight, and Siri. Stop/entity actions and entity publication are locally covered by metadata, unit/integration boundaries, and bilingual real-app handoff, but physical picker/search result presentation, Siri disambiguation, cold recovery, and registration still need Sequoia and Tahoe evidence. D141 still omits the unsupported duplicate `AppShortcutsProvider` | Collect Stop/entity publication and routing evidence on physical Sequoia/Tahoe Macs. Quick Look genuinely needs an extension target and stays planned | D139–D141, D324–D326; AUTO-3 field / QL M14a/M16 |
 | 11 | Cross-device sync has no second-device product yet | **Band 6A–6C2 macOS vertical complete in code (D92–D97):** schema v14 remains the mutation authority; deterministic text-first envelopes replay atomically through encrypted private-zone records and durable exact attempts; D96 owns zero-touch consent/status/actions; and D97 adds one signed-capability-gated private container, process-scoped serialized wakeups, exact Developer ID release admission, and bilingual Settings. Audio, paths, voiceprints, secrets, and embeddings stay local | Production container/profile/account plus two-Mac convergence are still field gates before public enablement; the actual cross-device experience arrives with the 6D in-person iOS recorder shell. Audio remains a later separate opt-in | Band 6D / M14c; field pending |
 
@@ -250,6 +250,17 @@ visible release blocker rather than being inferred from deterministic tests.
   duplicate. Inject or observe a save error and verify the UI reports an
   unverified outcome, then check the target list before any retry. Repeat after
   relaunch and after changing the system default list.
+- **Review-first email composer (D327)**: deterministic bilingual XCUITest uses
+  an inert disposable opener so it cannot launch the host email client or prove
+  AppKit's system-owned composer. On physical Sequoia and Tahoe Dev builds,
+  select one copied/test meeting, review the exact subject and body plus the
+  no-recipient/sync disclosure, confirm, and require the configured default
+  email client to open a draft with no recipients and byte-for-byte approved
+  text. Close it without sending and verify Portavoz records only the
+  content-free handoff receipt and retires only that offer. Repeat once with a
+  different default client if available, and with composition unavailable to
+  require a visible recoverable failure rather than a success claim. Never use
+  the notarized release app or a real private meeting for this proof.
 - **Real export**: `export --gist` / "Publicar como Gist" with a token; `issues --github/--linear` with tokens against a test repo.
 - **Summary fingerprint drift (D288)**: two of 47 real local meetings had their
   only automatic summary job cancelled as `processing.input.superseded` seconds

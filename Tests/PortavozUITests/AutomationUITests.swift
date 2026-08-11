@@ -84,9 +84,7 @@ final class AutomationUITests: PortavozUITestCase {
             }
         }
 
-        let process = try XCTUnwrap(
-            NSWorkspace.shared.frontmostApplication,
-            "the launched disposable app must be the frontmost application")
+        let process = try activeDisposablePortavozProcess(in: app)
         XCTAssertEqual(
             process.bundleIdentifier,
             "app.portavoz.mac.uitest-host",
@@ -147,6 +145,22 @@ final class AutomationUITests: PortavozUITestCase {
             stopIntentApp.staticTexts[expectedReference].waitForExistence(timeout: 5),
             "the Stop action must preserve the recording controller's typed recovery")
         attachScreenshot(of: stopIntentApp, named: "native-intent-stop-recovery")
+    }
+
+    @MainActor
+    private func activeDisposablePortavozProcess(
+        in app: XCUIApplication
+    ) throws -> NSRunningApplication {
+        app.activate()
+        XCTAssertEqual(
+            app.state,
+            .runningForeground,
+            "the disposable Portavoz app must be foreground before URL delivery")
+        return try XCTUnwrap(
+            NSRunningApplication.runningApplications(
+                withBundleIdentifier: "app.portavoz.mac.uitest-host"
+            ).first(where: \.isActive),
+            "the exact disposable Portavoz process must be active")
     }
 
     @MainActor

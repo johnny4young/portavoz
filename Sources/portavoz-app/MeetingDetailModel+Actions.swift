@@ -3,6 +3,13 @@ import Foundation
 import PortavozCore
 
 extension MeetingDetailModel {
+    struct SkillExecutionContext {
+        let proposalID: UUID
+        let proposedAt: Date
+        let preview: MeetingSkillPreview
+        let destination: String?
+    }
+
     enum CommitmentAction {
         case confirm(ConfirmMeetingCommitmentRequest)
         case review(ReviewMeetingCommitmentRequest)
@@ -29,11 +36,7 @@ extension MeetingDetailModel {
         case removeCompanionCard(UUID)
         case confirmDecision(ConfirmDecisionAboutTopicRequest)
         case retractDecisionTopic(DecisionTopicLinkRetraction)
-        case performSkill(
-            MeetingSkillOffer,
-            proposalID: UUID,
-            preview: MeetingSkillPreview,
-            destination: String?)
+        case performSkill(MeetingSkillOffer, SkillExecutionContext)
         case dismissSkillOffer(MeetingSkillOffer)
     }
 
@@ -164,14 +167,17 @@ extension MeetingDetailModel {
         static func performSkill(
             _ offer: MeetingSkillOffer,
             proposalID: UUID,
+            proposedAt: Date,
             preview: MeetingSkillPreview,
             destination: String?
         ) -> Self {
             .content(.artifact(.performSkill(
                 offer,
-                proposalID: proposalID,
-                preview: preview,
-                destination: destination)))
+                SkillExecutionContext(
+                    proposalID: proposalID,
+                    proposedAt: proposedAt,
+                    preview: preview,
+                    destination: destination))))
         }
 
         static func dismissSkillOffer(_ offer: MeetingSkillOffer) -> Self {

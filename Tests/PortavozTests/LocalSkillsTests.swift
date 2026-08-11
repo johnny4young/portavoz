@@ -38,6 +38,30 @@ final class LocalSkillsTests: XCTestCase {
             "two skills sharing an id would share a receipt")
     }
 
+    /// External effects live in a separate registry so adding the first one
+    /// cannot silently weaken the executable no-egress promise above.
+    func testEveryExternalSkillDeclaresEgressAndExactConfirmation() {
+        XCTAssertTrue(ExternalSkills.requiresExplicitEgress)
+        XCTAssertEqual(ExternalSkills.definitions, [
+            EmailRecapDraftSkill.definition,
+        ])
+        for definition in ExternalSkills.definitions {
+            XCTAssertTrue(definition.isValid, definition.id)
+            XCTAssertTrue(definition.declaresExternalEffect, definition.id)
+            XCTAssertTrue(
+                definition.capabilities.contains(.sendRemote),
+                definition.id)
+            XCTAssertEqual(
+                definition.confirmationPolicy,
+                .explicitPerProposal,
+                definition.id)
+        }
+        XCTAssertTrue(
+            Set(LocalSkills.definitions.map(\.id))
+                .isDisjoint(with: ExternalSkills.definitions.map(\.id)),
+            "local and external skills cannot share claims or receipts")
+    }
+
     /// Exporting a file is irreversible, so a standing rule can never cover it
     /// even though the skill is local.
     func testOnlyReversibleSkillsCouldEverBeAutomated() {
@@ -45,6 +69,7 @@ final class LocalSkillsTests: XCTestCase {
         XCTAssertTrue(RecapDraftSkill.definition.isReversible)
         XCTAssertTrue(ReminderDraftSkill.definition.isReversible)
         XCTAssertTrue(PreMeetingBriefSkill.definition.isReversible)
+        XCTAssertFalse(EmailRecapDraftSkill.definition.isReversible)
 
         let automated = SkillDefinition(
             id: MeetingPackageExportSkill.id,
@@ -80,6 +105,15 @@ final class LocalSkillsTests: XCTestCase {
             RecapDraftSkill.idempotencyKey(for: first),
             MeetingPackageExportSkill.idempotencyKey(
                 for: first, destination: "/a"))
+        XCTAssertNotEqual(
+            RecapDraftSkill.idempotencyKey(for: first),
+            EmailRecapDraftSkill.idempotencyKey(for: first))
+        XCTAssertNotEqual(
+            EmailRecapDraftSkill.idempotencyKey(for: first),
+            EmailRecapDraftSkill.idempotencyKey(for: second))
+        XCTAssertEqual(
+            EmailRecapDraftSkill.idempotencyKey(for: first),
+            EmailRecapDraftSkill.idempotencyKey(for: first))
 
         // The key normalizes the destination exactly as the projection does,
         // so one intended write can never claim two slots.
@@ -132,6 +166,28 @@ final class LocalSkillsTests: XCTestCase {
         ) { error in
             XCTAssertEqual(
                 error as? MeetingPackageExportError, .missingMeeting)
+        }
+    }
+
+    func testEmailRecapRequiresExactlyOneMeeting() throws {
+        let meeting = MeetingID()
+        XCTAssertEqual(
+            try EmailRecapDraftSkill.meeting(from: [
+                .meeting(meeting), .text("inert material"),
+            ]),
+            meeting)
+
+        for arguments in [
+            [SkillArgument.text("no meeting")],
+            [.meeting(MeetingID()), .meeting(MeetingID())],
+        ] {
+            XCTAssertThrowsError(
+                try EmailRecapDraftSkill.meeting(from: arguments)
+            ) { error in
+                XCTAssertEqual(
+                    error as? EmailRecapDraftError,
+                    .missingMeeting)
+            }
         }
     }
 
@@ -325,6 +381,61 @@ final class LocalSkillsTests: XCTestCase {
         let delivered = await delivery.recaps
         XCTAssertTrue(delivered.isEmpty)
     }
+
+    func testEmailRecapEffectUsesTheExistingComposerAndExactMaterial() async throws {
+        let meeting = Meeting(
+            title: "Platform sync",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        let speaker = Speaker(meetingID: meeting.id, label: "Me", isMe: true)
+        let summary = SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: "general",
+            language: "en",
+            markdown: "## Decisions\n\n- Ship the signed export.",
+            actionItems: [])
+        let delivery = RecordingEmailRecapDelivery()
+        let effect = EmailRecapDraftEffect(
+            material: StubRecapMaterial(
+                meeting: meeting, speakers: [speaker], summary: summary),
+            delivery: delivery)
+
+        try await effect.perform(proposal(
+            EmailRecapDraftSkill.definition,
+            requesting: [.readMeetingMaterial, .sendRemote],
+            arguments: [.meeting(meeting.id)]))
+
+        let delivered = await delivery.recaps
+        XCTAssertEqual(delivered, [RecapComposer.compose(
+            meeting: meeting,
+            speakers: [speaker],
+            summary: summary,
+        )])
+    }
+
+    func testEmailRecapEffectFailsDegradablyWithoutASummary() async {
+        let delivery = RecordingEmailRecapDelivery()
+        let effect = EmailRecapDraftEffect(
+            material: StubRecapMaterial(
+                meeting: nil, speakers: [], summary: nil),
+            delivery: delivery)
+
+        do {
+            try await effect.perform(proposal(
+                EmailRecapDraftSkill.definition,
+                requesting: [.readMeetingMaterial, .sendRemote],
+                arguments: [.meeting(MeetingID())]))
+            XCTFail("a meeting with no summary cannot produce an email recap")
+        } catch {
+            XCTAssertEqual(
+                error as? EmailRecapDraftError,
+                .noSummaryToRecap)
+            XCTAssertEqual(
+                (error as? CategorizedFailure)?.category,
+                .degradable)
+        }
+        let delivered = await delivery.recaps
+        XCTAssertTrue(delivered.isEmpty)
+    }
 }
 
 private struct StubRecapMaterial: RecapMaterialReading {
@@ -341,6 +452,14 @@ private struct StubRecapMaterial: RecapMaterialReading {
 }
 
 private actor RecordingRecapDelivery: RecapDraftDelivering {
+    private(set) var recaps: [MeetingRecap] = []
+
+    func deliver(_ recap: MeetingRecap) {
+        recaps.append(recap)
+    }
+}
+
+private actor RecordingEmailRecapDelivery: EmailRecapDraftDelivering {
     private(set) var recaps: [MeetingRecap] = []
 
     func deliver(_ recap: MeetingRecap) {

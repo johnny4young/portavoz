@@ -18,6 +18,8 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 10, 2026
 
+- **🕒 Skill approvals now really expire** — Leaving a preview open no longer renews its 15-minute confirmation window each time you retry; review a fresh proposal before anything can run.
+- **✉️ Email recaps stop at your Send button** — Review the exact subject and body, choose recipients in your email app, and keep Portavoz from sending on its own.
 - **🔎 Your private work is native in Spotlight** — Find meetings, canonical people, and confirmed commitments through one protected local index on Sequoia and Tahoe, without duplicate meeting results or exposing extra evidence fields.
 
 ## August 9, 2026

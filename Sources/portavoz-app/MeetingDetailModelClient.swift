@@ -59,6 +59,7 @@ protocol MeetingDetailModelClient: AnyObject {
     func performMeetingDetailSkill(
         _ offer: MeetingSkillOffer,
         proposalID: UUID,
+        proposedAt: Date,
         preview: MeetingSkillPreview,
         destination: String?
     ) async throws -> String?

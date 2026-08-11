@@ -156,6 +156,10 @@ final class AppServices {
     /// One process-owned recap delivery boundary keeps a failed skill attempt
     /// retryable under the same adapter and durable proposal claim.
     @ObservationIgnored let recapSkillDelivery: any RecapDraftDelivering
+    /// The only email effect is a review-first system-composer handoff. UI
+    /// automation receives an inert recorder and cannot open the host client.
+    @ObservationIgnored let emailRecapDraftDelivery:
+        any EmailRecapDraftDelivering
     /// Whole-library export state outlives Settings windows so closing a pane
     /// cannot cancel publication or start a competing backup.
     let libraryMarkdownBackup: LibraryMarkdownBackupModel
@@ -305,8 +309,8 @@ final class AppServices {
             voiceprintStore: voiceprintStore)
         askClient = AppAskModelClient(useCase: askUseCase)
         recapSkillDelivery = Self.makeRecapSkillDelivery(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
-        upcomingEventSource = AppUpcomingEventSource(
-            arguments: arguments, usesTemporaryStore: usesTemporaryStore)
+        emailRecapDraftDelivery = Self.makeEmailRecapDraftDelivery(usesTemporaryStore: usesTemporaryStore)
+        upcomingEventSource = AppUpcomingEventSource(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         reminderDraftPlatform = Self.makeReminderDraftPlatform(usesTemporaryStore: usesTemporaryStore)
         meetingBriefSkillDelivery = AppMeetingBriefSkillDelivery()
         meetingBriefUseCase = PrepareMeetingBrief(

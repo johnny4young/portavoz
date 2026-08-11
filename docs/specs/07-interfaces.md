@@ -4,7 +4,20 @@ Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing
 
 Native automation decisions: D324 (honest Start/Stop actions), D325 (bounded
 meeting/person/commitment App Entities and exact open routes), and D326
-(availability-shaped protected entity publication).
+(availability-shaped protected entity publication). D327 adds one review-first
+email-composer handoff without adding an email transport.
+
+The email recap Skill is an AppKit interface adapter, not a network
+integration. ApplicationKit composes one summary-derived `MeetingRecap` behind
+an explicit `sendRemote` proposal. Meeting Detail shows the exact plain-text
+subject/body, no recipients, and the external-app sync boundary before the
+confirm action grants proposal-scoped egress. The app then constructs
+`NSSharingService(.composeEmail)` task-locally on the main actor, sets an empty
+recipient list and the approved subject, and hands over the approved body.
+Portavoz stores no destination, credential, or reusable consent, performs no
+request, and never invokes Send. The resulting receipt means only that the
+system composer handoff was requested; whether the external client saves,
+syncs, edits, or sends remains visibly under user control.
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 

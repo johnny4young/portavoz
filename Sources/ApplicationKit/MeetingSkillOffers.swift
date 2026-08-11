@@ -10,6 +10,7 @@ import StorageKit
 public struct MeetingSkillOffer: Equatable, Sendable, Identifiable {
     public enum Kind: String, Sendable {
         case recapDraft = "recap-draft"
+        case emailRecapDraft = "email-recap-draft"
         case packageExport = "package-export"
     }
 
@@ -25,6 +26,8 @@ public struct MeetingSkillOffer: Equatable, Sendable, Identifiable {
         switch kind {
         case .recapDraft:
             offerKey = RecapDraftSkill.idempotencyKey(for: meetingID)
+        case .emailRecapDraft:
+            offerKey = EmailRecapDraftSkill.idempotencyKey(for: meetingID)
         case .packageExport:
             // Deliberately destination-free: the export key includes the path
             // the user picks at confirm time, but "stop offering this" is a
@@ -36,6 +39,7 @@ public struct MeetingSkillOffer: Equatable, Sendable, Identifiable {
     public var skillID: String {
         switch kind {
         case .recapDraft: RecapDraftSkill.id
+        case .emailRecapDraft: EmailRecapDraftSkill.id
         case .packageExport: MeetingPackageExportSkill.id
         }
     }
@@ -46,12 +50,16 @@ public struct MeetingSkillOffer: Equatable, Sendable, Identifiable {
 /// subject and body the delivery will hand over verbatim.
 public enum MeetingSkillPreview: Equatable, Sendable {
     case recap(subject: String, body: String)
+    case emailDraft(subject: String, body: String)
     case packageExport(meetingTitle: String, destination: String)
 }
 
 /// The slice of MeetingStore the offer policy reads.
 public protocol MeetingSkillOfferStore: SkillExecutionPolicyReading, Sendable {
     func dismissedSkillOffers(offerKeys: [String]) async throws -> Set<String>
+    func skillExecutions(
+        idempotencyKeys: [String]
+    ) async throws -> [SkillExecutionRecord]
     func skillExecutions(
         idempotencyKeyPrefix prefix: String
     ) async throws -> [SkillExecutionRecord]
@@ -95,24 +103,31 @@ public struct LoadMeetingSkillOffers: ApplicationUseCase {
         guard !policy.isPaused else { return [] }
         let candidates = [
             MeetingSkillOffer(kind: .recapDraft, meetingID: meetingID),
+            MeetingSkillOffer(kind: .emailRecapDraft, meetingID: meetingID),
             MeetingSkillOffer(kind: .packageExport, meetingID: meetingID)
         ]
         let dismissed = try await store.dismissedSkillOffers(
             offerKeys: candidates.map(\.offerKey))
-        var offers: [MeetingSkillOffer] = []
-        for offer in candidates {
-            guard policy.isIndividuallyEnabled(skillID: offer.skillID)
-            else { continue }
-            guard !dismissed.contains(offer.offerKey) else { continue }
-            if offer.kind == .recapDraft {
-                let executions = try await store.skillExecutions(
-                    idempotencyKeyPrefix: offer.offerKey)
-                guard !executions.contains(where: { $0.state == .succeeded })
-                else { continue }
-            }
-            offers.append(offer)
+        let eligible = candidates.filter {
+            policy.isIndividuallyEnabled(skillID: $0.skillID)
+                && !dismissed.contains($0.offerKey)
         }
-        return offers
+        let oneShotKeys = eligible.compactMap { offer in
+            switch offer.kind {
+            case .recapDraft, .emailRecapDraft: offer.offerKey
+            case .packageExport: nil
+            }
+        }
+        let oneShotExecutions = try await store.skillExecutions(
+            idempotencyKeys: oneShotKeys)
+        let unavailableOneShotKeys = Set(oneShotExecutions.compactMap {
+            $0.state == .succeeded || $0.state == .executing
+                ? $0.idempotencyKey
+                : nil
+        })
+        return eligible.filter {
+            !unavailableOneShotKeys.contains($0.offerKey)
+        }
     }
 }
 
@@ -147,14 +162,12 @@ public struct LoadMeetingSkillReceipts: ApplicationUseCase {
         _ meetingID: MeetingID
     ) async throws -> [MeetingSkillReceipt] {
         let key = meetingID.rawValue.uuidString
-        var records: [SkillExecutionRecord] = []
-        for prefix in [
+        var records = try await store.skillExecutions(idempotencyKeys: [
             "\(RecapDraftSkill.id):\(key)",
-            "\(MeetingPackageExportSkill.id):\(key):"
-        ] {
-            records += try await store.skillExecutions(
-                idempotencyKeyPrefix: prefix)
-        }
+            "\(EmailRecapDraftSkill.id):\(key)"
+        ])
+        records += try await store.skillExecutions(
+            idempotencyKeyPrefix: "\(MeetingPackageExportSkill.id):\(key):")
         return records
             .sorted {
                 if $0.updatedAt != $1.updatedAt {
@@ -201,6 +214,22 @@ public enum MeetingSkillProposalFactory {
             MeetingPackageExportSkill.idempotencyKey(
                 for: meetingID,
                 destination: destination)
+        )
+    }
+
+    public static func emailRecapDraftProposal(
+        proposalID: UUID = UUID(),
+        meetingID: MeetingID,
+        at now: Date
+    ) -> (proposal: SkillProposal, idempotencyKey: String) {
+        (
+            SkillProposal(
+                id: proposalID,
+                definition: EmailRecapDraftSkill.definition,
+                requestedCapabilities: [.readMeetingMaterial, .sendRemote],
+                arguments: [.meeting(meetingID)],
+                proposedAt: now),
+            EmailRecapDraftSkill.idempotencyKey(for: meetingID)
         )
     }
 }

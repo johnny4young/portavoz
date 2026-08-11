@@ -1889,6 +1889,18 @@
     {
       "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-email-boundary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"skill-confirm-email-recipient-policy\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/SkillConfirmSheet.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"skill-confirm-error\")",
       "occurrences": 1
     },
@@ -2746,6 +2758,7 @@
     {
       "feature": "skill-proposals",
       "tests": [
+        "testEmailRecapSkillPreviewsAndHandsOffWithoutSending",
         "testFailedSkillEffectRetriesItsOriginalProposal",
         "testSkillProposalJourneyFromBannerToReceipt"
       ],
@@ -2764,6 +2777,7 @@
         }
       ],
       "screenshots": [
+        "meeting-detail-email-recap-handoff",
         "meeting-detail-skill-receipt",
         "meeting-detail-skill-retry-receipt"
       ]

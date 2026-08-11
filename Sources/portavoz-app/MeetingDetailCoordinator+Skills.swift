@@ -13,7 +13,7 @@ extension MeetingDetailCoordinator {
         detail: MeetingReviewReadModel
     ) {
         switch offer.kind {
-        case .recapDraft:
+        case .recapDraft, .emailRecapDraft:
             presentSkillSheet(offer, destination: nil)
         case .packageExport:
             let panel = NSSavePanel()
@@ -45,6 +45,7 @@ extension MeetingDetailCoordinator {
             .performSkill(
                 target.offer,
                 proposalID: target.proposalID,
+                proposedAt: target.proposedAt,
                 preview: target.preview,
                 destination: target.destination))
         guard case .skillPerformed = effect else {
@@ -66,6 +67,7 @@ extension MeetingDetailCoordinator {
             else { return }
             flow.skillConfirmTarget = MeetingDetailFlowState.SkillConfirmTarget(
                 proposalID: UUID(),
+                proposedAt: Date(),
                 offer: offer,
                 preview: preview,
                 destination: destination)

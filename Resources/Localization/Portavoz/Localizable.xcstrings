@@ -12200,6 +12200,186 @@
           }
         }
       }
+    },
+    "No recipients — you choose them in your email app.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin destinatarios — los eliges en tu app de correo."
+          }
+        }
+      }
+    },
+    "Opening the draft hands this text to your email app, which may save or sync it. Portavoz never sends it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir el borrador entrega este texto a tu app de correo, que puede guardarlo o sincronizarlo. Portavoz nunca lo envía."
+          }
+        }
+      }
+    },
+    "hands text to your email app": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "entrega texto a tu app de correo"
+          }
+        }
+      }
+    },
+    "you still press Send": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tú todavía pulsas Enviar"
+          }
+        }
+      }
+    },
+    "Open this email draft": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir este borrador de email"
+          }
+        }
+      }
+    },
+    "Open email draft": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir borrador de email"
+          }
+        }
+      }
+    },
+    "Things Portavoz can prepare from this meeting — always previewed and always confirmed by you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cosas que Portavoz puede preparar de esta reunión — siempre las revisas y confirmas tú."
+          }
+        }
+      }
+    },
+    "Open an email recap draft…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir un borrador de recap por email…"
+          }
+        }
+      }
+    },
+    "Don't suggest the email draft again": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No volver a sugerir el borrador de email"
+          }
+        }
+      }
+    },
+    "Email recap draft": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrador de recap por email"
+          }
+        }
+      }
+    },
+    "Opens the exact reviewed recap in your email app with no recipients. Portavoz never sends it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre el recap exacto que revisaste en tu app de correo, sin destinatarios. Portavoz nunca lo envía."
+          }
+        }
+      }
+    },
+    "The email draft could not be opened. Portavoz did not send it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo abrir el borrador de email. Portavoz no lo envió."
+          }
+        }
+      }
+    },
+    "Email recap draft — handoff requested": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrador de recap por email — entrega solicitada"
+          }
+        }
+      }
+    },
+    "Email recap draft — did not open": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrador de recap por email — no se abrió"
+          }
+        }
+      }
+    },
+    "Handoff requested": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrega solicitada"
+          }
+        }
+      }
+    },
+    "Email app did not open": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La app de correo no se abrió"
+          }
+        }
+      }
+    },
+    "Email recap draft — handoff status unknown": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrador de recap por email — estado de entrega desconocido"
+          }
+        }
+      }
+    },
+    "Handoff status unknown": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estado de entrega desconocido"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

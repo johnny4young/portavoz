@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,312 cases (14 environment-gated) + 75
+Status: the package inventory contains 2,329 cases (14 environment-gated) + 76
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 75
+Meeting Detail tests. The English and Spanish release gates each cover all 76
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -1489,7 +1489,7 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 75 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 76 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select bilingual evidence; the
@@ -2232,14 +2232,17 @@ genuinely need different seed flags or launch arguments; never merge cases
 across different launch configurations, because a shared launch that half
 the assertions must un-do stops being evidence.
 
-The current inventory is 75 cases per locale (150 bilingual). The Aug 7 cost
-sample above predates sixteen of those bilingual executions and remains a timing model,
+The current inventory is 76 cases per locale (152 bilingual). The Aug 7 cost
+sample above predates eighteen of those bilingual executions and remains a timing model,
 not a claim that the smaller 132-case inventory is current.
 
 **D321 retry gate.** Three package cases pin the proposal UUID across model
 routing, resolve the exact durable idempotency-key owner after presentation
 reconstruction, and ratchet the as-built decision; the existing proposal
-factory case also verifies that an injected UUID is preserved. One real-app
+factory case also verifies that an injected UUID is preserved. The routing
+case pins the original `proposedAt` across retries and the architecture ratchet
+forbids rebuilding it from `Date()` at Confirm time, composing with the existing
+admission tests that reject a proposal after 15 minutes. One real-app
 journey per locale uses a disposable-store-only fail-once pasteboard boundary:
 the first handoff must leave the exact preview open with a visible failure, the
 second must reuse the original claim, settle a receipt, dismiss the sheet, and
@@ -2326,6 +2329,28 @@ and Radar mutations to wake search reconciliation while failed writes stay
 silent. This proves app handoff and invalidation without contaminating the
 user's index; physical results, picker registration, Siri disambiguation, and
 cold recovery remain Sequoia/Tahoe field gates.
+
+**D327 review-first email gate.** Eleven package cases pin the separate external
+registry and intact local no-egress invariant, irreversible explicit capability
+contract, exact-one-meeting arguments and keys, existing recap-composer reuse,
+missing-summary degradation, proposal shape, egress refusal before any durable
+claim/effect, successful retirement/receipt, email-specific preview fencing,
+verbatim subject/body delivery, recoverable composer rejection, and the AppKit
+boundary's empty recipients plus absence of transport or AppleScript. A shared
+one-shot interruption case requires both recap and email offers to remain
+absent while their ambiguous `executing` receipts stay visible. A query-shape
+case requires one bounded exact-key read for both one-shot offers and only one
+additional literal-prefix read when projecting package receipts. The
+control-center cases also require the external Skill to be independently
+disableable without turning its Settings switch into consent. One real-app
+journey per locale opens the exact seeded-summary preview, verifies the
+no-recipient and possible-sync disclosures plus localized handoff action,
+requires the disposable adapter to leave both clipboard and foreground app
+ownership unchanged, then observes the content-free receipt and independent
+offer retirement. `meeting-skills` selectors include that journey, and catalog
+validation reports 76 complete cases. The disposable adapter cannot prove the
+system email client opened; default-client composition on physical Sequoia and
+Tahoe remains field evidence.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

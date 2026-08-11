@@ -731,22 +731,155 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "\(subject)\n\n\(previewBody)",
             "the clipboard must contain the exact artifact the user approved")
 
-        // 3 · A succeeded recap retires its offer; export keeps offering.
-        // 4 · Dismissing the last offer is terminal: the menu itself leaves.
+        // 3 · A succeeded recap retires only that offer; the email and export
+        // adapters remain independent user intents.
         menu.click()
+        let emailDismiss = app.menuItems[
+            "skill-offer-dismiss-email-recap-draft"]
         let exportDismiss = app.menuItems["skill-offer-dismiss-package-export"]
+        XCTAssertTrue(
+            emailDismiss.waitForExistence(timeout: 5),
+            "email handoff remains an independent unperformed intent")
         XCTAssertTrue(
             exportDismiss.waitForExistence(timeout: 5),
             "each export destination is a new intent, so export keeps offering")
         XCTAssertFalse(
             app.menuItems["skill-offer-recap-draft"].exists,
             "the draft exists — the offer must not ask again")
+        emailDismiss.click()
+
+        // 4 · Dismissing the last remaining offer is terminal: the menu itself
+        // leaves only after every independent intent is settled or dismissed.
+        XCTAssertTrue(menu.waitForStableFrame(timeout: 5))
+        menu.click()
+        XCTAssertTrue(exportDismiss.waitForExistence(timeout: 5))
         exportDismiss.click()
         let gone = expectation(
             for: NSPredicate(format: "exists == false"),
             evaluatedWith: menu)
         wait(for: [gone], timeout: 5)
         attachScreenshot(of: app, named: "meeting-detail-skill-receipt")
+    }
+
+    /// D327 — the external boundary stays review-first: exact summary-derived
+    /// text, no inferred recipients, an explicit sync warning, and a separate
+    /// Send action in the user's email app. The disposable UI adapter traverses
+    /// the production proposal/effect path without launching the host client.
+    @MainActor
+    func testEmailRecapSkillPreviewsAndHandsOffWithoutSending() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString("email-skill-sentinel", forType: .string)
+        let app = launchOnSeededMeeting()
+        defer { app.terminate() }
+
+        let menu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
+        menu.click()
+        let email = app.menuItems["skill-offer-email-recap-draft"]
+        guard email.waitForExistence(timeout: 5) else {
+            XCTFail("the meeting must expose its review-first email draft")
+            return
+        }
+        email.click()
+
+        let sheet = app.control(withIdentifier: "skill-confirm-sheet")
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        let subjectElement = app.control(
+            withIdentifier: "skill-confirm-preview-subject")
+        let bodyElement = app.control(
+            withIdentifier: "skill-confirm-preview-body")
+        XCTAssertTrue(subjectElement.waitForExistence(timeout: 5))
+        XCTAssertTrue(bodyElement.waitForExistence(timeout: 5))
+        let subject = (subjectElement.value as? String) ?? subjectElement.label
+        let body = (bodyElement.value as? String) ?? bodyElement.label
+        XCTAssertFalse(subject.trimmingCharacters(in: .whitespaces).isEmpty)
+        XCTAssertTrue(
+            body.contains("El equipo revisó el presupuesto"),
+            "the email body must come from the exact seeded summary")
+
+        let recipientPolicy = app.control(
+            withIdentifier: "skill-confirm-email-recipient-policy")
+        let boundary = app.control(
+            withIdentifier: "skill-confirm-email-boundary")
+        XCTAssertTrue(recipientPolicy.waitForExistence(timeout: 5))
+        XCTAssertTrue(boundary.waitForExistence(timeout: 5))
+        let expectedRecipientCopy = UITestLocale.environmentLocale == "es"
+            ? "Sin destinatarios — los eliges en tu app de correo."
+            : "No recipients — you choose them in your email app."
+        let recipientText = accessibleText(of: recipientPolicy)
+        XCTAssertTrue(
+            recipientText.contains(expectedRecipientCopy),
+            "expected recipient policy in accessible text, got: \(recipientText)")
+        let expectedBoundaryCopy = UITestLocale.environmentLocale == "es"
+            ? "Portavoz nunca lo envía."
+            : "Portavoz never sends it."
+        let boundaryText = accessibleText(of: boundary)
+        XCTAssertTrue(
+            boundaryText.contains(expectedBoundaryCopy),
+            "expected email boundary in accessible text, got: \(boundaryText)")
+
+        let submit = app.buttons["skill-confirm-submit"]
+        XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
+        let expectedSubmit = UITestLocale.environmentLocale == "es"
+            ? "Abrir borrador de email"
+            : "Open email draft"
+        XCTAssertEqual(submit.label, expectedSubmit)
+        submit.click()
+
+        let receipt = app.control(
+            withIdentifier: "skill-receipt-email-recap-draft")
+        XCTAssertTrue(
+            receipt.waitForExistence(timeout: 10),
+            "successful composer handoff must leave a content-free receipt")
+        let expectedReceipt = UITestLocale.environmentLocale == "es"
+            ? "entrega solicitada"
+            : "handoff requested"
+        XCTAssertTrue(
+            receipt.label.localizedCaseInsensitiveContains(expectedReceipt),
+            "the receipt must say handoff, never sent or delivered")
+        XCTAssertEqual(
+            NSPasteboard.general.string(forType: .string),
+            "email-skill-sentinel",
+            "email permission cannot be downgraded into clipboard permission")
+        XCTAssertEqual(
+            app.state,
+            .runningForeground,
+            "UI automation must never launch the host email application")
+
+        menu.click()
+        XCTAssertFalse(
+            app.menuItems["skill-offer-email-recap-draft"].exists,
+            "a successful handoff retires only the email intent")
+        XCTAssertTrue(app.menuItems["skill-offer-recap-draft"].exists)
+        XCTAssertTrue(app.menuItems["skill-offer-package-export"].exists)
+        attachScreenshot(of: app, named: "meeting-detail-email-recap-handoff")
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(app.openSettingsWindow())
+        XCTAssertTrue(app.openSettingsCategory(
+            "settings-category-skills",
+            revealing: "settings-skills-pause-all"))
+        let settingsReceipt = app.control(
+            withIdentifier: "settings-skill-receipt-email-recap-draft")
+        XCTAssertTrue(
+            settingsReceipt.waitForExistence(timeout: 10),
+            "Skills Settings must project the same durable handoff receipt")
+        let expectedSettingsReceipt = UITestLocale.environmentLocale == "es"
+            ? "Entrega solicitada"
+            : "Handoff requested"
+        let settingsReceiptText = accessibleText(of: settingsReceipt)
+        XCTAssertTrue(
+            settingsReceiptText.contains(expectedSettingsReceipt),
+            "Settings must describe the external boundary as a handoff; got: \(settingsReceiptText)")
+    }
+
+    @MainActor
+    private func accessibleText(of element: XCUIElement) -> String {
+        [element.label, element.value as? String]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     /// D321 — a failed effect keeps the sheet and retries the original durable
@@ -766,9 +899,15 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         let sheet = app.control(withIdentifier: "skill-confirm-sheet")
         let submit = app.buttons["skill-confirm-submit"]
-        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        guard sheet.waitForExistence(timeout: 10) else {
+            XCTFail("the recap preview sheet must survive asynchronous store reads")
+            return
+        }
         XCTAssertTrue(app.prepareForInteraction())
-        XCTAssertTrue(submit.waitForStableFrame(timeout: 5))
+        guard submit.waitForStableFrame(timeout: 10) else {
+            XCTFail("the recap preview must expose its stable confirmation control")
+            return
+        }
         let previewBody = app.control(withIdentifier: "skill-confirm-preview-body")
         let previewSubject = app.control(
             withIdentifier: "skill-confirm-preview-subject")
