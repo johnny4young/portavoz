@@ -232,9 +232,14 @@ private final class AppRefineMeetingCompanion: RefineMeetingCompanion {
             return RefineMeetingCompanionRefresh(cards: [], completed: false)
         }
         let result = await CompanionRefresh.regenerate(
-            from: segments,
+            from: MeetingTranscriptGenerationMaterial(
+                segments: segments,
+                sourceSegmentIDsByGeneratedID: Dictionary(
+                    uniqueKeysWithValues: segments.map { ($0.id, [$0.id]) }),
+                baseTranscriptRevision: transcriptRevision,
+                correctionRevision: .accepted),
             meetingID: meetingID,
-            transcriptRevision: transcriptRevision,
+            workflow: .postRefine,
             byok: await services.companionBYOKClient())
         return RefineMeetingCompanionRefresh(
             cards: [],

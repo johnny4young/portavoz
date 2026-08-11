@@ -79,6 +79,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
         aiSuggestions: Bool = false,
         abandonedSummary: Bool = false,
         simulateSkillEffectFailureOnce: Bool = false,
+        simulateApuntadorRefreshSuccess: Bool = false,
         summaryEngine: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication.portavoz(
@@ -91,7 +92,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
             seedStaleDerived: staleDerived,
             seedCommitmentInbox: commitmentInbox,
             simulateSequoiaCapabilities: simulateSequoiaCapabilities,
-            simulateSkillEffectFailureOnce: simulateSkillEffectFailureOnce)
+            simulateSkillEffectFailureOnce: simulateSkillEffectFailureOnce,
+            simulateApuntadorRefreshSuccess: simulateApuntadorRefreshSuccess)
         if justRecorded {
             app.launchArguments += ["-mirrorAfterMeeting", "true"]
         }
@@ -157,6 +159,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
                     "apuntador-card-B5F00000-0000-4000-8000-000000000002-stale")
                 .waitForExistence(timeout: 10),
             "an Apuntador answer generated before the correction must be labelled stale")
+        XCTAssertTrue(
+            app.buttons["detail-apuntador-refresh"].waitForExistence(timeout: 5),
+            "stale Apuntador answers must expose one explicit section refresh")
         XCTAssertFalse(
             app.control(
                 withIdentifier:
@@ -164,6 +169,68 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .exists,
             "stale evidence must not remain an actionable jump")
         attachScreenshot(of: app, named: "meeting-detail-stale-derived-artifacts")
+    }
+
+    @MainActor
+    func testExplicitApuntadorRefreshUsesCorrectedTranscript() {
+        let app = launchOnSeededMeeting(
+            staleDerived: true,
+            simulateApuntadorRefreshSuccess: true)
+        defer { app.terminate() }
+
+        let refresh = app.buttons["detail-apuntador-refresh"]
+        XCTAssertTrue(
+            refresh.waitForExistence(timeout: 10),
+            "the stale Apuntador snapshot must offer explicit regeneration")
+        XCTAssertTrue(
+            refresh.waitForStableFrame(timeout: 5),
+            "the refresh control must settle before activation")
+        refresh.click()
+
+        XCTAssertTrue(
+            app.staticTexts["El rollout corregido queda para el lunes."]
+                .waitForExistence(timeout: 10),
+            "the refreshed answer must come from the corrected transcript projection")
+        XCTAssertFalse(
+            app.control(
+                withIdentifier:
+                    "apuntador-card-B5F00000-0000-4000-8000-000000000002-stale")
+                .exists,
+            "the stale card must be replaced only after current publication succeeds")
+        XCTAssertFalse(
+            app.buttons["detail-apuntador-refresh"].exists,
+            "the refresh control must disappear once every card matches current corrections")
+        attachScreenshot(of: app, named: "meeting-detail-apuntador-refreshed")
+    }
+
+    @MainActor
+    func testSequoiaApuntadorRefreshPreservesStaleAnswers() {
+        let app = launchOnSeededMeeting(
+            staleDerived: true,
+            simulateSequoiaCapabilities: true)
+        defer { app.terminate() }
+
+        let refresh = app.buttons["detail-apuntador-refresh"]
+        XCTAssertTrue(
+            refresh.waitForStableFrame(timeout: 10),
+            "Sequoia must expose the explicit action without pretending it can run")
+        refresh.click()
+
+        let expectedError = UITestLocale.environmentLocale == "es"
+            ? "Volver a comprobar las respuestas del Apuntador requiere macOS 26 y Apple Intelligence."
+            : "Re-checking Apuntador answers requires macOS 26 and Apple Intelligence."
+        XCTAssertTrue(
+            app.staticTexts[expectedError].waitForExistence(timeout: 10),
+            "the unsupported OS must explain the exact model requirement")
+        XCTAssertTrue(
+            app.control(
+                withIdentifier:
+                    "apuntador-card-B5F00000-0000-4000-8000-000000000002-stale")
+                .exists,
+            "an unavailable provider must preserve the previous stale snapshot")
+        XCTAssertTrue(
+            app.buttons["detail-apuntador-refresh"].exists,
+            "the explicit retry must remain available after an unavailable pass")
     }
 
     @MainActor

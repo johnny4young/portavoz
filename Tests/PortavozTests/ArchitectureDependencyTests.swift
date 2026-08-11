@@ -4449,6 +4449,52 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testExplicitCorrectedCompanionRefreshKeepsEvidenceAndPublicationFenced() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/RegenerateCompanionCards.swift")
+        let provenance = try Self.contents(
+            of: "Sources/IntelligenceKit/CompanionGenerationProvenance.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Companion.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+CompanionRegeneration.swift")
+        let rail = try Self.contents(
+            of: "Sources/portavoz-app/MeetingDetailRailSection.swift")
+        let correction = try Self.contents(
+            of: "Sources/ApplicationKit/CorrectMeetingTranscript.swift")
+            + Self.contents(
+                of: "Sources/ApplicationKit/RestructureMeetingTranscript.swift")
+        let uiTests = try Self.contents(
+            of: "Tests/PortavozUITests/MeetingDetailUITests.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(workflow.contains("struct RegenerateCompanionCards"))
+        XCTAssertTrue(workflow.contains("MeetingTranscriptGenerationMaterial"))
+        XCTAssertTrue(workflow.contains(
+            "guard pass.completed, pass.terminalRuns.isEmpty else { return .preserved }"))
+        XCTAssertTrue(workflow.contains("replaceRegeneratedCompanionCards"))
+        XCTAssertFalse(workflow.contains("import SwiftUI"))
+        XCTAssertTrue(provenance.contains("case meetingReview = \"meeting-review\""))
+        XCTAssertTrue(provenance.contains("companion-generation-v3"))
+        XCTAssertTrue(provenance.contains("evidenceSourceIDsByGeneratedID"))
+        XCTAssertTrue(provenance.contains("evidence-source-count:"))
+        XCTAssertTrue(storage.contains("func replaceReviewedCompanionCards("))
+        XCTAssertTrue(storage.contains(
+            "reviewed Companion cards require immutable question evidence"))
+        XCTAssertTrue(storage.contains("func saveReviewedCompanionGenerationRun("))
+        XCTAssertTrue(storage.contains("workflow: \"meeting-review\""))
+        XCTAssertFalse(storage.contains("workflow: String ="))
+        XCTAssertFalse(storage.contains("public func saveCompanionGenerationRun("))
+        XCTAssertTrue(storage.contains("sourceCorrectionRevision: correctionRevision"))
+        XCTAssertTrue(adapter.contains("services.usesTemporaryMeetingStore"))
+        XCTAssertTrue(adapter.contains("-simulate-apuntador-refresh-success"))
+        XCTAssertTrue(adapter.contains("workflow: .meetingReview"))
+        XCTAssertTrue(rail.contains("detail-apuntador-refresh"))
+        XCTAssertTrue(uiTests.contains("testExplicitApuntadorRefreshUsesCorrectedTranscript"))
+        XCTAssertFalse(correction.contains("RegenerateCompanionCards"))
+        XCTAssertTrue(decisions.contains("## D331"))
+    }
+
     func testOpenAICompatibleSummaryEgressCannotBypassTheGateway() throws {
         let byok = try Self.contents(of: "Sources/IntelligenceKit/BYOK.swift")
         let provider = try Self.contents(
@@ -7690,7 +7736,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            429)
+            431)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             14)

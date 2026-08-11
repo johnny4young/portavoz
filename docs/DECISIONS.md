@@ -11757,3 +11757,48 @@ separate. Deterministic migration, correction, publication, readiness, search,
 restore, and bilingual app tests do not prove model assets, correction-heavy
 latency, or memory behavior on physical Sequoia/Tahoe hosts, so those remain
 explicit performance and field-evidence gates.
+
+## D331 — Recheck stale Apuntador cards only on explicit corrected review (Aug 2026)
+
+**Context:** D233 honestly retains Apuntador cards as stale after a transcript
+correction and disables their evidence, but leaves no recovery action. The
+post-Refine pipeline can rebuild a complete accepted snapshot, and explicit
+summary regeneration already consumes composed corrected rows. Reusing either
+without an evidence rule would persist ephemeral split/merge IDs that StorageKit
+correctly rejects; running automatically on each correction would also surprise
+the user with model cost or configured BYOK traffic and make editing latency
+depend on intelligence availability.
+
+**Decision:** add one explicit section-level recheck when any Meeting Detail
+Apuntador card is stale. ApplicationKit owns a `RegenerateCompanionCards` use
+case over `MeetingTranscriptGenerationMaterial`. The app adapter reuses the
+bounded post-Refine turn pipeline under a distinct `meeting-review` workflow.
+The live-recording enable toggle does not gate a direct user request, while the
+Foundation Models classifier still requires macOS 26 and available Apple
+Intelligence; a configured, consented BYOK endpoint remains only the knowledge-
+answer provider.
+
+The generation request carries the composed-row-to-accepted-source map. Its
+private version-3 operation fingerprint binds each relevant generated row and
+its ordered source IDs. Question and cited-answer evidence expands through that
+map and deduplicates in first-use order before persistence, so
+replace/split/merge material can inform the model while durable links continue
+to target immutable accepted segments. Suppressed rows never enter the
+generated material.
+
+Only a complete pass with no terminal outcome replaces the whole card snapshot,
+including with an empty set when no eligible question remains. Model
+unavailability, cancellation, any incomplete pass, transcript/correction drift,
+invalid evidence, or a late transaction failure preserves every previous stale
+card. Explicit-review storage rejects a new card without immutable question
+evidence. Current terminal runs are saved best effort. The replacement
+transaction rechecks meeting and transcript identity, effective correction
+revision, workflow, succeeded run, and every evidence link before tombstoning
+the old snapshot. Correction writes still start no model work, and automatic
+regeneration remains absent.
+
+**Rationale:** an explicit whole-snapshot action gives stale assistance a safe
+recovery path without weakening local-first consent, correction responsiveness,
+or immutable evidence. One accepted-source projection prevents corrected
+generation from inventing a second evidence identity system, while atomic
+replacement makes partial answers and stale races observationally impossible.

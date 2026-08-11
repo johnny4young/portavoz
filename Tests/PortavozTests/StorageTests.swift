@@ -1464,21 +1464,59 @@ extension MeetingStoreTests {
             }
         }
 
+        let currentCardID = UUID()
         let currentCard = CompanionCard(
+            id: currentCardID,
             question: "Current question", answer: "Publish this",
-            kind: .context, source: "on-device", askedAt: 16)
-        try await store.replaceCompanionCards(
-            [],
-            generated: [CompanionGenerationArtifact(
+            kind: .context, source: "on-device", askedAt: 16,
+            evidence: CompanionCardEvidence(
+                cardID: currentCardID,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                questionSegmentIDs: [segments[0].id]))
+        try await store.replaceReviewedCompanionCards(
+            [CompanionGenerationArtifact(
                 card: currentCard,
                 generationRun: companionRun(
                     card: currentCard,
                     outcome: .succeeded,
-                    sourceCorrectionRevision: revision))],
+                    sourceCorrectionRevision: revision,
+                    workflow: "meeting-review"))],
             for: meeting.id)
 
         let cards = try await store.companionCards(for: meeting.id)
         XCTAssertEqual(cards, [currentCard])
+    }
+
+    func testReviewedCompanionReplacementRejectsMissingEvidenceWithoutMutation() async throws {
+        try await store.save(meeting)
+        let previous = CompanionCard(
+            question: "Previous question", answer: "Keep this",
+            kind: .context, source: "on-device", askedAt: 10)
+        try await store.save([previous], for: meeting.id)
+        let unevidenced = CompanionCard(
+            question: "New question", answer: "Must not publish",
+            kind: .context, source: "on-device", askedAt: 15)
+
+        do {
+            try await store.replaceReviewedCompanionCards(
+                [CompanionGenerationArtifact(
+                    card: unevidenced,
+                    generationRun: companionRun(
+                        card: unevidenced,
+                        outcome: .succeeded,
+                        workflow: "meeting-review"))],
+                for: meeting.id)
+            XCTFail("explicit review must not publish a card without immutable evidence")
+        } catch let error as StorageError {
+            guard case .invalidGenerationRun = error else {
+                return XCTFail("expected invalidGenerationRun, got \(error)")
+            }
+        }
+
+        let storedCards = try await store.companionCards(for: meeting.id)
+        let storedRuns = try await store.generationRuns(for: meeting.id)
+        XCTAssertEqual(storedCards, [previous])
+        XCTAssertTrue(storedRuns.isEmpty)
     }
 
     func testCompanionTerminalRunRejectsStaleTranscriptRevision() async throws {
@@ -1493,9 +1531,8 @@ extension MeetingStoreTests {
             sourceTranscriptRevision: sourceRevision)
 
         do {
-            try await store.saveCompanionGenerationRun(
+            try await store.savePostRefineCompanionGenerationRun(
                 staleRun,
-                workflow: "post-refine",
                 sourceTranscriptRevision: sourceRevision)
             XCTFail("a stale terminal Companion run must not enter current history")
         } catch let error as StorageError {
@@ -1512,7 +1549,8 @@ extension MeetingStoreTests {
         card: CompanionCard,
         outcome: GenerationRunOutcome,
         sourceTranscriptRevision: Int = 0,
-        sourceCorrectionRevision: TranscriptCorrectionRevision? = nil
+        sourceCorrectionRevision: TranscriptCorrectionRevision? = nil,
+        workflow: String = "post-refine"
     ) -> GenerationRun {
         let timestamp = meeting.startedAt.addingTimeInterval(card.askedAt)
         let correctionConfiguration = sourceCorrectionRevision.map {
@@ -1527,7 +1565,7 @@ extension MeetingStoreTests {
             configJSON: """
                 {"operation":"classify-and-answer",\
                 "sourceTranscriptRevision":\(sourceTranscriptRevision),\
-                "workflow":"post-refine"\(correctionConfiguration)}
+                "workflow":"\(workflow)"\(correctionConfiguration)}
                 """,
             outputLanguage: "en",
             startedAt: timestamp,

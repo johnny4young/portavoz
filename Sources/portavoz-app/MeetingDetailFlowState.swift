@@ -110,6 +110,7 @@ final class MeetingDetailFlowState {
     var skillConfirmTarget: SkillConfirmTarget?
     var renameSpeakerName = ""
     var isRegenerating = false
+    var isRefreshingCompanion = false
     var isEnhancingNotes = false
     var notesNotice: String?
     var applyingStatus: String?

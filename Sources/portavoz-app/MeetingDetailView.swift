@@ -188,6 +188,7 @@ private extension MeetingDetailView {
                     }),
                 transcriptRevision: detail.meeting.transcriptRevision,
                 hasPlayback: player != nil,
+                isRefreshingCompanion: flow.isRefreshingCompanion,
                 presentation: presentation),
             actions: MeetingDetailRailActions(
                 retryProcessing: coordinator.retryProcessing,
@@ -196,6 +197,7 @@ private extension MeetingDetailView {
                 seekAndPlay: seekAndPlay,
                 focusEvidence: focusEvidence,
                 copyAnswer: coordinator.copyAnswer,
+                refreshCompanionCards: { coordinator.refreshCompanionCards(detail) },
                 removeCompanionCard: coordinator.removeCompanionCard))
     }
 

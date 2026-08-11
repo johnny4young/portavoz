@@ -81,6 +81,7 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-processing",
             ),
             "Sources/portavoz-app/MeetingDetailFlowState.swift": (
+                "meeting-correction",
                 "meeting-export",
                 "meeting-naming",
                 "meeting-processing",
@@ -116,6 +117,7 @@ class UITestScopeTests(unittest.TestCase):
             ),
             "Sources/portavoz-app/MeetingDetailCoordinator.swift": (
                 "meeting-audio",
+                "meeting-correction",
                 "meeting-evidence",
                 "meeting-processing",
             ),
@@ -214,6 +216,26 @@ class UITestScopeTests(unittest.TestCase):
             selection.tests,
         )
         self.assertLess(len(selection.tests), len(ALL_TESTS))
+
+    def test_companion_refresh_selects_correction_publication_evidence(self):
+        expected = {
+            "PortavozUITests/MeetingDetailUITests/"
+            "testExplicitApuntadorRefreshUsesCorrectedTranscript",
+            "PortavozUITests/MeetingDetailUITests/"
+            "testSequoiaApuntadorRefreshPreservesStaleAnswers",
+        }
+        for path in (
+            "Sources/ApplicationKit/RegenerateCompanionCards.swift",
+            "Sources/StorageKit/MeetingStore+Companion.swift",
+            "Sources/portavoz-app/AppServices+CompanionRegeneration.swift",
+            "Sources/portavoz-app/CompanionRefresh.swift",
+            "Sources/portavoz-app/MeetingDetailCoordinator.swift",
+            "Sources/portavoz-app/MeetingDetailFlowState.swift",
+        ):
+            selection = select_paths([path])
+            self.assertTrue(expected.issubset(selection.tests), path)
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
     def test_legacy_scroll_bridge_selects_only_recording_recovery_evidence(self):
         selection = select_paths(

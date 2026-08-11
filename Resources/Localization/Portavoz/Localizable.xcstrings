@@ -3431,6 +3431,66 @@
         }
       }
     },
+    "Re-check answers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a comprobar respuestas"
+          }
+        }
+      }
+    },
+    "Re-check answers using the corrected transcript": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a comprobar las respuestas con la transcripción corregida"
+          }
+        }
+      }
+    },
+    "Re-checking Apuntador answers requires macOS 26 and Apple Intelligence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a comprobar las respuestas del Apuntador requiere macOS 26 y Apple Intelligence."
+          }
+        }
+      }
+    },
+    "Apuntador is unavailable: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El Apuntador no está disponible: %@"
+          }
+        }
+      }
+    },
+    "Apuntador could not finish re-checking. Your previous answers were kept.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El Apuntador no pudo terminar la comprobación. Se conservaron tus respuestas anteriores."
+          }
+        }
+      }
+    },
+    "The refreshed Apuntador answers could not be saved. Your previous answers were kept.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron guardar las respuestas actualizadas del Apuntador. Se conservaron tus respuestas anteriores."
+          }
+        }
+      }
+    },
     "Re-checking the Apuntador's answers…": {
       "localizations": {
         "es": {

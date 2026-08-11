@@ -4,6 +4,7 @@ import PortavozCore
 public enum CompanionGenerationWorkflow: String, Sendable {
     case liveRecording = "live-recording"
     case postRefine = "post-refine"
+    case meetingReview = "meeting-review"
 }
 
 public struct CompanionExternalProviderIdentity: Equatable, Sendable {
@@ -30,6 +31,10 @@ public struct CompanionGenerationRequest: Sendable {
     public let candidate: String
     public let questionSegmentIDs: [UUID]
     public let recentTranscript: [RAGPassage]
+    /// Ephemeral corrected rows may not share identity with their immutable
+    /// accepted evidence. Generation fingerprints and durable evidence expand
+    /// those row IDs through this map before publication.
+    public let evidenceSourceIDsByGeneratedID: [UUID: [UUID]]
     public let ownerName: String?
     public let outputLanguage: String?
     public let askedAt: TimeInterval
@@ -42,6 +47,7 @@ public struct CompanionGenerationRequest: Sendable {
         candidate: String,
         questionSegmentIDs: [UUID] = [],
         recentTranscript: [RAGPassage],
+        evidenceSourceIDsByGeneratedID: [UUID: [UUID]] = [:],
         ownerName: String?,
         outputLanguage: String?,
         askedAt: TimeInterval
@@ -53,6 +59,7 @@ public struct CompanionGenerationRequest: Sendable {
         self.candidate = candidate
         self.questionSegmentIDs = questionSegmentIDs
         self.recentTranscript = recentTranscript
+        self.evidenceSourceIDsByGeneratedID = evidenceSourceIDsByGeneratedID
         self.ownerName = ownerName
         self.outputLanguage = outputLanguage
         self.askedAt = askedAt
@@ -75,14 +82,19 @@ public enum CompanionEvidenceFactory {
         request: CompanionGenerationRequest,
         answerEvidenceIndexes: [Int]
     ) -> CompanionCardEvidence? {
-        let questions = unique(request.questionSegmentIDs)
+        let questions = acceptedIDs(
+            for: request.questionSegmentIDs,
+            in: request.evidenceSourceIDsByGeneratedID)
         guard !questions.isEmpty else { return nil }
-        let answers = unique(answerEvidenceIndexes.compactMap { index in
+        let answerGeneratedIDs: [UUID] = answerEvidenceIndexes.compactMap { index in
             guard request.recentTranscript.indices.contains(index) else { return nil }
             let passage = request.recentTranscript[index]
             guard passage.meetingID == request.meetingID else { return nil }
             return passage.segmentID
-        })
+        }
+        let answers = acceptedIDs(
+            for: answerGeneratedIDs,
+            in: request.evidenceSourceIDsByGeneratedID)
         return CompanionCardEvidence(
             cardID: cardID,
             sourceTranscriptRevision: request.sourceTranscriptRevision,
@@ -94,10 +106,17 @@ public enum CompanionEvidenceFactory {
         var seen: Set<UUID> = []
         return ids.filter { seen.insert($0).inserted }
     }
+
+    private static func acceptedIDs(
+        for generatedIDs: [UUID],
+        in sourceIDsByGeneratedID: [UUID: [UUID]]
+    ) -> [UUID] {
+        unique(generatedIDs.flatMap { sourceIDsByGeneratedID[$0] ?? [$0] })
+    }
 }
 
 public enum CompanionGenerationOperationFingerprint {
-    private static let version = "companion-generation-v2"
+    private static let version = "companion-generation-v3"
 
     public static func compute(
         request: CompanionGenerationRequest,
@@ -108,6 +127,17 @@ public enum CompanionGenerationOperationFingerprint {
               externalProvider.map(Self.isValid) ?? true
         else { return nil }
 
+        let evidenceGeneratedIDs = unique(
+            request.questionSegmentIDs
+                + request.recentTranscript.compactMap(\.segmentID))
+        let evidenceComponents = evidenceGeneratedIDs.flatMap { generatedID in
+            let sourceIDs = request.evidenceSourceIDsByGeneratedID[generatedID]
+                ?? [generatedID]
+            return [
+                "evidence-generated:\(generatedID.uuidString)",
+                "evidence-source-count:\(sourceIDs.count)"
+            ] + sourceIDs.map { "evidence-source:\($0.uuidString)" }
+        }
         let components = [
             request.meetingID.rawValue.uuidString,
             String(request.sourceTranscriptRevision),
@@ -131,8 +161,13 @@ public enum CompanionGenerationOperationFingerprint {
                 String(passage.timestamp.bitPattern, radix: 16),
                 passage.text
             ]
-        }
+        } + evidenceComponents
         return OperationFingerprint.make(version: version, components: components)
+    }
+
+    private static func unique(_ ids: [UUID]) -> [UUID] {
+        var seen: Set<UUID> = []
+        return ids.filter { seen.insert($0).inserted }
     }
 
     private static func optional(_ label: String, _ value: String?) -> String {

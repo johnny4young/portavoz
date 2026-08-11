@@ -371,6 +371,8 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "feature": "transcript-corrections",
         "tests": [
             "testCorrectedTranscriptMarksDerivedArtifactsStale",
+            "testExplicitApuntadorRefreshUsesCorrectedTranscript",
+            "testSequoiaApuntadorRefreshPreservesStaleAnswers",
             "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
             "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence",
         ],
@@ -378,6 +380,10 @@ DEFAULT_FEATURE_OWNERSHIP = (
             {
                 "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
                 "anchor": '"detail-stale-summary-regenerate"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+                "anchor": '"detail-apuntador-refresh"',
             },
             {
                 "path": "Sources/portavoz-app/TranscriptCorrectionEditor.swift",

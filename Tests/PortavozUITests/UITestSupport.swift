@@ -75,6 +75,7 @@ extension XCUIApplication {
         simulateLiveTranscriptionAttach: Bool = false,
         simulateLiveTranscriptBrowsing: Bool = false,
         simulateSkillEffectFailureOnce: Bool = false,
+        simulateApuntadorRefreshSuccess: Bool = false,
         simulateAppIntent: Bool = false,
         simulateStopAppIntent: Bool = false,
         simulateAppEntityRoute: AutomationEntityUITestRoute? = nil,
@@ -147,6 +148,9 @@ extension XCUIApplication {
         }
         if simulateSkillEffectFailureOnce {
             app.launchArguments.append("-simulate-skill-effect-failure-once")
+        }
+        if simulateApuntadorRefreshSuccess {
+            app.launchArguments.append("-simulate-apuntador-refresh-success")
         }
         if simulateAppIntent {
             app.launchArguments.append("-simulate-app-intent")

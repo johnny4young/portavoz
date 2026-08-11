@@ -115,7 +115,7 @@ self-contained over system frameworks and carries no module dependency.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, immutable transcript-correction, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
-| `ApplicationKit` | Delete, restore, purge, summary regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, focused text/speaker correction, and accepted-snapshot structural correction commands, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary and explicit Apuntador regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, focused text/speaker correction, and accepted-snapshot structural correction commands, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
@@ -2127,8 +2127,27 @@ and Apuntador cards are retained but resolve as stale in Meeting Detail; their
 evidence controls are disabled, a stale summary offers an explicit Regenerate
 action, and correction changes clear route-local generated chapter/title/recipe
 suggestions before recomputation. No correction transaction starts model work
-or rewrites an artifact automatically. Automatic Apuntador refresh remains a
-separate future adoption.
+or rewrites an artifact automatically.
+
+Stale Apuntador cards expose one explicit section-level refresh. ApplicationKit
+owns the complete-snapshot policy while the app adapter reuses the post-Refine
+turn pipeline over `MeetingTranscriptGenerationMaterial`. Generated split and
+merge row identities remain in the private `companion-generation-v3`
+operation fingerprint, which also binds their ordered accepted-source
+projection; durable question and answer evidence expands back to those
+immutable accepted segment IDs, and explicit-review storage refuses a
+generated card without typed question evidence. A complete pass with no
+terminal outcome atomically replaces the snapshot, including with an empty
+set, while model unavailability, cancellation, any incomplete pass, lineage
+drift, or a late persistence failure retains the old honestly stale cards.
+Terminal attempts are best-effort provenance. The explicit action does not
+depend on the live-recording toggle, but the classifier still requires macOS 26
+and available Apple Intelligence; configured BYOK remains only the answer
+provider. The adapter finds each question's prior context with lower-bound
+search over the already ordered transcript and materializes at most 14 rows.
+The disposable successful XCUITest adapter requires both the temporary store
+and its dedicated launch argument, so production state cannot select it.
+Automatic refresh remains deliberately absent.
 
 Every Markdown, PDF, SRT, VTT, CLI, and Gist document now enters one
 ApplicationKit correction-aware projection built from the same coherent Library
@@ -3925,7 +3944,7 @@ reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,346 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,365 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -3933,10 +3952,13 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 650
+- strict SwiftLint remains a blocking CI gate and is clean across all 654
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 77 XCUITest cases per locale define the 154-case bilingual release gate;
+- 354 deterministic tooling cases and the 168-case architecture subset pass;
+- the Meeting Detail interaction contract contains 431 signals, 14 feature
+  owners, and 35 explicitly owned UI journeys;
+- 79 XCUITest cases per locale define the 158-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

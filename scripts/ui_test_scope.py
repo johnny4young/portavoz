@@ -209,6 +209,14 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "MeetingDetailUITests",
             "testCorrectedTranscriptMarksDerivedArtifactsStale",
         ),
+        test_id(
+            "MeetingDetailUITests",
+            "testExplicitApuntadorRefreshUsesCorrectedTranscript",
+        ),
+        test_id(
+            "MeetingDetailUITests",
+            "testSequoiaApuntadorRefreshPreservesStaleAnswers",
+        ),
     ),
     "settings-navigation": (
         test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
@@ -438,7 +446,12 @@ def app_features(filename: str) -> set[str]:
     if "meetingdetailcoordinator+commitments" in lowered:
         return {"meeting-commitments"}
     if lowered == "meetingdetailcoordinator.swift":
-        return {"meeting-audio", "meeting-evidence", "meeting-processing"}
+        return {
+            "meeting-audio",
+            "meeting-correction",
+            "meeting-evidence",
+            "meeting-processing",
+        }
     if "meetingdetailflowhost" in lowered:
         return {
             "meeting-export",
@@ -462,6 +475,7 @@ def app_features(filename: str) -> set[str]:
         return {"meeting-audio"}
     if "meetingdetailflowstate" in lowered:
         return {
+            "meeting-correction",
             "meeting-export",
             "meeting-naming",
             "meeting-processing",
@@ -482,7 +496,13 @@ def app_features(filename: str) -> set[str]:
     if "recap" in lowered:
         return {"meeting-recap"}
     if any(token in lowered for token in ("summary", "companion")):
-        return {"meeting-summary", "meeting-evidence", "meeting-processing", "settings-intelligence"}
+        return {
+            "meeting-correction",
+            "meeting-summary",
+            "meeting-evidence",
+            "meeting-processing",
+            "settings-intelligence",
+        }
     if any(token in lowered for token in ("speaker", "meetingname", "voicememory")):
         return {"meeting-naming", "meeting-health", "settings-voice"}
     if any(token in lowered for token in ("meetingdetail", "meetinghealth", "mirrorcard", "refine")):
@@ -573,6 +593,7 @@ def lower_layer_features(path: str) -> set[str]:
             "insights",
             "library",
             "meeting-brief",
+            "meeting-correction",
             "meeting-summary",
             "meeting-evidence",
             "meeting-processing",

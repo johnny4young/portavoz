@@ -1108,6 +1108,12 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "control",
+      "source": "Button(action: actions.refresh) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"apuntador-card-\\(Int(card.askedAt))\")",
       "occurrences": 1
@@ -1122,6 +1128,12 @@
       "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"detail-apuntador\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-apuntador-refresh\")",
       "occurrences": 1
     },
     {
@@ -2933,10 +2945,16 @@
       "feature": "transcript-corrections",
       "tests": [
         "testCorrectedTranscriptMarksDerivedArtifactsStale",
+        "testExplicitApuntadorRefreshUsesCorrectedTranscript",
+        "testSequoiaApuntadorRefreshPreservesStaleAnswers",
         "testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo",
         "testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence"
       ],
       "sourceAnchors": [
+        {
+          "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
+          "anchor": "\"detail-apuntador-refresh\""
+        },
         {
           "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
           "anchor": "\"detail-stale-summary-regenerate\""
@@ -2955,6 +2973,7 @@
         }
       ],
       "screenshots": [
+        "meeting-detail-apuntador-refreshed",
         "meeting-detail-stale-derived-artifacts",
         "transcript-correction-original-evidence",
         "transcript-structural-correction-evidence",

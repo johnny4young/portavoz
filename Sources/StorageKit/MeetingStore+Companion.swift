@@ -34,7 +34,27 @@ extension MeetingStore {
         }
     }
 
-    public func saveCompanionGenerationRun(
+    public func savePostRefineCompanionGenerationRun(
+        _ run: GenerationRun,
+        sourceTranscriptRevision: Int
+    ) async throws {
+        try await saveCompanionGenerationRun(
+            run,
+            workflow: "post-refine",
+            sourceTranscriptRevision: sourceTranscriptRevision)
+    }
+
+    public func saveReviewedCompanionGenerationRun(
+        _ run: GenerationRun,
+        sourceTranscriptRevision: Int
+    ) async throws {
+        try await saveCompanionGenerationRun(
+            run,
+            workflow: "meeting-review",
+            sourceTranscriptRevision: sourceTranscriptRevision)
+    }
+
+    private func saveCompanionGenerationRun(
         _ run: GenerationRun,
         workflow: String,
         sourceTranscriptRevision: Int
@@ -93,6 +113,37 @@ extension MeetingStore {
         generated artifacts: [CompanionGenerationArtifact],
         for id: MeetingID
     ) async throws {
+        try await replaceCompanionCards(
+            cards,
+            generated: artifacts,
+            for: id,
+            workflow: "post-refine")
+    }
+
+    /// Replaces one explicitly reviewed meeting's complete Apuntador snapshot.
+    /// Keeping the workflow out of the public input prevents callers from
+    /// inventing provenance namespaces that storage would then have to trust.
+    public func replaceReviewedCompanionCards(
+        _ artifacts: [CompanionGenerationArtifact],
+        for id: MeetingID
+    ) async throws {
+        guard artifacts.allSatisfy({ $0.card.evidence != nil }) else {
+            throw StorageError.invalidGenerationRun(
+                "reviewed Companion cards require immutable question evidence")
+        }
+        try await replaceCompanionCards(
+            [],
+            generated: artifacts,
+            for: id,
+            workflow: "meeting-review")
+    }
+
+    private func replaceCompanionCards(
+        _ cards: [CompanionCard],
+        generated artifacts: [CompanionGenerationArtifact],
+        for id: MeetingID,
+        workflow: String
+    ) async throws {
         let generatedIDs = Set(artifacts.map(\.card.id))
         guard Set(cards.map(\.id)).isDisjoint(with: generatedIDs) else {
             throw StorageError.invalidGenerationRun(
@@ -113,7 +164,7 @@ extension MeetingStore {
             try Self.validateCompanionArtifacts(
                 artifacts,
                 meetingID: id,
-                workflow: "post-refine",
+                workflow: workflow,
                 sourceTranscriptRevision: meeting.transcriptRevision,
                 sourceCorrectionRevision: correctionRevision)
             let now = Date()

@@ -12,6 +12,7 @@ struct MeetingDetailRailValues {
     let companionFreshness: [UUID: DerivedArtifactFreshness]
     let transcriptRevision: Int
     let hasPlayback: Bool
+    let isRefreshingCompanion: Bool
     let presentation: MeetingDetailPresentation
 
     var hasContent: Bool {
@@ -29,6 +30,7 @@ struct MeetingDetailRailActions {
     let seekAndPlay: @MainActor (TimeInterval) -> Void
     let focusEvidence: @MainActor (TranscriptSegment) -> Void
     let copyAnswer: @MainActor (String) -> Void
+    let refreshCompanionCards: @MainActor () -> Void
     let removeCompanionCard: @MainActor @Sendable (UUID) async -> Void
 }
 
@@ -70,11 +72,13 @@ struct MeetingDetailRailSection: View {
                                 transcriptRevision: values.transcriptRevision,
                                 segments: values.segments,
                                 hasPlayback: values.hasPlayback,
+                                isRefreshing: values.isRefreshingCompanion,
                                 presentation: values.presentation),
                             actions: MeetingDetailCompanionActions(
                                 seekAndPlay: actions.seekAndPlay,
                                 focusEvidence: actions.focusEvidence,
                                 copyAnswer: actions.copyAnswer,
+                                refresh: actions.refreshCompanionCards,
                                 removeCard: actions.removeCompanionCard))
                     }
                 }
@@ -93,13 +97,19 @@ struct MeetingDetailCompanionValues {
     let transcriptRevision: Int
     let segments: [TranscriptSegment]
     let hasPlayback: Bool
+    let isRefreshing: Bool
     let presentation: MeetingDetailPresentation
+
+    var hasStaleCards: Bool {
+        cards.contains { freshnessByCardID[$0.id] == .stale }
+    }
 }
 
 struct MeetingDetailCompanionActions {
     let seekAndPlay: @MainActor (TimeInterval) -> Void
     let focusEvidence: @MainActor (TranscriptSegment) -> Void
     let copyAnswer: @MainActor (String) -> Void
+    let refresh: @MainActor () -> Void
     let removeCard: @MainActor @Sendable (UUID) async -> Void
 }
 
@@ -111,10 +121,30 @@ struct MeetingDetailCompanionSection: View {
         Group {
             if !values.cards.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Apuntador", systemImage: "sparkles")
-                        .font(.headline)
-                        .foregroundStyle(PVDesign.accent)
-                        .accessibilityIdentifier("detail-apuntador")
+                    HStack(spacing: 8) {
+                        Label("Apuntador", systemImage: "sparkles")
+                            .font(.headline)
+                            .foregroundStyle(PVDesign.accent)
+                            .accessibilityIdentifier("detail-apuntador")
+                        Spacer()
+                        if values.hasStaleCards {
+                            Button(action: actions.refresh) {
+                                if values.isRefreshing {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                } else {
+                                    Label("Re-check answers", systemImage: "arrow.clockwise")
+                                        .labelStyle(.iconOnly)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .controlSize(.small)
+                            .disabled(values.isRefreshing)
+                            .accessibilityLabel(L10n.text("Re-check answers"))
+                            .accessibilityIdentifier("detail-apuntador-refresh")
+                            .help(L10n.text("Re-check answers using the corrected transcript"))
+                        }
+                    }
                     ForEach(values.cards) { card in
                         cardRow(card)
                     }

@@ -87,6 +87,36 @@ struct MeetingDetailCoordinator {
         await model.send(.removeCompanionCard(id))
     }
 
+    func refreshCompanionCards(_ detail: MeetingReviewReadModel) {
+        guard !flow.isRefreshingCompanion else { return }
+        flow.isRefreshingCompanion = true
+        flow.operationError = nil
+        Task {
+            defer { flow.isRefreshingCompanion = false }
+            let result = await sceneActions.regenerateCompanionCards(
+                RegenerateCompanionCardsRequest(
+                    meetingID: meetingID,
+                    material: detail.transcriptGenerationMaterial()))
+            switch result {
+            case .replaced:
+                break
+            case .unavailable(.requiresMacOS26):
+                flow.operationError = L10n.text(
+                    "Re-checking Apuntador answers requires macOS 26 and Apple Intelligence.")
+            case .unavailable(.appleOnDevice(let reason)):
+                flow.operationError = L10n.format(
+                    "Apuntador is unavailable: %@",
+                    reason)
+            case .preserved:
+                flow.operationError = L10n.text(
+                    "Apuntador could not finish re-checking. Your previous answers were kept.")
+            case .persistenceFailed:
+                flow.operationError = L10n.text(
+                    "The refreshed Apuntador answers could not be saved. Your previous answers were kept.")
+            }
+        }
+    }
+
     func copyAnswer(_ answer: String) {
         copyText(answer)
     }

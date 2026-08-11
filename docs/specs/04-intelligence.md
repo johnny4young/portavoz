@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (ApplicationKit durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence), D206 (injected semantic-index query port with exact control retained), D207–D217 (governed non-serving semantic shadows, exact-path evidence, and research-only baseline retention), D233 (correction-aware generation lineage and stale artifacts), D236 (commitment-candidate benchmark before continuity state), D245 (adapter-neutral cross-meeting link quality), D246 (bounded non-serving product observation), D247 (isolated product-path quality adapter), D248 (profile-bound non-serving similarity evidence), D249 (versioned scored evidence contract), D250 (deterministic non-serving similarity-policy replay), D251 (private anonymized calibration-pack boundary), D252 (isolated private product-path evidence collection), D253 (deterministic private policy replay), D254 (clean-head public/private profile matrix), D255 (explicit private calibration review gate), D270 (query contract before graph schema), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (disposable typed graph projection), D274 (authoritative memory timeline hydration), D275 (exact commitment-change evidence), D276 (explicit topic-scoped question continuity), D277 (explicit decision-to-commitment blocker continuity), D278 (source-backed commitment-blocker query), D279 (canonical blocker product conformance), D280 (authoritative first-discussion query and canonical conformance), D281 (exact source-backed person commitments), D282 (fail-closed alias resolution and canonical person-commitment conformance), D283 (independent exact graph-fact Ask lane), D284 (exact ambiguity-safe graph filters), D285 (typed source-backed graph-fact synthesis), D286 (bounded post-RRF fact-aware selection), D330 (correction-aware semantic maintenance).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (ApplicationKit durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence), D206 (injected semantic-index query port with exact control retained), D207–D217 (governed non-serving semantic shadows, exact-path evidence, and research-only baseline retention), D233 (correction-aware generation lineage and stale artifacts), D236 (commitment-candidate benchmark before continuity state), D245 (adapter-neutral cross-meeting link quality), D246 (bounded non-serving product observation), D247 (isolated product-path quality adapter), D248 (profile-bound non-serving similarity evidence), D249 (versioned scored evidence contract), D250 (deterministic non-serving similarity-policy replay), D251 (private anonymized calibration-pack boundary), D252 (isolated private product-path evidence collection), D253 (deterministic private policy replay), D254 (clean-head public/private profile matrix), D255 (explicit private calibration review gate), D270 (query contract before graph schema), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (disposable typed graph projection), D274 (authoritative memory timeline hydration), D275 (exact commitment-change evidence), D276 (explicit topic-scoped question continuity), D277 (explicit decision-to-commitment blocker continuity), D278 (source-backed commitment-blocker query), D279 (canonical blocker product conformance), D280 (authoritative first-discussion query and canonical conformance), D281 (exact source-backed person commitments), D282 (fail-closed alias resolution and canonical person-commitment conformance), D283 (independent exact graph-fact Ask lane), D284 (exact ambiguity-safe graph filters), D285 (typed source-backed graph-fact synthesis), D286 (bounded post-RRF fact-aware selection), D330 (correction-aware semantic maintenance), D331 (explicit correction-aware Apuntador regeneration).
 
 D239 additionally owns explicit evidence-first commitment admission in Meeting
 Detail. D243 adds an explicit Application/Storage link boundary for a later
@@ -1601,15 +1601,19 @@ durable captions, Stop, or final post-capture summary generation.
 
 `CompanionGenerationRequest` carries exact question segment identities and
 `RAGPassage` may carry its source segment identity. Live generation uses the
-closed row that triggered detection. Post-Refine generation coalesces adjacent
-same-speaker rows into one turn and retains every constituent segment ID. The
-`companion-generation-v2` fingerprint binds those ordered identities and every
-optional passage identity in addition to the existing private material.
+closed row that triggered detection. Post-Refine and explicit Meeting Detail
+generation coalesce adjacent same-speaker rows into one turn and retain every
+constituent row ID. A corrected projection additionally supplies the ordered
+immutable accepted segment IDs behind each ephemeral replace/split/merge row.
+The `companion-generation-v3` fingerprint binds those generated identities,
+their accepted-source projection, and every optional passage identity in
+addition to the existing private material.
 
 For context answers, `CompanionAnswer.citedPassageIndexes` extracts only exact
 in-range `[N]` markers from the raw model response, deduplicated in first-use
 order, before display cleanup removes the markers. `CompanionEvidenceFactory`
-maps those indexes to same-meeting passages with real segment IDs. Knowledge
+maps those indexes to same-meeting passages, expands corrected row identities
+to their immutable accepted sources, and deduplicates them in first-use order. Knowledge
 answers and directed pings receive question evidence but no answer evidence;
 uncited context answers likewise receive no fabricated answer links. The
 resulting `CompanionCardEvidence` is card-identity-keyed, revision-fenced, and
@@ -1653,12 +1657,35 @@ D233 adds the effective correction revision to the Apuntador fingerprint and
 content-free run configuration. Storage admits a generated card only when both
 its accepted transcript revision and correction revision still match. Existing
 cards remain immutable and are presented as stale after a correction; their
-evidence is not navigable as current. This slice does not automatically rerun
-Apuntador over corrected text.
+evidence is not navigable as current.
+
+### Explicit correction-aware Apuntador refresh (D331)
+
+Meeting Detail exposes one `detail-apuntador-refresh` control when any card is
+stale. It is an explicit whole-snapshot operation, never a side effect of a
+correction. ApplicationKit receives `MeetingTranscriptGenerationMaterial`, and
+the app reuses the post-Refine question/answer pipeline with the distinct
+`meeting-review` workflow. The live-recording toggle does not gate this direct
+request; the Foundation Models classifier still requires macOS 26 plus Apple
+Intelligence, while an enabled BYOK provider may replace only the answer stage.
+
+A completed pass with no terminal outcome atomically replaces every card and
+linked successful run, including with an empty set when corrected content
+contains no eligible question. An unavailable classifier, contradictory,
+cancelled, or incomplete pass, correction or transcript drift, missing or
+invalid accepted evidence, and late transaction failure all retain the old
+stale snapshot. Current terminal failures are stored best effort. Storage
+rechecks the accepted revision, effective correction revision,
+`meeting-review` workflow, succeeded provenance, and every immutable evidence
+link in the same replacement transaction. The adapter finds each question's
+prior context with a lower-bound search over the already ordered transcript and
+materializes at most 14 rows, rather than rescanning the complete meeting for
+every question. Automatic regeneration remains absent, so editing stays fast
+and never surprises the user with model or BYOK work.
 
 ### Apuntador egress enforcement (D67)
 
-The production live and post-Refine paths inject IntegrationsKit's
+The production live, post-Refine, and explicit review paths inject IntegrationsKit's
 `URLSessionDataEgressGateway` into `CompanionBYOKClient`. The request carries a
 content-free operation (`companion-knowledge-answer`), exact destination,
 `local-device`/`remote` scope, `meeting-question-only` classification, source

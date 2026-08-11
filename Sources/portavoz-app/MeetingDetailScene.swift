@@ -72,6 +72,9 @@ struct MeetingDetailScene: View {
             regenerateSummary: { request in
                 await services.regenerateSummary.execute(request)
             },
+            regenerateCompanionCards: { request in
+                await services.regenerateCompanionCards.execute(request)
+            },
             enhanceNotes: { request in
                 await services.enhanceMeetingNotes.execute(request)
             },
@@ -139,6 +142,8 @@ struct MeetingDetailSceneActions {
     let exportBundle: @MainActor (Bool) async throws -> Data
     let regenerateSummary:
         @MainActor (RegenerateSummaryRequest) async -> SummaryRegenerationResult
+    let regenerateCompanionCards:
+        @MainActor (RegenerateCompanionCardsRequest) async -> RegenerateCompanionCardsResult
     let enhanceNotes:
         @MainActor (EnhanceMeetingNotesRequest) async -> EnhanceMeetingNotesResult
     let clearRefine: @MainActor () -> Void
