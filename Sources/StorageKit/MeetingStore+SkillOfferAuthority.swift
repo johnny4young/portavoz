@@ -1,0 +1,306 @@
+import Foundation
+import GRDB
+import PortavozCore
+
+extension MeetingStore {
+    public static let maximumSkillOfferReconciliationCount = 200
+    public static let maximumSkillOfferReviewCount = 100
+
+    /// Reconciles only identities a bounded producer just evaluated. An offer
+    /// is returned to SwiftUI only after this write succeeds, so the central
+    /// authority can never claim less than the subject surface showed.
+    public func reconcileSkillOffers(
+        candidateOfferKeys: [String],
+        active offers: [SkillOfferRegistration]
+    ) async throws {
+        let candidateSet = Set(candidateOfferKeys)
+        let activeKeys = Set(offers.map(\.offerKey))
+        guard candidateOfferKeys.count <= Self.maximumSkillOfferReconciliationCount,
+              candidateSet.count == candidateOfferKeys.count,
+              offers.count <= candidateOfferKeys.count,
+              activeKeys.count == offers.count,
+              activeKeys.isSubset(of: candidateSet),
+              candidateOfferKeys.allSatisfy(Self.isValidSkillOfferKey),
+              offers.allSatisfy(\.isValid)
+        else { throw StorageError.invalidSkillOffer("invalid reconciliation batch") }
+
+        try await database.write { database in
+            let retired = candidateSet.subtracting(activeKeys)
+            if !retired.isEmpty {
+                try database.execute(
+                    sql: """
+                        DELETE FROM skillOfferProposal
+                        WHERE offerKey IN (\(databaseQuestionMarks(count: retired.count)))
+                        """,
+                    arguments: StatementArguments(retired.sorted()))
+            }
+            for offer in offers {
+                try Self.upsertSkillOffer(offer, in: database)
+            }
+        }
+    }
+
+    /// Newest active offers, bounded before materialization. Expired external
+    /// subjects are pruned in the same transaction so they cannot accumulate
+    /// ahead of the LIMIT and turn the ordered index walk into a time cliff.
+    public func proposedSkillOffers(
+        limit: Int,
+        at now: Date = Date()
+    ) async throws -> [SkillOfferReviewRecord] {
+        guard (1...Self.maximumSkillOfferReviewCount).contains(limit),
+              now.timeIntervalSinceReferenceDate.isFinite
+        else { return [] }
+
+        return try await database.write { database in
+            try database.execute(
+                sql: "DELETE FROM skillOfferProposal WHERE expiresAt <= ?",
+                arguments: [now])
+            let rows = try Row.fetchAll(
+                database,
+                sql: """
+                    SELECT offerKey, reviewID, skillID, skillVersion, reason,
+                           proposedAt, lastObservedAt
+                    FROM skillOfferProposal INDEXED BY skillOfferProposal_on_review
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM skillOfferDismissal
+                        WHERE skillOfferDismissal.offerKey = skillOfferProposal.offerKey
+                    )
+                      AND NOT EXISTS (
+                        SELECT 1 FROM skillDisablement
+                        WHERE skillDisablement.skillID = skillOfferProposal.skillID
+                    )
+                    ORDER BY lastObservedAt DESC, offerKey ASC
+                    LIMIT ?
+                    """,
+                arguments: [limit])
+            let keys = rows.map { $0["offerKey"] as String }
+            let classes = try Self.skillOfferInputDataClasses(
+                offerKeys: keys,
+                in: database)
+            return try rows.map { row in
+                let key: String = row["offerKey"]
+                guard let inputDataClasses = classes[key],
+                      !inputDataClasses.isEmpty
+                else {
+                    throw StorageError.invalidPersistedValue(
+                        table: "skillOfferProposalInput",
+                        column: "offerKey",
+                        value: key)
+                }
+                return try Self.skillOfferReviewRecord(
+                    from: row,
+                    inputDataClasses: inputDataClasses)
+            }
+        }
+    }
+
+    private static func upsertSkillOffer(
+        _ offer: SkillOfferRegistration,
+        in database: Database
+    ) throws {
+        let existing = try Row.fetchOne(
+            database,
+            sql: """
+                SELECT skillID, skillVersion, reason, subjectKind,
+                       meetingID, commitmentID, calendarEventID
+                FROM skillOfferProposal WHERE offerKey = ?
+                """,
+            arguments: [offer.offerKey])
+
+        if let existing {
+            let existingVersion: Int = existing["skillVersion"]
+            guard existingVersion <= offer.definition.version else {
+                throw StorageError.invalidSkillOffer(
+                    "a newer Skill definition already owns this offer")
+            }
+            try validateSkillOfferIdentity(offer, against: existing)
+            if existingVersion == offer.definition.version {
+                let persistedClasses = try skillOfferInputDataClasses(
+                    offerKeys: [offer.offerKey],
+                    in: database)[offer.offerKey] ?? []
+                guard persistedClasses == offer.requestedInputDataClasses else {
+                    throw StorageError.invalidSkillOffer(
+                        "the same Skill version changed its input declaration")
+                }
+            } else {
+                try updateSkillOfferDefinition(offer, in: database)
+            }
+            try database.execute(
+                sql: """
+                    UPDATE skillOfferProposal
+                    SET lastObservedAt = MAX(lastObservedAt, ?), expiresAt = ?
+                    WHERE offerKey = ?
+                    """,
+                arguments: [offer.proposedAt, offer.expiresAt, offer.offerKey])
+            return
+        }
+
+        let subject = subjectColumns(offer.subject)
+        try database.execute(
+            sql: """
+                INSERT INTO skillOfferProposal (
+                    offerKey, reviewID, skillID, skillVersion, reason,
+                    subjectKind, meetingID, commitmentID, calendarEventID,
+                    proposedAt, lastObservedAt, expiresAt
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+            arguments: [
+                offer.offerKey,
+                UUID().uuidString,
+                offer.definition.id,
+                offer.definition.version,
+                offer.reason.rawValue,
+                offer.subject.kind.rawValue,
+                subject.meetingID,
+                subject.commitmentID,
+                subject.calendarEventID,
+                offer.proposedAt,
+                offer.proposedAt,
+                offer.expiresAt
+            ])
+        try replaceSkillOfferInputDataClasses(offer, in: database)
+    }
+
+    private static func validateSkillOfferIdentity(
+        _ offer: SkillOfferRegistration,
+        against row: Row
+    ) throws {
+        let subject = subjectColumns(offer.subject)
+        let persistedSkillID: String = row["skillID"]
+        let persistedReason: String = row["reason"]
+        let persistedKind: String = row["subjectKind"]
+        let persistedMeetingID: String? = row["meetingID"]
+        let persistedCommitmentID: String? = row["commitmentID"]
+        let persistedCalendarEventID: String? = row["calendarEventID"]
+        guard persistedSkillID == offer.definition.id,
+              persistedReason == offer.reason.rawValue,
+              persistedKind == offer.subject.kind.rawValue,
+              persistedMeetingID == subject.meetingID,
+              persistedCommitmentID == subject.commitmentID,
+              persistedCalendarEventID == subject.calendarEventID
+        else {
+            throw StorageError.invalidSkillOffer(
+                "an offer key collided with another immutable intent")
+        }
+    }
+
+    private static func updateSkillOfferDefinition(
+        _ offer: SkillOfferRegistration,
+        in database: Database
+    ) throws {
+        try database.execute(
+            sql: """
+                UPDATE skillOfferProposal
+                SET skillVersion = ?
+                WHERE offerKey = ?
+                """,
+            arguments: [offer.definition.version, offer.offerKey])
+        try replaceSkillOfferInputDataClasses(offer, in: database)
+    }
+
+    private static func replaceSkillOfferInputDataClasses(
+        _ offer: SkillOfferRegistration,
+        in database: Database
+    ) throws {
+        try database.execute(
+            sql: "DELETE FROM skillOfferProposalInput WHERE offerKey = ?",
+            arguments: [offer.offerKey])
+        for dataClass in offer.requestedInputDataClasses.sorted(by: {
+            $0.rawValue < $1.rawValue
+        }) {
+            try database.execute(
+                sql: """
+                    INSERT INTO skillOfferProposalInput (offerKey, dataClass)
+                    VALUES (?, ?)
+                    """,
+                arguments: [offer.offerKey, dataClass.rawValue])
+        }
+    }
+
+    private static func skillOfferInputDataClasses(
+        offerKeys: [String],
+        in database: Database
+    ) throws -> [String: Set<SkillInputDataClass>] {
+        guard !offerKeys.isEmpty else { return [:] }
+        let rows = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT offerKey, dataClass
+                FROM skillOfferProposalInput
+                WHERE offerKey IN (\(databaseQuestionMarks(count: offerKeys.count)))
+                ORDER BY offerKey, dataClass
+                """,
+            arguments: StatementArguments(offerKeys))
+        var result: [String: Set<SkillInputDataClass>] = [:]
+        for row in rows {
+            let key: String = row["offerKey"]
+            let raw: String = row["dataClass"]
+            guard let dataClass = SkillInputDataClass(rawValue: raw) else {
+                throw StorageError.invalidPersistedValue(
+                    table: "skillOfferProposalInput",
+                    column: "dataClass",
+                    value: raw)
+            }
+            result[key, default: []].insert(dataClass)
+        }
+        return result
+    }
+
+    private static func skillOfferReviewRecord(
+        from row: Row,
+        inputDataClasses: Set<SkillInputDataClass>
+    ) throws -> SkillOfferReviewRecord {
+        let rawReviewID: String = row["reviewID"]
+        let rawReason: String = row["reason"]
+        let skillID: String = row["skillID"]
+        let skillVersion: Int = row["skillVersion"]
+        let proposedAt: Date = row["proposedAt"]
+        let lastObservedAt: Date = row["lastObservedAt"]
+        guard let reviewID = UUID(uuidString: rawReviewID) else {
+            throw StorageError.invalidPersistedUUID(
+                table: "skillOfferProposal",
+                column: "reviewID",
+                value: rawReviewID)
+        }
+        guard let reason = SkillOfferReason(rawValue: rawReason),
+              !skillID.isEmpty,
+              skillID == skillID.trimmingCharacters(in: .whitespacesAndNewlines),
+              skillID.utf8.count <= SkillDefinition.maximumIDByteCount,
+              skillVersion >= 1,
+              proposedAt.timeIntervalSinceReferenceDate.isFinite,
+              lastObservedAt.timeIntervalSinceReferenceDate.isFinite,
+              lastObservedAt >= proposedAt
+        else {
+            throw StorageError.invalidPersistedValue(
+                table: "skillOfferProposal",
+                column: "review",
+                value: rawReason)
+        }
+        return SkillOfferReviewRecord(
+            id: reviewID,
+            skillID: skillID,
+            skillVersion: skillVersion,
+            reason: reason,
+            inputDataClasses: inputDataClasses,
+            proposedAt: proposedAt,
+            lastObservedAt: lastObservedAt)
+    }
+
+    private static func subjectColumns(
+        _ subject: SkillOfferSubject
+    ) -> (meetingID: String?, commitmentID: String?, calendarEventID: String?) {
+        switch subject {
+        case .meeting(let id):
+            (id.rawValue.uuidString, nil, nil)
+        case .commitment(let id):
+            (nil, id.rawValue.uuidString, nil)
+        case .calendarEvent(let id):
+            (nil, nil, id)
+        }
+    }
+
+    private static func isValidSkillOfferKey(_ key: String) -> Bool {
+        !key.isEmpty
+            && key.utf8.count <= SkillOfferRegistration.maximumOfferKeyByteCount
+    }
+}

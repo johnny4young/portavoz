@@ -15,9 +15,24 @@ public struct PreMeetingBriefOffer: Equatable, Sendable, Identifiable {
         self.event = event
         offerKey = PreMeetingBriefSkill.idempotencyKey(forEvent: event.id)
     }
+
+    public func registration(at timestamp: Date) -> SkillOfferRegistration {
+        SkillOfferRegistration(
+            offerKey: offerKey,
+            definition: PreMeetingBriefSkill.definition,
+            requestedInputDataClasses:
+                PreMeetingBriefSkill.definition.inputDataClasses,
+            subject: .calendarEvent(event.id),
+            reason: .upcomingCalendarEvent,
+            proposedAt: timestamp,
+            expiresAt: event.startDate)
+    }
 }
 
-public protocol PreMeetingBriefOfferStore: SkillExecutionPolicyReading, Sendable {
+public protocol PreMeetingBriefOfferStore:
+    SkillExecutionPolicyReading,
+    SkillOfferAuthorityWriting,
+    Sendable {
     func dismissedSkillOffers(offerKeys: [String]) async throws -> Set<String>
     func skillExecution(idempotencyKey: String) async throws -> SkillExecutionRecord?
     func dismissSkillOffer(
@@ -34,22 +49,47 @@ extension MeetingStore: PreMeetingBriefOfferStore {}
 /// already have crossed the effect boundary.
 public struct LoadPreMeetingBriefOffer: ApplicationUseCase {
     private let store: any PreMeetingBriefOfferStore
+    private let now: @Sendable () -> Date
 
-    public init(store: any PreMeetingBriefOfferStore) {
+    public init(
+        store: any PreMeetingBriefOfferStore,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
         self.store = store
+        self.now = now
     }
 
     public func execute(_ event: UpcomingEvent) async throws -> PreMeetingBriefOffer? {
         guard event.hasValidIdentity else { return nil }
-        let policy = try await store.skillExecutionPolicy()
-        guard policy.isEnabled(skillID: PreMeetingBriefSkill.id) else { return nil }
         guard let offer = PreMeetingBriefOffer(event: event) else { return nil }
+        let candidateKeys = [offer.offerKey]
+        let policy = try await store.skillExecutionPolicy()
+        guard policy.isEnabled(skillID: PreMeetingBriefSkill.id) else {
+            try await store.reconcileSkillOffers(
+                candidateOfferKeys: candidateKeys,
+                active: [])
+            return nil
+        }
         let dismissed = try await store.dismissedSkillOffers(offerKeys: [offer.offerKey])
-        guard !dismissed.contains(offer.offerKey) else { return nil }
+        guard !dismissed.contains(offer.offerKey) else {
+            try await store.reconcileSkillOffers(
+                candidateOfferKeys: candidateKeys,
+                active: [])
+            return nil
+        }
         guard let execution = try await store.skillExecution(
             idempotencyKey: offer.offerKey)
-        else { return offer }
-        return execution.state == .failed ? offer : nil
+        else {
+            try await store.reconcileSkillOffers(
+                candidateOfferKeys: candidateKeys,
+                active: [offer.registration(at: now())])
+            return offer
+        }
+        let isRetryable = execution.state == .failed
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: candidateKeys,
+            active: isRetryable ? [offer.registration(at: now())] : [])
+        return isRetryable ? offer : nil
     }
 }
 
@@ -108,6 +148,8 @@ public enum PreMeetingBriefProposalFactory {
                 id: proposalID,
                 definition: PreMeetingBriefSkill.definition,
                 requestedCapabilities: [.readMeetingMaterial, .writeLocalDraft],
+                requestedInputDataClasses:
+                    PreMeetingBriefSkill.definition.inputDataClasses,
                 arguments: [.text(eventID)],
                 proposedAt: now),
             PreMeetingBriefSkill.idempotencyKey(forEvent: eventID)

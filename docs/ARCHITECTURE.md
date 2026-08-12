@@ -359,6 +359,32 @@ stays visible for review rather than disappearing fail open. A scope response
 must match the current selection before Settings renders any receipt, and a
 scope-only read failure leaves already verified policy controls usable while
 showing no stale rows.
+
+The same pane reads a separate content-free **Proposed** projection from the
+v40 Skill offer authority. Every executable definition declares both its
+effect capabilities and the exact input-data classes it may read; an execution
+proposal must request a nonempty subset of both declarations before admission.
+Meeting Detail, the resident calendar brief, and Commitment Radar reconcile a
+bounded set of stable offer intents before returning actionable offers.
+Storage retains only a random review UUID, Skill identity/version, typed reason,
+opaque subject identity, exact input classes, and observed/expiry times. Meeting
+and commitment identities are foreign-key cleanup authority, while calendar
+identities remain opaque and expire at the event start. Title, transcript,
+preview, destination, recipient, and argument values never enter the review
+projection or SwiftUI. Dismissal and one-shot confirmation retire the matching
+authority row in the same transaction; the destination-free package-export
+offer deliberately remains reusable while each destination owns a distinct
+exact execution claim.
+
+The read path prunes expired offers before a bounded newest-first index walk,
+materializes at most 100 rows in StorageKit and 50 in ApplicationKit, and then
+revalidates every row against the current catalogue version, reason, input
+declaration, durable pause, and per-Skill policy. A proposal-only failure shows
+no rows but does not disable independently verified execution controls. This is
+read-only review: confirmation still belongs to the original subject surface,
+and no standing rule, workflow action, or execution authority exists in
+Settings.
+
 Selecting one receipt opens a read-only AUTO-6 inspection projection. Storage
 loads its current state and predecessor-linked event chain in one SQLite read
 snapshot, rejects unknown typed failure categories, and preserves causal
@@ -412,7 +438,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | Global dictation | `DictationController` | application process |
 | Private sync | `MeetingSyncModel` | application process |
 | Whole-library backup | `LibraryMarkdownBackupModel` | application process |
-| Skills Settings | `SkillsSettingsSection` snapshot + receipt inspection | one Settings window |
+| Skills Settings | policy/activity snapshot + independent proposal snapshot + receipt inspection | one Settings window |
 | Spotlight reconciliation | `SpotlightIndexer` | application process |
 | Post-capture processing | `PostCaptureProcessingSupervisor` | application process |
 | Whisper preparation | shared readiness owner | application process |
@@ -760,7 +786,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 37. It includes:
+The current schema version is 40. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -800,6 +826,9 @@ The current schema version is 37. It includes:
   system search;
 - durable skill-offer dismissal keyed by stable intent identity, so a
   declined proposal never returns;
+- a content-free central Skill-offer authority with random review identity,
+  typed reason/subject, normalized exact input-data declarations, bounded
+  newest-first review, calendar expiry, and meeting/commitment cascade cleanup;
 - one content-free device-local skill-control singleton, a sparse disablement
   set, and a direction-matched recent-execution index shared by proposal and
   execution admission;

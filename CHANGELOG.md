@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 12, 2026
 
+- **✨ Proposed Skills explain themselves before you act** — Settings now shows why a real meeting, commitment, or calendar surface proposed each Skill and the exact data categories it may use, without storing the title, transcript, preview, destination, or recipient.
 - **🗂️ Skill activity finds the runs that need you** — Switch between recent, waiting, attention, and completed Skill runs without stale rows or scanning the full execution history.
 - **🧾 Skill receipts explain what happened** — Open any recent Skill run to see its content-free confirmation, attempts, failures, retries, and completion timeline without exposing meeting material or running anything again.
 - **🧩 Split and merged transcript fixes stay searchable** — Search, Ask, and Spotlight now follow the rows you actually see, while every result keeps its exact accepted source evidence and undo restores the original matches.

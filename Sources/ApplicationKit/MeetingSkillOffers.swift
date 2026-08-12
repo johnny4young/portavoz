@@ -47,6 +47,25 @@ public struct MeetingSkillOffer: Equatable, Sendable, Identifiable {
         case .packageExport: MeetingPackageExportSkill.id
         }
     }
+
+    public var definition: SkillDefinition {
+        switch kind {
+        case .recapDraft: RecapDraftSkill.definition
+        case .emailRecapDraft: EmailRecapDraftSkill.definition
+        case .secretGistPublish: SecretGistPublishSkill.definition
+        case .packageExport: MeetingPackageExportSkill.definition
+        }
+    }
+
+    public func registration(at timestamp: Date) -> SkillOfferRegistration {
+        SkillOfferRegistration(
+            offerKey: offerKey,
+            definition: definition,
+            requestedInputDataClasses: definition.inputDataClasses,
+            subject: .meeting(meetingID),
+            reason: .meetingSummaryReady,
+            proposedAt: timestamp)
+    }
 }
 
 /// What the confirmation sheet shows — computed read-only, before anything is
@@ -60,7 +79,10 @@ public enum MeetingSkillPreview: Equatable, Sendable {
 }
 
 /// The slice of MeetingStore the offer policy reads.
-public protocol MeetingSkillOfferStore: SkillExecutionPolicyReading, Sendable {
+public protocol MeetingSkillOfferStore:
+    SkillExecutionPolicyReading,
+    SkillOfferAuthorityWriting,
+    Sendable {
     func dismissedSkillOffers(offerKeys: [String]) async throws -> Set<String>
     func skillExecutions(
         idempotencyKeys: [String]
@@ -93,9 +115,14 @@ public struct LoadMeetingSkillOffersRequest: Equatable, Sendable {
 
 public struct LoadMeetingSkillOffers: ApplicationUseCase {
     private let store: any MeetingSkillOfferStore
+    private let now: @Sendable () -> Date
 
-    public init(store: any MeetingSkillOfferStore) {
+    public init(
+        store: any MeetingSkillOfferStore,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
         self.store = store
+        self.now = now
     }
 
     public func execute(
@@ -103,15 +130,26 @@ public struct LoadMeetingSkillOffers: ApplicationUseCase {
     ) async throws -> [MeetingSkillOffer] {
         let meetingID = request.meetingID
         let hasSummary = request.hasSummary
-        guard hasSummary else { return [] }
-        let policy = try await store.skillExecutionPolicy()
-        guard !policy.isPaused else { return [] }
         let candidates = [
             MeetingSkillOffer(kind: .recapDraft, meetingID: meetingID),
             MeetingSkillOffer(kind: .emailRecapDraft, meetingID: meetingID),
             MeetingSkillOffer(kind: .secretGistPublish, meetingID: meetingID),
             MeetingSkillOffer(kind: .packageExport, meetingID: meetingID)
         ]
+        let candidateKeys = candidates.map(\.offerKey)
+        guard hasSummary else {
+            try await store.reconcileSkillOffers(
+                candidateOfferKeys: candidateKeys,
+                active: [])
+            return []
+        }
+        let policy = try await store.skillExecutionPolicy()
+        guard !policy.isPaused else {
+            try await store.reconcileSkillOffers(
+                candidateOfferKeys: candidateKeys,
+                active: [])
+            return []
+        }
         let dismissed = try await store.dismissedSkillOffers(
             offerKeys: candidates.map(\.offerKey))
         let eligible = candidates.filter {
@@ -137,9 +175,14 @@ public struct LoadMeetingSkillOffers: ApplicationUseCase {
                 ? record.idempotencyKey
                 : nil
         })
-        return eligible.filter {
+        let offers = eligible.filter {
             !unavailableOneShotKeys.contains($0.offerKey)
         }
+        let timestamp = now()
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: candidateKeys,
+            active: offers.map { $0.registration(at: timestamp) })
+        return offers
     }
 }
 
@@ -205,6 +248,7 @@ public enum MeetingSkillProposalFactory {
                 id: proposalID,
                 definition: RecapDraftSkill.definition,
                 requestedCapabilities: [.readMeetingMaterial, .writeLocalDraft],
+                requestedInputDataClasses: RecapDraftSkill.definition.inputDataClasses,
                 arguments: [.meeting(meetingID)],
                 proposedAt: now),
             RecapDraftSkill.idempotencyKey(for: meetingID)
@@ -222,6 +266,8 @@ public enum MeetingSkillProposalFactory {
                 id: proposalID,
                 definition: MeetingPackageExportSkill.definition,
                 requestedCapabilities: [.readMeetingMaterial, .writeLocalFile],
+                requestedInputDataClasses:
+                    MeetingPackageExportSkill.definition.inputDataClasses,
                 arguments: [.meeting(meetingID), .text(destination)],
                 proposedAt: now),
             MeetingPackageExportSkill.idempotencyKey(
@@ -240,6 +286,8 @@ public enum MeetingSkillProposalFactory {
                 id: proposalID,
                 definition: EmailRecapDraftSkill.definition,
                 requestedCapabilities: [.readMeetingMaterial, .sendRemote],
+                requestedInputDataClasses:
+                    EmailRecapDraftSkill.definition.inputDataClasses,
                 arguments: [.meeting(meetingID)],
                 proposedAt: now),
             EmailRecapDraftSkill.idempotencyKey(for: meetingID)
@@ -256,6 +304,8 @@ public enum MeetingSkillProposalFactory {
                 id: proposalID,
                 definition: SecretGistPublishSkill.definition,
                 requestedCapabilities: [.readMeetingMaterial, .sendRemote],
+                requestedInputDataClasses:
+                    SecretGistPublishSkill.definition.inputDataClasses,
                 arguments: [.meeting(meetingID)],
                 proposedAt: now),
             SecretGistPublishSkill.idempotencyKey(for: meetingID)

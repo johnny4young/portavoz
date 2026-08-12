@@ -67,6 +67,38 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-simulate-skill-proposal-unavailable")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.openSettingsCategory(
+                "settings-category-skills",
+                revealing: "settings-skills-pause-all"))
+        let pause = app.control(withIdentifier: "settings-skills-pause-all")
+        let error = app.control(
+            withIdentifier: "settings-skills-proposals-error")
+        scrollToVisible(error, in: app)
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        XCTAssertTrue(pause.exists)
+        XCTAssertTrue(
+            pause.isEnabled,
+            "a proposal-only failure must preserve verified execution policy")
+        XCTAssertFalse(
+            app.descendants(matching: .any).matching(NSPredicate(
+                format: "identifier BEGINSWITH 'settings-skill-proposal-'"
+            )).firstMatch.exists,
+            "an unverified authority must never invent an offer row")
+        let retry = app.buttons["settings-skills-proposals-retry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 5))
+        retry.click()
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "skills-proposal-fail-closed")
+    }
+
+    @MainActor
     func testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
@@ -209,6 +241,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     @MainActor
     private func assertRecentReceiptInSettings(in app: XCUIApplication) {
         openSkillsSettings(in: app)
+        assertContentFreeProposals(in: app)
         let receipt = app.control(
             withIdentifier: "settings-skill-receipt-recap-draft")
         XCTAssertTrue(
@@ -244,6 +277,45 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "skills-control-recent-receipt")
         app.buttons["skill-receipt-inspection-close"].click()
         XCTAssertTrue(receipt.waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func assertContentFreeProposals(in app: XCUIApplication) {
+        let why = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "settings-skill-proposal-why-email-recap-draft-"
+        )).firstMatch
+        scrollToVisible(why, in: app)
+        XCTAssertTrue(
+            why.waitForExistence(timeout: 5),
+            "the real Meeting Detail producer must publish its durable offer")
+        let expectedWhy = UITestLocale.environmentLocale == "es"
+            ? "Hay un resumen de reunión listo para usar."
+            : "A meeting summary is ready to use."
+        XCTAssertTrue(waitForLabel(why, toContain: expectedWhy))
+
+        let data = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "settings-skill-proposal-data-secret-gist-publish-"
+        )).firstMatch
+        scrollToVisible(data, in: app)
+        XCTAssertTrue(data.waitForExistence(timeout: 5))
+        let expectedData = UITestLocale.environmentLocale == "es"
+            ? "transcripción"
+            : "transcript"
+        XCTAssertTrue(
+            waitForLabel(data, toContain: expectedData),
+            "the explanation must derive from the Gist's exact input declaration")
+        let privacy = app.control(
+            withIdentifier: "settings-skills-proposals-privacy")
+        XCTAssertTrue(privacy.waitForExistence(timeout: 5))
+        for explanation in [why, data, privacy] {
+            XCTAssertFalse(explanation.label.contains("Test meeting"))
+            XCTAssertFalse(
+                explanation.label.contains(
+                    "El rollout del modelo queda para el viernes."),
+                "the central proposal explanation must not render seeded content")
+        }
     }
 
     @MainActor

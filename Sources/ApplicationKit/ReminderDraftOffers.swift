@@ -26,6 +26,17 @@ public struct ReminderDraftOffer: Equatable, Sendable, Identifiable {
         self.isRetry = isRetry
     }
 
+    public func registration(at timestamp: Date) -> SkillOfferRegistration {
+        SkillOfferRegistration(
+            offerKey: offerKey,
+            definition: ReminderDraftSkill.definition,
+            requestedInputDataClasses:
+                ReminderDraftSkill.definition.inputDataClasses,
+            subject: .commitment(commitment.id),
+            reason: .confirmedCommitment,
+            proposedAt: timestamp)
+    }
+
     static func arguments(for commitment: Commitment) -> [SkillArgument] {
         var arguments: [SkillArgument] = [.text(commitment.title)]
         if let dueAt = commitment.dueAt {
@@ -124,7 +135,10 @@ public struct ReminderDraftSurfaceRequest: Equatable, Sendable {
     }
 }
 
-public protocol ReminderDraftSurfaceStore: SkillExecutionPolicyReading, Sendable {
+public protocol ReminderDraftSurfaceStore:
+    SkillExecutionPolicyReading,
+    SkillOfferAuthorityWriting,
+    Sendable {
     func dismissedSkillOffers(offerKeys: [String]) async throws -> Set<String>
     func skillExecutions(
         idempotencyKeys: [String]
@@ -143,18 +157,29 @@ extension MeetingStore: ReminderDraftSurfaceStore {}
 /// only the actionable proposal disappears.
 public struct LoadReminderDraftSurface: ApplicationUseCase {
     private let store: any ReminderDraftSurfaceStore
+    private let now: @Sendable () -> Date
 
-    public init(store: any ReminderDraftSurfaceStore) {
+    public init(
+        store: any ReminderDraftSurfaceStore,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
         self.store = store
+        self.now = now
     }
 
     public func execute(
         _ request: ReminderDraftSurfaceRequest
     ) async throws -> ReminderDraftSurface {
+        let candidateKeys = request.commitments.map {
+            ReminderDraftSkill.idempotencyKey(for: $0.id)
+        }
         let candidates = request.commitments.compactMap {
             ReminderDraftOffer(commitment: $0)
         }
         guard !candidates.isEmpty else {
+            try await store.reconcileSkillOffers(
+                candidateOfferKeys: candidateKeys,
+                active: [])
             return ReminderDraftSurface(items: [])
         }
         let keys = candidates.map(\.offerKey)
@@ -169,7 +194,7 @@ public struct LoadReminderDraftSurface: ApplicationUseCase {
             executions,
             allowedKeys: Set(keys))
 
-        return ReminderDraftSurface(items: candidates.map { candidate in
+        let items = candidates.map { candidate in
             let execution = records[candidate.offerKey]
             let receipt = execution.map {
                 ReminderDraftReceipt(
@@ -187,7 +212,14 @@ public struct LoadReminderDraftSurface: ApplicationUseCase {
                         isRetry: execution?.state == .failed)
                     : nil,
                 receipt: receipt)
-        })
+        }
+        let timestamp = now()
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: candidateKeys,
+            active: items.compactMap(\.offer).map {
+                $0.registration(at: timestamp)
+            })
+        return ReminderDraftSurface(items: items)
     }
 
     private static func executionRecords(
@@ -265,6 +297,8 @@ public enum ReminderDraftProposalFactory {
                     .readMeetingMaterial,
                     .writeLocalDraft
                 ],
+                requestedInputDataClasses:
+                    ReminderDraftSkill.definition.inputDataClasses,
                 arguments: ReminderDraftOffer.arguments(for: offer.draft),
                 proposedAt: now),
             offer.offerKey)

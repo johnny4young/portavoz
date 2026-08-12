@@ -38,6 +38,7 @@ public enum ReminderDraftSkill {
         id: id,
         version: version,
         capabilities: [.readMeetingMaterial, .writeLocalDraft],
+        inputDataClasses: [.commitment, .selectedDestination],
         confirmationPolicy: .explicitPerProposal)
 
     /// The one intended effect for a commitment is one draft, so the same

@@ -19,6 +19,12 @@ D336 adds direction-matched partial indexes for the waiting, attention, and
 completed Skill execution scopes. The attention predicate intentionally keeps
 unknown future states visible, and every scoped query pins its matching index
 to preserve bounded newest-first reads without a temporary sort.
+D337 adds a content-free central authority for offers observed by real subject
+surfaces. Schema v40 stores one stable internal offer intent, unrelated review
+UUID, typed reason/subject, Skill identity/version, exact normalized input-data
+classes, and observed/expiry times. It also widens the dismissal key boundary
+from 200 characters to 2,200 UTF-8 bytes so the existing 2,000-byte opaque
+EventKit identity contract can be dismissed without altering its bytes.
 D235 adds correction transaction and replica-replay recovery gates without a
 schema change.
 D325 adds bounded literal meeting, canonical-person, and confirmed-commitment
@@ -115,7 +121,10 @@ Singular camelCase tables, 1:1 with Codable records:
 | `transcriptStructuralSearch` (v38) | FTS5 external-content over transcriptStructuralSearchRow.text, synchronized by GRDB triggers |
 | `skillExecutionEvent` (v31) | append-only predecessor-linked confirmation/begin/succeed/fail/cancel history with attempt, typed failure category, and unclamped occurrence time; no message or meeting-derived content (D293/D335); receipt inspection reads this chain and its state projection in one SQLite snapshot, verifies every predecessor and the projected latest-event tail, preserves row insertion as causal order, probes at most 257 rows to enforce a 256-event materialization ceiling, and rejects unknown persisted categories instead of erasing them |
 | `skillExecutionState` (v31) | one idempotency-keyed current projection per proposal with the latest event, attempt, and monotonic updatedAt; unknown future states fail closed as possibly executed rather than retryable and remain visible in the v39 attention scope (D293/D336) |
-| `skillOfferDismissal` (v34) | offerKey (TEXT PK, stable skill+subject intent identity), skillID, dismissedAt; durable terminal "the user said no" for one skill offer (D316) — deliberately keyed by intent, never by the per-render proposal ID |
+| `skillOfferDismissal` (v34/v40) | offerKey (TEXT PK, stable skill+subject intent identity), skillID, dismissedAt; durable terminal "the user said no" for one skill offer (D316) — deliberately keyed by intent, never by the per-render proposal ID; v40 rebuilds the bound to 2,200 UTF-8 bytes without trimming opaque provider identities (D337) |
+| `skillOfferProposal` (v40) | content-free active-offer authority keyed internally by stable intent, with unique random review UUID, Skill identity/version, typed reason and exactly one meeting/commitment/calendar subject, proposed/last-observed times, and optional expiry; meeting and commitment FKs cascade while opaque calendar identities expire at event start (D337) |
+| `skillOfferProposalInput` (v40) | normalized exact input-data classes for one active offer, composite offer+class primary key, and cascade cleanup; contains categories only, never title, transcript, preview, argument, destination, or recipient content (D337) |
+| `skillOfferProposal_on_review` (v40) | `(lastObservedAt DESC, offerKey ASC)` index pinned by the bounded central Proposed review; expired calendar rows are pruned before the walk and input classes are loaded in one bounded batch (D337) |
 | `skillControl` (v35) | singleton id=1, checked Boolean global pause, monotonic updatedAt; content-free device-local override shared by proposal and execution admission (D317) |
 | `skillDisablement` (v35) | checked non-empty skillID primary key plus disabledAt; sparse per-skill deny set, so a missing row means individually enabled and pausing never destroys that choice (D317) |
 | `skillExecutionState_on_recent` (v35) | `(updatedAt DESC, proposalID ASC)` index for the bounded newest-first Skills receipt projection; avoids a temporary full-history sort as execution history grows (D317) |

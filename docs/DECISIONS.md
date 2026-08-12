@@ -12000,3 +12000,64 @@ This slice adds no proposal queue, proposed-offer persistence, workflow action,
 standing rule, egress authority, background execution, or adapter. Explaining
 why an offer appeared and what data it will use requires the next central
 durable proposal slice rather than inference from whichever UI is open.
+
+## D337 — Proposed Skills use one content-free observed-offer authority (Aug 2026)
+
+**Context:** Meeting Detail, the resident pre-meeting card, and Commitment
+Radar each owned actionable offers only in transient presentation flows.
+Settings therefore could not honestly show a Proposed queue, explain why an
+offer appeared, or name the data categories it would read. Reconstructing
+offers by scanning meetings, transcripts, commitments, and EventKit would make
+the review surface a second product-policy engine and would centralize private
+content. Effect capabilities alone were also insufficient disclosure: they say
+what an adapter may do, not which meeting or platform material influences its
+output. Finally, v34 limited a dismissal key to 200 characters while the
+released calendar boundary accepts byte-opaque EventKit identities up to 2,000
+UTF-8 bytes, so one valid long offer could not be durably dismissed.
+
+**Decision:** every `SkillDefinition` declares a nonempty bounded set of
+`SkillInputDataClass` values, and every exact `SkillProposal` requests a
+nonempty subset alongside its requested capabilities. Admission rejects either
+undeclared ceiling violation. The six released Skills declare their actual
+meeting details, summary, transcript, notes, Companion history, commitment,
+calendar event, and selected-destination inputs explicitly.
+
+Schema v40 adds `skillOfferProposal` plus normalized
+`skillOfferProposalInput`. A `SkillOfferRegistration` is keyed internally by
+the existing stable offer intent but exposes an unrelated random review UUID.
+It stores only Skill identity/version, typed reason and subject, exact input
+classes, first/last observation, and optional expiry. Meeting and commitment
+subjects use cascade cleanup; calendar identity remains opaque and expires at
+the event start. The migration also rebuilds `skillOfferDismissal` with one
+shared 2,200-byte key ceiling, preserving existing rows and provider identity
+bytes without trimming.
+
+Every released producer reconciles at most 200 unique candidate intents before
+returning offers. Inactive evaluated candidates retire, while dismissal and
+one-shot confirmation delete their matching authority inside the same write
+transaction. Exact execution UUID and preview still belong to confirmation,
+not discovery: package export is intentionally destination-free at offer time
+and may lead to several destination-scoped execution claims, so its reusable
+offer authority is not one exact `SkillProposal`.
+
+The Settings read prunes expired rows before a pinned newest-first index walk,
+loads input classes in one bounded batch, and refuses more than 100 storage or
+50 application rows. ApplicationKit then requires a current available catalogue
+entry, exact Skill version, compatible typed reason, and declared input subset;
+global pause and individual disablement remain the shared deny authority. The
+SwiftUI section receives no stable offer key, subject identity, title,
+transcript, preview, argument, destination, recipient, or execution action. Its
+proposal load and failure state are independently request-fenced, so an
+unverified proposal read shows no rows without disabling already verified
+policy controls.
+
+**Consequences:** users can inspect why a real product surface proposed a Skill
+and which exact data categories it may use without creating a central content
+index or reusable consent. The original surface remains the only owner of the
+exact preview and confirmation. Same-version input-explanation drift is rejected
+once observed; changing that contract requires a Skill version increase.
+Calendar deletion can be learned only when its owning surface sees it again, so
+expiry remains the content-free upper bound. This slice adds no Settings-side
+confirm/dismiss/retry/revoke action, standing rule, background execution,
+adapter, transport, or egress authority; those remain separate AUTO-6/AUTO-5
+work with physical Sequoia, separate-hardware Tahoe, and VoiceOver evidence.

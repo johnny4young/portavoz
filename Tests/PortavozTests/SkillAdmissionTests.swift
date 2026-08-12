@@ -13,18 +13,21 @@ final class SkillAdmissionTests: XCTestCase {
             id: "reminder-draft",
             version: 1,
             capabilities: capabilities,
+            inputDataClasses: [.commitment],
             confirmationPolicy: confirmation)
     }
 
     private func proposal(
         definition: SkillDefinition? = nil,
         requesting: Set<SkillCapability> = [.readMeetingMaterial],
+        requestingData: Set<SkillInputDataClass> = [.commitment],
         arguments: [SkillArgument] = [.text("Draft the follow-up")],
         proposedAt: Date? = nil
     ) -> SkillProposal {
         SkillProposal(
             definition: definition ?? self.definition(),
             requestedCapabilities: requesting,
+            requestedInputDataClasses: requestingData,
             arguments: arguments,
             proposedAt: proposedAt ?? now)
     }
@@ -188,6 +191,7 @@ final class SkillAdmissionTests: XCTestCase {
             id: "auto-export",
             version: 1,
             capabilities: [.readMeetingMaterial, .writeLocalFile],
+            inputDataClasses: [.meetingDetails, .selectedDestination],
             confirmationPolicy: .standingRule)
         XCTAssertFalse(rule.isValid, "an irreversible standing rule is invalid")
 
@@ -209,6 +213,7 @@ final class SkillAdmissionTests: XCTestCase {
             version: 1,
             // Reversible overall, so the declaration is legal…
             capabilities: [.readMeetingMaterial, .writeLocalDraft],
+            inputDataClasses: [.commitment],
             confirmationPolicy: .standingRule)
         XCTAssertTrue(rule.isValid)
 
@@ -219,6 +224,7 @@ final class SkillAdmissionTests: XCTestCase {
             id: "auto-draft",
             version: 2,
             capabilities: [.readMeetingMaterial, .writeLocalDraft, .writeLocalFile],
+            inputDataClasses: [.commitment, .selectedDestination],
             confirmationPolicy: .standingRule)
         XCTAssertFalse(
             widened.isValid,
@@ -239,6 +245,7 @@ final class SkillAdmissionTests: XCTestCase {
             id: "auto-reminder-draft",
             version: 1,
             capabilities: [.readMeetingMaterial, .writeLocalDraft],
+            inputDataClasses: [.commitment],
             confirmationPolicy: .standingRule)
         XCTAssertTrue(rule.isValid)
 
@@ -257,13 +264,26 @@ final class SkillAdmissionTests: XCTestCase {
     func testInvalidDefinitionsAreRefused() {
         let cases: [SkillDefinition] = [
             SkillDefinition(id: "", version: 1, capabilities: [.readMeetingMaterial],
+                            inputDataClasses: [.commitment],
                             confirmationPolicy: .explicitPerProposal),
             SkillDefinition(id: " padded ", version: 1, capabilities: [.readMeetingMaterial],
+                            inputDataClasses: [.commitment],
                             confirmationPolicy: .explicitPerProposal),
             SkillDefinition(id: "ok", version: 0, capabilities: [.readMeetingMaterial],
+                            inputDataClasses: [.commitment],
                             confirmationPolicy: .explicitPerProposal),
             SkillDefinition(id: "ok", version: 1, capabilities: [],
+                            inputDataClasses: [.commitment],
                             confirmationPolicy: .explicitPerProposal),
+            SkillDefinition(id: "ok", version: 1, capabilities: [.readMeetingMaterial],
+                            inputDataClasses: [],
+                            confirmationPolicy: .explicitPerProposal),
+            SkillDefinition(
+                id: String(repeating: "x", count: 81),
+                version: 1,
+                capabilities: [.readMeetingMaterial],
+                inputDataClasses: [.commitment],
+                confirmationPolicy: .explicitPerProposal),
         ]
         for definition in cases {
             XCTAssertFalse(definition.isValid, definition.id)
@@ -285,6 +305,24 @@ final class SkillAdmissionTests: XCTestCase {
                 egressIsPermitted: true,
                 at: now),
             .refused(.noRequestedCapability))
+
+        XCTAssertEqual(
+            SkillAdmissionPolicy.admit(
+                proposal(requestingData: []),
+                isConfirmedByUser: true,
+                egressIsPermitted: true,
+                at: now),
+            .refused(.noRequestedInputDataClass))
+    }
+
+    func testProposalCannotReadUndeclaredDataClass() {
+        XCTAssertEqual(
+            SkillAdmissionPolicy.admit(
+                proposal(requestingData: [.commitment, .transcript]),
+                isConfirmedByUser: true,
+                egressIsPermitted: true,
+                at: now),
+            .refused(.undeclaredInputDataClass))
     }
 
     // MARK: - Lifecycle

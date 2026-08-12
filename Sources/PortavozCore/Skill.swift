@@ -35,6 +35,23 @@ public enum SkillConfirmationPolicy: String, Codable, Sendable {
     case standingRule = "standing-rule"
 }
 
+/// Content categories a Skill is allowed to read for one proposal.
+///
+/// Capabilities describe what the effect may do; input data classes describe
+/// what product material may influence it. Both are explicit ceilings so a
+/// presentation can explain the real data boundary without inspecting content
+/// or inferring it from a title.
+public enum SkillInputDataClass: String, Codable, Sendable, CaseIterable {
+    case meetingDetails = "meeting-details"
+    case meetingSummary = "meeting-summary"
+    case transcript
+    case notes
+    case companionHistory = "companion-history"
+    case commitment
+    case calendarEvent = "calendar-event"
+    case selectedDestination = "selected-destination"
+}
+
 /// A structured, validated argument. Skills never receive free-form command
 /// text: an argument is a typed value the policy can inspect, so transcript
 /// content cannot become an instruction.
@@ -66,21 +83,26 @@ public enum SkillArgument: Equatable, Sendable {
 /// The immutable contract a skill publishes about itself.
 public struct SkillDefinition: Equatable, Sendable {
     public static let maximumCapabilityCount = 8
+    public static let maximumInputDataClassCount = 12
+    public static let maximumIDByteCount = 80
 
     public let id: String
     public let version: Int
     public let capabilities: Set<SkillCapability>
+    public let inputDataClasses: Set<SkillInputDataClass>
     public let confirmationPolicy: SkillConfirmationPolicy
 
     public init(
         id: String,
         version: Int,
         capabilities: Set<SkillCapability>,
+        inputDataClasses: Set<SkillInputDataClass>,
         confirmationPolicy: SkillConfirmationPolicy
     ) {
         self.id = id
         self.version = version
         self.capabilities = capabilities
+        self.inputDataClasses = inputDataClasses
         self.confirmationPolicy = confirmationPolicy
     }
 
@@ -96,9 +118,12 @@ public struct SkillDefinition: Equatable, Sendable {
         let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
               trimmed == id,
+              id.utf8.count <= Self.maximumIDByteCount,
               version >= 1,
               !capabilities.isEmpty,
-              capabilities.count <= Self.maximumCapabilityCount
+              capabilities.count <= Self.maximumCapabilityCount,
+              !inputDataClasses.isEmpty,
+              inputDataClasses.count <= Self.maximumInputDataClassCount
         else { return false }
         // A standing rule may only cover work the user can undo alone.
         return confirmationPolicy == .explicitPerProposal || isReversible
@@ -113,6 +138,9 @@ public struct SkillProposal: Equatable, Sendable {
     /// The capabilities this specific proposal will actually use. It may use
     /// fewer than the definition declares, never more.
     public let requestedCapabilities: Set<SkillCapability>
+    /// The exact data categories this proposal will read. As with
+    /// capabilities, this may narrow the definition but never widen it.
+    public let requestedInputDataClasses: Set<SkillInputDataClass>
     public let arguments: [SkillArgument]
     public let proposedAt: Date
 
@@ -120,12 +148,14 @@ public struct SkillProposal: Equatable, Sendable {
         id: UUID = UUID(),
         definition: SkillDefinition,
         requestedCapabilities: Set<SkillCapability>,
+        requestedInputDataClasses: Set<SkillInputDataClass>,
         arguments: [SkillArgument],
         proposedAt: Date
     ) {
         self.id = id
         self.definition = definition
         self.requestedCapabilities = requestedCapabilities
+        self.requestedInputDataClasses = requestedInputDataClasses
         self.arguments = arguments
         self.proposedAt = proposedAt
     }
@@ -199,6 +229,8 @@ public enum SkillAdmissionRefusal: String, Equatable, Sendable {
     case skillDisabled = "skill-disabled"
     case undeclaredCapability = "undeclared-capability"
     case noRequestedCapability = "no-requested-capability"
+    case noRequestedInputDataClass = "no-requested-input-data-class"
+    case undeclaredInputDataClass = "undeclared-input-data-class"
     case egressNotPermitted = "egress-not-permitted"
     case confirmationMissing = "confirmation-missing"
     case standingRuleCannotCoverIrreversibleWork =
@@ -245,14 +277,9 @@ public enum SkillAdmissionPolicy {
         guard proposal.arguments.allSatisfy(\.isValid) else {
             return .refused(.invalidArgument)
         }
-        guard !proposal.requestedCapabilities.isEmpty else {
-            return .refused(.noRequestedCapability)
+        if let refusal = requestContractRefusal(for: proposal) {
+            return .refused(refusal)
         }
-        // The declaration is the ceiling. A proposal may narrow it, never widen
-        // it — this is the check that transcript content cannot defeat.
-        guard proposal.requestedCapabilities
-            .isSubset(of: proposal.definition.capabilities)
-        else { return .refused(.undeclaredCapability) }
 
         let sendsRemote = proposal.requestedCapabilities
             .contains(where: \.isExternalEffect)
@@ -279,5 +306,25 @@ public enum SkillAdmissionPolicy {
             }
             return .admitted
         }
+    }
+
+    private static func requestContractRefusal(
+        for proposal: SkillProposal
+    ) -> SkillAdmissionRefusal? {
+        guard !proposal.requestedCapabilities.isEmpty else {
+            return .noRequestedCapability
+        }
+        guard !proposal.requestedInputDataClasses.isEmpty else {
+            return .noRequestedInputDataClass
+        }
+        // The declaration is the ceiling. A proposal may narrow it, never widen
+        // it — this is the check that transcript content cannot defeat.
+        guard proposal.requestedCapabilities
+            .isSubset(of: proposal.definition.capabilities)
+        else { return .undeclaredCapability }
+        guard proposal.requestedInputDataClasses
+            .isSubset(of: proposal.definition.inputDataClasses)
+        else { return .undeclaredInputDataClass }
+        return nil
     }
 }

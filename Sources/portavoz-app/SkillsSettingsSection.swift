@@ -18,6 +18,10 @@ struct SkillsSettingsSection: View {
     @State private var receiptScopeLoadFailed = false
     @State private var receiptScope: SkillExecutionReviewScope = .recent
     @State private var activeLoadID: UUID?
+    @State private var proposalSnapshot: SkillOfferReviewSnapshot?
+    @State private var proposalsAreLoading = false
+    @State private var proposalLoadFailed = false
+    @State private var activeProposalLoadID: UUID?
 
     var body: some View {
         Group {
@@ -40,6 +44,15 @@ struct SkillsSettingsSection: View {
                     }
                 }
 
+                Section("Proposed") {
+                    SkillProposalSection(
+                        snapshot: proposalSnapshot,
+                        isLoading: proposalsAreLoading,
+                        isMutating: isMutating,
+                        loadFailed: proposalLoadFailed,
+                        retry: { Task { await loadProposals() } })
+                }
+
                 Section("Skill activity") {
                     SkillActivitySection(
                         receiptScope: $receiptScope,
@@ -54,6 +67,9 @@ struct SkillsSettingsSection: View {
         }
         .task(id: receiptScope) {
             await load()
+        }
+        .task {
+            await loadProposals()
         }
     }
 
@@ -300,9 +316,42 @@ struct SkillsSettingsSection: View {
                 receiptScope: receiptScope)
             controlLoadFailed = false
             receiptScopeLoadFailed = false
+            await loadProposals()
         } catch {
             controlLoadFailed = true
         }
+    }
+
+    @MainActor
+    private func loadProposals() async {
+        let loadID = UUID()
+        activeProposalLoadID = loadID
+        proposalsAreLoading = true
+        do {
+            let loaded = try await services.loadSkillOfferReview()
+            guard !Task.isCancelled else {
+                finishProposalLoad(loadID)
+                return
+            }
+            guard activeProposalLoadID == loadID else { return }
+            proposalSnapshot = loaded
+            proposalLoadFailed = false
+            finishProposalLoad(loadID)
+        } catch is CancellationError {
+            finishProposalLoad(loadID)
+        } catch {
+            guard activeProposalLoadID == loadID else { return }
+            proposalSnapshot = nil
+            proposalLoadFailed = true
+            finishProposalLoad(loadID)
+        }
+    }
+
+    @MainActor
+    private func finishProposalLoad(_ loadID: UUID) {
+        guard activeProposalLoadID == loadID else { return }
+        activeProposalLoadID = nil
+        proposalsAreLoading = false
     }
 
     private func skillTitle(_ skillID: String) -> String {

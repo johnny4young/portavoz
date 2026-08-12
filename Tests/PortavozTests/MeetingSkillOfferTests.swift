@@ -12,6 +12,7 @@ final class MeetingSkillOfferTests: XCTestCase {
     func testOffersRequireASummaryAndAllMeetingSkillsAppear() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
 
         let without = try await LoadMeetingSkillOffers(store: store).execute(
             LoadMeetingSkillOffersRequest(meetingID: meetingID, hasSummary: false))
@@ -61,6 +62,7 @@ final class MeetingSkillOfferTests: XCTestCase {
     func testDismissalIsDurableIdempotentAndPerOffer() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
         let recap = MeetingSkillOffer(kind: .recapDraft, meetingID: meetingID)
 
         try await store.dismissSkillOffer(
@@ -84,6 +86,7 @@ final class MeetingSkillOfferTests: XCTestCase {
     func testDurableControlsRemoveOffersWithoutChangingDismissals() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
 
         try await store.setSkill(
             RecapDraftSkill.id,
@@ -115,6 +118,7 @@ final class MeetingSkillOfferTests: XCTestCase {
     func testASucceededRecapRetiresItsOfferAndLeavesOneReceipt() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
         let (proposal, key) = MeetingSkillProposalFactory.recapProposal(
             meetingID: meetingID,
             at: Date())
@@ -151,6 +155,7 @@ final class MeetingSkillOfferTests: XCTestCase {
     func testEmailRecapRequiresEgressPermissionThenRetiresAfterHandoff() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
         let (proposal, key) = MeetingSkillProposalFactory.emailRecapDraftProposal(
             meetingID: meetingID,
             at: Date())
@@ -200,6 +205,7 @@ final class MeetingSkillOfferTests: XCTestCase {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
         let otherMeetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
         for (id, destination) in [
             (meetingID, "/tmp/a.portavoz"),
             (meetingID, "/tmp/b.portavoz"),
@@ -240,6 +246,7 @@ final class MeetingSkillOfferTests: XCTestCase {
     func testAFailedRecapKeepsOfferingAndReceiptsTheFailure() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
         let (proposal, key) = MeetingSkillProposalFactory.recapProposal(
             meetingID: meetingID,
             at: Date())
@@ -271,6 +278,7 @@ final class MeetingSkillOfferTests: XCTestCase {
     func testFailedSecretGistDoesNotInviteDuplicateRemotePublication() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
         let (proposal, key) = MeetingSkillProposalFactory
             .secretGistPublishProposal(
                 meetingID: meetingID,
@@ -306,6 +314,7 @@ final class MeetingSkillOfferTests: XCTestCase {
     func testInterruptedOneShotDraftsDoNotInviteDuplicateHandoffs() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
         let proposals = [
             MeetingSkillProposalFactory.recapProposal(
                 meetingID: meetingID,
@@ -467,6 +476,16 @@ final class MeetingSkillOfferTests: XCTestCase {
             wildcard.isEmpty,
             "a literal % prefix must not act as a wildcard")
     }
+
+    private func saveMeeting(
+        _ id: MeetingID,
+        in store: MeetingStore
+    ) async throws {
+        try await store.save(Meeting(
+            id: id,
+            title: "Private fixture",
+            startedAt: Date(timeIntervalSince1970: 1)))
+    }
 }
 
 private struct NoopSkillEffect: SkillEffectPerforming {
@@ -500,6 +519,7 @@ private struct UnknownRemoteOutcomeSkillEffect: SkillEffectPerforming {
 private actor RecordingMeetingSkillOfferStore: MeetingSkillOfferStore {
     private(set) var exactReads: [[String]] = []
     private(set) var prefixReads: [String] = []
+    private(set) var reconciliations: [[SkillOfferRegistration]] = []
 
     func skillExecutionPolicy() -> SkillExecutionPolicy {
         SkillExecutionPolicy()
@@ -526,4 +546,11 @@ private actor RecordingMeetingSkillOfferStore: MeetingSkillOfferStore {
         skillID: String,
         at timestamp: Date
     ) {}
+
+    func reconcileSkillOffers(
+        candidateOfferKeys _: [String],
+        active offers: [SkillOfferRegistration]
+    ) {
+        reconciliations.append(offers)
+    }
 }

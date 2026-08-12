@@ -14,6 +14,7 @@ final class LocalSkillsTests: XCTestCase {
         SkillProposal(
             definition: definition,
             requestedCapabilities: requesting,
+            requestedInputDataClasses: definition.inputDataClasses,
             arguments: arguments,
             proposedAt: now)
     }
@@ -63,6 +64,34 @@ final class LocalSkillsTests: XCTestCase {
             "local and external skills cannot share claims or receipts")
     }
 
+    func testBuiltInSkillsDeclareExactInputDataCeilings() {
+        XCTAssertEqual(
+            RecapDraftSkill.definition.inputDataClasses,
+            [.meetingDetails, .meetingSummary])
+        XCTAssertEqual(
+            EmailRecapDraftSkill.definition.inputDataClasses,
+            [.meetingDetails, .meetingSummary])
+        XCTAssertEqual(
+            MeetingPackageExportSkill.definition.inputDataClasses,
+            [
+                .meetingDetails,
+                .meetingSummary,
+                .transcript,
+                .notes,
+                .companionHistory,
+                .selectedDestination
+            ])
+        XCTAssertEqual(
+            SecretGistPublishSkill.definition.inputDataClasses,
+            [.meetingDetails, .meetingSummary, .transcript])
+        XCTAssertEqual(
+            PreMeetingBriefSkill.definition.inputDataClasses,
+            [.calendarEvent, .meetingDetails, .meetingSummary, .transcript])
+        XCTAssertEqual(
+            ReminderDraftSkill.definition.inputDataClasses,
+            [.commitment, .selectedDestination])
+    }
+
     /// Exporting a file is irreversible, so a standing rule can never cover it
     /// even though the skill is local.
     func testOnlyReversibleSkillsCouldEverBeAutomated() {
@@ -77,6 +106,8 @@ final class LocalSkillsTests: XCTestCase {
             id: MeetingPackageExportSkill.id,
             version: 1,
             capabilities: MeetingPackageExportSkill.definition.capabilities,
+            inputDataClasses:
+                MeetingPackageExportSkill.definition.inputDataClasses,
             confirmationPolicy: .standingRule)
         XCTAssertFalse(automated.isValid)
     }

@@ -77,6 +77,9 @@ extension MeetingStore {
                 guard existing.idempotencyKey == idempotencyKey else {
                     return .rejected(.idempotencyKeyClaimed)
                 }
+                try database.execute(
+                    sql: "DELETE FROM skillOfferProposal WHERE offerKey = ?",
+                    arguments: [idempotencyKey])
                 return .alreadySettled(existing)
             }
             // A different proposal already owns this key.
@@ -112,6 +115,12 @@ extension MeetingStore {
                 ])
             let record = try Self.skillExecution(proposalID, in: database)
             guard let record else { return .rejected(.unknownExecution) }
+            // Exact one-shot offer keys equal their idempotency key. Package
+            // export intentionally uses a destination-free offer key, so its
+            // reusable offer remains while each destination owns one claim.
+            try database.execute(
+                sql: "DELETE FROM skillOfferProposal WHERE offerKey = ?",
+                arguments: [idempotencyKey])
             return .admitted(record)
         }
     }

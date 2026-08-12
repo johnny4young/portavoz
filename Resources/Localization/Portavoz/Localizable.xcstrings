@@ -13110,6 +13110,206 @@
           }
         }
       }
+    },
+    "Proposed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Propuestas"
+          }
+        }
+      }
+    },
+    "Loading proposed Skills…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando skills propuestas…"
+          }
+        }
+      }
+    },
+    "Proposed Skills are unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las skills propuestas no están disponibles"
+          }
+        }
+      }
+    },
+    "No proposal is shown until its durable explanation can be verified.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se muestra ninguna propuesta hasta poder verificar su explicación durable."
+          }
+        }
+      }
+    },
+    "No proposed Skills": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay skills propuestas"
+          }
+        }
+      }
+    },
+    "Offers appear here only after a real meeting, commitment, or calendar surface proposes them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las propuestas aparecen aquí solo después de que una superficie real de reunión, compromiso o calendario las proponga."
+          }
+        }
+      }
+    },
+    "This review stores no title, transcript, preview, destination, or recipient.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta revisión no guarda títulos, transcripciones, vistas previas, destinos ni destinatarios."
+          }
+        }
+      }
+    },
+    "Open the original surface to review the exact preview and confirm. Nothing runs here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre la superficie original para revisar la vista previa exacta y confirmar. Aquí no se ejecuta nada."
+          }
+        }
+      }
+    },
+    "A meeting summary is ready to use.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay un resumen de reunión listo para usar."
+          }
+        }
+      }
+    },
+    "An upcoming calendar event can be prepared.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se puede preparar un próximo evento del calendario."
+          }
+        }
+      }
+    },
+    "A confirmed commitment can become a reminder.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un compromiso confirmado puede convertirse en recordatorio."
+          }
+        }
+      }
+    },
+    "Uses: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa: %@"
+          }
+        }
+      }
+    },
+    "meeting details": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "detalles de la reunión"
+          }
+        }
+      }
+    },
+    "meeting summary": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "resumen de la reunión"
+          }
+        }
+      }
+    },
+    "transcript": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "transcripción"
+          }
+        }
+      }
+    },
+    "notes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "notas"
+          }
+        }
+      }
+    },
+    "Companion history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "historial del Apuntador"
+          }
+        }
+      }
+    },
+    "confirmed commitment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "compromiso confirmado"
+          }
+        }
+      }
+    },
+    "calendar event": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "evento del calendario"
+          }
+        }
+      }
+    },
+    "destination you select": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "destino que selecciones"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

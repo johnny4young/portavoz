@@ -44,6 +44,7 @@ public enum EmailRecapDraftSkill {
         id: id,
         version: version,
         capabilities: [.readMeetingMaterial, .sendRemote],
+        inputDataClasses: [.meetingDetails, .meetingSummary],
         confirmationPolicy: .explicitPerProposal)
 
     public static func idempotencyKey(for meetingID: MeetingID) -> String {
@@ -147,6 +148,11 @@ public enum SecretGistPublishSkill {
         id: id,
         version: version,
         capabilities: [.readMeetingMaterial, .sendRemote],
+        inputDataClasses: [
+            .meetingDetails,
+            .meetingSummary,
+            .transcript
+        ],
         confirmationPolicy: .explicitPerProposal)
 
     public static func idempotencyKey(for meetingID: MeetingID) -> String {

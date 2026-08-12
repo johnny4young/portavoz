@@ -2495,7 +2495,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335/D336, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D337, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2510,6 +2510,30 @@ pre-handoff cancelled runs. It never executes a skill and does not invent egress
 consent or standing rules; enabling an external row is not permission to hand
 off content, because that authority exists only on the exact confirmation
 sheet.
+
+A separate **Proposed** section now reviews offers that the real Meeting Detail,
+resident calendar, and Commitment Radar producers successfully reconciled into
+schema v40. It is not reconstructed by scanning meeting, transcript, commitment,
+or calendar content. Each row receives only an unrelated review UUID, current
+Skill identity/version, one typed reason, the exact declared input-data classes,
+and first/last observed times. It explains why the offer appeared and lists the
+categories it may use without receiving the stable offer key, opaque subject,
+title, transcript, preview, arguments, destination, or recipient. The privacy
+copy directs the user back to the original surface for the exact preview and
+confirmation; no row is actionable in Settings.
+
+Every built-in `SkillDefinition` declares a nonempty input-data ceiling in
+addition to effect capabilities, and every exact `SkillProposal` requests a
+nonempty subset before admission. Reconciliation is bounded to 200 candidate
+intents, central review to 100 storage rows and 50 application rows. The review
+prunes expired calendar offers, revalidates every record against the current
+catalogue version/reason/data contract, and honors both the global pause and
+individual disablements. Subject deletion cascades meeting and commitment rows;
+calendar rows expire at the original event start because EventKit identity stays
+opaque. Dismissal and one-shot execution admission retire the exact offer
+authority atomically. Package export remains intentionally reusable: its offer
+is destination-free, while every approved destination owns a separate exact
+execution claim.
 
 The switches write SQLite v35 state. Global pause leaves every individual
 choice intact; resuming restores those choices. Meeting proposals read the
@@ -2561,13 +2585,16 @@ receive or render the idempotency key, arguments, destination, result, meeting
 title, transcript, or summary. **Try again** repeats only that read and cannot
 execute or retry a Skill.
 
-Three bilingual XCUITest journeys cover the pane: one verifies the fail-closed
+Four bilingual XCUITest journeys cover the pane: one verifies the fail-closed
 control load state; one proves a selected activity-scope failure neither
-invents rows nor disables verified policy; and the main disposable journey
+invents rows nor disables verified policy; one isolates proposal-authority
+failure with no invented rows while controls remain usable; and the main
+disposable journey
 disables export, pauses all skills, proves offers stay absent, resumes without
 losing the individual choice, confirms the remaining recap proposal, traverses
-all four activity scopes, opens its three-event causal receipt, and verifies
-the content-free boundary.
+all four activity scopes, checks typed why/input explanations from the real
+producers, opens its three-event causal receipt, and verifies both content-free
+boundaries.
 
 ## Resident pre-meeting brief proposal (D322, Aug 2026)
 

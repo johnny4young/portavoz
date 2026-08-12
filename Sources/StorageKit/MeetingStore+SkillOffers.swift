@@ -10,6 +10,13 @@ extension MeetingStore {
         skillID: String,
         at timestamp: Date = Date()
     ) async throws {
+        guard !offerKey.isEmpty,
+              offerKey.utf8.count <= SkillOfferRegistration.maximumOfferKeyByteCount,
+              !skillID.isEmpty,
+              skillID == skillID.trimmingCharacters(in: .whitespacesAndNewlines),
+              skillID.utf8.count <= SkillDefinition.maximumIDByteCount,
+              timestamp.timeIntervalSinceReferenceDate.isFinite
+        else { throw StorageError.invalidSkillOffer("invalid dismissal") }
         try await database.write { database in
             try database.execute(
                 sql: """
@@ -18,6 +25,9 @@ extension MeetingStore {
                     ON CONFLICT(offerKey) DO NOTHING
                     """,
                 arguments: [offerKey, skillID, timestamp])
+            try database.execute(
+                sql: "DELETE FROM skillOfferProposal WHERE offerKey = ?",
+                arguments: [offerKey])
         }
     }
 

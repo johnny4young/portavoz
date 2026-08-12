@@ -1,5 +1,6 @@
 import ApplicationKit
 import Foundation
+import GRDB
 import PortavozCore
 import XCTest
 
@@ -12,6 +13,7 @@ final class ReminderDraftOfferTests: XCTestCase {
         let store = try MeetingStore.inMemory()
         let first = commitment(title: "Send the launch notes")
         let second = commitment(title: "Book the review")
+        try await saveCommitments([first, second], in: store)
         let secondKey = ReminderDraftSkill.idempotencyKey(for: second.id)
         let secondProposal = UUID()
         _ = try await store.confirmSkillExecution(
@@ -186,6 +188,32 @@ final class ReminderDraftOfferTests: XCTestCase {
             attempt: 1,
             updatedAt: now)
     }
+
+    private func saveCommitments(
+        _ commitments: [Commitment],
+        in store: MeetingStore
+    ) async throws {
+        try await store.database.write { database in
+            for commitment in commitments {
+                try database.execute(
+                    sql: """
+                        INSERT INTO commitment (
+                            id, canonicalPersonID, title, status, dueAt,
+                            createdAt, updatedAt, deletedAt
+                        ) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)
+                        """,
+                    arguments: [
+                        commitment.id.rawValue.uuidString,
+                        commitment.title,
+                        commitment.status.rawValue,
+                        commitment.dueAt,
+                        commitment.createdAt,
+                        commitment.updatedAt,
+                        commitment.deletedAt
+                    ])
+            }
+        }
+    }
 }
 
 private final class RecordingReminderDraftSurfaceStore:
@@ -239,5 +267,10 @@ private final class RecordingReminderDraftSurfaceStore:
         offerKey _: String,
         skillID _: String,
         at _: Date
+    ) {}
+
+    func reconcileSkillOffers(
+        candidateOfferKeys _: [String],
+        active _: [SkillOfferRegistration]
     ) {}
 }

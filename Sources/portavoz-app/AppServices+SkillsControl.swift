@@ -26,6 +26,16 @@ extension AppServices {
         try await ManageSkillControl(store: store).execute(action)
     }
 
+    func loadSkillOfferReview() async throws -> SkillOfferReviewSnapshot {
+        if ProcessInfo.processInfo.arguments.contains(
+            "-simulate-skill-proposal-unavailable"
+        ) {
+            throw SimulatedSkillProposalFailure()
+        }
+        return try await LoadSkillOfferReview(store: store).execute(
+            LoadSkillOfferReviewRequest())
+    }
+
     func loadSkillReceiptInspection(
         proposalID: UUID
     ) async throws -> SkillControlCenterReceiptInspection {
@@ -35,3 +45,4 @@ extension AppServices {
 
 private struct SimulatedSkillControlFailure: Error {}
 private struct SimulatedSkillReceiptScopeFailure: Error {}
+private struct SimulatedSkillProposalFailure: Error {}

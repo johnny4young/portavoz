@@ -17,6 +17,7 @@ final class ExecuteSkillTests: XCTestCase {
         SkillProposal(
             definition: definition,
             requestedCapabilities: requesting,
+            requestedInputDataClasses: definition.inputDataClasses,
             arguments: arguments,
             proposedAt: now)
     }
@@ -108,6 +109,7 @@ final class ExecuteSkillTests: XCTestCase {
             id: "not-registered",
             version: 1,
             capabilities: [.readMeetingMaterial],
+            inputDataClasses: [.commitment],
             confirmationPolicy: .explicitPerProposal)
         let subject = proposal(
             definition: unknown,

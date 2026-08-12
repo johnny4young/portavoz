@@ -235,6 +235,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "SkillsSettingsUITests",
             "testSkillActivityScopeFailureDoesNotInventRowsOrDisableVerifiedPolicy",
         ),
+        test_id(
+            "SkillsSettingsUITests",
+            "testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy",
+        ),
     ),
     "settings-data": (
         test_id("SettingsUITests", "testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy"),

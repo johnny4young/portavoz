@@ -165,7 +165,7 @@ final class CommitmentReviewStorageTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 39)
+            XCTAssertEqual(StorageSchema.version, 40)
             XCTAssertEqual(
                 try Set(database.columns(in: "commitmentReviewDecision").map(\.name)),
                 [
