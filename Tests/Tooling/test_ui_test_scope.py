@@ -159,6 +159,16 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.tests, HARNESS_TESTS)
         self.assertEqual(selection.locales, ("en", "es"))
 
+    def test_semantic_asset_preparation_selects_its_settings_journey(self):
+        expected = FEATURE_TESTS["settings-intelligence"]
+        for path in (
+            "Sources/ApplicationKit/SemanticSearchAssetPreparation.swift",
+            "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+
     def test_recording_sources_select_callback_recovery_evidence(self):
         selection = select_paths(["Sources/AudioCaptureKit/RecordingSession.swift"])
         self.assertIn(

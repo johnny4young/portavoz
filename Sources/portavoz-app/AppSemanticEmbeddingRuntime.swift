@@ -233,3 +233,76 @@ actor AppSemanticEmbeddingRuntime: SemanticEmbeddingRuntimeClient {
         return model
     }
 }
+
+extension AppServices {
+    static func makeSemanticEmbeddingRuntime(
+        arguments: [String],
+        usesTemporaryStore: Bool,
+        residency: AppModelResidencyLedger,
+        telemetry: ResourceWorkloadTelemetry
+    ) -> AppSemanticEmbeddingRuntime {
+        AppSemanticEmbeddingRuntime(
+            residency: residency,
+            telemetry: telemetry,
+            makeModel: makeSemanticEmbeddingModelFactory(
+                arguments: arguments,
+                usesTemporaryStore: usesTemporaryStore))
+    }
+
+    /// Keeps every concrete semantic-model construction beside the process
+    /// runtime that owns it. The disposable substitute is admitted only under
+    /// both temporary storage and its dedicated UI-test flag.
+    static func makeSemanticEmbeddingModelFactory(
+        arguments: [String],
+        usesTemporaryStore: Bool
+    ) -> @Sendable () throws -> any SemanticEmbeddingModel {
+        guard usesTemporaryStore,
+              arguments.contains("-simulate-semantic-assets-missing")
+        else {
+            return { try SentenceEmbedder() }
+        }
+        let state = UITestSemanticEmbeddingAssetState()
+        return { UITestSemanticEmbeddingModel(state: state) }
+    }
+}
+
+/// Disposable XCUITest-only model. It proves that the real Settings action is
+/// the event that changes readiness without touching host OS assets.
+private actor UITestSemanticEmbeddingAssetState {
+    var available = false
+}
+
+private struct UITestSemanticEmbeddingModel: SemanticEmbeddingModel {
+    let state: UITestSemanticEmbeddingAssetState
+
+    var hasAvailableAssets: Bool {
+        get async { await state.available }
+    }
+
+    func semanticEmbeddingProfile() -> SemanticEmbeddingProfile {
+        SemanticEmbeddingProfile(
+            modelIdentifier: "portavoz-uitest-semantic-assets",
+            modelRevision: 1,
+            vectorDimension: 2,
+            pipelineIdentifier: "portavoz-uitest-semantic-assets",
+            pipelineRevision: 1,
+            vectorSchemaVersion: 1)
+    }
+
+    func prepare(allowAssetDownload: Bool) async throws {
+        guard allowAssetDownload else {
+            throw SentenceEmbedder.EmbedderError.assetsUnavailable
+        }
+        await state.markAvailable()
+    }
+
+    func vectors(for texts: [String]) -> [[Float]] {
+        texts.map { _ in [1, 0] }
+    }
+}
+
+private extension UITestSemanticEmbeddingAssetState {
+    func markAvailable() {
+        available = true
+    }
+}

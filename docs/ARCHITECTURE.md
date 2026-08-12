@@ -825,6 +825,18 @@ remains available in every state. `partial`,
 means no query vector can be produced. A complete durable corpus resolves
 `ready` even after an older process failure.
 
+Semantic asset readiness is a separate contract from corpus readiness. The
+Intelligence Settings pane is the only product surface that may invoke
+`PrepareSemanticSearchAssets`, and only after an explicit button press. Its
+process-scoped presentation model first passes the semantic family through the
+resource governor, then authorizes the existing runtime to request Apple's
+OS-managed Latin assets. A successful request wakes the existing background
+owner; it does not index inside Settings. Status inspection reads only the
+model profile and installed-asset flag. Ask, Library, launch, and background
+maintenance remain unable to download assets, and exact FTS remains available
+through checking, preparation, failure, unsupported hardware, and corpus
+backfill.
+
 All product corpus backfill belongs to the signal-driven background owner. It
 delegates complete drains to `ProcessSemanticCorpusMaintenance`, which owns a
 content-free scheduling lease around `IndexSemanticCorpus` behind one
@@ -3944,7 +3956,7 @@ reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,365 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,377 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -3952,13 +3964,13 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 654
+- strict SwiftLint remains a blocking CI gate and is clean across all 656
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 354 deterministic tooling cases and the 168-case architecture subset pass;
+- 355 deterministic tooling cases and the 169-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
-- 79 XCUITest cases per locale define the 158-case bilingual release gate;
+- 80 XCUITest cases per locale define the 160-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

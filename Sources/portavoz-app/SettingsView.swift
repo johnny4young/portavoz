@@ -13,7 +13,9 @@ import TranscriptionKit
 /// (same file, so they keep access to the private `@State`); the struct body
 /// itself is just the stored state and the `Form` that composes them.
 struct SettingsView: View {
-    @Environment(AppServices.self) private var services
+    // Internal so focused SettingsView extension files can use the process
+    // service graph without duplicating environment reads.
+    @Environment(AppServices.self) var services
 
     @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
 
@@ -104,6 +106,7 @@ struct SettingsView: View {
                 case .intelligence:
                     transcriptionLanguageSection
                     summaryLanguageSection
+                    semanticSearchSection
                     summaryEngineSection
                     customStructuresSection
                     vocabularySection

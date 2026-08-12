@@ -239,6 +239,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testDataPaneExportsAReadableWholeLibraryMarkdownBackup"),
     ),
     "settings-intelligence": (
+        test_id(
+            "SettingsUITests",
+            "testIntelligencePaneExplicitlyPreparesSemanticSearch",
+        ),
         test_id("SettingsUITests", "testIntelligencePaneCreatesACustomStructure"),
     ),
     "settings-audio": (
@@ -363,6 +367,8 @@ def app_features(filename: str) -> set[str]:
         for token in ("dictation", "mousebutton", "mouseptt", "hotkey", "textinserter")
     ):
         return {"settings-audio"}
+    if "semanticsearchpreparation" in lowered:
+        return {"settings-intelligence"}
     if any(token in lowered for token in ("ask", "commandpalette")):
         return {"ask", "library"}
     if any(token in lowered for token in (
@@ -514,6 +520,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "semanticsearchassetpreparation" in lowered:
+        return {"settings-intelligence"}
     if "automationentit" in lowered:
         return {"automation-entry", "commitment-radar"}
     if "launchrecovery" in lowered:

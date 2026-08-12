@@ -12610,6 +12610,166 @@
           }
         }
       }
+    },
+    "Semantic search": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Búsqueda semántica"
+          }
+        }
+      }
+    },
+    "Checking semantic search…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando la búsqueda semántica…"
+          }
+        }
+      }
+    },
+    "Semantic search is optional": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La búsqueda semántica es opcional"
+          }
+        }
+      }
+    },
+    "Preparing semantic search…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando la búsqueda semántica…"
+          }
+        }
+      }
+    },
+    "Semantic search is ready": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La búsqueda semántica está lista"
+          }
+        }
+      }
+    },
+    "Semantic search isn't available": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La búsqueda semántica no está disponible"
+          }
+        }
+      }
+    },
+    "Finish the recording first": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termina primero la grabación"
+          }
+        }
+      }
+    },
+    "Semantic search needs attention": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La búsqueda semántica necesita atención"
+          }
+        }
+      }
+    },
+    "Prepare semantic search": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar búsqueda semántica"
+          }
+        }
+      }
+    },
+    "Checking Apple's on-device language assets. Exact search stays available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando los recursos de idioma de Apple en el dispositivo. La búsqueda exacta sigue disponible."
+          }
+        }
+      }
+    },
+    "Prepare once to add meaning-based English and Spanish matches. Preparing may use a few hundred MB on this Mac; macOS manages the assets, and exact search stays available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepárala una vez para añadir coincidencias por significado en inglés y español. Prepararla puede usar unos cientos de MB en este Mac; macOS gestiona los recursos y la búsqueda exacta sigue disponible."
+          }
+        }
+      }
+    },
+    "macOS is preparing its on-device language assets. You can close Settings; exact search stays available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS está preparando sus recursos de idioma en el dispositivo. Puedes cerrar Ajustes; la búsqueda exacta sigue disponible."
+          }
+        }
+      }
+    },
+    "Meaning-based English and Spanish matches can augment exact search. New or corrected text is indexed in the background.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las coincidencias por significado en inglés y español pueden complementar la búsqueda exacta. El texto nuevo o corregido se indexa en segundo plano."
+          }
+        }
+      }
+    },
+    "This Mac or macOS version doesn't provide the required Apple language model. Exact search still works.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta Mac o versión de macOS no ofrece el modelo de idioma de Apple necesario. La búsqueda exacta sigue funcionando."
+          }
+        }
+      }
+    },
+    "Preparing another on-device model could disrupt live capture. Finish the recording, then try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar otro modelo en el dispositivo podría afectar la captura en vivo. Termina la grabación y vuelve a intentarlo."
+          }
+        }
+      }
+    },
+    "macOS couldn't prepare the language assets. Check your connection and storage, then try again; exact search still works.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS no pudo preparar los recursos de idioma. Comprueba la conexión y el almacenamiento y vuelve a intentarlo; la búsqueda exacta sigue funcionando."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

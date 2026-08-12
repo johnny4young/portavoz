@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 11, 2026
 
+- **✨ Semantic search prepares when you choose** — Intelligence Settings now shows whether Apple's private bilingual search assets are ready and lets you prepare them explicitly, while exact search keeps working before, during, or after a failed attempt.
 - **🎭 Apuntador rechecks your transcript fixes** — When an answer becomes stale, refresh the complete set on demand from the corrected transcript; Portavoz keeps the previous cards if the model or final save cannot finish safely.
 - **🧠 Semantic search learns your transcript fixes** — Corrected wording becomes privately searchable after ordinary background indexing, while undo instantly restores the accepted result.
 - **🔎 Spotlight respects your transcript fixes** — Corrected wording replaces the stale text in private system search, outdated summaries stop matching, and undo restores the accepted material.

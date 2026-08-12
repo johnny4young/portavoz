@@ -125,6 +125,11 @@ final class AppServices {
     /// Ask and Library share one governed Apple contextual-embedding runtime.
     @ObservationIgnored let semanticEmbeddingRuntime:
         AppSemanticEmbeddingRuntime
+    /// One process-scoped Settings owner for the only product action allowed
+    /// to request Apple's OS-managed semantic assets.
+    @ObservationIgnored lazy var semanticSearchPreparation =
+        SemanticSearchPreparationModel(
+            client: AppSemanticSearchPreparationClient(services: self))
     /// Background maintenance owns product corpus writes and coalesces them
     /// through one semantic-index flight.
     @ObservationIgnored let semanticIndexingCoordinator:
@@ -283,10 +288,10 @@ final class AppServices {
         let workloadTelemetry = AppResourceWorkloadTelemetry.shared.telemetry
         self.workloadTelemetry = workloadTelemetry
         transcriptionScheduler = Self.makeTranscriptionScheduler(telemetry: workloadTelemetry)
-        let modelStore = Self.makeModelStore(usesTemporaryStore: storagePolicy.usesTemporaryModelStore)
-        self.modelStore = modelStore
-        modelLifecycle = VerifiedModelLifecycle(store: modelStore)
-        semanticEmbeddingRuntime = AppSemanticEmbeddingRuntime(
+        (modelStore, modelLifecycle) = Self.makeModelServices(
+            usesTemporaryStore: storagePolicy.usesTemporaryModelStore)
+        semanticEmbeddingRuntime = Self.makeSemanticEmbeddingRuntime(
+            arguments: arguments, usesTemporaryStore: usesTemporaryStore,
             residency: modelResidencyLedger, telemetry: workloadTelemetry)
         let sensitiveStorage = Self.makeSensitiveStorage(usesTemporaryStore: storagePolicy.usesTemporarySensitiveStore)
         microphonePermissions = MicrophonePermissionClient()
@@ -385,6 +390,13 @@ final class AppServices {
             "portavoz-uitest-models-\(UUID().uuidString)",
             isDirectory: true)
         return ModelStore(rootDirectory: rootDirectory)
+    }
+
+    private static func makeModelServices(
+        usesTemporaryStore: Bool
+    ) -> (ModelStore, VerifiedModelLifecycle) {
+        let store = makeModelStore(usesTemporaryStore: usesTemporaryStore)
+        return (store, VerifiedModelLifecycle(store: store))
     }
 
     private static func makeSensitiveStorage(

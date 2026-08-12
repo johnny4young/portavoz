@@ -1425,6 +1425,58 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Typed semantic readiness and background-only writes (D197)"))
     }
 
+    func testSemanticAssetDownloadHasOneExplicitSettingsWorkflow() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/SemanticSearchAssetPreparation.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/SemanticSearchPreparationModel.swift")
+        let runtime = try Self.contents(
+            of: "Sources/portavoz-app/AppSemanticEmbeddingRuntime.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SettingsView+Intelligence.swift")
+        let embedder = try Self.contents(
+            of: "Sources/IntelligenceKit/SentenceEmbedder.swift")
+
+        XCTAssertTrue(workflow.contains("struct InspectSemanticSearchAssets"))
+        XCTAssertTrue(workflow.contains("struct PrepareSemanticSearchAssets"))
+        XCTAssertTrue(workflow.contains(
+            "runtime.prepare(allowAssetDownload: true)"))
+        XCTAssertTrue(model.contains(
+            "admitModelRuntimeLoad(.semanticEmbedding)"))
+        XCTAssertTrue(model.contains("semanticIndexingSupervisor.kick()"))
+        XCTAssertTrue(runtime.contains(
+            "usesTemporaryStore,"))
+        XCTAssertTrue(runtime.contains(
+            "arguments.contains(\"-simulate-semantic-assets-missing\")"))
+        XCTAssertTrue(settings.contains(
+            "settings-semantic-search-prepare"))
+        XCTAssertTrue(settings.contains(
+            "settings-semantic-search-status-"))
+        XCTAssertTrue(embedder.contains("embedding.requestAssets()"))
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources/ApplicationKit",
+                pattern: #"runtime\.prepare\(allowAssetDownload: true\)"#),
+            ["SemanticSearchAssetPreparation.swift"],
+            "Only the explicit application workflow may authorize an asset download")
+        XCTAssertEqual(
+            try Self.sourceMatches(
+                under: "Sources",
+                pattern: #"embedding\.requestAssets\(\)"#),
+            ["IntelligenceKit/SentenceEmbedder.swift"],
+            "Only the NaturalLanguage adapter may call Apple's download API")
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        XCTAssertTrue(decisions.contains("## D332"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Explicit semantic asset preparation (D332)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Semantic search preparation in Settings (D332)"))
+    }
+
     func testSemanticBackgroundOwnerUsesSignalsAndDurableCursor() throws {
         let supervisor = try Self.contents(
             of: "Sources/portavoz-app/SemanticCorpusIndexingSupervisor.swift")

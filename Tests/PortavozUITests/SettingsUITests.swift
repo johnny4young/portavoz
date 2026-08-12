@@ -5,6 +5,35 @@ import XCTest
 /// app-only language override updates SwiftUI text live.
 final class SettingsUITests: PortavozUITestCase {
     @MainActor
+    func testIntelligencePaneExplicitlyPreparesSemanticSearch() {
+        let app = XCUIApplication.portavoz(
+            simulateSemanticAssetsMissing: true,
+            openSettings: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        openCategory(
+            "settings-category-intelligence",
+            revealing: "settings-semantic-search-status-needs-preparation",
+            in: app)
+
+        let prepare = app.buttons["settings-semantic-search-prepare"]
+        XCTAssertTrue(
+            prepare.waitForExistence(timeout: 5),
+            "missing OS assets must stay an explicit user action")
+        prepare.click()
+
+        XCTAssertTrue(
+            app.staticTexts["settings-semantic-search-status-ready"]
+                .waitForExistence(timeout: 10),
+            "the explicit action must publish ready only after preparation")
+        XCTAssertFalse(
+            app.buttons["settings-semantic-search-prepare"].exists,
+            "ready assets must not keep offering a redundant download action")
+        attachScreenshot(of: app, named: "semantic-search-preparation")
+    }
+
+    @MainActor
     func testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
@@ -92,13 +121,14 @@ final class SettingsUITests: PortavozUITestCase {
                 && !downloadFrame.isEmpty
                 && downloadFrame.intersects(visibleFormFrame)
         }
-        // GitHub's macOS runner exposes a 760x650 Settings viewport, so the
-        // Whisper action starts farther below the fold than on a developer Mac.
-        for _ in 0..<24 {
+        // GitHub's macOS runner exposes a 760x650 Settings viewport. Keep the
+        // bounded wheel step large enough for every preceding Intelligence
+        // status section while stopping as soon as the action enters the form.
+        for _ in 0..<20 {
             if downloadIsVisible() {
                 break
             }
-            settingsForm.scroll(byDeltaX: 0, deltaY: -6)
+            settingsForm.scroll(byDeltaX: 0, deltaY: -18)
         }
         XCTAssertTrue(
             downloadIsVisible(),

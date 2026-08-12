@@ -11802,3 +11802,52 @@ recovery path without weakening local-first consent, correction responsiveness,
 or immutable evidence. One accepted-source projection prevents corrected
 generation from inventing a second evidence identity system, while atomic
 replacement makes partial answers and stale races observationally impossible.
+
+## D332 — Semantic assets prepare only from an explicit Settings action (Aug 2026)
+
+**Context:** Ask and Library intentionally preserve exact FTS and never request
+Apple's Latin contextual-embedding assets while the user types. Background
+maintenance also accepts only already-installed assets. That protects latency,
+capture, and consent, but a clean Mac had no way to enable semantic augmentation
+or even see why it was absent. Asset availability and corpus completeness were
+also easy to conflate. The current macOS 26.5 SDK confirms that contextual
+assets are downloaded over the air and recommends considering `NLEmbedding` for
+semantic similarity, but that guidance alone is not evidence that replacing
+Portavoz's bilingual compatibility-profile-fenced model improves the product.
+
+**Decision:** ApplicationKit separates a side-effect-free
+`InspectSemanticSearchAssets` contract from the sole explicit
+`PrepareSemanticSearchAssets` workflow. Inspection requires a valid model
+profile and reads only `hasAvailableAssets`. Preparation returns unsupported
+without touching the runtime, loads an already-installed model with download
+permission disabled, and passes `allowAssetDownload: true` only when a valid
+model reports missing assets. `SentenceEmbedder` remains the only source that
+calls Apple's `requestAssets()` API.
+
+The Intelligence Settings pane owns the only button for that workflow. One
+process-scoped observable model serializes clicks and persists status across
+Settings-window lifetime. Its app client runs semantic-family resource
+admission first, so protected capture fails with a retryable finish-recording
+state. Ordinary failure is retryable, cancellation re-inspects readiness, and
+only verified readiness wakes the existing signal-driven corpus supervisor.
+Settings never indexes the library itself. Ask, Library, launch, and automatic
+maintenance retain `allowAssetDownload: false`; exact FTS remains available in
+every asset and corpus state.
+
+The UI describes macOS ownership, background indexing, exact-search fallback,
+and variable storage cost. A Tahoe 26.5 reference-host probe observed the
+revision-1, 512-dimensional Latin model supporting 20 languages including
+English and Spanish, about 79 MiB process RSS, and a 301 MiB app-specific
+compiled BNNS cache. These are scoped observations, not a universal download
+size. A fake model exists only behind both temporary-store isolation and a
+dedicated XCUITest flag; bilingual UI automation can therefore prove the real
+explicit transition without touching host assets.
+
+**Consequences:** clean installations have an honest opt-in recovery path and
+semantic preparation can no longer hide behind search latency. Corpus progress
+continues through the existing readiness and durable-maintenance contracts.
+Physical clean-install disk deltas and runtime behavior on Sequoia and other
+Tahoe builds remain field evidence. Replacing contextual embeddings with
+`NLEmbedding`, sqlite-vec, USearch/ANN, or another engine still requires the
+accepted bilingual quality, latency, memory, correction, rebuild, and rollback
+matrix rather than documentation preference alone.
