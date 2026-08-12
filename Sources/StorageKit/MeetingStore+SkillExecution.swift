@@ -48,6 +48,8 @@ public struct SkillExecutionRecord: Equatable, Sendable {
 }
 
 extension MeetingStore {
+    public static let maximumSkillExecutionAuditEventCount = 256
+
     /// Records the user's confirmation durably before anything runs.
     ///
     /// This is the idempotency boundary: the effect belongs to one
@@ -230,23 +232,44 @@ extension MeetingStore {
         proposalID: UUID
     ) async throws -> [SkillExecutionHistoryEntry] {
         try await database.read { database in
-            try Row.fetchAll(
-                database,
-                sql: """
-                    SELECT kind, attempt, failureCategory, occurredAt
-                    FROM skillExecutionEvent
-                    WHERE proposalID = ?
-                    ORDER BY rowid ASC
-                    """,
-                arguments: [proposalID.uuidString]
-            ).map { row in
-                SkillExecutionHistoryEntry(
-                    kind: row["kind"],
-                    attempt: row["attempt"],
-                    failureCategory: (row["failureCategory"] as String?)
-                        .flatMap(FailureCategory.init(rawValue:)),
-                    occurredAt: row["occurredAt"])
+            try Self.skillExecutionHistory(proposalID, in: database).entries
+        }
+    }
+
+    /// One read-consistent, content-free receipt inspection snapshot.
+    ///
+    /// State and append-only events must come from the same SQLite snapshot;
+    /// reading them separately could render a terminal state beside a timeline
+    /// that still ends at `begin` while another process settles the attempt.
+    public func skillExecutionAudit(
+        proposalID: UUID
+    ) async throws -> SkillExecutionAudit? {
+        try await database.read { database in
+            guard let record = try Self.skillExecution(proposalID, in: database)
+            else { return nil }
+            let history = try Self.skillExecutionHistory(
+                proposalID,
+                in: database,
+                limit: Self.maximumSkillExecutionAuditEventCount + 1)
+            guard history.entries.count <= Self.maximumSkillExecutionAuditEventCount else {
+                throw StorageError.invalidPersistedValue(
+                    table: "skillExecutionEvent",
+                    column: "proposalID",
+                    value: "history exceeds inspection limit")
             }
+            let projectedLatestEventID = try String.fetchOne(
+                database,
+                sql: "SELECT latestEventID FROM skillExecutionState WHERE proposalID = ?",
+                arguments: [proposalID.uuidString])
+            guard history.latestEventID == projectedLatestEventID else {
+                throw StorageError.invalidPersistedValue(
+                    table: "skillExecutionState",
+                    column: "latestEventID",
+                    value: projectedLatestEventID ?? "missing")
+            }
+            return SkillExecutionAudit(
+                record: record,
+                history: history.entries)
         }
     }
 
@@ -377,6 +400,63 @@ extension MeetingStore {
         }
     }
 
+    private static func skillExecutionHistory(
+        _ proposalID: UUID,
+        in database: Database,
+        limit: Int? = nil
+    ) throws -> SkillExecutionHistoryRead {
+        let limitClause = limit == nil ? "" : " LIMIT ?"
+        let arguments: StatementArguments = if let limit {
+            [proposalID.uuidString, limit]
+        } else {
+            [proposalID.uuidString]
+        }
+        let rows = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT id, previousEventID, kind, attempt,
+                       failureCategory, occurredAt
+                FROM skillExecutionEvent
+                WHERE proposalID = ?
+                ORDER BY rowid ASC
+                """ + limitClause,
+            arguments: arguments
+        )
+        var latestEventID: String?
+        let entries = try rows.map { row in
+            let eventID: String = row["id"]
+            let previousEventID: String? = row["previousEventID"]
+            guard previousEventID == latestEventID else {
+                throw StorageError.invalidPersistedValue(
+                    table: "skillExecutionEvent",
+                    column: "previousEventID",
+                    value: previousEventID ?? "missing")
+            }
+            latestEventID = eventID
+            let rawCategory: String? = row["failureCategory"]
+            let category: FailureCategory?
+            if let rawCategory {
+                guard let decoded = FailureCategory(rawValue: rawCategory) else {
+                    throw StorageError.invalidPersistedValue(
+                        table: "skillExecutionEvent",
+                        column: "failureCategory",
+                        value: rawCategory)
+                }
+                category = decoded
+            } else {
+                category = nil
+            }
+            return SkillExecutionHistoryEntry(
+                kind: row["kind"],
+                attempt: row["attempt"],
+                failureCategory: category,
+                occurredAt: row["occurredAt"])
+        }
+        return SkillExecutionHistoryRead(
+            entries: entries,
+            latestEventID: latestEventID)
+    }
+
     private static func appendSkillEvent(
         _ event: SkillExecutionEventWrite,
         in database: Database
@@ -430,6 +510,11 @@ extension MeetingStore {
                 transition.proposalID.uuidString
             ])
     }
+}
+
+private struct SkillExecutionHistoryRead {
+    let entries: [SkillExecutionHistoryEntry]
+    let latestEventID: String?
 }
 
 private struct SkillExecutionEventWrite {
@@ -503,4 +588,29 @@ public struct SkillExecutionHistoryEntry: Equatable, Sendable {
     public let attempt: Int
     public let failureCategory: FailureCategory?
     public let occurredAt: Date
+
+    public init(
+        kind: String,
+        attempt: Int,
+        failureCategory: FailureCategory?,
+        occurredAt: Date
+    ) {
+        self.kind = kind
+        self.attempt = attempt
+        self.failureCategory = failureCategory
+        self.occurredAt = occurredAt
+    }
+}
+
+public struct SkillExecutionAudit: Equatable, Sendable {
+    public let record: SkillExecutionRecord
+    public let history: [SkillExecutionHistoryEntry]
+
+    public init(
+        record: SkillExecutionRecord,
+        history: [SkillExecutionHistoryEntry]
+    ) {
+        self.record = record
+        self.history = history
+    }
 }

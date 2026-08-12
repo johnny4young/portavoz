@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 12, 2026
 
+- **🧾 Skill receipts explain what happened** — Open any recent Skill run to see its content-free confirmation, attempts, failures, retries, and completion timeline without exposing meeting material or running anything again.
 - **🧩 Split and merged transcript fixes stay searchable** — Search, Ask, and Spotlight now follow the rows you actually see, while every result keeps its exact accepted source evidence and undo restores the original matches.
 
 ## August 11, 2026

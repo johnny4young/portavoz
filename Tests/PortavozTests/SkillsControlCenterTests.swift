@@ -198,6 +198,243 @@ final class SkillsControlCenterTests: XCTestCase {
         })
     }
 
+    func testReceiptInspectionProjectsRetryAsOneCausalContentFreeTimeline() async throws {
+        let store = try MeetingStore.inMemory()
+        let proposalID = UUID()
+        _ = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            idempotencyKey: "inspection-retry",
+            at: now)
+        _ = try await store.beginSkillExecution(
+            proposalID: proposalID,
+            at: now.addingTimeInterval(1))
+        _ = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: false,
+            failureCategory: .recoverable,
+            at: now.addingTimeInterval(2))
+        _ = try await store.beginSkillExecution(
+            proposalID: proposalID,
+            at: now.addingTimeInterval(3))
+        _ = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: true,
+            failureCategory: nil,
+            at: now.addingTimeInterval(4))
+
+        let inspection = try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
+
+        XCTAssertEqual(inspection.proposalID, proposalID)
+        XCTAssertEqual(inspection.skillID, RecapDraftSkill.id)
+        XCTAssertEqual(inspection.state, .succeeded)
+        XCTAssertEqual(inspection.attempt, 2)
+        XCTAssertEqual(inspection.events.map(\.sequence), [1, 2, 3, 4, 5])
+        XCTAssertEqual(
+            inspection.events.map(\.kind),
+            [.confirmed, .started, .failed, .started, .succeeded])
+        XCTAssertEqual(
+            inspection.events.map(\.attempt),
+            [1, 1, 1, 2, 2])
+        XCTAssertEqual(
+            inspection.events.map(\.failureCategory),
+            [nil, nil, .recoverable, nil, nil])
+    }
+
+    func testReceiptInspectionRejectsMissingOrInconsistentAuditEvidence() async throws {
+        let proposalID = UUID()
+        let record = SkillExecutionRecord(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            idempotencyKey: "inconsistent-inspection",
+            state: .succeeded,
+            attempt: 1,
+            updatedAt: now)
+        let inconsistent = StubSkillReceiptInspectionStore(audit: SkillExecutionAudit(
+            record: record,
+            history: [SkillExecutionHistoryEntry(
+                kind: "confirm",
+                attempt: 1,
+                failureCategory: nil,
+                occurredAt: now)]))
+
+        do {
+            _ = try await LoadSkillReceiptInspection(store: inconsistent)
+                .execute(proposalID)
+            XCTFail("a terminal state needs matching append-only evidence")
+        } catch let error as SkillReceiptInspectionError {
+            XCTAssertEqual(error, .inconsistentHistory)
+        }
+
+        do {
+            _ = try await LoadSkillReceiptInspection(
+                store: StubSkillReceiptInspectionStore(audit: nil)
+            ).execute(proposalID)
+            XCTFail("a removed receipt must not produce invented history")
+        } catch let error as SkillReceiptInspectionError {
+            XCTAssertEqual(error, .unavailable)
+        }
+    }
+
+    func testReceiptAuditRejectsUnknownPersistedFailureCategory() async throws {
+        let store = try MeetingStore.inMemory()
+        let proposalID = UUID()
+        _ = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            idempotencyKey: "invalid-failure-category",
+            at: now)
+        _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
+        _ = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: false,
+            failureCategory: .recoverable,
+            at: now)
+        try await store.database.write { database in
+            try database.execute(
+                sql: """
+                    UPDATE skillExecutionEvent
+                    SET failureCategory = 'unknown-category'
+                    WHERE proposalID = ? AND kind = 'fail'
+                    """,
+                arguments: [proposalID.uuidString])
+        }
+
+        do {
+            _ = try await store.skillExecutionAudit(proposalID: proposalID)
+            XCTFail("audit evidence must not silently erase an unknown category")
+        } catch let error as StorageError {
+            guard case .invalidPersistedValue(
+                table: "skillExecutionEvent",
+                column: "failureCategory",
+                value: "unknown-category") = error
+            else { return XCTFail("unexpected error: \(error)") }
+        }
+    }
+
+    func testReceiptAuditRejectsABrokenPredecessorChain() async throws {
+        let store = try MeetingStore.inMemory()
+        let proposalID = UUID()
+        _ = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            idempotencyKey: "broken-inspection-chain",
+            at: now)
+        _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
+        _ = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: true,
+            failureCategory: nil,
+            at: now)
+        try await store.database.write { database in
+            try database.execute(
+                sql: """
+                    UPDATE skillExecutionEvent
+                    SET previousEventID = NULL
+                    WHERE proposalID = ? AND kind = 'begin'
+                    """,
+                arguments: [proposalID.uuidString])
+        }
+
+        do {
+            _ = try await store.skillExecutionAudit(proposalID: proposalID)
+            XCTFail("receipt inspection must verify predecessor linkage")
+        } catch let error as StorageError {
+            guard case .invalidPersistedValue(
+                table: "skillExecutionEvent",
+                column: "previousEventID",
+                value: "missing") = error
+            else { return XCTFail("unexpected error: \(error)") }
+        }
+    }
+
+    func testReceiptAuditRejectsAProjectionTailBehindTheEventChain() async throws {
+        let store = try MeetingStore.inMemory()
+        let proposalID = UUID()
+        _ = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            idempotencyKey: "stale-inspection-tail",
+            at: now)
+        _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
+        _ = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: true,
+            failureCategory: nil,
+            at: now)
+        let staleEventIDRead = try await store.database.read { database in
+            try String.fetchOne(
+                database,
+                sql: """
+                    SELECT id FROM skillExecutionEvent
+                    WHERE proposalID = ?
+                    ORDER BY rowid ASC
+                    LIMIT 1
+                    """,
+                arguments: [proposalID.uuidString])
+        }
+        let staleEventID = try XCTUnwrap(staleEventIDRead)
+        try await store.database.write { database in
+            try database.execute(
+                sql: """
+                    UPDATE skillExecutionState
+                    SET latestEventID = ?
+                    WHERE proposalID = ?
+                    """,
+                arguments: [staleEventID, proposalID.uuidString])
+        }
+
+        do {
+            _ = try await store.skillExecutionAudit(proposalID: proposalID)
+            XCTFail("receipt inspection must reject a stale projection tail")
+        } catch let error as StorageError {
+            guard case .invalidPersistedValue(
+                table: "skillExecutionState",
+                column: "latestEventID",
+                value: staleEventID) = error
+            else { return XCTFail("unexpected error: \(error)") }
+        }
+    }
+
+    func testReceiptAuditRefusesToMaterializeAnUnboundedRetryHistory() async throws {
+        let store = try MeetingStore.inMemory()
+        let proposalID = UUID()
+        _ = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            idempotencyKey: "bounded-inspection",
+            at: now)
+        for attempt in 1...128 {
+            let timestamp = now.addingTimeInterval(TimeInterval(attempt))
+            _ = try await store.beginSkillExecution(
+                proposalID: proposalID,
+                at: timestamp)
+            _ = try await store.settleSkillExecution(
+                proposalID: proposalID,
+                succeeded: false,
+                failureCategory: .recoverable,
+                at: timestamp)
+        }
+
+        do {
+            _ = try await store.skillExecutionAudit(proposalID: proposalID)
+            XCTFail("receipt inspection must not materialize an unbounded chain")
+        } catch let error as StorageError {
+            guard case .invalidPersistedValue(
+                table: "skillExecutionEvent",
+                column: "proposalID",
+                value: "history exceeds inspection limit") = error
+            else { return XCTFail("unexpected error: \(error)") }
+        }
+    }
+
     func testReceiptLimitIsClampedBeforeTheStoreRead() async throws {
         let store = RecordingSkillControlStore()
 
@@ -320,4 +557,18 @@ private actor RecordingSkillControlStore: SkillControlCenterStore {
         isEnabled: Bool,
         at timestamp: Date
     ) {}
+}
+
+private actor StubSkillReceiptInspectionStore: SkillReceiptInspectionStore {
+    let audit: SkillExecutionAudit?
+
+    init(audit: SkillExecutionAudit?) {
+        self.audit = audit
+    }
+
+    func skillExecutionAudit(
+        proposalID: UUID
+    ) -> SkillExecutionAudit? {
+        audit?.record.proposalID == proposalID ? audit : nil
+    }
 }

@@ -17,6 +17,12 @@ extension AppServices {
     ) async throws -> ManageSkillControlOutcome {
         try await ManageSkillControl(store: store).execute(action)
     }
+
+    func loadSkillReceiptInspection(
+        proposalID: UUID
+    ) async throws -> SkillControlCenterReceiptInspection {
+        try await LoadSkillReceiptInspection(store: store).execute(proposalID)
+    }
 }
 
 private struct SimulatedSkillControlFailure: Error {}

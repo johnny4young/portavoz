@@ -179,7 +179,32 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertFalse(Self.isOn(app.control(
             withIdentifier: "settings-skill-meeting-package-export-enabled")))
         scrollToVisible(receipt, in: app)
+        receipt.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-receipt-inspection")
+                .waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-receipt-inspection-privacy")
+                .waitForExistence(timeout: 5),
+            "the inspector must disclose its content-free boundary")
+        var events: [XCUIElement] = []
+        for sequence in 1...3 {
+            let event = app.control(
+                withIdentifier: "skill-receipt-inspection-event-\(sequence)")
+            XCTAssertTrue(
+                event.waitForExistence(timeout: 5),
+                "the confirmed run must expose its complete causal timeline")
+            events.append(event)
+        }
+        let successTitle = UITestLocale.environmentLocale == "es"
+            ? "El intento informó éxito"
+            : "Attempt reported success"
+        XCTAssertTrue(
+            waitForLabel(events[2], toContain: successTitle),
+            "the terminal event must expose the localized success state")
         attachScreenshot(of: app, named: "skills-control-recent-receipt")
+        app.buttons["skill-receipt-inspection-close"].click()
+        XCTAssertTrue(receipt.waitForExistence(timeout: 5))
     }
 
     @MainActor

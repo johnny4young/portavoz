@@ -4131,6 +4131,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/MeetingSkillOffers.swift")
         let settings = try Self.contents(
             of: "Sources/portavoz-app/SkillsSettingsSection.swift")
+        let receiptInspection = try Self.contents(
+            of: "Sources/ApplicationKit/SkillReceiptInspection.swift")
+        let receiptSheet = try Self.contents(
+            of: "Sources/portavoz-app/SkillReceiptInspectionSheet.swift")
+        let executionStore = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SkillExecution.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(control.contains("enum SkillCatalogue"))
@@ -4152,8 +4158,25 @@ final class ArchitectureDependencyTests: XCTestCase {
             "skill.definition.confirmationPolicy == .explicitPerProposal"))
         XCTAssertFalse(settings.contains("Label(\"On this Mac\""))
         XCTAssertFalse(settings.contains("UserDefaults"))
+        XCTAssertTrue(executionStore.contains("public func skillExecutionAudit("))
+        XCTAssertTrue(executionStore.contains(
+            "maximumSkillExecutionAuditEventCount = 256"))
+        XCTAssertTrue(executionStore.contains(
+            "let history = try Self.skillExecutionHistory("))
+        XCTAssertTrue(executionStore.contains(
+            "limit: Self.maximumSkillExecutionAuditEventCount + 1"))
+        XCTAssertTrue(executionStore.contains(
+            "previousEventID == latestEventID"))
+        XCTAssertTrue(executionStore.contains(
+            "history.latestEventID == projectedLatestEventID"))
+        XCTAssertTrue(receiptInspection.contains("validateAndProject(audit)"))
+        XCTAssertTrue(receiptInspection.contains("case inconsistentHistory"))
+        XCTAssertFalse(receiptInspection.contains(".idempotencyKey"))
+        XCTAssertTrue(receiptSheet.contains("skill-receipt-inspection-privacy"))
+        XCTAssertTrue(receiptSheet.contains("never runs or retries a Skill"))
         XCTAssertTrue(decisions.contains("## D317"))
         XCTAssertTrue(decisions.contains("## D333"))
+        XCTAssertTrue(decisions.contains("## D335"))
     }
 
     func testSkillRetryKeepsOneProposalIdentityFromPreviewToEffect() throws {
@@ -4306,8 +4329,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/SkillConfirmSheet.swift")
         let trust = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailTrustSection.swift")
-        let settings = try Self.contents(
-            of: "Sources/portavoz-app/SkillsSettingsSection.swift")
+        let receiptPresentation = try Self.contents(
+            of: "Sources/portavoz-app/SkillReceiptPresentation.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(external.contains("enum ExternalSkills"))
@@ -4343,7 +4366,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(sheet.contains("you still press Send"))
         XCTAssertTrue(trust.contains(
             "Email recap draft — handoff status unknown"))
-        XCTAssertTrue(settings.contains("Handoff status unknown"))
+        XCTAssertTrue(receiptPresentation.contains("Handoff status unknown"))
         XCTAssertTrue(decisions.contains("## D327"))
     }
 

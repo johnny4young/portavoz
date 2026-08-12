@@ -77,6 +77,7 @@ struct SettingsView: View {
     /// field filters categories by what each pane contains.
     @State private var category: SettingsCategory? = .general
     @State private var settingsQuery = ""
+    @State private var selectedSkillReceipt: SkillControlCenterReceipt?
 
     var body: some View {
         // A fixed two-pane layout, NOT a NavigationSplitView: the settings
@@ -119,7 +120,9 @@ struct SettingsView: View {
                     AutomationSection()
                     titleSection
                 case .skills:
-                    SkillsSettingsSection()
+                    SkillsSettingsSection { receipt in
+                        selectedSkillReceipt = receipt
+                    }
                 case .integrations:
                     byokSection
                     GitHubSection()
@@ -143,6 +146,9 @@ struct SettingsView: View {
                 CustomRecipeStore.upsert(recipe)
                 customStructures = CustomRecipeStore.custom()
             }
+        }
+        .sheet(item: $selectedSkillReceipt) { receipt in
+            SkillReceiptInspectionSheet(receipt: receipt)
         }
         .onAppear {
             applyPendingCategory()

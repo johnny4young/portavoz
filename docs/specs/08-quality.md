@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,377 cases (14 environment-gated) + 80
+Status: the package inventory contains 2,397 cases (14 environment-gated) + 80
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -19,7 +19,7 @@ revision-fenced Meeting Detail metadata and explicit name suggestions, claim
 review, overview/decision/action-item/Apuntador source navigation, confirmed-
 person memory, 5k/20k-segment scale detail, full Ask and command-palette
 answer/citation navigation, source-grounded meeting preparation, durable Skills
-policy failure and control-center journeys, exact local-
+policy failure, control-center, and causal receipt-inspection journeys, exact local-
 data receipts, correction-stale Summary/Apuntador evidence and explicit
 regeneration, Library/search, Insights, post-meeting mirror, proactive Whisper
 Settings, Sequoia intelligence setup, explicit correction-aware Apuntador
@@ -32,7 +32,7 @@ documented below.
 **SwiftLint (`.swiftlint.yml`, `strict: true`)**: industry-recommended config
 (default rules + correctness/clarity opt-ins, industry thresholds: line 120,
 function-body 60/100, cyclomatic 12/20, type-body 400/600). CI treats every
-violation as a failure. The Aug 11 acceptance run is clean across all **654
+violation as a failure. The Aug 12 acceptance run is clean across all **660
 production Swift files**. The 20 violations found by the Aug 8 audit were
 removed through cohesive Meeting Detail, graph, decision-query, processing,
 correction, job, Skills-storage, and search owner splits rather than blanket
@@ -70,6 +70,7 @@ local justification.
 | FirstListenControllerTests / SpeechAnalyzerLifetimeTests | Caption readiness before microphone start; available/unavailable completion; cancellation during preparation without capture; cancellation-aware caption wait; exactly-once normal/cancelled microphone teardown; internal cancellation recovery; partial-sample disposal versus completed-sample reuse; stale-phase fencing; structured SpeechAnalyzer feeder cancellation/drain on normal result completion, error, and parent cancellation; and coalesced cleanup completion without installed speech assets or a real device |
 | LocalDataLedgerTests / PresentationReadStorageTests | Concurrent exact meeting/audio/voice metrics, per-source unavailable-versus-zero behavior, cancellation, live-root counting, and one batched latest-live-General-summary projection with tombstone, recipe, superseded-version, and duplicate-ID filtering |
 | PrepareMeetingBriefTests | Shared Ask evidence ranking, batched current-summary admission, related-only bounded commitments, source-indexed navigable synthesis, weak/missing evidence, independent failure degradation, and cancellation propagation |
+| SkillsControlCenterTests | Capability-derived catalogue disclosure, durable pause and per-Skill policy, bounded newest receipts, malformed identity and policy rejection, one read-consistent receipt audit, strict retry-state replay, unknown failure-category rejection, predecessor/tail integrity, and a 256-event materialization ceiling enforced with a 257-row probe |
 | MeetingLibraryQueryTests / ManageSecretsTests | Empty and invalid request short circuits, normalized bounded list/search/open-item delegation, and async secret round-trip/delete behavior over deterministic injected ports |
 | AnalyzeAudioFileUseCaseTests / ManageLocalVoiceAndModelsUseCaseTests / PublishMeetingContentUseCaseTests | File admission and policy forwarding; deterministic transcription metrics; diarization threshold/timing/optional attribution; meeting-before-provider summary persistence; file, supplied-sample, and recorded local-voice enrollment with duration/sample validation, ordered progress, status/delete isolation, and capture-mode forwarding; catalog-order verification and sequential model installation; coherent Markdown/PDF/SRT/WebVTT/Gist export, canonical format/extension parsing, subtitle rendering without a Markdown prerequisite, pending-only owner-resolved action publication, typed missing/empty states, and zero concrete model, Keychain, filesystem, or network dependency |
 | MenuBarModelTests / MenuBarObservationTests | Storage-independent recent/pending composition, empty/degraded/failed phases, last-healthy-section preservation, and bounded newest-first live meeting roots through delete/restore |
@@ -2504,6 +2505,31 @@ Settings receipt. The fake runs the real request codec, metadata checks,
 execution state machine, and disposable store; it cannot prove Keychain access,
 GitHub authentication, physical network interruption, browser behavior, or
 provider state on Sequoia or Tahoe.
+
+**D335 content-free Skill receipt inspection gate.** Sixteen Skills control
+center cases, including six D335 cases, cover a valid retry timeline plus
+missing, overlong, malformed, unknown-category, broken-predecessor,
+impossible-transition, and stale-tail histories. Storage must read state and at
+most 257 event rows in one SQLite
+snapshot, enforce a 256-event materialization ceiling, and validate the exact
+causal predecessor chain before ApplicationKit replays the typed state machine.
+Architecture ratchets keep the audit content-free, bounded, snapshot-consistent,
+and separate from execution or retry. The real-app journey opens a recent
+receipt from Skills Settings, verifies its privacy disclosure and three-event
+localized timeline, closes it, and returns to the same control center row.
+
+The final gate passed the Swift 6 warnings-as-errors build, 2,397 package cases
+with 14 environment/model-gated skips, 170 architecture ratchets, 355 tooling
+cases, repository hygiene, and strict SwiftLint with zero violations across 660
+production files. Finalized macOS 26.5.2 result bundles passed the complete
+80/80 English and 80/80 Spanish XCUITest catalogues with no failures or skips.
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was reinstalled and deeply
+verified. Exact before/after comparison of the notarized release app's 184-entry
+recursive content/metadata manifest, hexadecimal xattrs, signing requirements,
+and deep signature kept `/Applications/Portavoz.app` unchanged. This is
+Tahoe-family host evidence only; physical Sequoia behavior, separate Tahoe
+hardware, VoiceOver review, and provider/destination effects remain field
+evidence.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

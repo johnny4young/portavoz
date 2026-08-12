@@ -12790,6 +12790,186 @@
           }
         }
       }
+    },
+    "Inspect execution history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inspeccionar historial de ejecución"
+          }
+        }
+      }
+    },
+    "This history contains only execution state, attempt, and time — never meeting content.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este historial contiene solo el estado de ejecución, el intento y la hora; nunca contenido de la reunión."
+          }
+        }
+      }
+    },
+    "Receipt details": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalles del recibo"
+          }
+        }
+      }
+    },
+    "Close receipt details": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar detalles del recibo"
+          }
+        }
+      }
+    },
+    "Loading receipt history…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando el historial del recibo…"
+          }
+        }
+      }
+    },
+    "Receipt history is unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El historial del recibo no está disponible"
+          }
+        }
+      }
+    },
+    "Portavoz could not verify this receipt. This inspector never runs or retries a Skill.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo verificar este recibo. Este inspector nunca ejecuta ni reintenta un skill."
+          }
+        }
+      }
+    },
+    "Confirmation recorded": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmación registrada"
+          }
+        }
+      }
+    },
+    "Attempt started": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intento iniciado"
+          }
+        }
+      }
+    },
+    "Attempt reported success": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El intento informó éxito"
+          }
+        }
+      }
+    },
+    "Attempt reported failure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El intento informó un fallo"
+          }
+        }
+      }
+    },
+    "Cancelled before handoff": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelado antes de la transferencia"
+          }
+        }
+      }
+    },
+    "Attempt %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intento %d"
+          }
+        }
+      }
+    },
+    "Critical failure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallo crítico"
+          }
+        }
+      }
+    },
+    "Recoverable failure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallo recuperable"
+          }
+        }
+      }
+    },
+    "Degraded result": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resultado degradado"
+          }
+        }
+      }
+    },
+    "External-system failure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallo del sistema externo"
+          }
+        }
+      }
+    },
+    "Destructive-risk failure": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fallo con riesgo destructivo"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

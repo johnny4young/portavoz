@@ -8,6 +8,8 @@ import SwiftUI
 struct SkillsSettingsSection: View {
     @Environment(AppServices.self) private var services
 
+    let inspectReceipt: (SkillControlCenterReceipt) -> Void
+
     @State private var snapshot: SkillControlCenterSnapshot?
     @State private var isLoading = false
     @State private var isMutating = false
@@ -247,25 +249,37 @@ struct SkillsSettingsSection: View {
     private func receiptRow(
         _ receipt: SkillControlCenterReceipt
     ) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: receiptIcon(receipt.state))
-                .foregroundStyle(receiptTint(receipt.state))
-                .frame(width: 18)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(skillTitle(receipt.skillID))
-                    .font(.callout.weight(.medium))
-                Text(receiptStatus(receipt))
-                    .font(.caption)
+        Button {
+            inspectReceipt(receipt)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: receiptIcon(receipt.state))
+                    .foregroundStyle(receiptTint(receipt.state))
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(skillTitle(receipt.skillID))
+                        .font(.callout.weight(.medium))
+                    Text(receiptStatus(receipt))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text(
+                    receipt.updatedAt,
+                    format: .dateTime.month(.abbreviated).day().hour().minute())
+                    .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
-            Spacer()
-            Text(receipt.updatedAt, format: .dateTime.month(.abbreviated).day().hour().minute())
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
         }
-        .accessibilityElement(children: .combine)
+        .buttonStyle(.plain)
         .accessibilityLabel(receiptAccessibilityLabel(receipt))
+        .accessibilityHint("Inspect execution history")
         .accessibilityIdentifier(
             "settings-skill-receipt-\(receipt.skillID)")
     }
@@ -304,15 +318,7 @@ struct SkillsSettingsSection: View {
     }
 
     private func skillTitle(_ skillID: String) -> String {
-        switch skillID {
-        case RecapDraftSkill.id: L10n.text("Recap draft")
-        case EmailRecapDraftSkill.id: L10n.text("Email recap draft")
-        case SecretGistPublishSkill.id: L10n.text("Secret Gist publication")
-        case MeetingPackageExportSkill.id: L10n.text("Text-only meeting package")
-        case ReminderDraftSkill.id: L10n.text("Reminder draft")
-        case PreMeetingBriefSkill.id: L10n.text("Pre-meeting brief")
-        default: L10n.text("Unknown skill")
-        }
+        SkillReceiptPresentation.skillTitle(skillID)
     }
 
     private func skillDescription(_ skillID: String) -> String {
@@ -349,38 +355,9 @@ struct SkillsSettingsSection: View {
     }
 
     private func receiptStatus(_ receipt: SkillControlCenterReceipt) -> String {
-        if let externalStatus = externalReceiptStatus(receipt) {
-            return externalStatus
-        }
-        return switch receipt.state {
-        case .proposed: L10n.text("Proposed — nothing ran")
-        case .previewed: L10n.text("Previewed — nothing ran")
-        case .confirmed: L10n.text("Confirmed — waiting")
-        case .executing: L10n.text("Needs review after interruption")
-        case .succeeded: L10n.text("Succeeded")
-        case .failed: L10n.text("Failed — retry is available")
-        case .dismissed: L10n.text("Cancelled — nothing ran")
-        }
-    }
-
-    private func externalReceiptStatus(
-        _ receipt: SkillControlCenterReceipt
-    ) -> String? {
-        switch (receipt.skillID, receipt.state) {
-        case (EmailRecapDraftSkill.id, .succeeded):
-            L10n.text("Handoff requested")
-        case (EmailRecapDraftSkill.id, .failed):
-            L10n.text("Email app did not open")
-        case (EmailRecapDraftSkill.id, .executing):
-            L10n.text("Handoff status unknown")
-        case (SecretGistPublishSkill.id, .succeeded):
-            L10n.text("Secret Gist published")
-        case (SecretGistPublishSkill.id, .failed),
-             (SecretGistPublishSkill.id, .executing):
-            L10n.text("Publication outcome unknown — check GitHub")
-        default:
-            nil
-        }
+        SkillReceiptPresentation.status(
+            skillID: receipt.skillID,
+            state: receipt.state)
     }
 
     private func receiptAccessibilityLabel(

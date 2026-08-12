@@ -11925,3 +11925,42 @@ immutable correction history plus accepted transcript material. This closes
 the missing structural identity in code; correction-heavy latency, memory,
 cold recovery, Core Spotlight registration, and physical Sequoia/Tahoe model
 behavior remain field-evidence gates rather than inferred release claims.
+
+## D335 — Receipt inspection replays one content-free causal chain (Aug 2026)
+
+**Context:** Skills Settings exposed the newest bounded execution receipts, but
+each row flattened the durable result into one status. A user could not inspect
+whether a run was confirmed, began, failed, retried, or completed, even though
+schema v31 already stores that exact append-only evidence. Reading the current
+projection and events independently would introduce a race: another process
+could settle a run between reads and produce a terminal status beside a
+timeline that still ended at `begin`. Showing raw proposal arguments or the
+idempotency key would also turn a content-free audit surface into a potential
+meeting-identity leak.
+
+**Decision:** the first AUTO-6 slice makes each recent receipt inspectable.
+StorageKit returns `SkillExecutionAudit` from one SQLite read snapshot containing
+the exact current record and its predecessor-linked events in causal insertion
+order. An unknown persisted failure category is an error instead of silently
+becoming `nil`; StorageKit also verifies each predecessor pointer and the
+current projection's latest-event tail. `LoadSkillReceiptInspection` maps that
+validated storage vocabulary into a typed presentation timeline and replays the
+permitted state machine, including attempt increments on retry; a missing,
+empty, impossible, or projection-inconsistent chain fails closed. The audit
+query probes at most 257 events and rejects a chain longer than the 256-event
+presentation ceiling rather than materializing unbounded local history.
+
+The Settings sheet receives only skill identity/version, current state and
+attempt, timestamps, typed failure category, and causal event labels. It never
+receives the idempotency key, proposal arguments, destination, provider result,
+or meeting material. Its retry button retries only the audit read and cannot
+claim, execute, or repeat an effect. Causal ordering remains insertion-based;
+wall-clock time is display evidence and may move backward. The implementation
+uses only APIs available at the macOS 14.4 deployment floor.
+
+**Consequences:** a user can now understand one Skill run and retry history
+without exposing its content or authorizing a new action. This is an incremental
+AUTO-6 control-center slice, not the complete Automation center: proposed and
+waiting queues, receipt-level workflow actions, explanation of proposal inputs,
+and AUTO-5 standing rules remain open. No schema, egress consent, external
+adapter, background task, or unattended execution was added.

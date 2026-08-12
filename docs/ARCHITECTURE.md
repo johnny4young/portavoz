@@ -350,6 +350,18 @@ offers, and `ExecuteSkill` reads it again immediately before admission and the
 durable claim. The Settings snapshot combines the catalogue with at most 50
 content-free recent receipts (20 by default); storage itself refuses reads
 above 100 and serves the newest-first order from a direction-matched index.
+Selecting one receipt opens a read-only AUTO-6 inspection projection. Storage
+loads its current state and predecessor-linked event chain in one SQLite read
+snapshot, rejects unknown typed failure categories, and preserves causal
+insertion order even when wall-clock timestamps move backward. StorageKit also
+requires every predecessor pointer and the projection's latest-event tail to
+match. ApplicationKit replays the confirmation/begin/terminal transitions and
+refuses an impossible or incomplete chain rather than rendering plausible
+audit evidence. Inspection materializes at most 256 events and rejects a longer
+chain after a bounded 257-row probe. The sheet shows only status, attempt,
+typed category, and time; it never receives the
+idempotency key, proposal arguments, destination, result, or meeting material,
+and its retry action retries only the read.
 The external email and Secret Gist adapters store no reusable consent: each
 complete preview, boundary warning, and submit action supplies authority for
 that proposal only. No standing-rule control exists for irreversible or
@@ -391,7 +403,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | Global dictation | `DictationController` | application process |
 | Private sync | `MeetingSyncModel` | application process |
 | Whole-library backup | `LibraryMarkdownBackupModel` | application process |
-| Skills Settings | `SkillsSettingsSection` snapshot | one Settings window |
+| Skills Settings | `SkillsSettingsSection` snapshot + receipt inspection | one Settings window |
 | Spotlight reconciliation | `SpotlightIndexer` | application process |
 | Post-capture processing | `PostCaptureProcessingSupervisor` | application process |
 | Whisper preparation | shared readiness owner | application process |

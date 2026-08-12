@@ -2495,7 +2495,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317, Aug 2026)
+## Skills control center in Settings (D317/D333/D335, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2533,10 +2533,25 @@ matching `(updatedAt DESC, proposalID ASC)` index. Malformed durable proposal
 identities fail the projection instead of silently disappearing from the
 audit surface.
 
+Each receipt row is an accessible button that opens the first AUTO-6 inspection
+slice. StorageKit reads the current projection and its oldest-first append-only
+events in one snapshot and verifies their predecessor links and projected tail.
+`LoadSkillReceiptInspection` then replays the permitted confirmation, begin,
+retry, success, failure, and pre-handoff cancellation transitions. Missing,
+incomplete, impossible, or unknown evidence produces one explicit unavailable
+state; it never fabricates a timeline. Storage probes at most 257 rows and
+refuses to materialize more than 256 events for one receipt. The sheet shows
+only the adapter-aware current status, causal event label, attempt number,
+typed failure category, and timestamp. It does not
+receive or render the idempotency key, arguments, destination, result, meeting
+title, transcript, or summary. **Try again** repeats only that read and cannot
+execute or retry a Skill.
+
 Two bilingual XCUITest journeys cover the pane: one verifies the fail-closed
 load state; the other uses one disposable launch to disable export, pause all
 skills, prove offers stay absent, resume without losing the individual choice,
-confirm the remaining recap proposal, and observe its recent receipt.
+confirm the remaining recap proposal, open its three-event causal receipt, and
+verify the content-free boundary.
 
 ## Resident pre-meeting brief proposal (D322, Aug 2026)
 
