@@ -129,6 +129,57 @@ public struct SkillOfferReviewRecord: Equatable, Sendable, Identifiable {
     }
 }
 
+/// Content-free authority returned only after someone explicitly asks to
+/// review one opaque central row in its original context. Unlike the bounded
+/// list projection, this transient record may carry the subject identity
+/// required for navigation. It still contains no title, preview, arguments,
+/// destination, recipient, or execution authority.
+public struct SkillOfferReviewSubjectRecord: Equatable, Sendable {
+    public let skillID: String
+    public let skillVersion: Int
+    public let reason: SkillOfferReason
+    public let subject: SkillOfferSubject
+
+    public init(
+        skillID: String,
+        skillVersion: Int,
+        reason: SkillOfferReason,
+        subject: SkillOfferSubject
+    ) {
+        self.skillID = skillID
+        self.skillVersion = skillVersion
+        self.reason = reason
+        self.subject = subject
+    }
+
+    public var isValid: Bool {
+        guard !skillID.isEmpty,
+              skillID == skillID.trimmingCharacters(
+                  in: .whitespacesAndNewlines),
+              skillID.utf8.count <= SkillDefinition.maximumIDByteCount,
+              skillVersion >= 1,
+              subject.isValid
+        else { return false }
+
+        return switch (reason, subject) {
+        case (.meetingSummaryReady, .meeting),
+             (.upcomingCalendarEvent, .calendarEvent),
+             (.confirmedCommitment, .commitment):
+            true
+        default:
+            false
+        }
+    }
+}
+
+/// Missing, expired, disabled, dismissed, and concurrently retired rows share
+/// one unavailable result so the resolver does not disclose why authority is
+/// gone.
+public enum SkillOfferReviewSubjectOutcome: Equatable, Sendable {
+    case active(SkillOfferReviewSubjectRecord)
+    case unavailable
+}
+
 /// Result of acting on one opaque central-review identity. `unavailable`
 /// deliberately reveals neither whether the subject expired nor whether
 /// another owner retired it first.

@@ -34,11 +34,16 @@ struct PortavozApp: App {
     }
 
     var body: some Scene {
-        WindowGroup(id: "main") {
+        WindowGroup(
+            id: "main",
+            for: MainWindowIdentity.self
+        ) { _ in
             AppLaunchRootView(model: launch)
                 .portavozLocalized()
                 .frame(minWidth: 900, minHeight: 560)
                 .tint(PVDesign.accent)
+        } defaultValue: {
+            .primary
         }
         .commands {
             CheckForUpdatesCommand()

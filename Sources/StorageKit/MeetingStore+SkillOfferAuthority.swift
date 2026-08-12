@@ -111,6 +111,58 @@ extension MeetingStore {
         }
     }
 
+    /// Resolves one opaque review identity only after an explicit user action.
+    /// The subject crosses this boundary transiently for navigation; the
+    /// bounded review list remains subject-free and no effect is admitted.
+    public func resolveProposedSkillOfferSubject(
+        reviewID: UUID,
+        at timestamp: Date = Date()
+    ) async throws -> SkillOfferReviewSubjectOutcome {
+        guard timestamp.timeIntervalSinceReferenceDate.isFinite else {
+            throw StorageError.invalidSkillOffer("invalid review timestamp")
+        }
+
+        return try await database.write { database in
+            guard let row = try Row.fetchOne(
+                database,
+                sql: """
+                    SELECT skillID, skillVersion, reason, subjectKind,
+                           meetingID, commitmentID, calendarEventID, expiresAt
+                    FROM skillOfferProposal
+                    WHERE reviewID = ?
+                      AND NOT EXISTS (
+                          SELECT 1 FROM skillOfferDismissal
+                          WHERE skillOfferDismissal.offerKey =
+                              skillOfferProposal.offerKey
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM skillDisablement
+                          WHERE skillDisablement.skillID =
+                              skillOfferProposal.skillID
+                      )
+                    """,
+                arguments: [reviewID.uuidString])
+            else { return .unavailable }
+
+            let expiresAt: Date? = row["expiresAt"]
+            guard expiresAt?.timeIntervalSinceReferenceDate.isFinite ?? true
+            else {
+                throw StorageError.invalidPersistedValue(
+                    table: "skillOfferProposal",
+                    column: "expiresAt",
+                    value: reviewID.uuidString)
+            }
+            if let expiresAt, expiresAt <= timestamp {
+                try database.execute(
+                    sql: "DELETE FROM skillOfferProposal WHERE reviewID = ?",
+                    arguments: [reviewID.uuidString])
+                return .unavailable
+            }
+
+            return .active(try Self.skillOfferReviewSubjectRecord(from: row))
+        }
+    }
+
     /// Newest active offers, bounded before materialization. Expired external
     /// subjects are pruned in the same transaction so they cannot accumulate
     /// ahead of the LIMIT and turn the ordered index walk into a time cliff.
@@ -355,6 +407,80 @@ extension MeetingStore {
             inputDataClasses: inputDataClasses,
             proposedAt: proposedAt,
             lastObservedAt: lastObservedAt)
+    }
+
+    private static func skillOfferReviewSubjectRecord(
+        from row: Row
+    ) throws -> SkillOfferReviewSubjectRecord {
+        let skillID: String = row["skillID"]
+        let skillVersion: Int = row["skillVersion"]
+        let rawReason: String = row["reason"]
+        let rawKind: String = row["subjectKind"]
+        let rawMeetingID: String? = row["meetingID"]
+        let rawCommitmentID: String? = row["commitmentID"]
+        let calendarEventID: String? = row["calendarEventID"]
+        guard let reason = SkillOfferReason(rawValue: rawReason) else {
+            throw StorageError.invalidPersistedValue(
+                table: "skillOfferProposal",
+                column: "reason",
+                value: rawReason)
+        }
+        guard let kind = SkillOfferSubject.Kind(rawValue: rawKind) else {
+            throw StorageError.invalidPersistedValue(
+                table: "skillOfferProposal",
+                column: "subjectKind",
+                value: rawKind)
+        }
+
+        let subject: SkillOfferSubject
+        switch kind {
+        case .meeting:
+            guard let rawMeetingID,
+                  let identifier = UUID(uuidString: rawMeetingID),
+                  rawCommitmentID == nil,
+                  calendarEventID == nil
+            else {
+                throw invalidSkillOfferReviewSubject(rawKind)
+            }
+            subject = .meeting(MeetingID(rawValue: identifier))
+        case .commitment:
+            guard let rawCommitmentID,
+                  let identifier = UUID(uuidString: rawCommitmentID),
+                  rawMeetingID == nil,
+                  calendarEventID == nil
+            else {
+                throw invalidSkillOfferReviewSubject(rawKind)
+            }
+            subject = .commitment(CommitmentID(rawValue: identifier))
+        case .calendarEvent:
+            guard let calendarEventID,
+                  UpcomingEvent.isValidIdentity(calendarEventID),
+                  rawMeetingID == nil,
+                  rawCommitmentID == nil
+            else {
+                throw invalidSkillOfferReviewSubject(rawKind)
+            }
+            subject = .calendarEvent(calendarEventID)
+        }
+
+        let record = SkillOfferReviewSubjectRecord(
+            skillID: skillID,
+            skillVersion: skillVersion,
+            reason: reason,
+            subject: subject)
+        guard record.isValid else {
+            throw invalidSkillOfferReviewSubject(rawKind)
+        }
+        return record
+    }
+
+    private static func invalidSkillOfferReviewSubject(
+        _ value: String
+    ) -> StorageError {
+        StorageError.invalidPersistedValue(
+            table: "skillOfferProposal",
+            column: "subject",
+            value: value)
     }
 
     private static func subjectColumns(

@@ -8,6 +8,8 @@ import SwiftUI
 /// executes a skill or invents an external consent rule.
 struct SkillsSettingsSection: View {
     @Environment(AppServices.self) private var services
+    @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.openWindow) private var openWindow
 
     let activityRevision: Int
     let inspectReceipt: (SkillControlCenterReceipt) -> Void
@@ -23,6 +25,8 @@ struct SkillsSettingsSection: View {
     @State private var proposalsAreLoading = false
     @State private var proposalLoadFailed = false
     @State private var activeProposalLoadID: UUID?
+    @State private var reviewingProposalID: UUID?
+    @State private var proposalReviewFailedID: UUID?
     @State private var dismissingProposalID: UUID?
     @State private var proposalDismissalFailedID: UUID?
 
@@ -51,10 +55,15 @@ struct SkillsSettingsSection: View {
                     SkillProposalSection(
                         snapshot: proposalSnapshot,
                         isLoading: proposalsAreLoading,
-                        isMutating: isMutating || dismissingProposalID != nil,
+                        isMutating: isMutating || proposalMutationInFlight,
                         loadFailed: proposalLoadFailed,
+                        reviewingOfferID: reviewingProposalID,
+                        reviewFailedOfferID: proposalReviewFailedID,
                         dismissingOfferID: dismissingProposalID,
                         dismissalFailedOfferID: proposalDismissalFailedID,
+                        review: { offer in
+                            Task { await reviewProposal(offer) }
+                        },
                         dismiss: { offer in
                             Task { await dismissProposal(offer) }
                         },
@@ -66,7 +75,7 @@ struct SkillsSettingsSection: View {
                         receiptScope: $receiptScope,
                         snapshot: snapshot,
                         isLoading: isLoading,
-                        isMutating: isMutating || dismissingProposalID != nil,
+                        isMutating: isMutating || proposalMutationInFlight,
                         loadFailed: receiptScopeLoadFailed,
                         retry: { Task { await load() } },
                         inspectReceipt: inspectReceipt)
@@ -110,7 +119,7 @@ struct SkillsSettingsSection: View {
                 .accessibilityIdentifier("settings-skills-pause-all")
                 .disabled(
                     snapshot == nil || isLoading || isMutating
-                        || dismissingProposalID != nil || controlLoadFailed)
+                        || proposalMutationInFlight || controlLoadFailed)
             Text(
                 // Keep this as one literal so localization validation sees it.
                 // swiftlint:disable:next line_length
@@ -172,7 +181,7 @@ struct SkillsSettingsSection: View {
                 .accessibilityIdentifier(
                     "settings-skill-\(skill.id)-enabled")
                 .disabled(
-                    isLoading || isMutating || dismissingProposalID != nil
+                    isLoading || isMutating || proposalMutationInFlight
                         || controlLoadFailed)
         }
         .padding(.vertical, 4)
@@ -269,7 +278,7 @@ struct SkillsSettingsSection: View {
 
     @MainActor
     private func load() async {
-        guard !isMutating, dismissingProposalID == nil else { return }
+        guard !isMutating, !proposalMutationInFlight else { return }
         let requestedScope = receiptScope
         let loadID = UUID()
         activeLoadID = loadID
@@ -319,7 +328,7 @@ struct SkillsSettingsSection: View {
               !controlLoadFailed,
               !isLoading,
               !isMutating,
-              dismissingProposalID == nil
+              !proposalMutationInFlight
         else {
             return
         }
@@ -358,6 +367,10 @@ struct SkillsSettingsSection: View {
                !loaded.offers.contains(where: { $0.id == failedID }) {
                 proposalDismissalFailedID = nil
             }
+            if let failedID = proposalReviewFailedID,
+               !loaded.offers.contains(where: { $0.id == failedID }) {
+                proposalReviewFailedID = nil
+            }
             proposalLoadFailed = false
             finishProposalLoad(loadID)
         } catch is CancellationError {
@@ -382,10 +395,11 @@ struct SkillsSettingsSection: View {
         guard proposalSnapshot?.offers.contains(where: { $0.id == offer.id }) == true,
               !proposalsAreLoading,
               !isMutating,
-              dismissingProposalID == nil
+              !proposalMutationInFlight
         else { return }
 
         dismissingProposalID = offer.id
+        proposalReviewFailedID = nil
         proposalDismissalFailedID = nil
         defer {
             if dismissingProposalID == offer.id {
@@ -412,6 +426,63 @@ struct SkillsSettingsSection: View {
 }
 
 private extension SkillsSettingsSection {
+    var proposalMutationInFlight: Bool {
+        reviewingProposalID != nil || dismissingProposalID != nil
+    }
+
+    @MainActor
+    func reviewProposal(_ offer: SkillOfferReviewItem) async {
+        guard offer.reason != .upcomingCalendarEvent,
+              proposalSnapshot?.offers.contains(where: { $0.id == offer.id }) == true,
+              !proposalsAreLoading,
+              !isMutating,
+              !proposalMutationInFlight
+        else { return }
+
+        reviewingProposalID = offer.id
+        proposalDismissalFailedID = nil
+        proposalReviewFailedID = nil
+        defer {
+            if reviewingProposalID == offer.id {
+                reviewingProposalID = nil
+            }
+        }
+        do {
+            let outcome = try await services.resolveSkillOfferReviewDestination(
+                offer.id)
+            guard !Task.isCancelled, reviewingProposalID == offer.id else {
+                return
+            }
+            switch outcome {
+            case .unavailable:
+                await loadProposals()
+            case .destination(let destination):
+                openReviewDestination(destination)
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            guard reviewingProposalID == offer.id else { return }
+            proposalReviewFailedID = offer.id
+        }
+    }
+
+    @MainActor
+    func openReviewDestination(
+        _ destination: SkillOfferReviewDestination
+    ) {
+        switch destination {
+        case .meeting(let meetingID):
+            services.pendingRoute = .meeting(meetingID)
+        case .commitment(let commitmentID):
+            services.pendingRoute = .commitments(.commitment(commitmentID))
+        case .residentMenuBar:
+            return
+        }
+        openWindow(id: "main", value: MainWindowIdentity.primary)
+        dismissWindow()
+    }
+
     private func skillTitle(_ skillID: String) -> String {
         SkillReceiptPresentation.skillTitle(skillID)
     }

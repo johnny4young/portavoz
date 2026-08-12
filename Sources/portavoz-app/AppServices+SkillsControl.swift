@@ -47,6 +47,18 @@ extension AppServices {
         return try await DismissSkillOfferReview(store: store).execute(reviewID)
     }
 
+    func resolveSkillOfferReviewDestination(
+        _ reviewID: UUID
+    ) async throws -> SkillOfferReviewNavigationOutcome {
+        if usesTemporaryMeetingStore,
+           ProcessInfo.processInfo.arguments.contains(
+               "-simulate-skill-proposal-review-unavailable") {
+            throw SimulatedSkillProposalReviewFailure()
+        }
+        return try await ResolveSkillOfferReviewDestination(store: store)
+            .execute(reviewID)
+    }
+
     func loadSkillReceiptInspection(
         proposalID: UUID
     ) async throws -> SkillControlCenterReceiptInspection {
@@ -70,4 +82,5 @@ private struct SimulatedSkillControlFailure: Error {}
 private struct SimulatedSkillReceiptScopeFailure: Error {}
 private struct SimulatedSkillProposalFailure: Error {}
 private struct SimulatedSkillProposalDismissalFailure: Error {}
+private struct SimulatedSkillProposalReviewFailure: Error {}
 private struct SimulatedSkillReceiptRevocationFailure: Error {}

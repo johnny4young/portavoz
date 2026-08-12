@@ -1858,7 +1858,7 @@ answer, app-panel-only screenshot, and exact three-second citation seek (D100).
 
 ## Resident menu bar (Jul 2026)
 
-`MenuBarExtra(isInserted:)` bound to `@AppStorage("menuBarEnabled")` (toggle in Settings → Menu bar, on by default): template icon `waveform.and.mic` that changes to `record.circle.fill` while recording — the "¿estoy grabando?" at a glance. Menu: Start/Stop (Start opens window via `openWindow(id: "main")` + `pendingRoute = .recording(nil)`; Stop calls shared controller), Dictate (only with dictation enabled), Open Portavoz, Launch at login (`SMAppService.mainApp` — requires /Applications, which is the installation story), Quit. **Architectural precondition**: `RecordingController` moved from `@State` of RecordingView to `AppServices.recording` (shared) — view, HUD and menu bar observe THE SAME session and navigation never can orphan a recording (same fix as RefineService).
+`MenuBarExtra(isInserted:)` bound to `@AppStorage("menuBarEnabled")` (toggle in Settings → Menu bar, on by default): template icon `waveform.and.mic` that changes to `record.circle.fill` while recording — the "¿estoy grabando?" at a glance. Menu: Start/Stop (Start fronts the value-scoped primary window via `openWindow(id: "main", value: .primary)` + `pendingRoute = .recording(nil)`; Stop calls shared controller), Dictate (only with dictation enabled), Open Portavoz, Launch at login (`SMAppService.mainApp` — requires /Applications, which is the installation story), Quit. **Architectural precondition**: `RecordingController` moved from `@State` of RecordingView to `AppServices.recording` (shared) — view, HUD and menu bar observe THE SAME session and navigation never can orphan a recording (same fix as RefineService).
 
 ## Global dictation (Jul 2026)
 
@@ -2519,10 +2519,13 @@ Skill identity/version, one typed reason, the exact declared input-data classes,
 and first/last observed times. It explains why the offer appeared and lists the
 categories it may use without receiving the stable offer key, opaque subject,
 title, transcript, preview, arguments, destination, or recipient. The privacy
-copy directs the user back to the original surface for the exact preview and
-confirmation. The only row action is **Dismiss**, which sends that unrelated
-review UUID to ApplicationKit and never receives the stable offer or subject
-identity.
+copy keeps the exact preview and confirmation on the original surface.
+**Review in context** sends only that unrelated review UUID; a transient typed
+resolution can route meeting rows to Meeting Detail and commitment rows to the
+focused Commitment Radar, while the bounded list itself remains subject-free.
+Calendar rows show **Review in menu bar** because SwiftUI has no public action
+for programmatically opening `MenuBarExtra`. **Dismiss** independently sends the
+same unrelated UUID and never receives the stable offer identity.
 
 Every built-in `SkillDefinition` declares a nonempty input-data ceiling in
 addition to effect capabilities, and every exact `SkillProposal` requests a
@@ -2556,6 +2559,16 @@ execution, while a prior claim remains idempotently resolvable because it has
 already durably accepted the user's subject-surface approval.
 Opaque provider identity bytes are preserved. Settings still cannot confirm,
 execute, or create standing rules.
+
+The inert return path revalidates the current catalogue version, typed reason,
+global pause, individual enablement, expiry, dismissal, and exact subject shape
+before routing. Missing or concurrently retired authority returns one
+unavailable result and reloads the list; a thrown read retains the row and
+shows an inline retry. The primary `WindowGroup` carries the constant Codable
+value `MainWindowIdentity.primary`, so `openWindow(id:value:)` fronts the one
+existing library window rather than creating a duplicate. `pendingRoute`
+still handles both warm and cold main scenes, and Settings dismisses itself
+after the destination is admitted. No proposal is constructed or executed.
 
 The switches write SQLite v35 state. Global pause leaves every individual
 choice intact; resuming restores those choices. Meeting proposals read the
@@ -2620,13 +2633,16 @@ receives the offer or idempotency key, arguments, subject identity,
 destination, result, or meeting content and therefore cannot execute or retry
 an effect.
 
-Eight bilingual XCUITest journeys cover the pane: one verifies the fail-closed
+Ten bilingual XCUITest journeys cover the pane: one verifies the fail-closed
 control load state; one proves a selected activity-scope failure neither
 invents rows nor disables verified policy; one isolates proposal-authority
-failure with no invented rows while controls remain usable; one dismisses a
-real email proposal and proves re-observation keeps it absent while unrelated
-offers remain; one injects a dismissal failure and proves the row plus retry
-stay available on both Settings and the subject surface; one revokes a real
+failure with no invented rows while controls remain usable; one returns from a
+real email proposal to its exact Meeting Detail without executing or duplicating
+the main window; one injects only that resolution failure and proves the row,
+independent dismissal, and retry remain; one dismisses a real email proposal
+and proves re-observation keeps it absent while unrelated offers remain; one
+injects a dismissal failure and proves the row plus retry stay available on
+both Settings and the subject surface; one revokes a real
 confirmed fixture and proves its causal cancellation plus removal from Waiting;
 one injects only the revocation write failure and proves the receipt plus retry
 remain; and the main disposable journey

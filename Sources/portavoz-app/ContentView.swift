@@ -125,16 +125,10 @@ struct ContentView: View {
             .background { AuroraDetailBackground() }
         }
         .task {
-            // Palette citations may need to reopen the library window —
-            // but only when none is visible: openWindow ALWAYS creates a
-            // new one, and a citation should reuse the window you have.
+            // The value-scoped main WindowGroup reuses its primary window
+            // instead of creating a duplicate when a citation brings it back.
             services.palette.openMainWindow = {
-                let hasMainWindow = NSApp.windows.contains {
-                    !($0 is NSPanel) && $0.isVisible && $0.canBecomeMain
-                }
-                if !hasMainWindow {
-                    openWindow(id: "main")
-                }
+                openWindow(id: "main", value: MainWindowIdentity.primary)
                 NSApp.activate(ignoringOtherApps: true)
             }
             services.palette.onOpenCitation = { citation in

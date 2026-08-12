@@ -273,8 +273,8 @@ struct MenuBarContent: View {
     }
 
     private func openMainWindow() {
-        // Re-open the library window if the user closed it, then front it.
-        openWindow(id: "main")
+        // Re-open or front the one value-scoped primary library window.
+        openWindow(id: "main", value: MainWindowIdentity.primary)
         NSApp.activate(ignoringOtherApps: true)
     }
 

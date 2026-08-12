@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 12, 2026
 
+- **🧭 Review a proposed Skill where its proof lives** — Jump from Settings back to the exact meeting or commitment context without running anything, while calendar briefs stay honestly in the menu bar and a failed jump keeps the proposal available.
 - **🛑 Revoke a waiting Skill before it starts** — Cancel one confirmed run from its receipt before handoff; Portavoz records the cancellation, while an unverified change keeps the waiting run visible for retry.
 - **🧹 Dismiss a proposed Skill once** — Decline an inert proposal from Settings without exposing its meeting or calendar identity; it stays gone when the original surface refreshes, while an unverified change keeps the row available.
 - **✨ Proposed Skills explain themselves before you act** — Settings now shows why a real meeting, commitment, or calendar surface proposed each Skill and the exact data categories it may use, without storing the title, transcript, preview, destination, or recipient.

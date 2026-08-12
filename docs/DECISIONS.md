@@ -12143,3 +12143,44 @@ verify authority. This adds no schema, effect retry, proposal confirmation,
 standing rule, background executor, adapter, transport, destination authority,
 or egress consent. Physical VoiceOver behavior and cross-process race timing on
 Sequoia and separate Tahoe hardware remain field evidence.
+
+## D340 — Proposed review returns to context without moving consent (Aug 2026)
+
+**Context:** D337 explained each content-free Proposed row and D338 let the user
+dismiss it, but the copy only told people to find the original surface
+themselves. A failed execution receipt cannot safely supply that path: it has
+no subject, proposal arguments, preview, destination, or idempotency key, and a
+remote failure may have an unknown outcome. Giving the bounded list a subject
+identity would weaken its privacy boundary. Opening the main `WindowGroup` by
+identifier alone would also create a duplicate library window whenever the
+existing one was merely behind Settings. Finally, SwiftUI provides no public
+action that programmatically presents a `MenuBarExtra`.
+
+**Decision:** meeting and commitment rows expose **Review in context**.
+SwiftUI sends only the unrelated review UUID to
+`ResolveSkillOfferReviewDestination`. Storage resolves a current nonexpired,
+nondismissed, individually enabled authority row in one snapshot and returns a
+transient typed subject record. ApplicationKit revalidates Skill identity,
+catalogue version, global pause, individual policy, reason, and subject shape,
+then maps only to Meeting Detail, focused Commitment Radar, or the resident menu
+bar. Missing, expired, disabled, dismissed, and concurrently retired rows share
+one unavailable result. Malformed authority fails closed. No subject enters the
+bounded review snapshot or remains in SwiftUI state after routing.
+
+Navigation writes the existing inert `AppServices.pendingRoute`, opens the
+primary scene, and dismisses Settings. The main `WindowGroup` now presents one
+constant `MainWindowIdentity.primary` value; every programmatic open supplies
+that value, so SwiftUI brings an existing main window forward or creates it only
+when absent. Calendar rows show **Review in menu bar** as resident guidance and
+do not attempt private status-item traversal or simulate a click. A thrown
+resolution keeps the proposal row and exposes an inline retry.
+
+**Consequences:** the central panel can return people to the surface that owns
+the exact preview without becoming a confirmation or retry engine. Routing
+alone cannot claim, begin, settle, choose a destination, or perform an effect;
+the destination rebuilds and revalidates its own proposal. The change uses
+public SwiftUI window APIs available below the macOS 14.4 floor and adds no
+schema, stored content, receipt retry, standing rule, background executor,
+adapter, transport, or egress authority. Physical VoiceOver behavior and real
+window restoration on Sequoia and separate Tahoe hardware remain field
+evidence.

@@ -389,6 +389,20 @@ and exposes retry instead of optimistically hiding it. Reconciliation checks
 the dismissal set in its write transaction, so a producer that read before the
 action cannot recreate hidden authority.
 
+Meeting and commitment rows can also return to their original surface without
+moving confirmation authority into Settings. The action sends only the random
+review UUID; StorageKit resolves a current typed subject transiently, and
+ApplicationKit revalidates catalogue version, reason, global pause, and
+individual policy before returning an inert Meeting Detail or focused
+Commitment Radar destination. The bounded list remains subject-free. Calendar
+rows state that review lives in the Portavoz menu bar because public SwiftUI
+has no action for opening a `MenuBarExtra`; no private status-item bridge is
+used. A failed resolution retains the row and exposes retry. Programmatic main
+window presentation uses one constant Codable `MainWindowIdentity.primary`
+value so `openWindow(id:value:)` reuses the existing `WindowGroup` window; the
+same `pendingRoute` channel handles an absent/cold main scene before Settings
+dismisses itself.
+
 Confirmation still belongs to the original subject surface. Every execution
 claim carries the reviewed `offerKey` separately from its exact
 `idempotencyKey`: one-shot values are equal, while a reusable package offer is

@@ -109,6 +109,150 @@ final class SkillOfferAuthorityTests: XCTestCase {
             MeetingPackageExportSkill.definition.inputDataClasses)
     }
 
+    func testOpaqueReviewResolvesOnlyAnInertMeetingDestination() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Never returned to Settings", startedAt: now)
+        try await store.save(meeting)
+        let offer = MeetingSkillOffer(kind: .emailRecapDraft, meetingID: meeting.id)
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: [offer.offerKey],
+            active: [offer.registration(at: now)])
+        let instant = now
+        let review = try await LoadSkillOfferReview(
+            store: store,
+            now: { instant }).execute(LoadSkillOfferReviewRequest())
+        let reviewID = try XCTUnwrap(review.offers.first?.id)
+
+        let outcome = try await ResolveSkillOfferReviewDestination(
+            store: store,
+            now: { instant }).execute(reviewID)
+        let executionRowCounts = try await store.database.read { database in
+            (
+                try Int.fetchOne(
+                    database,
+                    sql: "SELECT COUNT(*) FROM skillExecutionState") ?? -1,
+                try Int.fetchOne(
+                    database,
+                    sql: "SELECT COUNT(*) FROM skillExecutionEvent") ?? -1
+            )
+        }
+
+        XCTAssertEqual(outcome, .destination(.meeting(meeting.id)))
+        XCTAssertEqual(executionRowCounts.0, 0)
+        XCTAssertEqual(executionRowCounts.1, 0)
+    }
+
+    func testOpaqueReviewMapsCommitmentAndCalendarToOwnedSurfaces() async throws {
+        let store = try MeetingStore.inMemory()
+        let commitmentEnvelope = try await store.confirmCommitment(
+            CommitmentConfirmation(
+                title: "Never returned to Settings",
+                assignee: .me,
+                origin: .manual(meetingID: nil)),
+            at: now)
+        let reminder = try XCTUnwrap(ReminderDraftOffer(
+            commitment: commitmentEnvelope.commitment))
+        let event = UpcomingEvent(
+            id: "opaque-calendar-route",
+            title: "Never persisted",
+            startDate: now.addingTimeInterval(3_600),
+            attendees: [])
+        let brief = try XCTUnwrap(PreMeetingBriefOffer(event: event))
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: [reminder.offerKey, brief.offerKey],
+            active: [
+                reminder.registration(at: now),
+                brief.registration(at: now.addingTimeInterval(1))
+            ])
+        let instant = now
+        let review = try await LoadSkillOfferReview(
+            store: store,
+            now: { instant }).execute(LoadSkillOfferReviewRequest())
+        let reminderID = try XCTUnwrap(review.offers.first(where: {
+            $0.skillID == ReminderDraftSkill.id
+        })?.id)
+        let briefID = try XCTUnwrap(review.offers.first(where: {
+            $0.skillID == PreMeetingBriefSkill.id
+        })?.id)
+
+        let reminderDestination = try await ResolveSkillOfferReviewDestination(
+            store: store,
+            now: { instant }).execute(reminderID)
+        let briefDestination = try await ResolveSkillOfferReviewDestination(
+            store: store,
+            now: { instant }).execute(briefID)
+
+        XCTAssertEqual(
+            reminderDestination,
+            .destination(.commitment(commitmentEnvelope.commitment.id)))
+        XCTAssertEqual(briefDestination, .destination(.residentMenuBar))
+    }
+
+    func testReviewDestinationFailsClosedWhenAuthorityChanges() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Private", startedAt: now)
+        try await store.save(meeting)
+        let offer = MeetingSkillOffer(kind: .recapDraft, meetingID: meeting.id)
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: [offer.offerKey],
+            active: [offer.registration(at: now)])
+        let reviews = try await store.proposedSkillOffers(
+            limit: 1,
+            at: now)
+        let reviewID = try XCTUnwrap(reviews.first?.id)
+        let instant = now
+        let resolve = ResolveSkillOfferReviewDestination(
+            store: store,
+            now: { instant })
+
+        try await store.setAllSkillsPaused(true, at: now)
+        let paused = try await resolve.execute(reviewID)
+        XCTAssertEqual(paused, .unavailable)
+        try await store.setAllSkillsPaused(false, at: now)
+        try await store.setSkill(offer.skillID, isEnabled: false, at: now)
+        let disabled = try await resolve.execute(reviewID)
+        XCTAssertEqual(disabled, .unavailable)
+        try await store.setSkill(offer.skillID, isEnabled: true, at: now)
+        _ = try await store.dismissProposedSkillOffer(
+            reviewID: reviewID,
+            at: now)
+        let dismissed = try await resolve.execute(reviewID)
+        XCTAssertEqual(dismissed, .unavailable)
+    }
+
+    func testReviewDestinationRejectsMismatchedPersistedSkillAuthority() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Private", startedAt: now)
+        try await store.save(meeting)
+        let offer = MeetingSkillOffer(kind: .recapDraft, meetingID: meeting.id)
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: [offer.offerKey],
+            active: [offer.registration(at: now)])
+        let reviews = try await store.proposedSkillOffers(
+            limit: 1,
+            at: now)
+        let reviewID = try XCTUnwrap(reviews.first?.id)
+        try await store.database.write { database in
+            try database.execute(
+                sql: """
+                    UPDATE skillOfferProposal
+                    SET skillID = ?
+                    WHERE reviewID = ?
+                    """,
+                arguments: [ReminderDraftSkill.id, reviewID.uuidString])
+        }
+        let instant = now
+
+        do {
+            _ = try await ResolveSkillOfferReviewDestination(
+                store: store,
+                now: { instant }).execute(reviewID)
+            XCTFail("mismatched Skill and subject authority must fail closed")
+        } catch let error as SkillOfferReviewError {
+            XCTAssertEqual(error, .invalidAuthority)
+        }
+    }
+
     func testConfirmationAndDismissalAtomicallyRetireExactOffers() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Private", startedAt: now)
@@ -228,10 +372,14 @@ final class SkillOfferAuthorityTests: XCTestCase {
             at: now)
         let reviewID = try XCTUnwrap(review.first?.id)
 
+        let resolution = try await ResolveSkillOfferReviewDestination(
+            store: store,
+            now: { event.startDate }).execute(reviewID)
         let outcome = try await store.dismissProposedSkillOffer(
             reviewID: reviewID,
             at: event.startDate)
 
+        XCTAssertEqual(resolution, .unavailable)
         XCTAssertEqual(outcome, .unavailable)
         let dismissals = try await store.dismissedSkillOffers(
             offerKeys: [offer.offerKey])

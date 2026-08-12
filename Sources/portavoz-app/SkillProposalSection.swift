@@ -3,15 +3,18 @@ import Foundation
 import PortavozCore
 import SwiftUI
 
-/// D337/D338 — content-free review and opaque dismissal of offers durably
-/// observed on real subject surfaces. Confirmation remains on the subject.
+/// D337/D338/D340 — content-free review, opaque dismissal, and inert return to
+/// the original subject surface. Confirmation remains on that subject.
 struct SkillProposalSection: View {
     let snapshot: SkillOfferReviewSnapshot?
     let isLoading: Bool
     let isMutating: Bool
     let loadFailed: Bool
+    let reviewingOfferID: UUID?
+    let reviewFailedOfferID: UUID?
     let dismissingOfferID: UUID?
     let dismissalFailedOfferID: UUID?
+    let review: (SkillOfferReviewItem) -> Void
     let dismiss: (SkillOfferReviewItem) -> Void
     let retry: () -> Void
 
@@ -55,7 +58,11 @@ struct SkillProposalSection: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("settings-skills-proposals-privacy")
-            Text("Open the original surface to review the exact preview and confirm. Nothing runs here.")
+            Text(
+                // One-line UI copy.
+                // swiftlint:disable:next line_length
+                "Review meeting and commitment offers in their original context. Calendar briefs stay in the Portavoz menu bar. Nothing runs here."
+            )
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -85,7 +92,10 @@ struct SkillProposalSection: View {
                             "settings-skill-proposal-data-\(offer.skillID)-\(offer.id.uuidString)")
                 }
                 Spacer(minLength: 8)
-                offerDismissalControl(offer)
+                offerControls(offer)
+            }
+            if reviewFailedOfferID == offer.id {
+                offerReviewFailure(offer)
             }
             if dismissalFailedOfferID == offer.id {
                 offerDismissalFailure(offer)
@@ -97,7 +107,7 @@ struct SkillProposalSection: View {
             "settings-skill-proposal-\(offer.skillID)-\(offer.id.uuidString)")
     }
 
-    private func offerDismissalControl(
+    private func offerControls(
         _ offer: SkillOfferReviewItem
     ) -> some View {
         VStack(alignment: .trailing, spacing: 5) {
@@ -106,25 +116,91 @@ struct SkillProposalSection: View {
                 format: .dateTime.month(.abbreviated).day().hour().minute())
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
-            if dismissingOfferID == offer.id {
-                HStack(spacing: 5) {
-                    ProgressView().controlSize(.small)
-                    Text("Dismissing…")
-                }
-                .font(.caption)
-                .accessibilityIdentifier(
-                    dismissalIdentifier("progress", offer: offer))
-            } else if dismissalFailedOfferID != offer.id {
-                Button("Dismiss") { dismiss(offer) }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel(L10n.format(
-                        "Dismiss %@",
-                        SkillReceiptPresentation.skillTitle(offer.skillID)))
-                    .accessibilityIdentifier(
-                        dismissalIdentifier("action", offer: offer))
-                    .disabled(isLoading || isMutating)
+            HStack(spacing: 8) {
+                offerReviewControl(offer)
+                offerDismissalControl(offer)
             }
         }
+    }
+
+    @ViewBuilder
+    private func offerReviewControl(
+        _ offer: SkillOfferReviewItem
+    ) -> some View {
+        if offer.reason == .upcomingCalendarEvent {
+            Label("Review in menu bar", systemImage: "menubar.rectangle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(
+                    reviewIdentifier("resident", offer: offer))
+        } else if reviewingOfferID == offer.id {
+            HStack(spacing: 5) {
+                ProgressView().controlSize(.small)
+                Text("Opening…")
+            }
+            .font(.caption)
+            .accessibilityIdentifier(
+                reviewIdentifier("progress", offer: offer))
+        } else if reviewFailedOfferID != offer.id {
+            Button("Review in context") { review(offer) }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(L10n.format(
+                    "Review %@ in context",
+                    SkillReceiptPresentation.skillTitle(offer.skillID)))
+                .accessibilityIdentifier(
+                    reviewIdentifier("action", offer: offer))
+                .disabled(isLoading || isMutating)
+        }
+    }
+
+    @ViewBuilder
+    private func offerDismissalControl(
+        _ offer: SkillOfferReviewItem
+    ) -> some View {
+        if dismissingOfferID == offer.id {
+            HStack(spacing: 5) {
+                ProgressView().controlSize(.small)
+                Text("Dismissing…")
+            }
+            .font(.caption)
+            .accessibilityIdentifier(
+                dismissalIdentifier("progress", offer: offer))
+        } else if dismissalFailedOfferID != offer.id {
+            Button("Dismiss") { dismiss(offer) }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(L10n.format(
+                    "Dismiss %@",
+                    SkillReceiptPresentation.skillTitle(offer.skillID)))
+                .accessibilityIdentifier(
+                    dismissalIdentifier("action", offer: offer))
+                .disabled(isLoading || isMutating)
+        }
+    }
+
+    private func offerReviewFailure(
+        _ offer: SkillOfferReviewItem
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Label(
+                "This proposal could not be opened. It remains available.",
+                systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier(
+                    reviewIdentifier("error", offer: offer))
+            Button("Try again") { review(offer) }
+                .font(.caption)
+                .accessibilityIdentifier(
+                    reviewIdentifier("retry", offer: offer))
+                .disabled(isLoading || isMutating)
+        }
+    }
+
+    private func reviewIdentifier(
+        _ component: String,
+        offer: SkillOfferReviewItem
+    ) -> String {
+        "settings-skill-proposal-review-\(component)-\(offer.skillID)-\(offer.id.uuidString)"
     }
 
     private func offerDismissalFailure(

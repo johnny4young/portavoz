@@ -13390,6 +13390,66 @@
           }
         }
       }
+    },
+    "Review meeting and commitment offers in their original context. Calendar briefs stay in the Portavoz menu bar. Nothing runs here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa las propuestas de reuniones y compromisos en su contexto original. Las preparaciones de calendario permanecen en la barra de menús de Portavoz. Aquí no se ejecuta nada."
+          }
+        }
+      }
+    },
+    "Review in menu bar": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar en la barra de menús"
+          }
+        }
+      }
+    },
+    "Opening…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abriendo…"
+          }
+        }
+      }
+    },
+    "Review in context": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar en contexto"
+          }
+        }
+      }
+    },
+    "Review %@ in context": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar %@ en contexto"
+          }
+        }
+      }
+    },
+    "This proposal could not be opened. It remains available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo abrir esta propuesta. Sigue disponible."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

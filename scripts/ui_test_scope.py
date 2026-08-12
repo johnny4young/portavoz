@@ -241,6 +241,14 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "SkillsSettingsUITests",
+            "testProposedSkillReviewReturnsToItsMeetingWithoutRunning",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
+            "testFailedProposedSkillReviewKeepsTheOfferAndAllowsRetry",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
             "testProposedSkillDismissalRetiresTheDurableOfferEverywhere",
         ),
         test_id(

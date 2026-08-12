@@ -46,6 +46,11 @@ public protocol SkillOfferReviewStore: SkillExecutionPolicyReading, Sendable {
         reviewID: UUID,
         at now: Date
     ) async throws -> SkillOfferReviewDismissalOutcome
+
+    func resolveProposedSkillOfferSubject(
+        reviewID: UUID,
+        at now: Date
+    ) async throws -> SkillOfferReviewSubjectOutcome
 }
 
 extension MeetingStore: SkillOfferReviewStore {}
@@ -105,23 +110,11 @@ public struct LoadSkillOfferReview: ApplicationUseCase {
         !record.inputDataClasses.isEmpty,
         record.inputDataClasses.isSubset(
             of: catalogue.definition.inputDataClasses),
-        reasonIsCompatible(record.reason, with: record.inputDataClasses)
+        skillOfferReasonIsCompatible(
+            record.reason,
+            with: record.inputDataClasses)
         else { throw SkillOfferReviewError.invalidAuthority }
         return SkillOfferReviewItem(record: record)
-    }
-
-    private static func reasonIsCompatible(
-        _ reason: SkillOfferReason,
-        with dataClasses: Set<SkillInputDataClass>
-    ) -> Bool {
-        switch reason {
-        case .meetingSummaryReady:
-            dataClasses.contains(.meetingSummary)
-        case .upcomingCalendarEvent:
-            dataClasses.contains(.calendarEvent)
-        case .confirmedCommitment:
-            dataClasses.contains(.commitment)
-        }
     }
 }
 
@@ -147,5 +140,93 @@ public struct DismissSkillOfferReview: ApplicationUseCase {
         return try await store.dismissProposedSkillOffer(
             reviewID: reviewID,
             at: now())
+    }
+}
+
+/// An inert original surface selected from one explicitly resolved opaque
+/// review. Calendar offers deliberately expose only their resident surface,
+/// not the opaque EventKit identity, because SwiftUI has no public action for
+/// opening a MenuBarExtra programmatically.
+public enum SkillOfferReviewDestination: Equatable, Sendable {
+    case meeting(MeetingID)
+    case commitment(CommitmentID)
+    case residentMenuBar
+}
+
+public enum SkillOfferReviewNavigationOutcome: Equatable, Sendable {
+    case destination(SkillOfferReviewDestination)
+    case unavailable
+}
+
+/// Resolves only enough transient authority to return to the original review
+/// surface. It cannot construct a proposal, confirm a preview, claim an
+/// execution, choose a destination, or perform an effect.
+public struct ResolveSkillOfferReviewDestination: ApplicationUseCase {
+    private let store: any SkillOfferReviewStore
+    private let now: @Sendable () -> Date
+
+    public init(
+        store: any SkillOfferReviewStore,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
+        self.store = store
+        self.now = now
+    }
+
+    public func execute(
+        _ reviewID: UUID
+    ) async throws -> SkillOfferReviewNavigationOutcome {
+        try Task.checkCancellation()
+        let timestamp = now()
+        async let policyRead = store.skillExecutionPolicy()
+        async let subjectRead = store.resolveProposedSkillOfferSubject(
+            reviewID: reviewID,
+            at: timestamp)
+        let (policy, outcome) = try await (policyRead, subjectRead)
+        guard !policy.isPaused else { return .unavailable }
+
+        switch outcome {
+        case .unavailable:
+            return .unavailable
+        case .active(let record):
+            guard record.isValid,
+                  let catalogue = SkillCatalogue.entries.first(where: {
+                      $0.id == record.skillID
+                  }),
+                  catalogue.availability == .available,
+                  catalogue.definition.version == record.skillVersion,
+                  skillOfferReasonIsCompatible(
+                      record.reason,
+                      with: catalogue.definition.inputDataClasses)
+            else { throw SkillOfferReviewError.invalidAuthority }
+            guard policy.isIndividuallyEnabled(skillID: record.skillID) else {
+                return .unavailable
+            }
+            return .destination(Self.destination(for: record.subject))
+        }
+    }
+
+    private static func destination(
+        for subject: SkillOfferSubject
+    ) -> SkillOfferReviewDestination {
+        switch subject {
+        case .meeting(let id): .meeting(id)
+        case .commitment(let id): .commitment(id)
+        case .calendarEvent: .residentMenuBar
+        }
+    }
+}
+
+private func skillOfferReasonIsCompatible(
+    _ reason: SkillOfferReason,
+    with dataClasses: Set<SkillInputDataClass>
+) -> Bool {
+    switch reason {
+    case .meetingSummaryReady:
+        dataClasses.contains(.meetingSummary)
+    case .upcomingCalendarEvent:
+        dataClasses.contains(.calendarEvent)
+    case .confirmedCommitment:
+        dataClasses.contains(.commitment)
     }
 }

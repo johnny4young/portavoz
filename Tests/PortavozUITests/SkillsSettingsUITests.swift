@@ -99,6 +99,110 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testProposedSkillReviewReturnsToItsMeetingWithoutRunning() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSeededMeeting(in: app)
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-offer-menu")
+                .waitForExistence(timeout: 10),
+            "the original Meeting Detail must publish before central review")
+        let insights = app.control(withIdentifier: "library-insights-button")
+        XCTAssertTrue(insights.waitForStableFrame(timeout: 5))
+        insights.click()
+        XCTAssertFalse(
+            app.control(withIdentifier: "skill-offer-menu").exists,
+            "the journey must leave Meeting Detail before testing the return")
+        openSkillsSettings(in: app)
+
+        let review = proposalReviewControl(
+            "action",
+            skillID: "email-recap-draft",
+            in: app)
+        scrollToVisible(review, in: app, deltaY: -40)
+        XCTAssertTrue(review.waitForStableFrame(timeout: 5))
+        review.click()
+
+        let offerMenu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(
+            offerMenu.waitForStableFrame(timeout: 10),
+            "opaque review must close Settings and reopen the exact subject")
+        let primaryWindows = app.windows.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'main-AppWindow-'"))
+        XCTAssertEqual(
+            primaryWindows.count,
+            1,
+            "value-scoped opening must not duplicate the primary window")
+        XCTAssertFalse(
+            app.control(withIdentifier: "skill-confirm-sheet").exists,
+            "navigation alone must never confirm or execute a Skill")
+        offerMenu.click()
+        XCTAssertTrue(
+            app.menuItems["skill-offer-email-recap-draft"]
+                .waitForExistence(timeout: 5),
+            "the original offer must still require its exact preview")
+        app.typeKey(.escape, modifierFlags: [])
+        attachScreenshot(of: app, named: "skills-proposal-review-context")
+    }
+
+    @MainActor
+    func testFailedProposedSkillReviewKeepsTheOfferAndAllowsRetry() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append(
+            "-simulate-skill-proposal-review-unavailable")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSeededMeeting(in: app)
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-offer-menu")
+                .waitForExistence(timeout: 10))
+        openSkillsSettings(in: app)
+
+        let review = proposalReviewControl(
+            "action",
+            skillID: "email-recap-draft",
+            in: app)
+        let proposalRow = proposalReviewRow(
+            skillID: "email-recap-draft",
+            in: app)
+        scrollToVisible(review, in: app, deltaY: -40)
+        XCTAssertTrue(review.waitForStableFrame(timeout: 5))
+        review.click()
+
+        let error = proposalReviewControl(
+            "error",
+            skillID: "email-recap-draft",
+            in: app)
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        let retry = proposalReviewControl(
+            "retry",
+            skillID: "email-recap-draft",
+            in: app)
+        scrollToVisible(retry, in: app, deltaY: -40)
+        XCTAssertTrue(retry.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(
+            proposalRow.exists,
+            "an unverified route must retain the durable proposal")
+        XCTAssertFalse(
+            review.exists,
+            "the inline retry must not duplicate the review action")
+        XCTAssertTrue(
+            proposalDismissalControl(
+                "action",
+                skillID: "email-recap-draft",
+                in: app).exists,
+            "a navigation-only failure must not remove independent dismissal")
+        retry.click()
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "skills-proposal-review-retry")
+    }
+
+    @MainActor
     func testProposedSkillDismissalRetiresTheDurableOfferEverywhere() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
@@ -622,6 +726,17 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         app.descendants(matching: .any).matching(NSPredicate(
             format: "identifier BEGINSWITH %@",
             "settings-skill-proposal-dismiss-\(component)-\(skillID)-"
+        )).firstMatch
+    }
+
+    private func proposalReviewControl(
+        _ component: String,
+        skillID: String,
+        in app: XCUIApplication
+    ) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "settings-skill-proposal-review-\(component)-\(skillID)-"
         )).firstMatch
     }
 

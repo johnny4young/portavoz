@@ -4317,6 +4317,62 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D338"))
     }
 
+    func testSkillProposalReviewRoutingIsOpaqueInertAndValueScoped() throws {
+        let authority = try Self.contents(
+            of: "Sources/PortavozCore/SkillOfferAuthority.swift")
+        let review = try Self.contents(
+            of: "Sources/ApplicationKit/SkillOfferReview.swift")
+        let store = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SkillOfferAuthority.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+SkillsControl.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SkillsSettingsSection.swift")
+        let proposal = try Self.contents(
+            of: "Sources/portavoz-app/SkillProposalSection.swift")
+        let app = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
+        let mainIdentity = try Self.contents(
+            of: "Sources/portavoz-app/MainWindowIdentity.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(authority.contains(
+            "struct SkillOfferReviewSubjectRecord"))
+        XCTAssertTrue(authority.contains(
+            "enum SkillOfferReviewSubjectOutcome"))
+        XCTAssertTrue(review.contains(
+            "struct ResolveSkillOfferReviewDestination"))
+        XCTAssertTrue(review.contains(
+            "resolveProposedSkillOfferSubject("))
+        XCTAssertFalse(review.contains("idempotencyKey:"))
+        XCTAssertFalse(review.contains("effect.perform"))
+        XCTAssertFalse(review.contains("ExecuteSkill"))
+        XCTAssertTrue(store.contains(
+            "WHERE reviewID = ?"))
+        XCTAssertTrue(store.contains(
+            "NOT EXISTS (\n                          SELECT 1 FROM skillOfferDismissal"))
+        XCTAssertTrue(settings.contains(
+            "services.resolveSkillOfferReviewDestination(\n                offer.id)"))
+        XCTAssertTrue(settings.contains(
+            "services.pendingRoute = .meeting(meetingID)"))
+        XCTAssertTrue(settings.contains(
+            "services.pendingRoute = .commitments(.commitment(commitmentID))"))
+        XCTAssertTrue(settings.contains(
+            "openWindow(id: \"main\", value: MainWindowIdentity.primary)"))
+        XCTAssertTrue(settings.contains("dismissWindow()"))
+        XCTAssertTrue(proposal.contains(
+            "settings-skill-proposal-review-"))
+        XCTAssertTrue(proposal.contains("Review in menu bar"))
+        XCTAssertFalse(proposal.contains("offer.subject"))
+        XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))
+        XCTAssertTrue(services.contains(
+            "-simulate-skill-proposal-review-unavailable"))
+        XCTAssertTrue(mainIdentity.contains(
+            "enum MainWindowIdentity: String, Codable, Hashable, Sendable"))
+        XCTAssertTrue(app.contains("for: MainWindowIdentity.self"))
+        XCTAssertTrue(app.contains("defaultValue:"))
+        XCTAssertTrue(decisions.contains("## D340"))
+    }
+
     func testSkillRetryKeepsOneProposalIdentityFromPreviewToEffect() throws {
         let flow = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailFlowState.swift")
