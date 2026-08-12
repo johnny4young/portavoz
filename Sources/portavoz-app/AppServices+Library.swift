@@ -224,6 +224,7 @@ private func makeApplicationSearchHit(_ hit: SearchHit) -> LibrarySearchHit {
         meetingID: hit.meetingID,
         meetingTitle: hit.meetingTitle,
         segmentID: hit.segmentID,
+        sourceSegmentIDs: hit.sourceSegmentIDs,
         snippet: hit.snippet,
         startTime: hit.startTime)
 }

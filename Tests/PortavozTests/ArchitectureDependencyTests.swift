@@ -1877,7 +1877,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 37"))
+        XCTAssertTrue(schema.contains("public static let version = 38"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -2966,7 +2966,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 37"))
+        XCTAssertTrue(schema.contains("public static let version = 38"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -5712,8 +5712,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         // writes only embedding columns, cannot re-fire either projection.
         XCTAssertTrue(observation.contains(
             "Table(\"meeting\"), Table(\"speaker\"), Self.librarySegmentRegion"))
+        XCTAssertTrue(observation.contains("Self.searchSegmentRegion"))
+        XCTAssertTrue(observation.contains("Self.searchCorrectedTextRegion"))
+        XCTAssertTrue(observation.contains("Self.searchStructuralTextRegion"))
         XCTAssertTrue(observation.contains(
-            "regions: [Table(\"meeting\"), Self.searchSegmentRegion]"))
+            "Table(\"transcriptCorrectionSearchState\")"))
         XCTAssertFalse(
             observation.contains("Table(\"segment\")"),
             "a whole-table segment region re-fetches the library on every embedding batch")
@@ -6752,7 +6755,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(gaps.contains(
             "Meeting Detail composes current-revision text, speaker, split, explicit adjacent merge"))
         XCTAssertTrue(gaps.contains(
-            "split/merge/suppress composed content stays out of search, semantic search, and Spotlight"))
+            "every active split part its part UUID and every merge its correction UUID"))
 
         for forbidden in [
             "import SwiftUI", "import StorageKit", "import GRDB",
@@ -7525,7 +7528,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 37"))
+        XCTAssertTrue(schema.contains("public static let version = 38"))
         XCTAssertTrue(schema.contains("registerTranscriptCorrectionSearchMigration"))
         XCTAssertTrue(correctionSchema.contains("transcriptCorrectionSearchState"))
         XCTAssertTrue(correctionSchema.contains("SELECT DISTINCT meetingID"))
@@ -7533,7 +7536,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             "refreshTranscriptCorrectionSearchProjection"))
         XCTAssertTrue(correctionProjection.contains("TranscriptCorrectionRevision.current"))
         XCTAssertTrue(correctionProjection.contains(
-            "if hasCorrectionState, !correctionRevision.isAccepted"))
+            "guard hasCorrectionState else { return }"))
+        XCTAssertTrue(correctionProjection.contains(
+            "guard !correctionRevision.isAccepted else { return }"))
         XCTAssertTrue(spotlight.contains("activeCorrectionMeeting"))
         XCTAssertTrue(spotlight.contains("spotlightRequiresCorrectionProjectionSQL"))
         XCTAssertTrue(spotlight.contains("spotlightAcceptedDocumentsSQL"))
@@ -7566,7 +7571,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let intelligenceSpec = try Self.contents(
             of: "docs/specs/04-intelligence.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 37"))
+        XCTAssertTrue(schema.contains("public static let version = 38"))
         XCTAssertTrue(schema.contains("registerSegmentCorrectedEmbeddingMigration"))
         XCTAssertTrue(correctedSchema.contains("registerMigration(\"v37\")"))
         XCTAssertTrue(correctedSchema.contains("table.add(column: \"embedding\", .blob)"))
@@ -7582,7 +7587,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedding.contains("UPDATE segmentCorrectedText"))
         XCTAssertTrue(search.contains("acceptedSemanticScanSQL"))
         XCTAssertTrue(search.contains("correctedSemanticScanSQL"))
-        XCTAssertTrue(search.contains("let hasCorrectedVectors"))
+        XCTAssertTrue(search.contains("let hasCorrectionVectors"))
         XCTAssertTrue(search.contains("UNION ALL"))
         XCTAssertTrue(search.contains("currentCorrectedTextSourceSQL"))
         XCTAssertTrue(search.contains(
@@ -7591,9 +7596,54 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(search.contains("import ApplicationKit"))
         XCTAssertTrue(decisions.contains(
             "## D330 — Corrected transcript text owns a fenced semantic lane"))
-        XCTAssertTrue(architecture.contains("corrected semantic lane"))
-        XCTAssertTrue(storageSpec.contains("Corrected semantic lane (D330)"))
-        XCTAssertTrue(intelligenceSpec.contains("Correction-aware semantic maintenance (D330)"))
+        XCTAssertTrue(architecture.contains("Replacement and structural projections"))
+        XCTAssertTrue(storageSpec.contains(
+            "Correction-aware semantic lanes (D330/D334)"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "Correction-aware semantic maintenance (D330/D334)"))
+    }
+
+    func testStructuralSearchIdentityStaysDerivedFencedAndStorageOwned() throws {
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let structuralSchema = try Self.contents(
+            of: "Sources/StorageKit/Schema+SegmentCorrectedText.swift")
+        let projection = try Self.contents(
+            of: "Sources/PortavozCore/TranscriptStructuralSearchProjection.swift")
+        let refresh = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SegmentCorrectedText.swift")
+        let lexical = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Search.swift")
+        let embedding = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SemanticEmbedding.swift")
+        let semantic = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SemanticSearch.swift")
+        let spotlight = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(schema.contains("public static let version = 38"))
+        XCTAssertTrue(schema.contains("registerTranscriptStructuralSearchMigration"))
+        XCTAssertTrue(structuralSchema.contains("registerMigration(\"v38\")"))
+        XCTAssertTrue(structuralSchema.contains("transcriptStructuralSearchRow"))
+        XCTAssertTrue(structuralSchema.contains("transcriptStructuralSearchSource"))
+        XCTAssertTrue(structuralSchema.contains("transcriptStructuralSearch"))
+        XCTAssertTrue(projection.contains("resultID: part.id"))
+        XCTAssertTrue(projection.contains("resultID: correction.id"))
+        XCTAssertTrue(projection.contains("case .replaceText, .changeSpeaker, .suppress"))
+        XCTAssertTrue(refresh.contains("preservedStructuralEmbeddings"))
+        XCTAssertTrue(refresh.contains("insertStructuralSearchRow"))
+        XCTAssertTrue(lexical.contains("transcriptStructuralSearch MATCH ?"))
+        XCTAssertTrue(lexical.contains("sourceSegmentIDs"))
+        XCTAssertTrue(embedding.contains("case structural(correctionID: UUID)"))
+        XCTAssertTrue(embedding.contains("currentStructuralTextSourceSQL"))
+        XCTAssertTrue(semantic.contains("semanticStructuralHits"))
+        XCTAssertTrue(spotlight.contains("transcriptStructuralSearchRow AS structural"))
+        for source in [structuralSchema, refresh, lexical, embedding, semantic, spotlight] {
+            XCTAssertFalse(source.contains("import ApplicationKit"))
+            XCTAssertFalse(source.contains("ComposeTranscript"))
+        }
+        XCTAssertTrue(decisions.contains(
+            "## D334 — Structural transcript rows own shared search identity"))
     }
 
     func testBandFourScaleBaselineStaysMeasuredAndDisposable() throws {

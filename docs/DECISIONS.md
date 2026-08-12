@@ -11879,3 +11879,49 @@ standing rule, transport, consent persistence, or retry path. New external
 Skills automatically inherit the conservative disclosure as soon as their
 executable definition declares `sendRemote`; unit, architecture, localization,
 and bilingual real-app tests keep that projection from regressing.
+
+## D334 — Structural transcript rows own shared search identity (Aug 2026)
+
+**Context:** accepted segments and active text replacements are one-to-one, so
+the existing lexical and semantic lanes can use the accepted segment UUID.
+Structural corrections change cardinality: one split creates several visible
+rows, one merge combines several accepted rows, and suppression creates no
+visible content. Treating any of those as one accepted segment would make
+deduplication, citations, semantic publication, and UI navigation ambiguous;
+excluding them left what the user saw different from what Search, Ask, and
+Spotlight could find.
+
+**Decision:** schema v38 adds a disposable `transcriptStructuralSearchRow`
+projection with an FTS mirror, optional profile-fingerprinted semantic vector,
+and an ordered `transcriptStructuralSearchSource` relation back to live
+accepted segments. An active split emits one row per authored part under that
+part's stable UUID. An active merge emits one row under its correction UUID.
+Suppression emits no row. Restore removes the derived structural rows and
+reactivates the accepted rows and their cached accepted vectors.
+
+`SearchHit.segmentID` remains a compatibility name for the visible retrieval
+unit and now has an explicit `resultID` source of truth plus ordered
+`sourceSegmentIDs`. Application Library and Ask values preserve both. Product
+navigation continues to use meeting plus exact timestamp, so it never assumes
+that a structural result is a stored accepted segment. Durable graph and
+generated-artifact evidence remain accepted-source authority.
+
+Correction refresh rebuilds replacement text, sparse correction lineage, the
+structural projection, and source relations in the same transaction on every
+append, tombstone, replica merge, sync replay, accepted-revision replacement,
+or rebuild. Existing structural vectors survive only when result identity,
+correction identity, revision, kind, text, language, and timing still match.
+FTS, semantic candidate selection/publication/materialization, Library
+observation, and Spotlight revalidate current correction ownership and live
+source rows. Semantic publication uses the result UUID, so split parts are
+independent candidates and a stale pre-restore result is a content-free skip.
+Accepted-only semantic libraries keep their established fast scan.
+
+**Consequences:** queries can span the accepted boundaries of a visible merge,
+split parts are found independently, suppressed speech stays absent, and undo
+restores accepted identities without model work. The projection is derived,
+device-local, excluded from sync/export authority, and rebuildable from
+immutable correction history plus accepted transcript material. This closes
+the missing structural identity in code; correction-heavy latency, memory,
+cold recovery, Core Spotlight registration, and physical Sequoia/Tahoe model
+behavior remain field-evidence gates rather than inferred release claims.

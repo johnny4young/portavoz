@@ -2122,21 +2122,33 @@ accepted row owned by an active replace, split, merge, or suppress event is
 removed from FTS candidates, semantic reads, embedding candidates, and vector
 publication, while speaker-only changes and unaffected rows keep their accepted
 text. Active replacement text serves immediately from the transactional
-corrected FTS projection. It also owns a corrected semantic lane whose vector
-is produced by the existing background owner and stored beside that disposable
-projection; readiness returns to partial until the current corrected source has
-the active profile. Candidate selection and publication revalidate the accepted
-revision, exact text, correction identity, terminal-event ownership, sparse
-correction state, and live meeting/segment before accepting the derived value.
+corrected FTS projection. Active split parts and merges serve from a separate
+disposable structural projection: part UUIDs and correction UUIDs name the
+visible result, while an ordered relation retains every immutable accepted
+source segment. Suppression has no result. Library and Ask preserve both result
+identity and accepted provenance, and navigation remains meeting-plus-timestamp
+rather than assuming every result is an accepted segment.
+
+Replacement and structural projections also own semantic lanes whose vectors
+are produced by the existing background owner and stored beside disposable
+text. Readiness returns to partial until every current source has the active
+profile. Candidate selection and publication revalidate accepted revision,
+exact text, correction identity, terminal-event ownership, sparse correction
+state, live meeting/source rows, and missing vector state before accepting the
+derived value. Projection refresh preserves a structural vector only while its
+result identity, correction, revision, kind, text, language, and timing remain
+exactly unchanged.
 
 The immutable accepted vector remains cached on the accepted segment. Restore
 therefore makes that row eligible again without rebuilding it. Exact semantic
-search performs one snapshot-local corrected-vector probe: accepted-only
+search performs one snapshot-local correction-vector probe: accepted-only
 libraries retain the established single-stream traversal, while libraries with
-a current corrected vector score an ordered accepted-plus-corrected union once
-per query batch. Result materialization revalidates current source state and
-returns corrected text under the accepted segment ID. Split, merge, and
-suppress composed rows still lack a shared search identity and remain excluded.
+a current replacement or structural vector score one ordered union per query
+batch. Result materialization revalidates current source state, returns
+replacement text under accepted identity, and returns split/merge text under
+its structural result identity with accepted provenance. Restore deletes
+structural rows and makes accepted rows eligible again; a stale structural
+publication is a content-free skip.
 The non-serving research projection also stays accepted-only because its
 segment/revision identity does not carry correction lineage; it drops an active
 replacement rather than projecting a stale rank onto new text.
@@ -3434,9 +3446,10 @@ App Entities. The meeting entity retains the released capped summary/transcript
 search body, now selected from the same revision-fenced corrected-text lane as
 local lexical search. A sparse storage projection admits only a correction-
 current summary; stale or malformed provenance is omitted, and missing derived
-state fails closed instead of restoring accepted words. Split, merge, and
-suppress targets remain excluded rather than inventing a structural search
-identity. Successful correction writes wake reconciliation after persistence.
+state fails closed instead of restoring accepted words. Split parts and merge
+content enter the same bounded transcript order under stable structural
+result identities; suppress remains absent and restore reactivates accepted
+rows. Successful correction writes wake reconciliation after persistence.
 The macOS 14.4 compatibility path publishes meeting documents to
 the same index; its distinct client-state prefix forces replacement when OS
 capability changes. Removal of the obsolete named/default indexes retries until

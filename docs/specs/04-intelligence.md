@@ -1076,7 +1076,7 @@ failure. Any still-current accepted or corrected source remains `NULL` and a
 later supervisor signal resumes it. No second cursor, timer, heartbeat,
 processing job, asset download, or query-path write is introduced.
 
-### Correction-aware semantic maintenance (D330)
+### Correction-aware semantic maintenance (D330/D334)
 
 An active `replaceText` correction is a first-class semantic source without
 becoming a new citation identity. The selected candidate retains the accepted
@@ -1085,8 +1085,16 @@ adds a corrected-lane identity carrying the correction UUID. Publication
 revalidates the disposable corrected projection, current sparse correction
 state, live terminal replacement event, exact revision/text, and missing-vector
 state in one StorageKit compare-and-swap update. Superseded, conflicting,
-structural, deleted, stale, or unfenced work is skipped rather than attached to
-the accepted source.
+deleted, stale, or unfenced work is skipped rather than attached to the
+accepted source.
+
+Schema v38 extends the same background owner to structural search results. A
+split part carries its part UUID; a merge carries its correction UUID; both
+carry the correction source plus ordered accepted segment provenance. Semantic
+publication compares that result identity, current correction/revision, exact
+text, kind, live source relations, and missing-vector state. Restore or
+supersession therefore rejects an in-flight structural vector without reviving
+the result.
 
 The accepted segment keeps its existing vector. Restore therefore changes the
 active lane immediately and requires no embedding work when that accepted
@@ -1098,14 +1106,15 @@ background owner publishes it. Capture checkpoints, bounded batches, durable
 lease/retry, installed-assets-only policy, and the `NULL` progress cursor are
 unchanged.
 
-Exact retrieval first probes for a current corrected vector in the same SQLite
-snapshot. Accepted-only libraries keep the established one-cursor scan; when a
-corrected vector exists, one deterministic accepted-plus-corrected stream is
+Exact retrieval first probes for a current correction vector in the same
+SQLite snapshot. Accepted-only libraries keep the established one-cursor scan;
+when a replacement or structural vector exists, one deterministic union is
 scored for every query variant. Authoritative projection again validates the
-current lane and emits corrected text under the accepted segment ID. Active
-split, merge, and suppress output remains excluded until it has a shared search
-identity. This implements replacement-text recall but does not supply physical
-Sequoia/Tahoe asset, correction-heavy latency, or memory evidence. D210's
+current lane, emits replacement text under accepted identity, and emits split
+or merge text under its stable result identity with accepted provenance.
+Suppress remains absent and restore reuses the accepted vector. This does not
+supply physical Sequoia/Tahoe asset, correction-heavy latency, or memory
+evidence. D210's
 non-serving identity-only research projection remains accepted-only because it
 cannot prove which correction source produced a rank; it drops an active
 replacement rather than applying stale similarity to different text.

@@ -279,7 +279,8 @@ private extension MeetingStore {
                 SELECT segment.meetingID,
                        segment.text,
                        segment.startTime,
-                       segment.rowid AS segmentRowID
+                       segment.rowid AS segmentRowID,
+                       segment.id AS resultID
                 FROM segment
                 JOIN meeting
                   ON meeting.id = segment.meetingID
@@ -290,7 +291,8 @@ private extension MeetingStore {
                 SELECT segment.meetingID,
                        corrected.text,
                        segment.startTime,
-                       segment.rowid AS segmentRowID
+                       segment.rowid AS segmentRowID,
+                       segment.id AS resultID
                 FROM segmentCorrectedText AS corrected
                 JOIN segment
                   ON segment.id = corrected.segmentID
@@ -312,26 +314,41 @@ private extension MeetingStore {
                       FROM transcriptCorrection AS successor
                       WHERE successor.supersedesCorrectionID = correction.id
                   )
+                UNION ALL
+                SELECT structural.meetingID,
+                       structural.text,
+                       structural.startTime,
+                       structural.rowid AS segmentRowID,
+                       structural.resultID AS resultID
+                FROM transcriptStructuralSearchRow AS structural
+                JOIN meeting
+                  ON meeting.id = structural.meetingID
+                JOIN transcriptCorrectionSearchState AS correctionState
+                  ON correctionState.meetingID = structural.meetingID
+                JOIN transcriptCorrection AS correction
+                  ON correction.id = structural.correctionID
+                WHERE meeting.deletedAt IS NULL
+                  AND \(Self.currentStructuralTextSourceSQL)
             )
             """
     }
 
     static let spotlightTranscriptSQL = """
         rankedSegment AS (
-            SELECT meetingID, text, startTime, segmentRowID,
+            SELECT meetingID, text, startTime, segmentRowID, resultID,
                    ROW_NUMBER() OVER (
                        PARTITION BY meetingID
-                       ORDER BY startTime, segmentRowID
+                       ORDER BY startTime, segmentRowID, resultID
                    ) AS segmentRank
             FROM correctionAwareSegment
         ),
         firstTranscript AS (
             SELECT meetingID, GROUP_CONCAT(text, ' ') AS transcript
             FROM (
-                SELECT meetingID, text, startTime, segmentRowID
+                SELECT meetingID, text, startTime, segmentRowID, resultID
                 FROM rankedSegment
                 WHERE segmentRank <= 40
-                ORDER BY meetingID, startTime, segmentRowID
+                ORDER BY meetingID, startTime, segmentRowID, resultID
             )
             GROUP BY meetingID
         )

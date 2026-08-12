@@ -8,6 +8,7 @@ public struct AskSearchResult: Equatable, Sendable {
     public let meetingID: MeetingID
     public let meetingTitle: String
     public let segmentID: UUID
+    public let sourceSegmentIDs: [UUID]
     public let snippet: String
     public let timestamp: TimeInterval
 
@@ -15,12 +16,14 @@ public struct AskSearchResult: Equatable, Sendable {
         meetingID: MeetingID,
         meetingTitle: String,
         segmentID: UUID,
+        sourceSegmentIDs: [UUID]? = nil,
         snippet: String,
         timestamp: TimeInterval
     ) {
         self.meetingID = meetingID
         self.meetingTitle = meetingTitle
         self.segmentID = segmentID
+        self.sourceSegmentIDs = sourceSegmentIDs ?? [segmentID]
         self.snippet = snippet
         self.timestamp = timestamp
     }
@@ -30,7 +33,10 @@ public struct AskSearchResult: Equatable, Sendable {
 /// aggregate identity and timestamp without receiving a storage record or an
 /// IntelligenceKit passage.
 public struct AskCitation: Equatable, Sendable {
+    /// Stable visible retrieval-unit identity. It may be a split part or merge
+    /// correction rather than an accepted segment.
     public let segmentID: UUID?
+    public let sourceSegmentIDs: [UUID]
     public let meetingID: MeetingID
     public let meetingTitle: String
     public let timestamp: TimeInterval
@@ -39,6 +45,7 @@ public struct AskCitation: Equatable, Sendable {
 
     public init(
         segmentID: UUID? = nil,
+        sourceSegmentIDs: [UUID]? = nil,
         meetingID: MeetingID,
         meetingTitle: String,
         timestamp: TimeInterval,
@@ -46,6 +53,7 @@ public struct AskCitation: Equatable, Sendable {
         text: String
     ) {
         self.segmentID = segmentID
+        self.sourceSegmentIDs = sourceSegmentIDs ?? segmentID.map { [$0] } ?? []
         self.meetingID = meetingID
         self.meetingTitle = meetingTitle
         self.timestamp = timestamp
@@ -594,6 +602,7 @@ public struct OnDeviceAskMeetingIntelligence:
     private static func ragPassage(_ citation: AskCitation) -> RAGPassage {
         RAGPassage(
             segmentID: citation.segmentID,
+            sourceSegmentIDs: citation.sourceSegmentIDs,
             meetingID: citation.meetingID,
             meetingTitle: citation.meetingTitle,
             timestamp: citation.timestamp,

@@ -33,6 +33,19 @@ extension MeetingStore {
         SELECT id, meetingID, text, startTime, deletedAt FROM segment
         """)
 
+    /// Derived correction text read by FTS. Semantic publication updates only
+    /// the excluded vector columns, so indexing never re-fires Library search.
+    static let searchCorrectedTextRegion = SQLRequest<Row>(sql: """
+        SELECT segmentID, meetingID, baseTranscriptRevision, text
+        FROM segmentCorrectedText
+        """)
+
+    static let searchStructuralTextRegion = SQLRequest<Row>(sql: """
+        SELECT resultID, meetingID, correctionID, baseTranscriptRevision,
+               kind, text, startTime
+        FROM transcriptStructuralSearchRow
+        """)
+
     /// Meeting rows and voice mix share one update cadence. No action-item or
     /// trash write can trigger this observation unless the meeting root itself
     /// changes.
@@ -103,7 +116,14 @@ extension MeetingStore {
             }
         }
         let observation = ValueObservation.tracking(
-            regions: [Table("meeting"), Self.searchSegmentRegion],
+            regions: [
+                Table("meeting"),
+                Self.searchSegmentRegion,
+                Self.searchCorrectedTextRegion,
+                Self.searchStructuralTextRegion,
+                Table("transcriptStructuralSearchSource"),
+                Table("transcriptCorrectionSearchState")
+            ],
             fetch: { database in
                 try Self.fetchSearch(in: database, match: match, limit: limit)
             })

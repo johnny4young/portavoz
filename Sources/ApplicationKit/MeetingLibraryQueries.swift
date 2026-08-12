@@ -164,6 +164,7 @@ private struct LocalMeetingLibraryQueryReader: MeetingLibraryQueryReading {
                 meetingID: hit.meetingID,
                 meetingTitle: hit.meetingTitle,
                 segmentID: hit.segmentID,
+                sourceSegmentIDs: hit.sourceSegmentIDs,
                 snippet: hit.snippet,
                 startTime: hit.startTime)
         }

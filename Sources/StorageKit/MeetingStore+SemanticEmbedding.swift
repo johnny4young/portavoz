@@ -5,11 +5,12 @@ import PortavozCore
 /// Immutable source identity carried from semantic batch selection through
 /// publication. Storage revalidates every field before accepting a vector, so
 /// a concurrent transcript replacement cannot attach stale derived data to a
-/// reused segment identifier.
+/// reused retrieval-result identifier.
 public struct SemanticEmbeddingCandidate: Equatable, Sendable {
     public enum Source: Equatable, Hashable, Sendable {
         case accepted
         case corrected(correctionID: UUID)
+        case structural(correctionID: UUID)
     }
 
     public let id: UUID
@@ -34,6 +35,8 @@ public struct SemanticEmbeddingCandidate: Equatable, Sendable {
 }
 
 /// Content-free outcome of a revision-fenced semantic batch publication.
+/// Existing property names are source-compatible; each UUID is a retrieval
+/// result identity and may identify an accepted segment or a structural result.
 public struct SemanticEmbeddingPublicationResult: Equatable, Sendable {
     public let publishedSegmentIDs: Set<UUID>
     public let skippedSegmentIDs: Set<UUID>
@@ -107,6 +110,53 @@ extension MeetingStore {
         )
         """
 
+    static let currentStructuralTextSourceSQL = """
+        structural.baseTranscriptRevision = meeting.transcriptRevision
+        AND correctionState.baseTranscriptRevision = meeting.transcriptRevision
+        AND correction.meetingID = structural.meetingID
+        AND correction.baseTranscriptRevision = meeting.transcriptRevision
+        AND correction.kind = structural.kind
+        AND correction.kind IN ('split', 'merge')
+        AND correction.deletedAt IS NULL
+        AND NOT EXISTS (
+            SELECT 1
+            FROM transcriptCorrection AS successor
+            WHERE successor.supersedesCorrectionID = correction.id
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM transcriptStructuralSearchSource AS source
+            WHERE source.resultID = structural.resultID
+        )
+        AND NOT EXISTS (
+            SELECT 1
+            FROM transcriptCorrectionTarget AS correctionTarget
+            LEFT JOIN transcriptStructuralSearchSource AS source
+              ON source.resultID = structural.resultID
+             AND source.ordinal = correctionTarget.ordinal
+             AND source.segmentID = correctionTarget.segmentID
+            WHERE correctionTarget.correctionID = correction.id
+              AND source.resultID IS NULL
+        )
+        AND NOT EXISTS (
+            SELECT 1
+            FROM transcriptStructuralSearchSource AS source
+            LEFT JOIN transcriptCorrectionTarget AS correctionTarget
+              ON correctionTarget.correctionID = correction.id
+             AND correctionTarget.ordinal = source.ordinal
+             AND correctionTarget.segmentID = source.segmentID
+            LEFT JOIN segment
+              ON segment.id = source.segmentID
+            WHERE source.resultID = structural.resultID
+              AND (
+                  correctionTarget.correctionID IS NULL
+                  OR segment.id IS NULL
+                  OR segment.deletedAt IS NOT NULL
+                  OR segment.meetingID <> structural.meetingID
+              )
+        )
+        """
+
     // MARK: - Semantic index (local RAG, M8)
 
     /// Whether the live library contains any row eligible for semantic search.
@@ -140,6 +190,18 @@ extension MeetingStore {
                           AND \(Self.currentCorrectedTextSourceSQL)
                         LIMIT 1
                     )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM transcriptStructuralSearchRow AS structural
+                        JOIN meeting ON meeting.id = structural.meetingID
+                        JOIN transcriptCorrectionSearchState AS correctionState
+                          ON correctionState.meetingID = structural.meetingID
+                        JOIN transcriptCorrection AS correction
+                          ON correction.id = structural.correctionID
+                        WHERE meeting.deletedAt IS NULL
+                          AND \(Self.currentStructuralTextSourceSQL)
+                        LIMIT 1
+                    )
                     """) ?? false
         }
     }
@@ -156,40 +218,12 @@ extension MeetingStore {
         return try await database.read { db in
             try Bool.fetchOne(
                 db,
-                sql: """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM segment
-                        JOIN meeting ON meeting.id = segment.meetingID
-                        WHERE segment.deletedAt IS NULL
-                          AND meeting.deletedAt IS NULL
-                          AND \(Self.acceptedSegmentHasNoActiveTextCorrectionSQL)
-                          AND (
-                              segment.embedding IS NULL
-                              OR segment.embeddingFingerprint IS NOT ?
-                          )
-                        LIMIT 1
-                    )
-                    OR EXISTS (
-                        SELECT 1
-                        FROM segmentCorrectedText AS corrected
-                        JOIN segment ON segment.id = corrected.segmentID
-                        JOIN meeting ON meeting.id = corrected.meetingID
-                        JOIN transcriptCorrectionSearchState AS correctionState
-                          ON correctionState.meetingID = corrected.meetingID
-                        JOIN transcriptCorrection AS correction
-                          ON correction.id = corrected.correctionID
-                        WHERE segment.deletedAt IS NULL
-                          AND meeting.deletedAt IS NULL
-                          AND \(Self.currentCorrectedTextSourceSQL)
-                          AND (
-                              corrected.embedding IS NULL
-                              OR corrected.embeddingFingerprint IS NOT ?
-                          )
-                        LIMIT 1
-                    )
-                    """,
-                arguments: [profile.fingerprint, profile.fingerprint]) ?? false
+                sql: SemanticEmbeddingSQL.requiresMaintenance,
+                arguments: [
+                    profile.fingerprint,
+                    profile.fingerprint,
+                    profile.fingerprint
+                ]) ?? false
         }
     }
 
@@ -207,6 +241,15 @@ extension MeetingStore {
             try db.execute(
                 sql: """
                     UPDATE segment
+                    SET embedding = NULL, embeddingFingerprint = NULL
+                    WHERE (embedding IS NOT NULL AND embeddingFingerprint IS NOT ?)
+                       OR (embedding IS NULL AND embeddingFingerprint IS NOT NULL)
+                    """,
+                arguments: [profile.fingerprint])
+            invalidated += db.changesCount
+            try db.execute(
+                sql: """
+                    UPDATE transcriptStructuralSearchRow
                     SET embedding = NULL, embeddingFingerprint = NULL
                     WHERE (embedding IS NOT NULL AND embeddingFingerprint IS NOT ?)
                        OR (embedding IS NULL AND embeddingFingerprint IS NOT NULL)
@@ -234,47 +277,7 @@ extension MeetingStore {
         return try await database.read { db in
             let rows = try Row.fetchAll(
                 db,
-                sql: """
-                    SELECT id, meetingID, transcriptRevision, text, source, correctionID
-                    FROM (
-                        SELECT segment.id AS id,
-                               segment.meetingID AS meetingID,
-                               meeting.transcriptRevision AS transcriptRevision,
-                               segment.text AS text,
-                               'accepted' AS source,
-                               NULL AS correctionID,
-                               segment.createdAt AS createdAt,
-                               segment.rowid AS rowID
-                        FROM segment
-                        JOIN meeting ON meeting.id = segment.meetingID
-                            AND meeting.deletedAt IS NULL
-                        WHERE segment.embedding IS NULL
-                          AND segment.deletedAt IS NULL
-                          AND \(Self.acceptedSegmentHasNoActiveTextCorrectionSQL)
-                        UNION ALL
-                        SELECT segment.id AS id,
-                               corrected.meetingID AS meetingID,
-                               meeting.transcriptRevision AS transcriptRevision,
-                               corrected.text AS text,
-                               'corrected' AS source,
-                               corrected.correctionID AS correctionID,
-                               segment.createdAt AS createdAt,
-                               segment.rowid AS rowID
-                        FROM segmentCorrectedText AS corrected
-                        JOIN segment ON segment.id = corrected.segmentID
-                        JOIN meeting ON meeting.id = corrected.meetingID
-                        JOIN transcriptCorrectionSearchState AS correctionState
-                          ON correctionState.meetingID = corrected.meetingID
-                        JOIN transcriptCorrection AS correction
-                          ON correction.id = corrected.correctionID
-                        WHERE corrected.embedding IS NULL
-                          AND segment.deletedAt IS NULL
-                          AND meeting.deletedAt IS NULL
-                          AND \(Self.currentCorrectedTextSourceSQL)
-                    )
-                    ORDER BY createdAt, rowID, source
-                    LIMIT ?
-                    """,
+                sql: SemanticEmbeddingSQL.candidatesNeedingEmbeddings,
                 arguments: [limit])
             return try Self.semanticEmbeddingCandidates(from: rows)
         }
@@ -340,6 +343,11 @@ extension MeetingStore {
                     row["correctionID"],
                     table: "segmentCorrectedText",
                     column: "correctionID"))
+            case "structural":
+                source = .structural(correctionID: try PersistedIdentity.required(
+                    row["correctionID"],
+                    table: "transcriptStructuralSearchRow",
+                    column: "correctionID"))
             default:
                 throw StorageError.invalidPersistedValue(
                     table: "segmentCorrectedText",
@@ -372,6 +380,13 @@ extension MeetingStore {
                 in: database)
         case .corrected(let correctionID):
             try storeCorrectedEmbedding(
+                vector,
+                candidate: candidate,
+                correctionID: correctionID,
+                profile: profile,
+                in: database)
+        case .structural(let correctionID):
+            try storeStructuralEmbedding(
                 vector,
                 candidate: candidate,
                 correctionID: correctionID,
@@ -458,4 +473,157 @@ extension MeetingStore {
             ])
     }
 
+    private static func storeStructuralEmbedding(
+        _ vector: [Float],
+        candidate: SemanticEmbeddingCandidate,
+        correctionID: UUID,
+        profile: SemanticEmbeddingProfile,
+        in database: Database
+    ) throws {
+        try database.execute(
+            sql: """
+                UPDATE transcriptStructuralSearchRow
+                SET embedding = ?, embeddingFingerprint = ?
+                WHERE rowid IN (
+                    SELECT structural.rowid
+                    FROM transcriptStructuralSearchRow AS structural
+                    JOIN meeting ON meeting.id = structural.meetingID
+                    JOIN transcriptCorrectionSearchState AS correctionState
+                      ON correctionState.meetingID = structural.meetingID
+                    JOIN transcriptCorrection AS correction
+                      ON correction.id = structural.correctionID
+                    WHERE structural.resultID = ?
+                      AND structural.meetingID = ?
+                      AND structural.correctionID = ?
+                      AND structural.baseTranscriptRevision = ?
+                      AND structural.text = ?
+                      AND structural.embedding IS NULL
+                      AND structural.embeddingFingerprint IS NULL
+                      AND meeting.deletedAt IS NULL
+                      AND \(currentStructuralTextSourceSQL)
+                )
+                """,
+            arguments: [
+                blob(from: vector),
+                profile.fingerprint,
+                candidate.id.uuidString,
+                candidate.meetingID.rawValue.uuidString,
+                correctionID.uuidString,
+                candidate.transcriptRevision,
+                candidate.text
+            ])
+    }
+
+}
+
+private enum SemanticEmbeddingSQL {
+    static let requiresMaintenance = """
+        SELECT EXISTS (
+            SELECT 1
+            FROM segment
+            JOIN meeting ON meeting.id = segment.meetingID
+            WHERE segment.deletedAt IS NULL
+              AND meeting.deletedAt IS NULL
+              AND \(MeetingStore.acceptedSegmentHasNoActiveTextCorrectionSQL)
+              AND (
+                  segment.embedding IS NULL
+                  OR segment.embeddingFingerprint IS NOT ?
+              )
+            LIMIT 1
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM segmentCorrectedText AS corrected
+            JOIN segment ON segment.id = corrected.segmentID
+            JOIN meeting ON meeting.id = corrected.meetingID
+            JOIN transcriptCorrectionSearchState AS correctionState
+              ON correctionState.meetingID = corrected.meetingID
+            JOIN transcriptCorrection AS correction
+              ON correction.id = corrected.correctionID
+            WHERE segment.deletedAt IS NULL
+              AND meeting.deletedAt IS NULL
+              AND \(MeetingStore.currentCorrectedTextSourceSQL)
+              AND (
+                  corrected.embedding IS NULL
+                  OR corrected.embeddingFingerprint IS NOT ?
+              )
+            LIMIT 1
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM transcriptStructuralSearchRow AS structural
+            JOIN meeting ON meeting.id = structural.meetingID
+            JOIN transcriptCorrectionSearchState AS correctionState
+              ON correctionState.meetingID = structural.meetingID
+            JOIN transcriptCorrection AS correction
+              ON correction.id = structural.correctionID
+            WHERE meeting.deletedAt IS NULL
+              AND \(MeetingStore.currentStructuralTextSourceSQL)
+              AND (
+                  structural.embedding IS NULL
+                  OR structural.embeddingFingerprint IS NOT ?
+              )
+            LIMIT 1
+        )
+        """
+
+    static let candidatesNeedingEmbeddings = """
+        SELECT id, meetingID, transcriptRevision, text, source, correctionID
+        FROM (
+            SELECT segment.id AS id,
+                   segment.meetingID AS meetingID,
+                   meeting.transcriptRevision AS transcriptRevision,
+                   segment.text AS text,
+                   'accepted' AS source,
+                   NULL AS correctionID,
+                   segment.createdAt AS createdAt,
+                   segment.rowid AS rowID
+            FROM segment
+            JOIN meeting ON meeting.id = segment.meetingID
+                AND meeting.deletedAt IS NULL
+            WHERE segment.embedding IS NULL
+              AND segment.deletedAt IS NULL
+              AND \(MeetingStore.acceptedSegmentHasNoActiveTextCorrectionSQL)
+            UNION ALL
+            SELECT segment.id AS id,
+                   corrected.meetingID AS meetingID,
+                   meeting.transcriptRevision AS transcriptRevision,
+                   corrected.text AS text,
+                   'corrected' AS source,
+                   corrected.correctionID AS correctionID,
+                   segment.createdAt AS createdAt,
+                   segment.rowid AS rowID
+            FROM segmentCorrectedText AS corrected
+            JOIN segment ON segment.id = corrected.segmentID
+            JOIN meeting ON meeting.id = corrected.meetingID
+            JOIN transcriptCorrectionSearchState AS correctionState
+              ON correctionState.meetingID = corrected.meetingID
+            JOIN transcriptCorrection AS correction
+              ON correction.id = corrected.correctionID
+            WHERE corrected.embedding IS NULL
+              AND segment.deletedAt IS NULL
+              AND meeting.deletedAt IS NULL
+              AND \(MeetingStore.currentCorrectedTextSourceSQL)
+            UNION ALL
+            SELECT structural.resultID AS id,
+                   structural.meetingID AS meetingID,
+                   meeting.transcriptRevision AS transcriptRevision,
+                   structural.text AS text,
+                   'structural' AS source,
+                   structural.correctionID AS correctionID,
+                   structural.updatedAt AS createdAt,
+                   structural.rowid AS rowID
+            FROM transcriptStructuralSearchRow AS structural
+            JOIN meeting ON meeting.id = structural.meetingID
+            JOIN transcriptCorrectionSearchState AS correctionState
+              ON correctionState.meetingID = structural.meetingID
+            JOIN transcriptCorrection AS correction
+              ON correction.id = structural.correctionID
+            WHERE structural.embedding IS NULL
+              AND meeting.deletedAt IS NULL
+              AND \(MeetingStore.currentStructuralTextSourceSQL)
+        )
+        ORDER BY createdAt, rowID, source
+        LIMIT ?
+        """
 }

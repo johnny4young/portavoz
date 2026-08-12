@@ -222,6 +222,84 @@ final class SpotlightProjectionTests: XCTestCase {
         XCTAssertEqual(restoredStateCount, 0)
     }
 
+    func testProjectionIncludesSplitAndMergeRowsInsteadOfAcceptedTargets() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(
+            title: "Structural search",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        let speaker = Speaker(meetingID: meeting.id, label: "S1")
+        let segments = [
+            TranscriptSegment(
+                meetingID: meeting.id,
+                speakerID: speaker.id,
+                channel: .system,
+                text: "alpha accepted",
+                language: "en",
+                startTime: 0,
+                endTime: 2,
+                isFinal: true),
+            TranscriptSegment(
+                meetingID: meeting.id,
+                speakerID: speaker.id,
+                channel: .system,
+                text: "beta accepted",
+                language: "en",
+                startTime: 2,
+                endTime: 4,
+                isFinal: true)
+        ]
+        try await store.save(meeting)
+        try await store.save([speaker])
+        try await store.save(segments)
+        let merge = correction(
+            meeting: meeting,
+            targets: segments.map(\.id),
+            kind: .merge(
+                replacementText: "merged structural wording",
+                language: "en"),
+            at: Date(timeIntervalSince1970: 1_700_000_100))
+        _ = try await store.appendTranscriptCorrection(merge)
+
+        var documents = try await store.spotlightDocuments()
+        var document = try XCTUnwrap(documents.first)
+        XCTAssertTrue(document.contentDescription.contains("merged structural wording"))
+        XCTAssertFalse(document.contentDescription.contains("alpha accepted"))
+        XCTAssertFalse(document.contentDescription.contains("beta accepted"))
+
+        _ = try await store.appendTranscriptCorrection(correction(
+            meeting: meeting,
+            targets: merge.targetSegmentIDs,
+            kind: .restore,
+            at: Date(timeIntervalSince1970: 1_700_000_101),
+            supersedes: merge.id))
+        let split = correction(
+            meeting: meeting,
+            targets: [segments[0].id],
+            kind: .split([
+                TranscriptCorrectionPart(
+                    text: "split alpha first",
+                    speakerID: speaker.id,
+                    language: "en",
+                    startTime: 0,
+                    endTime: 1),
+                TranscriptCorrectionPart(
+                    text: "split alpha second",
+                    speakerID: speaker.id,
+                    language: "en",
+                    startTime: 1,
+                    endTime: 2)
+            ]),
+            at: Date(timeIntervalSince1970: 1_700_000_102))
+        _ = try await store.appendTranscriptCorrection(split)
+
+        documents = try await store.spotlightDocuments()
+        document = try XCTUnwrap(documents.first)
+        XCTAssertTrue(document.contentDescription.contains(
+            "split alpha first split alpha second beta accepted"))
+        XCTAssertFalse(document.contentDescription.contains("alpha accepted"))
+        XCTAssertFalse(document.contentDescription.contains("merged structural wording"))
+    }
+
     func testMissingCorrectionStateFailsClosedAndProjectionCanRebuild() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Fence", startedAt: Date())

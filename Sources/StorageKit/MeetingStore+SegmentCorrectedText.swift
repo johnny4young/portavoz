@@ -25,19 +25,22 @@ extension MeetingStore {
             meetingID: meetingID,
             hasEmbeddingColumns: hasEmbeddingColumns,
             in: database)
+        let hasStructuralProjection = try database.tableExists(
+            "transcriptStructuralSearchRow")
+        let existingStructuralEmbeddings = try preservedStructuralEmbeddings(
+            meetingID: meetingID,
+            hasStructuralProjection: hasStructuralProjection,
+            in: database)
         // v33 invokes this same rebuild before v36 has created the sparse
         // lineage table. Keep that historical migration independently
         // runnable; v36 repeats the rebuild immediately after creating it.
         let hasCorrectionState = try database.tableExists(
             "transcriptCorrectionSearchState")
-        if hasCorrectionState {
-            try database.execute(
-                sql: "DELETE FROM transcriptCorrectionSearchState WHERE meetingID = ?",
-                arguments: [key])
-        }
-        try database.execute(
-            sql: "DELETE FROM segmentCorrectedText WHERE meetingID = ?",
-            arguments: [key])
+        try clearTranscriptCorrectionSearchProjection(
+            meetingKey: key,
+            hasCorrectionState: hasCorrectionState,
+            hasStructuralProjection: hasStructuralProjection,
+            in: database)
         guard let revision = try Int.fetchOne(
             database,
             sql: "SELECT transcriptRevision FROM meeting WHERE id = ?",
@@ -46,28 +49,96 @@ extension MeetingStore {
         let history = try fetchTranscriptCorrectionHistory(
             meetingID: meetingID,
             in: database)
-        let correctionRevision = try TranscriptCorrectionRevision.current(
+        try refreshCorrectionSearchState(
+            history: history,
             meetingID: meetingID,
             baseTranscriptRevision: revision,
-            history: history)
-        if hasCorrectionState, !correctionRevision.isAccepted {
+            meetingKey: key,
+            hasCorrectionState: hasCorrectionState,
+            in: database)
+        try refreshCorrectedTextProjection(
+            history: history,
+            meetingID: meetingID,
+            baseTranscriptRevision: revision,
+            hasEmbeddingColumns: hasEmbeddingColumns,
+            existingEmbeddings: existingEmbeddings,
+            in: database)
+        guard hasStructuralProjection else { return }
+        try refreshStructuralSearchProjection(
+            history: history,
+            meetingID: meetingID,
+            baseTranscriptRevision: revision,
+            meetingKey: key,
+            existingEmbeddings: existingStructuralEmbeddings,
+            in: database)
+    }
+
+    private static func clearTranscriptCorrectionSearchProjection(
+        meetingKey: String,
+        hasCorrectionState: Bool,
+        hasStructuralProjection: Bool,
+        in database: Database
+    ) throws {
+        if hasCorrectionState {
             try database.execute(
-                sql: """
-                    INSERT INTO transcriptCorrectionSearchState
-                        (meetingID, baseTranscriptRevision, correctionRevision)
-                    VALUES (?, ?, ?)
-                    """,
-                arguments: [key, revision, correctionRevision.rawValue])
+                sql: "DELETE FROM transcriptCorrectionSearchState WHERE meetingID = ?",
+                arguments: [meetingKey])
         }
+        try database.execute(
+            sql: "DELETE FROM segmentCorrectedText WHERE meetingID = ?",
+            arguments: [meetingKey])
+        if hasStructuralProjection {
+            try database.execute(
+                sql: "DELETE FROM transcriptStructuralSearchRow WHERE meetingID = ?",
+                arguments: [meetingKey])
+        }
+    }
+
+    private static func refreshCorrectionSearchState(
+        history: [TranscriptCorrectionEvent],
+        meetingID: MeetingID,
+        baseTranscriptRevision: Int,
+        meetingKey: String,
+        hasCorrectionState: Bool,
+        in database: Database
+    ) throws {
+        guard hasCorrectionState else { return }
+        let correctionRevision = try TranscriptCorrectionRevision.current(
+            meetingID: meetingID,
+            baseTranscriptRevision: baseTranscriptRevision,
+            history: history)
+        guard !correctionRevision.isAccepted else { return }
+        try database.execute(
+            sql: """
+                INSERT INTO transcriptCorrectionSearchState
+                    (meetingID, baseTranscriptRevision, correctionRevision)
+                VALUES (?, ?, ?)
+                """,
+            arguments: [
+                meetingKey,
+                baseTranscriptRevision,
+                correctionRevision.rawValue
+            ])
+    }
+
+    private static func refreshCorrectedTextProjection(
+        history: [TranscriptCorrectionEvent],
+        meetingID: MeetingID,
+        baseTranscriptRevision: Int,
+        hasEmbeddingColumns: Bool,
+        existingEmbeddings: [UUID: PreservedCorrectedEmbedding],
+        in database: Database
+    ) throws {
+        let meetingKey = meetingID.rawValue.uuidString
         let replacements = SegmentCorrectedTextProjection.activeReplacements(
             history: history,
             meetingID: meetingID,
-            baseTranscriptRevision: revision)
+            baseTranscriptRevision: baseTranscriptRevision)
         for replacement in replacements {
             let preserved = existingEmbeddings[replacement.segmentID].flatMap { existing in
                 existing.matches(
                     correctionID: replacement.correctionID,
-                    baseTranscriptRevision: revision,
+                    baseTranscriptRevision: baseTranscriptRevision,
                     text: replacement.text,
                     language: replacement.language) ? existing : nil
             }
@@ -75,9 +146,47 @@ extension MeetingStore {
             // corrected text must never resurrect an unavailable source line.
             try insertCorrectedText(
                 replacement,
-                baseTranscriptRevision: revision,
-                meetingKey: key,
+                baseTranscriptRevision: baseTranscriptRevision,
+                meetingKey: meetingKey,
                 hasEmbeddingColumns: hasEmbeddingColumns,
+                preservedEmbedding: preserved,
+                in: database)
+        }
+    }
+
+    private static func refreshStructuralSearchProjection(
+        history: [TranscriptCorrectionEvent],
+        meetingID: MeetingID,
+        baseTranscriptRevision: Int,
+        meetingKey: String,
+        existingEmbeddings: [UUID: PreservedStructuralEmbedding],
+        in database: Database
+    ) throws {
+        let segmentRecords = try SegmentRecord.fetchAll(
+            database,
+            sql: """
+                SELECT * FROM segment
+                WHERE meetingID = ?
+                  AND deletedAt IS NULL
+                ORDER BY startTime, endTime, id
+                """,
+            arguments: [meetingKey])
+        let segments = try segmentRecords.map { try $0.segment }
+        let structuralRows = TranscriptStructuralSearchProjection.activeRows(
+            history: history,
+            meetingID: meetingID,
+            baseTranscriptRevision: baseTranscriptRevision,
+            segments: segments)
+        for row in structuralRows {
+            let preserved = existingEmbeddings[row.resultID].flatMap { existing in
+                existing.matches(
+                    row,
+                    baseTranscriptRevision: baseTranscriptRevision) ? existing : nil
+            }
+            try insertStructuralSearchRow(
+                row,
+                baseTranscriptRevision: baseTranscriptRevision,
+                meetingKey: meetingKey,
                 preservedEmbedding: preserved,
                 in: database)
         }
@@ -170,6 +279,85 @@ extension MeetingStore {
                 ])
         }
     }
+
+    private static func preservedStructuralEmbeddings(
+        meetingID: MeetingID,
+        hasStructuralProjection: Bool,
+        in database: Database
+    ) throws -> [UUID: PreservedStructuralEmbedding] {
+        guard hasStructuralProjection else { return [:] }
+        let rows = try Row.fetchAll(
+            database,
+            sql: """
+                SELECT resultID, correctionID, baseTranscriptRevision, kind,
+                       text, language, startTime, endTime,
+                       embedding, embeddingFingerprint
+                FROM transcriptStructuralSearchRow
+                WHERE meetingID = ?
+                  AND embedding IS NOT NULL
+                  AND embeddingFingerprint IS NOT NULL
+                """,
+            arguments: [meetingID.rawValue.uuidString])
+        return try Dictionary(uniqueKeysWithValues: rows.map { row in
+            let resultID = try PersistedIdentity.required(
+                row["resultID"],
+                table: "transcriptStructuralSearchRow",
+                column: "resultID")
+            return (resultID, PreservedStructuralEmbedding(
+                correctionID: try PersistedIdentity.required(
+                    row["correctionID"],
+                    table: "transcriptStructuralSearchRow",
+                    column: "correctionID"),
+                baseTranscriptRevision: row["baseTranscriptRevision"],
+                kind: row["kind"],
+                text: row["text"],
+                language: row["language"],
+                startTime: row["startTime"],
+                endTime: row["endTime"],
+                embedding: row["embedding"],
+                embeddingFingerprint: row["embeddingFingerprint"]))
+        })
+    }
+
+    private static func insertStructuralSearchRow(
+        _ row: TranscriptStructuralSearchRow,
+        baseTranscriptRevision: Int,
+        meetingKey: String,
+        preservedEmbedding: PreservedStructuralEmbedding?,
+        in database: Database
+    ) throws {
+        try database.execute(
+            sql: """
+                INSERT INTO transcriptStructuralSearchRow
+                    (resultID, meetingID, correctionID, baseTranscriptRevision,
+                     kind, text, language, startTime, endTime, updatedAt,
+                     embedding, embeddingFingerprint)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+            arguments: [
+                row.resultID.uuidString,
+                meetingKey,
+                row.correctionID.uuidString,
+                baseTranscriptRevision,
+                row.kind.rawValue,
+                row.text,
+                row.language,
+                row.startTime,
+                row.endTime,
+                row.updatedAt,
+                preservedEmbedding?.embedding,
+                preservedEmbedding?.embeddingFingerprint
+            ])
+        for (ordinal, sourceID) in row.sourceSegmentIDs.enumerated() {
+            try database.execute(
+                sql: """
+                    INSERT INTO transcriptStructuralSearchSource
+                        (resultID, ordinal, segmentID)
+                    VALUES (?, ?, ?)
+                    """,
+                arguments: [row.resultID.uuidString, ordinal, sourceID.uuidString])
+        }
+    }
 }
 
 private struct PreservedCorrectedEmbedding {
@@ -190,5 +378,30 @@ private struct PreservedCorrectedEmbedding {
             && self.baseTranscriptRevision == baseTranscriptRevision
             && self.text == text
             && self.language == language
+    }
+}
+
+private struct PreservedStructuralEmbedding {
+    let correctionID: UUID
+    let baseTranscriptRevision: Int
+    let kind: String
+    let text: String
+    let language: String?
+    let startTime: TimeInterval
+    let endTime: TimeInterval
+    let embedding: Data
+    let embeddingFingerprint: String
+
+    func matches(
+        _ row: TranscriptStructuralSearchRow,
+        baseTranscriptRevision: Int
+    ) -> Bool {
+        correctionID == row.correctionID
+            && self.baseTranscriptRevision == baseTranscriptRevision
+            && kind == row.kind.rawValue
+            && text == row.text
+            && language == row.language
+            && startTime == row.startTime
+            && endTime == row.endTime
     }
 }

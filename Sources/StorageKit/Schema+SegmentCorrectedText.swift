@@ -66,4 +66,64 @@ extension StorageSchema {
             }
         }
     }
+
+    /// v38: cardinality-changing transcript corrections receive a disposable
+    /// search identity without impersonating accepted segments. Source rows
+    /// preserve ordered accepted provenance for every split part and merge.
+    static func registerTranscriptStructuralSearchMigration(
+        in migrator: inout DatabaseMigrator
+    ) {
+        migrator.registerMigration("v38") { database in
+            try database.create(table: "transcriptStructuralSearchRow") { table in
+                table.primaryKey("resultID", .text)
+                table.column("meetingID", .text).notNull().indexed()
+                    .references("meeting", onDelete: .cascade)
+                table.column("correctionID", .text).notNull().indexed()
+                    .references("transcriptCorrection", onDelete: .cascade)
+                table.column("baseTranscriptRevision", .integer).notNull()
+                    .check(sql: "baseTranscriptRevision >= 0")
+                table.column("kind", .text).notNull()
+                    .check(sql: "kind IN ('split', 'merge')")
+                table.column("text", .text).notNull()
+                    .check(sql: "length(trim(text)) > 0")
+                table.column("language", .text)
+                    .check(sql: "language IS NULL OR length(trim(language)) > 0")
+                table.column("startTime", .double).notNull()
+                    .check(sql: "startTime >= 0")
+                table.column("endTime", .double).notNull()
+                    .check(sql: "endTime > startTime")
+                table.column("updatedAt", .datetime).notNull()
+                table.column("embedding", .blob)
+                table.column("embeddingFingerprint", .text)
+            }
+            try database.create(table: "transcriptStructuralSearchSource") { table in
+                table.column("resultID", .text).notNull()
+                    .references("transcriptStructuralSearchRow", onDelete: .cascade)
+                table.column("ordinal", .integer).notNull()
+                    .check(sql: "ordinal >= 0")
+                table.column("segmentID", .text).notNull().indexed()
+                    .references("segment", onDelete: .cascade)
+                table.primaryKey(["resultID", "ordinal"])
+                table.uniqueKey(["resultID", "segmentID"])
+            }
+            try database.create(
+                virtualTable: "transcriptStructuralSearch",
+                using: FTS5()
+            ) { table in
+                table.synchronize(withTable: "transcriptStructuralSearchRow")
+                table.tokenizer = .unicode61()
+                table.column("text")
+            }
+
+            let meetingKeys = try String.fetchAll(
+                database,
+                sql: "SELECT DISTINCT meetingID FROM transcriptCorrection")
+            for key in meetingKeys {
+                guard let uuid = UUID(uuidString: key) else { continue }
+                try MeetingStore.refreshTranscriptCorrectionSearchProjection(
+                    meetingID: MeetingID(rawValue: uuid),
+                    in: database)
+            }
+        }
+    }
 }

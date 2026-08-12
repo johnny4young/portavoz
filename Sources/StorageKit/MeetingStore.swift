@@ -132,7 +132,15 @@ public struct SummaryInfo: Sendable {
 public struct SearchHit: Sendable {
     public let meetingID: MeetingID
     public let meetingTitle: String
-    public let segmentID: UUID
+    /// Stable identity of the visible retrieval unit. Accepted and replacement
+    /// rows use the accepted segment UUID; split parts use their part UUID and
+    /// merges use their correction UUID.
+    public let resultID: UUID
+    /// Ordered immutable accepted evidence from which this result was composed.
+    public let sourceSegmentIDs: [UUID]
+    /// Compatibility name for consumers whose retrieval unit predates
+    /// cardinality-changing transcript corrections.
+    public var segmentID: UUID { resultID }
     /// Complete segment content for retrieval; UI surfaces should prefer the
     /// highlighted, bounded `snippet` below.
     public let text: String
@@ -158,7 +166,30 @@ public struct SearchHit: Sendable {
     ) {
         self.meetingID = meetingID
         self.meetingTitle = meetingTitle
-        self.segmentID = segmentID
+        self.resultID = segmentID
+        sourceSegmentIDs = [segmentID]
+        self.text = text
+        self.snippet = snippet
+        self.startTime = startTime
+        self.transcriptRevision = transcriptRevision
+        self.semanticSimilarity = semanticSimilarity
+    }
+
+    init(
+        meetingID: MeetingID,
+        meetingTitle: String,
+        resultID: UUID,
+        sourceSegmentIDs: [UUID],
+        text: String,
+        snippet: String,
+        startTime: TimeInterval,
+        transcriptRevision: Int,
+        semanticSimilarity: Float? = nil
+    ) {
+        self.meetingID = meetingID
+        self.meetingTitle = meetingTitle
+        self.resultID = resultID
+        self.sourceSegmentIDs = sourceSegmentIDs
         self.text = text
         self.snippet = snippet
         self.startTime = startTime

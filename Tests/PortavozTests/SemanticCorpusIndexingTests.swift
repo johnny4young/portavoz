@@ -1,7 +1,7 @@
 import ApplicationKit
 import Foundation
 import PortavozCore
-import StorageKit
+@testable import StorageKit
 import XCTest
 
 final class SemanticCorpusIndexingTests: XCTestCase {
@@ -216,6 +216,103 @@ final class SemanticCorpusIndexingTests: XCTestCase {
         let restoredHits = try await store.searchSemantic([1, 0], limit: 1)
         XCTAssertFalse(requiresRestoreIndex)
         XCTAssertEqual(restoredHits.map(\.text), [acceptedText])
+    }
+
+    func testBackgroundMaintenanceIndexesMergedResultWithAcceptedProvenance() async throws {
+        let (store, segments) = try await seededStore(texts: [
+            "The launch remains scheduled for Friday afternoon.",
+            "The review follows on Monday morning."
+        ])
+        let operation = IndexSemanticCorpus(store: store)
+        _ = try await operation.all(using: DeterministicSemanticEmbedder())
+        let merge = TranscriptCorrectionEvent(
+            meetingID: segments[0].meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: segments.map(\.id),
+            kind: .merge(replacementText: nil, language: nil),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_110))
+        _ = try await store.appendTranscriptCorrection(merge)
+
+        let candidates = try await store.segmentsNeedingEmbeddings()
+        let indexed = try await operation.nextBatch(
+            using: DeterministicSemanticEmbedder(),
+            limit: 1)
+        let hits = try await store.searchSemantic([1, 0], limit: 1)
+
+        XCTAssertEqual(candidates.map(\.id), [merge.id])
+        XCTAssertEqual(candidates.map(\.source), [
+            .structural(correctionID: merge.id)
+        ])
+        XCTAssertEqual(indexed.embeddedSegments, 1)
+        XCTAssertEqual(hits.map(\.resultID), [merge.id])
+        XCTAssertEqual(hits.first?.sourceSegmentIDs, segments.map(\.id))
+
+        // A disposable refresh must retain the exact structural vector.
+        try await store.database.write { database in
+            try MeetingStore.refreshTranscriptCorrectionSearchProjection(
+                meetingID: segments[0].meetingID,
+                in: database)
+        }
+        let pendingAfterRefresh = try await store.segmentsNeedingEmbeddings()
+        XCTAssertTrue(pendingAfterRefresh.isEmpty)
+    }
+
+    func testSplitCandidatesPublishIndependentlyAndRestoreRejectsStalePart() async throws {
+        let (store, segments) = try await seededStore(texts: [
+            "The launch remains scheduled after the final review."
+        ])
+        let source = try XCTUnwrap(segments.first)
+        let firstPartID = UUID()
+        let secondPartID = UUID()
+        let split = TranscriptCorrectionEvent(
+            meetingID: source.meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [source.id],
+            kind: .split([
+                TranscriptCorrectionPart(
+                    id: firstPartID,
+                    text: "The launch remains scheduled",
+                    speakerID: nil,
+                    language: "en",
+                    startTime: 0,
+                    endTime: 2),
+                TranscriptCorrectionPart(
+                    id: secondPartID,
+                    text: "after the final review",
+                    speakerID: nil,
+                    language: "en",
+                    startTime: 2,
+                    endTime: 4)
+            ]),
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_120))
+        _ = try await store.appendTranscriptCorrection(split)
+        let candidates = try await store.segmentsNeedingEmbeddings()
+
+        XCTAssertEqual(candidates.map(\.id), [firstPartID, secondPartID])
+        XCTAssertEqual(candidates.map(\.source), [
+            .structural(correctionID: split.id),
+            .structural(correctionID: split.id)
+        ])
+
+        let restore = TranscriptCorrectionEvent(
+            meetingID: source.meetingID,
+            baseTranscriptRevision: 0,
+            targetSegmentIDs: [source.id],
+            kind: .restore,
+            sourceDeviceID: UUID(),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_121),
+            supersedesCorrectionID: split.id)
+        _ = try await store.appendTranscriptCorrection(restore)
+        let stalePublication = try await store.storeEmbeddings(
+            Dictionary(uniqueKeysWithValues: candidates.map { ($0.id, [Float(1), 0]) }),
+            for: candidates)
+
+        XCTAssertTrue(stalePublication.publishedSegmentIDs.isEmpty)
+        XCTAssertEqual(
+            stalePublication.skippedSegmentIDs,
+            Set([firstPartID, secondPartID]))
     }
 
     func testProfileChangeInvalidatesAndRebuildsTheCompleteCorpus() async throws {

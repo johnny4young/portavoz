@@ -8,7 +8,7 @@ extension MeetingStore {
     private static let acceptedSemanticScanSQL = """
         SELECT segment.embedding AS embedding,
                segment.rowid AS rowID,
-               0 AS isCorrected,
+               0 AS sourceKind,
                NULL AS correctionID
         FROM segment
         WHERE segment.embedding IS NOT NULL
@@ -24,7 +24,7 @@ extension MeetingStore {
     private static let correctedSemanticScanSQL = """
         SELECT segment.embedding AS embedding,
                segment.rowid AS rowID,
-               0 AS isCorrected,
+               0 AS sourceKind,
                NULL AS correctionID
         FROM segment
         WHERE segment.embedding IS NOT NULL
@@ -37,7 +37,7 @@ extension MeetingStore {
         UNION ALL
         SELECT corrected.embedding AS embedding,
                segment.rowid AS rowID,
-               1 AS isCorrected,
+               1 AS sourceKind,
                corrected.correctionID AS correctionID
         FROM segmentCorrectedText AS corrected
         JOIN segment ON segment.id = corrected.segmentID
@@ -51,7 +51,22 @@ extension MeetingStore {
           AND segment.deletedAt IS NULL
           AND meeting.deletedAt IS NULL
           AND \(currentCorrectedTextSourceSQL)
-        ORDER BY rowID ASC, isCorrected ASC
+        UNION ALL
+        SELECT structural.embedding AS embedding,
+               structural.rowid AS rowID,
+               2 AS sourceKind,
+               structural.correctionID AS correctionID
+        FROM transcriptStructuralSearchRow AS structural
+        JOIN meeting ON meeting.id = structural.meetingID
+        JOIN transcriptCorrectionSearchState AS correctionState
+          ON correctionState.meetingID = structural.meetingID
+        JOIN transcriptCorrection AS correction
+          ON correction.id = structural.correctionID
+        WHERE structural.embedding IS NOT NULL
+          AND structural.embeddingFingerprint = ?
+          AND meeting.deletedAt IS NULL
+          AND \(currentStructuralTextSourceSQL)
+        ORDER BY rowID ASC, sourceKind ASC
         """
 
     /// Exact cosine top-k over every embedded segment. Embeddings are
@@ -166,7 +181,7 @@ extension MeetingStore {
         profileFingerprint: String,
         in database: Database
     ) throws -> (sql: String, arguments: StatementArguments) {
-        let hasCorrectedVectors = try Bool.fetchOne(
+        let hasCorrectionVectors = try Bool.fetchOne(
             database,
             sql: """
                 SELECT EXISTS (
@@ -185,12 +200,26 @@ extension MeetingStore {
                       AND \(currentCorrectedTextSourceSQL)
                     LIMIT 1
                 )
+                OR EXISTS (
+                    SELECT 1
+                    FROM transcriptStructuralSearchRow AS structural
+                    JOIN meeting ON meeting.id = structural.meetingID
+                    JOIN transcriptCorrectionSearchState AS correctionState
+                      ON correctionState.meetingID = structural.meetingID
+                    JOIN transcriptCorrection AS correction
+                      ON correction.id = structural.correctionID
+                    WHERE structural.embedding IS NOT NULL
+                      AND structural.embeddingFingerprint = ?
+                      AND meeting.deletedAt IS NULL
+                      AND \(currentStructuralTextSourceSQL)
+                    LIMIT 1
+                )
                 """,
-            arguments: [profileFingerprint]) ?? false
-        if hasCorrectedVectors {
+            arguments: [profileFingerprint, profileFingerprint]) ?? false
+        if hasCorrectionVectors {
             return (
                 correctedSemanticScanSQL,
-                [profileFingerprint, profileFingerprint])
+                [profileFingerprint, profileFingerprint, profileFingerprint])
         }
         return (acceptedSemanticScanSQL, [profileFingerprint])
     }
@@ -198,12 +227,26 @@ extension MeetingStore {
     private static func semanticCandidateSource(
         from row: Row
     ) throws -> SemanticEmbeddingCandidate.Source {
-        let isCorrected: Bool = row["isCorrected"]
-        guard isCorrected else { return .accepted }
-        return .corrected(correctionID: try PersistedIdentity.required(
-            row["correctionID"],
-            table: "segmentCorrectedText",
-            column: "correctionID"))
+        let sourceKind: Int = row["sourceKind"]
+        switch sourceKind {
+        case 0:
+            return .accepted
+        case 1:
+            return .corrected(correctionID: try PersistedIdentity.required(
+                row["correctionID"],
+                table: "segmentCorrectedText",
+                column: "correctionID"))
+        case 2:
+            return .structural(correctionID: try PersistedIdentity.required(
+                row["correctionID"],
+                table: "transcriptStructuralSearchRow",
+                column: "correctionID"))
+        default:
+            throw StorageError.invalidPersistedValue(
+                table: "transcriptStructuralSearchRow",
+                column: "semanticSource",
+                value: String(sourceKind))
+        }
     }
 
     /// Bounded insertion into one variant's top-k, preserving the exact
@@ -360,11 +403,18 @@ extension MeetingStore {
             if case .corrected = candidate.source { return candidate.rowID }
             return nil
         }
+        let structuralRowIDs = candidates.compactMap { candidate in
+            if case .structural = candidate.source { return candidate.rowID }
+            return nil
+        }
         var hits = try semanticAcceptedHits(
             in: database,
             rowIDs: acceptedRowIDs)
         hits.merge(
             try semanticCorrectedHits(in: database, rowIDs: correctedRowIDs),
+            uniquingKeysWith: { current, _ in current })
+        hits.merge(
+            try semanticStructuralHits(in: database, rowIDs: structuralRowIDs),
             uniquingKeysWith: { current, _ in current })
         return try candidates.map { candidate in
             let key = SemanticCandidateKey(
@@ -377,7 +427,8 @@ extension MeetingStore {
             return SearchHit(
                 meetingID: hit.meetingID,
                 meetingTitle: hit.meetingTitle,
-                segmentID: hit.segmentID,
+                resultID: hit.resultID,
+                sourceSegmentIDs: hit.sourceSegmentIDs,
                 text: hit.text,
                 snippet: hit.snippet,
                 startTime: hit.startTime,
@@ -487,6 +538,52 @@ extension MeetingStore {
         return hits
     }
 
+    private static func semanticStructuralHits(
+        in database: Database,
+        rowIDs: [Int64]
+    ) throws -> [SemanticCandidateKey: SearchHit] {
+        var hits: [SemanticCandidateKey: SearchHit] = [:]
+        hits.reserveCapacity(rowIDs.count)
+        for lowerBound in stride(from: 0, to: rowIDs.count, by: 500) {
+            let upperBound = min(lowerBound + 500, rowIDs.count)
+            let chunk = Array(rowIDs[lowerBound..<upperBound])
+            let rows = try Row.fetchAll(
+                database,
+                sql: SemanticSearchSQL.structuralHits.replacingOccurrences(
+                    of: SemanticSearchSQL.rowIDsPlaceholder,
+                    with: databaseQuestionMarks(count: chunk.count)),
+                arguments: StatementArguments(chunk))
+            for row in rows {
+                let rowID: Int64 = row["rowID"]
+                let correctionID = try PersistedIdentity.required(
+                    row["correctionID"],
+                    table: "transcriptStructuralSearchRow",
+                    column: "correctionID")
+                let source = SemanticEmbeddingCandidate.Source.structural(
+                    correctionID: correctionID)
+                let resultID = try PersistedIdentity.required(
+                    row["segmentID"],
+                    table: "transcriptStructuralSearchRow",
+                    column: "resultID")
+                hits[SemanticCandidateKey(rowID: rowID, source: source)] = SearchHit(
+                    meetingID: MeetingID(rawValue: try PersistedIdentity.required(
+                        row["meetingID"],
+                        table: "transcriptStructuralSearchRow",
+                        column: "meetingID")),
+                    meetingTitle: row["title"],
+                    resultID: resultID,
+                    sourceSegmentIDs: try sourceSegmentIDs(
+                        row["sourceSegmentIDs"],
+                        resultID: resultID.uuidString),
+                    text: row["text"],
+                    snippet: row["text"],
+                    startTime: row["startTime"],
+                    transcriptRevision: row["transcriptRevision"])
+            }
+        }
+        return hits
+    }
+
     static func blob(from vector: [Float]) -> Data {
         vector.withUnsafeBufferPointer { Data(buffer: $0) }
     }
@@ -553,4 +650,36 @@ private struct SemanticCandidate {
 private struct SemanticCandidateKey: Hashable {
     let rowID: Int64
     let source: SemanticEmbeddingCandidate.Source
+}
+
+private enum SemanticSearchSQL {
+    static let rowIDsPlaceholder = "__ROW_IDS__"
+    static let structuralHits = """
+        SELECT structural.rowid AS rowID,
+               structural.resultID AS segmentID,
+               structural.meetingID AS meetingID,
+               structural.startTime AS startTime,
+               structural.text AS text,
+               structural.correctionID AS correctionID,
+               meeting.title AS title,
+               meeting.transcriptRevision AS transcriptRevision,
+               (
+                   SELECT GROUP_CONCAT(orderedSource.segmentID, ',')
+                   FROM (
+                       SELECT source.segmentID
+                       FROM transcriptStructuralSearchSource AS source
+                       WHERE source.resultID = structural.resultID
+                       ORDER BY source.ordinal
+                   ) AS orderedSource
+               ) AS sourceSegmentIDs
+        FROM transcriptStructuralSearchRow AS structural
+        JOIN meeting ON meeting.id = structural.meetingID
+        JOIN transcriptCorrectionSearchState AS correctionState
+          ON correctionState.meetingID = structural.meetingID
+        JOIN transcriptCorrection AS correction
+          ON correction.id = structural.correctionID
+        WHERE structural.rowid IN (__ROW_IDS__)
+          AND meeting.deletedAt IS NULL
+          AND \(MeetingStore.currentStructuralTextSourceSQL)
+        """
 }

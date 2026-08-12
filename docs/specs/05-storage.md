@@ -11,6 +11,10 @@ D200 adds content-free, independently leased scheduling for semantic
 maintenance without changing meeting lifecycle or replacing the vector cursor.
 D330 gives current corrected replacement text its own revision-fenced semantic
 lane while retaining the immutable accepted vector for restore.
+D334 gives split parts and merges stable structural result identities with
+ordered accepted-source provenance across lexical, semantic, and Spotlight
+reads; suppression intentionally has no result and restore reuses accepted
+identity.
 D235 adds correction transaction and replica-replay recovery gates without a
 schema change.
 D325 adds bounded literal meeting, canonical-person, and confirmed-commitment
@@ -102,6 +106,9 @@ Singular camelCase tables, 1:1 with Codable records:
 | `segmentCorrectedText` (v33/v37) | segmentID (TEXT PK, FK cascade), meetingID (FK cascade, indexed), correctionID (UNIQUE, FK cascade), baseTranscriptRevision, non-empty text, optional language, updatedAt, optional embedding BLOB and embeddingFingerprint; disposable one-row-per-segment projection of the active `replaceText` correction (D313), rebuilt transactionally with every correction/revision write and backfilled at migration; v37's derived vector belongs only to the exact current corrected source (D330) |
 | `segmentCorrectedSearch` (v33) | FTS5 external-content over segmentCorrectedText.text, synchronized by GRDB triggers exactly like `segmentSearch` |
 | `transcriptCorrectionSearchState` (v36) | meetingID (TEXT PK, FK cascade), baseTranscriptRevision, 64-character effective correctionRevision; sparse content-free lineage for active overlays only, rebuilt in the same transaction as corrected text and used to fence Spotlight summaries/text (D329) |
+| `transcriptStructuralSearchRow` (v38) | resultID (TEXT PK), indexed meetingID/correctionID FK cascade, baseTranscriptRevision, checked split/merge kind, non-empty text, optional language, start/end time, updatedAt, optional embedding BLOB and embeddingFingerprint; disposable current structural retrieval units keyed by split-part UUID or merge-correction UUID (D334) |
+| `transcriptStructuralSearchSource` (v38) | resultID (FK cascade), ordered accepted segmentID (indexed FK cascade), composite PK and unique result+source; exact immutable provenance for each structural retrieval unit |
+| `transcriptStructuralSearch` (v38) | FTS5 external-content over transcriptStructuralSearchRow.text, synchronized by GRDB triggers |
 | `skillExecutionEvent` (v31) | append-only predecessor-linked confirmation/begin/succeed/fail/cancel history with attempt, typed failure category, and unclamped occurrence time; no message or meeting-derived content (D293) |
 | `skillExecutionState` (v31) | one idempotency-keyed current projection per proposal with the latest event, attempt, and monotonic updatedAt; unknown future states fail closed as possibly executed rather than retryable (D293) |
 | `skillOfferDismissal` (v34) | offerKey (TEXT PK, stable skill+subject intent identity), skillID, dismissedAt; durable terminal "the user said no" for one skill offer (D316) — deliberately keyed by intent, never by the per-render proposal ID |
@@ -654,9 +661,12 @@ even when the correction fingerprint is unchanged), and backfilled by the v33
 migration itself. The same refresh owns v36's sparse
 `transcriptCorrectionSearchState`: accepted readings have no row; an active
 overlay stores only its accepted revision and opaque correction revision.
-`search` unions both text lanes under one bm25 ordering with a
-query-time revision fence; a segment can never serve from both, and citation
-identity stays the accepted `segmentID`. Restored rows become eligible again.
+`search` unions accepted, replacement, and structural text lanes under one bm25
+ordering with query-time revision and correction fences. A source segment can
+never serve from accepted and corrected/structural lanes simultaneously.
+Replacement identity stays the accepted segment; split parts use part UUIDs,
+merges use correction UUIDs, and every result carries ordered accepted
+`sourceSegmentIDs`. Restored rows become eligible again.
 Summary and Apuntador publication
 now require exact current accepted-transcript and correction revisions from
 the linked `GenerationRun`. Summary cache lookup applies the same requirement,
@@ -664,34 +674,38 @@ and malformed provenance fails closed. Schema v36 adds only the sparse derived
 lineage needed by bounded Spotlight reads; the existing history and
 generation/maintenance tables remain the authority.
 
-### Corrected semantic lane (D330)
+### Correction-aware semantic lanes (D330/D334)
 
 Schema v37 adds nullable `embedding` and `embeddingFingerprint` columns to the
 disposable `segmentCorrectedText` row. The accepted vector remains on
 `segment`, so restore re-exposes immutable accepted material without a model
 call. Projection refresh preserves a corrected vector only when correction ID,
 accepted transcript revision, corrected text, and language match exactly;
-source drift deletes the derived value with the old projection row. Profile
-invalidation clears incompatible vectors in both tables.
+source drift deletes the derived value with the old projection row. Schema v38
+stores the same derived fields on structural results and preserves a vector
+only while result identity, correction, revision, kind, text, language, and
+timing match exactly. Profile invalidation clears incompatible accepted,
+replacement, and structural vectors.
 
-`segmentsNeedingEmbeddings` returns one lane per accepted segment identity and
-rejects non-positive limits before SQL. A corrected candidate carries its
-correction ID in addition to segment, meeting, accepted revision, and exact
-text. `storeEmbeddings(_:for:profile:)` publishes it only while the projection,
-live terminal replacement event, sparse correction state, meeting revision,
-segment availability, exact text, missing-vector state, and profile contract
-still agree. Superseded, conflicting, stale, deleted, or unfenced work is a
-content-free skip. The existing `NULL` vector remains the only durable
-maintenance cursor and the existing semantic source generation/lease remains
-the only scheduler identity.
+`segmentsNeedingEmbeddings` returns one current accepted, replacement, split-
+part, or merge result and rejects non-positive limits before SQL. Replacement
+and structural candidates carry their correction ID; structural candidate IDs
+are the visible part/merge result UUID. `storeEmbeddings(_:for:profile:)`
+publishes only while projection, terminal correction event, sparse correction
+state, meeting revision, live accepted source relations, exact text, missing-
+vector state, and profile contract agree. Superseded, conflicting, restored,
+stale, deleted, or unfenced work is a content-free skip. The existing `NULL`
+vector remains the only durable maintenance cursor and the existing semantic
+source generation/lease remains the only scheduler identity.
 
-Exact semantic retrieval performs one corrected-vector `EXISTS` probe in the
-same read snapshot. With no current corrected vector it retains the established
-accepted-only streamed scan and ordering. Otherwise one ordered `UNION ALL`
-stream scores accepted and corrected rows once per query batch. Authoritative
-materialization revalidates the same current source and returns corrected text
-under the accepted segment ID; structural split/merge/suppress output remains
-excluded because it has no shared result identity. Storage ownership is split
+Exact semantic retrieval performs one correction-vector `EXISTS` probe in the
+same read snapshot. With no current replacement or structural vector it retains
+the established accepted-only streamed scan and ordering. Otherwise one ordered
+`UNION ALL` stream scores accepted, replacement, and structural rows once per
+query batch. Authoritative materialization revalidates the same current source,
+returns replacement text under accepted identity, and returns split/merge text
+under structural result identity plus accepted provenance. Suppress remains
+absent and restore re-exposes cached accepted vectors. Storage ownership is split
 between `MeetingStore+Search.swift` (FTS),
 `MeetingStore+SemanticEmbedding.swift` (maintenance/publication), and
 `MeetingStore+SemanticSearch.swift` (retrieval/projection). The separate D210
@@ -1156,12 +1170,11 @@ accepted-only library keeps D85's fast transcript statement while still
 validating D329 summary provenance; active correction history or sparse state
 selects the correction-aware CTEs in the same SQLite snapshot. Both set-based
 paths select every live meeting, its newest eligible summary across all recipes,
-and its first 40 text rows ordered by accepted start time and rowid; neither
-performs per-meeting reads. The corrected text union
-reuses D313: unaffected accepted rows and current-revision
-`segmentCorrectedText` rows serve together; speaker-only changes retain text;
-active split/merge/suppress targets remain omitted; restore reactivates accepted
-text. Direct/legacy summaries serve only for an accepted reading, while a
+and its first 40 current text rows ordered by start time, rowid, and result
+identity; neither performs per-meeting reads. The correction-aware union serves
+unaffected accepted rows, current-revision replacements, split parts, and merges
+together; speaker-only changes retain text, suppress remains omitted, and
+restore reactivates accepted text. Direct/legacy summaries serve only for an accepted reading, while a
 generated corrected summary must carry the exact sparse v36 revision. Invalid
 JSON, missing runs, stale lineage, or active history without current sparse
 state omits the summary rather than failing the library read or publishing stale

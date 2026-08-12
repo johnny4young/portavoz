@@ -367,6 +367,32 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 "El rollout del modelo queda para el viernes. ¿Cuándo es el rollout?"
             ].waitForExistence(timeout: 5),
             "an explicit merge must preserve both accepted texts")
+
+        // Structural search uses the merge's stable composed-row identity,
+        // so a query may span the two accepted source boundaries and still
+        // navigate to the exact first timestamp.
+        let search = app.textFields["library-search-field"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("viernes cuándo")
+        let structuralHit = app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier BEGINSWITH 'library-search-hit-'"))
+            .firstMatch
+        XCTAssertTrue(
+            structuralHit.waitForExistence(timeout: 10),
+            "a merge must be searchable across accepted source boundaries")
+        structuralHit.click()
+        let currentTime = app.staticTexts["player-current-time"]
+        XCTAssertTrue(currentTime.waitForExistence(timeout: 5))
+        let mergedSeek = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [mergedSeek], timeout: 10)
+
+        search.click()
+        search.typeKey("a", modifierFlags: .command)
+        search.typeKey(.delete, modifierFlags: [])
         XCTAssertTrue(correct.waitForExistence(timeout: 5))
         correct.click()
         let undo = app.buttons["transcript-structure-undo"]
@@ -378,12 +404,26 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.staticTexts["El rollout del modelo queda para el viernes."]
                 .waitForExistence(timeout: 5))
+        search.click()
+        search.typeText("viernes")
+        let acceptedHit = app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier BEGINSWITH 'library-search-hit-'"))
+            .firstMatch
+        XCTAssertTrue(
+            acceptedHit.waitForExistence(timeout: 10),
+            "restore-based merge undo must reactivate accepted search identity")
         XCTAssertTrue(correct.waitForExistence(timeout: 5))
         correct.click()
         let hide = app.buttons["transcript-structure-suppress"]
         XCTAssertTrue(hide.waitForExistence(timeout: 5))
         hide.click()
         app.buttons["transcript-structure-confirm"].click()
+
+        let suppressed = expectation(
+            for: NSPredicate(format: "exists == false"),
+            evaluatedWith: acceptedHit)
+        wait(for: [suppressed], timeout: 10)
 
         let hiddenLines = app.buttons["transcript-hidden-lines"]
         XCTAssertTrue(
@@ -405,6 +445,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             app.staticTexts["El rollout del modelo queda para el viernes."]
                 .waitForExistence(timeout: 5),
             "restore must recover the accepted row without erasing history")
+        XCTAssertTrue(
+            acceptedHit.waitForExistence(timeout: 10),
+            "restoring hidden speech must reactivate its accepted search result")
     }
 
     @MainActor

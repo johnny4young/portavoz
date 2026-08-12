@@ -6,6 +6,8 @@ public struct RAGPassage: Sendable, Equatable {
     /// Exact transcript identity when this passage came from a stored segment.
     /// Cross-meeting search callers may omit it and keep timestamp-only context.
     public let segmentID: UUID?
+    /// Ordered accepted transcript evidence behind the retrieval unit.
+    public let sourceSegmentIDs: [UUID]
     public let meetingID: MeetingID
     public let meetingTitle: String
     public let timestamp: TimeInterval
@@ -14,6 +16,7 @@ public struct RAGPassage: Sendable, Equatable {
 
     public init(
         segmentID: UUID? = nil,
+        sourceSegmentIDs: [UUID]? = nil,
         meetingID: MeetingID,
         meetingTitle: String,
         timestamp: TimeInterval,
@@ -21,6 +24,7 @@ public struct RAGPassage: Sendable, Equatable {
         text: String
     ) {
         self.segmentID = segmentID
+        self.sourceSegmentIDs = sourceSegmentIDs ?? segmentID.map { [$0] } ?? []
         self.meetingID = meetingID
         self.meetingTitle = meetingTitle
         self.timestamp = timestamp

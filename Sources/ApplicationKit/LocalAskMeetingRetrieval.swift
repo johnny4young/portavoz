@@ -262,6 +262,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private static func citation(_ hit: SearchHit) -> AskCitation {
         AskCitation(
             segmentID: hit.segmentID,
+            sourceSegmentIDs: hit.sourceSegmentIDs,
             meetingID: hit.meetingID,
             meetingTitle: hit.meetingTitle,
             timestamp: hit.startTime,
@@ -274,6 +275,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             meetingID: hit.meetingID,
             meetingTitle: hit.meetingTitle,
             segmentID: hit.segmentID,
+            sourceSegmentIDs: hit.sourceSegmentIDs,
             snippet: hit.snippet,
             timestamp: hit.startTime)
     }

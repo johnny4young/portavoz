@@ -5,10 +5,9 @@ import XCTest
 
 @testable import StorageKit
 
-/// T28b/D313: a corrected word must be findable, the stale original must not
-/// masquerade as current, and the citation identity of every hit stays the
-/// accepted segment — the invariant that keeps RRF fusion, evidence linking,
-/// and navigation working unchanged.
+/// Current correction search: accepted replacements retain accepted identity;
+/// split and merge results use their composed row identity while exposing
+/// ordered accepted provenance.
 final class SegmentCorrectedTextSearchTests: XCTestCase {
     private let sourceDeviceID = UUID(
         uuidString: "00000000-0000-4000-9000-000000000002")!
@@ -74,6 +73,88 @@ final class SegmentCorrectedTextSearchTests: XCTestCase {
         XCTAssertTrue(hits.isEmpty, "structural corrections keep today's exclusion")
         let projected = try await correctedRowCount(fixture)
         XCTAssertEqual(projected, 0)
+    }
+
+    func testSplitPartsSearchIndependentlyWithStableResultIdentity() async throws {
+        let fixture = try await makeFixture(texts: ["alpha launch beta review"])
+        let firstPartID = id(501)
+        let secondPartID = id(502)
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            211,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .split([
+                TranscriptCorrectionPart(
+                    id: firstPartID,
+                    text: "alpha launch",
+                    speakerID: fixture.firstSpeaker.id,
+                    language: "en",
+                    startTime: 0,
+                    endTime: 1),
+                TranscriptCorrectionPart(
+                    id: secondPartID,
+                    text: "beta review",
+                    speakerID: fixture.firstSpeaker.id,
+                    language: "en",
+                    startTime: 1,
+                    endTime: 2)
+            ])))
+
+        let first = try await fixture.store.search("alpha")
+        let second = try await fixture.store.search("beta")
+        let spanning = try await fixture.store.search("launch beta")
+
+        XCTAssertEqual(first.map(\.resultID), [firstPartID])
+        XCTAssertEqual(second.map(\.resultID), [secondPartID])
+        XCTAssertEqual(first.first?.sourceSegmentIDs, [fixture.segments[0].id])
+        XCTAssertEqual(second.first?.sourceSegmentIDs, [fixture.segments[0].id])
+        XCTAssertTrue(
+            spanning.isEmpty,
+            "terms split across two visible rows must not masquerade as one hit")
+    }
+
+    func testMergeSearchesAcrossAcceptedBoundariesWithOrderedProvenance() async throws {
+        let fixture = try await makeFixture(texts: [
+            "the atlas rollout starts Monday",
+            "an unrelated planning line"
+        ])
+        let merge = event(
+            212,
+            fixture: fixture,
+            targets: fixture.segments.map(\.id),
+            kind: .merge(replacementText: nil, language: nil))
+        _ = try await fixture.store.appendTranscriptCorrection(merge)
+
+        let hits = try await fixture.store.search("Monday unrelated")
+
+        XCTAssertEqual(hits.map(\.resultID), [merge.id])
+        XCTAssertEqual(hits.first?.sourceSegmentIDs, fixture.segments.map(\.id))
+        XCTAssertEqual(
+            hits.first?.text,
+            "the atlas rollout starts Monday an unrelated planning line")
+    }
+
+    func testRestoreAfterMergeRemovesStructuralIdentityAndReactivatesSources() async throws {
+        let fixture = try await makeFixture(texts: ["alpha launch", "beta review"])
+        let merge = event(
+            213,
+            fixture: fixture,
+            targets: fixture.segments.map(\.id),
+            kind: .merge(replacementText: nil, language: nil))
+        _ = try await fixture.store.appendTranscriptCorrection(merge)
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            214,
+            fixture: fixture,
+            targets: merge.targetSegmentIDs,
+            kind: .restore,
+            supersedes: merge.id))
+
+        let spanning = try await fixture.store.search("launch beta")
+        let first = try await fixture.store.search("alpha")
+        let second = try await fixture.store.search("beta")
+        XCTAssertTrue(spanning.isEmpty)
+        XCTAssertEqual(first.map(\.resultID), [fixture.segments[0].id])
+        XCTAssertEqual(second.map(\.resultID), [fixture.segments[1].id])
     }
 
     func testRestoreReturnsTheLineToItsAcceptedText() async throws {
@@ -252,6 +333,44 @@ final class SegmentCorrectedTextSearchTests: XCTestCase {
         XCTAssertEqual(candidates.map(\.id), [segmentID])
         XCTAssertEqual(candidates.map(\.text), ["the corrected semantic wording stands"])
         XCTAssertEqual(candidates.map(\.source), [.corrected(correctionID: correctionID)])
+    }
+
+    func testMigrationV38BackfillsStructuralSearchRows() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("structural-search-backfill-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let databaseURL = directory.appendingPathComponent("library.sqlite")
+        let mergeID: UUID
+        let sources: [UUID]
+
+        do {
+            let fixture = try await makeFixture(
+                texts: ["alpha launch", "beta review"],
+                databaseURL: databaseURL)
+            let merge = event(
+                215,
+                fixture: fixture,
+                targets: fixture.segments.map(\.id),
+                kind: .merge(replacementText: nil, language: nil))
+            _ = try await fixture.store.appendTranscriptCorrection(merge)
+            mergeID = merge.id
+            sources = fixture.segments.map(\.id)
+            try await fixture.store.database.write { database in
+                try database.execute(sql: "DROP TABLE transcriptStructuralSearch")
+                try database.execute(sql: "DROP TABLE transcriptStructuralSearchSource")
+                try database.execute(sql: "DROP TABLE transcriptStructuralSearchRow")
+                try database.execute(
+                    sql: "DELETE FROM grdb_migrations WHERE identifier = 'v38'")
+            }
+        }
+
+        let reopened = try MeetingStore(databaseURL: databaseURL)
+        let hits = try await reopened.search("launch beta")
+
+        XCTAssertEqual(hits.map(\.resultID), [mergeID])
+        XCTAssertEqual(hits.first?.sourceSegmentIDs, sources)
     }
 
     // MARK: - Pure projection policy

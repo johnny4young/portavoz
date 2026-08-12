@@ -99,12 +99,12 @@ final class MeetingQuestionContinuityStorageTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { db in
-            XCTAssertEqual(StorageSchema.version, 37)
+            XCTAssertEqual(StorageSchema.version, 38)
             XCTAssertEqual(
                 try String.fetchAll(
                     db,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v37")
+                "v38")
             XCTAssertEqual(
                 try Set(db.columns(in: "meetingQuestion").map(\.name)),
                 [
