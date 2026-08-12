@@ -52,9 +52,22 @@ extension AppServices {
     ) async throws -> SkillControlCenterReceiptInspection {
         try await LoadSkillReceiptInspection(store: store).execute(proposalID)
     }
+
+    func revokeWaitingSkillExecution(
+        proposalID: UUID
+    ) async throws -> WaitingSkillExecutionRevocationOutcome {
+        if usesTemporaryMeetingStore,
+           ProcessInfo.processInfo.arguments.contains(
+               "-simulate-skill-receipt-revoke-unavailable") {
+            throw SimulatedSkillReceiptRevocationFailure()
+        }
+        return try await RevokeWaitingSkillExecution(store: store)
+            .execute(proposalID)
+    }
 }
 
 private struct SimulatedSkillControlFailure: Error {}
 private struct SimulatedSkillReceiptScopeFailure: Error {}
 private struct SimulatedSkillProposalFailure: Error {}
 private struct SimulatedSkillProposalDismissalFailure: Error {}
+private struct SimulatedSkillReceiptRevocationFailure: Error {}

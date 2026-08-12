@@ -397,10 +397,10 @@ relationship and checks the durable dismissal inside the claim transaction
 before granting any new owner, while an exact owner that committed first stays
 idempotently resolvable. A dismissal that commits first therefore blocks an
 already-open stale confirmation without adding preview or subject identity to
-Settings. No Settings confirmation, standing rule,
-receipt-level workflow action, or execution authority is introduced.
+Settings. No Settings confirmation, standing rule, or execution authority is
+introduced.
 
-Selecting one receipt opens a read-only AUTO-6 inspection projection. Storage
+Selecting one receipt opens a content-free AUTO-6 inspection projection. Storage
 loads its current state and predecessor-linked event chain in one SQLite read
 snapshot, rejects unknown typed failure categories, and preserves causal
 insertion order even when wall-clock timestamps move backward. StorageKit also
@@ -411,7 +411,20 @@ audit evidence. Inspection materializes at most 256 events and rejects a longer
 chain after a bounded 257-row probe. The sheet shows only status, attempt,
 typed category, and time; it never receives the
 idempotency key, proposal arguments, destination, result, or meeting material,
-and its retry action retries only the read.
+and its inspection-error retry retries only the read.
+
+After that inspection verifies the current state is `confirmed`, the sheet may
+send only the proposal UUID through `RevokeWaitingSkillExecution`. Its narrow
+storage port exposes only the existing cancellation transition: it cannot
+claim, begin, settle, reconstruct, execute, or retry an effect. SQLite
+serializes cancellation against `beginSkillExecution`. Cancellation first
+writes the append-only `cancel` event and terminal `dismissed` projection;
+begin first makes revocation unavailable because the effect may already have
+crossed its handoff boundary. A thrown mutation keeps the verified Waiting
+receipt and an inline retry. A verified revoked or unavailable outcome reloads
+both inspection and the selected activity scope from durable authority. No
+idempotency key, offer key, arguments, subject identity, destination, result,
+or meeting material crosses into SwiftUI.
 The external email and Secret Gist adapters store no reusable consent: each
 complete preview, boundary warning, and submit action supplies authority for
 that proposal only. No standing-rule control exists for irreversible or

@@ -4205,11 +4205,43 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(receiptInspection.contains("case inconsistentHistory"))
         XCTAssertFalse(receiptInspection.contains(".idempotencyKey"))
         XCTAssertTrue(receiptSheet.contains("skill-receipt-inspection-privacy"))
-        XCTAssertTrue(receiptSheet.contains("never runs or retries a Skill"))
+        XCTAssertTrue(receiptSheet.contains(
+            "never executes or retries a Skill effect"))
         XCTAssertTrue(decisions.contains("## D317"))
         XCTAssertTrue(decisions.contains("## D333"))
         XCTAssertTrue(decisions.contains("## D335"))
         XCTAssertTrue(decisions.contains("## D336"))
+    }
+
+    func testWaitingSkillRevocationKeepsContentAndEffectAuthorityOutOfSettings() throws {
+        let revocation = try Self.contents(
+            of: "Sources/ApplicationKit/RevokeWaitingSkillExecution.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+SkillsControl.swift")
+        let fixtures = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+UITestFixtures.swift")
+        let receiptSheet = try Self.contents(
+            of: "Sources/portavoz-app/SkillReceiptInspectionSheet.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(revocation.contains(
+            "protocol WaitingSkillExecutionRevoking: Sendable"))
+        XCTAssertTrue(revocation.contains("func cancelSkillExecution("))
+        XCTAssertFalse(revocation.contains("idempotencyKey:"))
+        XCTAssertFalse(revocation.contains("effect.perform"))
+        XCTAssertFalse(revocation.contains("SkillProposal"))
+        XCTAssertTrue(receiptSheet.contains(
+            "if inspection?.state == .confirmed"))
+        XCTAssertTrue(receiptSheet.contains(
+            "guard inspection?.state == .confirmed, !isRevoking"))
+        XCTAssertTrue(receiptSheet.contains("skill-receipt-revoke-action"))
+        XCTAssertFalse(receiptSheet.contains(".idempotencyKey"))
+        XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))
+        XCTAssertTrue(services.contains(
+            "-simulate-skill-receipt-revoke-unavailable"))
+        XCTAssertTrue(fixtures.contains("guard usesTemporaryMeetingStore"))
+        XCTAssertTrue(fixtures.contains("-seed-skill-waiting"))
+        XCTAssertTrue(decisions.contains("## D339"))
     }
 
     func testSkillProposalReviewHasContentFreeBoundedAuthority() throws {

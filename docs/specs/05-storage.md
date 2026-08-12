@@ -36,6 +36,13 @@ validates exact or `offerKey:` ownership for reusable destinations, and checks
 the dismissal inside the claim transaction before any new claim can proceed.
 An exact owner committed before dismissal remains idempotently resolvable.
 Opaque provider identity bytes are not trimmed during claim or owner resolution.
+D339 adds no schema. The application adopts the existing atomic
+`cancelSkillExecution` transition through a narrow proposal-UUID-only port.
+Only `confirmed` may become terminal `dismissed` with one append-only `cancel`
+event. Because cancellation and `beginSkillExecution` are both SQLite writes,
+they have one linearized winner: cancellation first prevents handoff, while
+begin first makes cancellation illegal and preserves the possibly started
+effect for reconciliation rather than pretending it was stopped.
 D235 adds correction transaction and replica-replay recovery gates without a
 schema change.
 D325 adds bounded literal meeting, canonical-person, and confirmed-commitment

@@ -285,6 +285,35 @@ final class SkillExecutionStoreTests: XCTestCase {
             "an execution past the handoff cannot be cancelled")
     }
 
+    func testBeginAndWaitingRevocationHaveOneLinearizedWinner() async throws {
+        let store = try store()
+        let proposalID = UUID()
+        _ = try await confirm(store, proposalID: proposalID)
+        let transitionTime = now.addingTimeInterval(1)
+
+        async let begin = store.beginSkillExecution(
+            proposalID: proposalID,
+            at: transitionTime)
+        async let revoke = RevokeWaitingSkillExecution(
+            store: store,
+            now: { transitionTime }
+        ).execute(proposalID)
+        let outcome = try await (begin, revoke)
+        let history = try await store.skillExecutionHistory(
+            proposalID: proposalID)
+
+        switch outcome {
+        case (.admitted(let record), .unavailable):
+            XCTAssertEqual(record.state, .executing)
+            XCTAssertEqual(history.map(\.kind), ["confirm", "begin"])
+        case (.alreadySettled(let record), .revoked):
+            XCTAssertEqual(record.state, .dismissed)
+            XCTAssertEqual(history.map(\.kind), ["confirm", "cancel"])
+        default:
+            XCTFail("begin and revoke produced incompatible outcomes: \(outcome)")
+        }
+    }
+
     // MARK: - Validation and audit
 
     func testUnknownAndMalformedInputAreRejected() async throws {

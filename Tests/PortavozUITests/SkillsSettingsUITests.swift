@@ -189,6 +189,72 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testWaitingSkillApprovalCanBeRevokedBeforeHandoff() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append("-seed-skill-waiting")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+        let receipt = openWaitingReceipt(in: app)
+
+        let revoke = app.buttons["skill-receipt-revoke-action"]
+        XCTAssertTrue(revoke.waitForStableFrame(timeout: 5))
+        revoke.click()
+
+        let terminal = app.control(
+            withIdentifier: "skill-receipt-inspection-event-2")
+        XCTAssertTrue(terminal.waitForExistence(timeout: 5))
+        let expected = UITestLocale.environmentLocale == "es"
+            ? "Cancelado antes de la transferencia"
+            : "Cancelled before handoff"
+        XCTAssertTrue(waitForLabel(terminal, toContain: expected))
+        XCTAssertFalse(revoke.exists)
+        attachScreenshot(of: app, named: "skills-waiting-approval-revoked")
+
+        app.buttons["skill-receipt-inspection-close"].click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-skills-empty-receipts-waiting")
+                .waitForExistence(timeout: 5),
+            "a verified revocation must refresh the selected Waiting scope")
+        XCTAssertFalse(receipt.exists)
+    }
+
+    @MainActor
+    func testFailedWaitingSkillRevocationKeepsTheReceiptAndRetry() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append(contentsOf: [
+            "-seed-skill-waiting",
+            "-simulate-skill-receipt-revoke-unavailable"
+        ])
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+        let receipt = openWaitingReceipt(in: app)
+
+        let revoke = app.buttons["skill-receipt-revoke-action"]
+        XCTAssertTrue(revoke.waitForStableFrame(timeout: 5))
+        revoke.click()
+        let error = app.control(withIdentifier: "skill-receipt-revoke-error")
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        let retry = app.buttons["skill-receipt-revoke-retry"]
+        XCTAssertTrue(retry.waitForStableFrame(timeout: 5))
+        XCTAssertFalse(revoke.exists)
+        XCTAssertFalse(
+            app.control(withIdentifier: "skill-receipt-inspection-event-2").exists,
+            "an unverified mutation must not invent a cancellation event")
+        retry.click()
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "skills-waiting-revocation-failure")
+
+        app.buttons["skill-receipt-inspection-close"].click()
+        XCTAssertTrue(receipt.waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
@@ -461,6 +527,24 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                 "settings-category-skills",
                 revealing: "settings-skills-pause-all"),
             "the Skills category must reveal its durable controls")
+    }
+
+    @MainActor
+    private func openWaitingReceipt(in app: XCUIApplication) -> XCUIElement {
+        let waiting = app.control(
+            withIdentifier: "settings-skills-receipt-scope-waiting")
+        scrollToVisible(waiting, in: app, deltaY: -40)
+        XCTAssertTrue(waiting.waitForStableFrame(timeout: 5))
+        waiting.click()
+        let receipt = app.control(
+            withIdentifier: "settings-skill-receipt-recap-draft")
+        scrollToVisible(receipt, in: app, deltaY: -40)
+        XCTAssertTrue(receipt.waitForStableFrame(timeout: 5))
+        receipt.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-receipt-inspection")
+                .waitForExistence(timeout: 5))
+        return receipt
     }
 
     @MainActor

@@ -12851,12 +12851,62 @@
         }
       }
     },
-    "Portavoz could not verify this receipt. This inspector never runs or retries a Skill.": {
+    "Portavoz could not verify this receipt. This inspector never executes or retries a Skill effect.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Portavoz no pudo verificar este recibo. Este inspector nunca ejecuta ni reintenta un skill."
+            "value": "Portavoz no pudo verificar este recibo. Este inspector nunca ejecuta ni reintenta el efecto de un Skill."
+          }
+        }
+      }
+    },
+    "Revoking approval…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revocando la aprobación…"
+          }
+        }
+      }
+    },
+    "Approval could not be revoked. The run is still waiting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo revocar la aprobación. La ejecución sigue en espera."
+          }
+        }
+      }
+    },
+    "This approval can be revoked only while execution has not started.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta aprobación solo se puede revocar mientras la ejecución no haya comenzado."
+          }
+        }
+      }
+    },
+    "Revoke approval": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revocar aprobación"
+          }
+        }
+      }
+    },
+    "Cancels this run only if execution has not started": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancela esta ejecución solo si aún no ha comenzado"
           }
         }
       }

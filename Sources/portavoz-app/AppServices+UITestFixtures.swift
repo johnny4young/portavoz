@@ -1,4 +1,5 @@
 import AVFoundation
+import ApplicationKit
 import Foundation
 import IntelligenceKit
 import PortavozCore
@@ -60,6 +61,7 @@ extension AppServices {
         await seedPrivacyReceipt(for: meeting.id)
         await seedProcessingFailureIfRequested(for: meeting.id)
         await seedAbandonedSummaryIfRequested(for: meeting.id)
+        await seedWaitingSkillExecutionIfRequested()
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         requestSearchReconciliation()
@@ -246,6 +248,35 @@ extension AppServices {
         }
     }
 
+    /// A content-free, confirmed execution that deliberately stops before
+    /// `begin`. It lets XCUITest exercise the real Waiting revocation path
+    /// without invoking a platform effect or touching the user's library.
+    private func seedWaitingSkillExecutionIfRequested() async {
+        guard usesTemporaryMeetingStore,
+              ProcessInfo.processInfo.arguments.contains("-seed-skill-waiting")
+        else { return }
+        do {
+            let outcome = try await store.confirmSkillExecution(
+                proposalID: Self.seedWaitingSkillProposalID,
+                skillID: RecapDraftSkill.id,
+                skillVersion: RecapDraftSkill.version,
+                offerKey: "ui-test-waiting-recap",
+                idempotencyKey: "ui-test-waiting-recap",
+                at: Date(timeIntervalSince1970: 1_700_000_400))
+            switch outcome {
+            case .admitted(let record), .alreadySettled(let record):
+                guard record.state == .confirmed else {
+                    assertionFailure("Waiting Skill fixture was already settled")
+                    return
+                }
+            case .rejected(let rejection):
+                assertionFailure("Could not seed Waiting Skill: \(rejection)")
+            }
+        } catch {
+            assertionFailure("Could not seed Waiting Skill: \(error)")
+        }
+    }
+
     /// A meeting whose automatic summary was cancelled and never replaced. The
     /// meeting stays `ready` — audio and transcript are intact — so the summary
     /// pane is the only place that can say the summary is not coming.
@@ -395,6 +426,8 @@ extension AppServices {
         uuidString: "B5E00000-0000-4000-8000-000000000001")!
     private static let seedReviewActionItemID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000002")!
+    private static let seedWaitingSkillProposalID = UUID(
+        uuidString: "B5E00000-0000-4000-8000-000000000003")!
 
     private static func radarCommitmentID(_ ordinal: Int) -> CommitmentID {
         CommitmentID(rawValue: UUID(uuidString: String(

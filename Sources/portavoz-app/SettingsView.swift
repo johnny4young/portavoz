@@ -78,6 +78,7 @@ struct SettingsView: View {
     @State private var category: SettingsCategory? = .general
     @State private var settingsQuery = ""
     @State private var selectedSkillReceipt: SkillControlCenterReceipt?
+    @State private var skillActivityRevision = 0
 
     var body: some View {
         // A fixed two-pane layout, NOT a NavigationSplitView: the settings
@@ -120,9 +121,11 @@ struct SettingsView: View {
                     AutomationSection()
                     titleSection
                 case .skills:
-                    SkillsSettingsSection { receipt in
-                        selectedSkillReceipt = receipt
-                    }
+                    SkillsSettingsSection(
+                        activityRevision: skillActivityRevision,
+                        inspectReceipt: { receipt in
+                            selectedSkillReceipt = receipt
+                        })
                 case .integrations:
                     byokSection
                     GitHubSection()
@@ -148,7 +151,11 @@ struct SettingsView: View {
             }
         }
         .sheet(item: $selectedSkillReceipt) { receipt in
-            SkillReceiptInspectionSheet(receipt: receipt)
+            SkillReceiptInspectionSheet(
+                receipt: receipt,
+                receiptDidChange: {
+                    skillActivityRevision += 1
+                })
         }
         .onAppear {
             applyPendingCategory()

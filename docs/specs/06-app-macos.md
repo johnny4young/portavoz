@@ -2495,7 +2495,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D338, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D339, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2604,17 +2604,32 @@ refuses to materialize more than 256 events for one receipt. The sheet shows
 only the adapter-aware current status, causal event label, attempt number,
 typed failure category, and timestamp. It does not
 receive or render the idempotency key, arguments, destination, result, meeting
-title, transcript, or summary. **Try again** repeats only that read and cannot
-execute or retry a Skill.
+title, transcript, or summary. The inspection-error **Try again** repeats only
+that read and cannot execute or retry a Skill.
 
-Six bilingual XCUITest journeys cover the pane: one verifies the fail-closed
+A verified Waiting receipt has one additional action: **Revoke approval**.
+The sheet sends only the proposal UUID to `RevokeWaitingSkillExecution`, which
+can request only the existing pre-handoff cancellation transition. The action
+is absent for executing, failed, succeeded, cancelled, missing, or unverified
+receipts. SQLite serializes revocation with begin: revocation first records one
+cancel event and prevents execution; begin first returns unavailable because
+the effect may already have started. A thrown write keeps the waiting receipt
+and an inline retry. A verified revoked or unavailable outcome reloads the
+inspection and currently selected activity scope from storage. The sheet never
+receives the offer or idempotency key, arguments, subject identity,
+destination, result, or meeting content and therefore cannot execute or retry
+an effect.
+
+Eight bilingual XCUITest journeys cover the pane: one verifies the fail-closed
 control load state; one proves a selected activity-scope failure neither
 invents rows nor disables verified policy; one isolates proposal-authority
 failure with no invented rows while controls remain usable; one dismisses a
 real email proposal and proves re-observation keeps it absent while unrelated
 offers remain; one injects a dismissal failure and proves the row plus retry
-stay available on both Settings and the subject surface; and the main
-disposable journey
+stay available on both Settings and the subject surface; one revokes a real
+confirmed fixture and proves its causal cancellation plus removal from Waiting;
+one injects only the revocation write failure and proves the receipt plus retry
+remain; and the main disposable journey
 disables export, pauses all skills, proves offers stay absent, resumes without
 losing the individual choice, confirms the remaining recap proposal, traverses
 all four activity scopes, checks typed why/input explanations from the real

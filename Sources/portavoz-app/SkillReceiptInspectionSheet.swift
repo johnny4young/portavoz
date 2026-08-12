@@ -2,23 +2,31 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// AUTO-6a — a read-only projection of the content-free, append-only execution
-/// log. It does not expose proposal arguments, destinations, or meeting text.
+/// AUTO-6 — a content-free projection of the append-only execution log. It can
+/// revoke a confirmation only before handoff; it never receives the material
+/// required to execute or retry a Skill.
 struct SkillReceiptInspectionSheet: View {
     @Environment(AppServices.self) private var services
     @Environment(\.dismiss) private var dismiss
 
     let receipt: SkillControlCenterReceipt
+    let receiptDidChange: () -> Void
 
     @State private var inspection: SkillControlCenterReceiptInspection?
     @State private var isLoading = false
     @State private var loadFailed = false
+    @State private var isRevoking = false
+    @State private var revocationFailed = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
             Divider()
             content
+            if inspection?.state == .confirmed {
+                Divider()
+                revocationContent
+            }
             Divider()
             Label(
                 "This history contains only execution state, attempt, and time — never meeting content.",
@@ -33,6 +41,7 @@ struct SkillReceiptInspectionSheet: View {
         .task(id: receipt.proposalID) {
             await load()
         }
+        .interactiveDismissDisabled(isRevoking)
     }
 
     private var header: some View {
@@ -58,6 +67,44 @@ struct SkillReceiptInspectionSheet: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Close receipt details")
             .accessibilityIdentifier("skill-receipt-inspection-close")
+            .disabled(isRevoking)
+        }
+    }
+
+    @ViewBuilder
+    private var revocationContent: some View {
+        if isRevoking {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Revoking approval…")
+            }
+            .accessibilityIdentifier("skill-receipt-revoke-progress")
+        } else if revocationFailed {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(
+                    "Approval could not be revoked. The run is still waiting.",
+                    systemImage: "exclamationmark.triangle")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("skill-receipt-revoke-error")
+                Button("Try again") {
+                    Task { await revokeApproval() }
+                }
+                .accessibilityIdentifier("skill-receipt-revoke-retry")
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(
+                    "This approval can be revoked only while execution has not started.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Revoke approval", role: .destructive) {
+                    Task { await revokeApproval() }
+                }
+                .accessibilityHint(
+                    "Cancels this run only if execution has not started")
+                .accessibilityIdentifier("skill-receipt-revoke-action")
+            }
         }
     }
 
@@ -79,7 +126,7 @@ struct SkillReceiptInspectionSheet: View {
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("skill-receipt-inspection-error")
                 Text(
-                    "Portavoz could not verify this receipt. This inspector never runs or retries a Skill.")
+                    "Portavoz could not verify this receipt. This inspector never executes or retries a Skill effect.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Button("Try again") {
@@ -156,6 +203,25 @@ struct SkillReceiptInspectionSheet: View {
         } catch {
             inspection = nil
             loadFailed = true
+        }
+    }
+
+    @MainActor
+    private func revokeApproval() async {
+        guard inspection?.state == .confirmed, !isRevoking else { return }
+        isRevoking = true
+        revocationFailed = false
+        defer { isRevoking = false }
+        do {
+            _ = try await services.revokeWaitingSkillExecution(
+                proposalID: receipt.proposalID)
+            guard !Task.isCancelled else { return }
+            await load()
+            receiptDidChange()
+        } catch is CancellationError {
+            return
+        } catch {
+            revocationFailed = true
         }
     }
 

@@ -12105,3 +12105,41 @@ Settings confirmation, receipt retry/revoke, standing rule, background
 execution, adapter, transport, or egress consent is added. The implementation
 uses APIs available at the macOS 14.4 floor; physical VoiceOver, Sequoia, and
 separate-hardware Tahoe behavior remain field evidence.
+
+## D339 — Waiting approval revocation is content-free and handoff-fenced (Aug 2026)
+
+**Context:** the indexed Waiting scope exposed durable executions in
+`confirmed` state, but the receipt inspector could only explain them. A user
+who changed their mind before execution began had no central way to withdraw
+that one approval. Reconstructing a proposal or retrying an effect from the
+receipt would be unsafe: the control-center projection intentionally has no
+preview, arguments, subject identity, destination, or idempotency key. An
+optimistic row removal would also lie if storage rejected the mutation, and a
+cancel racing the execution handoff must not report success after the effect
+may have started.
+
+**Decision:** a receipt exposes **Revoke approval** only after one verified
+inspection reports durable `confirmed` state. SwiftUI sends only the proposal
+UUID to `RevokeWaitingSkillExecution`. Its narrow storage protocol exposes only
+`cancelSkillExecution`; it has no claim, begin, settle, proposal, adapter, or
+effect authority. The existing storage transition atomically changes
+`confirmed` to terminal `dismissed` and appends one `cancel` event. Unknown or
+no-longer-confirmed executions share one content-free unavailable outcome.
+Unexpected admission shapes fail closed as inconsistent authority.
+
+Storage serializes cancellation with `beginSkillExecution`. If revocation
+commits first, begin observes the terminal state and no effect starts. If begin
+commits first, revocation is unavailable because handoff may already have
+started. A thrown mutation keeps the verified Waiting receipt and exposes an
+inline retry; a verified revoked or unavailable result reloads both the
+inspection and selected scope from storage. UI-test fixture and failure flags
+are admitted only with the disposable temporary store.
+
+**Consequences:** a user can stop one waiting run without granting Settings
+enough information to execute or retry it, and every accepted revocation is a
+durable causal event rather than optimistic presentation state. The action is
+absent after begin, on terminal/failed receipts, and whenever inspection cannot
+verify authority. This adds no schema, effect retry, proposal confirmation,
+standing rule, background executor, adapter, transport, destination authority,
+or egress consent. Physical VoiceOver behavior and cross-process race timing on
+Sequoia and separate Tahoe hardware remain field evidence.

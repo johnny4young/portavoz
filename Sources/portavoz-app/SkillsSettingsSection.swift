@@ -9,6 +9,7 @@ import SwiftUI
 struct SkillsSettingsSection: View {
     @Environment(AppServices.self) private var services
 
+    let activityRevision: Int
     let inspectReceipt: (SkillControlCenterReceipt) -> Void
 
     @State private var snapshot: SkillControlCenterSnapshot?
@@ -77,6 +78,9 @@ struct SkillsSettingsSection: View {
         }
         .task {
             await loadProposals()
+        }
+        .onChange(of: activityRevision) {
+            Task { await load() }
         }
     }
 

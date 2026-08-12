@@ -335,6 +335,84 @@ final class SkillsControlCenterTests: XCTestCase {
             [nil, nil, .recoverable, nil, nil])
     }
 
+    func testWaitingReceiptRevocationAddsOneNoEffectTerminalEvent() async throws {
+        let store = try MeetingStore.inMemory()
+        let proposalID = UUID()
+        _ = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            offerKey: "revoke-waiting",
+            idempotencyKey: "revoke-waiting",
+            at: now)
+
+        let revocationTime = now.addingTimeInterval(1)
+        let revoked = try await RevokeWaitingSkillExecution(
+            store: store,
+            now: { revocationTime }
+        ).execute(proposalID)
+        let inspection = try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
+        let repeated = try await RevokeWaitingSkillExecution(store: store)
+            .execute(proposalID)
+
+        XCTAssertEqual(revoked, .revoked)
+        XCTAssertEqual(repeated, .unavailable)
+        XCTAssertEqual(inspection.state, .dismissed)
+        XCTAssertEqual(inspection.events.map(\.kind), [.confirmed, .cancelled])
+        XCTAssertEqual(inspection.events.map(\.attempt), [1, 1])
+        XCTAssertTrue(inspection.events.allSatisfy {
+            $0.failureCategory == nil
+        })
+    }
+
+    func testWaitingReceiptRevocationCannotCancelAfterBegin() async throws {
+        let store = try MeetingStore.inMemory()
+        let proposalID = UUID()
+        _ = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            offerKey: "already-began",
+            idempotencyKey: "already-began",
+            at: now)
+        _ = try await store.beginSkillExecution(
+            proposalID: proposalID,
+            at: now.addingTimeInterval(1))
+
+        let outcome = try await RevokeWaitingSkillExecution(store: store)
+            .execute(proposalID)
+        let history = try await store.skillExecutionHistory(
+            proposalID: proposalID)
+
+        XCTAssertEqual(outcome, .unavailable)
+        XCTAssertEqual(history.map(\.kind), ["confirm", "begin"])
+    }
+
+    func testWaitingReceiptRevocationRejectsMismatchedSettlement() async {
+        let proposalID = UUID()
+        let mismatched = SkillExecutionRecord(
+            proposalID: UUID(),
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            idempotencyKey: "other-owner",
+            state: .dismissed,
+            attempt: 1,
+            updatedAt: now)
+        let useCase = RevokeWaitingSkillExecution(
+            store: StubWaitingSkillExecutionRevoker(
+                admission: .alreadySettled(mismatched)))
+
+        do {
+            _ = try await useCase.execute(proposalID)
+            XCTFail("a mismatched settled record must fail closed")
+        } catch let error as WaitingSkillExecutionRevocationError {
+            XCTAssertEqual(error, .inconsistentAuthority)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
     func testReceiptInspectionRejectsMissingOrInconsistentAuditEvidence() async throws {
         let proposalID = UUID()
         let record = SkillExecutionRecord(
@@ -735,5 +813,16 @@ private actor StubSkillReceiptInspectionStore: SkillReceiptInspectionStore {
         proposalID: UUID
     ) -> SkillExecutionAudit? {
         audit?.record.proposalID == proposalID ? audit : nil
+    }
+}
+
+private struct StubWaitingSkillExecutionRevoker: WaitingSkillExecutionRevoking {
+    let admission: SkillExecutionAdmission
+
+    func cancelSkillExecution(
+        proposalID: UUID,
+        at now: Date
+    ) -> SkillExecutionAdmission {
+        admission
     }
 }
