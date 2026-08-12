@@ -25,6 +25,7 @@ final class PreMeetingBriefOfferTests: XCTestCase {
             proposalID: proposalID,
             skillID: PreMeetingBriefSkill.id,
             skillVersion: PreMeetingBriefSkill.version,
+            offerKey: initial.offerKey,
             idempotencyKey: initial.offerKey,
             at: now)
         _ = try await store.beginSkillExecution(

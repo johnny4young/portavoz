@@ -4090,12 +4090,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         let admitIndex = try XCTUnwrap(
             executor.range(of: "SkillAdmissionPolicy.admit")?.lowerBound)
         let claimIndex = try XCTUnwrap(
-            executor.range(of: "claims.confirmSkillExecution")?.lowerBound)
+            executor.range(
+                of: "if let outcome = try await confirmationOutcome(")?.lowerBound)
         XCTAssertLessThan(policyIndex, admitIndex)
         XCTAssertLessThan(admitIndex, claimIndex)
         let effectIndex = try XCTUnwrap(
             executor.range(of: "effect.perform(proposal)")?.lowerBound)
         XCTAssertLessThan(claimIndex, effectIndex)
+        XCTAssertTrue(executor.contains("claims.confirmSkillExecution"))
 
         // One authority for which states may proceed.
         XCTAssertTrue(executor.contains("case .admitted, .alreadySettled:"))
@@ -4247,11 +4249,28 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(review.contains("catalogue.definition.version == record.skillVersion"))
         XCTAssertFalse(review.contains("let offerKey:"))
         XCTAssertFalse(review.contains("let subject:"))
+        XCTAssertTrue(review.contains("struct DismissSkillOfferReview"))
+        XCTAssertTrue(authority.contains(
+            "enum SkillOfferReviewDismissalOutcome"))
+        XCTAssertTrue(store.contains("dismissProposedSkillOffer("))
+        XCTAssertTrue(store.contains("let dismissed = activeKeys.isEmpty"))
+        XCTAssertTrue(store.contains(
+            "for offer in offers where !dismissed.contains(offer.offerKey)"))
+        XCTAssertTrue(execution.contains("case offerDismissed"))
+        XCTAssertTrue(execution.contains(
+            "SELECT 1 FROM skillOfferDismissal WHERE offerKey = ?"))
+        XCTAssertTrue(execution.contains(
+            "idempotencyKey.hasPrefix(offerKey + \":\")"))
         XCTAssertTrue(execution.contains(
             "DELETE FROM skillOfferProposal WHERE offerKey = ?"))
         XCTAssertTrue(settings.contains("activeProposalLoadID == loadID"))
+        XCTAssertTrue(settings.contains(
+            "services.dismissSkillOfferReview(offer.id)"))
         XCTAssertTrue(proposalSection.contains("settings-skills-proposals-privacy"))
+        XCTAssertTrue(proposalSection.contains(
+            "settings-skill-proposal-dismiss-"))
         XCTAssertTrue(proposalSection.contains("Nothing runs here."))
+        XCTAssertFalse(proposalSection.contains("offer.offerKey"))
 
         for producer in [
             "Sources/ApplicationKit/MeetingSkillOffers.swift",
@@ -4263,6 +4282,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "proposal producer is outside the central authority: \(producer)")
         }
         XCTAssertTrue(decisions.contains("## D337"))
+        XCTAssertTrue(decisions.contains("## D338"))
     }
 
     func testSkillRetryKeepsOneProposalIdentityFromPreviewToEffect() throws {

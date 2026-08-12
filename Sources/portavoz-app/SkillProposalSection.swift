@@ -3,13 +3,16 @@ import Foundation
 import PortavozCore
 import SwiftUI
 
-/// D337 — read-only, content-free review of offers durably observed on real
-/// subject surfaces. Workflow actions deliberately remain a later slice.
+/// D337/D338 — content-free review and opaque dismissal of offers durably
+/// observed on real subject surfaces. Confirmation remains on the subject.
 struct SkillProposalSection: View {
     let snapshot: SkillOfferReviewSnapshot?
     let isLoading: Bool
     let isMutating: Bool
     let loadFailed: Bool
+    let dismissingOfferID: UUID?
+    let dismissalFailedOfferID: UUID?
+    let dismiss: (SkillOfferReviewItem) -> Void
     let retry: () -> Void
 
     var body: some View {
@@ -59,38 +62,95 @@ struct SkillProposalSection: View {
     }
 
     private func offerRow(_ offer: SkillOfferReviewItem) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "sparkles.rectangle.stack.fill")
-                .foregroundStyle(PVDesign.accent)
-                .frame(width: 18)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(SkillReceiptPresentation.skillTitle(offer.skillID))
-                    .font(.callout.weight(.medium))
-                Text(reasonText(offer.reason))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier(
-                        "settings-skill-proposal-why-\(offer.skillID)-\(offer.id.uuidString)")
-                Text(L10n.format(
-                    "Uses: %@",
-                    inputDataText(offer.inputDataClasses)))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier(
-                        "settings-skill-proposal-data-\(offer.skillID)-\(offer.id.uuidString)")
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "sparkles.rectangle.stack.fill")
+                    .foregroundStyle(PVDesign.accent)
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(SkillReceiptPresentation.skillTitle(offer.skillID))
+                        .font(.callout.weight(.medium))
+                    Text(reasonText(offer.reason))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier(
+                            "settings-skill-proposal-why-\(offer.skillID)-\(offer.id.uuidString)")
+                    Text(L10n.format(
+                        "Uses: %@",
+                        inputDataText(offer.inputDataClasses)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier(
+                            "settings-skill-proposal-data-\(offer.skillID)-\(offer.id.uuidString)")
+                }
+                Spacer(minLength: 8)
+                offerDismissalControl(offer)
             }
-            Spacer(minLength: 8)
-            Text(
-                offer.lastObservedAt,
-                format: .dateTime.month(.abbreviated).day().hour().minute())
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+            if dismissalFailedOfferID == offer.id {
+                offerDismissalFailure(offer)
+            }
         }
         .padding(.vertical, 3)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(
             "settings-skill-proposal-\(offer.skillID)-\(offer.id.uuidString)")
+    }
+
+    private func offerDismissalControl(
+        _ offer: SkillOfferReviewItem
+    ) -> some View {
+        VStack(alignment: .trailing, spacing: 5) {
+            Text(
+                offer.lastObservedAt,
+                format: .dateTime.month(.abbreviated).day().hour().minute())
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            if dismissingOfferID == offer.id {
+                HStack(spacing: 5) {
+                    ProgressView().controlSize(.small)
+                    Text("Dismissing…")
+                }
+                .font(.caption)
+                .accessibilityIdentifier(
+                    dismissalIdentifier("progress", offer: offer))
+            } else if dismissalFailedOfferID != offer.id {
+                Button("Dismiss") { dismiss(offer) }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(L10n.format(
+                        "Dismiss %@",
+                        SkillReceiptPresentation.skillTitle(offer.skillID)))
+                    .accessibilityIdentifier(
+                        dismissalIdentifier("action", offer: offer))
+                    .disabled(isLoading || isMutating)
+            }
+        }
+    }
+
+    private func offerDismissalFailure(
+        _ offer: SkillOfferReviewItem
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Label(
+                "This proposal could not be dismissed. It remains available.",
+                systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier(
+                    dismissalIdentifier("error", offer: offer))
+            Button("Try again") { dismiss(offer) }
+                .font(.caption)
+                .accessibilityIdentifier(
+                    dismissalIdentifier("retry", offer: offer))
+                .disabled(isLoading || isMutating)
+        }
+    }
+
+    private func dismissalIdentifier(
+        _ component: String,
+        offer: SkillOfferReviewItem
+    ) -> String {
+        "settings-skill-proposal-dismiss-\(component)-\(offer.skillID)-\(offer.id.uuidString)"
     }
 
     private func reasonText(_ reason: SkillOfferReason) -> String {

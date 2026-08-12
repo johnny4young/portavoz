@@ -13310,6 +13310,36 @@
           }
         }
       }
+    },
+    "Dismiss %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar %@"
+          }
+        }
+      }
+    },
+    "Dismissing…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartando…"
+          }
+        }
+      }
+    },
+    "This proposal could not be dismissed. It remains available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo descartar esta propuesta. Sigue disponible."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

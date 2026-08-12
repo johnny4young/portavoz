@@ -128,3 +128,11 @@ public struct SkillOfferReviewRecord: Equatable, Sendable, Identifiable {
         self.lastObservedAt = lastObservedAt
     }
 }
+
+/// Result of acting on one opaque central-review identity. `unavailable`
+/// deliberately reveals neither whether the subject expired nor whether
+/// another owner retired it first.
+public enum SkillOfferReviewDismissalOutcome: Equatable, Sendable {
+    case dismissed
+    case unavailable
+}

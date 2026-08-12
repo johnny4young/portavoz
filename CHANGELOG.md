@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 12, 2026
 
+- **🧹 Dismiss a proposed Skill once** — Decline an inert proposal from Settings without exposing its meeting or calendar identity; it stays gone when the original surface refreshes, while an unverified change keeps the row available.
 - **✨ Proposed Skills explain themselves before you act** — Settings now shows why a real meeting, commitment, or calendar surface proposed each Skill and the exact data categories it may use, without storing the title, transcript, preview, destination, or recipient.
 - **🗂️ Skill activity finds the runs that need you** — Switch between recent, waiting, attention, and completed Skill runs without stale rows or scanning the full execution history.
 - **🧾 Skill receipts explain what happened** — Open any recent Skill run to see its content-free confirmation, attempts, failures, retries, and completion timeline without exposing meeting material or running anything again.

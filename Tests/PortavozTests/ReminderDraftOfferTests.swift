@@ -20,6 +20,7 @@ final class ReminderDraftOfferTests: XCTestCase {
             proposalID: secondProposal,
             skillID: ReminderDraftSkill.id,
             skillVersion: ReminderDraftSkill.version,
+            offerKey: secondKey,
             idempotencyKey: secondKey,
             at: now)
         _ = try await store.beginSkillExecution(

@@ -22,6 +22,8 @@ struct SkillsSettingsSection: View {
     @State private var proposalsAreLoading = false
     @State private var proposalLoadFailed = false
     @State private var activeProposalLoadID: UUID?
+    @State private var dismissingProposalID: UUID?
+    @State private var proposalDismissalFailedID: UUID?
 
     var body: some View {
         Group {
@@ -48,8 +50,13 @@ struct SkillsSettingsSection: View {
                     SkillProposalSection(
                         snapshot: proposalSnapshot,
                         isLoading: proposalsAreLoading,
-                        isMutating: isMutating,
+                        isMutating: isMutating || dismissingProposalID != nil,
                         loadFailed: proposalLoadFailed,
+                        dismissingOfferID: dismissingProposalID,
+                        dismissalFailedOfferID: proposalDismissalFailedID,
+                        dismiss: { offer in
+                            Task { await dismissProposal(offer) }
+                        },
                         retry: { Task { await loadProposals() } })
                 }
 
@@ -58,7 +65,7 @@ struct SkillsSettingsSection: View {
                         receiptScope: $receiptScope,
                         snapshot: snapshot,
                         isLoading: isLoading,
-                        isMutating: isMutating,
+                        isMutating: isMutating || dismissingProposalID != nil,
                         loadFailed: receiptScopeLoadFailed,
                         retry: { Task { await load() } },
                         inspectReceipt: inspectReceipt)
@@ -98,7 +105,8 @@ struct SkillsSettingsSection: View {
             Toggle("Pause all skills", isOn: pauseBinding)
                 .accessibilityIdentifier("settings-skills-pause-all")
                 .disabled(
-                    snapshot == nil || isLoading || isMutating || controlLoadFailed)
+                    snapshot == nil || isLoading || isMutating
+                        || dismissingProposalID != nil || controlLoadFailed)
             Text(
                 // Keep this as one literal so localization validation sees it.
                 // swiftlint:disable:next line_length
@@ -159,7 +167,9 @@ struct SkillsSettingsSection: View {
                 .accessibilityLabel(skillTitle(skill.id))
                 .accessibilityIdentifier(
                     "settings-skill-\(skill.id)-enabled")
-                .disabled(isLoading || isMutating || controlLoadFailed)
+                .disabled(
+                    isLoading || isMutating || dismissingProposalID != nil
+                        || controlLoadFailed)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
@@ -255,7 +265,7 @@ struct SkillsSettingsSection: View {
 
     @MainActor
     private func load() async {
-        guard !isMutating else { return }
+        guard !isMutating, dismissingProposalID == nil else { return }
         let requestedScope = receiptScope
         let loadID = UUID()
         activeLoadID = loadID
@@ -301,7 +311,12 @@ struct SkillsSettingsSection: View {
 
     @MainActor
     private func mutate(_ action: ManageSkillControlAction) async {
-        guard snapshot != nil, !controlLoadFailed, !isLoading, !isMutating else {
+        guard snapshot != nil,
+              !controlLoadFailed,
+              !isLoading,
+              !isMutating,
+              dismissingProposalID == nil
+        else {
             return
         }
         isMutating = true
@@ -335,6 +350,10 @@ struct SkillsSettingsSection: View {
             }
             guard activeProposalLoadID == loadID else { return }
             proposalSnapshot = loaded
+            if let failedID = proposalDismissalFailedID,
+               !loaded.offers.contains(where: { $0.id == failedID }) {
+                proposalDismissalFailedID = nil
+            }
             proposalLoadFailed = false
             finishProposalLoad(loadID)
         } catch is CancellationError {
@@ -354,6 +373,41 @@ struct SkillsSettingsSection: View {
         proposalsAreLoading = false
     }
 
+    @MainActor
+    private func dismissProposal(_ offer: SkillOfferReviewItem) async {
+        guard proposalSnapshot?.offers.contains(where: { $0.id == offer.id }) == true,
+              !proposalsAreLoading,
+              !isMutating,
+              dismissingProposalID == nil
+        else { return }
+
+        dismissingProposalID = offer.id
+        proposalDismissalFailedID = nil
+        defer {
+            if dismissingProposalID == offer.id {
+                dismissingProposalID = nil
+            }
+        }
+        do {
+            let outcome = try await services.dismissSkillOfferReview(offer.id)
+            guard !Task.isCancelled, dismissingProposalID == offer.id else {
+                return
+            }
+            switch outcome {
+            case .dismissed, .unavailable:
+                await loadProposals()
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            guard dismissingProposalID == offer.id else { return }
+            proposalDismissalFailedID = offer.id
+        }
+    }
+
+}
+
+private extension SkillsSettingsSection {
     private func skillTitle(_ skillID: String) -> String {
         SkillReceiptPresentation.skillTitle(skillID)
     }

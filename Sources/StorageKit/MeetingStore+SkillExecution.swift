@@ -15,6 +15,9 @@ public enum SkillExecutionRejection: String, Equatable, Sendable {
     /// The idempotency key belongs to a different proposal, so admitting this
     /// one would let two proposals claim one effect.
     case idempotencyKeyClaimed = "idempotency-key-claimed"
+    /// A durable offer-level dismissal won the race before this claim. An
+    /// already-open confirmation surface is not authority to continue.
+    case offerDismissed = "offer-dismissed"
     case unknownExecution = "unknown-execution"
     case illegalTransition = "illegal-transition"
 }
@@ -59,6 +62,7 @@ extension MeetingStore {
         proposalID: UUID,
         skillID: String,
         skillVersion: Int,
+        offerKey: String,
         idempotencyKey: String,
         at now: Date
     ) async throws -> SkillExecutionAdmission {
@@ -68,60 +72,23 @@ extension MeetingStore {
         guard !trimmedSkill.isEmpty,
               trimmedSkill == skillID,
               !trimmedKey.isEmpty,
-              trimmedKey == idempotencyKey,
+              Self.isValidSkillOfferKey(offerKey),
+              idempotencyKey == offerKey
+                || idempotencyKey.hasPrefix(offerKey + ":"),
               skillVersion >= 1
         else { return .rejected(.invalidProposal) }
 
+        let confirmation = SkillExecutionConfirmation(
+            proposalID: proposalID,
+            skillID: skillID,
+            skillVersion: skillVersion,
+            offerKey: offerKey,
+            idempotencyKey: idempotencyKey,
+            occurredAt: now)
         return try await database.write { database in
-            if let existing = try Self.skillExecution(proposalID, in: database) {
-                guard existing.idempotencyKey == idempotencyKey else {
-                    return .rejected(.idempotencyKeyClaimed)
-                }
-                try database.execute(
-                    sql: "DELETE FROM skillOfferProposal WHERE offerKey = ?",
-                    arguments: [idempotencyKey])
-                return .alreadySettled(existing)
-            }
-            // A different proposal already owns this key.
-            let claimed = try Bool.fetchOne(
-                database,
-                sql: """
-                    SELECT EXISTS (
-                        SELECT 1 FROM skillExecutionState WHERE idempotencyKey = ?
-                    )
-                    """,
-                arguments: [idempotencyKey]) ?? false
-            guard !claimed else { return .rejected(.idempotencyKeyClaimed) }
-
-            let eventID = try Self.appendSkillEvent(
-                SkillExecutionEventWrite(
-                    proposalID: proposalID,
-                    previousEventID: nil,
-                    kind: .confirm,
-                    attempt: 1,
-                    failureCategory: nil,
-                    occurredAt: now),
+            try Self.confirmSkillExecution(
+                confirmation,
                 in: database)
-            try database.execute(
-                sql: """
-                    INSERT INTO skillExecutionState (
-                        proposalID, skillID, skillVersion, idempotencyKey,
-                        state, attempt, latestEventID, createdAt, updatedAt
-                    ) VALUES (?, ?, ?, ?, 'confirmed', 1, ?, ?, ?)
-                    """,
-                arguments: [
-                    proposalID.uuidString, skillID, skillVersion,
-                    idempotencyKey, eventID, now, now
-                ])
-            let record = try Self.skillExecution(proposalID, in: database)
-            guard let record else { return .rejected(.unknownExecution) }
-            // Exact one-shot offer keys equal their idempotency key. Package
-            // export intentionally uses a destination-free offer key, so its
-            // reusable offer remains while each destination owns one claim.
-            try database.execute(
-                sql: "DELETE FROM skillOfferProposal WHERE offerKey = ?",
-                arguments: [idempotencyKey])
-            return .admitted(record)
         }
     }
 
@@ -291,7 +258,7 @@ extension MeetingStore {
     ) async throws -> SkillExecutionRecord? {
         let trimmed = idempotencyKey.trimmingCharacters(
             in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed == idempotencyKey else { return nil }
+        guard !trimmed.isEmpty else { return nil }
         return try await database.read { database in
             guard let row = try Row.fetchOne(
                 database,
@@ -338,6 +305,101 @@ extension MeetingStore {
     }
 
     // MARK: - Internals
+
+    private static func confirmSkillExecution(
+        _ confirmation: SkillExecutionConfirmation,
+        in database: Database
+    ) throws -> SkillExecutionAdmission {
+        // A claim that committed before a later offer dismissal already owns
+        // this exact effect. The tombstone fences only claims not yet created.
+        if let existing = try skillExecution(confirmation.proposalID, in: database) {
+            guard existing.idempotencyKey == confirmation.idempotencyKey else {
+                return .rejected(.idempotencyKeyClaimed)
+            }
+            try retireOneShotOffer(
+                offerKey: confirmation.offerKey,
+                idempotencyKey: confirmation.idempotencyKey,
+                in: database)
+            return .alreadySettled(existing)
+        }
+
+        let dismissed = try Bool.fetchOne(
+            database,
+            sql: """
+                SELECT EXISTS (
+                    SELECT 1 FROM skillOfferDismissal WHERE offerKey = ?
+                )
+                """,
+            arguments: [confirmation.offerKey]) ?? false
+        guard !dismissed else { return .rejected(.offerDismissed) }
+
+        guard try !isSkillExecutionClaimed(
+            confirmation.idempotencyKey,
+            in: database
+        ) else { return .rejected(.idempotencyKeyClaimed) }
+
+        let eventID = try appendSkillEvent(
+            SkillExecutionEventWrite(
+                proposalID: confirmation.proposalID,
+                previousEventID: nil,
+                kind: .confirm,
+                attempt: 1,
+                failureCategory: nil,
+                occurredAt: confirmation.occurredAt),
+            in: database)
+        try database.execute(
+            sql: """
+                INSERT INTO skillExecutionState (
+                    proposalID, skillID, skillVersion, idempotencyKey,
+                    state, attempt, latestEventID, createdAt, updatedAt
+                ) VALUES (?, ?, ?, ?, 'confirmed', 1, ?, ?, ?)
+                """,
+            arguments: [
+                confirmation.proposalID.uuidString,
+                confirmation.skillID,
+                confirmation.skillVersion,
+                confirmation.idempotencyKey,
+                eventID,
+                confirmation.occurredAt,
+                confirmation.occurredAt
+            ])
+        guard let record = try skillExecution(confirmation.proposalID, in: database) else {
+            return .rejected(.unknownExecution)
+        }
+        try retireOneShotOffer(
+            offerKey: confirmation.offerKey,
+            idempotencyKey: confirmation.idempotencyKey,
+            in: database)
+        return .admitted(record)
+    }
+
+    private static func isSkillExecutionClaimed(
+        _ idempotencyKey: String,
+        in database: Database
+    ) throws -> Bool {
+        try Bool.fetchOne(
+            database,
+            sql: """
+                SELECT EXISTS (
+                    SELECT 1 FROM skillExecutionState WHERE idempotencyKey = ?
+                )
+                """,
+            arguments: [idempotencyKey]) ?? false
+    }
+
+    /// Exact one-shot offers own one effect slot. A package export is reusable
+    /// and keeps its destination-free proposal while each destination claims a
+    /// distinct idempotency key.
+    private static func retireOneShotOffer(
+        offerKey: String,
+        idempotencyKey: String,
+        in database: Database
+    ) throws {
+        guard offerKey == idempotencyKey else { return }
+        try database.execute(
+            sql: "DELETE FROM skillOfferProposal WHERE offerKey = ?",
+            arguments: [offerKey])
+    }
 
     private static func skillExecution(
         _ proposalID: UUID,
@@ -524,6 +586,15 @@ extension MeetingStore {
 private struct SkillExecutionHistoryRead {
     let entries: [SkillExecutionHistoryEntry]
     let latestEventID: String?
+}
+
+private struct SkillExecutionConfirmation {
+    let proposalID: UUID
+    let skillID: String
+    let skillVersion: Int
+    let offerKey: String
+    let idempotencyKey: String
+    let occurredAt: Date
 }
 
 private struct SkillExecutionEventWrite {

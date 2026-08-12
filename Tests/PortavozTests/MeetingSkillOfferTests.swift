@@ -131,6 +131,7 @@ final class MeetingSkillOfferTests: XCTestCase {
             proposal: proposal,
             isConfirmedByUser: true,
             egressIsPermitted: false,
+            offerKey: key,
             idempotencyKey: key))
         guard case .performed = outcome else {
             return XCTFail("the confirmed recap must perform, saw \(outcome)")
@@ -169,6 +170,7 @@ final class MeetingSkillOfferTests: XCTestCase {
             proposal: proposal,
             isConfirmedByUser: true,
             egressIsPermitted: false,
+            offerKey: key,
             idempotencyKey: key))
         XCTAssertEqual(refused, .refused(.egressNotPermitted))
         let refusedEffectProposalIDs = await effect.proposalIDs
@@ -183,6 +185,7 @@ final class MeetingSkillOfferTests: XCTestCase {
             proposal: proposal,
             isConfirmedByUser: true,
             egressIsPermitted: true,
+            offerKey: key,
             idempotencyKey: key))
         XCTAssertEqual(performed, .performed)
         let performedProposalIDs = await effect.proposalIDs
@@ -224,6 +227,9 @@ final class MeetingSkillOfferTests: XCTestCase {
                 proposal: proposal,
                 isConfirmedByUser: true,
                 egressIsPermitted: false,
+                offerKey: MeetingSkillOffer(
+                    kind: .packageExport,
+                    meetingID: meetingID).offerKey,
                 idempotencyKey: key))
         }
 
@@ -259,6 +265,7 @@ final class MeetingSkillOfferTests: XCTestCase {
             proposal: proposal,
             isConfirmedByUser: true,
             egressIsPermitted: false,
+            offerKey: key,
             idempotencyKey: key))
         guard case .failed = outcome else {
             return XCTFail("the failing effect must settle as failed")
@@ -294,6 +301,7 @@ final class MeetingSkillOfferTests: XCTestCase {
             proposal: proposal,
             isConfirmedByUser: true,
             egressIsPermitted: true,
+            offerKey: key,
             idempotencyKey: key))
         XCTAssertEqual(outcome, .failed(.external))
 
@@ -331,6 +339,7 @@ final class MeetingSkillOfferTests: XCTestCase {
                 proposalID: item.proposal.id,
                 skillID: item.proposal.definition.id,
                 skillVersion: item.proposal.definition.version,
+                offerKey: item.idempotencyKey,
                 idempotencyKey: item.idempotencyKey,
                 at: item.proposal.proposedAt)
             _ = try await store.beginSkillExecution(
@@ -368,6 +377,7 @@ final class MeetingSkillOfferTests: XCTestCase {
             proposalID: proposal.id,
             skillID: proposal.definition.id,
             skillVersion: proposal.definition.version,
+            offerKey: key,
             idempotencyKey: key,
             at: Date(timeIntervalSince1970: 100))
         _ = try await store.cancelSkillExecution(
@@ -466,6 +476,9 @@ final class MeetingSkillOfferTests: XCTestCase {
             proposal: proposal,
             isConfirmedByUser: true,
             egressIsPermitted: false,
+            offerKey: MeetingSkillOffer(
+                kind: .packageExport,
+                meetingID: meetingID).offerKey,
             idempotencyKey: key))
 
         let exact = try await store.skillExecutions(idempotencyKeyPrefix: key)

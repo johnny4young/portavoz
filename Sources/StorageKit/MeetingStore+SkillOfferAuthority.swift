@@ -26,17 +26,88 @@ extension MeetingStore {
 
         try await database.write { database in
             let retired = candidateSet.subtracting(activeKeys)
-            if !retired.isEmpty {
+            let dismissed = activeKeys.isEmpty
+                ? Set<String>()
+                : Set(try String.fetchAll(
+                    database,
+                    sql: """
+                        SELECT offerKey FROM skillOfferDismissal
+                        WHERE offerKey IN (\(databaseQuestionMarks(
+                            count: activeKeys.count)))
+                        """,
+                    arguments: StatementArguments(activeKeys.sorted())))
+            let authorityToRemove = retired.union(dismissed)
+            if !authorityToRemove.isEmpty {
                 try database.execute(
                     sql: """
                         DELETE FROM skillOfferProposal
-                        WHERE offerKey IN (\(databaseQuestionMarks(count: retired.count)))
+                        WHERE offerKey IN (\(databaseQuestionMarks(
+                            count: authorityToRemove.count)))
                         """,
-                    arguments: StatementArguments(retired.sorted()))
+                    arguments: StatementArguments(authorityToRemove.sorted()))
             }
-            for offer in offers {
+            for offer in offers where !dismissed.contains(offer.offerKey) {
                 try Self.upsertSkillOffer(offer, in: database)
             }
+        }
+    }
+
+    /// Durably dismisses one proposal using only the unrelated review UUID
+    /// exposed to Settings. Storage resolves the stable offer intent and
+    /// writes its terminal tombstone in the same transaction; no subject
+    /// identity or offer key crosses back into presentation.
+    public func dismissProposedSkillOffer(
+        reviewID: UUID,
+        at timestamp: Date = Date()
+    ) async throws -> SkillOfferReviewDismissalOutcome {
+        guard timestamp.timeIntervalSinceReferenceDate.isFinite else {
+            throw StorageError.invalidSkillOffer("invalid dismissal timestamp")
+        }
+
+        return try await database.write { database in
+            guard let row = try Row.fetchOne(
+                database,
+                sql: """
+                    SELECT offerKey, skillID, expiresAt
+                    FROM skillOfferProposal
+                    WHERE reviewID = ?
+                    """,
+                arguments: [reviewID.uuidString])
+            else { return .unavailable }
+
+            let offerKey: String = row["offerKey"]
+            let skillID: String = row["skillID"]
+            let expiresAt: Date? = row["expiresAt"]
+            guard Self.isValidSkillOfferKey(offerKey),
+                  !skillID.isEmpty,
+                  skillID == skillID.trimmingCharacters(
+                      in: .whitespacesAndNewlines),
+                  skillID.utf8.count <= SkillDefinition.maximumIDByteCount
+            else {
+                throw StorageError.invalidPersistedValue(
+                    table: "skillOfferProposal",
+                    column: "reviewID",
+                    value: reviewID.uuidString)
+            }
+            if let expiresAt, expiresAt <= timestamp {
+                try database.execute(
+                    sql: "DELETE FROM skillOfferProposal WHERE reviewID = ?",
+                    arguments: [reviewID.uuidString])
+                return .unavailable
+            }
+
+            try database.execute(
+                sql: """
+                    INSERT INTO skillOfferDismissal (
+                        offerKey, skillID, dismissedAt
+                    ) VALUES (?, ?, ?)
+                    ON CONFLICT(offerKey) DO NOTHING
+                    """,
+                arguments: [offerKey, skillID, timestamp])
+            try database.execute(
+                sql: "DELETE FROM skillOfferProposal WHERE reviewID = ?",
+                arguments: [reviewID.uuidString])
+            return .dismissed
         }
     }
 
@@ -299,7 +370,7 @@ extension MeetingStore {
         }
     }
 
-    private static func isValidSkillOfferKey(_ key: String) -> Bool {
+    static func isValidSkillOfferKey(_ key: String) -> Bool {
         !key.isEmpty
             && key.utf8.count <= SkillOfferRegistration.maximumOfferKeyByteCount
     }

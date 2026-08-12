@@ -1,3 +1,4 @@
+import ApplicationKit
 import Foundation
 import GRDB
 import PortavozCore
@@ -16,12 +17,14 @@ final class SkillExecutionStoreTests: XCTestCase {
         _ store: MeetingStore,
         proposalID: UUID = UUID(),
         key: String = "reminder-draft:meeting-1",
+        offerKey: String? = nil,
         at when: Date? = nil
     ) async throws -> SkillExecutionAdmission {
         try await store.confirmSkillExecution(
             proposalID: proposalID,
             skillID: "reminder-draft",
             skillVersion: 1,
+            offerKey: offerKey ?? key,
             idempotencyKey: key,
             at: when ?? now)
     }
@@ -83,6 +86,103 @@ final class SkillExecutionStoreTests: XCTestCase {
         let swapped = try await confirm(store, proposalID: proposal, key: "different")
 
         XCTAssertEqual(swapped, .rejected(.idempotencyKeyClaimed))
+    }
+
+    func testClaimRequiresTheEffectSlotToBelongToItsOffer() async throws {
+        let store = try store()
+
+        let unrelated = try await confirm(
+            store,
+            key: "other-effect",
+            offerKey: "reminder-draft:meeting-1")
+        let reusable = try await confirm(
+            store,
+            key: "meeting-package-export:meeting-1:/tmp/export.portavoz",
+            offerKey: "meeting-package-export:meeting-1")
+
+        XCTAssertEqual(unrelated, .rejected(.invalidProposal))
+        guard case .admitted = reusable else {
+            return XCTFail("a destination-scoped slot must belong to its reusable offer")
+        }
+    }
+
+    func testDismissedReusableOfferRejectsANewDestinationClaim() async throws {
+        let store = try store()
+        let offerKey = "meeting-package-export:meeting-1"
+        try await store.dismissSkillOffer(
+            offerKey: offerKey,
+            skillID: MeetingPackageExportSkill.id,
+            at: now)
+
+        let claim = try await store.confirmSkillExecution(
+            proposalID: UUID(),
+            skillID: MeetingPackageExportSkill.id,
+            skillVersion: MeetingPackageExportSkill.version,
+            offerKey: offerKey,
+            idempotencyKey: offerKey + ":/tmp/export.portavoz",
+            at: now)
+
+        XCTAssertEqual(claim, .rejected(.offerDismissed))
+    }
+
+    func testDismissalDoesNotStealAnAlreadyOwnedReusableEffect() async throws {
+        let store = try store()
+        let proposalID = UUID()
+        let offerKey = "meeting-package-export:meeting-1"
+        let effectKey = offerKey + ":/tmp/original.portavoz"
+        let first = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: MeetingPackageExportSkill.id,
+            skillVersion: MeetingPackageExportSkill.version,
+            offerKey: offerKey,
+            idempotencyKey: effectKey,
+            at: now)
+        guard case .admitted(let owner) = first else {
+            return XCTFail("the first confirmation must own its exact effect")
+        }
+        try await store.dismissSkillOffer(
+            offerKey: offerKey,
+            skillID: MeetingPackageExportSkill.id,
+            at: now.addingTimeInterval(1))
+
+        let repeated = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: MeetingPackageExportSkill.id,
+            skillVersion: MeetingPackageExportSkill.version,
+            offerKey: offerKey,
+            idempotencyKey: effectKey,
+            at: now.addingTimeInterval(2))
+        let newDestination = try await store.confirmSkillExecution(
+            proposalID: UUID(),
+            skillID: MeetingPackageExportSkill.id,
+            skillVersion: MeetingPackageExportSkill.version,
+            offerKey: offerKey,
+            idempotencyKey: offerKey + ":/tmp/new.portavoz",
+            at: now.addingTimeInterval(2))
+
+        XCTAssertEqual(repeated, .alreadySettled(owner))
+        XCTAssertEqual(newDestination, .rejected(.offerDismissed))
+    }
+
+    func testOpaqueOfferKeyBytesSurviveClaimAndOwnerResolution() async throws {
+        let store = try store()
+        let proposalID = UUID()
+        let opaqueKey = "pre-meeting-brief:event-id-with-trailing-space "
+
+        let claim = try await store.confirmSkillExecution(
+            proposalID: proposalID,
+            skillID: PreMeetingBriefSkill.id,
+            skillVersion: PreMeetingBriefSkill.version,
+            offerKey: opaqueKey,
+            idempotencyKey: opaqueKey,
+            at: now)
+        let owner = try await store.skillExecution(idempotencyKey: opaqueKey)
+
+        guard case .admitted = claim else {
+            return XCTFail("opaque provider bytes must not be normalized away")
+        }
+        XCTAssertEqual(owner?.proposalID, proposalID)
+        XCTAssertEqual(owner?.idempotencyKey, opaqueKey)
     }
 
     // MARK: - Relaunch
@@ -200,6 +300,7 @@ final class SkillExecutionStoreTests: XCTestCase {
             proposalID: UUID(),
             skillID: "",
             skillVersion: 1,
+            offerKey: "k",
             idempotencyKey: "k",
             at: now)
         XCTAssertEqual(blankSkill, .rejected(.invalidProposal))
@@ -208,6 +309,7 @@ final class SkillExecutionStoreTests: XCTestCase {
             proposalID: UUID(),
             skillID: "ok",
             skillVersion: 0,
+            offerKey: "k2",
             idempotencyKey: "k2",
             at: now)
         XCTAssertEqual(badVersion, .rejected(.invalidProposal))

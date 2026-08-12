@@ -87,6 +87,7 @@ extension AppServices: ReminderDraftModelClient {
             proposal: built.proposal,
             isConfirmedByUser: true,
             egressIsPermitted: false,
+            offerKey: request.offer.offerKey,
             idempotencyKey: built.idempotencyKey))
         switch outcome {
         case .performed, .alreadySettled(.succeeded):

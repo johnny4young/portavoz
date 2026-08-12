@@ -9,6 +9,7 @@ public protocol SkillExecutionClaiming: Sendable {
         proposalID: UUID,
         skillID: String,
         skillVersion: Int,
+        offerKey: String,
         idempotencyKey: String,
         at now: Date
     ) async throws -> SkillExecutionAdmission
@@ -59,16 +60,22 @@ public struct ExecuteSkillRequest: Sendable {
     /// Stable for one intended effect, so a retry of the same intent claims the
     /// same slot instead of producing a second one.
     public let idempotencyKey: String
+    /// Stable identity of the offer the user reviewed. This can be broader
+    /// than one effect slot (for example a reusable export with one slot per
+    /// destination), so it remains distinct from `idempotencyKey`.
+    public let offerKey: String
 
     public init(
         proposal: SkillProposal,
         isConfirmedByUser: Bool,
         egressIsPermitted: Bool,
+        offerKey: String,
         idempotencyKey: String
     ) {
         self.proposal = proposal
         self.isConfirmedByUser = isConfirmedByUser
         self.egressIsPermitted = egressIsPermitted
+        self.offerKey = offerKey
         self.idempotencyKey = idempotencyKey
     }
 }
@@ -131,22 +138,12 @@ public struct ExecuteSkill: ApplicationUseCase {
             return .refused(.invalidDefinition)
         }
 
-        switch try await claims.confirmSkillExecution(
-            proposalID: proposal.id,
-            skillID: proposal.definition.id,
-            skillVersion: proposal.definition.version,
-            idempotencyKey: request.idempotencyKey,
-            at: now()
+        if let outcome = try await confirmationOutcome(
+            proposal: proposal,
+            offerKey: request.offerKey,
+            idempotencyKey: request.idempotencyKey
         ) {
-        case .rejected(let rejection):
-            return .rejected(rejection)
-        case .admitted, .alreadySettled:
-            // An existing claim is not by itself a reason to stop: a failed
-            // execution is retryable. `beginSkillExecution` already encodes
-            // exactly which states may proceed, so it stays the only place
-            // that decides — duplicating that policy here is how the two
-            // drift apart.
-            break
+            return outcome
         }
 
         try await checkCancellationBeforeHandoff(proposalID: proposal.id)
@@ -181,6 +178,31 @@ public struct ExecuteSkill: ApplicationUseCase {
             failureCategory: nil,
             at: now())
         return .performed
+    }
+
+    private func confirmationOutcome(
+        proposal: SkillProposal,
+        offerKey: String,
+        idempotencyKey: String
+    ) async throws -> SkillExecutionOutcome? {
+        switch try await claims.confirmSkillExecution(
+            proposalID: proposal.id,
+            skillID: proposal.definition.id,
+            skillVersion: proposal.definition.version,
+            offerKey: offerKey,
+            idempotencyKey: idempotencyKey,
+            at: now()
+        ) {
+        case .rejected(let rejection):
+            return .rejected(rejection)
+        case .admitted, .alreadySettled:
+            // An existing claim is not by itself a reason to stop: a failed
+            // execution is retryable. `beginSkillExecution` already encodes
+            // exactly which states may proceed, so it stays the only place
+            // that decides — duplicating that policy here is how the two
+            // drift apart.
+            return nil
+        }
     }
 
     /// Confirmation and irreversible handoff are separate durable states.

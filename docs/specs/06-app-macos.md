@@ -2495,7 +2495,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D337, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D338, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2520,7 +2520,9 @@ and first/last observed times. It explains why the offer appeared and lists the
 categories it may use without receiving the stable offer key, opaque subject,
 title, transcript, preview, arguments, destination, or recipient. The privacy
 copy directs the user back to the original surface for the exact preview and
-confirmation; no row is actionable in Settings.
+confirmation. The only row action is **Dismiss**, which sends that unrelated
+review UUID to ApplicationKit and never receives the stable offer or subject
+identity.
 
 Every built-in `SkillDefinition` declares a nonempty input-data ceiling in
 addition to effect capabilities, and every exact `SkillProposal` requests a
@@ -2534,6 +2536,26 @@ opaque. Dismissal and one-shot execution admission retire the exact offer
 authority atomically. Package export remains intentionally reusable: its offer
 is destination-free, while every approved destination owns a separate exact
 execution claim.
+
+Central dismissal resolves a still-live review UUID, writes the existing
+stable-intent tombstone, and deletes its authority row in one storage
+transaction. An expired, concurrently retired, or repeated UUID returns one
+content-free unavailable result and the app reloads authoritative rows. A
+storage failure retains the original row, shows an inline retry, and leaves
+verified pause/enablement usable. No optimistic removal is accepted. A stale
+producer reconciliation skips already-dismissed active keys in the same write,
+so it cannot recreate the row after reading subject state earlier.
+
+An already-open exact confirmation is also fenced. `ExecuteSkillRequest`
+carries the reviewed offer key separately from the effect's idempotency key;
+storage accepts equality for one-shot work or the exact `offerKey:` prefix for
+destination-scoped package exports. The durable claim resolves an exact owner
+first and checks the dismissal before granting a new one. Thus whichever SQLite
+write commits first owns the outcome: a prior dismissal refuses the stale
+execution, while a prior claim remains idempotently resolvable because it has
+already durably accepted the user's subject-surface approval.
+Opaque provider identity bytes are preserved. Settings still cannot confirm,
+execute, or create standing rules.
 
 The switches write SQLite v35 state. Global pause leaves every individual
 choice intact; resuming restores those choices. Meeting proposals read the
@@ -2585,10 +2607,13 @@ receive or render the idempotency key, arguments, destination, result, meeting
 title, transcript, or summary. **Try again** repeats only that read and cannot
 execute or retry a Skill.
 
-Four bilingual XCUITest journeys cover the pane: one verifies the fail-closed
+Six bilingual XCUITest journeys cover the pane: one verifies the fail-closed
 control load state; one proves a selected activity-scope failure neither
 invents rows nor disables verified policy; one isolates proposal-authority
-failure with no invented rows while controls remain usable; and the main
+failure with no invented rows while controls remain usable; one dismisses a
+real email proposal and proves re-observation keeps it absent while unrelated
+offers remain; one injects a dismissal failure and proves the row plus retry
+stay available on both Settings and the subject surface; and the main
 disposable journey
 disables export, pauses all skills, proves offers stay absent, resumes without
 losing the individual choice, confirms the remaining recap proposal, traverses

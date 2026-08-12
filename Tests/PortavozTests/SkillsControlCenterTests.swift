@@ -161,6 +161,7 @@ final class SkillsControlCenterTests: XCTestCase {
                 proposalID: proposalID,
                 skillID: RecapDraftSkill.id,
                 skillVersion: RecapDraftSkill.version,
+                offerKey: "receipt-\(index)",
                 idempotencyKey: "receipt-\(index)",
                 at: timestamp)
             _ = try await store.beginSkillExecution(
@@ -295,6 +296,7 @@ final class SkillsControlCenterTests: XCTestCase {
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            offerKey: "inspection-retry",
             idempotencyKey: "inspection-retry",
             at: now)
         _ = try await store.beginSkillExecution(
@@ -376,6 +378,7 @@ final class SkillsControlCenterTests: XCTestCase {
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            offerKey: "invalid-failure-category",
             idempotencyKey: "invalid-failure-category",
             at: now)
         _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
@@ -413,6 +416,7 @@ final class SkillsControlCenterTests: XCTestCase {
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            offerKey: "broken-inspection-chain",
             idempotencyKey: "broken-inspection-chain",
             at: now)
         _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
@@ -450,6 +454,7 @@ final class SkillsControlCenterTests: XCTestCase {
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            offerKey: "stale-inspection-tail",
             idempotencyKey: "stale-inspection-tail",
             at: now)
         _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
@@ -499,6 +504,7 @@ final class SkillsControlCenterTests: XCTestCase {
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            offerKey: "bounded-inspection",
             idempotencyKey: "bounded-inspection",
             at: now)
         for attempt in 1...128 {
@@ -625,6 +631,7 @@ final class SkillsControlCenterTests: XCTestCase {
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            offerKey: "scope-\(proposalID.uuidString)",
             idempotencyKey: "scope-\(proposalID.uuidString)",
             at: timestamp)
         switch state {

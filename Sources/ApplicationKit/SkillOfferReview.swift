@@ -41,6 +41,11 @@ public protocol SkillOfferReviewStore: SkillExecutionPolicyReading, Sendable {
         limit: Int,
         at now: Date
     ) async throws -> [SkillOfferReviewRecord]
+
+    func dismissProposedSkillOffer(
+        reviewID: UUID,
+        at now: Date
+    ) async throws -> SkillOfferReviewDismissalOutcome
 }
 
 extension MeetingStore: SkillOfferReviewStore {}
@@ -117,5 +122,30 @@ public struct LoadSkillOfferReview: ApplicationUseCase {
         case .confirmedCommitment:
             dataClasses.contains(.commitment)
         }
+    }
+}
+
+/// Dismisses one inert central review without receiving the stable offer key
+/// or any subject identity. Exact preview and execution remain owned by the
+/// original subject surface.
+public struct DismissSkillOfferReview: ApplicationUseCase {
+    private let store: any SkillOfferReviewStore
+    private let now: @Sendable () -> Date
+
+    public init(
+        store: any SkillOfferReviewStore,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
+        self.store = store
+        self.now = now
+    }
+
+    public func execute(
+        _ reviewID: UUID
+    ) async throws -> SkillOfferReviewDismissalOutcome {
+        try Task.checkCancellation()
+        return try await store.dismissProposedSkillOffer(
+            reviewID: reviewID,
+            at: now())
     }
 }

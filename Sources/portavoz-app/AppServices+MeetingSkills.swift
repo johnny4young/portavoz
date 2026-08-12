@@ -93,6 +93,7 @@ extension AppServices {
                 proposal: plan.proposal,
                 isConfirmedByUser: true,
                 egressIsPermitted: plan.egressIsPermitted,
+                offerKey: offer.offerKey,
                 idempotencyKey: plan.idempotencyKey))
         } catch {
             if offer.kind == .secretGistPublish,

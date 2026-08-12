@@ -239,6 +239,14 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "SkillsSettingsUITests",
             "testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy",
         ),
+        test_id(
+            "SkillsSettingsUITests",
+            "testProposedSkillDismissalRetiresTheDurableOfferEverywhere",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
+            "testFailedProposedSkillDismissalKeepsTheOfferAndAllowsRetry",
+        ),
     ),
     "settings-data": (
         test_id("SettingsUITests", "testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy"),

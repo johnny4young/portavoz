@@ -99,6 +99,96 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testProposedSkillDismissalRetiresTheDurableOfferEverywhere() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSeededMeeting(in: app)
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-offer-menu")
+                .waitForExistence(timeout: 10),
+            "the real Meeting Detail producer must publish its offers first")
+        openSkillsSettings(in: app)
+
+        let dismiss = proposalDismissalControl(
+            "action",
+            skillID: "email-recap-draft",
+            in: app)
+        let proposalRow = proposalReviewRow(
+            skillID: "email-recap-draft",
+            in: app)
+        scrollToVisible(dismiss, in: app, deltaY: -40)
+        XCTAssertTrue(dismiss.waitForStableFrame(timeout: 5))
+        dismiss.click()
+        XCTAssertTrue(
+            waitForDisappearance(proposalRow),
+            "verified dismissal must remove the exact opaque review row")
+        XCTAssertFalse(
+            proposalDismissalControl(
+                "error",
+                skillID: "email-recap-draft",
+                in: app).exists)
+
+        closeSettings(in: app)
+        reloadSeededMeeting(in: app)
+        assertEmailOffer(isPresent: false, in: app)
+        attachScreenshot(of: app, named: "skills-proposal-dismissed")
+    }
+
+    @MainActor
+    func testFailedProposedSkillDismissalKeepsTheOfferAndAllowsRetry() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append(
+            "-simulate-skill-proposal-dismiss-unavailable")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSeededMeeting(in: app)
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-offer-menu")
+                .waitForExistence(timeout: 10))
+        openSkillsSettings(in: app)
+
+        let dismiss = proposalDismissalControl(
+            "action",
+            skillID: "email-recap-draft",
+            in: app)
+        let proposalRow = proposalReviewRow(
+            skillID: "email-recap-draft",
+            in: app)
+        scrollToVisible(dismiss, in: app, deltaY: -40)
+        XCTAssertTrue(dismiss.waitForStableFrame(timeout: 5))
+        dismiss.click()
+
+        let error = proposalDismissalControl(
+            "error",
+            skillID: "email-recap-draft",
+            in: app)
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        let retry = proposalDismissalControl(
+            "retry",
+            skillID: "email-recap-draft",
+            in: app)
+        scrollToVisible(retry, in: app, deltaY: -40)
+        XCTAssertTrue(retry.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(proposalRow.exists,
+            "an unverified mutation must retain the original offer")
+        XCTAssertFalse(dismiss.exists,
+            "the inline retry must not duplicate the dismissal action")
+        retry.click()
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        XCTAssertTrue(proposalRow.exists)
+
+        closeSettings(in: app)
+        reloadSeededMeeting(in: app)
+        assertEmailOffer(isPresent: true, in: app)
+        attachScreenshot(of: app, named: "skills-proposal-dismissal-failure")
+    }
+
+    @MainActor
     func testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
@@ -416,6 +506,62 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    private func assertEmailOffer(
+        isPresent: Bool,
+        in app: XCUIApplication
+    ) {
+        let menu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
+        menu.click()
+        let email = app.menuItems["skill-offer-email-recap-draft"]
+        if isPresent {
+            XCTAssertTrue(
+                email.waitForExistence(timeout: 5),
+                "a failed central mutation must not hide the subject offer")
+        } else {
+            XCTAssertFalse(
+                email.waitForExistence(timeout: 1),
+                "the durable dismissal must hide the offer after re-observation")
+            XCTAssertTrue(
+                app.menuItems["skill-offer-recap-draft"]
+                    .waitForExistence(timeout: 5),
+                "dismissing email must not retire an unrelated recap offer")
+        }
+        app.typeKey(.escape, modifierFlags: [])
+    }
+
+    private func proposalDismissalControl(
+        _ component: String,
+        skillID: String,
+        in app: XCUIApplication
+    ) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "settings-skill-proposal-dismiss-\(component)-\(skillID)-"
+        )).firstMatch
+    }
+
+    private func proposalReviewRow(
+        skillID: String,
+        in app: XCUIApplication
+    ) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "settings-skill-proposal-\(skillID)-"
+        )).firstMatch
+    }
+
+    private func waitForDisappearance(
+        _ element: XCUIElement,
+        timeout: TimeInterval = 5
+    ) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
     private func waitForToggle(
         _ toggle: XCUIElement,
         toBeOn expected: Bool,
@@ -480,7 +626,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     @MainActor
     private func scrollToVisible(
         _ element: XCUIElement,
-        in app: XCUIApplication
+        in app: XCUIApplication,
+        deltaY: CGFloat = -5
     ) {
         let window = app.windows.containing(
             .any,
@@ -490,7 +637,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let form = window.scrollViews.element(boundBy: 1)
         guard form.exists else { return }
         for _ in 0..<16 where !element.isHittable {
-            form.scroll(byDeltaX: 0, deltaY: -5)
+            form.scroll(byDeltaX: 0, deltaY: deltaY)
         }
     }
 

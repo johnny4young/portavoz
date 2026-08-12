@@ -45,6 +45,7 @@ final class ExecuteSkillTests: XCTestCase {
             proposal: proposal,
             isConfirmedByUser: confirmed,
             egressIsPermitted: false,
+            offerKey: key,
             idempotencyKey: key)
     }
 
@@ -286,6 +287,7 @@ final class ExecuteSkillTests: XCTestCase {
             proposalID: subject.id,
             skillID: ReminderDraftSkill.id,
             skillVersion: ReminderDraftSkill.version,
+            offerKey: "reminder-draft:one",
             idempotencyKey: "reminder-draft:one",
             at: now)
         _ = try await store.beginSkillExecution(proposalID: subject.id, at: now)
@@ -428,6 +430,7 @@ private actor GatedSkillClaims: SkillExecutionClaiming {
         proposalID: UUID,
         skillID: String,
         skillVersion: Int,
+        offerKey: String,
         idempotencyKey: String,
         at now: Date
     ) async throws -> SkillExecutionAdmission {
@@ -435,6 +438,7 @@ private actor GatedSkillClaims: SkillExecutionClaiming {
             proposalID: proposalID,
             skillID: skillID,
             skillVersion: skillVersion,
+            offerKey: offerKey,
             idempotencyKey: idempotencyKey,
             at: now)
         didConfirm = true

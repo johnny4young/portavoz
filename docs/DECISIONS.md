@@ -12061,3 +12061,47 @@ expiry remains the content-free upper bound. This slice adds no Settings-side
 confirm/dismiss/retry/revoke action, standing rule, background execution,
 adapter, transport, or egress authority; those remain separate AUTO-6/AUTO-5
 work with physical Sequoia, separate-hardware Tahoe, and VoiceOver evidence.
+
+## D338 — Proposed dismissal is opaque, linearizable, and claim-fenced (Aug 2026)
+
+**Context:** D337 gave Settings a content-free Proposed queue but deliberately
+left it read only. Reusing the existing stable offer key in SwiftUI would expose
+meeting, commitment, or opaque calendar identity. Optimistically hiding a row
+would also be unsafe: a storage failure could lose the visible proposal without
+recording the user's decision. More importantly, a real subject surface may
+have read an offer before Settings dismisses it, and an already-open
+confirmation may still hold an exact valid preview. Deleting only the central
+row would let stale reconciliation recreate it or let the stale sheet execute
+after the user said no.
+
+**Decision:** Settings sends only the unrelated v40 review UUID through
+`DismissSkillOfferReview`. Storage resolves a nonexpired authority row, inserts
+its existing `skillOfferDismissal` tombstone, and deletes the proposal in one
+SQLite write transaction. Missing, expired, concurrently retired, and repeated
+UUIDs return the same content-free unavailable outcome. The app reloads after a
+verified dismissed/unavailable result; a thrown mutation retains the exact row,
+shows an inline retry, and does not disable independently verified Skill policy.
+
+Reconciliation reads dismissals for its bounded active set inside the same
+write and deletes/skips those authorities before upsert. A producer whose
+subject read preceded the dismissal therefore cannot recreate a hidden row.
+Every execution request now carries its reviewed `offerKey` separately from the
+exact effect `idempotencyKey`. Storage accepts equality for one-shot offers or
+an exact `offerKey + ":"` prefix for reusable package destinations, rejects
+unrelated slots, and checks the durable dismissal inside the confirmation
+transaction before granting any new claim. An exact owner that committed first
+is resolved before the tombstone check so retry remains idempotent. Opaque
+provider identity bytes are preserved rather than compared with a trimmed copy.
+
+**Consequences:** SQLite write serialization supplies one linearization point.
+If dismissal commits first, later stale reconciliation remains absent and an
+open confirmation receives typed `offerDismissed` without a claim or effect.
+If a one-shot confirmation commits first, it retires the review and a later
+dismissal UUID is simply unavailable. A reusable package claim deliberately
+keeps its destination-free review: a later dismissal fences every new
+destination while the exact effect owner that already committed remains
+idempotently resolvable. No schema, preview storage, central content scan,
+Settings confirmation, receipt retry/revoke, standing rule, background
+execution, adapter, transport, or egress consent is added. The implementation
+uses APIs available at the macOS 14.4 floor; physical VoiceOver, Sequoia, and
+separate-hardware Tahoe behavior remain field evidence.

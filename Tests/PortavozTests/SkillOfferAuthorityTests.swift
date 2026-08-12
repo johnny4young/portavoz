@@ -127,6 +127,7 @@ final class SkillOfferAuthorityTests: XCTestCase {
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            offerKey: recap.offerKey,
             idempotencyKey: recap.offerKey,
             at: now.addingTimeInterval(2))
         let afterConfirmation = try await store.proposedSkillOffers(
@@ -144,6 +145,101 @@ final class SkillOfferAuthorityTests: XCTestCase {
             limit: 20,
             at: now)
         XCTAssertTrue(afterDismissal.isEmpty)
+    }
+
+    func testOpaqueReviewDismissalWinsAgainstAStaleSurfaceAndExecution() async throws {
+        let store = try MeetingStore.inMemory()
+        let instant = now
+        let meeting = Meeting(title: "Never returned", startedAt: now)
+        try await store.save(meeting)
+        let offer = MeetingSkillOffer(kind: .recapDraft, meetingID: meeting.id)
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: [offer.offerKey],
+            active: [offer.registration(at: now)])
+        let review = try await LoadSkillOfferReview(
+            store: store,
+            now: { instant }).execute(LoadSkillOfferReviewRequest())
+        let opaqueID = try XCTUnwrap(review.offers.first?.id)
+        let built = MeetingSkillProposalFactory.recapProposal(
+            meetingID: meeting.id,
+            at: now)
+        let effect = RecordingSkillEffect()
+
+        let dismissed = try await DismissSkillOfferReview(
+            store: store,
+            now: { instant.addingTimeInterval(1) }).execute(opaqueID)
+        XCTAssertEqual(dismissed, .dismissed)
+
+        // A producer that read before the dismissal can reconcile afterwards.
+        // The tombstone must still win rather than recreating hidden authority.
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: [offer.offerKey],
+            active: [offer.registration(at: now.addingTimeInterval(2))])
+        let reviews = try await store.proposedSkillOffers(
+            limit: 20,
+            at: now.addingTimeInterval(2))
+        XCTAssertTrue(reviews.isEmpty)
+        let proposalCount = try await store.database.read { database in
+            try Int.fetchOne(
+                database,
+                sql: "SELECT COUNT(*) FROM skillOfferProposal") ?? -1
+        }
+        XCTAssertEqual(proposalCount, 0)
+
+        // An already-open confirmation owns a valid proposal snapshot, but it
+        // is not authority after the central dismissal committed.
+        let execution = try await ExecuteSkill(
+            claims: store,
+            policy: store,
+            effects: [RecapDraftSkill.id: effect],
+            now: { instant.addingTimeInterval(3) }
+        ).execute(ExecuteSkillRequest(
+            proposal: built.proposal,
+            isConfirmedByUser: true,
+            egressIsPermitted: false,
+            offerKey: offer.offerKey,
+            idempotencyKey: built.idempotencyKey))
+        XCTAssertEqual(execution, .rejected(.offerDismissed))
+        let executionCount = await effect.executionCount
+        let history = try await store.skillExecutionHistory(
+            proposalID: built.proposal.id)
+        XCTAssertEqual(executionCount, 0)
+        XCTAssertTrue(history.isEmpty)
+
+        let repeated = try await DismissSkillOfferReview(
+            store: store,
+            now: { instant.addingTimeInterval(4) }).execute(opaqueID)
+        XCTAssertEqual(repeated, .unavailable)
+    }
+
+    func testExpiredOpaqueReviewIsRemovedWithoutInventingADismissal() async throws {
+        let store = try MeetingStore.inMemory()
+        let event = UpcomingEvent(
+            id: "expired-review",
+            title: "Never persisted",
+            startDate: now.addingTimeInterval(10),
+            attendees: [])
+        let offer = try XCTUnwrap(PreMeetingBriefOffer(event: event))
+        try await store.reconcileSkillOffers(
+            candidateOfferKeys: [offer.offerKey],
+            active: [offer.registration(at: now)])
+        let review = try await store.proposedSkillOffers(
+            limit: 1,
+            at: now)
+        let reviewID = try XCTUnwrap(review.first?.id)
+
+        let outcome = try await store.dismissProposedSkillOffer(
+            reviewID: reviewID,
+            at: event.startDate)
+
+        XCTAssertEqual(outcome, .unavailable)
+        let dismissals = try await store.dismissedSkillOffers(
+            offerKeys: [offer.offerKey])
+        let remaining = try await store.proposedSkillOffers(
+            limit: 1,
+            at: event.startDate)
+        XCTAssertTrue(dismissals.isEmpty)
+        XCTAssertTrue(remaining.isEmpty)
     }
 
     func testExpiredOffersArePrunedBeforeTheBoundedReview() async throws {
@@ -358,5 +454,13 @@ final class SkillOfferAuthorityTests: XCTestCase {
             store: store,
             now: { instant }).execute(LoadSkillOfferReviewRequest())
         XCTAssertTrue(pausedReview.offers.isEmpty)
+    }
+}
+
+private actor RecordingSkillEffect: SkillEffectPerforming {
+    private(set) var executionCount = 0
+
+    func perform(_ proposal: SkillProposal) {
+        executionCount += 1
     }
 }

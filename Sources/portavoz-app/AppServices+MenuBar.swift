@@ -72,6 +72,7 @@ extension AppServices: MenuBarModelClient {
             proposal: built.proposal,
             isConfirmedByUser: true,
             egressIsPermitted: false,
+            offerKey: offer.offerKey,
             idempotencyKey: key))
         let failure = menuBarBriefFailure(for: outcome)
         if failure == nil {

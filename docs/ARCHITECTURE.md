@@ -380,10 +380,25 @@ The read path prunes expired offers before a bounded newest-first index walk,
 materializes at most 100 rows in StorageKit and 50 in ApplicationKit, and then
 revalidates every row against the current catalogue version, reason, input
 declaration, durable pause, and per-Skill policy. A proposal-only failure shows
-no rows but does not disable independently verified execution controls. This is
-read-only review: confirmation still belongs to the original subject surface,
-and no standing rule, workflow action, or execution authority exists in
-Settings.
+no rows but does not disable independently verified execution controls.
+Settings can dismiss one inert row using only its random review UUID. Storage
+resolves the stable intent, inserts the existing terminal dismissal, and
+deletes the authority row in one write; expired or already-retired review
+identities return the same unavailable outcome. A failed write retains the row
+and exposes retry instead of optimistically hiding it. Reconciliation checks
+the dismissal set in its write transaction, so a producer that read before the
+action cannot recreate hidden authority.
+
+Confirmation still belongs to the original subject surface. Every execution
+claim carries the reviewed `offerKey` separately from its exact
+`idempotencyKey`: one-shot values are equal, while a reusable package offer is
+the exact prefix of its destination-scoped slot. Storage validates that
+relationship and checks the durable dismissal inside the claim transaction
+before granting any new owner, while an exact owner that committed first stays
+idempotently resolvable. A dismissal that commits first therefore blocks an
+already-open stale confirmation without adding preview or subject identity to
+Settings. No Settings confirmation, standing rule,
+receipt-level workflow action, or execution authority is introduced.
 
 Selecting one receipt opens a read-only AUTO-6 inspection projection. Storage
 loads its current state and predecessor-linked event chain in one SQLite read
@@ -828,7 +843,9 @@ The current schema version is 40. It includes:
   declined proposal never returns;
 - a content-free central Skill-offer authority with random review identity,
   typed reason/subject, normalized exact input-data declarations, bounded
-  newest-first review, calendar expiry, and meeting/commitment cascade cleanup;
+  newest-first review, calendar expiry, meeting/commitment cascade cleanup,
+  opaque-UUID dismissal, tombstone-wins reconciliation, and a claim-time
+  dismissal fence;
 - one content-free device-local skill-control singleton, a sparse disablement
   set, and a direction-matched recent-execution index shared by proposal and
   execution admission;
