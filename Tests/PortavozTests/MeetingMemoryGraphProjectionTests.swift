@@ -457,11 +457,18 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         let fixture = try await seededGraphFixture()
         _ = try await projectAll(in: fixture.store)
 
+        let topicCreatedAt = try await fixture.store.database.read { database in
+            try XCTUnwrap(Date.fetchOne(
+                database,
+                sql: "SELECT createdAt FROM topic WHERE id = ?",
+                arguments: [fixture.rootTopicID.rawValue.uuidString]))
+        }
+
         try await fixture.store.database.write { database in
             try database.execute(
                 sql: "UPDATE topic SET deletedAt = ? WHERE id = ?",
                 arguments: [
-                    Self.baseDate.addingTimeInterval(120),
+                    topicCreatedAt.addingTimeInterval(120),
                     fixture.rootTopicID.rawValue.uuidString,
                 ])
         }
