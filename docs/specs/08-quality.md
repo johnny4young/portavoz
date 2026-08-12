@@ -2426,6 +2426,34 @@ Apple NaturalLanguage semantic-preparation path and is not evidence for MLX.
 Physical clean-install asset behavior and disk deltas on Sequoia and separate
 Tahoe hosts remain field evidence.
 
+**D333 capability-derived Skills disclosure gate.** ApplicationKit coverage
+requires the four definitions without `sendRemote` to project the bounded
+no-direct-network statement and the email/Gist definitions to project an
+external-handoff statement, while all current catalogue rows retain explicit
+per-proposal approval. The architecture ratchet requires the projection to read
+`SkillDefinition.declaresExternalEffect` and `confirmationPolicy`, rejects the
+former universal `On this Mac` label, and pins the decision. The existing
+single-launch Skills Settings XCUITest journey now asserts one local row, both
+external rows, and the per-run approval disclosure in English and Spanish.
+This changes no capability, consent, destination, retry, or execution behavior;
+physical email/GitHub/Reminders and synced-destination behavior remains field
+evidence rather than inferred from labels.
+
+The final static gate passed the Swift 6 warnings-as-errors build, 2,378
+package cases with 14 environment-gated skips, 169 architecture ratchets, 355
+tooling cases, repository hygiene, and strict SwiftLint with zero violations
+across 656 production files. The first complete package run also exposed a
+date-dependent graph-projection fixture whose fixed deletion timestamp became
+older than its real persisted creation timestamp; deriving the lifecycle from
+that persisted value passed ten repeated focused runs before the complete suite
+passed. Finalized macOS 26.5.2 result bundles then passed the complete 80/80
+English and 80/80 Spanish real-app catalogues with no failures or skips. The
+Developer-ID-signed `app.portavoz.mac.dev` bundle was reinstalled and deeply
+verified, while an identical 183-descendant-plus-root release manifest and
+signature proved `/Applications/Portavoz.app` unchanged. This host evidence is
+Tahoe-only and does not replace physical Sequoia or provider/destination field
+validation.
+
 **D327 review-first email gate.** Eleven package cases pin the separate external
 registry and intact local no-egress invariant, irreversible explicit capability
 contract, exact-one-meeting arguments and keys, existing recap-composer reuse,

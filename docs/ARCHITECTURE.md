@@ -356,6 +356,15 @@ that proposal only. No standing-rule control exists for irreversible or
 external work, and an ambiguous remote attempt is never made retryable merely
 because the provider outcome is unavailable.
 
+The Skills pane derives each row's transfer disclosure from the executable
+`SkillDefinition`, never from a title or a list of known identifiers. A
+definition containing `sendRemote` is presented as potentially sharing outside
+Portavoz; every other definition promises only that Portavoz performs no direct
+network handoff, because a clipboard, native app, or user-selected file
+destination may still sync independently. Enablement remains visually separate
+from the definition's confirmation policy, so an enabled explicit-per-proposal
+Skill still says that every run requires approval.
+
 Application failures cross into presentation as bounded categories or stable
 workflow codes. Raw filesystem paths, localized dependency errors, model
 payloads, and storage implementation details do not form the UI contract.

@@ -4145,8 +4145,15 @@ final class ArchitectureDependencyTests: XCTestCase {
             "store.skillExecutions(\n            idempotencyKeys: oneShotKeys)"))
         XCTAssertTrue(settings.contains("settings-skills-pause-all"))
         XCTAssertTrue(settings.contains("settings-skill-\\(skill.id)-enabled"))
+        XCTAssertTrue(control.contains("definition.declaresExternalEffect"))
+        XCTAssertTrue(control.contains("enum SkillDisclosureBoundary"))
+        XCTAssertTrue(settings.contains("skill.disclosureBoundary"))
+        XCTAssertTrue(settings.contains(
+            "skill.definition.confirmationPolicy == .explicitPerProposal"))
+        XCTAssertFalse(settings.contains("Label(\"On this Mac\""))
         XCTAssertFalse(settings.contains("UserDefaults"))
         XCTAssertTrue(decisions.contains("## D317"))
+        XCTAssertTrue(decisions.contains("## D333"))
     }
 
     func testSkillRetryKeepsOneProposalIdentityFromPreviewToEffect() throws {

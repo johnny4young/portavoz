@@ -67,6 +67,12 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertFalse(Self.isOn(pause))
         XCTAssertTrue(Self.isOn(recap))
         XCTAssertTrue(Self.isOn(export))
+        assertDisclosure(
+            skillID: "recap-draft",
+            expectedText: UITestLocale.environmentLocale == "es"
+                ? "Sin transferencia directa por red"
+                : "No direct network handoff",
+            in: app)
         let reminderDraft = app.control(
             withIdentifier: "settings-skill-reminder-draft-enabled")
         XCTAssertTrue(reminderDraft.waitForExistence(timeout: 5))
@@ -92,6 +98,12 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.staticTexts[emailDescription].waitForExistence(timeout: 5),
             "the external skill must disclose its exact email-app boundary")
+        assertDisclosure(
+            skillID: "email-recap-draft",
+            expectedText: UITestLocale.environmentLocale == "es"
+                ? "Puede compartir fuera de Portavoz"
+                : "May share outside Portavoz",
+            in: app)
         let gist = app.control(
             withIdentifier: "settings-skill-secret-gist-publish-enabled")
         scrollToVisible(gist, in: app)
@@ -103,6 +115,12 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.staticTexts[gistDescription].waitForExistence(timeout: 5),
             "the Gist row must disclose both exact review and per-run consent")
+        assertDisclosure(
+            skillID: "secret-gist-publish",
+            expectedText: UITestLocale.environmentLocale == "es"
+                ? "Puede compartir fuera de Portavoz"
+                : "May share outside Portavoz",
+            in: app)
 
         // Individual choices survive the independent global pause override.
         export.click()
@@ -227,6 +245,54 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let deadline = Date().addingTimeInterval(timeout)
         repeat {
             if toggle.exists, Self.isOn(toggle) == expected { return true }
+            Thread.sleep(forTimeInterval: 0.1)
+        } while Date() < deadline
+        return false
+    }
+
+    @MainActor
+    private func assertDisclosure(
+        skillID: String,
+        expectedText: String,
+        in app: XCUIApplication
+    ) {
+        let toggle = app.control(
+            withIdentifier: "settings-skill-\(skillID)-enabled")
+        scrollToVisible(toggle, in: app)
+        let disclosure = app.control(
+            withIdentifier: "settings-skill-\(skillID)-boundary")
+        XCTAssertTrue(disclosure.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            waitForLabel(disclosure, toContain: expectedText),
+            "the disclosure must follow the executable capability boundary; "
+                + "label=\(disclosure.label) value=\(String(describing: disclosure.value))")
+        let approvalText = UITestLocale.environmentLocale == "es"
+            ? "Requiere aprobación en cada ejecución"
+            : "Approval required every time"
+        let confirmation = app.control(
+            withIdentifier: "settings-skill-\(skillID)-confirmation")
+        XCTAssertTrue(confirmation.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            waitForLabel(confirmation, toContain: approvalText),
+            "an enabled row must still disclose proposal-scoped approval; "
+                + "label=\(confirmation.label) value=\(String(describing: confirmation.value))")
+    }
+
+    @MainActor
+    private func waitForLabel(
+        _ element: XCUIElement,
+        toContain expectedText: String,
+        timeout: TimeInterval = 5
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            let value = element.value as? String
+            if element.exists,
+               element.label.contains(expectedText)
+                || value?.contains(expectedText) == true
+            {
+                return true
+            }
             Thread.sleep(forTimeInterval: 0.1)
         } while Date() < deadline
         return false

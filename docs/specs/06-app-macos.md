@@ -10,7 +10,8 @@ permission/effect), D324 (honest Start/Stop App Intents), and D325 (bounded App
 Entities with exact reversible routes), and D326 (one availability-shaped
 protected Spotlight generation).
 D327 adds a review-first system email-composer handoff; D328 adds exact
-one-shot secret-Gist publication with a pre-transport duplicate fence.
+one-shot secret-Gist publication with a pre-transport duplicate fence; D333
+derives Skills privacy disclosure from the executable capability contract.
 D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
 D193 lets only the resource-benchmark process observe that same closed stream
@@ -2515,6 +2516,16 @@ immediately before admission and before any durable claim or effect. Missing
 or corrupt singleton state fails closed. A Settings read failure shows an
 explicit unavailable/retry state and never renders an implicit enabled
 control.
+
+Each available row also renders two independent truths. Its transfer boundary
+is derived from the definition's declared capabilities: `sendRemote` means the
+material may leave Portavoz, while every other contract says only that Portavoz
+performs no direct network handoff. The latter deliberately does not claim that
+a chosen file destination, clipboard consumer, Reminders list, or other native
+app cannot sync. The second label derives from `confirmationPolicy`; all current
+Skills therefore disclose that approval is required for every run even while
+their enable switch is on. Titles and skill identifiers never select either
+privacy statement.
 
 Recent receipts are bounded before materialization (20 by default, 50 maximum
 through the application request, 100 at the storage boundary) and ordered by a

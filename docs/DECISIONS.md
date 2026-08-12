@@ -11851,3 +11851,31 @@ Tahoe builds remain field evidence. Replacing contextual embeddings with
 `NLEmbedding`, sqlite-vec, USearch/ANN, or another engine still requires the
 accepted bilingual quality, latency, memory, correction, rebuild, and rollback
 matrix rather than documentation preference alone.
+
+## D333 — Derive Skills privacy disclosure from executable capabilities (Aug 2026)
+
+**Context:** the Phase-2 Skills pane correctly kept durable enablement separate
+from per-proposal consent, but every available row still displayed the same
+green `On this Mac` badge. That copy contradicted the executable contracts for
+Email Recap and Secret Gist, which both declare `sendRemote`, and it overstated
+the local rows as well: a chosen file, clipboard consumer, native Reminders
+list, or system app can sync without Portavoz performing a network request.
+Hardcoding two lists of identifiers in SwiftUI would eventually drift from the
+admission policy it claims to explain.
+
+**Decision:** `SkillControlCenterItem` derives one bounded disclosure from its
+immutable `SkillDefinition`. A definition that declares any external effect is
+an `externalHandoff`; every other definition is a
+`noDirectNetworkHandoff`. Settings renders the former as material that may
+leave Portavoz and the latter only as the absence of a direct Portavoz network
+handoff. It independently renders explicit-per-proposal confirmation as
+approval required every time. Neither statement is selected from a title,
+localized copy, registry position, or skill identifier.
+
+**Consequences:** enabling Email Recap or Secret Gist can no longer look like
+reusable egress permission, and local/native effects no longer promise that an
+OS-managed destination cannot sync. The change adds no capability, adapter,
+standing rule, transport, consent persistence, or retry path. New external
+Skills automatically inherit the conservative disclosure as soon as their
+executable definition declares `sendRemote`; unit, architecture, localization,
+and bilingual real-app tests keep that projection from regressing.

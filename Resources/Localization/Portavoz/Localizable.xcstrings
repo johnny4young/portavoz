@@ -11151,12 +11151,32 @@
         }
       }
     },
-    "On this Mac": {
+    "Approval required every time": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "En este Mac"
+            "value": "Requiere aprobación en cada ejecución"
+          }
+        }
+      }
+    },
+    "May share outside Portavoz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puede compartir fuera de Portavoz"
+          }
+        }
+      }
+    },
+    "No direct network handoff": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin transferencia directa por red"
           }
         }
       }

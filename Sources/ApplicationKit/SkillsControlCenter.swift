@@ -70,6 +70,22 @@ public struct SkillControlCenterItem: Equatable, Sendable, Identifiable {
     public let isEnabled: Bool
 
     public var id: String { definition.id }
+
+    /// A disclosure derived from the executable capability contract rather
+    /// than presentation copy. File, clipboard, and native-app effects can
+    /// still land in user-selected synced destinations, so the local case
+    /// deliberately promises only that Portavoz performs no direct network
+    /// handoff.
+    public var disclosureBoundary: SkillDisclosureBoundary {
+        definition.declaresExternalEffect
+            ? .externalHandoff
+            : .noDirectNetworkHandoff
+    }
+}
+
+public enum SkillDisclosureBoundary: Equatable, Sendable {
+    case noDirectNetworkHandoff
+    case externalHandoff
 }
 
 public struct SkillControlCenterReceipt: Equatable, Sendable, Identifiable {

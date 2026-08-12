@@ -170,6 +170,34 @@ final class SkillsControlCenterTests: XCTestCase {
         XCTAssertTrue(snapshot.skills.allSatisfy(\.isEnabled))
     }
 
+    func testControlCenterDerivesDisclosureFromExecutableCapabilities() async throws {
+        let snapshot = try await LoadSkillControlCenter(
+            store: try MeetingStore.inMemory()
+        ).execute(LoadSkillControlCenterRequest())
+
+        XCTAssertEqual(
+            snapshot.skills.filter {
+                $0.disclosureBoundary == .noDirectNetworkHandoff
+            }.map(\.id),
+            [
+                RecapDraftSkill.id,
+                MeetingPackageExportSkill.id,
+                ReminderDraftSkill.id,
+                PreMeetingBriefSkill.id
+            ])
+        XCTAssertEqual(
+            snapshot.skills.filter {
+                $0.disclosureBoundary == .externalHandoff
+            }.map(\.id),
+            [
+                EmailRecapDraftSkill.id,
+                SecretGistPublishSkill.id
+            ])
+        XCTAssertTrue(snapshot.skills.allSatisfy {
+            $0.definition.confirmationPolicy == .explicitPerProposal
+        })
+    }
+
     func testReceiptLimitIsClampedBeforeTheStoreRead() async throws {
         let store = RecordingSkillControlStore()
 

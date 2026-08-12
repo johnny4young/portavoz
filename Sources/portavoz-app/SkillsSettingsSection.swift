@@ -142,9 +142,7 @@ struct SkillsSettingsSection: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Label("On this Mac", systemImage: "lock.fill")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.green)
+                skillDisclosure(skill)
             }
             Spacer(minLength: 12)
             Toggle("", isOn: skillBinding(skill))
@@ -191,6 +189,42 @@ struct SkillsSettingsSection: View {
             .frame(width: 30, height: 30)
             .background(PVDesign.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             .accessibilityHidden(true)
+    }
+
+    private func skillDisclosure(
+        _ skill: SkillControlCenterItem
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            switch skill.disclosureBoundary {
+            case .noDirectNetworkHandoff:
+                Label(
+                    "No direct network handoff",
+                    systemImage: "lock.shield.fill")
+                    .foregroundStyle(.green)
+                    .accessibilityIdentifier(
+                        "settings-skill-\(skill.id)-boundary")
+                    .accessibilityLabel("No direct network handoff")
+            case .externalHandoff:
+                Label(
+                    "May share outside Portavoz",
+                    systemImage: "arrow.up.right.square.fill")
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier(
+                        "settings-skill-\(skill.id)-boundary")
+                    .accessibilityLabel("May share outside Portavoz")
+            }
+
+            if skill.definition.confirmationPolicy == .explicitPerProposal {
+                Label(
+                    "Approval required every time",
+                    systemImage: "person.crop.circle.badge.checkmark")
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(
+                        "settings-skill-\(skill.id)-confirmation")
+                    .accessibilityLabel("Approval required every time")
+            }
+        }
+        .font(.caption2.weight(.medium))
     }
 
     private func skillBinding(
