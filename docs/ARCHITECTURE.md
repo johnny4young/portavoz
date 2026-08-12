@@ -347,9 +347,18 @@ device-local SQLite policy supplies one independent global pause plus a sparse
 set of per-skill disablements; missing or corrupt policy state is an error, not
 implicit permission. Meeting Detail reads that policy before presenting
 offers, and `ExecuteSkill` reads it again immediately before admission and the
-durable claim. The Settings snapshot combines the catalogue with at most 50
-content-free recent receipts (20 by default); storage itself refuses reads
-above 100 and serves the newest-first order from a direction-matched index.
+durable claim. The Settings snapshot combines the catalogue with exactly one
+requested content-free execution scope: recent, confirmed and waiting to begin,
+failed or executing runs that need attention, or terminal completed/cancelled
+runs. Application requests at most 50 receipts (20 by default); storage itself
+refuses reads above 100. Schema v39 supplies direction-matched newest-first
+partial indexes for the three state scopes, and the query pins the matching
+index so SQLite does not sort or scan unrelated execution history. The
+attention predicate is deliberately negative: an unknown future durable state
+stays visible for review rather than disappearing fail open. A scope response
+must match the current selection before Settings renders any receipt, and a
+scope-only read failure leaves already verified policy controls usable while
+showing no stale rows.
 Selecting one receipt opens a read-only AUTO-6 inspection projection. Storage
 loads its current state and predecessor-linked event chain in one SQLite read
 snapshot, rejects unknown typed failure categories, and preserves causal

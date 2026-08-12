@@ -29,6 +29,44 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSkillActivityScopeFailureDoesNotInventRowsOrDisableVerifiedPolicy() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-simulate-skill-receipt-scope-unavailable")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.openSettingsCategory(
+                "settings-category-skills",
+                revealing: "settings-skills-pause-all"))
+        let pause = app.control(withIdentifier: "settings-skills-pause-all")
+        let completed = app.control(
+            withIdentifier: "settings-skills-receipt-scope-completed")
+        scrollToVisible(completed, in: app)
+        XCTAssertTrue(completed.waitForExistence(timeout: 5))
+        completed.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-skills-receipt-scope-error")
+                .waitForExistence(timeout: 5),
+            "an unverified scope must show no stale rows")
+        XCTAssertTrue(pause.exists)
+        XCTAssertTrue(
+            pause.isEnabled,
+            "a receipt-only failure must preserve the last verified policy")
+        XCTAssertFalse(
+            app.control(withIdentifier: "settings-skills-stale-error").exists,
+            "receipt failure must not claim a policy mutation was unverified")
+        let retry = app.buttons["settings-skills-receipt-scope-retry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 5))
+        retry.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-skills-receipt-scope-error")
+                .waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "skills-activity-scope-failure")
+    }
+
+    @MainActor
     func testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
@@ -178,6 +216,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "the management pane must project the confirmed durable receipt")
         XCTAssertFalse(Self.isOn(app.control(
             withIdentifier: "settings-skill-meeting-package-export-enabled")))
+        assertReceiptScopes(in: app, receipt: receipt)
         scrollToVisible(receipt, in: app)
         receipt.click()
         XCTAssertTrue(
@@ -205,6 +244,49 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "skills-control-recent-receipt")
         app.buttons["skill-receipt-inspection-close"].click()
         XCTAssertTrue(receipt.waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func assertReceiptScopes(
+        in app: XCUIApplication,
+        receipt: XCUIElement
+    ) {
+        let scope = app.control(
+            withIdentifier: "settings-skills-receipt-scope")
+        let recent = app.control(
+            withIdentifier: "settings-skills-receipt-scope-recent")
+        let waiting = app.control(
+            withIdentifier: "settings-skills-receipt-scope-waiting")
+        let attention = app.control(
+            withIdentifier: "settings-skills-receipt-scope-needs-attention")
+        let completed = app.control(
+            withIdentifier: "settings-skills-receipt-scope-completed")
+        scrollToVisible(scope, in: app)
+        for control in [scope, recent, waiting, attention, completed] {
+            XCTAssertTrue(
+                control.waitForExistence(timeout: 5),
+                "every activity scope must be keyboard and accessibility reachable")
+        }
+
+        completed.click()
+        XCTAssertTrue(
+            receipt.waitForExistence(timeout: 5),
+            "the succeeded run belongs to Completed")
+        attention.click()
+        XCTAssertTrue(
+            app.control(withIdentifier:
+                "settings-skills-empty-receipts-needs-attention")
+                .waitForExistence(timeout: 5),
+            "the attention scope must render a verified empty state")
+        waiting.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-skills-empty-receipts-waiting")
+                .waitForExistence(timeout: 5),
+            "the waiting scope must render a verified empty state")
+        recent.click()
+        XCTAssertTrue(
+            receipt.waitForExistence(timeout: 5),
+            "Recent must restore the newest confirmed receipt")
     }
 
     @MainActor

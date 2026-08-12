@@ -86,6 +86,18 @@ extension MeetingStore {
     public func recentSkillExecutions(
         limit: Int
     ) async throws -> [SkillExecutionRecord] {
+        try await skillExecutions(scope: .recent, limit: limit)
+    }
+
+    /// Newest content-free execution projections for one review scope.
+    /// Every query is bounded before decoding and its predicate matches one
+    /// newest-first partial index from schema v39. `needsAttention` uses a
+    /// negative terminal/waiting predicate so unknown future states remain
+    /// visible for review instead of disappearing fail-open.
+    public func skillExecutions(
+        scope: SkillExecutionReviewScope,
+        limit: Int
+    ) async throws -> [SkillExecutionRecord] {
         guard (1...Self.maximumRecentSkillExecutionCount).contains(limit)
         else { return [] }
         return try await database.read { database in
@@ -94,12 +106,44 @@ extension MeetingStore {
                 sql: """
                     SELECT proposalID, skillID, skillVersion, idempotencyKey,
                            state, attempt, updatedAt
-                    FROM skillExecutionState
+                    FROM skillExecutionState INDEXED BY
+                         \(Self.skillExecutionReviewIndex(scope))
+                    \(Self.skillExecutionReviewPredicate(scope))
                     ORDER BY updatedAt DESC, proposalID ASC
                     LIMIT ?
                     """,
                 arguments: [limit]
             ).map(Self.skillExecutionRecord(from:))
+        }
+    }
+
+    private static func skillExecutionReviewPredicate(
+        _ scope: SkillExecutionReviewScope
+    ) -> String {
+        switch scope {
+        case .recent:
+            ""
+        case .waiting:
+            "WHERE state = 'confirmed'"
+        case .needsAttention:
+            "WHERE state NOT IN ('confirmed', 'succeeded', 'cancelled')"
+        case .completed:
+            "WHERE state IN ('succeeded', 'cancelled')"
+        }
+    }
+
+    private static func skillExecutionReviewIndex(
+        _ scope: SkillExecutionReviewScope
+    ) -> String {
+        switch scope {
+        case .recent:
+            "skillExecutionState_on_recent"
+        case .waiting:
+            "skillExecutionState_on_waiting"
+        case .needsAttention:
+            "skillExecutionState_on_attention"
+        case .completed:
+            "skillExecutionState_on_completed"
         }
     }
 }

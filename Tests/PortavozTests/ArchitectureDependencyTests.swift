@@ -1877,7 +1877,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 38"))
+        XCTAssertTrue(schema.contains("public static let version = 39"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -2966,7 +2966,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 38"))
+        XCTAssertTrue(schema.contains("public static let version = 39"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -4121,16 +4121,22 @@ final class ArchitectureDependencyTests: XCTestCase {
     }
 
     func testSkillsControlCenterSharesDurableFailClosedAuthority() throws {
+        let skill = try Self.contents(
+            of: "Sources/PortavozCore/Skill.swift")
         let control = try Self.contents(
             of: "Sources/ApplicationKit/SkillsControlCenter.swift")
         let store = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+SkillControl.swift")
         let schema = try Self.contents(
             of: "Sources/StorageKit/Schema+SkillControl.swift")
+        let executionReviewSchema = try Self.contents(
+            of: "Sources/StorageKit/Schema+SkillExecutionReview.swift")
         let offers = try Self.contents(
             of: "Sources/ApplicationKit/MeetingSkillOffers.swift")
         let settings = try Self.contents(
             of: "Sources/portavoz-app/SkillsSettingsSection.swift")
+        let activity = try Self.contents(
+            of: "Sources/portavoz-app/SkillActivitySection.swift")
         let receiptInspection = try Self.contents(
             of: "Sources/ApplicationKit/SkillReceiptInspection.swift")
         let receiptSheet = try Self.contents(
@@ -4146,11 +4152,35 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(store.contains("ORDER BY updatedAt DESC, proposalID ASC"))
         XCTAssertTrue(schema.contains("CREATE INDEX skillExecutionState_on_recent"))
         XCTAssertTrue(schema.contains("updatedAt DESC, proposalID ASC"))
+        XCTAssertTrue(skill.contains("enum SkillExecutionReviewScope"))
+        XCTAssertTrue(skill.contains("case needsAttention = \"needs-attention\""))
+        XCTAssertTrue(control.contains("receiptScope: SkillExecutionReviewScope"))
+        XCTAssertTrue(control.contains("scope: request.receiptScope"))
+        XCTAssertTrue(store.contains("FROM skillExecutionState INDEXED BY"))
+        XCTAssertTrue(store.contains("skillExecutionState_on_waiting"))
+        XCTAssertTrue(store.contains("skillExecutionState_on_attention"))
+        XCTAssertTrue(store.contains("skillExecutionState_on_completed"))
+        XCTAssertTrue(executionReviewSchema.contains(
+            "WHERE state = 'confirmed'"))
+        XCTAssertTrue(executionReviewSchema.contains(
+            "WHERE state NOT IN ('confirmed', 'succeeded', 'cancelled')"))
+        XCTAssertTrue(executionReviewSchema.contains(
+            "WHERE state IN ('succeeded', 'cancelled')"))
         XCTAssertTrue(offers.contains("store.skillExecutionPolicy()"))
         XCTAssertTrue(offers.contains(
             "store.skillExecutions(\n            idempotencyKeys: oneShotKeys)"))
         XCTAssertTrue(settings.contains("settings-skills-pause-all"))
         XCTAssertTrue(settings.contains("settings-skill-\\(skill.id)-enabled"))
+        XCTAssertTrue(activity.contains("settings-skills-receipt-scope-recent"))
+        XCTAssertTrue(activity.contains("settings-skills-receipt-scope-waiting"))
+        XCTAssertTrue(activity.contains(
+            "settings-skills-receipt-scope-needs-attention"))
+        XCTAssertTrue(activity.contains("settings-skills-receipt-scope-completed"))
+        XCTAssertTrue(activity.contains(
+            "snapshot?.receiptScope != receiptScope"))
+        XCTAssertTrue(settings.contains(".task(id: receiptScope)"))
+        XCTAssertTrue(settings.contains(
+            "activeLoadID == loadID, receiptScope == requestedScope"))
         XCTAssertTrue(control.contains("definition.declaresExternalEffect"))
         XCTAssertTrue(control.contains("enum SkillDisclosureBoundary"))
         XCTAssertTrue(settings.contains("skill.disclosureBoundary"))
@@ -4177,6 +4207,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D317"))
         XCTAssertTrue(decisions.contains("## D333"))
         XCTAssertTrue(decisions.contains("## D335"))
+        XCTAssertTrue(decisions.contains("## D336"))
     }
 
     func testSkillRetryKeepsOneProposalIdentityFromPreviewToEffect() throws {
@@ -7551,7 +7582,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 38"))
+        XCTAssertTrue(schema.contains("public static let version = 39"))
         XCTAssertTrue(schema.contains("registerTranscriptCorrectionSearchMigration"))
         XCTAssertTrue(correctionSchema.contains("transcriptCorrectionSearchState"))
         XCTAssertTrue(correctionSchema.contains("SELECT DISTINCT meetingID"))
@@ -7594,7 +7625,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let intelligenceSpec = try Self.contents(
             of: "docs/specs/04-intelligence.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 38"))
+        XCTAssertTrue(schema.contains("public static let version = 39"))
         XCTAssertTrue(schema.contains("registerSegmentCorrectedEmbeddingMigration"))
         XCTAssertTrue(correctedSchema.contains("registerMigration(\"v37\")"))
         XCTAssertTrue(correctedSchema.contains("table.add(column: \"embedding\", .blob)"))
@@ -7644,7 +7675,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 38"))
+        XCTAssertTrue(schema.contains("public static let version = 39"))
         XCTAssertTrue(schema.contains("registerTranscriptStructuralSearchMigration"))
         XCTAssertTrue(structuralSchema.contains("registerMigration(\"v38\")"))
         XCTAssertTrue(structuralSchema.contains("transcriptStructuralSearchRow"))

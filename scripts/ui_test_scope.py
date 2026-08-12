@@ -231,6 +231,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "SkillsSettingsUITests",
             "testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt",
         ),
+        test_id(
+            "SkillsSettingsUITests",
+            "testSkillActivityScopeFailureDoesNotInventRowsOrDisableVerifiedPolicy",
+        ),
     ),
     "settings-data": (
         test_id("SettingsUITests", "testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy"),

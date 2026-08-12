@@ -2495,15 +2495,18 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335, Aug 2026)
+## Skills control center in Settings (D317/D333/D335/D336, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
 catalogue marks recap draft, review-first email recap, secret Gist publication,
 text-only package export, resident pre-meeting brief, and confirmed-commitment
 reminder draft as available. The pane exposes an independent
-global pause, per-available-skill enablement, and the 20 newest content-free
-execution receipts. It never executes a skill and does not invent egress
+global pause, per-available-skill enablement, and a segmented content-free
+activity view. **Recent** contains every newest durable execution, **Waiting**
+contains confirmed runs that have not begun, **Attention** contains executing,
+failed, and any unknown future state, and **Completed** contains succeeded and
+pre-handoff cancelled runs. It never executes a skill and does not invent egress
 consent or standing rules; enabling an external row is not permission to hand
 off content, because that authority exists only on the exact confirmation
 sheet.
@@ -2527,11 +2530,22 @@ Skills therefore disclose that approval is required for every run even while
 their enable switch is on. Titles and skill identifiers never select either
 privacy statement.
 
-Recent receipts are bounded before materialization (20 by default, 50 maximum
-through the application request, 100 at the storage boundary) and ordered by a
-matching `(updatedAt DESC, proposalID ASC)` index. Malformed durable proposal
-identities fail the projection instead of silently disappearing from the
-audit surface.
+Every activity scope is bounded before materialization (20 by default, 50
+maximum through the application request, 100 at the storage boundary) and
+ordered by `(updatedAt DESC, proposalID ASC)`. Recent uses its full index;
+schema v39 adds one partial direction-matched index for each state scope, and
+the query explicitly pins that index so an empty or sparse scope cannot fall
+back to a state-leading index plus a temporary sort. The Attention predicate
+excludes only known waiting and terminal states, so a future state remains
+visible for review. Malformed durable proposal identities fail the projection
+instead of silently disappearing from the audit surface.
+
+The request and returned snapshot both carry the selected scope. Settings does
+not show an older snapshot under a newly selected segment while its read is in
+flight or after it fails. A scope-only failure presents an explicit retry and
+no receipt rows, while keeping the independently verified pause and per-Skill
+controls usable. A failed control mutation still disables those controls until
+their durable policy can be verified again.
 
 Each receipt row is an accessible button that opens the first AUTO-6 inspection
 slice. StorageKit reads the current projection and its oldest-first append-only
@@ -2547,11 +2561,13 @@ receive or render the idempotency key, arguments, destination, result, meeting
 title, transcript, or summary. **Try again** repeats only that read and cannot
 execute or retry a Skill.
 
-Two bilingual XCUITest journeys cover the pane: one verifies the fail-closed
-load state; the other uses one disposable launch to disable export, pause all
-skills, prove offers stay absent, resume without losing the individual choice,
-confirm the remaining recap proposal, open its three-event causal receipt, and
-verify the content-free boundary.
+Three bilingual XCUITest journeys cover the pane: one verifies the fail-closed
+control load state; one proves a selected activity-scope failure neither
+invents rows nor disables verified policy; and the main disposable journey
+disables export, pauses all skills, proves offers stay absent, resumes without
+losing the individual choice, confirms the remaining recap proposal, traverses
+all four activity scopes, opens its three-event causal receipt, and verifies
+the content-free boundary.
 
 ## Resident pre-meeting brief proposal (D322, Aug 2026)
 

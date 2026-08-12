@@ -11964,3 +11964,39 @@ AUTO-6 control-center slice, not the complete Automation center: proposed and
 waiting queues, receipt-level workflow actions, explanation of proposal inputs,
 and AUTO-5 standing rules remain open. No schema, egress consent, external
 adapter, background task, or unattended execution was added.
+
+## D336 — Skill activity scopes query durable execution state directly (Aug 2026)
+
+**Context:** the first Skills pane showed only the 20 newest executions. A
+confirmed run waiting to begin or an older failed run could fall outside that
+window, and filtering the bounded recent array in SwiftUI would make the
+result look complete while silently hiding matching durable history. Proposed
+offers cannot yet join the same surface honestly: they are owned by individual
+presentation flows rather than one central durable proposal authority.
+
+**Decision:** Core defines four execution-review scopes: Recent, Waiting,
+Needs attention, and Completed. Waiting is exactly durable `confirmed` state;
+Completed is `succeeded` or pre-handoff `cancelled`; Needs attention excludes
+only those known waiting and terminal states, so a future unknown state remains
+visible fail closed. Every StorageKit read validates a 1...100 limit and orders
+by `(updatedAt DESC, proposalID ASC)`. Schema v39 adds one partial index in that
+order for each state scope. Scoped SQL explicitly uses its matching index so
+SQLite cannot prefer the older state-leading index and then sort a sparse or
+empty result in a temporary B-tree.
+
+`LoadSkillControlCenterRequest` and its snapshot carry the selected scope. The
+Settings segmented control renders receipts only when the returned scope still
+matches the selection; loading and error states therefore cannot relabel stale
+rows. A scope-only read failure is isolated from the already verified pause and
+per-Skill policy, while a failed mutation still disables those controls until
+the durable policy is re-read. The existing receipt inspector remains read
+only and unchanged.
+
+**Consequences:** users can find waiting, active/failed, and terminal runs
+without a full-history scan or a misleading client-side filter. The three
+partial indexes together contain one entry per execution—the cardinality of
+one full index—while preserving exact newest-first plans for each state group.
+This slice adds no proposal queue, proposed-offer persistence, workflow action,
+standing rule, egress authority, background execution, or adapter. Explaining
+why an offer appeared and what data it will use requires the next central
+durable proposal slice rather than inference from whichever UI is open.

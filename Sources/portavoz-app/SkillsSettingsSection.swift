@@ -1,4 +1,5 @@
 import ApplicationKit
+import Foundation
 import PortavozCore
 import SwiftUI
 
@@ -13,7 +14,10 @@ struct SkillsSettingsSection: View {
     @State private var snapshot: SkillControlCenterSnapshot?
     @State private var isLoading = false
     @State private var isMutating = false
-    @State private var loadFailed = false
+    @State private var controlLoadFailed = false
+    @State private var receiptScopeLoadFailed = false
+    @State private var receiptScope: SkillExecutionReviewScope = .recent
+    @State private var activeLoadID: UUID?
 
     var body: some View {
         Group {
@@ -36,12 +40,19 @@ struct SkillsSettingsSection: View {
                     }
                 }
 
-                Section("Recent receipts") {
-                    receiptContent
+                Section("Skill activity") {
+                    SkillActivitySection(
+                        receiptScope: $receiptScope,
+                        snapshot: snapshot,
+                        isLoading: isLoading,
+                        isMutating: isMutating,
+                        loadFailed: receiptScopeLoadFailed,
+                        retry: { Task { await load() } },
+                        inspectReceipt: inspectReceipt)
                 }
             }
         }
-        .task {
+        .task(id: receiptScope) {
             await load()
         }
     }
@@ -54,7 +65,7 @@ struct SkillsSettingsSection: View {
                 Text("Loading skills…")
             }
             .accessibilityIdentifier("settings-skills-loading")
-        } else if loadFailed, snapshot == nil {
+        } else if controlLoadFailed, snapshot == nil {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Skill controls are unavailable", systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
@@ -70,7 +81,8 @@ struct SkillsSettingsSection: View {
         } else {
             Toggle("Pause all skills", isOn: pauseBinding)
                 .accessibilityIdentifier("settings-skills-pause-all")
-                .disabled(snapshot == nil || isLoading || isMutating)
+                .disabled(
+                    snapshot == nil || isLoading || isMutating || controlLoadFailed)
             Text(
                 // Keep this as one literal so localization validation sees it.
                 // swiftlint:disable:next line_length
@@ -84,7 +96,7 @@ struct SkillsSettingsSection: View {
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("settings-skills-paused-status")
             }
-            if loadFailed {
+            if controlLoadFailed {
                 Label(
                     "The last change could not be verified. Close and reopen Settings before trying again.",
                     systemImage: "exclamationmark.triangle")
@@ -92,27 +104,6 @@ struct SkillsSettingsSection: View {
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("settings-skills-stale-error")
             }
-        }
-    }
-
-    @ViewBuilder
-    private var receiptContent: some View {
-        if let receipts = snapshot?.receipts, receipts.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
-                Label("No skill runs yet", systemImage: "checkmark.seal")
-                Text("A receipt appears here only after you confirm a skill.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("settings-skills-empty-receipts")
-        } else {
-            ForEach(snapshot?.receipts ?? []) { receipt in
-                receiptRow(receipt)
-            }
-            Text("Shows the 20 most recent runs on this Mac.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
     }
 
@@ -152,7 +143,7 @@ struct SkillsSettingsSection: View {
                 .accessibilityLabel(skillTitle(skill.id))
                 .accessibilityIdentifier(
                     "settings-skill-\(skill.id)-enabled")
-                .disabled(isLoading || isMutating || loadFailed)
+                .disabled(isLoading || isMutating || controlLoadFailed)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
@@ -246,60 +237,55 @@ struct SkillsSettingsSection: View {
             })
     }
 
-    private func receiptRow(
-        _ receipt: SkillControlCenterReceipt
-    ) -> some View {
-        Button {
-            inspectReceipt(receipt)
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: receiptIcon(receipt.state))
-                    .foregroundStyle(receiptTint(receipt.state))
-                    .frame(width: 18)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(skillTitle(receipt.skillID))
-                        .font(.callout.weight(.medium))
-                    Text(receiptStatus(receipt))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text(
-                    receipt.updatedAt,
-                    format: .dateTime.month(.abbreviated).day().hour().minute())
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
-            }
-            .contentShape(Rectangle())
+    @MainActor
+    private func load() async {
+        guard !isMutating else { return }
+        let requestedScope = receiptScope
+        let loadID = UUID()
+        activeLoadID = loadID
+        if snapshot?.receiptScope != requestedScope {
+            receiptScopeLoadFailed = false
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(receiptAccessibilityLabel(receipt))
-        .accessibilityHint("Inspect execution history")
-        .accessibilityIdentifier(
-            "settings-skill-receipt-\(receipt.skillID)")
+        isLoading = true
+        do {
+            let loaded = try await services.loadSkillControlCenter(
+                receiptScope: requestedScope)
+            guard !Task.isCancelled else {
+                finishLoad(loadID)
+                return
+            }
+            guard activeLoadID == loadID, receiptScope == requestedScope else {
+                return
+            }
+            snapshot = loaded
+            controlLoadFailed = false
+            receiptScopeLoadFailed = false
+            finishLoad(loadID)
+        } catch is CancellationError {
+            finishLoad(loadID)
+        } catch {
+            guard activeLoadID == loadID, receiptScope == requestedScope else {
+                return
+            }
+            if snapshot != nil, snapshot?.receiptScope != requestedScope {
+                receiptScopeLoadFailed = true
+            } else {
+                controlLoadFailed = true
+            }
+            finishLoad(loadID)
+        }
     }
 
     @MainActor
-    private func load() async {
-        guard !isLoading, !isMutating else { return }
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            snapshot = try await services.loadSkillControlCenter()
-            loadFailed = false
-        } catch {
-            loadFailed = true
-        }
+    private func finishLoad(_ loadID: UUID) {
+        guard activeLoadID == loadID else { return }
+        activeLoadID = nil
+        isLoading = false
     }
 
     @MainActor
     private func mutate(_ action: ManageSkillControlAction) async {
-        guard snapshot != nil, !loadFailed, !isLoading, !isMutating else {
+        guard snapshot != nil, !controlLoadFailed, !isLoading, !isMutating else {
             return
         }
         isMutating = true
@@ -307,13 +293,15 @@ struct SkillsSettingsSection: View {
         do {
             guard try await services.manageSkillControl(action) == .updated
             else {
-                loadFailed = true
+                controlLoadFailed = true
                 return
             }
-            snapshot = try await services.loadSkillControlCenter()
-            loadFailed = false
+            snapshot = try await services.loadSkillControlCenter(
+                receiptScope: receiptScope)
+            controlLoadFailed = false
+            receiptScopeLoadFailed = false
         } catch {
-            loadFailed = true
+            controlLoadFailed = true
         }
     }
 
@@ -354,32 +342,4 @@ struct SkillsSettingsSection: View {
         }
     }
 
-    private func receiptStatus(_ receipt: SkillControlCenterReceipt) -> String {
-        SkillReceiptPresentation.status(
-            skillID: receipt.skillID,
-            state: receipt.state)
-    }
-
-    private func receiptAccessibilityLabel(
-        _ receipt: SkillControlCenterReceipt
-    ) -> String {
-        "\(skillTitle(receipt.skillID)). \(receiptStatus(receipt))"
-    }
-
-    private func receiptIcon(_ state: SkillExecutionState) -> String {
-        switch state {
-        case .succeeded: "checkmark.circle.fill"
-        case .failed, .executing: "exclamationmark.triangle.fill"
-        case .dismissed: "xmark.circle"
-        case .proposed, .previewed, .confirmed: "clock"
-        }
-    }
-
-    private func receiptTint(_ state: SkillExecutionState) -> Color {
-        switch state {
-        case .succeeded: .green
-        case .failed, .executing: .orange
-        case .dismissed, .proposed, .previewed, .confirmed: .secondary
-        }
-    }
 }

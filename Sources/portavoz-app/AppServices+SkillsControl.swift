@@ -1,15 +1,23 @@
 import ApplicationKit
 import Foundation
+import PortavozCore
 
 extension AppServices {
-    func loadSkillControlCenter() async throws -> SkillControlCenterSnapshot {
+    func loadSkillControlCenter(
+        receiptScope: SkillExecutionReviewScope = .recent
+    ) async throws -> SkillControlCenterSnapshot {
         if ProcessInfo.processInfo.arguments.contains(
             "-simulate-skill-control-unavailable"
         ) {
             throw SimulatedSkillControlFailure()
         }
+        if receiptScope != .recent,
+           ProcessInfo.processInfo.arguments.contains(
+               "-simulate-skill-receipt-scope-unavailable") {
+            throw SimulatedSkillReceiptScopeFailure()
+        }
         return try await LoadSkillControlCenter(store: store).execute(
-            LoadSkillControlCenterRequest())
+            LoadSkillControlCenterRequest(receiptScope: receiptScope))
     }
 
     func manageSkillControl(
@@ -26,3 +34,4 @@ extension AppServices {
 }
 
 private struct SimulatedSkillControlFailure: Error {}
+private struct SimulatedSkillReceiptScopeFailure: Error {}

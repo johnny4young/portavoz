@@ -151,6 +151,21 @@ public enum SkillExecutionState: String, Codable, Sendable {
     }
 }
 
+/// A bounded review lens over durable execution state. Proposal discovery is
+/// deliberately absent: proposals do not yet have one central durable owner,
+/// so a control center must not fabricate that queue from whichever surface
+/// happens to be open.
+public enum SkillExecutionReviewScope: String, CaseIterable, Sendable {
+    /// Every newest durable execution projection.
+    case recent
+    /// Confirmed by the user but not yet begun.
+    case waiting
+    /// Failed, interrupted, or written by a newer build in an unknown state.
+    case needsAttention = "needs-attention"
+    /// Successfully finished or cancelled before handoff.
+    case completed
+}
+
 public struct SkillExecution: Equatable, Sendable {
     public let proposalID: UUID
     public let state: SkillExecutionState

@@ -114,15 +114,18 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
 
     public let isPaused: Bool
     public let skills: [SkillControlCenterItem]
+    public let receiptScope: SkillExecutionReviewScope
     public let receipts: [SkillControlCenterReceipt]
 
     public init(
         isPaused: Bool,
         skills: [SkillControlCenterItem],
+        receiptScope: SkillExecutionReviewScope,
         receipts: [SkillControlCenterReceipt]
     ) {
         self.isPaused = isPaused
         self.skills = skills
+        self.receiptScope = receiptScope
         self.receipts = receipts
     }
 }
@@ -132,7 +135,10 @@ public protocol SkillExecutionPolicyReading: Sendable {
 }
 
 public protocol SkillControlCenterStore: SkillExecutionPolicyReading, Sendable {
-    func recentSkillExecutions(limit: Int) async throws -> [SkillExecutionRecord]
+    func skillExecutions(
+        scope: SkillExecutionReviewScope,
+        limit: Int
+    ) async throws -> [SkillExecutionRecord]
     func setAllSkillsPaused(_ isPaused: Bool, at timestamp: Date) async throws
     func setSkill(
         _ skillID: String,
@@ -144,11 +150,14 @@ public protocol SkillControlCenterStore: SkillExecutionPolicyReading, Sendable {
 extension MeetingStore: SkillControlCenterStore {}
 
 public struct LoadSkillControlCenterRequest: Equatable, Sendable {
+    public let receiptScope: SkillExecutionReviewScope
     public let receiptLimit: Int
 
     public init(
+        receiptScope: SkillExecutionReviewScope = .recent,
         receiptLimit: Int = SkillControlCenterSnapshot.defaultReceiptLimit
     ) {
+        self.receiptScope = receiptScope
         self.receiptLimit = min(
             max(receiptLimit, 1),
             SkillControlCenterSnapshot.maximumReceiptLimit)
@@ -166,7 +175,8 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
         _ request: LoadSkillControlCenterRequest
     ) async throws -> SkillControlCenterSnapshot {
         async let policy = store.skillExecutionPolicy()
-        async let records = store.recentSkillExecutions(
+        async let records = store.skillExecutions(
+            scope: request.receiptScope,
             limit: request.receiptLimit)
         let (resolvedPolicy, resolvedRecords) = try await (policy, records)
         return SkillControlCenterSnapshot(
@@ -178,6 +188,7 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
                     isEnabled: resolvedPolicy.isIndividuallyEnabled(
                         skillID: entry.id))
             },
+            receiptScope: request.receiptScope,
             receipts: resolvedRecords.map(SkillControlCenterReceipt.init(record:)))
     }
 }

@@ -15,6 +15,10 @@ D334 gives split parts and merges stable structural result identities with
 ordered accepted-source provenance across lexical, semantic, and Spotlight
 reads; suppression intentionally has no result and restore reuses accepted
 identity.
+D336 adds direction-matched partial indexes for the waiting, attention, and
+completed Skill execution scopes. The attention predicate intentionally keeps
+unknown future states visible, and every scoped query pins its matching index
+to preserve bounded newest-first reads without a temporary sort.
 D235 adds correction transaction and replica-replay recovery gates without a
 schema change.
 D325 adds bounded literal meeting, canonical-person, and confirmed-commitment
@@ -70,7 +74,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v37` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v39` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -110,11 +114,14 @@ Singular camelCase tables, 1:1 with Codable records:
 | `transcriptStructuralSearchSource` (v38) | resultID (FK cascade), ordered accepted segmentID (indexed FK cascade), composite PK and unique result+source; exact immutable provenance for each structural retrieval unit |
 | `transcriptStructuralSearch` (v38) | FTS5 external-content over transcriptStructuralSearchRow.text, synchronized by GRDB triggers |
 | `skillExecutionEvent` (v31) | append-only predecessor-linked confirmation/begin/succeed/fail/cancel history with attempt, typed failure category, and unclamped occurrence time; no message or meeting-derived content (D293/D335); receipt inspection reads this chain and its state projection in one SQLite snapshot, verifies every predecessor and the projected latest-event tail, preserves row insertion as causal order, probes at most 257 rows to enforce a 256-event materialization ceiling, and rejects unknown persisted categories instead of erasing them |
-| `skillExecutionState` (v31) | one idempotency-keyed current projection per proposal with the latest event, attempt, and monotonic updatedAt; unknown future states fail closed as possibly executed rather than retryable (D293) |
+| `skillExecutionState` (v31) | one idempotency-keyed current projection per proposal with the latest event, attempt, and monotonic updatedAt; unknown future states fail closed as possibly executed rather than retryable and remain visible in the v39 attention scope (D293/D336) |
 | `skillOfferDismissal` (v34) | offerKey (TEXT PK, stable skill+subject intent identity), skillID, dismissedAt; durable terminal "the user said no" for one skill offer (D316) — deliberately keyed by intent, never by the per-render proposal ID |
 | `skillControl` (v35) | singleton id=1, checked Boolean global pause, monotonic updatedAt; content-free device-local override shared by proposal and execution admission (D317) |
 | `skillDisablement` (v35) | checked non-empty skillID primary key plus disabledAt; sparse per-skill deny set, so a missing row means individually enabled and pausing never destroys that choice (D317) |
 | `skillExecutionState_on_recent` (v35) | `(updatedAt DESC, proposalID ASC)` index for the bounded newest-first Skills receipt projection; avoids a temporary full-history sort as execution history grows (D317) |
+| `skillExecutionState_on_waiting` (v39) | partial `(updatedAt DESC, proposalID ASC)` index where state is `confirmed`; serves only user-approved executions that have not begun (D336) |
+| `skillExecutionState_on_attention` (v39) | partial `(updatedAt DESC, proposalID ASC)` index where state is neither waiting nor terminal; the negative predicate admits unknown future states fail closed (D336) |
+| `skillExecutionState_on_completed` (v39) | partial `(updatedAt DESC, proposalID ASC)` index for `succeeded` and pre-handoff `cancelled` terminal executions (D336) |
 | `enhancedNote` (v15) | id, meetingID (UNIQUE, FK cascade), markdown, language, inputFingerprint (all checked non-empty), generationRunID (FK `setNull`, device-local), createdAt/updatedAt/deletedAt; ONE regenerable enhanced-notes document per meeting (D135), replaced in place preserving createdAt, portable via v15-registered `enhancedNote_sync_ai/au/ad` triggers over [markdown, language, inputFingerprint, deletedAt] |
 | `derivedMaintenanceSource` (v18) | kind (TEXT PK), sourceGeneration, updatedAt; content-free mutation identity for derived work, never a progress cursor |
 | `derivedMaintenanceJob` (v18) | content-free kind/profile/source operation identity, bounded attempts and scheduling time, lease owner/expiry, stable error code and timestamps; independent from meeting lifecycle |

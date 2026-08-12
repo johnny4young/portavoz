@@ -12970,6 +12970,146 @@
           }
         }
       }
+    },
+    "Skill activity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actividad de skills"
+          }
+        }
+      }
+    },
+    "The selected activity view could not be verified. No runs are shown.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar la vista de actividad seleccionada. No se muestra ninguna ejecución."
+          }
+        }
+      }
+    },
+    "Each view shows up to 20 matching runs on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cada vista muestra hasta 20 ejecuciones coincidentes en este Mac."
+          }
+        }
+      }
+    },
+    "Activity view": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista de actividad"
+          }
+        }
+      }
+    },
+    "Recent": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recientes"
+          }
+        }
+      }
+    },
+    "Waiting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En espera"
+          }
+        }
+      }
+    },
+    "Attention": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atención"
+          }
+        }
+      }
+    },
+    "Completed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completadas"
+          }
+        }
+      }
+    },
+    "No Skill runs are waiting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ejecuciones de skills en espera"
+          }
+        }
+      }
+    },
+    "No Skill runs need attention": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna ejecución de skill requiere atención"
+          }
+        }
+      }
+    },
+    "No completed Skill runs": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ejecuciones de skills completadas"
+          }
+        }
+      }
+    },
+    "Confirmed runs appear here until execution begins.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las ejecuciones confirmadas aparecen aquí hasta que comienza la ejecución."
+          }
+        }
+      }
+    },
+    "Interrupted and failed runs appear here for review.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las ejecuciones interrumpidas y fallidas aparecen aquí para revisarlas."
+          }
+        }
+      }
+    },
+    "Successful and pre-handoff cancelled runs appear here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las ejecuciones exitosas y canceladas antes de la transferencia aparecen aquí."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
