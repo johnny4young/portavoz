@@ -90,6 +90,7 @@ public struct SkillDefinition: Equatable, Sendable {
     public let version: Int
     public let capabilities: Set<SkillCapability>
     public let inputDataClasses: Set<SkillInputDataClass>
+    public let subjectKind: SkillSubject.Kind
     public let confirmationPolicy: SkillConfirmationPolicy
 
     public init(
@@ -97,12 +98,14 @@ public struct SkillDefinition: Equatable, Sendable {
         version: Int,
         capabilities: Set<SkillCapability>,
         inputDataClasses: Set<SkillInputDataClass>,
+        subjectKind: SkillSubject.Kind,
         confirmationPolicy: SkillConfirmationPolicy
     ) {
         self.id = id
         self.version = version
         self.capabilities = capabilities
         self.inputDataClasses = inputDataClasses
+        self.subjectKind = subjectKind
         self.confirmationPolicy = confirmationPolicy
     }
 
@@ -123,10 +126,19 @@ public struct SkillDefinition: Equatable, Sendable {
               !capabilities.isEmpty,
               capabilities.count <= Self.maximumCapabilityCount,
               !inputDataClasses.isEmpty,
-              inputDataClasses.count <= Self.maximumInputDataClassCount
+              inputDataClasses.count <= Self.maximumInputDataClassCount,
+              inputDataClasses.contains(subjectInputDataClass)
         else { return false }
         // A standing rule may only cover work the user can undo alone.
         return confirmationPolicy == .explicitPerProposal || isReversible
+    }
+
+    private var subjectInputDataClass: SkillInputDataClass {
+        switch subjectKind {
+        case .meeting: .meetingDetails
+        case .commitment: .commitment
+        case .calendarEvent: .calendarEvent
+        }
     }
 }
 
@@ -135,6 +147,7 @@ public struct SkillDefinition: Equatable, Sendable {
 public struct SkillProposal: Equatable, Sendable {
     public let id: UUID
     public let definition: SkillDefinition
+    public let subject: SkillSubject
     /// The capabilities this specific proposal will actually use. It may use
     /// fewer than the definition declares, never more.
     public let requestedCapabilities: Set<SkillCapability>
@@ -147,6 +160,7 @@ public struct SkillProposal: Equatable, Sendable {
     public init(
         id: UUID = UUID(),
         definition: SkillDefinition,
+        subject: SkillSubject,
         requestedCapabilities: Set<SkillCapability>,
         requestedInputDataClasses: Set<SkillInputDataClass>,
         arguments: [SkillArgument],
@@ -154,10 +168,42 @@ public struct SkillProposal: Equatable, Sendable {
     ) {
         self.id = id
         self.definition = definition
+        self.subject = subject
         self.requestedCapabilities = requestedCapabilities
         self.requestedInputDataClasses = requestedInputDataClasses
         self.arguments = arguments
         self.proposedAt = proposedAt
+    }
+}
+
+/// The exact durable identity captured when one reviewed proposal is
+/// confirmed. Grouping the fields keeps every claiming adapter on one typed
+/// contract instead of a long positional boundary.
+public struct SkillExecutionConfirmation: Equatable, Sendable {
+    public let proposalID: UUID
+    public let skillID: String
+    public let skillVersion: Int
+    public let subject: SkillSubject
+    public let offerKey: String
+    public let idempotencyKey: String
+    public let occurredAt: Date
+
+    public init(
+        proposalID: UUID,
+        skillID: String,
+        skillVersion: Int,
+        subject: SkillSubject,
+        offerKey: String,
+        idempotencyKey: String,
+        occurredAt: Date
+    ) {
+        self.proposalID = proposalID
+        self.skillID = skillID
+        self.skillVersion = skillVersion
+        self.subject = subject
+        self.offerKey = offerKey
+        self.idempotencyKey = idempotencyKey
+        self.occurredAt = occurredAt
     }
 }
 
@@ -231,6 +277,7 @@ public enum SkillAdmissionRefusal: String, Equatable, Sendable {
     case noRequestedCapability = "no-requested-capability"
     case noRequestedInputDataClass = "no-requested-input-data-class"
     case undeclaredInputDataClass = "undeclared-input-data-class"
+    case invalidSubject = "invalid-subject"
     case egressNotPermitted = "egress-not-permitted"
     case confirmationMissing = "confirmation-missing"
     case standingRuleCannotCoverIrreversibleWork =
@@ -277,6 +324,10 @@ public enum SkillAdmissionPolicy {
         guard proposal.arguments.allSatisfy(\.isValid) else {
             return .refused(.invalidArgument)
         }
+        guard proposal.subject.isValid,
+              proposal.subject.kind == proposal.definition.subjectKind,
+              proposal.subject.isRepresented(in: proposal.arguments)
+        else { return .refused(.invalidSubject) }
         if let refusal = requestContractRefusal(for: proposal) {
             return .refused(refusal)
         }

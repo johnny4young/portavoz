@@ -105,7 +105,7 @@ extension MeetingStore {
                 database,
                 sql: """
                     SELECT proposalID, skillID, skillVersion, idempotencyKey,
-                           state, attempt, updatedAt
+                           state, failureCategory, attempt, updatedAt
                     FROM skillExecutionState INDEXED BY
                          \(Self.skillExecutionReviewIndex(scope))
                     \(Self.skillExecutionReviewPredicate(scope))

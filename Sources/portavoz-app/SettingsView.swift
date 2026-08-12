@@ -16,6 +16,7 @@ struct SettingsView: View {
     // Internal so focused SettingsView extension files can use the process
     // service graph without duplicating environment reads.
     @Environment(AppServices.self) var services
+    @Environment(\.openWindow) private var openWindow
 
     @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
 
@@ -78,7 +79,9 @@ struct SettingsView: View {
     @State private var category: SettingsCategory? = .general
     @State private var settingsQuery = ""
     @State private var selectedSkillReceipt: SkillControlCenterReceipt?
+    @State private var pendingSkillRecoveryDestination: SkillOfferReviewDestination?
     @State private var skillActivityRevision = 0
+    @State private var settingsWindowReference = SettingsWindowReference()
 
     var body: some View {
         // A fixed two-pane layout, NOT a NavigationSplitView: the settings
@@ -143,6 +146,7 @@ struct SettingsView: View {
         }
         .frame(width: 760)
         .frame(minHeight: 620)
+        .background(SettingsWindowCapture(reference: settingsWindowReference))
         .navigationTitle((category ?? .general).title)
         .sheet(isPresented: $showingStructureSheet) {
             CustomStructureSheet(existing: editingStructure) { recipe in
@@ -150,11 +154,17 @@ struct SettingsView: View {
                 customStructures = CustomRecipeStore.custom()
             }
         }
-        .sheet(item: $selectedSkillReceipt) { receipt in
+        .sheet(
+            item: $selectedSkillReceipt,
+            onDismiss: openPendingSkillRecoveryDestination
+        ) { receipt in
             SkillReceiptInspectionSheet(
                 receipt: receipt,
                 receiptDidChange: {
                     skillActivityRevision += 1
+                },
+                openRecoveryDestination: { destination in
+                    pendingSkillRecoveryDestination = destination
                 })
         }
         .onAppear {
@@ -196,6 +206,19 @@ struct SettingsView: View {
         guard let requested = services.pendingSettingsCategory else { return }
         category = requested
         services.pendingSettingsCategory = nil
+    }
+
+    @MainActor
+    private func openPendingSkillRecoveryDestination() {
+        guard let destination = pendingSkillRecoveryDestination else { return }
+        pendingSkillRecoveryDestination = nil
+        SettingsSkillRecoveryNavigation.open(
+            destination,
+            services: services,
+            settingsWindow: settingsWindowReference.window
+        ) {
+            openWindow(id: "main", value: MainWindowIdentity.primary)
+        }
     }
 }
 

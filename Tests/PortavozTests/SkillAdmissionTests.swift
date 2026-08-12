@@ -4,6 +4,8 @@ import XCTest
 
 final class SkillAdmissionTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_700_000_000)
+    private static let commitmentID = CommitmentID(rawValue: UUID(
+        uuidString: "A1000000-0000-4000-8000-000000000001")!)
 
     private func definition(
         capabilities: Set<SkillCapability> = [.readMeetingMaterial, .writeLocalDraft],
@@ -14,6 +16,7 @@ final class SkillAdmissionTests: XCTestCase {
             version: 1,
             capabilities: capabilities,
             inputDataClasses: [.commitment],
+            subjectKind: .commitment,
             confirmationPolicy: confirmation)
     }
 
@@ -26,9 +29,10 @@ final class SkillAdmissionTests: XCTestCase {
     ) -> SkillProposal {
         SkillProposal(
             definition: definition ?? self.definition(),
+            subject: .commitment(Self.commitmentID),
             requestedCapabilities: requesting,
             requestedInputDataClasses: requestingData,
-            arguments: arguments,
+            arguments: [.commitment(Self.commitmentID)] + arguments,
             proposedAt: proposedAt ?? now)
     }
 
@@ -192,6 +196,7 @@ final class SkillAdmissionTests: XCTestCase {
             version: 1,
             capabilities: [.readMeetingMaterial, .writeLocalFile],
             inputDataClasses: [.meetingDetails, .selectedDestination],
+            subjectKind: .commitment,
             confirmationPolicy: .standingRule)
         XCTAssertFalse(rule.isValid, "an irreversible standing rule is invalid")
 
@@ -214,6 +219,7 @@ final class SkillAdmissionTests: XCTestCase {
             // Reversible overall, so the declaration is legal…
             capabilities: [.readMeetingMaterial, .writeLocalDraft],
             inputDataClasses: [.commitment],
+            subjectKind: .commitment,
             confirmationPolicy: .standingRule)
         XCTAssertTrue(rule.isValid)
 
@@ -225,6 +231,7 @@ final class SkillAdmissionTests: XCTestCase {
             version: 2,
             capabilities: [.readMeetingMaterial, .writeLocalDraft, .writeLocalFile],
             inputDataClasses: [.commitment, .selectedDestination],
+            subjectKind: .commitment,
             confirmationPolicy: .standingRule)
         XCTAssertFalse(
             widened.isValid,
@@ -246,6 +253,7 @@ final class SkillAdmissionTests: XCTestCase {
             version: 1,
             capabilities: [.readMeetingMaterial, .writeLocalDraft],
             inputDataClasses: [.commitment],
+            subjectKind: .commitment,
             confirmationPolicy: .standingRule)
         XCTAssertTrue(rule.isValid)
 
@@ -265,24 +273,30 @@ final class SkillAdmissionTests: XCTestCase {
         let cases: [SkillDefinition] = [
             SkillDefinition(id: "", version: 1, capabilities: [.readMeetingMaterial],
                             inputDataClasses: [.commitment],
+                            subjectKind: .commitment,
                             confirmationPolicy: .explicitPerProposal),
             SkillDefinition(id: " padded ", version: 1, capabilities: [.readMeetingMaterial],
                             inputDataClasses: [.commitment],
+                            subjectKind: .commitment,
                             confirmationPolicy: .explicitPerProposal),
             SkillDefinition(id: "ok", version: 0, capabilities: [.readMeetingMaterial],
                             inputDataClasses: [.commitment],
+                            subjectKind: .commitment,
                             confirmationPolicy: .explicitPerProposal),
             SkillDefinition(id: "ok", version: 1, capabilities: [],
                             inputDataClasses: [.commitment],
+                            subjectKind: .commitment,
                             confirmationPolicy: .explicitPerProposal),
             SkillDefinition(id: "ok", version: 1, capabilities: [.readMeetingMaterial],
                             inputDataClasses: [],
+                            subjectKind: .commitment,
                             confirmationPolicy: .explicitPerProposal),
             SkillDefinition(
                 id: String(repeating: "x", count: 81),
                 version: 1,
                 capabilities: [.readMeetingMaterial],
                 inputDataClasses: [.commitment],
+                subjectKind: .commitment,
                 confirmationPolicy: .explicitPerProposal),
         ]
         for definition in cases {
@@ -323,6 +337,42 @@ final class SkillAdmissionTests: XCTestCase {
                 egressIsPermitted: true,
                 at: now),
             .refused(.undeclaredInputDataClass))
+    }
+
+    func testProposalSubjectMustMatchDefinitionAndTypedArguments() {
+        let base = proposal()
+        let wrongKind = SkillProposal(
+            definition: base.definition,
+            subject: .meeting(MeetingID()),
+            requestedCapabilities: base.requestedCapabilities,
+            requestedInputDataClasses: base.requestedInputDataClasses,
+            arguments: base.arguments,
+            proposedAt: base.proposedAt)
+        let otherCommitment = CommitmentID()
+        let wrongIdentity = SkillProposal(
+            definition: base.definition,
+            subject: .commitment(otherCommitment),
+            requestedCapabilities: base.requestedCapabilities,
+            requestedInputDataClasses: base.requestedInputDataClasses,
+            arguments: base.arguments,
+            proposedAt: base.proposedAt)
+        let duplicated = SkillProposal(
+            definition: base.definition,
+            subject: base.subject,
+            requestedCapabilities: base.requestedCapabilities,
+            requestedInputDataClasses: base.requestedInputDataClasses,
+            arguments: base.arguments + [.commitment(Self.commitmentID)],
+            proposedAt: base.proposedAt)
+
+        for invalid in [wrongKind, wrongIdentity, duplicated] {
+            XCTAssertEqual(
+                SkillAdmissionPolicy.admit(
+                    invalid,
+                    isConfirmedByUser: true,
+                    egressIsPermitted: true,
+                    at: now),
+                .refused(.invalidSubject))
+        }
     }
 
     // MARK: - Lifecycle

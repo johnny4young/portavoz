@@ -12184,3 +12184,68 @@ schema, stored content, receipt retry, standing rule, background executor,
 adapter, transport, or egress authority. Physical VoiceOver behavior and real
 window restoration on Sequoia and separate Tahoe hardware remain field
 evidence.
+
+## D341 — Failed-receipt recovery stores subject, never effect authority (Aug 2026)
+
+**Context:** a failed execution receipt could explain its causal history but
+could not safely return to the surface that owned its exact preview. The
+execution projection stored only a proposal UUID, Skill identity/version,
+idempotency key, state, attempt, and event tail. Parsing an idempotency key to
+guess a meeting, commitment, or calendar owner would make an implementation
+string into authorization. A generic Retry button would be worse: local
+projection failure may be safe to review again, while a remote or destructive
+failure may have crossed its handoff and already produced an outside effect.
+Deleting the original meeting or commitment must also remove any navigation
+authority without erasing the durable content-free receipt.
+
+**Decision:** every executable `SkillDefinition` declares one
+`SkillSubject.Kind`; every exact `SkillProposal` carries one matching valid
+`SkillSubject`, represented exactly once in typed arguments and covered by the
+definition's input-data declaration. Admission rejects a missing, duplicated,
+mismatched, or invalid subject before the claim.
+
+Schema v41 adds the current optional `failureCategory` to
+`skillExecutionState`, backfills it from the exact latest failure event, and
+uses triggers to require it if and only if state is `failed`. A separate
+`skillExecutionSubject` row is written in the same confirmation transaction.
+It contains only proposal UUID plus exactly one meeting, commitment, or bounded
+opaque calendar identity. Meeting and commitment foreign keys cascade this row
+when the subject is deleted; the execution state and event receipt remain.
+Existing pre-v41 executions intentionally receive no subject backfill. Offer or
+idempotency keys are never parsed, and confirming an existing proposal with a
+different subject is rejected.
+
+`LoadSkillReceiptInspection` classifies recovery only after replaying the
+causal chain and reading current policy. External and destructive categories
+are always **verify externally**. Other failures require a live subject, the
+same currently available catalogue definition/version/subject kind, global
+resume, and individual enablement. Meeting and commitment subjects may return
+to context; calendar recovery stays in the resident menu bar. Missing, deleted,
+legacy, stale, disabled, malformed, or unknown authority is unavailable.
+
+Settings sends only the proposal UUID through
+`ResolveSkillReceiptRecoveryDestination`, which repeats audit, policy, and
+catalogue validation and returns at most an inert typed destination. SwiftUI
+stores that destination until the receipt sheet's `onDismiss`, then sets the
+existing `pendingRoute`. After the sheet has fully dismissed, the Settings root
+opens the value-scoped primary window and invokes `close()` on its weakly
+captured exact presenting `NSWindow`. The sheet's `DismissAction` owns only the
+sheet, and both a presenter-root `DismissAction` and `dismissWindow` left the
+Settings host open in real-app XCUITest. `NSApp.keyWindow` has already returned
+to the primary scene by the time `onDismiss` runs, so process-wide inference is
+also unsafe. The
+original destination must reconstruct a fresh exact proposal and obtain a new
+confirmation. A thrown resolution keeps the receipt and retries only
+destination verification; no argument, preview, offer key, idempotency key,
+destination, confirmation, claim, settlement, adapter, or effect port enters
+the control center.
+
+**Consequences:** a recoverable local failure now has an honest path back to
+review without turning a receipt into reusable consent. Calendar and
+outcome-unknown external work retain their stronger resident/verification-only
+boundaries. Subject deletion revokes recovery navigation without destroying
+audit history, and legacy rows fail closed rather than receiving guessed
+authority. The migration and UI use APIs available below the macOS 14.4 floor.
+Physical VoiceOver behavior, real external reconciliation, Sequoia, and
+separate-hardware Tahoe behavior remain field evidence. Standing rules,
+unattended execution, and central effect retry are still absent.

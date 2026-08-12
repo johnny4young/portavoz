@@ -88,6 +88,7 @@ public enum RecapDraftSkill {
         version: version,
         capabilities: [.readMeetingMaterial, .writeLocalDraft],
         inputDataClasses: [.meetingDetails, .meetingSummary],
+        subjectKind: .meeting,
         confirmationPolicy: .explicitPerProposal)
 
     public static func idempotencyKey(for meetingID: MeetingID) -> String {
@@ -170,6 +171,7 @@ public enum MeetingPackageExportSkill {
             .companionHistory,
             .selectedDestination
         ],
+        subjectKind: .meeting,
         confirmationPolicy: .explicitPerProposal)
 
     /// Normalized exactly as `destination(from:)` normalizes it. Two callers
@@ -269,6 +271,7 @@ public enum PreMeetingBriefSkill {
             .meetingSummary,
             .transcript
         ],
+        subjectKind: .calendarEvent,
         confirmationPolicy: .explicitPerProposal)
 
     public static func idempotencyKey(forEvent identifier: String) -> String {

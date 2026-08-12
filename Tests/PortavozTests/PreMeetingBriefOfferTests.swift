@@ -21,13 +21,14 @@ final class PreMeetingBriefOfferTests: XCTestCase {
         XCTAssertFalse(initial.offerKey.contains(event.title))
 
         let proposalID = UUID()
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: PreMeetingBriefSkill.id,
             skillVersion: PreMeetingBriefSkill.version,
+            subject: .calendarEvent(event.id),
             offerKey: initial.offerKey,
             idempotencyKey: initial.offerKey,
-            at: now)
+            occurredAt: now))
         _ = try await store.beginSkillExecution(
             proposalID: proposalID,
             at: now)
@@ -211,6 +212,7 @@ final class PreMeetingBriefOfferTests: XCTestCase {
             skillVersion: skillVersion,
             idempotencyKey: idempotencyKey,
             state: state,
+            failureCategory: state == .failed ? .recoverable : nil,
             attempt: 1,
             updatedAt: now)
     }

@@ -28,6 +28,7 @@ public struct SkillExecutionRecord: Equatable, Sendable {
     public let skillVersion: Int
     public let idempotencyKey: String
     public let state: SkillExecutionState
+    public let failureCategory: FailureCategory?
     public let attempt: Int
     public let updatedAt: Date
 
@@ -37,6 +38,7 @@ public struct SkillExecutionRecord: Equatable, Sendable {
         skillVersion: Int,
         idempotencyKey: String,
         state: SkillExecutionState,
+        failureCategory: FailureCategory?,
         attempt: Int,
         updatedAt: Date
     ) {
@@ -45,6 +47,7 @@ public struct SkillExecutionRecord: Equatable, Sendable {
         self.skillVersion = skillVersion
         self.idempotencyKey = idempotencyKey
         self.state = state
+        self.failureCategory = failureCategory
         self.attempt = attempt
         self.updatedAt = updatedAt
     }
@@ -59,32 +62,23 @@ extension MeetingStore {
     /// `idempotencyKey`, and a second confirmation of the same proposal returns
     /// the existing record rather than creating a second claim on it.
     public func confirmSkillExecution(
-        proposalID: UUID,
-        skillID: String,
-        skillVersion: Int,
-        offerKey: String,
-        idempotencyKey: String,
-        at now: Date
+        _ confirmation: SkillExecutionConfirmation
     ) async throws -> SkillExecutionAdmission {
-        let trimmedSkill = skillID.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedKey = idempotencyKey.trimmingCharacters(
+        let trimmedSkill = confirmation.skillID.trimmingCharacters(
+            in: .whitespacesAndNewlines)
+        let trimmedKey = confirmation.idempotencyKey.trimmingCharacters(
             in: .whitespacesAndNewlines)
         guard !trimmedSkill.isEmpty,
-              trimmedSkill == skillID,
+              trimmedSkill == confirmation.skillID,
               !trimmedKey.isEmpty,
-              Self.isValidSkillOfferKey(offerKey),
-              idempotencyKey == offerKey
-                || idempotencyKey.hasPrefix(offerKey + ":"),
-              skillVersion >= 1
+              Self.isValidSkillOfferKey(confirmation.offerKey),
+              confirmation.idempotencyKey == confirmation.offerKey
+                || confirmation.idempotencyKey.hasPrefix(
+                    confirmation.offerKey + ":"),
+              confirmation.skillVersion >= 1,
+              confirmation.subject.isValid
         else { return .rejected(.invalidProposal) }
 
-        let confirmation = SkillExecutionConfirmation(
-            proposalID: proposalID,
-            skillID: skillID,
-            skillVersion: skillVersion,
-            offerKey: offerKey,
-            idempotencyKey: idempotencyKey,
-            occurredAt: now)
         return try await database.write { database in
             try Self.confirmSkillExecution(
                 confirmation,
@@ -245,7 +239,10 @@ extension MeetingStore {
             }
             return SkillExecutionAudit(
                 record: record,
-                history: history.entries)
+                history: history.entries,
+                subject: try Self.skillExecutionSubject(
+                    proposalID,
+                    in: database))
         }
     }
 
@@ -264,7 +261,7 @@ extension MeetingStore {
                 database,
                 sql: """
                     SELECT proposalID, skillID, skillVersion, idempotencyKey,
-                           state, attempt, updatedAt
+                           state, failureCategory, attempt, updatedAt
                     FROM skillExecutionState
                     WHERE idempotencyKey = ?
                     """,
@@ -293,7 +290,7 @@ extension MeetingStore {
                 database,
                 sql: """
                     SELECT proposalID, skillID, skillVersion, idempotencyKey,
-                           state, attempt, updatedAt
+                           state, failureCategory, attempt, updatedAt
                     FROM skillExecutionState
                     WHERE idempotencyKey IN (
                         \(databaseQuestionMarks(count: idempotencyKeys.count))
@@ -313,14 +310,10 @@ extension MeetingStore {
         // A claim that committed before a later offer dismissal already owns
         // this exact effect. The tombstone fences only claims not yet created.
         if let existing = try skillExecution(confirmation.proposalID, in: database) {
-            guard existing.idempotencyKey == confirmation.idempotencyKey else {
-                return .rejected(.idempotencyKeyClaimed)
-            }
-            try retireOneShotOffer(
-                offerKey: confirmation.offerKey,
-                idempotencyKey: confirmation.idempotencyKey,
+            return try resolveExistingSkillExecution(
+                existing,
+                confirmation: confirmation,
                 in: database)
-            return .alreadySettled(existing)
         }
 
         let dismissed = try Bool.fetchOne(
@@ -338,6 +331,33 @@ extension MeetingStore {
             in: database
         ) else { return .rejected(.idempotencyKeyClaimed) }
 
+        return try insertSkillExecution(confirmation, in: database)
+    }
+
+    private static func resolveExistingSkillExecution(
+        _ existing: SkillExecutionRecord,
+        confirmation: SkillExecutionConfirmation,
+        in database: Database
+    ) throws -> SkillExecutionAdmission {
+        guard existing.idempotencyKey == confirmation.idempotencyKey else {
+            return .rejected(.idempotencyKeyClaimed)
+        }
+        guard try recordSkillExecutionSubject(
+            proposalID: confirmation.proposalID,
+            subject: confirmation.subject,
+            in: database)
+        else { return .rejected(.invalidProposal) }
+        try retireOneShotOffer(
+            offerKey: confirmation.offerKey,
+            idempotencyKey: confirmation.idempotencyKey,
+            in: database)
+        return .alreadySettled(existing)
+    }
+
+    private static func insertSkillExecution(
+        _ confirmation: SkillExecutionConfirmation,
+        in database: Database
+    ) throws -> SkillExecutionAdmission {
         let eventID = try appendSkillEvent(
             SkillExecutionEventWrite(
                 proposalID: confirmation.proposalID,
@@ -366,6 +386,11 @@ extension MeetingStore {
         guard let record = try skillExecution(confirmation.proposalID, in: database) else {
             return .rejected(.unknownExecution)
         }
+        guard try recordSkillExecutionSubject(
+            proposalID: confirmation.proposalID,
+            subject: confirmation.subject,
+            in: database)
+        else { return .rejected(.invalidProposal) }
         try retireOneShotOffer(
             offerKey: confirmation.offerKey,
             idempotencyKey: confirmation.idempotencyKey,
@@ -409,7 +434,7 @@ extension MeetingStore {
             database,
             sql: """
                 SELECT proposalID, skillID, skillVersion, idempotencyKey,
-                       state, attempt, updatedAt
+                       state, failureCategory, attempt, updatedAt
                 FROM skillExecutionState
                 WHERE proposalID = ?
                 """,
@@ -424,12 +449,16 @@ extension MeetingStore {
         // newer build be re-run. `.executing` is the fail-closed reading — the
         // caller reconciles instead of repeating.
         let state = skillExecutionState(from: raw)
+        let failureCategory = try skillFailureCategory(
+            from: row,
+            state: state)
         return SkillExecutionRecord(
             proposalID: proposalID,
             skillID: row["skillID"],
             skillVersion: row["skillVersion"],
             idempotencyKey: row["idempotencyKey"],
             state: state,
+            failureCategory: failureCategory,
             attempt: row["attempt"],
             updatedAt: row["updatedAt"])
     }
@@ -448,12 +477,16 @@ extension MeetingStore {
                 value: rawProposalID)
         }
         let rawState: String = row["state"]
+        let state = skillExecutionState(from: rawState)
         return SkillExecutionRecord(
             proposalID: proposalID,
             skillID: row["skillID"],
             skillVersion: row["skillVersion"],
             idempotencyKey: row["idempotencyKey"],
-            state: skillExecutionState(from: rawState),
+            state: state,
+            failureCategory: try skillFailureCategory(
+                from: row,
+                state: state),
             attempt: row["attempt"],
             updatedAt: row["updatedAt"])
     }
@@ -469,6 +502,32 @@ extension MeetingStore {
         case "cancelled": .dismissed
         default: SkillExecutionState(rawValue: raw) ?? .executing
         }
+    }
+
+    private static func skillFailureCategory(
+        from row: Row,
+        state: SkillExecutionState
+    ) throws -> FailureCategory? {
+        let rawCategory: String? = row["failureCategory"]
+        let category: FailureCategory?
+        if let rawCategory {
+            guard let decoded = FailureCategory(rawValue: rawCategory) else {
+                throw StorageError.invalidPersistedValue(
+                    table: "skillExecutionState",
+                    column: "failureCategory",
+                    value: rawCategory)
+            }
+            category = decoded
+        } else {
+            category = nil
+        }
+        guard (state == .failed) == (category != nil) else {
+            throw StorageError.invalidPersistedValue(
+                table: "skillExecutionState",
+                column: "failureCategory",
+                value: rawCategory ?? "missing")
+        }
+        return category
     }
 
     private static func skillExecutionHistory(
@@ -570,13 +629,14 @@ extension MeetingStore {
             sql: """
                 UPDATE skillExecutionState
                 SET state = ?, attempt = ?, latestEventID = ?,
-                    updatedAt = MAX(?, updatedAt)
+                    failureCategory = ?, updatedAt = MAX(?, updatedAt)
                 WHERE proposalID = ?
                 """,
             arguments: [
                 transition.transition.state,
                 transition.attempt,
                 eventID,
+                transition.transition.failureCategory?.rawValue,
                 transition.occurredAt,
                 transition.proposalID.uuidString
             ])
@@ -586,15 +646,6 @@ extension MeetingStore {
 private struct SkillExecutionHistoryRead {
     let entries: [SkillExecutionHistoryEntry]
     let latestEventID: String?
-}
-
-private struct SkillExecutionConfirmation {
-    let proposalID: UUID
-    let skillID: String
-    let skillVersion: Int
-    let offerKey: String
-    let idempotencyKey: String
-    let occurredAt: Date
 }
 
 private struct SkillExecutionEventWrite {
@@ -685,12 +736,15 @@ public struct SkillExecutionHistoryEntry: Equatable, Sendable {
 public struct SkillExecutionAudit: Equatable, Sendable {
     public let record: SkillExecutionRecord
     public let history: [SkillExecutionHistoryEntry]
+    public let subject: SkillSubject?
 
     public init(
         record: SkillExecutionRecord,
-        history: [SkillExecutionHistoryEntry]
+        history: [SkillExecutionHistoryEntry],
+        subject: SkillSubject? = nil
     ) {
         self.record = record
         self.history = history
+        self.subject = subject
     }
 }

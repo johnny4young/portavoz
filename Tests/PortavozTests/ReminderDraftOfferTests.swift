@@ -16,13 +16,14 @@ final class ReminderDraftOfferTests: XCTestCase {
         try await saveCommitments([first, second], in: store)
         let secondKey = ReminderDraftSkill.idempotencyKey(for: second.id)
         let secondProposal = UUID()
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: secondProposal,
             skillID: ReminderDraftSkill.id,
             skillVersion: ReminderDraftSkill.version,
+            subject: .commitment(second.id),
             offerKey: secondKey,
             idempotencyKey: secondKey,
-            at: now)
+            occurredAt: now))
         _ = try await store.beginSkillExecution(
             proposalID: secondProposal,
             at: now)
@@ -186,6 +187,7 @@ final class ReminderDraftOfferTests: XCTestCase {
             skillVersion: ReminderDraftSkill.version,
             idempotencyKey: idempotencyKey,
             state: state,
+            failureCategory: state == .failed ? .recoverable : nil,
             attempt: 1,
             updatedAt: now)
     }
@@ -260,6 +262,8 @@ private final class RecordingReminderDraftSurfaceStore:
             skillVersion: ReminderDraftSkill.version,
             idempotencyKey: key,
             state: executionState,
+            failureCategory:
+                executionState == .failed ? .recoverable : nil,
             attempt: 1,
             updatedAt: Date(timeIntervalSince1970: 1_700_000_000))]
     }

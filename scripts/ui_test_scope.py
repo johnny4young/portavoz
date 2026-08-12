@@ -263,6 +263,14 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "SkillsSettingsUITests",
             "testFailedWaitingSkillRevocationKeepsTheReceiptAndRetry",
         ),
+        test_id(
+            "SkillsSettingsUITests",
+            "testRecoverableFailedSkillReturnsToItsMeetingWithoutRunning",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
+            "testFailedRecoveryResolutionKeepsTheReceiptAndAllowsRetry",
+        ),
     ),
     "settings-data": (
         test_id("SettingsUITests", "testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy"),

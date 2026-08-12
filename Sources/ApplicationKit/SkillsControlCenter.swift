@@ -93,6 +93,7 @@ public struct SkillControlCenterReceipt: Equatable, Sendable, Identifiable {
     public let skillID: String
     public let skillVersion: Int
     public let state: SkillExecutionState
+    public let failureCategory: FailureCategory?
     public let attempt: Int
     public let updatedAt: Date
 
@@ -103,6 +104,7 @@ public struct SkillControlCenterReceipt: Equatable, Sendable, Identifiable {
         skillID = record.skillID
         skillVersion = record.skillVersion
         state = record.state
+        failureCategory = record.failureCategory
         attempt = record.attempt
         updatedAt = record.updatedAt
     }

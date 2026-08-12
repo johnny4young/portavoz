@@ -62,7 +62,7 @@ extension MeetingStore {
                 database,
                 sql: """
                     SELECT proposalID, skillID, skillVersion, idempotencyKey,
-                           state, attempt, updatedAt
+                           state, failureCategory, attempt, updatedAt
                     FROM skillExecutionState
                     WHERE idempotencyKey LIKE ? ESCAPE '\\'
                     ORDER BY updatedAt DESC, proposalID

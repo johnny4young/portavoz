@@ -17,12 +17,12 @@ final class SkillsControlCenterTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 40)
+            XCTAssertEqual(StorageSchema.version, 41)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v40")
+                "v41")
             XCTAssertEqual(
                 try Set(database.columns(in: "skillControl").map(\.name)),
                 ["id", "isPaused", "updatedAt"])
@@ -157,13 +157,14 @@ final class SkillsControlCenterTests: XCTestCase {
         for index in 0..<25 {
             let proposalID = UUID()
             let timestamp = now.addingTimeInterval(TimeInterval(index))
-            _ = try await store.confirmSkillExecution(
+            _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
                 proposalID: proposalID,
                 skillID: RecapDraftSkill.id,
                 skillVersion: RecapDraftSkill.version,
+                subject: .calendarEvent("control-center-test-subject"),
                 offerKey: "receipt-\(index)",
                 idempotencyKey: "receipt-\(index)",
-                at: timestamp)
+                occurredAt: timestamp))
             _ = try await store.beginSkillExecution(
                 proposalID: proposalID,
                 at: timestamp)
@@ -182,6 +183,9 @@ final class SkillsControlCenterTests: XCTestCase {
         XCTAssertEqual(snapshot.receiptScope, .recent)
         XCTAssertEqual(snapshot.receipts.map(\.proposalID), Array(newestProposalIDs.prefix(3)))
         XCTAssertEqual(snapshot.receipts.map(\.state), [.succeeded, .succeeded, .succeeded])
+        XCTAssertTrue(snapshot.receipts.allSatisfy {
+            $0.failureCategory == nil
+        })
         XCTAssertEqual(
             snapshot.skills.filter { $0.availability == .available }.map(\.id),
             [
@@ -292,13 +296,14 @@ final class SkillsControlCenterTests: XCTestCase {
     func testReceiptInspectionProjectsRetryAsOneCausalContentFreeTimeline() async throws {
         let store = try MeetingStore.inMemory()
         let proposalID = UUID()
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            subject: .calendarEvent("control-center-test-subject"),
             offerKey: "inspection-retry",
             idempotencyKey: "inspection-retry",
-            at: now)
+            occurredAt: now))
         _ = try await store.beginSkillExecution(
             proposalID: proposalID,
             at: now.addingTimeInterval(1))
@@ -333,18 +338,165 @@ final class SkillsControlCenterTests: XCTestCase {
         XCTAssertEqual(
             inspection.events.map(\.failureCategory),
             [nil, nil, .recoverable, nil, nil])
+        XCTAssertNil(inspection.failureCategory)
+        XCTAssertEqual(inspection.recoveryAvailability, .unavailable)
+    }
+
+    func testRecoverableFailureResolvesOnlyItsOriginalContext() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Private", startedAt: now)
+        try await store.save(meeting)
+        let proposalID = UUID()
+        let key = RecapDraftSkill.idempotencyKey(for: meeting.id)
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            subject: .meeting(meeting.id),
+            offerKey: key,
+            idempotencyKey: key,
+            occurredAt: now))
+        _ = try await store.beginSkillExecution(
+            proposalID: proposalID,
+            at: now.addingTimeInterval(1))
+        _ = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: false,
+            failureCategory: .recoverable,
+            at: now.addingTimeInterval(2))
+        let before = try await store.skillExecutionHistory(
+            proposalID: proposalID)
+
+        let inspection = try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
+        let navigation = try await ResolveSkillReceiptRecoveryDestination(
+            store: store
+        ).execute(proposalID)
+        let after = try await store.skillExecutionHistory(
+            proposalID: proposalID)
+
+        XCTAssertEqual(inspection.failureCategory, .recoverable)
+        XCTAssertEqual(inspection.recoveryAvailability, .reviewInContext)
+        XCTAssertEqual(navigation, .destination(.meeting(meeting.id)))
+        XCTAssertEqual(after, before, "navigation must not claim or retry an effect")
+    }
+
+    func testOutcomeUnknownFailureRequiresExternalVerification() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Private", startedAt: now)
+        try await store.save(meeting)
+        let proposalID = UUID()
+        let key = SecretGistPublishSkill.idempotencyKey(for: meeting.id)
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
+            proposalID: proposalID,
+            skillID: SecretGistPublishSkill.id,
+            skillVersion: SecretGistPublishSkill.version,
+            subject: .meeting(meeting.id),
+            offerKey: key,
+            idempotencyKey: key,
+            occurredAt: now))
+        _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
+        _ = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: false,
+            failureCategory: .external,
+            at: now)
+
+        let inspection = try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
+        let navigation = try await ResolveSkillReceiptRecoveryDestination(
+            store: store
+        ).execute(proposalID)
+
+        XCTAssertEqual(inspection.recoveryAvailability, .verifyExternally)
+        XCTAssertEqual(navigation, .unavailable)
+    }
+
+    func testCalendarRecoveryStaysOnItsResidentMenuBarSurface() async throws {
+        let store = try MeetingStore.inMemory()
+        let proposalID = UUID()
+        let eventID = "opaque-calendar-event"
+        let key = PreMeetingBriefSkill.idempotencyKey(forEvent: eventID)
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
+            proposalID: proposalID,
+            skillID: PreMeetingBriefSkill.id,
+            skillVersion: PreMeetingBriefSkill.version,
+            subject: .calendarEvent(eventID),
+            offerKey: key,
+            idempotencyKey: key,
+            occurredAt: now))
+        _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
+        _ = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: false,
+            failureCategory: .critical,
+            at: now)
+
+        let inspection = try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
+        let navigation = try await ResolveSkillReceiptRecoveryDestination(
+            store: store
+        ).execute(proposalID)
+        XCTAssertEqual(inspection.recoveryAvailability, .residentMenuBar)
+        XCTAssertEqual(navigation, .unavailable)
+    }
+
+    func testRecoveryFailsClosedWithoutCurrentSubjectOrPolicy() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Private", startedAt: now)
+        try await store.save(meeting)
+        let proposalID = UUID()
+        let key = RecapDraftSkill.idempotencyKey(for: meeting.id)
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            subject: .meeting(meeting.id),
+            offerKey: key,
+            idempotencyKey: key,
+            occurredAt: now))
+        _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
+        _ = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: false,
+            failureCategory: .recoverable,
+            at: now)
+        try await store.setSkill(RecapDraftSkill.id, isEnabled: false, at: now)
+
+        var inspection = try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
+        var navigation = try await ResolveSkillReceiptRecoveryDestination(
+            store: store
+        ).execute(proposalID)
+        XCTAssertEqual(inspection.recoveryAvailability, .unavailable)
+        XCTAssertEqual(navigation, .unavailable)
+
+        try await store.setSkill(RecapDraftSkill.id, isEnabled: true, at: now)
+        try await store.database.write { database in
+            try database.execute(
+                sql: "DELETE FROM skillExecutionSubject WHERE proposalID = ?",
+                arguments: [proposalID.uuidString])
+        }
+        inspection = try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
+        navigation = try await ResolveSkillReceiptRecoveryDestination(
+            store: store
+        ).execute(proposalID)
+        XCTAssertEqual(inspection.recoveryAvailability, .unavailable)
+        XCTAssertEqual(navigation, .unavailable)
     }
 
     func testWaitingReceiptRevocationAddsOneNoEffectTerminalEvent() async throws {
         let store = try MeetingStore.inMemory()
         let proposalID = UUID()
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            subject: .calendarEvent("control-center-test-subject"),
             offerKey: "revoke-waiting",
             idempotencyKey: "revoke-waiting",
-            at: now)
+            occurredAt: now))
 
         let revocationTime = now.addingTimeInterval(1)
         let revoked = try await RevokeWaitingSkillExecution(
@@ -369,13 +521,14 @@ final class SkillsControlCenterTests: XCTestCase {
     func testWaitingReceiptRevocationCannotCancelAfterBegin() async throws {
         let store = try MeetingStore.inMemory()
         let proposalID = UUID()
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            subject: .calendarEvent("control-center-test-subject"),
             offerKey: "already-began",
             idempotencyKey: "already-began",
-            at: now)
+            occurredAt: now))
         _ = try await store.beginSkillExecution(
             proposalID: proposalID,
             at: now.addingTimeInterval(1))
@@ -397,6 +550,7 @@ final class SkillsControlCenterTests: XCTestCase {
             skillVersion: RecapDraftSkill.version,
             idempotencyKey: "other-owner",
             state: .dismissed,
+            failureCategory: nil,
             attempt: 1,
             updatedAt: now)
         let useCase = RevokeWaitingSkillExecution(
@@ -421,6 +575,7 @@ final class SkillsControlCenterTests: XCTestCase {
             skillVersion: RecapDraftSkill.version,
             idempotencyKey: "inconsistent-inspection",
             state: .succeeded,
+            failureCategory: nil,
             attempt: 1,
             updatedAt: now)
         let inconsistent = StubSkillReceiptInspectionStore(audit: SkillExecutionAudit(
@@ -452,13 +607,14 @@ final class SkillsControlCenterTests: XCTestCase {
     func testReceiptAuditRejectsUnknownPersistedFailureCategory() async throws {
         let store = try MeetingStore.inMemory()
         let proposalID = UUID()
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            subject: .calendarEvent("control-center-test-subject"),
             offerKey: "invalid-failure-category",
             idempotencyKey: "invalid-failure-category",
-            at: now)
+            occurredAt: now))
         _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
         _ = try await store.settleSkillExecution(
             proposalID: proposalID,
@@ -490,13 +646,14 @@ final class SkillsControlCenterTests: XCTestCase {
     func testReceiptAuditRejectsABrokenPredecessorChain() async throws {
         let store = try MeetingStore.inMemory()
         let proposalID = UUID()
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            subject: .calendarEvent("control-center-test-subject"),
             offerKey: "broken-inspection-chain",
             idempotencyKey: "broken-inspection-chain",
-            at: now)
+            occurredAt: now))
         _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
         _ = try await store.settleSkillExecution(
             proposalID: proposalID,
@@ -528,13 +685,14 @@ final class SkillsControlCenterTests: XCTestCase {
     func testReceiptAuditRejectsAProjectionTailBehindTheEventChain() async throws {
         let store = try MeetingStore.inMemory()
         let proposalID = UUID()
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            subject: .calendarEvent("control-center-test-subject"),
             offerKey: "stale-inspection-tail",
             idempotencyKey: "stale-inspection-tail",
-            at: now)
+            occurredAt: now))
         _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
         _ = try await store.settleSkillExecution(
             proposalID: proposalID,
@@ -578,13 +736,14 @@ final class SkillsControlCenterTests: XCTestCase {
     func testReceiptAuditRefusesToMaterializeAnUnboundedRetryHistory() async throws {
         let store = try MeetingStore.inMemory()
         let proposalID = UUID()
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            subject: .calendarEvent("control-center-test-subject"),
             offerKey: "bounded-inspection",
             idempotencyKey: "bounded-inspection",
-            at: now)
+            occurredAt: now))
         for attempt in 1...128 {
             let timestamp = now.addingTimeInterval(TimeInterval(attempt))
             _ = try await store.beginSkillExecution(
@@ -683,7 +842,7 @@ final class SkillsControlCenterTests: XCTestCase {
                     sql: """
                     EXPLAIN QUERY PLAN
                     SELECT proposalID, skillID, skillVersion, idempotencyKey,
-                           state, attempt, updatedAt
+                           state, failureCategory, attempt, updatedAt
                     FROM skillExecutionState INDEXED BY \(expectedIndex)
                     \(predicate)
                     ORDER BY updatedAt DESC, proposalID ASC
@@ -705,13 +864,14 @@ final class SkillsControlCenterTests: XCTestCase {
         timestamp: Date,
         store: MeetingStore
     ) async throws {
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            subject: .calendarEvent("control-center-test-subject"),
             offerKey: "scope-\(proposalID.uuidString)",
             idempotencyKey: "scope-\(proposalID.uuidString)",
-            at: timestamp)
+            occurredAt: timestamp))
         switch state {
         case .confirmed:
             break
@@ -752,6 +912,7 @@ final class SkillsControlCenterTests: XCTestCase {
                            1 AS skillVersion,
                            'key' AS idempotencyKey,
                            'succeeded' AS state,
+                           NULL AS failureCategory,
                            1 AS attempt,
                            ? AS updatedAt
                     """,
@@ -813,6 +974,10 @@ private actor StubSkillReceiptInspectionStore: SkillReceiptInspectionStore {
         proposalID: UUID
     ) -> SkillExecutionAudit? {
         audit?.record.proposalID == proposalID ? audit : nil
+    }
+
+    func skillExecutionPolicy() -> SkillExecutionPolicy {
+        SkillExecutionPolicy()
     }
 }
 

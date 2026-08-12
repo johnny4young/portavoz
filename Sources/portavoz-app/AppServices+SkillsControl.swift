@@ -76,6 +76,18 @@ extension AppServices {
         return try await RevokeWaitingSkillExecution(store: store)
             .execute(proposalID)
     }
+
+    func resolveSkillReceiptRecoveryDestination(
+        proposalID: UUID
+    ) async throws -> SkillReceiptRecoveryNavigationOutcome {
+        if usesTemporaryMeetingStore,
+           ProcessInfo.processInfo.arguments.contains(
+               "-simulate-skill-receipt-recovery-unavailable") {
+            throw SimulatedSkillReceiptRecoveryFailure()
+        }
+        return try await ResolveSkillReceiptRecoveryDestination(store: store)
+            .execute(proposalID)
+    }
 }
 
 private struct SimulatedSkillControlFailure: Error {}
@@ -84,3 +96,4 @@ private struct SimulatedSkillProposalFailure: Error {}
 private struct SimulatedSkillProposalDismissalFailure: Error {}
 private struct SimulatedSkillProposalReviewFailure: Error {}
 private struct SimulatedSkillReceiptRevocationFailure: Error {}
+private struct SimulatedSkillReceiptRecoveryFailure: Error {}

@@ -11,12 +11,15 @@ struct SkillReceiptInspectionSheet: View {
 
     let receipt: SkillControlCenterReceipt
     let receiptDidChange: () -> Void
+    let openRecoveryDestination: (SkillOfferReviewDestination) -> Void
 
     @State private var inspection: SkillControlCenterReceiptInspection?
     @State private var isLoading = false
     @State private var loadFailed = false
     @State private var isRevoking = false
     @State private var revocationFailed = false
+    @State private var isResolvingRecovery = false
+    @State private var recoveryFailed = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -26,6 +29,10 @@ struct SkillReceiptInspectionSheet: View {
             if inspection?.state == .confirmed {
                 Divider()
                 revocationContent
+            }
+            if inspection?.state == .failed {
+                Divider()
+                recoveryContent
             }
             Divider()
             Label(
@@ -41,7 +48,7 @@ struct SkillReceiptInspectionSheet: View {
         .task(id: receipt.proposalID) {
             await load()
         }
-        .interactiveDismissDisabled(isRevoking)
+        .interactiveDismissDisabled(isRevoking || isResolvingRecovery)
     }
 
     private var header: some View {
@@ -67,7 +74,68 @@ struct SkillReceiptInspectionSheet: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Close receipt details")
             .accessibilityIdentifier("skill-receipt-inspection-close")
-            .disabled(isRevoking)
+            .disabled(isRevoking || isResolvingRecovery)
+        }
+    }
+
+    @ViewBuilder
+    private var recoveryContent: some View {
+        switch inspection?.recoveryAvailability ?? .unavailable {
+        case .reviewInContext:
+            if isResolvingRecovery {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Verifying recovery context…")
+                }
+                .accessibilityIdentifier("skill-receipt-recovery-progress")
+            } else if recoveryFailed {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(
+                        "Recovery context could not be verified. Nothing ran.",
+                        systemImage: "exclamationmark.triangle")
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("skill-receipt-recovery-error")
+                    Button("Try again") {
+                        Task { await resolveRecovery() }
+                    }
+                    .accessibilityIdentifier("skill-receipt-recovery-retry")
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(
+                        "Return to the original context and review a fresh proposal. This does not run the Skill.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Review recovery in context") {
+                        Task { await resolveRecovery() }
+                    }
+                    .accessibilityHint(
+                        "Returns to the original subject without running the Skill")
+                    .accessibilityIdentifier("skill-receipt-recovery-action")
+                }
+            }
+        case .residentMenuBar:
+            Label(
+                "Review this recovery from the menu bar beside the calendar event. Nothing runs automatically.",
+                systemImage: "menubar.rectangle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("skill-receipt-recovery-resident")
+        case .verifyExternally:
+            Label(
+                "The outcome may exist outside Portavoz. Verify the external destination before continuing.",
+                systemImage: "arrow.up.right.square")
+                .font(.callout)
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("skill-receipt-recovery-external")
+        case .unavailable:
+            Label(
+                "A safe recovery route is unavailable. This receipt remains available for review.",
+                systemImage: "exclamationmark.shield")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("skill-receipt-recovery-unavailable")
         }
     }
 
@@ -188,12 +256,14 @@ struct SkillReceiptInspectionSheet: View {
     private var currentStatus: String {
         SkillReceiptPresentation.status(
             skillID: currentSkillID,
-            state: inspection?.state ?? receipt.state)
+            state: inspection?.state ?? receipt.state,
+            failureCategory:
+                inspection?.failureCategory ?? receipt.failureCategory)
     }
 
     @MainActor
     private func load() async {
-        guard !isLoading else { return }
+        guard !isLoading, !isRevoking, !isResolvingRecovery else { return }
         isLoading = true
         defer { isLoading = false }
         do {
@@ -208,7 +278,10 @@ struct SkillReceiptInspectionSheet: View {
 
     @MainActor
     private func revokeApproval() async {
-        guard inspection?.state == .confirmed, !isRevoking else { return }
+        guard inspection?.state == .confirmed,
+              !isRevoking,
+              !isResolvingRecovery
+        else { return }
         isRevoking = true
         revocationFailed = false
         defer { isRevoking = false }
@@ -216,12 +289,65 @@ struct SkillReceiptInspectionSheet: View {
             _ = try await services.revokeWaitingSkillExecution(
                 proposalID: receipt.proposalID)
             guard !Task.isCancelled else { return }
-            await load()
+            await reloadAfterVerifiedMutation()
             receiptDidChange()
         } catch is CancellationError {
             return
         } catch {
             revocationFailed = true
+        }
+    }
+
+    /// A verified mutation must bypass `load()`'s user-load exclusion: the
+    /// revocation owns `isRevoking` until its fresh receipt has been projected.
+    /// Keeping the two paths separate prevents a successful cancellation from
+    /// leaving the sheet on its stale `confirmed` history.
+    @MainActor
+    private func reloadAfterVerifiedMutation() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let refreshed = try await services.loadSkillReceiptInspection(
+                proposalID: receipt.proposalID)
+            guard !Task.isCancelled else { return }
+            inspection = refreshed
+            loadFailed = false
+        } catch is CancellationError {
+            return
+        } catch {
+            inspection = nil
+            loadFailed = true
+        }
+    }
+
+    @MainActor
+    private func resolveRecovery() async {
+        guard inspection?.state == .failed,
+              inspection?.recoveryAvailability == .reviewInContext,
+              !isLoading,
+              !isRevoking,
+              !isResolvingRecovery
+        else { return }
+        isResolvingRecovery = true
+        recoveryFailed = false
+        defer { isResolvingRecovery = false }
+        do {
+            let outcome = try await services
+                .resolveSkillReceiptRecoveryDestination(
+                    proposalID: receipt.proposalID)
+            guard !Task.isCancelled else { return }
+            switch outcome {
+            case .unavailable:
+                recoveryFailed = true
+            case .destination(let destination):
+                isResolvingRecovery = false
+                openRecoveryDestination(destination)
+                dismiss()
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            recoveryFailed = true
         }
     }
 

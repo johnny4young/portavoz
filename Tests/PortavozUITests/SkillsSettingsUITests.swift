@@ -359,6 +359,86 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testRecoverableFailedSkillReturnsToItsMeetingWithoutRunning() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append("-seed-skill-failed-recoverable")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+        _ = openFailedReceipt(in: app)
+
+        let recovery = app.buttons["skill-receipt-recovery-action"]
+        XCTAssertTrue(recovery.waitForStableFrame(timeout: 5))
+        XCTAssertGreaterThan(
+            app.windows.count,
+            1,
+            "the recovery journey must begin with Settings above the primary window")
+        recovery.click()
+
+        let offerMenu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(
+            offerMenu.waitForStableFrame(timeout: 10),
+            "safe recovery must return to the exact meeting surface")
+        XCTAssertTrue(
+            waitForWindowCount(1, in: app, timeout: 10),
+            "verified recovery navigation must close Settings; \(windowDiagnostics(in: app))")
+        let primaryWindows = app.windows.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'main-AppWindow-'"))
+        XCTAssertEqual(
+            primaryWindows.count,
+            1,
+            "value-scoped recovery must not duplicate the primary window")
+        XCTAssertFalse(
+            app.control(withIdentifier: "skill-confirm-sheet").exists,
+            "recovery navigation must never confirm or run the failed Skill")
+        offerMenu.click()
+        XCTAssertTrue(
+            app.menuItems["skill-offer-recap-draft"]
+                .waitForExistence(timeout: 5),
+            "the original surface must rebuild a fresh reviewable proposal")
+        app.typeKey(.escape, modifierFlags: [])
+        attachScreenshot(of: app, named: "skills-failed-recovery-context")
+    }
+
+    @MainActor
+    func testFailedRecoveryResolutionKeepsTheReceiptAndAllowsRetry() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append(contentsOf: [
+            "-seed-skill-failed-recoverable",
+            "-simulate-skill-receipt-recovery-unavailable"
+        ])
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+        let receipt = openFailedReceipt(in: app)
+
+        let recovery = app.buttons["skill-receipt-recovery-action"]
+        XCTAssertTrue(recovery.waitForStableFrame(timeout: 5))
+        recovery.click()
+        let error = app.control(
+            withIdentifier: "skill-receipt-recovery-error")
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        let retry = app.buttons["skill-receipt-recovery-retry"]
+        XCTAssertTrue(retry.waitForStableFrame(timeout: 5))
+        XCTAssertFalse(recovery.exists)
+        XCTAssertTrue(receipt.exists)
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-receipt-inspection-event-3")
+                .exists,
+            "an unverified route must retain the original failure evidence")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-category-skills").exists,
+            "failed recovery resolution must not leave Settings")
+        retry.click()
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "skills-failed-recovery-retry")
+    }
+
+    @MainActor
     func testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
@@ -652,6 +732,28 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    private func openFailedReceipt(in app: XCUIApplication) -> XCUIElement {
+        let attention = app.control(
+            withIdentifier: "settings-skills-receipt-scope-needs-attention")
+        scrollToVisible(attention, in: app, deltaY: -40)
+        XCTAssertTrue(attention.waitForStableFrame(timeout: 5))
+        attention.click()
+        let receipt = app.control(
+            withIdentifier: "settings-skill-receipt-recap-draft")
+        scrollToVisible(receipt, in: app, deltaY: -40)
+        XCTAssertTrue(receipt.waitForStableFrame(timeout: 5))
+        receipt.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-receipt-inspection")
+                .waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-receipt-inspection-event-3")
+                .waitForExistence(timeout: 5),
+            "the fixture must expose one confirmed failed attempt")
+        return receipt
+    }
+
+    @MainActor
     private func closeSettings(in app: XCUIApplication) {
         app.typeKey("w", modifierFlags: .command)
         XCTAssertTrue(app.prepareForInteraction())
@@ -758,6 +860,26 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             predicate: NSPredicate(format: "exists == false"),
             object: element)
         return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    private func waitForWindowCount(
+        _ expected: Int,
+        in app: XCUIApplication,
+        timeout: TimeInterval
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if app.windows.count == expected { return true }
+            Thread.sleep(forTimeInterval: 0.1)
+        } while Date() < deadline
+        return app.windows.count == expected
+    }
+
+    private func windowDiagnostics(in app: XCUIApplication) -> String {
+        app.windows.allElementsBoundByIndex.enumerated().map { index, window in
+            "#\(index) id=\(window.identifier) label=\(window.label) "
+                + "hittable=\(window.isHittable) frame=\(window.frame)"
+        }.joined(separator: "; ")
     }
 
     @MainActor

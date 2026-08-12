@@ -403,6 +403,42 @@ value so `openWindow(id:value:)` reuses the existing `WindowGroup` window; the
 same `pendingRoute` channel handles an absent/cold main scene before Settings
 dismisses itself.
 
+Every executable `SkillDefinition` also declares exactly one subject kind, and
+every exact `SkillProposal` binds one matching `SkillSubject` represented once
+in its typed arguments. Admission rejects a mismatched, missing, duplicated, or
+invalid subject before any durable claim. Schema v41 adds the current typed
+failure category to `skillExecutionState` and records each newly confirmed
+proposal's exact content-free meeting, commitment, or bounded opaque calendar
+subject in the separate `skillExecutionSubject` table. Meeting and commitment
+foreign keys remove only recovery authority when their owner disappears; the
+execution receipt remains. Legacy executions receive no inferred subject:
+idempotency and offer-key strings are never parsed to manufacture authority.
+
+A verified failed receipt can therefore classify recovery without becoming a
+retry engine. ApplicationKit replays the causal audit, re-reads current global
+and individual policy, requires the same available catalogue version and
+subject kind, and distinguishes local/recoverable failures from external or
+destructive outcomes. Meeting and commitment failures may return to their
+original context; calendar recovery remains resident in the menu bar. External
+or destructive failures expose verification guidance only because their effect
+may already exist outside Portavoz. Missing subjects, deleted owners, disabled
+policy, stale catalogue versions, malformed history, and legacy rows remain
+unavailable.
+
+The recovery action sends only the proposal UUID and returns at most an inert
+navigation destination. Settings receives no arguments, preview, destination,
+recipient, offer key, idempotency key, confirmation, claim, settlement, or
+effect port. The original subject surface must rebuild a fresh proposal and own
+its exact preview and approval again. A failed resolution retains the receipt
+and exposes only a route-resolution retry; it never retries the Skill effect.
+The receipt sheet first dismisses completely; its parent then opens the
+value-scoped primary scene and closes only the weakly captured presenting
+Settings `NSWindow` through a narrow AppKit boundary. SwiftUI's `DismissAction`
+and `dismissWindow` leave this Settings host open after the modal transition,
+while process-wide key-window inference can target the primary scene after the
+sheet has gone away. The bridge therefore retains neither the scene nor window
+and invokes `close()` only on the exact captured host.
+
 Confirmation still belongs to the original subject surface. Every execution
 claim carries the reviewed `offerKey` separately from its exact
 `idempotencyKey`: one-shot values are equal, while a reusable package offer is

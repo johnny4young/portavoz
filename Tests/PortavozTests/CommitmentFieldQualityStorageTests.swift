@@ -15,7 +15,7 @@ final class CommitmentFieldQualityStorageTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.write { database in
-            XCTAssertEqual(StorageSchema.version, 40)
+            XCTAssertEqual(StorageSchema.version, 41)
             XCTAssertEqual(
                 try Set(database.columns(in: "commitmentFieldPresentation").map(\.name)),
                 [

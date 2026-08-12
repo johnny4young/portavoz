@@ -1877,7 +1877,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 40"))
+        XCTAssertTrue(schema.contains("public static let version = 41"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -2966,7 +2966,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 40"))
+        XCTAssertTrue(schema.contains("public static let version = 41"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -4233,7 +4233,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(receiptSheet.contains(
             "if inspection?.state == .confirmed"))
         XCTAssertTrue(receiptSheet.contains(
-            "guard inspection?.state == .confirmed, !isRevoking"))
+            "guard inspection?.state == .confirmed,"))
+        XCTAssertTrue(receiptSheet.contains("!isRevoking"))
+        XCTAssertTrue(receiptSheet.contains(
+            "await reloadAfterVerifiedMutation()"))
         XCTAssertTrue(receiptSheet.contains("skill-receipt-revoke-action"))
         XCTAssertFalse(receiptSheet.contains(".idempotencyKey"))
         XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))
@@ -4292,7 +4295,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(execution.contains(
             "SELECT 1 FROM skillOfferDismissal WHERE offerKey = ?"))
         XCTAssertTrue(execution.contains(
-            "idempotencyKey.hasPrefix(offerKey + \":\")"))
+            "confirmation.idempotencyKey.hasPrefix("))
+        XCTAssertTrue(execution.contains(
+            "confirmation.offerKey + \":\""))
         XCTAssertTrue(execution.contains(
             "DELETE FROM skillOfferProposal WHERE offerKey = ?"))
         XCTAssertTrue(settings.contains("activeProposalLoadID == loadID"))
@@ -4371,6 +4376,82 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(app.contains("for: MainWindowIdentity.self"))
         XCTAssertTrue(app.contains("defaultValue:"))
         XCTAssertTrue(decisions.contains("## D340"))
+    }
+
+    func testFailedSkillRecoveryKeepsExactSubjectAndEffectAuthoritySeparate() throws {
+        let skill = try Self.contents(of: "Sources/PortavozCore/Skill.swift")
+        let subject = try Self.contents(
+            of: "Sources/PortavozCore/SkillSubject.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+SkillExecutionSubject.swift")
+        let subjectStore = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SkillExecutionSubject.swift")
+        let execution = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SkillExecution.swift")
+        let recovery = try Self.contents(
+            of: "Sources/ApplicationKit/SkillReceiptInspection.swift")
+        let receiptSheet = try Self.contents(
+            of: "Sources/portavoz-app/SkillReceiptInspectionSheet.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SettingsView.swift")
+        let recoveryNavigation = try Self.contents(
+            of: "Sources/portavoz-app/SettingsSkillRecoveryNavigation.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(subject.contains("public enum SkillSubject"))
+        XCTAssertTrue(subject.contains("case meeting(MeetingID)"))
+        XCTAssertTrue(subject.contains("case commitment(CommitmentID)"))
+        XCTAssertTrue(subject.contains("case calendarEvent(String)"))
+        XCTAssertTrue(subject.contains("matches.count == 1"))
+        XCTAssertTrue(skill.contains("public let subjectKind: SkillSubject.Kind"))
+        XCTAssertTrue(skill.contains("public let subject: SkillSubject"))
+        XCTAssertTrue(skill.contains("case invalidSubject"))
+        XCTAssertTrue(schema.contains("registerMigration(\"v41\")"))
+        XCTAssertTrue(schema.contains("skillExecutionSubject"))
+        XCTAssertTrue(schema.contains("failureCategory"))
+        XCTAssertTrue(schema.contains("onDelete: .cascade"))
+        for forbidden in [
+            "offerKey", "idempotencyKey", "argument", "destination",
+            "recipient", "title", "transcript",
+        ] {
+            XCTAssertFalse(
+                schema.contains(forbidden),
+                "recovery subject schema must stay content-free: \(forbidden)")
+        }
+        XCTAssertTrue(subjectStore.contains(
+            "Legacy pre-v41 receipts deliberately return nil"))
+        XCTAssertFalse(subjectStore.contains("idempotencyKey"))
+        XCTAssertTrue(execution.contains("recordSkillExecutionSubject("))
+        XCTAssertTrue(execution.contains("state, failureCategory, attempt"))
+        XCTAssertTrue(recovery.contains(
+            "struct ResolveSkillReceiptRecoveryDestination"))
+        XCTAssertTrue(recovery.contains(
+            "recoveryAvailability: Self.recoveryAvailability"))
+        XCTAssertTrue(recovery.contains("case verifyExternally"))
+        XCTAssertFalse(recovery.contains("effect.perform"))
+        XCTAssertFalse(recovery.contains("ExecuteSkill"))
+        XCTAssertFalse(recovery.contains("idempotencyKey"))
+        XCTAssertTrue(receiptSheet.contains(
+            "skill-receipt-recovery-action"))
+        XCTAssertTrue(receiptSheet.contains(
+            "openRecoveryDestination: (SkillOfferReviewDestination) -> Void"))
+        XCTAssertFalse(receiptSheet.contains("services.pendingRoute ="))
+        XCTAssertFalse(receiptSheet.contains("openWindow(id:"))
+        XCTAssertTrue(recoveryNavigation.contains(
+            "services.pendingRoute = .meeting(meetingID)"))
+        XCTAssertTrue(recoveryNavigation.contains(
+            "services.pendingRoute = .commitments(.commitment(commitmentID))"))
+        XCTAssertTrue(settings.contains(
+            "openWindow(id: \"main\", value: MainWindowIdentity.primary)"))
+        XCTAssertTrue(settings.contains(
+            "onDismiss: openPendingSkillRecoveryDestination"))
+        XCTAssertTrue(recoveryNavigation.contains("weak var window: NSWindow?"))
+        XCTAssertTrue(settings.contains("SettingsWindowCapture(reference:"))
+        XCTAssertTrue(recoveryNavigation.contains("settingsWindow?.close()"))
+        XCTAssertFalse(settings.contains("NSApp.keyWindow"))
+        XCTAssertFalse(recoveryNavigation.contains("NSApp.keyWindow"))
+        XCTAssertFalse(receiptSheet.contains("idempotencyKey"))
+        XCTAssertTrue(decisions.contains("## D341"))
     }
 
     func testSkillRetryKeepsOneProposalIdentityFromPreviewToEffect() throws {
@@ -7748,7 +7829,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 40"))
+        XCTAssertTrue(schema.contains("public static let version = 41"))
         XCTAssertTrue(schema.contains("registerTranscriptCorrectionSearchMigration"))
         XCTAssertTrue(correctionSchema.contains("transcriptCorrectionSearchState"))
         XCTAssertTrue(correctionSchema.contains("SELECT DISTINCT meetingID"))
@@ -7791,7 +7872,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let intelligenceSpec = try Self.contents(
             of: "docs/specs/04-intelligence.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 40"))
+        XCTAssertTrue(schema.contains("public static let version = 41"))
         XCTAssertTrue(schema.contains("registerSegmentCorrectedEmbeddingMigration"))
         XCTAssertTrue(correctedSchema.contains("registerMigration(\"v37\")"))
         XCTAssertTrue(correctedSchema.contains("table.add(column: \"embedding\", .blob)"))
@@ -7841,7 +7922,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 40"))
+        XCTAssertTrue(schema.contains("public static let version = 41"))
         XCTAssertTrue(schema.contains("registerTranscriptStructuralSearchMigration"))
         XCTAssertTrue(structuralSchema.contains("registerMigration(\"v38\")"))
         XCTAssertTrue(structuralSchema.contains("transcriptStructuralSearchRow"))

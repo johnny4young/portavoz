@@ -8,37 +8,6 @@ public enum SkillOfferReason: String, Codable, Sendable, CaseIterable {
     case confirmedCommitment = "confirmed-commitment"
 }
 
-/// The opaque subject identity used to retire an offer when its source is
-/// deleted. Values are never presented by the central review surface.
-public enum SkillOfferSubject: Equatable, Sendable {
-    case meeting(MeetingID)
-    case commitment(CommitmentID)
-    case calendarEvent(String)
-
-    public enum Kind: String, Codable, Sendable, CaseIterable {
-        case meeting
-        case commitment
-        case calendarEvent = "calendar-event"
-    }
-
-    public var kind: Kind {
-        switch self {
-        case .meeting: .meeting
-        case .commitment: .commitment
-        case .calendarEvent: .calendarEvent
-        }
-    }
-
-    public var isValid: Bool {
-        switch self {
-        case .meeting, .commitment:
-            true
-        case .calendarEvent(let identifier):
-            UpcomingEvent.isValidIdentity(identifier)
-        }
-    }
-}
-
 /// Content-free declaration written when a real subject surface makes an
 /// offer. This is not the exact execution proposal: preview material and its
 /// UUID are still allocated only after the user opens confirmation.

@@ -12,6 +12,24 @@ final class LocalizationTests: XCTestCase {
         "Resources/Localization/Portavoz/InfoPlist.xcstrings"
     ]
 
+    func testCatalogKeysAreUniqueOnDisk() throws {
+        for path in Self.catalogPaths {
+            let raw = try String(
+                contentsOf: Self.repoRoot.appendingPathComponent(path),
+                encoding: .utf8)
+            let keyLines = raw.split(separator: "\n").filter {
+                $0.hasPrefix("    \"") && $0.hasSuffix("\": {")
+            }
+            let duplicates = Dictionary(grouping: keyLines, by: String.init)
+                .filter { $0.value.count > 1 }
+                .keys
+                .sorted()
+            XCTAssertTrue(
+                duplicates.isEmpty,
+                "\(path) has duplicate keys: \(duplicates.joined(separator: ", "))")
+        }
+    }
+
     func testEveryCatalogKeyHasSpanishTranslation() throws {
         for catalog in try Self.loadCatalogs() {
             XCTAssertFalse(catalog.strings.isEmpty, "\(catalog.path) must not be empty")

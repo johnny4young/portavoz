@@ -8,6 +8,30 @@ import XCTest
 
 final class ExecuteSkillTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_700_000_000)
+    private static let commitmentID = CommitmentID(rawValue: UUID(
+        uuidString: "A2000000-0000-4000-8000-000000000001")!)
+
+    private func storeWithCommitment() async throws -> MeetingStore {
+        let store = try MeetingStore.inMemory()
+        let instant = now
+        try await store.database.write { database in
+            try database.execute(
+                sql: """
+                    INSERT INTO commitment (
+                        id, canonicalPersonID, title, status, dueAt,
+                        createdAt, updatedAt, deletedAt
+                    ) VALUES (?, NULL, ?, ?, NULL, ?, ?, NULL)
+                    """,
+                arguments: [
+                    Self.commitmentID.rawValue.uuidString,
+                    "Send the signed export",
+                    CommitmentStatus.confirmed.rawValue,
+                    instant,
+                    instant,
+                ])
+        }
+        return store
+    }
 
     private func proposal(
         definition: SkillDefinition = ReminderDraftSkill.definition,
@@ -16,9 +40,10 @@ final class ExecuteSkillTests: XCTestCase {
     ) -> SkillProposal {
         SkillProposal(
             definition: definition,
+            subject: .commitment(Self.commitmentID),
             requestedCapabilities: requesting,
             requestedInputDataClasses: definition.inputDataClasses,
-            arguments: arguments,
+            arguments: [.commitment(Self.commitmentID)] + arguments,
             proposedAt: now)
     }
 
@@ -52,7 +77,7 @@ final class ExecuteSkillTests: XCTestCase {
     // MARK: - The happy path, end to end
 
     func testConfirmedProposalIsClaimedPerformedAndSettled() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let delivery = RecordingReminderDelivery()
         let subject = proposal()
 
@@ -71,7 +96,7 @@ final class ExecuteSkillTests: XCTestCase {
     /// A refused proposal must leave no durable trace. Writing a claim first
     /// would create an execution nobody can settle.
     func testRefusedProposalWritesNothing() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let delivery = RecordingReminderDelivery()
 
         let outcome = try await executor(store: store, delivery: delivery)
@@ -88,7 +113,7 @@ final class ExecuteSkillTests: XCTestCase {
     /// A capability the definition never declared cannot be bought by any
     /// argument, and is refused before the claim.
     func testUndeclaredCapabilityNeverReachesTheEffect() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let delivery = RecordingReminderDelivery()
 
         let outcome = try await executor(store: store, delivery: delivery)
@@ -104,13 +129,14 @@ final class ExecuteSkillTests: XCTestCase {
     /// A claim with no way to perform it could never settle, so an unknown
     /// skill is refused before the durable write.
     func testUnknownSkillIsRefusedBeforeClaiming() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let delivery = RecordingReminderDelivery()
         let unknown = SkillDefinition(
             id: "not-registered",
             version: 1,
             capabilities: [.readMeetingMaterial],
             inputDataClasses: [.commitment],
+            subjectKind: .commitment,
             confirmationPolicy: .explicitPerProposal)
         let subject = proposal(
             definition: unknown,
@@ -125,7 +151,7 @@ final class ExecuteSkillTests: XCTestCase {
     }
 
     func testGlobalPauseIsRecheckedBeforeClaiming() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         try await store.setAllSkillsPaused(true, at: now)
         let delivery = RecordingReminderDelivery()
         let subject = proposal()
@@ -144,7 +170,7 @@ final class ExecuteSkillTests: XCTestCase {
     }
 
     func testIndividualDisablementIsRecheckedBeforeClaiming() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         try await store.setSkill(
             ReminderDraftSkill.id,
             isEnabled: false,
@@ -164,7 +190,7 @@ final class ExecuteSkillTests: XCTestCase {
     }
 
     func testUnreadablePolicyStopsBeforeClaimingOrDelivery() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         try await store.database.write { database in
             try database.execute(sql: "DELETE FROM skillControl WHERE id = 1")
         }
@@ -193,7 +219,7 @@ final class ExecuteSkillTests: XCTestCase {
     // MARK: - Idempotency through the full path
 
     func testRepeatingASucceededProposalDoesNotDeliverTwice() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let delivery = RecordingReminderDelivery()
         let subject = proposal()
         let executor = executor(store: store, delivery: delivery)
@@ -209,7 +235,7 @@ final class ExecuteSkillTests: XCTestCase {
     /// Two proposals for one commitment share an idempotency key, so the
     /// second cannot claim the same effect.
     func testASecondProposalCannotClaimTheSameEffect() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let delivery = RecordingReminderDelivery()
         let executor = executor(store: store, delivery: delivery)
         let commitment = CommitmentID()
@@ -227,7 +253,7 @@ final class ExecuteSkillTests: XCTestCase {
     // MARK: - Failure and retry
 
     func testDeliveryFailureSettlesTypedAndAllowsRetry() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let delivery = RecordingReminderDelivery(failuresBeforeSuccess: 1)
         let subject = proposal()
         let executor = executor(store: store, delivery: delivery)
@@ -250,7 +276,7 @@ final class ExecuteSkillTests: XCTestCase {
 
     /// An untyped error must not be recorded as a guess at severity.
     func testUntypedFailureSettlesAsRecoverable() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let delivery = RecordingReminderDelivery(untypedFailure: true)
 
         let outcome = try await executor(store: store, delivery: delivery)
@@ -262,7 +288,7 @@ final class ExecuteSkillTests: XCTestCase {
     /// A malformed proposal fails in the pure projection, so delivery is never
     /// reached and no half-written draft exists.
     func testProjectionFailureNeverReachesDelivery() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let delivery = RecordingReminderDelivery()
 
         let outcome = try await executor(store: store, delivery: delivery)
@@ -279,17 +305,18 @@ final class ExecuteSkillTests: XCTestCase {
     /// A run interrupted mid-effect is surfaced, not repeated: the draft may
     /// already exist.
     func testInterruptedRunIsSurfacedInsteadOfRepeated() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let delivery = RecordingReminderDelivery()
         let subject = proposal()
         // Simulate the crash: the claim reached `executing` and stopped there.
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: subject.id,
             skillID: ReminderDraftSkill.id,
             skillVersion: ReminderDraftSkill.version,
+            subject: subject.subject,
             offerKey: "reminder-draft:one",
             idempotencyKey: "reminder-draft:one",
-            at: now)
+            occurredAt: now))
         _ = try await store.beginSkillExecution(proposalID: subject.id, at: now)
 
         let outcome = try await executor(store: store, delivery: delivery)
@@ -303,7 +330,7 @@ final class ExecuteSkillTests: XCTestCase {
     /// Cancellation after durable confirmation but before the effect handoff
     /// must close the claim as no-effect, not strand it in `confirmed`.
     func testCancellationBeforeHandoffIsDurablyDismissed() async throws {
-        let store = try MeetingStore.inMemory()
+        let store = try await storeWithCommitment()
         let claims = GatedSkillClaims(store: store)
         let delivery = RecordingReminderDelivery()
         let subject = proposal()
@@ -427,20 +454,9 @@ private actor GatedSkillClaims: SkillExecutionClaiming {
     }
 
     func confirmSkillExecution(
-        proposalID: UUID,
-        skillID: String,
-        skillVersion: Int,
-        offerKey: String,
-        idempotencyKey: String,
-        at now: Date
+        _ confirmation: SkillExecutionConfirmation
     ) async throws -> SkillExecutionAdmission {
-        let admission = try await store.confirmSkillExecution(
-            proposalID: proposalID,
-            skillID: skillID,
-            skillVersion: skillVersion,
-            offerKey: offerKey,
-            idempotencyKey: idempotencyKey,
-            at: now)
+        let admission = try await store.confirmSkillExecution(confirmation)
         didConfirm = true
         confirmationWaiter?.resume()
         confirmationWaiter = nil

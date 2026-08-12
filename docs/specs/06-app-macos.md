@@ -2495,7 +2495,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D339, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D341, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2633,7 +2633,32 @@ receives the offer or idempotency key, arguments, subject identity,
 destination, result, or meeting content and therefore cannot execute or retry
 an effect.
 
-Ten bilingual XCUITest journeys cover the pane: one verifies the fail-closed
+A verified failed receipt now derives one recovery classification from its
+causal audit, projected typed failure category, exact v41 subject, current
+catalogue version, and current global/per-Skill policy. A local recoverable
+meeting or commitment run exposes **Review recovery in context**. That action
+sends only the proposal UUID, re-reads the same authorities, and returns at most
+an inert route to Meeting Detail or focused Commitment Radar. The destination
+must rebuild a fresh proposal and exact preview before any new confirmation;
+the receipt action itself cannot begin, settle, or perform the failed effect.
+The sheet records that route and dismisses first. Its parent `onDismiss` then
+opens the value-scoped primary scene and closes the weakly captured exact
+presenting Settings `NSWindow` through one narrow AppKit boundary. A SwiftUI
+`DismissAction` captured by the sheet or presenter does not own that window,
+`dismissWindow` leaves the Settings host open after this modal transition, and
+the process key window has already returned to the primary scene at that point.
+The bridge keeps only a weak reference and invokes `close()` on that exact host.
+
+Calendar recovery remains explicit guidance to use the resident menu-bar
+surface. External or destructive failures expose only a warning to verify the
+outside destination because the outcome may already exist. Missing/deleted
+subjects, legacy pre-v41 receipts, disabled policy, stale catalogue versions,
+and malformed histories provide no recovery action. A thrown route resolution
+keeps the receipt and shows a retry for that read only. Settings still receives
+no subject, arguments, offer key, idempotency key, preview, destination,
+recipient, confirmation, or effect authority.
+
+Twelve bilingual XCUITest journeys cover the pane: one verifies the fail-closed
 control load state; one proves a selected activity-scope failure neither
 invents rows nor disables verified policy; one isolates proposal-authority
 failure with no invented rows while controls remain usable; one returns from a
@@ -2645,7 +2670,11 @@ injects a dismissal failure and proves the row plus retry stay available on
 both Settings and the subject surface; one revokes a real
 confirmed fixture and proves its causal cancellation plus removal from Waiting;
 one injects only the revocation write failure and proves the receipt plus retry
-remain; and the main disposable journey
+remain; one returns a seeded recoverable failure to its exact Meeting Detail,
+requires one main window and a fresh recap offer without a confirmation sheet;
+one injects only recovery resolution failure and proves the original receipt,
+causal evidence, Settings window, and route-retry stay available; and the main
+disposable journey
 disables export, pauses all skills, proves offers stay absent, resumes without
 losing the individual choice, confirms the remaining recap proposal, traverses
 all four activity scopes, checks typed why/input explanations from the real

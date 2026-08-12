@@ -162,7 +162,8 @@ struct SkillActivitySection: View {
     private func receiptStatus(_ receipt: SkillControlCenterReceipt) -> String {
         SkillReceiptPresentation.status(
             skillID: receipt.skillID,
-            state: receipt.state)
+            state: receipt.state,
+            failureCategory: receipt.failureCategory)
     }
 
     private func receiptAccessibilityLabel(

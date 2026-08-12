@@ -335,13 +335,14 @@ final class MeetingSkillOfferTests: XCTestCase {
                 at: Date(timeIntervalSince1970: 102))
         ]
         for item in proposals {
-            _ = try await store.confirmSkillExecution(
+            _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
                 proposalID: item.proposal.id,
                 skillID: item.proposal.definition.id,
                 skillVersion: item.proposal.definition.version,
+                subject: item.proposal.subject,
                 offerKey: item.idempotencyKey,
                 idempotencyKey: item.idempotencyKey,
-                at: item.proposal.proposedAt)
+                occurredAt: item.proposal.proposedAt))
             _ = try await store.beginSkillExecution(
                 proposalID: item.proposal.id,
                 at: item.proposal.proposedAt)
@@ -369,17 +370,19 @@ final class MeetingSkillOfferTests: XCTestCase {
     func testCancelledConfirmationRemainsVisibleAsADismissedReceipt() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
         let (proposal, key) = MeetingSkillProposalFactory.recapProposal(
             meetingID: meetingID,
             at: Date(timeIntervalSince1970: 100))
 
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposal.id,
             skillID: proposal.definition.id,
             skillVersion: proposal.definition.version,
+            subject: proposal.subject,
             offerKey: key,
             idempotencyKey: key,
-            at: Date(timeIntervalSince1970: 100))
+            occurredAt: Date(timeIntervalSince1970: 100)))
         _ = try await store.cancelSkillExecution(
             proposalID: proposal.id,
             at: Date(timeIntervalSince1970: 101))
@@ -463,6 +466,7 @@ final class MeetingSkillOfferTests: XCTestCase {
     func testReceiptPrefixReadEscapesLikeMetacharacters() async throws {
         let store = try MeetingStore.inMemory()
         let meetingID = MeetingID()
+        try await saveMeeting(meetingID, in: store)
         let (proposal, key) = MeetingSkillProposalFactory
             .packageExportProposal(
                 meetingID: meetingID,

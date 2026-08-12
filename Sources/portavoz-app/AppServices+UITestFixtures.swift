@@ -61,7 +61,8 @@ extension AppServices {
         await seedPrivacyReceipt(for: meeting.id)
         await seedProcessingFailureIfRequested(for: meeting.id)
         await seedAbandonedSummaryIfRequested(for: meeting.id)
-        await seedWaitingSkillExecutionIfRequested()
+        await seedWaitingSkillExecutionIfRequested(for: meeting.id)
+        await seedFailedSkillExecutionIfRequested(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         requestSearchReconciliation()
@@ -251,18 +252,21 @@ extension AppServices {
     /// A content-free, confirmed execution that deliberately stops before
     /// `begin`. It lets XCUITest exercise the real Waiting revocation path
     /// without invoking a platform effect or touching the user's library.
-    private func seedWaitingSkillExecutionIfRequested() async {
+    private func seedWaitingSkillExecutionIfRequested(
+        for meetingID: MeetingID
+    ) async {
         guard usesTemporaryMeetingStore,
               ProcessInfo.processInfo.arguments.contains("-seed-skill-waiting")
         else { return }
         do {
-            let outcome = try await store.confirmSkillExecution(
+            let outcome = try await store.confirmSkillExecution(SkillExecutionConfirmation(
                 proposalID: Self.seedWaitingSkillProposalID,
                 skillID: RecapDraftSkill.id,
                 skillVersion: RecapDraftSkill.version,
-                offerKey: "ui-test-waiting-recap",
-                idempotencyKey: "ui-test-waiting-recap",
-                at: Date(timeIntervalSince1970: 1_700_000_400))
+                subject: .meeting(meetingID),
+                offerKey: RecapDraftSkill.idempotencyKey(for: meetingID),
+                idempotencyKey: RecapDraftSkill.idempotencyKey(for: meetingID),
+                occurredAt: Date(timeIntervalSince1970: 1_700_000_400)))
             switch outcome {
             case .admitted(let record), .alreadySettled(let record):
                 guard record.state == .confirmed else {
@@ -274,6 +278,52 @@ extension AppServices {
             }
         } catch {
             assertionFailure("Could not seed Waiting Skill: \(error)")
+        }
+    }
+
+    /// A real failed local receipt with an exact meeting subject. It stops
+    /// after settlement, so Settings can prove that recovery only navigates
+    /// back to the subject surface and never performs or confirms an effect.
+    private func seedFailedSkillExecutionIfRequested(
+        for meetingID: MeetingID
+    ) async {
+        guard usesTemporaryMeetingStore,
+              ProcessInfo.processInfo.arguments.contains(
+                  "-seed-skill-failed-recoverable")
+        else { return }
+        let timestamp = Date(timeIntervalSince1970: 1_700_000_500)
+        let key = RecapDraftSkill.idempotencyKey(for: meetingID)
+        do {
+            let confirmation = try await store.confirmSkillExecution(SkillExecutionConfirmation(
+                proposalID: Self.seedFailedSkillProposalID,
+                skillID: RecapDraftSkill.id,
+                skillVersion: RecapDraftSkill.version,
+                subject: .meeting(meetingID),
+                offerKey: key,
+                idempotencyKey: key,
+                occurredAt: timestamp))
+            guard case .admitted = confirmation else {
+                assertionFailure("Failed Skill fixture could not confirm")
+                return
+            }
+            let begin = try await store.beginSkillExecution(
+                proposalID: Self.seedFailedSkillProposalID,
+                at: timestamp.addingTimeInterval(1))
+            guard case .admitted = begin else {
+                assertionFailure("Failed Skill fixture could not begin")
+                return
+            }
+            let settlement = try await store.settleSkillExecution(
+                proposalID: Self.seedFailedSkillProposalID,
+                succeeded: false,
+                failureCategory: .recoverable,
+                at: timestamp.addingTimeInterval(2))
+            guard case .admitted = settlement else {
+                assertionFailure("Failed Skill fixture could not settle")
+                return
+            }
+        } catch {
+            assertionFailure("Could not seed failed Skill: \(error)")
         }
     }
 
@@ -428,6 +478,8 @@ extension AppServices {
         uuidString: "B5E00000-0000-4000-8000-000000000002")!
     private static let seedWaitingSkillProposalID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000003")!
+    private static let seedFailedSkillProposalID = UUID(
+        uuidString: "B5E00000-0000-4000-8000-000000000004")!
 
     private static func radarCommitmentID(_ ordinal: Int) -> CommitmentID {
         CommitmentID(rawValue: UUID(uuidString: String(

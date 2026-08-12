@@ -6,12 +6,7 @@ import StorageKit
 /// port keeps the use case testable and free of GRDB.
 public protocol SkillExecutionClaiming: Sendable {
     func confirmSkillExecution(
-        proposalID: UUID,
-        skillID: String,
-        skillVersion: Int,
-        offerKey: String,
-        idempotencyKey: String,
-        at now: Date
+        _ confirmation: SkillExecutionConfirmation
     ) async throws -> SkillExecutionAdmission
 
     func beginSkillExecution(
@@ -185,14 +180,15 @@ public struct ExecuteSkill: ApplicationUseCase {
         offerKey: String,
         idempotencyKey: String
     ) async throws -> SkillExecutionOutcome? {
-        switch try await claims.confirmSkillExecution(
+        switch try await claims.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposal.id,
             skillID: proposal.definition.id,
             skillVersion: proposal.definition.version,
+            subject: proposal.subject,
             offerKey: offerKey,
             idempotencyKey: idempotencyKey,
-            at: now()
-        ) {
+            occurredAt: now()
+        )) {
         case .rejected(let rejection):
             return .rejected(rejection)
         case .admitted, .alreadySettled:

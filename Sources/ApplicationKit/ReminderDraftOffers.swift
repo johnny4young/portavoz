@@ -293,6 +293,7 @@ public enum ReminderDraftProposalFactory {
             SkillProposal(
                 id: proposalID,
                 definition: ReminderDraftSkill.definition,
+                subject: .commitment(offer.commitment.id),
                 requestedCapabilities: [
                     .readMeetingMaterial,
                     .writeLocalDraft

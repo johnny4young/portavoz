@@ -247,6 +247,7 @@ public enum MeetingSkillProposalFactory {
             SkillProposal(
                 id: proposalID,
                 definition: RecapDraftSkill.definition,
+                subject: .meeting(meetingID),
                 requestedCapabilities: [.readMeetingMaterial, .writeLocalDraft],
                 requestedInputDataClasses: RecapDraftSkill.definition.inputDataClasses,
                 arguments: [.meeting(meetingID)],
@@ -265,6 +266,7 @@ public enum MeetingSkillProposalFactory {
             SkillProposal(
                 id: proposalID,
                 definition: MeetingPackageExportSkill.definition,
+                subject: .meeting(meetingID),
                 requestedCapabilities: [.readMeetingMaterial, .writeLocalFile],
                 requestedInputDataClasses:
                     MeetingPackageExportSkill.definition.inputDataClasses,
@@ -285,6 +287,7 @@ public enum MeetingSkillProposalFactory {
             SkillProposal(
                 id: proposalID,
                 definition: EmailRecapDraftSkill.definition,
+                subject: .meeting(meetingID),
                 requestedCapabilities: [.readMeetingMaterial, .sendRemote],
                 requestedInputDataClasses:
                     EmailRecapDraftSkill.definition.inputDataClasses,
@@ -303,6 +306,7 @@ public enum MeetingSkillProposalFactory {
             SkillProposal(
                 id: proposalID,
                 definition: SecretGistPublishSkill.definition,
+                subject: .meeting(meetingID),
                 requestedCapabilities: [.readMeetingMaterial, .sendRemote],
                 requestedInputDataClasses:
                     SecretGistPublishSkill.definition.inputDataClasses,

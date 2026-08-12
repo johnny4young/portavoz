@@ -17,7 +17,7 @@ import GRDB
 /// sqlite-vec (embeddings for local RAG) intentionally waits for M8 — it
 /// needs a C extension and nothing before RAG reads vectors.
 public enum StorageSchema {
-    public static let version = 40
+    public static let version = 41
 
     // Sequential migration registry (one per schema version);
     // inherently long body that grows with each migration.
@@ -272,6 +272,7 @@ public enum StorageSchema {
         registerTranscriptStructuralSearchMigration(in: &migrator)
         registerSkillExecutionReviewMigration(in: &migrator)
         registerSkillOfferAuthorityMigration(in: &migrator)
+        registerSkillExecutionSubjectMigration(in: &migrator)
 
         return migrator
     }

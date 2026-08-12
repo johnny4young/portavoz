@@ -843,20 +843,36 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         // 3 · A succeeded recap retires only that offer; external and export
         // adapters remain independent user intents.
-        menu.click()
+        let refreshedMenu = app.control(withIdentifier: "skill-offer-menu")
+        XCTAssertTrue(
+            refreshedMenu.waitForStableFrame(timeout: 5),
+            "the offer menu must settle after the confirmed offer reload")
         let emailDismiss = app.menuItems[
             "skill-offer-dismiss-email-recap-draft"]
         let gistDismiss = app.menuItems[
             "skill-offer-dismiss-secret-gist-publish"]
         let exportDismiss = app.menuItems["skill-offer-dismiss-package-export"]
+
+        // AppKit can discard the first synthetic menu-open event while the
+        // confirmed offer's view identity is being replaced. Re-resolve the
+        // control and retry that presentation once; the proposal assertions
+        // below still fail closed if the refreshed product menu is incomplete.
+        for attempt in 0 ..< 2 where !emailDismiss.exists {
+            refreshedMenu.click()
+            if emailDismiss.waitForExistence(timeout: 3) { break }
+            if attempt == 0 {
+                app.typeKey(.escape, modifierFlags: [])
+                XCTAssertTrue(refreshedMenu.waitForStableFrame(timeout: 5))
+            }
+        }
         XCTAssertTrue(
-            emailDismiss.waitForExistence(timeout: 5),
+            emailDismiss.exists,
             "email handoff remains an independent unperformed intent")
         XCTAssertTrue(
-            exportDismiss.waitForExistence(timeout: 5),
+            exportDismiss.exists,
             "each export destination is a new intent, so export keeps offering")
         XCTAssertTrue(
-            gistDismiss.waitForExistence(timeout: 5),
+            gistDismiss.exists,
             "remote Gist publication remains an independent unperformed intent")
         XCTAssertFalse(
             app.menuItems["skill-offer-recap-draft"].exists,

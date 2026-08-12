@@ -10736,7 +10736,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Completados"
+            "value": "Completadas"
           }
         }
       }
@@ -13061,16 +13061,6 @@
         }
       }
     },
-    "Recent": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recientes"
-          }
-        }
-      }
-    },
     "Waiting": {
       "localizations": {
         "es": {
@@ -13087,16 +13077,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Atención"
-          }
-        }
-      }
-    },
-    "Completed": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Completadas"
           }
         }
       }
@@ -13447,6 +13427,116 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se pudo abrir esta propuesta. Sigue disponible."
+          }
+        }
+      }
+    },
+    "Verifying recovery context…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando el contexto de recuperación…"
+          }
+        }
+      }
+    },
+    "Recovery context could not be verified. Nothing ran.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar el contexto de recuperación. No se ejecutó nada."
+          }
+        }
+      }
+    },
+    "Review recovery in context": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar la recuperación en contexto"
+          }
+        }
+      }
+    },
+    "Returns to the original subject without running the Skill": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve al sujeto original sin ejecutar el Skill"
+          }
+        }
+      }
+    },
+    "A safe recovery route is unavailable. This receipt remains available for review.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay una ruta de recuperación segura disponible. Este recibo sigue disponible para revisión."
+          }
+        }
+      }
+    },
+    "Outcome unverified — check the external destination": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resultado sin verificar — revisa el destino externo"
+          }
+        }
+      }
+    },
+    "Failed — recovery is unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falló — la recuperación no está disponible"
+          }
+        }
+      }
+    },
+    "Failed — review is available": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falló — la revisión está disponible"
+          }
+        }
+      }
+    },
+    "Return to the original context and review a fresh proposal. This does not run the Skill.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vuelve al contexto original y revisa una propuesta nueva. Esto no ejecuta el Skill."
+          }
+        }
+      }
+    },
+    "Review this recovery from the menu bar beside the calendar event. Nothing runs automatically.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa esta recuperación desde la barra de menús junto al evento del calendario. Nada se ejecuta automáticamente."
+          }
+        }
+      }
+    },
+    "The outcome may exist outside Portavoz. Verify the external destination before continuing.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resultado puede existir fuera de Portavoz. Verifica el destino externo antes de continuar."
           }
         }
       }

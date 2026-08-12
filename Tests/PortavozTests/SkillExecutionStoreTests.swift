@@ -18,15 +18,17 @@ final class SkillExecutionStoreTests: XCTestCase {
         proposalID: UUID = UUID(),
         key: String = "reminder-draft:meeting-1",
         offerKey: String? = nil,
+        subject: SkillSubject = .calendarEvent("storage-test-subject"),
         at when: Date? = nil
     ) async throws -> SkillExecutionAdmission {
-        try await store.confirmSkillExecution(
+        try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: "reminder-draft",
             skillVersion: 1,
+            subject: subject,
             offerKey: offerKey ?? key,
             idempotencyKey: key,
-            at: when ?? now)
+            occurredAt: when ?? now))
     }
 
     // MARK: - Idempotency
@@ -88,6 +90,55 @@ final class SkillExecutionStoreTests: XCTestCase {
         XCTAssertEqual(swapped, .rejected(.idempotencyKeyClaimed))
     }
 
+    func testConfirmationPersistsExactSubjectAndRejectsASubjectSwap() async throws {
+        let store = try store()
+        let proposalID = UUID()
+        let original = SkillSubject.calendarEvent("opaque-event-1")
+        _ = try await confirm(
+            store,
+            proposalID: proposalID,
+            key: "subject-owned-effect",
+            subject: original)
+
+        let persisted = try await store.skillExecutionSubject(
+            proposalID: proposalID)
+        XCTAssertEqual(persisted, original)
+        let swapped = try await confirm(
+            store,
+            proposalID: proposalID,
+            key: "subject-owned-effect",
+            subject: .calendarEvent("opaque-event-2"))
+        XCTAssertEqual(swapped, .rejected(.invalidProposal))
+        let unchanged = try await store.skillExecutionSubject(
+            proposalID: proposalID)
+        XCTAssertEqual(unchanged, original)
+    }
+
+    func testDeletingMeetingRemovesOnlyItsRecoverySubject() async throws {
+        let store = try store()
+        let meeting = Meeting(title: "Private", startedAt: now)
+        try await store.save(meeting)
+        let proposalID = UUID()
+        _ = try await confirm(
+            store,
+            proposalID: proposalID,
+            key: "meeting-subject-effect",
+            subject: .meeting(meeting.id))
+
+        try await store.database.write { database in
+            try database.execute(
+                sql: "DELETE FROM meeting WHERE id = ?",
+                arguments: [meeting.id.rawValue.uuidString])
+        }
+
+        let subject = try await store.skillExecutionSubject(
+            proposalID: proposalID)
+        let execution = try await store.skillExecution(
+            idempotencyKey: "meeting-subject-effect")
+        XCTAssertNil(subject)
+        XCTAssertNotNil(execution)
+    }
+
     func testClaimRequiresTheEffectSlotToBelongToItsOffer() async throws {
         let store = try store()
 
@@ -114,13 +165,14 @@ final class SkillExecutionStoreTests: XCTestCase {
             skillID: MeetingPackageExportSkill.id,
             at: now)
 
-        let claim = try await store.confirmSkillExecution(
+        let claim = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: UUID(),
             skillID: MeetingPackageExportSkill.id,
             skillVersion: MeetingPackageExportSkill.version,
+            subject: .calendarEvent("storage-test-subject"),
             offerKey: offerKey,
             idempotencyKey: offerKey + ":/tmp/export.portavoz",
-            at: now)
+            occurredAt: now))
 
         XCTAssertEqual(claim, .rejected(.offerDismissed))
     }
@@ -130,13 +182,14 @@ final class SkillExecutionStoreTests: XCTestCase {
         let proposalID = UUID()
         let offerKey = "meeting-package-export:meeting-1"
         let effectKey = offerKey + ":/tmp/original.portavoz"
-        let first = try await store.confirmSkillExecution(
+        let first = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: MeetingPackageExportSkill.id,
             skillVersion: MeetingPackageExportSkill.version,
+            subject: .calendarEvent("storage-test-subject"),
             offerKey: offerKey,
             idempotencyKey: effectKey,
-            at: now)
+            occurredAt: now))
         guard case .admitted(let owner) = first else {
             return XCTFail("the first confirmation must own its exact effect")
         }
@@ -145,20 +198,22 @@ final class SkillExecutionStoreTests: XCTestCase {
             skillID: MeetingPackageExportSkill.id,
             at: now.addingTimeInterval(1))
 
-        let repeated = try await store.confirmSkillExecution(
+        let repeated = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: MeetingPackageExportSkill.id,
             skillVersion: MeetingPackageExportSkill.version,
+            subject: .calendarEvent("storage-test-subject"),
             offerKey: offerKey,
             idempotencyKey: effectKey,
-            at: now.addingTimeInterval(2))
-        let newDestination = try await store.confirmSkillExecution(
+            occurredAt: now.addingTimeInterval(2)))
+        let newDestination = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: UUID(),
             skillID: MeetingPackageExportSkill.id,
             skillVersion: MeetingPackageExportSkill.version,
+            subject: .calendarEvent("storage-test-subject"),
             offerKey: offerKey,
             idempotencyKey: offerKey + ":/tmp/new.portavoz",
-            at: now.addingTimeInterval(2))
+            occurredAt: now.addingTimeInterval(2)))
 
         XCTAssertEqual(repeated, .alreadySettled(owner))
         XCTAssertEqual(newDestination, .rejected(.offerDismissed))
@@ -169,13 +224,14 @@ final class SkillExecutionStoreTests: XCTestCase {
         let proposalID = UUID()
         let opaqueKey = "pre-meeting-brief:event-id-with-trailing-space "
 
-        let claim = try await store.confirmSkillExecution(
+        let claim = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: PreMeetingBriefSkill.id,
             skillVersion: PreMeetingBriefSkill.version,
+            subject: .calendarEvent("event-id-with-trailing-space "),
             offerKey: opaqueKey,
             idempotencyKey: opaqueKey,
-            at: now)
+            occurredAt: now))
         let owner = try await store.skillExecution(idempotencyKey: opaqueKey)
 
         guard case .admitted = claim else {
@@ -247,7 +303,32 @@ final class SkillExecutionStoreTests: XCTestCase {
             return XCTFail("a recoverable failure must be retryable")
         }
         XCTAssertEqual(record.state, .executing)
+        XCTAssertNil(record.failureCategory)
         XCTAssertEqual(record.attempt, 2, "a retry is a new attempt")
+    }
+
+    func testFailureCategoryProjectionTracksOnlyCurrentFailedState() async throws {
+        let store = try store()
+        let proposalID = UUID()
+        _ = try await confirm(store, proposalID: proposalID)
+        _ = try await store.beginSkillExecution(proposalID: proposalID, at: now)
+        let failed = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: false,
+            failureCategory: .degradable,
+            at: now)
+        guard case .admitted(let failedRecord) = failed else {
+            return XCTFail("failure must settle")
+        }
+        XCTAssertEqual(failedRecord.failureCategory, .degradable)
+
+        let retried = try await store.beginSkillExecution(
+            proposalID: proposalID,
+            at: now.addingTimeInterval(1))
+        guard case .admitted(let retryRecord) = retried else {
+            return XCTFail("failed execution must enter a new attempt")
+        }
+        XCTAssertNil(retryRecord.failureCategory)
     }
 
     // MARK: - Cancellation
@@ -325,22 +406,24 @@ final class SkillExecutionStoreTests: XCTestCase {
         let blankKey = try await confirm(store, key: "   ")
         XCTAssertEqual(blankKey, .rejected(.invalidProposal))
 
-        let blankSkill = try await store.confirmSkillExecution(
+        let blankSkill = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: UUID(),
             skillID: "",
             skillVersion: 1,
+            subject: .calendarEvent("storage-test-subject"),
             offerKey: "k",
             idempotencyKey: "k",
-            at: now)
+            occurredAt: now))
         XCTAssertEqual(blankSkill, .rejected(.invalidProposal))
 
-        let badVersion = try await store.confirmSkillExecution(
+        let badVersion = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: UUID(),
             skillID: "ok",
             skillVersion: 0,
+            subject: .calendarEvent("storage-test-subject"),
             offerKey: "k2",
             idempotencyKey: "k2",
-            at: now)
+            occurredAt: now))
         XCTAssertEqual(badVersion, .rejected(.invalidProposal))
     }
 
@@ -489,12 +572,12 @@ final class SkillExecutionStoreTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 40)
+            XCTAssertEqual(StorageSchema.version, 41)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v40")
+                "v41")
             XCTAssertEqual(
                 try Set(database.columns(in: "skillExecutionEvent").map(\.name)),
                 [
@@ -505,8 +588,67 @@ final class SkillExecutionStoreTests: XCTestCase {
                 try Set(database.columns(in: "skillExecutionState").map(\.name)),
                 [
                     "proposalID", "skillID", "skillVersion", "idempotencyKey",
-                    "state", "attempt", "latestEventID", "createdAt", "updatedAt"
+                    "state", "attempt", "latestEventID", "createdAt", "updatedAt",
+                    "failureCategory"
                 ])
+            XCTAssertEqual(
+                try Set(database.columns(in: "skillExecutionSubject").map(\.name)),
+                [
+                    "proposalID", "subjectKind", "meetingID", "commitmentID",
+                    "calendarEventID"
+                ])
+        }
+    }
+
+    func testV41BackfillsFailureProjectionWithoutInventingLegacySubject() throws {
+        let database = try DatabaseQueue()
+        let migrator = StorageSchema.migrator()
+        try migrator.migrate(database, upTo: "v40")
+        let proposalID = UUID()
+        let eventID = UUID()
+        try database.write { database in
+            try database.execute(
+                sql: """
+                    INSERT INTO skillExecutionEvent (
+                        id, proposalID, previousEventID, kind, attempt,
+                        failureCategory, occurredAt
+                    ) VALUES (?, ?, NULL, 'fail', 1, 'recoverable', ?)
+                    """,
+                arguments: [eventID.uuidString, proposalID.uuidString, now])
+            try database.execute(
+                sql: """
+                    INSERT INTO skillExecutionState (
+                        proposalID, skillID, skillVersion, idempotencyKey,
+                        state, attempt, latestEventID, createdAt, updatedAt
+                    ) VALUES (?, 'recap-draft', 1, 'legacy-effect',
+                              'failed', 1, ?, ?, ?)
+                    """,
+                arguments: [
+                    proposalID.uuidString,
+                    eventID.uuidString,
+                    now,
+                    now
+                ])
+        }
+
+        try migrator.migrate(database)
+
+        try database.read { database in
+            XCTAssertEqual(
+                try String.fetchOne(
+                    database,
+                    sql: """
+                        SELECT failureCategory FROM skillExecutionState
+                        WHERE proposalID = ?
+                        """,
+                    arguments: [proposalID.uuidString]),
+                "recoverable")
+            XCTAssertEqual(
+                try Int.fetchOne(
+                    database,
+                    sql: "SELECT COUNT(*) FROM skillExecutionSubject"),
+                0,
+                "v41 must never infer a subject from legacy key text")
         }
     }
 }

@@ -16,9 +16,14 @@ enum SkillReceiptPresentation {
 
     static func status(
         skillID: String,
-        state: SkillExecutionState
+        state: SkillExecutionState,
+        failureCategory: FailureCategory?
     ) -> String {
-        if let externalStatus = externalStatus(skillID: skillID, state: state) {
+        if let externalStatus = externalStatus(
+            skillID: skillID,
+            state: state,
+            failureCategory: failureCategory
+        ) {
             return externalStatus
         }
         return switch state {
@@ -27,14 +32,22 @@ enum SkillReceiptPresentation {
         case .confirmed: L10n.text("Confirmed — waiting")
         case .executing: L10n.text("Needs review after interruption")
         case .succeeded: L10n.text("Succeeded")
-        case .failed: L10n.text("Failed — retry is available")
+        case .failed:
+            if failureCategory == .external || failureCategory == .destructive {
+                L10n.text("Outcome unverified — check the external destination")
+            } else if failureCategory == nil {
+                L10n.text("Failed — recovery is unavailable")
+            } else {
+                L10n.text("Failed — review is available")
+            }
         case .dismissed: L10n.text("Cancelled — nothing ran")
         }
     }
 
     private static func externalStatus(
         skillID: String,
-        state: SkillExecutionState
+        state: SkillExecutionState,
+        failureCategory: FailureCategory?
     ) -> String? {
         switch (skillID, state) {
         case (EmailRecapDraftSkill.id, .succeeded):
@@ -45,8 +58,11 @@ enum SkillReceiptPresentation {
             L10n.text("Handoff status unknown")
         case (SecretGistPublishSkill.id, .succeeded):
             L10n.text("Secret Gist published")
-        case (SecretGistPublishSkill.id, .failed),
-             (SecretGistPublishSkill.id, .executing):
+        case (SecretGistPublishSkill.id, .failed)
+            where failureCategory == .external
+                || failureCategory == .destructive:
+            L10n.text("Publication outcome unknown — check GitHub")
+        case (SecretGistPublishSkill.id, .executing):
             L10n.text("Publication outcome unknown — check GitHub")
         default:
             nil

@@ -25,12 +25,12 @@ final class SkillOfferAuthorityTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 40)
+            XCTAssertEqual(StorageSchema.version, 41)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v40")
+                "v41")
             XCTAssertEqual(
                 try Set(database.columns(in: "skillOfferProposal").map(\.name)),
                 [
@@ -267,13 +267,14 @@ final class SkillOfferAuthorityTests: XCTestCase {
             ])
 
         let proposalID = UUID()
-        _ = try await store.confirmSkillExecution(
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
             skillID: RecapDraftSkill.id,
             skillVersion: RecapDraftSkill.version,
+            subject: .meeting(meeting.id),
             offerKey: recap.offerKey,
             idempotencyKey: recap.offerKey,
-            at: now.addingTimeInterval(2))
+            occurredAt: now.addingTimeInterval(2)))
         let afterConfirmation = try await store.proposedSkillOffers(
             limit: 20,
             at: now)
@@ -488,6 +489,7 @@ final class SkillOfferAuthorityTests: XCTestCase {
             version: current.version + 1,
             capabilities: current.capabilities,
             inputDataClasses: current.inputDataClasses,
+            subjectKind: current.subjectKind,
             confirmationPolicy: current.confirmationPolicy)
         let offer = MeetingSkillOffer(kind: .recapDraft, meetingID: meeting.id)
         let registration = SkillOfferRegistration(

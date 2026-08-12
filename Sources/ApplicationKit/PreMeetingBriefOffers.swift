@@ -147,6 +147,7 @@ public enum PreMeetingBriefProposalFactory {
             SkillProposal(
                 id: proposalID,
                 definition: PreMeetingBriefSkill.definition,
+                subject: .calendarEvent(eventID),
                 requestedCapabilities: [.readMeetingMaterial, .writeLocalDraft],
                 requestedInputDataClasses:
                     PreMeetingBriefSkill.definition.inputDataClasses,

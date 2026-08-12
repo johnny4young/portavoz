@@ -11,8 +11,26 @@ final class LocalSkillsTests: XCTestCase {
         requesting: Set<SkillCapability>,
         arguments: [SkillArgument]
     ) -> SkillProposal {
-        SkillProposal(
+        let subject: SkillSubject = switch definition.subjectKind {
+        case .meeting:
+            .meeting(arguments.compactMap { argument -> MeetingID? in
+                guard case .meeting(let id) = argument else { return nil }
+                return id
+            }.first ?? MeetingID())
+        case .commitment:
+            .commitment(arguments.compactMap { argument -> CommitmentID? in
+                guard case .commitment(let id) = argument else { return nil }
+                return id
+            }.first ?? CommitmentID())
+        case .calendarEvent:
+            .calendarEvent(arguments.compactMap { argument -> String? in
+                guard case .text(let value) = argument else { return nil }
+                return value
+            }.first ?? "local-skill-test-event")
+        }
+        return SkillProposal(
             definition: definition,
+            subject: subject,
             requestedCapabilities: requesting,
             requestedInputDataClasses: definition.inputDataClasses,
             arguments: arguments,
@@ -108,6 +126,7 @@ final class LocalSkillsTests: XCTestCase {
             capabilities: MeetingPackageExportSkill.definition.capabilities,
             inputDataClasses:
                 MeetingPackageExportSkill.definition.inputDataClasses,
+            subjectKind: .meeting,
             confirmationPolicy: .standingRule)
         XCTAssertFalse(automated.isValid)
     }
