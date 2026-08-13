@@ -32,6 +32,27 @@ done
 
 mkdir -p "$results_root"
 
+keyboard_navigation_selector="PortavozUITests/SkillsSettingsUITests/testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit"
+if [[ -z "$tests" || " $tests " == *" $keyboard_navigation_selector "* ]]; then
+  # Keyboard Navigation is a system preference, not an app launch argument.
+  # Snapshot it before mutation and restore it even when xcodebuild is
+  # interrupted. Unrelated scoped suites never touch the preference.
+  keyboard_ui_mode_was_set=false
+  keyboard_ui_mode=""
+  if keyboard_ui_mode="$(defaults read -g AppleKeyboardUIMode 2>/dev/null)"; then
+    keyboard_ui_mode_was_set=true
+  fi
+  restore_keyboard_ui_mode() {
+    if [[ "$keyboard_ui_mode_was_set" == true ]]; then
+      defaults write -g AppleKeyboardUIMode -int "$keyboard_ui_mode" >/dev/null
+    else
+      defaults delete -g AppleKeyboardUIMode >/dev/null 2>&1 || true
+    fi
+  }
+  trap restore_keyboard_ui_mode EXIT HUP INT TERM
+  defaults write -g AppleKeyboardUIMode -int 3 >/dev/null
+fi
+
 # An explicit DEVELOPER_DIR wins. Otherwise xcodebuild follows the active
 # xcode-select toolchain (CI selects its newest Xcode before invoking us).
 # Only a Command Line Tools selection needs the conventional local fallback.

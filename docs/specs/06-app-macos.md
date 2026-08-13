@@ -2570,6 +2570,15 @@ existing library window rather than creating a duplicate. `pendingRoute`
 still handles both warm and cold main scenes, and Settings dismisses itself
 after the destination is admitted. No proposal is constructed or executed.
 
+Closing a receipt inspector without choosing a recovery route returns keyboard
+and assistive focus to the exact receipt row that opened it. Settings retains
+only that proposal UUID until native sheet dismissal finishes, then sends one
+focus request to `SkillActivitySection`; the row owner applies local SwiftUI
+keyboard and accessibility focus after its reconstructed focus scope is ready.
+Choosing recovery clears the request because Settings is about to close. The
+native Escape dismissal remains the modal cancel contract, and no receipt
+payload or execution authority is added to the focus path.
+
 The switches write SQLite v35 state. Global pause leaves every individual
 choice intact; resuming restores those choices. Meeting proposals read the
 same state and disappear while paused or disabled. A confirmation sheet that

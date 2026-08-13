@@ -4454,6 +4454,57 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D341"))
     }
 
+    func testSkillReceiptDismissalRestoresLocalFocusWithoutCompetingWithRecovery() throws {
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SettingsView.swift")
+        let focusState = try Self.contents(
+            of: "Sources/portavoz-app/SettingsSkillReceiptFocusState.swift")
+        let skills = try Self.contents(
+            of: "Sources/portavoz-app/SkillsSettingsSection.swift")
+        let activity = try Self.contents(
+            of: "Sources/portavoz-app/SkillActivitySection.swift")
+        let receiptSheet = try Self.contents(
+            of: "Sources/portavoz-app/SkillReceiptInspectionSheet.swift")
+        let uiRunner = try Self.contents(of: "scripts/run-ui-tests.sh")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(settings.contains(
+            "@State private var skillReceiptFocus = SettingsSkillReceiptFocusState()"))
+        XCTAssertTrue(settings.contains("skillReceiptFocus.beginInspection"))
+        XCTAssertTrue(settings.contains("skillReceiptFocus.clear()"))
+        XCTAssertTrue(settings.contains("skillReceiptFocus.restoreAfterDismissal"))
+        XCTAssertTrue(focusState.contains(
+            "try await Task.sleep(for: .milliseconds(200))"))
+        XCTAssertTrue(focusState.contains("restorationTask?.cancel()"))
+        XCTAssertTrue(focusState.contains(
+            "guard let self, restorationGeneration == generation"))
+        XCTAssertTrue(settings.contains(
+            "selectedSkillReceipt == nil && category == .skills"))
+        XCTAssertTrue(skills.contains(
+            "focusRequestID: receiptFocusRequestID"))
+        XCTAssertTrue(activity.contains(
+            "@FocusState private var focusedReceiptID: UUID?"))
+        XCTAssertTrue(activity.contains(
+            "@AccessibilityFocusState private var accessibilityFocusedReceiptID"))
+        XCTAssertTrue(activity.contains(
+            ".onChange(of: focusRequestID, initial: true)"))
+        XCTAssertTrue(activity.contains("await Task.yield()"))
+        XCTAssertTrue(activity.contains(
+            "guard self.focusRequestID == focusRequestID"))
+        XCTAssertTrue(activity.contains(
+            ".focusable(interactions: .activate)"))
+        XCTAssertTrue(activity.contains(
+            ".focused($focusedReceiptID, equals: receipt.proposalID)"))
+        XCTAssertTrue(activity.contains(
+            ".accessibilityFocused("))
+        XCTAssertFalse(receiptSheet.contains("focusedReceiptID"))
+        XCTAssertFalse(receiptSheet.contains("focusRequestID"))
+        XCTAssertTrue(uiRunner.contains("AppleKeyboardUIMode"))
+        XCTAssertTrue(uiRunner.contains(
+            "trap restore_keyboard_ui_mode EXIT HUP INT TERM"))
+        XCTAssertTrue(decisions.contains("## D342"))
+    }
+
     func testSkillRetryKeepsOneProposalIdentityFromPreviewToEffect() throws {
         let flow = try Self.contents(
             of: "Sources/portavoz-app/MeetingDetailFlowState.swift")

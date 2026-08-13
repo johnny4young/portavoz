@@ -8,28 +8,42 @@ import SwiftUI
 /// any row. Loading and failures therefore cannot relabel stale evidence.
 struct SkillActivitySection: View {
     @Binding var receiptScope: SkillExecutionReviewScope
+    @FocusState private var focusedReceiptID: UUID?
+    @AccessibilityFocusState private var accessibilityFocusedReceiptID: UUID?
 
     let snapshot: SkillControlCenterSnapshot?
     let isLoading: Bool
     let isMutating: Bool
     let loadFailed: Bool
+    let focusRequestID: UUID?
     let retry: () -> Void
     let inspectReceipt: (SkillControlCenterReceipt) -> Void
 
     var body: some View {
-        scopePicker
+        Group {
+            scopePicker
 
-        if snapshot?.receiptScope != receiptScope {
-            unavailableContent
-        } else if let receipts = snapshot?.receipts, receipts.isEmpty {
-            emptyContent
-        } else {
-            ForEach(snapshot?.receipts ?? []) { receipt in
-                receiptRow(receipt)
+            if snapshot?.receiptScope != receiptScope {
+                unavailableContent
+            } else if let receipts = snapshot?.receipts, receipts.isEmpty {
+                emptyContent
+            } else {
+                ForEach(snapshot?.receipts ?? []) { receipt in
+                    receiptRow(receipt)
+                }
+                Text("Each view shows up to 20 matching runs on this Mac.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            Text("Each view shows up to 20 matching runs on this Mac.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        }
+        .onChange(of: focusRequestID, initial: true) {
+            guard let focusRequestID else { return }
+            Task { @MainActor in
+                await Task.yield()
+                guard self.focusRequestID == focusRequestID else { return }
+                accessibilityFocusedReceiptID = focusRequestID
+                focusedReceiptID = focusRequestID
+            }
         }
     }
 
@@ -149,6 +163,11 @@ struct SkillActivitySection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focusable(interactions: .activate)
+        .focused($focusedReceiptID, equals: receipt.proposalID)
+        .accessibilityFocused(
+            $accessibilityFocusedReceiptID,
+            equals: receipt.proposalID)
         .accessibilityLabel(receiptAccessibilityLabel(receipt))
         .accessibilityHint("Inspect execution history")
         .accessibilityIdentifier(

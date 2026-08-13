@@ -12,6 +12,7 @@ struct SkillsSettingsSection: View {
     @Environment(\.openWindow) private var openWindow
 
     let activityRevision: Int
+    let receiptFocusRequestID: UUID?
     let inspectReceipt: (SkillControlCenterReceipt) -> Void
 
     @State private var snapshot: SkillControlCenterSnapshot?
@@ -77,6 +78,7 @@ struct SkillsSettingsSection: View {
                         isLoading: isLoading,
                         isMutating: isMutating || proposalMutationInFlight,
                         loadFailed: receiptScopeLoadFailed,
+                        focusRequestID: receiptFocusRequestID,
                         retry: { Task { await load() } },
                         inspectReceipt: inspectReceipt)
                 }

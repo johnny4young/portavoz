@@ -439,6 +439,16 @@ while process-wide key-window inference can target the primary scene after the
 sheet has gone away. The bridge therefore retains neither the scene nor window
 and invokes `close()` only on the exact captured host.
 
+An ordinary receipt-sheet dismissal keeps only the exact proposal UUID long
+enough to return interaction context. The Settings root emits a bounded focus
+request after AppKit removes the sheet focus scope; the activity component that
+owns the receipt rows owns both `FocusState` and `AccessibilityFocusState` and
+matches that request against `proposalID`. A reconstructed activity subtree
+handles the request as initial state and yields once before applying it. A
+recovery route clears the pending receipt request instead, so focus cannot be
+pulled back into the Settings window that is closing. No retained view, window,
+receipt payload, or execution authority enters this focus handoff.
+
 Confirmation still belongs to the original subject surface. Every execution
 claim carries the reviewed `offerKey` separately from its exact
 `idempotencyKey`: one-shot values are equal, while a reusable package offer is

@@ -16,6 +16,8 @@ class RunUITestsTests(unittest.TestCase):
         locales: str = "en",
         developer_dir: str | None = None,
         selected_developer_dir: str = "/Applications/Xcode_26.0.app/Contents/Developer",
+        test_exit_code: int = 0,
+        initial_keyboard_mode: str | None = "0",
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -30,7 +32,9 @@ class RunUITestsTests(unittest.TestCase):
                 "\"${DEVELOPER_DIR:-unset}\" \"$*\" "
                 "\"${PORTAVOZ_UI_TEST_LOCALE:-unset}\" "
                 "\"${TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE:-unset}\" "
-                ">> \"$XCODEBUILD_LOG\"\n",
+                ">> \"$XCODEBUILD_LOG\"\n"
+                "case \"$*\" in *test-without-building*) "
+                "exit \"$XCODEBUILD_TEST_EXIT_CODE\" ;; esac\n",
                 encoding="utf-8",
             )
             fake.chmod(0o755)
@@ -42,6 +46,18 @@ class RunUITestsTests(unittest.TestCase):
                 encoding="utf-8",
             )
             fake_xcode_select.chmod(0o755)
+            defaults_log = root / "defaults.log"
+            fake_defaults = binary / "defaults"
+            fake_defaults.write_text(
+                "#!/bin/sh\n"
+                "printf '%s\\n' \"$*\" >> \"$DEFAULTS_LOG\"\n"
+                "if [ \"$1\" = read ]; then\n"
+                "  [ \"$DEFAULTS_MODE_PRESENT\" = true ] || exit 1\n"
+                "  printf '%s\\n' \"$DEFAULTS_INITIAL_MODE\"\n"
+                "fi\n",
+                encoding="utf-8",
+            )
+            fake_defaults.chmod(0o755)
 
             environment = os.environ.copy()
             environment.pop("DEVELOPER_DIR", None)
@@ -54,7 +70,13 @@ class RunUITestsTests(unittest.TestCase):
                     "UI_TEST_RESULTS_DIR": str(root / "results"),
                     "UI_TESTS": tests,
                     "XCODEBUILD_LOG": str(log),
+                    "XCODEBUILD_TEST_EXIT_CODE": str(test_exit_code),
                     "XCODE_SELECT_PATH": selected_developer_dir,
+                    "DEFAULTS_LOG": str(defaults_log),
+                    "DEFAULTS_INITIAL_MODE": initial_keyboard_mode or "",
+                    "DEFAULTS_MODE_PRESENT": str(
+                        initial_keyboard_mode is not None
+                    ).lower(),
                 }
             )
             if developer_dir is not None:
@@ -68,6 +90,11 @@ class RunUITestsTests(unittest.TestCase):
                 text=True,
             )
             calls = log.read_text(encoding="utf-8").splitlines()
+            self.defaults_calls = (
+                defaults_log.read_text(encoding="utf-8").splitlines()
+                if defaults_log.exists()
+                else []
+            )
             return result, calls
 
     def test_empty_selector_runs_the_complete_suite(self):
@@ -88,6 +115,50 @@ class RunUITestsTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertIn(f"-only-testing:{selector}", calls[1])
         self.assertIn("Running 1 scoped selectors in locale: en", result.stdout)
+        self.assertEqual(self.defaults_calls, [])
+
+    def test_complete_suite_restores_keyboard_navigation(self):
+        result, _ = self.run_runner("")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.defaults_calls,
+            [
+                "read -g AppleKeyboardUIMode",
+                "write -g AppleKeyboardUIMode -int 3",
+                "write -g AppleKeyboardUIMode -int 0",
+            ],
+        )
+
+    def test_focused_keyboard_journey_restores_preference_after_failure(self):
+        selector = (
+            "PortavozUITests/SkillsSettingsUITests/"
+            "testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit"
+        )
+        result, _ = self.run_runner(selector, test_exit_code=65)
+
+        self.assertEqual(result.returncode, 65)
+        self.assertEqual(
+            self.defaults_calls,
+            [
+                "read -g AppleKeyboardUIMode",
+                "write -g AppleKeyboardUIMode -int 3",
+                "write -g AppleKeyboardUIMode -int 0",
+            ],
+        )
+
+    def test_complete_suite_removes_keyboard_mode_when_it_was_absent(self):
+        result, _ = self.run_runner("", initial_keyboard_mode=None)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self.defaults_calls,
+            [
+                "read -g AppleKeyboardUIMode",
+                "write -g AppleKeyboardUIMode -int 3",
+                "delete -g AppleKeyboardUIMode",
+            ],
+        )
 
     def test_default_locale_does_not_expand_an_empty_language_array(self):
         result, calls = self.run_runner("", locales="default")

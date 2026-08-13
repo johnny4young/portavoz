@@ -12249,3 +12249,47 @@ authority. The migration and UI use APIs available below the macOS 14.4 floor.
 Physical VoiceOver behavior, real external reconciliation, Sequoia, and
 separate-hardware Tahoe behavior remain field evidence. Standing rules,
 unattended execution, and central effect retry are still absent.
+
+## D342 — Receipt dismissal restores context in the row-owned focus scope (Aug 2026)
+
+**Context:** the Phase-2 Skills pane could open a receipt inspector and native
+Escape dismissed it, but the presenting row had no explicit continuation
+contract. A mouse-driven XCUITest on a host with macOS Keyboard Navigation off
+also looked like a focus regression even though AppKit intentionally excludes
+buttons from that focus mode. A raw `performAccessibilityAudit(.all)` was not a
+usable gate: XCTest inspected the hidden primary window behind Settings and
+reported unrelated native SwiftUI contrast, action, and hierarchy findings.
+Recovery routing adds a second constraint because the Settings window closes;
+restoring focus there would compete with the admitted destination.
+
+**Decision:** the Settings root remembers only the exact inspected proposal
+UUID. An ordinary sheet dismissal waits for AppKit to remove the modal focus
+scope, confirms that the Skills pane is still present, and emits one bounded
+focus request. A recovery destination clears both the remembered UUID and any
+focus request before opening the primary scene and closing Settings.
+
+`SkillActivitySection`, which owns the receipt controls, owns the matching
+`FocusState` and `AccessibilityFocusState`. Its rows explicitly accept the
+activation focus interaction and bind both focus channels to `proposalID`. The
+request handler accepts an initial value because SwiftUI may reconstruct the
+section after sheet dismissal, then yields once so the row targets exist before
+applying focus. The receipt sheet itself receives no focus or navigation
+authority, and every task is finite and guarded against a changed pane or a
+replacement sheet.
+
+The XCUITest runner enables macOS Keyboard Navigation only when the dedicated
+focus journey or a full catalogue will run. It snapshots the exact prior global
+preference and restores it on normal exit, interruption, hangup, or termination;
+unrelated scoped suites do not mutate it. The journey scopes XCTest's sufficient-
+description audit to identified Skills controls, proves native Escape dismissal,
+and uses Space reopening the same receipt as the observable keyboard-focus
+contract. Functional UI tests continue to cover native control actions instead
+of accepting unrelated whole-process audit findings.
+
+**Consequences:** keyboard and assistive users retain their exact position after
+inspection without moving effect, subject, or recovery authority into Settings.
+The change uses public SwiftUI APIs available at the macOS 14.4 floor and adds
+no schema, storage read, retained window, AppKit introspection, standing rule,
+retry, or effect execution. Deterministic automation proves the real app on the
+current Tahoe-family host; physical VoiceOver, Sequoia, and separate Tahoe
+hardware remain field evidence.

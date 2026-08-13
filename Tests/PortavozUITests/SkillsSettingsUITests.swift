@@ -439,6 +439,36 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit() throws {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append("-seed-skill-waiting")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+        try auditSkillDescriptions(in: app)
+
+        let receipt = openWaitingReceipt(in: app)
+        let inspection = app.control(
+            withIdentifier: "skill-receipt-inspection")
+        try auditSkillDescriptions(in: app)
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(
+            waitForDisappearance(inspection),
+            "Escape must close the modal receipt inspector")
+        XCTAssertTrue(
+            receipt.waitForExistence(timeout: 5),
+            "dismissal must return to the exact receipt row")
+        app.typeKey(.space, modifierFlags: [])
+        XCTAssertTrue(
+            inspection.waitForExistence(timeout: 5),
+            "keyboard focus must return to the receipt that opened the sheet")
+        app.typeKey(.escape, modifierFlags: [])
+    }
+
+    @MainActor
     func testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()
@@ -711,6 +741,23 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                 "settings-category-skills",
                 revealing: "settings-skills-pause-all"),
             "the Skills category must reveal its durable controls")
+    }
+
+    @MainActor
+    private func auditSkillDescriptions(in app: XCUIApplication) throws {
+        try app.performAccessibilityAudit(
+            for: .sufficientElementDescription
+        ) { issue in
+            guard let identifier = issue.element?.identifier else {
+                // XCTest audits every open app window. Unidentified findings
+                // cannot be proven to belong to the foreground Skills surface.
+                return true
+            }
+            let belongsToSkills =
+                identifier.hasPrefix("settings-skill")
+                || identifier.hasPrefix("skill-receipt")
+            return !belongsToSkills
+        }
     }
 
     @MainActor

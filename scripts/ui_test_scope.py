@@ -271,6 +271,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "SkillsSettingsUITests",
             "testFailedRecoveryResolutionKeepsTheReceiptAndAllowsRetry",
         ),
+        test_id(
+            "SkillsSettingsUITests",
+            "testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit",
+        ),
     ),
     "settings-data": (
         test_id("SettingsUITests", "testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy"),

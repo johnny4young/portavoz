@@ -79,6 +79,7 @@ struct SettingsView: View {
     @State private var category: SettingsCategory? = .general
     @State private var settingsQuery = ""
     @State private var selectedSkillReceipt: SkillControlCenterReceipt?
+    @State private var skillReceiptFocus = SettingsSkillReceiptFocusState()
     @State private var pendingSkillRecoveryDestination: SkillOfferReviewDestination?
     @State private var skillActivityRevision = 0
     @State private var settingsWindowReference = SettingsWindowReference()
@@ -126,7 +127,9 @@ struct SettingsView: View {
                 case .skills:
                     SkillsSettingsSection(
                         activityRevision: skillActivityRevision,
+                        receiptFocusRequestID: skillReceiptFocus.requestID,
                         inspectReceipt: { receipt in
+                            skillReceiptFocus.beginInspection(of: receipt.proposalID)
                             selectedSkillReceipt = receipt
                         })
                 case .integrations:
@@ -210,15 +213,16 @@ struct SettingsView: View {
 
     @MainActor
     private func openPendingSkillRecoveryDestination() {
-        guard let destination = pendingSkillRecoveryDestination else { return }
-        pendingSkillRecoveryDestination = nil
-        SettingsSkillRecoveryNavigation.open(
-            destination,
-            services: services,
-            settingsWindow: settingsWindowReference.window
-        ) {
-            openWindow(id: "main", value: MainWindowIdentity.primary)
+        if let destination = pendingSkillRecoveryDestination {
+            pendingSkillRecoveryDestination = nil
+            skillReceiptFocus.clear()
+            SettingsSkillRecoveryNavigation.open(
+                destination, services: services, settingsWindow: settingsWindowReference.window
+            ) { openWindow(id: "main", value: MainWindowIdentity.primary) }
+            return
         }
+
+        skillReceiptFocus.restoreAfterDismissal { selectedSkillReceipt == nil && category == .skills }
     }
 }
 
