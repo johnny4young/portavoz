@@ -6,18 +6,33 @@ extension AppServices {
     func loadSkillControlCenter(
         receiptScope: SkillExecutionReviewScope = .recent
     ) async throws -> SkillControlCenterSnapshot {
-        if ProcessInfo.processInfo.arguments.contains(
+        if usesTemporaryMeetingStore,
+           ProcessInfo.processInfo.arguments.contains(
             "-simulate-skill-control-unavailable"
         ) {
             throw SimulatedSkillControlFailure()
         }
-        if receiptScope != .recent,
+        if usesTemporaryMeetingStore,
+           receiptScope != .recent,
            ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-receipt-scope-unavailable") {
-            throw SimulatedSkillReceiptScopeFailure()
+               "-simulate-skill-receipt-refresh-delay") {
+            try await Task.sleep(for: .seconds(4))
         }
-        return try await LoadSkillControlCenter(store: store).execute(
+        let snapshot = try await LoadSkillControlCenter(store: store).execute(
             LoadSkillControlCenterRequest(receiptScope: receiptScope))
+        guard usesTemporaryMeetingStore,
+              receiptScope != .recent,
+           ProcessInfo.processInfo.arguments.contains(
+               "-simulate-skill-receipt-scope-unavailable")
+        else {
+            return snapshot
+        }
+        return SkillControlCenterSnapshot(
+            isPaused: snapshot.isPaused,
+            skills: snapshot.skills,
+            receiptScope: snapshot.receiptScope,
+            receipts: [],
+            receiptLoadState: .unavailable)
     }
 
     func manageSkillControl(
@@ -91,7 +106,6 @@ extension AppServices {
 }
 
 private struct SimulatedSkillControlFailure: Error {}
-private struct SimulatedSkillReceiptScopeFailure: Error {}
 private struct SimulatedSkillProposalFailure: Error {}
 private struct SimulatedSkillProposalDismissalFailure: Error {}
 private struct SimulatedSkillProposalReviewFailure: Error {}

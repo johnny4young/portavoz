@@ -360,6 +360,20 @@ must match the current selection before Settings renders any receipt, and a
 scope-only read failure leaves already verified policy controls usable while
 showing no stale rows.
 
+Policy and receipt history remain independently verified inside that snapshot.
+The application starts both bounded reads together, but only a policy failure
+fails the entire control projection; a receipt failure returns the verified
+catalogue/policy with an explicit unavailable receipt state and no rows. The
+activity view projects loading, unavailable, empty, or receipt content through
+one pure state boundary. Loading wins even when the retained snapshot already
+matches the selected scope, so a same-scope mutation refresh cannot expose stale
+rows. Policy mutations fence any older receipt load before writing and own their
+fresh projection; receipt loading never disables independently verified policy
+or proposal controls. Empty copy names the selected scope, while empty and
+unavailable transitions request one localized medium-priority application-level
+accessibility announcement through public AppKit. Loading is deliberately
+silent, and the retry remains a separate reachable control.
+
 The same pane reads a separate content-free **Proposed** projection from the
 v40 Skill offer authority. Every executable definition declares both its
 effect capabilities and the exact input-data classes it may read; an execution

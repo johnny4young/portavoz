@@ -2495,7 +2495,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D341, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2578,6 +2578,29 @@ keyboard and accessibility focus after its reconstructed focus scope is ready.
 Choosing recovery clears the request because Settings is about to close. The
 native Escape dismissal remains the modal cancel contract, and no receipt
 payload or execution authority is added to the focus path.
+
+Loading, unavailable, empty, and populated activity are mutually exclusive
+presentation states. Loading takes precedence even when a previous snapshot
+matches the selected scope, so changing scope and refreshing after a verified
+receipt mutation both remove old rows before awaiting storage. Each verified
+empty title names Recent, Waiting, Attention, or Completed and describes what
+would appear there; it never implies that history was deleted.
+
+The control-center use case begins policy and bounded receipt reads together but
+preserves their separate authority. A missing or corrupt policy still fails the
+whole pane closed. A receipt-only read failure returns the verified policy and
+catalogue with no receipt rows plus an explicit unavailable marker. Settings
+therefore keeps policy and proposal actions usable, exposes only the activity
+retry, and never labels an empty array as verified history. A policy mutation may
+start while a receipt read is pending: it invalidates the older load identity,
+owns its write and fresh snapshot, and prevents the late read from overwriting
+the mutation result.
+
+Empty and unavailable transitions expose combined localized status semantics
+and request one medium-priority VoiceOver announcement through the public
+AppKit application notification. Loading remains silent to avoid repetitive
+speech, and Retry stays a separate keyboard-reachable button. The app retains
+no observer, timer, window, or accessibility object for this handoff.
 
 The switches write SQLite v35 state. Global pause leaves every individual
 choice intact; resuming restores those choices. Meeting proposals read the

@@ -12293,3 +12293,46 @@ no schema, storage read, retained window, AppKit introspection, standing rule,
 retry, or effect execution. Deterministic automation proves the real app on the
 current Tahoe-family host; physical VoiceOver, Sequoia, and separate Tahoe
 hardware remain field evidence.
+
+## D343 — Skills activity keeps policy and receipt truth independent (Aug 2026)
+
+**Context:** the status-scoped activity UI rejected a snapshot from a different
+scope, but it continued rendering rows from a matching snapshot while that same
+scope refreshed. A verified revocation could therefore leave its old row visible
+until storage returned. The combined control-center use case also threw away a
+successfully read policy whenever the independent receipt query failed. Settings
+then had no typed way to distinguish missing policy authority from unavailable
+history, and receipt loading disabled controls whose policy was already verified.
+Generic empty copy and silent asynchronous replacement made the transition less
+clear for keyboard and VoiceOver users.
+
+**Decision:** `LoadSkillControlCenter` starts policy and bounded receipt reads
+concurrently but gives them separate outcomes. Policy failure still throws and
+fails the pane closed. After policy succeeds, a non-cancellation receipt failure
+returns that verified catalogue/policy, the requested scope, no rows, and an
+explicit `SkillControlCenterReceiptLoadState.unavailable`. Cancellation always
+propagates instead of becoming a partial result.
+
+`SkillActivityPresentationState` is the single rendering boundary. Loading has
+priority over a same-scope snapshot, followed by unavailable, verified empty,
+and verified rows. Policy mutations may begin during a receipt load: they first
+invalidate its UUID fence, then own the write and authoritative reload, so the
+older task cannot publish afterward. Receipt loading does not disable verified
+policy or proposal actions. Scope-specific empty titles never imply deletion.
+
+The terminal empty and unavailable states are combined semantic elements and
+request one localized medium-priority announcement with the public
+`NSAccessibility.post` application notification. SwiftUI on the supported macOS
+SDK has no live-region modifier, and the `updatesFrequently` trait would
+misdescribe one-off status transitions, so loading is silent and Retry remains a
+separate control. The delayed and failure fixtures are legal only with the
+temporary UI-test store.
+
+**Consequences:** changing activity scope and refreshing after a receipt mutation
+hide stale rows immediately without sacrificing independently verified control
+authority. Receipt-only failures no longer masquerade as policy failures or
+verified emptiness. The slice adds no schema, unbounded read, central effect
+retry, observer, retained accessibility object, timer, standing rule, or effect
+authority. Automated semantics and bilingual real-app transitions are local
+evidence; physical VoiceOver, Sequoia, and separate Tahoe hardware remain field
+validation.

@@ -75,7 +75,7 @@ struct SkillsSettingsSection: View {
                     SkillActivitySection(
                         receiptScope: $receiptScope,
                         snapshot: snapshot,
-                        isLoading: isLoading,
+                        isLoading: isLoading || isMutating,
                         isMutating: isMutating || proposalMutationInFlight,
                         loadFailed: receiptScopeLoadFailed,
                         focusRequestID: receiptFocusRequestID,
@@ -120,7 +120,7 @@ struct SkillsSettingsSection: View {
             Toggle("Pause all skills", isOn: pauseBinding)
                 .accessibilityIdentifier("settings-skills-pause-all")
                 .disabled(
-                    snapshot == nil || isLoading || isMutating
+                    snapshot == nil || isMutating
                         || proposalMutationInFlight || controlLoadFailed)
             Text(
                 // Keep this as one literal so localization validation sees it.
@@ -183,7 +183,7 @@ struct SkillsSettingsSection: View {
                 .accessibilityIdentifier(
                     "settings-skill-\(skill.id)-enabled")
                 .disabled(
-                    isLoading || isMutating || proposalMutationInFlight
+                    isMutating || proposalMutationInFlight
                         || controlLoadFailed)
         }
         .padding(.vertical, 4)
@@ -298,9 +298,7 @@ struct SkillsSettingsSection: View {
             guard activeLoadID == loadID, receiptScope == requestedScope else {
                 return
             }
-            snapshot = loaded
-            controlLoadFailed = false
-            receiptScopeLoadFailed = false
+            adopt(loaded)
             finishLoad(loadID)
         } catch is CancellationError {
             finishLoad(loadID)
@@ -308,11 +306,8 @@ struct SkillsSettingsSection: View {
             guard activeLoadID == loadID, receiptScope == requestedScope else {
                 return
             }
-            if snapshot != nil, snapshot?.receiptScope != requestedScope {
-                receiptScopeLoadFailed = true
-            } else {
-                controlLoadFailed = true
-            }
+            controlLoadFailed = true
+            receiptScopeLoadFailed = snapshot != nil
             finishLoad(loadID)
         }
     }
@@ -325,15 +320,28 @@ struct SkillsSettingsSection: View {
     }
 
     @MainActor
+    private func invalidateActiveLoad() {
+        activeLoadID = nil
+        isLoading = false
+    }
+
+    @MainActor
+    private func adopt(_ loaded: SkillControlCenterSnapshot) {
+        snapshot = loaded
+        controlLoadFailed = false
+        receiptScopeLoadFailed = loaded.receiptLoadState == .unavailable
+    }
+
+    @MainActor
     private func mutate(_ action: ManageSkillControlAction) async {
         guard snapshot != nil,
               !controlLoadFailed,
-              !isLoading,
               !isMutating,
               !proposalMutationInFlight
         else {
             return
         }
+        invalidateActiveLoad()
         isMutating = true
         defer { isMutating = false }
         do {
@@ -342,10 +350,9 @@ struct SkillsSettingsSection: View {
                 controlLoadFailed = true
                 return
             }
-            snapshot = try await services.loadSkillControlCenter(
+            let loaded = try await services.loadSkillControlCenter(
                 receiptScope: receiptScope)
-            controlLoadFailed = false
-            receiptScopeLoadFailed = false
+            adopt(loaded)
             await loadProposals()
         } catch {
             controlLoadFailed = true

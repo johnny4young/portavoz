@@ -11131,12 +11131,12 @@
         }
       }
     },
-    "No skill runs yet": {
+    "No recent Skill runs": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aún no hay ejecuciones de skills"
+            "value": "No hay ejecuciones recientes de skills"
           }
         }
       }
@@ -13081,7 +13081,7 @@
         }
       }
     },
-    "No Skill runs are waiting": {
+    "No waiting Skill runs": {
       "localizations": {
         "es": {
           "stringUnit": {
@@ -13091,12 +13091,12 @@
         }
       }
     },
-    "No Skill runs need attention": {
+    "No Skill runs needing attention": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ninguna ejecución de skill requiere atención"
+            "value": "No hay ejecuciones de skills que requieran atención"
           }
         }
       }

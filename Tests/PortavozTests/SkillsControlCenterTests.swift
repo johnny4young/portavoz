@@ -181,6 +181,7 @@ final class SkillsControlCenterTests: XCTestCase {
 
         XCTAssertFalse(snapshot.isPaused)
         XCTAssertEqual(snapshot.receiptScope, .recent)
+        XCTAssertEqual(snapshot.receiptLoadState, .verified)
         XCTAssertEqual(snapshot.receipts.map(\.proposalID), Array(newestProposalIDs.prefix(3)))
         XCTAssertEqual(snapshot.receipts.map(\.state), [.succeeded, .succeeded, .succeeded])
         XCTAssertTrue(snapshot.receipts.allSatisfy {
@@ -200,6 +201,53 @@ final class SkillsControlCenterTests: XCTestCase {
             snapshot.skills.filter { $0.availability == .planned }.map(\.id),
             [])
         XCTAssertTrue(snapshot.skills.allSatisfy(\.isEnabled))
+    }
+
+    func testReceiptReadFailurePreservesVerifiedPolicyAndHidesReceipts() async throws {
+        let store = FailingSkillControlStore(failure: .receipts)
+
+        let snapshot = try await LoadSkillControlCenter(store: store).execute(
+            LoadSkillControlCenterRequest(receiptScope: .completed))
+
+        XCTAssertTrue(snapshot.isPaused)
+        XCTAssertEqual(snapshot.receiptScope, .completed)
+        XCTAssertEqual(snapshot.receiptLoadState, .unavailable)
+        XCTAssertTrue(snapshot.receipts.isEmpty)
+        XCTAssertFalse(
+            try XCTUnwrap(snapshot.skills.first { $0.id == RecapDraftSkill.id })
+                .isEnabled)
+        XCTAssertTrue(
+            try XCTUnwrap(snapshot.skills.first {
+                $0.id == MeetingPackageExportSkill.id
+            }).isEnabled)
+    }
+
+    func testPolicyReadFailureStillFailsTheWholeControlSnapshot() async {
+        let store = FailingSkillControlStore(failure: .policy)
+
+        do {
+            _ = try await LoadSkillControlCenter(store: store).execute(
+                LoadSkillControlCenterRequest(receiptScope: .waiting))
+            XCTFail("missing policy authority must fail the whole snapshot")
+        } catch let error as StubSkillControlStoreFailure {
+            XCTAssertEqual(error, .policy)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+
+    func testReceiptCancellationNeverBecomesAnUnavailableSnapshot() async {
+        let store = FailingSkillControlStore(failure: .receiptCancellation)
+
+        do {
+            _ = try await LoadSkillControlCenter(store: store).execute(
+                LoadSkillControlCenterRequest(receiptScope: .waiting))
+            XCTFail("cancellation must leave the structured task")
+        } catch is CancellationError {
+            // Expected: cancellation is control flow, not partial authority.
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
     }
 
     func testReceiptScopesStayBoundedOrderedAndFutureStateFailClosed() async throws {
@@ -946,6 +994,50 @@ private actor RecordingSkillControlStore: SkillControlCenterStore {
         requests.append(SkillControlCenterStoreRequest(
             scope: scope,
             limit: limit))
+        return []
+    }
+
+    func setAllSkillsPaused(_ isPaused: Bool, at timestamp: Date) {}
+
+    func setSkill(
+        _ skillID: String,
+        isEnabled: Bool,
+        at timestamp: Date
+    ) {}
+}
+
+private enum StubSkillControlStoreFailure: Error, Equatable {
+    case policy
+    case receipts
+    case receiptCancellation
+}
+
+private actor FailingSkillControlStore: SkillControlCenterStore {
+    let failure: StubSkillControlStoreFailure
+
+    init(failure: StubSkillControlStoreFailure) {
+        self.failure = failure
+    }
+
+    func skillExecutionPolicy() throws -> SkillExecutionPolicy {
+        if failure == .policy {
+            throw StubSkillControlStoreFailure.policy
+        }
+        return SkillExecutionPolicy(
+            isPaused: true,
+            disabledSkillIDs: [RecapDraftSkill.id])
+    }
+
+    func skillExecutions(
+        scope: SkillExecutionReviewScope,
+        limit: Int
+    ) throws -> [SkillExecutionRecord] {
+        if failure == .receipts {
+            throw StubSkillControlStoreFailure.receipts
+        }
+        if failure == .receiptCancellation {
+            throw CancellationError()
+        }
         return []
     }
 

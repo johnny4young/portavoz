@@ -4139,6 +4139,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/SkillsSettingsSection.swift")
         let activity = try Self.contents(
             of: "Sources/portavoz-app/SkillActivitySection.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+SkillsControl.swift")
         let receiptInspection = try Self.contents(
             of: "Sources/ApplicationKit/SkillReceiptInspection.swift")
         let receiptSheet = try Self.contents(
@@ -4178,11 +4180,22 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(activity.contains(
             "settings-skills-receipt-scope-needs-attention"))
         XCTAssertTrue(activity.contains("settings-skills-receipt-scope-completed"))
+        XCTAssertTrue(activity.contains("enum SkillActivityPresentationState"))
+        XCTAssertTrue(activity.contains("if isLoading"))
         XCTAssertTrue(activity.contains(
-            "snapshot?.receiptScope != receiptScope"))
+            "snapshot.receiptLoadState == .verified"))
         XCTAssertTrue(settings.contains(".task(id: receiptScope)"))
         XCTAssertTrue(settings.contains(
             "activeLoadID == loadID, receiptScope == requestedScope"))
+        XCTAssertTrue(settings.contains("invalidateActiveLoad()"))
+        XCTAssertTrue(control.contains(
+            "enum SkillControlCenterReceiptLoadState"))
+        XCTAssertTrue(control.contains("receiptLoadState = .unavailable"))
+        XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))
+        XCTAssertTrue(services.contains(
+            "-simulate-skill-receipt-refresh-delay"))
+        XCTAssertTrue(activity.contains(
+            "notification: .announcementRequested"))
         XCTAssertTrue(control.contains("definition.declaresExternalEffect"))
         XCTAssertTrue(control.contains("enum SkillDisclosureBoundary"))
         XCTAssertTrue(settings.contains("skill.disclosureBoundary"))
@@ -4211,6 +4224,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D333"))
         XCTAssertTrue(decisions.contains("## D335"))
         XCTAssertTrue(decisions.contains("## D336"))
+        XCTAssertTrue(decisions.contains("## D343"))
     }
 
     func testWaitingSkillRevocationKeepsContentAndEffectAuthorityOutOfSettings() throws {

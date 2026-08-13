@@ -88,6 +88,15 @@ public enum SkillDisclosureBoundary: Equatable, Sendable {
     case externalHandoff
 }
 
+/// Whether the bounded receipt projection was read from durable authority.
+///
+/// Policy and receipt history are independent reads. A receipt-only failure
+/// must not discard the verified policy or turn its controls into an error.
+public enum SkillControlCenterReceiptLoadState: Equatable, Sendable {
+    case verified
+    case unavailable
+}
+
 public struct SkillControlCenterReceipt: Equatable, Sendable, Identifiable {
     public let proposalID: UUID
     public let skillID: String
@@ -118,17 +127,20 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
     public let skills: [SkillControlCenterItem]
     public let receiptScope: SkillExecutionReviewScope
     public let receipts: [SkillControlCenterReceipt]
+    public let receiptLoadState: SkillControlCenterReceiptLoadState
 
     public init(
         isPaused: Bool,
         skills: [SkillControlCenterItem],
         receiptScope: SkillExecutionReviewScope,
-        receipts: [SkillControlCenterReceipt]
+        receipts: [SkillControlCenterReceipt],
+        receiptLoadState: SkillControlCenterReceiptLoadState = .verified
     ) {
         self.isPaused = isPaused
         self.skills = skills
         self.receiptScope = receiptScope
         self.receipts = receipts
+        self.receiptLoadState = receiptLoadState
     }
 }
 
@@ -180,7 +192,19 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
         async let records = store.skillExecutions(
             scope: request.receiptScope,
             limit: request.receiptLimit)
-        let (resolvedPolicy, resolvedRecords) = try await (policy, records)
+        let resolvedPolicy = try await policy
+        let resolvedRecords: [SkillExecutionRecord]
+        let receiptLoadState: SkillControlCenterReceiptLoadState
+        do {
+            resolvedRecords = try await records
+            receiptLoadState = .verified
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            resolvedRecords = []
+            receiptLoadState = .unavailable
+        }
         return SkillControlCenterSnapshot(
             isPaused: resolvedPolicy.isPaused,
             skills: SkillCatalogue.entries.map { entry in
@@ -191,7 +215,8 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
                         skillID: entry.id))
             },
             receiptScope: request.receiptScope,
-            receipts: resolvedRecords.map(SkillControlCenterReceipt.init(record:)))
+            receipts: resolvedRecords.map(SkillControlCenterReceipt.init(record:)),
+            receiptLoadState: receiptLoadState)
     }
 }
 

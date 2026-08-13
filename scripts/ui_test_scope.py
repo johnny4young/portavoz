@@ -237,6 +237,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "SkillsSettingsUITests",
+            "testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
             "testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy",
         ),
         test_id(

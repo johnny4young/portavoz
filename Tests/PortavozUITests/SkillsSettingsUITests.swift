@@ -67,6 +67,89 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append(contentsOf: [
+            "-seed-skill-waiting",
+            "-simulate-skill-receipt-refresh-delay"
+        ])
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSeededMeeting(in: app)
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-offer-menu")
+                .waitForExistence(timeout: 10),
+            "the real producer must publish the proposal controls first")
+        openSkillsSettings(in: app)
+
+        let pause = app.control(withIdentifier: "settings-skills-pause-all")
+        let skill = app.control(
+            withIdentifier: "settings-skill-recap-draft-enabled")
+        let proposal = proposalDismissalControl(
+            "action",
+            skillID: "email-recap-draft",
+            in: app)
+        scrollToVisible(proposal, in: app, deltaY: -40)
+        XCTAssertTrue(proposal.waitForStableFrame(timeout: 5))
+
+        let waiting = app.control(
+            withIdentifier: "settings-skills-receipt-scope-waiting")
+        scrollToVisible(waiting, in: app, deltaY: -40)
+        XCTAssertTrue(waiting.waitForStableFrame(timeout: 5))
+        let receipt = app.control(
+            withIdentifier: "settings-skill-receipt-recap-draft")
+        XCTAssertTrue(receipt.exists, "Recent must begin with verified evidence")
+        waiting.click()
+
+        let loading = app.control(
+            withIdentifier: "settings-skills-receipt-scope-loading")
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        XCTAssertFalse(
+            receipt.exists,
+            "a scope load must hide rows from the prior snapshot immediately")
+        for control in [pause, skill, proposal] {
+            XCTAssertTrue(control.exists)
+            XCTAssertTrue(
+                control.isEnabled,
+                "receipt loading must not disable independently verified controls")
+        }
+
+        XCTAssertTrue(receipt.waitForExistence(timeout: 5))
+        scrollToVisible(receipt, in: app, deltaY: -40)
+        receipt.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-receipt-inspection")
+                .waitForExistence(timeout: 5))
+        let revoke = app.buttons["skill-receipt-revoke-action"]
+        XCTAssertTrue(revoke.waitForStableFrame(timeout: 5))
+        revoke.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-receipt-inspection-event-2")
+                .waitForExistence(timeout: 5))
+        app.buttons["skill-receipt-inspection-close"].click()
+
+        XCTAssertTrue(
+            loading.waitForExistence(timeout: 2),
+            "a verified receipt mutation must hide its stale same-scope row")
+        XCTAssertFalse(receipt.exists)
+        XCTAssertTrue(pause.isEnabled)
+        XCTAssertTrue(skill.isEnabled)
+
+        let empty = app.control(
+            withIdentifier: "settings-skills-empty-receipts-waiting")
+        XCTAssertTrue(empty.waitForExistence(timeout: 5))
+        let expectedEmpty = UITestLocale.environmentLocale == "es"
+            ? "No hay ejecuciones de skills en espera"
+            : "No waiting Skill runs"
+        XCTAssertTrue(
+            waitForLabel(empty, toContain: expectedEmpty),
+            "the verified empty state must name the selected scope")
+        attachScreenshot(of: app, named: "skills-activity-transition")
+    }
+
+    @MainActor
     func testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy() {
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-proposal-unavailable")

@@ -1,6 +1,35 @@
+import AppKit
 import ApplicationKit
 import PortavozCore
 import SwiftUI
+
+enum SkillActivityPresentationState: Equatable {
+    case loading
+    case unavailable
+    case empty
+    case receipts
+
+    init(
+        receiptScope: SkillExecutionReviewScope,
+        snapshot: SkillControlCenterSnapshot?,
+        isLoading: Bool,
+        loadFailed: Bool
+    ) {
+        if isLoading {
+            self = .loading
+            return
+        }
+        guard let snapshot, snapshot.receiptScope == receiptScope else {
+            self = loadFailed ? .unavailable : .loading
+            return
+        }
+        guard !loadFailed, snapshot.receiptLoadState == .verified else {
+            self = .unavailable
+            return
+        }
+        self = snapshot.receipts.isEmpty ? .empty : .receipts
+    }
+}
 
 /// D336 — one status-scoped, content-free execution review surface.
 ///
@@ -23,11 +52,14 @@ struct SkillActivitySection: View {
         Group {
             scopePicker
 
-            if snapshot?.receiptScope != receiptScope {
+            switch presentationState {
+            case .loading:
+                loadingContent
+            case .unavailable:
                 unavailableContent
-            } else if let receipts = snapshot?.receipts, receipts.isEmpty {
+            case .empty:
                 emptyContent
-            } else {
+            case .receipts:
                 ForEach(snapshot?.receipts ?? []) { receipt in
                     receiptRow(receipt)
                 }
@@ -45,6 +77,19 @@ struct SkillActivitySection: View {
                 focusedReceiptID = focusRequestID
             }
         }
+        .task(id: accessibilityAnnouncement) {
+            guard let accessibilityAnnouncement else { return }
+            SkillActivityAccessibilityAnnouncement.post(
+                accessibilityAnnouncement)
+        }
+    }
+
+    private var presentationState: SkillActivityPresentationState {
+        SkillActivityPresentationState(
+            receiptScope: receiptScope,
+            snapshot: snapshot,
+            isLoading: isLoading,
+            loadFailed: loadFailed)
     }
 
     private var scopePicker: some View {
@@ -71,29 +116,31 @@ struct SkillActivitySection: View {
         .disabled(isLoading || isMutating)
     }
 
-    @ViewBuilder
+    private var loadingContent: some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+            Text("Loading receipt history…")
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("settings-skills-receipt-scope-loading")
+    }
+
     private var unavailableContent: some View {
-        if loadFailed {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
                 Label(
                     "Receipt history is unavailable",
                     systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
-                    .accessibilityIdentifier(
-                        "settings-skills-receipt-scope-error")
                 Text("The selected activity view could not be verified. No runs are shown.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Button("Try again", action: retry)
-                    .accessibilityIdentifier(
-                        "settings-skills-receipt-scope-retry")
             }
-        } else {
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text("Loading receipt history…")
-            }
-            .accessibilityIdentifier("settings-skills-receipt-scope-loading")
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("settings-skills-receipt-scope-error")
+            Button("Try again", action: retry)
+                .accessibilityIdentifier(
+                    "settings-skills-receipt-scope-retry")
         }
     }
 
@@ -109,25 +156,40 @@ struct SkillActivitySection: View {
             "settings-skills-empty-receipts-\(receiptScope.rawValue)")
     }
 
-    private var emptyTitle: LocalizedStringKey {
+    private var emptyTitle: String {
         switch receiptScope {
-        case .recent: "No skill runs yet"
-        case .waiting: "No Skill runs are waiting"
-        case .needsAttention: "No Skill runs need attention"
-        case .completed: "No completed Skill runs"
+        case .recent: L10n.text("No recent Skill runs")
+        case .waiting: L10n.text("No waiting Skill runs")
+        case .needsAttention: L10n.text("No Skill runs needing attention")
+        case .completed: L10n.text("No completed Skill runs")
         }
     }
 
-    private var emptyDetail: LocalizedStringKey {
+    private var emptyDetail: String {
         switch receiptScope {
         case .recent:
-            "A receipt appears here only after you confirm a skill."
+            L10n.text("A receipt appears here only after you confirm a skill.")
         case .waiting:
-            "Confirmed runs appear here until execution begins."
+            L10n.text("Confirmed runs appear here until execution begins.")
         case .needsAttention:
-            "Interrupted and failed runs appear here for review."
+            L10n.text("Interrupted and failed runs appear here for review.")
         case .completed:
-            "Successful and pre-handoff cancelled runs appear here."
+            L10n.text("Successful and pre-handoff cancelled runs appear here.")
+        }
+    }
+
+    private var accessibilityAnnouncement: String? {
+        switch presentationState {
+        case .unavailable:
+            [
+                L10n.text("Receipt history is unavailable"),
+                L10n.text(
+                    "The selected activity view could not be verified. No runs are shown.")
+            ].joined(separator: ". ")
+        case .empty:
+            [emptyTitle, emptyDetail].joined(separator: ". ")
+        case .loading, .receipts:
+            nil
         }
     }
 
@@ -206,5 +268,18 @@ struct SkillActivitySection: View {
         case .failed, .executing: .orange
         case .dismissed, .proposed, .previewed, .confirmed: .secondary
         }
+    }
+}
+
+@MainActor
+private enum SkillActivityAccessibilityAnnouncement {
+    static func post(_ message: String) {
+        NSAccessibility.post(
+            element: NSApp as Any,
+            notification: .announcementRequested,
+            userInfo: [
+                .announcement: message,
+                .priority: NSAccessibilityPriorityLevel.medium.rawValue
+            ])
     }
 }
