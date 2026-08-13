@@ -635,31 +635,17 @@ test-ui-changed:
 		echo "No UI tests required for the selected change set."; \
 	fi
 
-## XCUITest on macOS is sensitive to stale app instances and interrupting
-## windows. Quit Portavoz before the runner tries to enable automation mode;
-## warn about known interruptors without killing unrelated user apps.
+## XCUITest on macOS shares one host-wide automation service. Quit only our
+## stale app, then require a bounded read-only quiet-host observation before
+## the runner starts. Never dismiss prompts or terminate unrelated processes.
 test-ui-preflight:
-	-osascript -e 'tell application "Portavoz Dev" to quit' >/dev/null 2>&1
-	-killall testmanagerd >/dev/null 2>&1
-	@if pgrep -x Gancho >/dev/null || pgrep -x gancho >/dev/null; then \
-		echo "⚠️  Gancho is running; if XCUITest fails because of interrupting windows, close it and retry."; \
-	fi
-	@# A system alert sits above every app window and the interruption monitor
-	@# cannot dismiss it, so each affected case fails with "Handler claimed to
-	@# have handled Dialog ... but it's still interrupting". A freshly installed
-	@# dev identity asking for its one-time TCC grants is the usual source, which
-	@# makes `make install` immediately before a UI run the usual trigger. Not
-	@# dismissed automatically: answering an unknown system prompt on the user's
-	@# behalf is not this harness's decision.
-	@if [ "$$(osascript -e 'tell application "System Events" to tell process "UserNotificationCenter" to count windows' 2>/dev/null || echo 0)" != "0" ]; then \
-		echo "⛔️ A system alert is open (UserNotificationCenter). It will interrupt every case."; \
-		echo "   Answer or dismiss it, then re-run."; \
-		exit 1; \
-	fi
+	-osascript -e 'with timeout of 3 seconds' \
+		-e 'tell application "Portavoz Dev" to quit' \
+		-e 'end timeout' >/dev/null 2>&1
+	@scripts/check-ui-test-host.py
 	@# A warning, not a gate: stale registrations do not always misroute, and
 	@# rebuilding the database is a system-wide action with its own side effects.
 	@-scripts/check-url-scheme-handlers.sh
-	@sleep 1
 
 ## Regenerate the three public README/website screenshots from a fictional,
 ## disposable XCUITest library. The exporter captures only the Portavoz window.

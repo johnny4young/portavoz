@@ -3862,7 +3862,19 @@ arguments are assembled without empty-array expansion on the system Bash
 runtime. One `build-for-testing` result is reused across selected locales.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
 `xcode-select` toolchain chosen by CI, and falls back to the conventional local
-Xcode path only when Command Line Tools is active. Visual-only screenshot
+Xcode path only when Command Line Tools is active. Before that runner builds,
+the host preflight gives only the stale Portavoz Dev app a three-second bounded
+quit request and requires two clean samples one second apart. A read-only
+process snapshot rejects another `xcodebuild` test action or UI-test runner;
+the persistent `testmanagerd`, an
+ordinary build, and an idle XcodeBuildMCP server are not blockers. A separate
+Swift 6 CoreGraphics probe reads only on-screen window owner and layer metadata
+and rejects visible SecurityAgent or Notification Center alerts. It never reads
+a window title, dismisses a prompt, kills the host-wide test service, or
+terminates another process. Probe timeout or malformed output fails closed.
+This proves only that the host was quiet at those samples; automation started
+afterward remains an external race that the result bundle must classify.
+Visual-only screenshot
 assertions use visible-frame intersection rather than conflating visibility
 with a control's temporary enabled or hittable state, and their bounded scroll
 budgets cover the smallest GitHub-hosted Settings viewport. Assertions after
@@ -3871,7 +3883,7 @@ treating the destination element's first frame as completion. The production
 navigation contract, not a UI-test retry, guarantees that same-meeting citation
 requests are applied; the palette regression explicitly starts from an already-
 open destination so a no-op route assignment cannot satisfy it accidentally.
-The complete 55-case English and Spanish suites remain the
+The complete 92-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
 

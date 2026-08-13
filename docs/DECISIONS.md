@@ -12336,3 +12336,44 @@ retry, observer, retained accessibility object, timer, standing rule, or effect
 authority. Automated semantics and bilingual real-app transitions are local
 evidence; physical VoiceOver, Sequoia, and separate Tahoe hardware remain field
 validation.
+
+## D344 — UI gates observe host ownership without resetting it (Aug 2026)
+
+**Context:** macOS XCUITest shares host-wide automation infrastructure. During
+the D343 closure, one concurrent UI suite opened a SecurityAgent authentication
+window and later unrelated Apple automation invalidated several app connections
+without producing a Portavoz crash. The old preflight warned whenever Gancho
+was merely running, queried only UserNotificationCenter through an unbounded
+System Events AppleScript, and unconditionally killed `testmanagerd`. That
+combination could miss the actual SecurityAgent blocker, hang while probing,
+or disrupt a different repository's active suite while still allowing ours to
+start into contaminated evidence.
+
+**Decision:** the Make target gives only its own stale Portavoz Dev instance a
+three-second bounded quit request, then delegates host classification to a
+read-only checker. The checker takes
+two snapshots one second apart and starts no XCUITest unless both are clean.
+The process probe uses `ps` executable identity plus arguments to reject active
+`xcodebuild test`/`test-without-building` commands and UI-test runners. It does
+not reject an ordinary build, an idle XcodeBuildMCP server, unit-only `xctest`,
+or the persistent `testmanagerd`, and it never terminates any of them.
+
+A separate current-toolchain Swift 6 probe uses public CoreGraphics window-list
+metadata available below the macOS 14.4 floor. It asks only for on-screen,
+non-desktop owner and layer values, ignores Notification Center's negative-layer
+desktop surfaces, and returns bounded counts for visible Notification Center
+and SecurityAgent windows. It never reads `kCGWindowName`, bounds, dialog text,
+controls, or credentials. The orchestrator applies explicit timeouts, validates
+the exact JSON shape, and fails closed when either inventory is unavailable or
+malformed. It reports only blocker categories and never dismisses a prompt.
+
+**Consequences:** already-present authentication alerts, notification alerts,
+Xcode test commands, and UI runners now fail before Portavoz spends a build or
+produces misleading product failures. The checker cannot reserve Apple's global
+automation service: an unrelated client can still start after the second
+sample, and a generic accessibility client may have no safe process signature.
+Those cases remain result-bundle/host classification followed by a quiet-host
+rerun, not evidence of a Portavoz crash. The LaunchServices claimant check
+remains advisory because rebuilding that database is also a system-wide
+mutation. No shipping binary, product permission, application behavior, or
+minimum deployment target changes.
