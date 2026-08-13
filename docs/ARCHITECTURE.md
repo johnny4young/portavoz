@@ -3247,6 +3247,28 @@ maintenance, storage schema, asset policy, and UI behavior are unchanged. This
 is the Strangler seam for later shadow candidates; it does not authorize a
 second product writer, serve candidate results, or select another engine.
 
+The isolated semantic scale runner now seals a content-free schema-2 manifest
+around that control before any engine comparison. It snapshots the source
+commit and an exact dirty-state content digest before the Release build. That
+digest covers Git status, the full tracked diff against `HEAD`, and every
+untracked path, mode, size, symlink target, and content digest; it is collected
+twice so a changing checkout fails closed. The manifest then binds the
+resulting CLI SHA-256 and size, Apple Swift/Xcode target, hardware model,
+processor count, physical memory, exact OS build, embedding compatibility
+profile, installed-asset state, public-synthetic fixture, deterministic query
+pack, configuration, and measured scales into one recomputable comparability
+identity. Every checkpoint runs in a fresh process and reports separate
+store-open, corpus-seed, warmup-query, and measured-query wall/CPU
+distributions. The wrapper re-reads source, binary, toolchain, and host after
+collection; any drift prevents publication. Custom or dirty runs remain
+directly comparable only when their whole identity matches and are labelled
+development-only. Only the clean canonical 1k/10k/50k/100k, 20-run matrix is
+retention eligible. The strict comparator reports comparability and aggregate
+p95 observations but has no engine, performance, or serving decision
+authority. The measured vectors are deterministic synthetic Float32 values;
+the Apple model profile and asset availability qualify compatibility, but the
+runner never downloads or uses those assets to create the timed vectors.
+
 The first shadow boundary is also implemented without changing composition.
 `ShadowComparingSemanticIndex` obtains the authoritative exact result first,
 launches one explicitly injected research candidate without awaiting it, and

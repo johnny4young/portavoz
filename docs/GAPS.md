@@ -192,11 +192,19 @@ visible release blocker rather than being inferred from deterministic tests.
   The runs were taken on a developer workstation with other applications
   running, and they disagree with themselves (one build measured three query
   variants faster than one, which is impossible), so the host's noise exceeds
-  the effect being measured. Re-run `portavoz-cli bench-semantic --segments
-  100000 --runs 20 --variants 1` and `--variants 3` on the named stable Mac
-  with background services controlled, three times each, before treating any
-  Ask retrieval number as a budget verdict. Until then SEARCH-3 is not closed
-  on budget.
+  the effect being measured. D345 also proves that the tracked 90.22 and 92.85
+  ms schema-1 artifacts are **not directly comparable**: both omit source,
+  binary, embedding-profile, asset, fixture, query-pack, and stage identity,
+  and the older artifact additionally omits toolchain identity. Their exact
+  content-free reconciliation is retained at
+  `docs/evidence/semantic-scale-history-reconciliation-20260813.json`; it has
+  no performance or engine-decision authority. Run the schema-2
+  `scripts/run-semantic-scale-baseline.sh` canonical matrix three times from
+  one clean commit on the named stable Mac, then compare those manifests before
+  treating a retrieval number as a budget verdict. Repeat the accepted control
+  across required memory profiles and both supported OS majors. Until then
+  SEARCH-3 is not closed on controlled-host budget and SEARCH-0b remains open
+  for field evidence.
 - **Formal M3 DER**: correct the Speaker column of the draft RTTM in `~/Desktop/portavoz-verificacion/reunion-2026-07-07.md` → measure with `portavoz-cli der --file system.wav --reference <rttm corregido>`.
 - **Translation pivot** (D25): regenerating a summary in another language must translate the existing snapshot (fast) instead of summarizing again; verify that it preserves structure and action items.
 - **Cold live captions, translated captions, and reader ownership (D121/D128/D129/D320)**: release the idle speech models or use a clean install, start recording before Parakeet is ready, and prove captions begin automatically during the same call after verified preparation without an audio gap or memory growth. Separately on clean Tahoe onboarding, observe that First Listen stays in preparation without opening the microphone while Apple's speech asset is cold, begins capture only after readiness, and clears the system microphone indicator when Continue, Skip, or dismissal leaves the step; repeat the teardown on Sequoia, where captions are explicitly unavailable, and confirm ten start/leave cycles do not grow retained memory. Then use the "Translate → …" picker across Spanish and English speakers; prove same-language and uncertain short rows remain unchanged, a long still-growing opposite-language row gains a labeled translation before the next speaker, later growth refreshes that row, no source-language modal appears, target switching cannot restore stale output, pair download is deliberate, and unsupported/failure states are visible rather than silent. Scroll into caption history while new rows arrive: the position and sharp text must remain stable until the explicit Jump to live action.

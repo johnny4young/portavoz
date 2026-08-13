@@ -119,6 +119,11 @@ if toolchain:
         # Merge, never replace: the detail-UI harness records its own
         # Instruments toolchain and must keep it.
         existing = payload.get("toolchain")
+        if payload.get("kind") == "semantic-scale-run-manifest":
+            if existing != toolchain:
+                raise SystemExit(
+                    "semantic manifest toolchain changed after its identity was sealed")
+            continue
         payload["toolchain"] = {
             **(existing if isinstance(existing, dict) else {}), **toolchain}
         report.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")

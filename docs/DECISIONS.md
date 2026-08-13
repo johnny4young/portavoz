@@ -12377,3 +12377,56 @@ rerun, not evidence of a Portavoz crash. The LaunchServices claimant check
 remains advisory because rebuilding that database is also a system-wide
 mutation. No shipping binary, product permission, application behavior, or
 minimum deployment target changes.
+
+## D345 — Semantic performance evidence is comparable only through sealed identity (Aug 2026)
+
+**Context:** SEARCH-0b still cited two apparently equivalent 100,000-vector,
+512-dimension Release observations: 90.22 ms wall p95 from 17 July and 92.85 ms
+from 26 July. Both name the same broad host and benchmark configuration, but
+the earlier artifact has no toolchain and neither one retains source commit,
+dirty state, built-binary identity, exact embedding profile, asset state,
+fixture/query-pack identity, or stage boundaries. The runner also let the
+performance ledger add toolchain metadata after measurement. Calling their
+2.63 ms difference a regression, improvement, or noise would therefore assert
+a cause that the artifacts cannot prove.
+
+**Decision:** `bench-semantic` advances to observation schema 2. Each fresh
+Release process records the exact `SemanticEmbeddingProfile`, whether the
+Apple Latin assets are already installed under an explicit never-download
+policy, the deterministic public-synthetic corpus/vector generator, the exact
+present-vector query pack, and separate wall/process-CPU distributions for
+store open, corpus seed, warmup queries, and measured queries. The measured
+vectors remain deterministic normalized Float32 values; model assets qualify
+the compatibility environment but do not generate the timed corpus.
+
+`run-semantic-scale-baseline.sh` validates requested scales before building,
+snapshots the source commit plus a twice-collected content digest over Git
+status, the full tracked diff against `HEAD`, and every untracked path, mode,
+size, symlink target, and content digest. It then builds one Release CLI and
+binds its SHA-256 and size to the Apple Swift/Xcode target and exact
+hardware/OS identity, then runs every scale in a fresh process. The strict
+assembler rejects duplicate JSON keys, unknown fields, booleans masquerading
+as integers, non-finite/non-monotonic or wrong-count distributions,
+profile/configuration mismatch, incomplete top-k, corpus arithmetic drift,
+cross-process host/profile/asset/fixture changes, or any source, binary,
+toolchain, or host change after the build. Publication is owner-only and
+atomic. The performance ledger may not restamp this sealed toolchain.
+
+One recomputable comparability digest covers source, binary, toolchain, host,
+build configuration, embedding profile, assets, fixture, query pack, stage
+policy, configuration, and measured scales. Only the clean canonical
+1k/10k/50k/100k matrix with 20 measured queries per scale is retention
+eligible. A dirty or custom matrix can be compared only to another manifest
+with the exact same digest and remains `comparable-development`. Identity
+drift is `not-comparable`. The comparator reports only observations and
+nearest-rank aggregates; its fixed decision authority is `none`.
+
+**Consequences:** the tracked historical reconciliation preserves the exact
+90.218/92.850 ms wall and 91.257/94.252 ms CPU observations but classifies the
+pair `not-comparable` because schema 1 lacks required identity. That is the
+honest reconciliation; no code can retroactively reconstruct missing evidence.
+Future current-control claims require repeated clean schema-2 manifests on the
+same stable host, followed by the existing profile/Sequoia/Tahoe field matrix.
+This slice changes no product retrieval, ranking, schema, model, chunk, engine,
+writer, scheduler, or user-visible behavior, and it does not close private
+real-meeting answer quality or authorize SEARCH-4b/5 selection.

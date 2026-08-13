@@ -1519,6 +1519,16 @@ runtime; isolated semantic benchmark constructors are not production owners.
 Index persistence, brute-force exact cosine, and the
 decision to defer sqlite-vec remain unchanged.
 
+The Release semantic-scale probe reads the same exact profile without loading
+or downloading the model. Schema 2 states that installed Apple Latin assets
+qualify the host while deterministic normalized synthetic vectors own the
+timed corpus and query pack. It records the complete profile fingerprint plus
+separate store-open, corpus-seed, warmup, and measured-query wall/CPU stages.
+The outer runner binds those observations to source, binary, toolchain, host,
+fixture, query-pack, and configuration identity before a comparison is legal.
+This is benchmark authority only: it does not exercise natural-language
+quality, select an engine, or change the process-local embedding runtime.
+
 ## Coauthoring notes (D28) — the notes→summary weave (implemented)
 
 - `SummaryRequest.contextItems`: user notes travel to the FINAL pass as intent. `PromptFactory.notesBlock` formats them with timestamps (`[mm:ss] nota`), chronologically, with a hard budget (120 chars/note, 800 for the block — tested).

@@ -2179,6 +2179,49 @@ achieved. Adopting a baseline never relaxes a budget: the Target column
 is the release contract regardless of which run the deltas are measured
 against.
 
+D345 makes future semantic-scale evidence comparable before another baseline
+can move. `bench-semantic` schema 2 carries the exact embedding compatibility
+profile and asset state, canonical public-synthetic fixture/query-pack
+identities, and separate store-open, corpus-seed, warmup-query, and
+measured-query wall/CPU distributions. The wrapper snapshots source before the
+Release build with a twice-collected digest of the tracked diff plus untracked
+path/mode/content, hashes the built CLI, records the Apple toolchain and exact
+host, isolates every scale in a fresh process, then revalidates that all identity
+surfaces stayed unchanged before atomically publishing an owner-only manifest.
+Only a clean 1k/10k/50k/100k matrix with 20 measured queries per scale is
+retention eligible. Custom or dirty matrices are labelled development-only.
+
+`scripts/semantic_scale_manifest.py compare` validates exact JSON shape,
+scalar types, finite and monotonic distributions, sample counts, corpus/result
+arithmetic, profile dimensions, top-k completeness, host agreement, stage
+duplication, and the recomputable comparability digest. Matching schema-2
+identities may produce an aggregate comparison with decision authority `none`;
+unlike identities produce no timing aggregate. The tracked reconciliation of
+the 17 and 26 July schema-1 observations retains their exact 90.218/92.850 ms
+wall and 91.257/94.252 ms CPU p95 values but classifies the pair
+`not-comparable`, because those legacy artifacts cannot prove source, binary,
+profile, asset, fixture, query-pack, and stage identity. This closes the
+historical ambiguity honestly; it does not create a current baseline, prove
+natural-language quality, or choose an engine.
+
+The D345 implementation preflight passed 396 Python tooling tests, repository
+hygiene, a first-party `swift build -Xswiftc -warnings-as-errors`, 2,453 Swift
+tests with 14 explicit model/environment skips and zero failures, and strict
+SwiftLint across 675 production files with zero violations. A disposable dirty
+1k/three-run Release smoke also passed the complete schema-2 assembler and was
+correctly marked custom, development-only, and not retention eligible. These
+are implementation checks, not a clean canonical performance baseline. The
+mandatory real-app bilingual gate also passed 92/92 English and 92/92 Spanish
+XCUITests on macOS 26.5.2 (25F84), with zero failures, skips, or expected
+failures in either finalized result bundle; the runner restored
+`AppleKeyboardUIMode` from 0 to 0. The final Developer ID-signed Dev install
+also passed deep strict signature verification while a complete 184-entry
+path/metadata/content/xattr manifest proved `/Applications/Portavoz.app`
+byte-for-byte unchanged. This host still has no Metal Toolchain, so the Dev
+bundle contains no MLX metallib and its built-in MLX engine remains disabled;
+that environment limit is separate from the semantic runner's Apple Natural
+Language compatibility profile.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |
