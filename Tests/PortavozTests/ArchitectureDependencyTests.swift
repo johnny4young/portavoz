@@ -8025,8 +8025,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         let scaleRunner = try Self.contents(of: "scripts/run-scale-baseline.sh")
         let semanticRunner = try Self.contents(
             of: "scripts/run-semantic-scale-baseline.sh")
+        let semanticControlRunner = try Self.contents(
+            of: "scripts/run-semantic-control-baseline.sh")
         let semanticManifest = try Self.contents(
             of: "scripts/semantic_scale_manifest.py")
+        let semanticControl = try Self.contents(
+            of: "docs/evidence/semantic-scale-current-control-20260813.json")
+        let semanticThreeVariant = try Self.contents(
+            of: "docs/evidence/semantic-scale-three-variant-diagnostic-20260813.json")
         let spotlightRunner = try Self.contents(
             of: "scripts/run-spotlight-scale-baseline.sh")
         let detailRunner = try Self.contents(of: "scripts/run-detail-ui-baseline.sh")
@@ -8086,6 +8092,30 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(semanticManifest.contains("retentionEligible"))
         XCTAssertTrue(semanticManifest.contains("legacy-schema-lacks-comparability-identity"))
         XCTAssertTrue(semanticManifest.contains("usedByMeasuredVectors"))
+        XCTAssertTrue(semanticManifest.contains(
+            #"CONTROL_BASELINE_KIND = "semantic-scale-control-baseline""#))
+        XCTAssertTrue(semanticManifest.contains(
+            #""evaluatedStage": "measuredQueries""#))
+        XCTAssertTrue(semanticManifest.contains(
+            #""diagnosticStages": ["storeOpen", "corpusSeed", "warmupQueries"]"#))
+        XCTAssertTrue(semanticRunner.contains(
+            #"PORTAVOZ_SEMANTIC_SCALE_VARIANTS"#))
+        XCTAssertTrue(semanticControlRunner.contains(
+            #"for observation in 1 2 3"#))
+        XCTAssertTrue(semanticControlRunner.contains(
+            #"PORTAVOZ_SEMANTIC_SCALE_VARIANTS=1"#))
+        XCTAssertTrue(semanticControlRunner.contains(
+            #"PORTAVOZ_SEMANTIC_SCALE_VARIANTS=3"#))
+        XCTAssertTrue(semanticControlRunner.contains(
+            #"module.validate_control_baseline"#))
+        XCTAssertTrue(semanticControl.contains(
+            #""outcome": "current-control-budget-pass""#))
+        XCTAssertTrue(semanticControl.contains(
+            #""currentControlBudget": "one-host-current-control""#))
+        XCTAssertTrue(semanticThreeVariant.contains(
+            #""outcome": "stable-three-variant-diagnostic""#))
+        XCTAssertTrue(semanticThreeVariant.contains(
+            #""currentControlBudget": "none""#))
         XCTAssertTrue(waveformCLI.contains("withWaveformTemporaryDirectory"))
         XCTAssertTrue(waveformCLI.contains("FileManager.default.copyItem"))
         XCTAssertTrue(waveformCLI.contains("usage.ri_phys_footprint"))

@@ -3269,6 +3269,24 @@ authority. The measured vectors are deterministic synthetic Float32 values;
 the Apple model profile and asset availability qualify compatibility, but the
 runner never downloads or uses those assets to create the timed vectors.
 
+Repeated control retention is a second, narrower boundary. The semantic
+control runner alternates three clean one-vector matrices with three clean
+three-vector matrices while the checkout stays unchanged. The manifest tool
+accepts exactly three unique clean schema-2 manifests with one
+recomputed identity, canonical scales, 20 measured queries per scale, and
+either one canonical query vector or the explicitly diagnostic three-vector
+batch. It retains no raw manifest. Instead, an aggregate receipt preserves the
+full content-free identity payload, raw-observation and distinct-measurement
+digests, the three content-free timing/footprint distribution rows needed to
+recompute every summary, per-scale count/size distributions, and a receipt
+digest over the result. Only `measuredQueries` owns
+the established 1.25 within-run and across-run stability gate because store
+open and corpus seed have one sample per process and warmup has two; their
+variation remains visible but diagnostic. The canonical one-vector receipt may
+state the one-host current-control 100k budget result. The three-vector receipt
+has a separate identity and no budget, cross-host, quality, serving, or engine
+selection authority.
+
 The first shadow boundary is also implemented without changing composition.
 `ShadowComparingSemanticIndex` obtains the authoritative exact result first,
 launches one explicitly injected research candidate without awaiting it, and

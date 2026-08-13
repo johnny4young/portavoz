@@ -5,20 +5,25 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUTPUT="${1:-/private/tmp/portavoz-semantic-scale-baseline.json}"
 SIZES="${PORTAVOZ_SEMANTIC_SCALE_SIZES:-1000,10000,50000,100000}"
 RUNS="${PORTAVOZ_SEMANTIC_SCALE_RUNS:-20}"
+VARIANTS="${PORTAVOZ_SEMANTIC_SCALE_VARIANTS:-1}"
 PARTS="$(mktemp -d /private/tmp/portavoz-semantic-scale.XXXXXX)"
 trap 'rm -rf "$PARTS"' EXIT
 
 cd "$ROOT"
-if [[ ! "$RUNS" =~ ^[0-9]+$ ]] || (( RUNS < 3 || RUNS > 100 )); then
+if [[ ! "$RUNS" =~ ^[0-9]+$ ]] || ((RUNS < 3 || RUNS > 100)); then
     echo "error: PORTAVOZ_SEMANTIC_SCALE_RUNS must be between 3 and 100" >&2
     exit 64
 fi
+if [[ ! "$VARIANTS" =~ ^[0-9]+$ ]] || ((VARIANTS < 1 || VARIANTS > 8)); then
+    echo "error: PORTAVOZ_SEMANTIC_SCALE_VARIANTS must be between 1 and 8" >&2
+    exit 64
+fi
 
-IFS=',' read -r -a checkpoints <<< "$SIZES"
+IFS=',' read -r -a checkpoints <<<"$SIZES"
 seen=","
 for raw_size in "${checkpoints[@]}"; do
     size="${raw_size//[[:space:]]/}"
-    if [[ ! "$size" =~ ^[0-9]+$ ]] || (( size < 1 || size > 1000000 )); then
+    if [[ ! "$size" =~ ^[0-9]+$ ]] || ((size < 1 || size > 1000000)); then
         echo "error: invalid semantic checkpoint size: $raw_size" >&2
         exit 64
     fi
@@ -35,7 +40,8 @@ python3 scripts/semantic_scale_manifest.py source \
 build_start="$(python3 -c 'import time; print(time.monotonic_ns())')"
 swift build -c release --product portavoz-cli
 build_end="$(python3 -c 'import time; print(time.monotonic_ns())')"
-build_wall_ms="$(python3 - "$build_start" "$build_end" <<'PY'
+build_wall_ms="$(
+    python3 - "$build_start" "$build_end" <<'PY'
 import sys
 start, end = map(int, sys.argv[1:])
 if end < start:
@@ -56,6 +62,7 @@ for raw_size in "${checkpoints[@]}"; do
     "$ROOT/.build/release/portavoz-cli" bench-semantic \
         --segments "$size" \
         --runs "$RUNS" \
+        --variants "$VARIANTS" \
         --output "$PARTS/$size.json"
 done
 

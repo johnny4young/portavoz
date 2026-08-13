@@ -12430,3 +12430,51 @@ same stable host, followed by the existing profile/Sequoia/Tahoe field matrix.
 This slice changes no product retrieval, ranking, schema, model, chunk, engine,
 writer, scheduler, or user-visible behavior, and it does not close private
 real-meeting answer quality or authorize SEARCH-4b/5 selection.
+
+## D346 — Retain repeated semantic control only after measured-query stability (Aug 2026)
+
+**Context:** D345 made individual Release manifests comparable but its general
+comparator retained only the 100k query p95 values and an opaque identity hash.
+It did not prove three observations existed at every scale, expose other stage
+or footprint aggregates, or decide whether the query measurement agreed with
+itself. Six clean observations from committed D345 source also showed why the
+distinction matters: measured-query timing stayed tight while the third 100k
+corpus seed was 1.41x the first two for one query variant and 1.64x for three.
+Treating every undersampled lifecycle stage as stable would be false; omitting
+the variation would be equally misleading.
+
+**Decision:** add a separate `semantic-scale-control-baseline` receipt. It
+accepts exactly three unique clean schema-2 manifests with one recomputed
+identity, canonical 1k/10k/50k/100k scales, 20 measured queries per scale, and
+either `queryVariants=1` or the explicitly diagnostic `queryVariants=3` shape.
+Duplicate observations, dirty source, identity/configuration drift, unsupported
+variants, missing scales, or measured-query wall/CPU p95-to-p50 or
+across-observation max-to-min p95 above 1.25 produce no receipt.
+
+The receipt retains the complete content-free identity payload, three raw
+manifest digests, three distinct measurement-payload digests, and the
+content-free per-observation distributions required to recompute every
+count/size/footprint and wall/CPU summary. A receipt SHA-256 covers the retained
+result. Only the 20-sample measured-query stage owns
+the stability gate. Store open and corpus seed have one sample per process and
+warmup has two, so their ratios stay explicit diagnostic evidence and cannot
+pass or fail query stability. At 100k, the canonical receipt applies the
+existing 100 ms wall-and-CPU current-control target. A three-variant receipt is
+always diagnostic, has a separate identity, and receives no budget authority.
+Neither receipt can claim cross-host coverage, retrieval/answer quality,
+serving authority, or engine selection.
+
+**Consequences:** three alternating clean D345 runs on Mac16,6 / macOS 26.5.2
+produced canonical one-vector wall/CPU p95 maxima of 73.921/74.503 ms at 100k,
+with within-run ratios at most 1.028/1.025 and across-run ratios 1.038/1.033.
+The separate three-vector diagnostic measured 80.374/81.627 ms, with
+within-run ratios at most 1.026/1.025 and across-run ratios 1.024/1.027. The
+canonical current control therefore passes on this one reference host; no
+cross-identity speedup or regression is derived. Raw manifests remain
+ephemeral and only the two aggregate receipts are tracked. Stable comparable
+evidence from the required 8/16 GiB profiles and both Sequoia/Tahoe families,
+plus owner-supplied private quality evidence, remains required before chunk or
+engine selection. `scripts/run-semantic-control-baseline.sh` makes the protocol
+repeatable: it fails fast on a dirty checkout, alternates the one- and
+three-vector matrices, rechecks source before publication, validates both
+receipts, and writes them owner-only without retaining raw manifests.

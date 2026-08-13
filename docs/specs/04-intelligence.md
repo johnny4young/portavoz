@@ -1529,6 +1529,18 @@ fixture, query-pack, and configuration identity before a comparison is legal.
 This is benchmark authority only: it does not exercise natural-language
 quality, select an engine, or change the process-local embedding runtime.
 
+The repeated-control boundary alternates the canonical and three-vector
+diagnostic collection, then consumes three clean manifests for each exact
+profile/configuration identity and retains aggregate evidence only. It records
+distinct raw-manifest and measurement-payload digests plus enough content-free
+per-observation distributions to recompute the receipt exactly. Its
+stability gate applies to the 20-sample measured-query wall and CPU
+distributions at every canonical scale. Store-open, seed, and warmup aggregate
+timings remain visible diagnostics because their per-process sample counts are
+too small to grant stability authority. One and three query variants always
+produce separate receipts and identities; the latter never owns a product
+budget verdict. Neither receipt changes or validates semantic model quality.
+
 ## Coauthoring notes (D28) — the notes→summary weave (implemented)
 
 - `SummaryRequest.contextItems`: user notes travel to the FINAL pass as intent. `PromptFactory.notesBlock` formats them with timestamps (`[mm:ss] nota`), chronologically, with a hard budget (120 chars/note, 800 for the block — tested).

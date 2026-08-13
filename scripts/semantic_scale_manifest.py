@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and compare content-free semantic-scale Release manifests."""
+"""Build, compare, and retain content-free semantic-scale Release evidence."""
 
 from __future__ import annotations
 
@@ -21,7 +21,11 @@ from typing import Any, Callable, Sequence
 SCHEMA_VERSION = 2
 MANIFEST_KIND = "semantic-scale-run-manifest"
 COMPARISON_KIND = "semantic-scale-comparison"
+CONTROL_BASELINE_KIND = "semantic-scale-control-baseline"
 CANONICAL_SCALES = (1_000, 10_000, 50_000, 100_000)
+CONTROL_OBSERVATION_COUNT = 3
+MAXIMUM_TIMING_RATIO = 1.25
+HUNDRED_THOUSAND_BUDGET_MILLISECONDS = 100.0
 CANONICAL_CONFIGURATION = {
     "measurementRuns": 20,
     "warmupRuns": 2,
@@ -162,6 +166,49 @@ MANIFEST_KEYS = {
     "stagePolicy",
     "comparability",
     "checkpoints",
+}
+OBSERVATION_SUMMARY_KEYS = {"sampleCount", "p50", "p95", "minimum", "maximum"}
+TIMING_AGGREGATE_KEYS = {
+    "sampleCountPerObservation",
+    "observations",
+    "p50Milliseconds",
+    "p95Milliseconds",
+    "maximumMilliseconds",
+    "p95ToP50Ratio",
+    "acrossObservationP95MaximumToMinimumRatio",
+}
+BYTE_AGGREGATE_KEYS = {
+    "sampleCountPerObservation",
+    "observations",
+    "p50Bytes",
+    "p95Bytes",
+    "maximumBytes",
+}
+CONTROL_CHECKPOINT_KEYS = {
+    "totalSegments",
+    "meetingCount",
+    "rawEmbeddingBytes",
+    "resultCount",
+    "firstQueryIndex",
+    "databaseBytes",
+    "stageTimings",
+    "footprint",
+    "measuredQueryStability",
+    "budget",
+}
+CONTROL_BASELINE_KEYS = {
+    "schemaVersion",
+    "kind",
+    "generatedAt",
+    "identity",
+    "collection",
+    "scope",
+    "policy",
+    "authority",
+    "checkpoints",
+    "outcome",
+    "reasons",
+    "receiptSHA256",
 }
 
 
@@ -1165,6 +1212,735 @@ def compare_documents(documents: Sequence[Any], generated_at: str) -> dict[str, 
     }
 
 
+def observation_summary(values: Sequence[float | int]) -> dict[str, Any]:
+    if len(values) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError(
+            f"control baseline requires exactly {CONTROL_OBSERVATION_COUNT} observations"
+        )
+    return {
+        "sampleCount": len(values),
+        "p50": nearest_rank(values, 0.50),
+        "p95": nearest_rank(values, 0.95),
+        "minimum": min(values),
+        "maximum": max(values),
+    }
+
+
+def positive_ratio(numerator: float, denominator: float, label: str) -> float:
+    if denominator <= 0:
+        raise ManifestError(f"{label} cannot establish a positive timing ratio")
+    return numerator / denominator
+
+
+def aggregate_timing(
+    distributions: Sequence[dict[str, Any]], label: str
+) -> dict[str, Any]:
+    if len(distributions) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError(f"{label} does not have three observations")
+    counts = {distribution["sampleCount"] for distribution in distributions}
+    if len(counts) != 1:
+        raise ManifestError(f"{label} changed sample count")
+    observations = [
+        {
+            "p50Milliseconds": item["p50Milliseconds"],
+            "p95Milliseconds": item["p95Milliseconds"],
+            "maximumMilliseconds": item["maximumMilliseconds"],
+        }
+        for item in distributions
+    ]
+    medians = [float(item["p50Milliseconds"]) for item in observations]
+    p95_values = [float(item["p95Milliseconds"]) for item in observations]
+    maxima = [float(item["maximumMilliseconds"]) for item in observations]
+    within = [
+        positive_ratio(p95, median, f"{label} within-observation")
+        for median, p95 in zip(medians, p95_values, strict=True)
+    ]
+    across = positive_ratio(
+        max(p95_values), min(p95_values), f"{label} across-observation"
+    )
+    return {
+        "sampleCountPerObservation": counts.pop(),
+        "observations": observations,
+        "p50Milliseconds": observation_summary(medians),
+        "p95Milliseconds": observation_summary(p95_values),
+        "maximumMilliseconds": observation_summary(maxima),
+        "p95ToP50Ratio": observation_summary(within),
+        "acrossObservationP95MaximumToMinimumRatio": across,
+    }
+
+
+def aggregate_bytes(distributions: Sequence[dict[str, Any]], label: str) -> dict[str, Any]:
+    if len(distributions) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError(f"{label} does not have three observations")
+    counts = {distribution["sampleCount"] for distribution in distributions}
+    if len(counts) != 1:
+        raise ManifestError(f"{label} changed sample count")
+    observations = [
+        {
+            "p50Bytes": item["p50Bytes"],
+            "p95Bytes": item["p95Bytes"],
+            "maximumBytes": item["maximumBytes"],
+        }
+        for item in distributions
+    ]
+    return {
+        "sampleCountPerObservation": counts.pop(),
+        "observations": observations,
+        "p50Bytes": observation_summary([item["p50Bytes"] for item in observations]),
+        "p95Bytes": observation_summary([item["p95Bytes"] for item in observations]),
+        "maximumBytes": observation_summary(
+            [item["maximumBytes"] for item in observations]
+        ),
+    }
+
+
+def baseline_scope(configuration: dict[str, Any]) -> str:
+    variants = configuration["queryVariants"]
+    expected = {**CANONICAL_CONFIGURATION, "queryVariants": variants}
+    if configuration != expected or variants not in {1, 3}:
+        raise ManifestError("control baseline configuration is unsupported")
+    return "canonical-current-control" if variants == 1 else "three-variant-diagnostic"
+
+
+def aggregate_control_checkpoint(
+    checkpoints: Sequence[dict[str, Any]],
+    scope: str,
+) -> dict[str, Any]:
+    first = checkpoints[0]
+    scalar_keys = (
+        "totalSegments",
+        "meetingCount",
+        "rawEmbeddingBytes",
+        "resultCount",
+        "firstQueryIndex",
+    )
+    for key in scalar_keys:
+        if len({item[key] for item in checkpoints}) != 1:
+            raise ManifestError(f"control checkpoint changed {key}")
+
+    stages: dict[str, Any] = {}
+    for stage_name in sorted(STAGE_TIMINGS_KEYS):
+        stages[stage_name] = {
+            "wallTime": aggregate_timing(
+                [item["stageTimings"][stage_name]["wallTime"] for item in checkpoints],
+                f"{first['totalSegments']} {stage_name} wall",
+            ),
+            "processCPUTime": aggregate_timing(
+                [
+                    item["stageTimings"][stage_name]["processCPUTime"]
+                    for item in checkpoints
+                ],
+                f"{first['totalSegments']} {stage_name} CPU",
+            ),
+        }
+
+    measured = stages["measuredQueries"]
+    wall = measured["wallTime"]
+    cpu = measured["processCPUTime"]
+    stability = {
+        "state": "stable",
+        "maximumAllowedRatio": MAXIMUM_TIMING_RATIO,
+        "wallMaximumWithinObservationRatio": wall["p95ToP50Ratio"]["maximum"],
+        "cpuMaximumWithinObservationRatio": cpu["p95ToP50Ratio"]["maximum"],
+        "wallAcrossObservationRatio": wall[
+            "acrossObservationP95MaximumToMinimumRatio"
+        ],
+        "cpuAcrossObservationRatio": cpu[
+            "acrossObservationP95MaximumToMinimumRatio"
+        ],
+    }
+    ratios = [value for key, value in stability.items() if key.endswith("Ratio")]
+    if any(value > MAXIMUM_TIMING_RATIO for value in ratios):
+        raise ManifestError(
+            f"measured-query timing is unstable at {first['totalSegments']} segments"
+        )
+
+    applicable = first["totalSegments"] == 100_000
+    wall_p95 = wall["p95Milliseconds"]["p95"] if applicable else None
+    cpu_p95 = cpu["p95Milliseconds"]["p95"] if applicable else None
+    under_budget = bool(
+        applicable
+        and wall_p95 <= HUNDRED_THOUSAND_BUDGET_MILLISECONDS
+        and cpu_p95 <= HUNDRED_THOUSAND_BUDGET_MILLISECONDS
+    )
+    if not applicable:
+        budget_status = "not-applicable"
+    elif scope == "canonical-current-control":
+        budget_status = "pass" if under_budget else "fail"
+    else:
+        budget_status = "diagnostic-under-target" if under_budget else "diagnostic-over-target"
+
+    footprint = {
+        key: aggregate_bytes(
+            [item[key] for item in checkpoints],
+            f"{first['totalSegments']} {key}",
+        )
+        for key in (
+            "baselinePhysicalFootprint",
+            "peakPhysicalFootprint",
+            "incrementalPeakPhysicalFootprint",
+            "endingPhysicalFootprint",
+        )
+    }
+    return {
+        **{key: first[key] for key in scalar_keys},
+        "databaseBytes": observation_summary(
+            [item["databaseBytes"] for item in checkpoints]
+        ),
+        "stageTimings": stages,
+        "footprint": footprint,
+        "measuredQueryStability": stability,
+        "budget": {
+            "maximumMilliseconds": (
+                HUNDRED_THOUSAND_BUDGET_MILLISECONDS if applicable else None
+            ),
+            "wallP95Milliseconds": wall_p95,
+            "cpuP95Milliseconds": cpu_p95,
+            "status": budget_status,
+        },
+    }
+
+
+def build_control_baseline(
+    documents: Sequence[Any], generated_at: str
+) -> dict[str, Any]:
+    if len(documents) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError(
+            f"control baseline requires exactly {CONTROL_OBSERVATION_COUNT} manifests"
+        )
+    manifests = [
+        validate_manifest(document, f"control input {index}")
+        for index, document in enumerate(documents)
+    ]
+    manifests.sort(key=lambda item: item["generatedAt"])
+    if len({item["generatedAt"] for item in manifests}) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError("control baseline requires unique observation timestamps")
+    digests = [hashlib.sha256(canonical_json(item)).hexdigest() for item in manifests]
+    if len(set(digests)) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError("control baseline contains a copied observation")
+    measurement_digests = [
+        hashlib.sha256(canonical_json(item["checkpoints"])).hexdigest()
+        for item in manifests
+    ]
+    if len(set(measurement_digests)) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError("control baseline requires distinct measurement payloads")
+    identities = {
+        item["comparability"]["identitySHA256"] for item in manifests
+    }
+    if len(identities) != 1:
+        raise ManifestError("control baseline comparability identity changed")
+    if any(not item["source"]["worktreeClean"] for item in manifests):
+        raise ManifestError("control baseline requires clean source observations")
+
+    first = manifests[0]
+    scope = baseline_scope(first["configuration"])
+    scales = tuple(item["totalSegments"] for item in first["checkpoints"])
+    if scales != CANONICAL_SCALES:
+        raise ManifestError("control baseline requires canonical scales")
+    expected_reasons = [] if scope == "canonical-current-control" else [
+        "noncanonical-configuration"
+    ]
+    for item in manifests:
+        if item["configuration"] != first["configuration"]:
+            raise ManifestError("control baseline configuration changed")
+        if item["comparability"]["reasons"] != expected_reasons:
+            raise ManifestError("control baseline comparability scope is inconsistent")
+        expected_comparability = (
+            ("canonical", True)
+            if scope == "canonical-current-control"
+            else ("custom", False)
+        )
+        actual_comparability = (
+            item["comparability"]["measurementScope"],
+            item["comparability"]["retentionEligible"],
+        )
+        if actual_comparability != expected_comparability:
+            raise ManifestError("control baseline retention state is inconsistent")
+
+    checkpoints = []
+    for index, scale in enumerate(CANONICAL_SCALES):
+        selected = [item["checkpoints"][index] for item in manifests]
+        if any(item["totalSegments"] != scale for item in selected):
+            raise ManifestError("control baseline scale order changed")
+        checkpoints.append(
+            aggregate_control_checkpoint(selected, scope)
+        )
+
+    budget_status = checkpoints[-1]["budget"]["status"]
+    if scope == "canonical-current-control":
+        outcome = (
+            "current-control-budget-pass"
+            if budget_status == "pass"
+            else "current-control-budget-fail"
+        )
+        reasons = [] if budget_status == "pass" else ["hundred-thousand-budget-miss"]
+        budget_authority = "one-host-current-control"
+    else:
+        outcome = "stable-three-variant-diagnostic"
+        reasons = ["three-query-variant-diagnostic-only"]
+        budget_authority = "none"
+
+    baseline = {
+        "schemaVersion": 1,
+        "kind": CONTROL_BASELINE_KIND,
+        "generatedAt": validate_timestamp(generated_at, "generatedAt"),
+        "identity": {
+            "sha256": identities.pop(),
+            "payload": identity_payload(first),
+        },
+        "collection": {
+            "observationCount": CONTROL_OBSERVATION_COUNT,
+            "observationSHA256": digests,
+            "measurementSHA256": measurement_digests,
+            "startedAt": manifests[0]["generatedAt"],
+            "finishedAt": manifests[-1]["generatedAt"],
+        },
+        "scope": scope,
+        "policy": {
+            "version": "semantic-measured-query-stability-v1",
+            "requiredObservations": CONTROL_OBSERVATION_COUNT,
+            "maximumTimingRatio": MAXIMUM_TIMING_RATIO,
+            "evaluatedStage": "measuredQueries",
+            "diagnosticStages": ["storeOpen", "corpusSeed", "warmupQueries"],
+            "budgetSegments": 100_000,
+            "budgetMaximumMilliseconds": HUNDRED_THOUSAND_BUDGET_MILLISECONDS,
+        },
+        "authority": {
+            "currentControlBudget": budget_authority,
+            "crossHost": "none",
+            "retrievalQuality": "none",
+            "answerQuality": "none",
+            "engineSelection": "none",
+        },
+        "checkpoints": checkpoints,
+        "outcome": outcome,
+        "reasons": reasons,
+    }
+    baseline["receiptSHA256"] = control_receipt_sha256(baseline)
+    validate_control_baseline(baseline, "built control baseline")
+    return baseline
+
+
+def validate_observation_summary(
+    value: Any, label: str, *, integer: bool = False
+) -> dict[str, Any]:
+    summary = exact_object(value, OBSERVATION_SUMMARY_KEYS, label)
+    if exact_int(
+        summary["sampleCount"], f"{label}.sampleCount", minimum=1
+    ) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError(f"{label}.sampleCount is not three")
+    parser = exact_int if integer else finite_number
+    parsed = [
+        parser(summary[key], f"{label}.{key}")
+        for key in ("minimum", "p50", "p95", "maximum")
+    ]
+    if parsed != sorted(parsed):
+        raise ManifestError(f"{label} is not monotonic")
+    if summary["p95"] != summary["maximum"]:
+        raise ManifestError(f"{label}.p95 is not the nearest-rank maximum")
+    return summary
+
+
+def validate_timing_aggregate(value: Any, label: str) -> dict[str, Any]:
+    aggregate = exact_object(value, TIMING_AGGREGATE_KEYS, label)
+    exact_int(
+        aggregate["sampleCountPerObservation"],
+        f"{label}.sampleCountPerObservation",
+        minimum=1,
+    )
+    observations = aggregate["observations"]
+    if not isinstance(observations, list) or len(observations) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError(f"{label}.observations are incomplete")
+    medians: list[float] = []
+    p95_values: list[float] = []
+    maxima: list[float] = []
+    ratios: list[float] = []
+    for index, value in enumerate(observations):
+        observation = exact_object(
+            value,
+            {"p50Milliseconds", "p95Milliseconds", "maximumMilliseconds"},
+            f"{label}.observations[{index}]",
+        )
+        median = finite_number(
+            observation["p50Milliseconds"],
+            f"{label}.observations[{index}].p50Milliseconds",
+        )
+        p95 = finite_number(
+            observation["p95Milliseconds"],
+            f"{label}.observations[{index}].p95Milliseconds",
+        )
+        maximum = finite_number(
+            observation["maximumMilliseconds"],
+            f"{label}.observations[{index}].maximumMilliseconds",
+        )
+        if not median <= p95 <= maximum:
+            raise ManifestError(f"{label}.observations[{index}] is not monotonic")
+        medians.append(median)
+        p95_values.append(p95)
+        maxima.append(maximum)
+        ratios.append(
+            positive_ratio(p95, median, f"{label}.observations[{index}]")
+        )
+    expected_summaries = {
+        "p50Milliseconds": observation_summary(medians),
+        "p95Milliseconds": observation_summary(p95_values),
+        "maximumMilliseconds": observation_summary(maxima),
+        "p95ToP50Ratio": observation_summary(ratios),
+    }
+    for key, expected in expected_summaries.items():
+        validate_observation_summary(aggregate[key], f"{label}.{key}")
+        if aggregate[key] != expected:
+            raise ManifestError(f"{label}.{key} is not recomputable")
+    expected_across = positive_ratio(
+        max(p95_values), min(p95_values), f"{label} aggregate"
+    )
+    if aggregate["acrossObservationP95MaximumToMinimumRatio"] != expected_across:
+        raise ManifestError(f"{label} across-observation ratio is inconsistent")
+    return aggregate
+
+
+def validate_byte_aggregate(value: Any, label: str) -> dict[str, Any]:
+    aggregate = exact_object(value, BYTE_AGGREGATE_KEYS, label)
+    exact_int(
+        aggregate["sampleCountPerObservation"],
+        f"{label}.sampleCountPerObservation",
+        minimum=1,
+    )
+    observations = aggregate["observations"]
+    if not isinstance(observations, list) or len(observations) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError(f"{label}.observations are incomplete")
+    values = {"p50Bytes": [], "p95Bytes": [], "maximumBytes": []}
+    for index, value in enumerate(observations):
+        observation = exact_object(
+            value, {"p50Bytes", "p95Bytes", "maximumBytes"},
+            f"{label}.observations[{index}]",
+        )
+        parsed = [
+            exact_int(
+                observation[key], f"{label}.observations[{index}].{key}"
+            )
+            for key in ("p50Bytes", "p95Bytes", "maximumBytes")
+        ]
+        if parsed != sorted(parsed):
+            raise ManifestError(f"{label}.observations[{index}] is not monotonic")
+        for key, item in zip(values, parsed, strict=True):
+            values[key].append(item)
+    for key, items in values.items():
+        expected = observation_summary(items)
+        validate_observation_summary(aggregate[key], f"{label}.{key}", integer=True)
+        if aggregate[key] != expected:
+            raise ManifestError(f"{label}.{key} is not recomputable")
+    return aggregate
+
+
+def control_receipt_sha256(value: dict[str, Any]) -> str:
+    payload = {key: item for key, item in value.items() if key != "receiptSHA256"}
+    return hashlib.sha256(canonical_json(payload)).hexdigest()
+
+
+def validate_control_baseline(value: Any, label: str) -> dict[str, Any]:
+    baseline = exact_object(value, CONTROL_BASELINE_KEYS, label)
+    if exact_int(baseline["schemaVersion"], f"{label}.schemaVersion", minimum=1) != 1:
+        raise ManifestError(f"{label}.schemaVersion is not one")
+    if baseline["kind"] != CONTROL_BASELINE_KIND:
+        raise ManifestError(f"{label}.kind is invalid")
+    generated = validate_timestamp(
+        baseline["generatedAt"], f"{label}.generatedAt"
+    )
+    bounded_string(
+        baseline["receiptSHA256"],
+        f"{label}.receiptSHA256",
+        pattern=HEX_64,
+        maximum=64,
+    )
+    identity = exact_object(baseline["identity"], {"sha256", "payload"}, f"{label}.identity")
+    bounded_string(identity["sha256"], f"{label}.identity.sha256", pattern=HEX_64, maximum=64)
+    payload = exact_object(
+        identity["payload"],
+        {
+            "source", "binary", "toolchain", "host", "buildConfiguration",
+            "configuration", "semanticProfile", "semanticAssets", "fixture",
+            "queryPack", "stagePolicy", "scales",
+        },
+        f"{label}.identity.payload",
+    )
+    validate_source(payload["source"], f"{label}.identity.payload.source")
+    if not payload["source"]["worktreeClean"]:
+        raise ManifestError(f"{label} source is not clean")
+    binary = exact_object(
+        payload["binary"], BINARY_KEYS, f"{label}.identity.payload.binary"
+    )
+    bounded_string(
+        binary["sha256"],
+        f"{label}.identity.payload.binary.sha256",
+        pattern=HEX_64,
+        maximum=64,
+    )
+    exact_int(
+        binary["sizeBytes"], f"{label}.identity.payload.binary.sizeBytes", minimum=1
+    )
+    toolchain = exact_object(
+        payload["toolchain"], TOOLCHAIN_KEYS, f"{label}.identity.payload.toolchain"
+    )
+    for key in TOOLCHAIN_KEYS:
+        bounded_string(toolchain[key], f"{label}.identity.payload.toolchain.{key}")
+    validate_host(payload["host"], f"{label}.identity.payload.host", snapshot=True)
+    if payload["buildConfiguration"] != "release":
+        raise ManifestError(f"{label}.identity.payload is not Release")
+    configuration = validate_configuration(
+        payload["configuration"], f"{label}.identity.payload.configuration"
+    )
+    profile = validate_profile(
+        payload["semanticProfile"], f"{label}.identity.payload.semanticProfile"
+    )
+    if profile["vectorDimension"] != configuration["embeddingDimension"]:
+        raise ManifestError(f"{label}.identity.payload dimensions differ")
+    validate_assets(
+        payload["semanticAssets"], f"{label}.identity.payload.semanticAssets"
+    )
+    validate_fixture(payload["fixture"], f"{label}.identity.payload.fixture")
+    query_pack = exact_object(
+        payload["queryPack"],
+        MANIFEST_QUERY_PACK_KEYS,
+        f"{label}.identity.payload.queryPack",
+    )
+    if query_pack != {
+        "version": "semantic-present-vector-queries-v1",
+        "selectionPolicy": "midpoint-consecutive-wrap-v1",
+        "queryVariants": configuration["queryVariants"],
+        "resultLimit": configuration["resultLimit"],
+    }:
+        raise ManifestError(f"{label}.identity.payload.queryPack is inconsistent")
+    stage_policy = exact_object(
+        payload["stagePolicy"],
+        STAGE_POLICY_KEYS,
+        f"{label}.identity.payload.stagePolicy",
+    )
+    if stage_policy != {
+        "version": "semantic-scale-stages-v1",
+        "wallClock": "continuous-clock",
+        "processCPU": "rusage-user-plus-system",
+        "percentile": "nearest-rank-v1",
+    }:
+        raise ManifestError(f"{label}.identity.payload.stagePolicy is inconsistent")
+    scope = baseline_scope(payload["configuration"])
+    if baseline["scope"] != scope:
+        raise ManifestError(f"{label}.scope is inconsistent")
+    if payload["scales"] != list(CANONICAL_SCALES):
+        raise ManifestError(f"{label} scales are not canonical")
+    if identity["sha256"] != hashlib.sha256(canonical_json(payload)).hexdigest():
+        raise ManifestError(f"{label}.identity.sha256 is not recomputable")
+
+    collection = exact_object(
+        baseline["collection"],
+        {
+            "observationCount",
+            "observationSHA256",
+            "measurementSHA256",
+            "startedAt",
+            "finishedAt",
+        },
+        f"{label}.collection",
+    )
+    if exact_int(
+        collection["observationCount"],
+        f"{label}.collection.observationCount",
+        minimum=1,
+    ) != CONTROL_OBSERVATION_COUNT:
+        raise ManifestError(f"{label}.collection count is not three")
+    for digest_key in ("observationSHA256", "measurementSHA256"):
+        digests = collection[digest_key]
+        if not isinstance(digests, list) or len(digests) != CONTROL_OBSERVATION_COUNT:
+            raise ManifestError(f"{label}.collection.{digest_key} is incomplete")
+        for index, digest in enumerate(digests):
+            bounded_string(
+                digest,
+                f"{label}.collection.{digest_key}[{index}]",
+                pattern=HEX_64,
+                maximum=64,
+            )
+        if len(set(digests)) != CONTROL_OBSERVATION_COUNT:
+            raise ManifestError(f"{label}.collection.{digest_key} is not unique")
+    started = validate_timestamp(
+        collection["startedAt"], f"{label}.collection.startedAt"
+    )
+    finished = validate_timestamp(
+        collection["finishedAt"], f"{label}.collection.finishedAt"
+    )
+    started_at = dt.datetime.fromisoformat(started.removesuffix("Z") + "+00:00")
+    finished_at = dt.datetime.fromisoformat(finished.removesuffix("Z") + "+00:00")
+    generated_at = dt.datetime.fromisoformat(generated.removesuffix("Z") + "+00:00")
+    if started_at >= finished_at:
+        raise ManifestError(f"{label}.collection timestamps are not ordered")
+    if generated_at < finished_at:
+        raise ManifestError(f"{label}.generatedAt predates collection completion")
+
+    expected_policy = {
+        "version": "semantic-measured-query-stability-v1",
+        "requiredObservations": CONTROL_OBSERVATION_COUNT,
+        "maximumTimingRatio": MAXIMUM_TIMING_RATIO,
+        "evaluatedStage": "measuredQueries",
+        "diagnosticStages": ["storeOpen", "corpusSeed", "warmupQueries"],
+        "budgetSegments": 100_000,
+        "budgetMaximumMilliseconds": HUNDRED_THOUSAND_BUDGET_MILLISECONDS,
+    }
+    if baseline["policy"] != expected_policy:
+        raise ManifestError(f"{label}.policy is not canonical")
+    expected_budget_authority = (
+        "one-host-current-control" if scope == "canonical-current-control" else "none"
+    )
+    expected_authority = {
+        "currentControlBudget": expected_budget_authority,
+        "crossHost": "none",
+        "retrievalQuality": "none",
+        "answerQuality": "none",
+        "engineSelection": "none",
+    }
+    if baseline["authority"] != expected_authority:
+        raise ManifestError(f"{label}.authority is inconsistent")
+
+    checkpoints = baseline["checkpoints"]
+    if not isinstance(checkpoints, list) or len(checkpoints) != len(CANONICAL_SCALES):
+        raise ManifestError(f"{label}.checkpoints are incomplete")
+    for index, (checkpoint, scale) in enumerate(zip(checkpoints, CANONICAL_SCALES, strict=True)):
+        item_label = f"{label}.checkpoints[{index}]"
+        item = exact_object(checkpoint, CONTROL_CHECKPOINT_KEYS, item_label)
+        if exact_int(
+            item["totalSegments"], f"{item_label}.totalSegments", minimum=1
+        ) != scale:
+            raise ManifestError(f"{item_label}.totalSegments is inconsistent")
+        expected_scalars = {
+            "meetingCount": math.ceil(scale / configuration["segmentsPerMeeting"]),
+            "rawEmbeddingBytes": scale * configuration["embeddingDimension"] * 4,
+            "resultCount": min(scale, configuration["resultLimit"]),
+            "firstQueryIndex": scale // 2,
+        }
+        for key, expected in expected_scalars.items():
+            if exact_int(item[key], f"{item_label}.{key}", minimum=0) != expected:
+                raise ManifestError(f"{item_label}.{key} is inconsistent")
+        validate_observation_summary(
+            item["databaseBytes"], f"{item_label}.databaseBytes", integer=True
+        )
+        stages = exact_object(
+            item["stageTimings"], STAGE_TIMINGS_KEYS, f"{item_label}.stageTimings"
+        )
+        for stage_name in STAGE_TIMINGS_KEYS:
+            stage = exact_object(stages[stage_name], STAGE_KEYS, f"{item_label}.{stage_name}")
+            expected_count = {
+                "storeOpen": 1,
+                "corpusSeed": 1,
+                "warmupQueries": configuration["warmupRuns"],
+                "measuredQueries": configuration["measurementRuns"],
+            }[stage_name]
+            for clock in ("wallTime", "processCPUTime"):
+                aggregate = validate_timing_aggregate(
+                    stage[clock], f"{item_label}.{stage_name}.{clock}"
+                )
+                if aggregate["sampleCountPerObservation"] != expected_count:
+                    raise ManifestError(
+                        f"{item_label}.{stage_name}.{clock} sample count changed"
+                    )
+        measured = stages["measuredQueries"]
+        stability = exact_object(
+            item["measuredQueryStability"],
+            {
+                "state", "maximumAllowedRatio", "wallMaximumWithinObservationRatio",
+                "cpuMaximumWithinObservationRatio", "wallAcrossObservationRatio",
+                "cpuAcrossObservationRatio",
+            },
+            f"{item_label}.measuredQueryStability",
+        )
+        if (
+            stability["state"] != "stable"
+            or stability["maximumAllowedRatio"] != MAXIMUM_TIMING_RATIO
+        ):
+            raise ManifestError(f"{item_label} is not stably measured")
+        expected_ratios = {
+            "wallMaximumWithinObservationRatio": measured["wallTime"][
+                "p95ToP50Ratio"
+            ]["maximum"],
+            "cpuMaximumWithinObservationRatio": measured["processCPUTime"][
+                "p95ToP50Ratio"
+            ]["maximum"],
+            "wallAcrossObservationRatio": measured["wallTime"][
+                "acrossObservationP95MaximumToMinimumRatio"
+            ],
+            "cpuAcrossObservationRatio": measured["processCPUTime"][
+                "acrossObservationP95MaximumToMinimumRatio"
+            ],
+        }
+        for key, expected in expected_ratios.items():
+            if stability[key] != expected or expected > MAXIMUM_TIMING_RATIO:
+                raise ManifestError(f"{item_label}.{key} is inconsistent")
+        footprint = exact_object(
+            item["footprint"],
+            {
+                "baselinePhysicalFootprint", "peakPhysicalFootprint",
+                "incrementalPeakPhysicalFootprint", "endingPhysicalFootprint",
+            },
+            f"{item_label}.footprint",
+        )
+        for key, aggregate in footprint.items():
+            byte_summary = validate_byte_aggregate(
+                aggregate, f"{item_label}.{key}"
+            )
+            if exact_int(
+                byte_summary["sampleCountPerObservation"],
+                f"{item_label}.{key}.sampleCount",
+                minimum=1,
+            ) != configuration["measurementRuns"]:
+                raise ManifestError(f"{item_label}.{key} sample count changed")
+        budget = exact_object(
+            item["budget"],
+            {"maximumMilliseconds", "wallP95Milliseconds", "cpuP95Milliseconds", "status"},
+            f"{item_label}.budget",
+        )
+        if scale != 100_000:
+            if budget != {
+                "maximumMilliseconds": None,
+                "wallP95Milliseconds": None,
+                "cpuP95Milliseconds": None,
+                "status": "not-applicable",
+            }:
+                raise ManifestError(f"{item_label}.budget must be not-applicable")
+        else:
+            wall_p95 = measured["wallTime"]["p95Milliseconds"]["p95"]
+            cpu_p95 = measured["processCPUTime"]["p95Milliseconds"]["p95"]
+            under = (
+                wall_p95 <= HUNDRED_THOUSAND_BUDGET_MILLISECONDS
+                and cpu_p95 <= HUNDRED_THOUSAND_BUDGET_MILLISECONDS
+            )
+            expected_status = (
+                ("pass" if under else "fail")
+                if scope == "canonical-current-control"
+                else ("diagnostic-under-target" if under else "diagnostic-over-target")
+            )
+            if budget != {
+                "maximumMilliseconds": HUNDRED_THOUSAND_BUDGET_MILLISECONDS,
+                "wallP95Milliseconds": wall_p95,
+                "cpuP95Milliseconds": cpu_p95,
+                "status": expected_status,
+            }:
+                raise ManifestError(f"{item_label}.budget is inconsistent")
+
+    last_status = checkpoints[-1]["budget"]["status"]
+    if scope == "canonical-current-control":
+        expected_outcome = (
+            "current-control-budget-pass"
+            if last_status == "pass"
+            else "current-control-budget-fail"
+        )
+        expected_reasons = [] if last_status == "pass" else ["hundred-thousand-budget-miss"]
+    else:
+        expected_outcome = "stable-three-variant-diagnostic"
+        expected_reasons = ["three-query-variant-diagnostic-only"]
+    if baseline["outcome"] != expected_outcome or baseline["reasons"] != expected_reasons:
+        raise ManifestError(f"{label}.outcome is inconsistent")
+    if baseline["receiptSHA256"] != control_receipt_sha256(baseline):
+        raise ManifestError(f"{label}.receiptSHA256 is not recomputable")
+    return baseline
+
+
 def write_json(path: Path | None, value: Any) -> None:
     payload = json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     if path is None:
@@ -1221,6 +1997,11 @@ def parse_arguments() -> argparse.Namespace:
     compare.add_argument("inputs", nargs="+", type=Path)
     compare.add_argument("--generated-at", default=None)
     compare.add_argument("--output", type=Path)
+
+    baseline = commands.add_parser("baseline")
+    baseline.add_argument("inputs", nargs="+", type=Path)
+    baseline.add_argument("--generated-at", default=None)
+    baseline.add_argument("--output", type=Path, required=True)
     return parser.parse_args()
 
 
@@ -1275,6 +2056,12 @@ def main() -> int:
             read_json(path, f"comparison input {index}")
             for index, path in enumerate(options.inputs)
         ]
+        if options.command == "baseline":
+            write_json(
+                options.output,
+                build_control_baseline(documents, options.generated_at or utc_now()),
+            )
+            return 0
         write_json(
             options.output,
             compare_documents(documents, options.generated_at or utc_now()),

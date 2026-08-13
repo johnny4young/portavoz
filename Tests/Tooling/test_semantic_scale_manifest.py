@@ -13,8 +13,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "semantic_scale_manifest.py"
 RUNNER = ROOT / "scripts" / "run-semantic-scale-baseline.sh"
+CONTROL_RUNNER = ROOT / "scripts" / "run-semantic-control-baseline.sh"
 PERF_RUNNER = ROOT / "scripts" / "run-perf-ledger.sh"
 SWIFT_PROBE = ROOT / "Sources" / "portavoz-cli" / "CLIBenchSemantic.swift"
+CONTROL_BASELINE = (
+    ROOT / "docs" / "evidence" / "semantic-scale-current-control-20260813.json"
+)
+THREE_VARIANT_BASELINE = (
+    ROOT
+    / "docs"
+    / "evidence"
+    / "semantic-scale-three-variant-diagnostic-20260813.json"
+)
 SPEC = importlib.util.spec_from_file_location("semantic_scale_manifest", SCRIPT)
 manifest = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
@@ -152,16 +162,35 @@ def identity_snapshot(*, clean=True, binary="b" * 64):
     }
 
 
-def canonical_manifest(*, clean=True, binary="b" * 64, wall=10.0):
+def canonical_manifest(
+    *,
+    clean=True,
+    binary="b" * 64,
+    wall=10.0,
+    variants=1,
+    generated_at="2026-08-13T08:00:00Z",
+):
     reports = [
-        checkpoint_report(scale, wall=wall + index)
+        checkpoint_report(scale, variants=variants, wall=wall + index)
         for index, scale in enumerate(manifest.CANONICAL_SCALES)
     ]
     return manifest.assemble_manifest(
         identity_snapshot(clean=clean, binary=binary),
         reports,
-        "2026-08-13T08:00:00Z",
+        generated_at,
     )
+
+
+def repeated_manifests(*, variants=1, clean=True):
+    return [
+        canonical_manifest(
+            variants=variants,
+            clean=clean,
+            wall=60 + index,
+            generated_at=f"2026-08-13T08:0{index}:00Z",
+        )
+        for index in range(3)
+    ]
 
 
 class SemanticScaleManifestTests(unittest.TestCase):
@@ -377,6 +406,231 @@ class SemanticScaleManifestTests(unittest.TestCase):
         self.assertEqual(comparison["outcome"], "not-comparable")
         self.assertIn("comparability-identity-mismatch", comparison["reasons"])
 
+    def test_control_baseline_accepts_three_stable_canonical_observations(self):
+        baseline = manifest.build_control_baseline(
+            repeated_manifests(), "2026-08-13T09:00:00Z"
+        )
+
+        self.assertEqual(baseline["kind"], "semantic-scale-control-baseline")
+        self.assertEqual(baseline["scope"], "canonical-current-control")
+        self.assertEqual(baseline["outcome"], "current-control-budget-pass")
+        self.assertEqual(
+            baseline["authority"]["currentControlBudget"],
+            "one-host-current-control",
+        )
+        self.assertEqual(len(baseline["collection"]["observationSHA256"]), 3)
+        self.assertEqual(len(baseline["collection"]["measurementSHA256"]), 3)
+        self.assertEqual(
+            baseline["receiptSHA256"],
+            manifest.control_receipt_sha256(baseline),
+        )
+        self.assertEqual(
+            [item["totalSegments"] for item in baseline["checkpoints"]],
+            [1_000, 10_000, 50_000, 100_000],
+        )
+        self.assertEqual(
+            baseline["checkpoints"][-1]["budget"]["status"], "pass"
+        )
+        self.assertEqual(
+            baseline,
+            manifest.validate_control_baseline(baseline, "baseline"),
+        )
+
+    def test_three_query_variants_remain_a_separate_diagnostic_identity(self):
+        baseline = manifest.build_control_baseline(
+            repeated_manifests(variants=3), "2026-08-13T09:00:00Z"
+        )
+
+        self.assertEqual(baseline["scope"], "three-variant-diagnostic")
+        self.assertEqual(baseline["outcome"], "stable-three-variant-diagnostic")
+        self.assertEqual(baseline["authority"]["currentControlBudget"], "none")
+        self.assertEqual(
+            baseline["checkpoints"][-1]["budget"]["status"],
+            "diagnostic-under-target",
+        )
+        canonical = manifest.build_control_baseline(
+            repeated_manifests(), "2026-08-13T09:00:00Z"
+        )
+        self.assertNotEqual(
+            baseline["identity"]["sha256"], canonical["identity"]["sha256"]
+        )
+
+    def test_control_baseline_rejects_incomplete_copied_or_dirty_evidence(self):
+        documents = repeated_manifests()
+        with self.assertRaisesRegex(manifest.ManifestError, "exactly 3"):
+            manifest.build_control_baseline(documents[:2], "2026-08-13T09:00:00Z")
+
+        with self.assertRaisesRegex(manifest.ManifestError, "unique observation timestamps"):
+            manifest.build_control_baseline(
+                [documents[0], documents[0], documents[2]],
+                "2026-08-13T09:00:00Z",
+            )
+
+        with self.assertRaisesRegex(manifest.ManifestError, "clean source"):
+            manifest.build_control_baseline(
+                repeated_manifests(clean=False), "2026-08-13T09:00:00Z"
+            )
+
+    def test_control_baseline_rejects_timestamp_only_copies_and_early_receipts(self):
+        documents = repeated_manifests()
+        documents[1] = copy.deepcopy(documents[0])
+        documents[1]["generatedAt"] = "2026-08-13T08:01:00Z"
+        documents[1]["comparability"] = manifest.comparability_for(documents[1])
+        with self.assertRaisesRegex(
+            manifest.ManifestError, "distinct measurement payloads"
+        ):
+            manifest.build_control_baseline(
+                documents, "2026-08-13T09:00:00Z"
+            )
+
+        with self.assertRaisesRegex(
+            manifest.ManifestError, "predates collection completion"
+        ):
+            manifest.build_control_baseline(
+                repeated_manifests(), "2026-08-13T08:01:00Z"
+            )
+
+    def test_control_baseline_rejects_identity_or_configuration_drift(self):
+        documents = repeated_manifests()
+        documents[2] = canonical_manifest(
+            binary="c" * 64,
+            wall=62,
+            generated_at="2026-08-13T08:02:00Z",
+        )
+        with self.assertRaisesRegex(manifest.ManifestError, "identity changed"):
+            manifest.build_control_baseline(documents, "2026-08-13T09:00:00Z")
+
+        with self.assertRaisesRegex(manifest.ManifestError, "unsupported"):
+            manifest.build_control_baseline(
+                repeated_manifests(variants=2), "2026-08-13T09:00:00Z"
+            )
+
+    def test_control_baseline_blocks_unstable_measured_queries_but_exposes_stages(self):
+        documents = repeated_manifests()
+        measured = documents[2]["checkpoints"][-1]["stageTimings"]["measuredQueries"]
+        measured["wallTime"]["p95Milliseconds"] = (
+            measured["wallTime"]["p50Milliseconds"] * 1.3
+        )
+        measured["wallTime"]["maximumMilliseconds"] = (
+            measured["wallTime"]["p95Milliseconds"]
+        )
+        documents[2]["checkpoints"][-1]["wallTime"] = copy.deepcopy(
+            measured["wallTime"]
+        )
+        documents[2]["comparability"] = manifest.comparability_for(documents[2])
+        with self.assertRaisesRegex(manifest.ManifestError, "timing is unstable"):
+            manifest.build_control_baseline(documents, "2026-08-13T09:00:00Z")
+
+        documents = repeated_manifests()
+        seed = documents[2]["checkpoints"][-1]["stageTimings"]["corpusSeed"]
+        seed["wallTime"] = millisecond_distribution(1, 200)
+        documents[2]["checkpoints"][-1]["seedMilliseconds"] = 200
+        baseline = manifest.build_control_baseline(
+            documents, "2026-08-13T09:00:00Z"
+        )
+        diagnostic = baseline["checkpoints"][-1]["stageTimings"]["corpusSeed"]
+        self.assertGreater(
+            diagnostic["wallTime"]["acrossObservationP95MaximumToMinimumRatio"],
+            1.25,
+        )
+        self.assertEqual(
+            baseline["checkpoints"][-1]["measuredQueryStability"]["state"],
+            "stable",
+        )
+
+    def test_control_baseline_validator_rejects_identity_policy_and_budget_tampering(self):
+        baseline = manifest.build_control_baseline(
+            repeated_manifests(), "2026-08-13T09:00:00Z"
+        )
+        mutations = (
+            ("identity", lambda item: item["identity"].update(sha256="f" * 64)),
+            ("policy", lambda item: item["policy"].update(maximumTimingRatio=2.0)),
+            (
+                "budget",
+                lambda item: item["checkpoints"][-1]["budget"].update(status="fail"),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                changed = copy.deepcopy(baseline)
+                mutate(changed)
+                with self.assertRaises(manifest.ManifestError):
+                    manifest.validate_control_baseline(changed, "baseline")
+
+    def test_control_baseline_validator_recomputes_retained_observations(self):
+        baseline = manifest.build_control_baseline(
+            repeated_manifests(), "2026-08-13T09:00:00Z"
+        )
+        mutations = (
+            (
+                "timing observation",
+                lambda item: item["checkpoints"][0]["stageTimings"]
+                ["measuredQueries"]["wallTime"]["observations"][0].update(
+                    p95Milliseconds=60.11
+                ),
+            ),
+            (
+                "byte observation",
+                lambda item: item["checkpoints"][0]["footprint"]
+                ["peakPhysicalFootprint"]["observations"][0].update(
+                    p50Bytes=16_000_001
+                ),
+            ),
+            (
+                "summary count type",
+                lambda item: item["checkpoints"][0]["databaseBytes"].update(
+                    sampleCount=3.0
+                ),
+            ),
+        )
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                changed = copy.deepcopy(baseline)
+                mutate(changed)
+                changed["receiptSHA256"] = manifest.control_receipt_sha256(changed)
+                with self.assertRaises(manifest.ManifestError):
+                    manifest.validate_control_baseline(changed, "baseline")
+
+    def test_tracked_control_receipts_are_valid_separate_and_aggregate_only(self):
+        canonical = manifest.read_json(CONTROL_BASELINE, "canonical receipt")
+        three_variant = manifest.read_json(
+            THREE_VARIANT_BASELINE, "three-variant receipt"
+        )
+
+        manifest.validate_control_baseline(canonical, "canonical receipt")
+        manifest.validate_control_baseline(
+            three_variant, "three-variant receipt"
+        )
+        self.assertEqual(canonical["outcome"], "current-control-budget-pass")
+        self.assertEqual(
+            canonical["identity"]["payload"]["source"]["commit"],
+            "be3eb2614f194fbf58933e8dd81bcc056121e1ab",
+        )
+        self.assertEqual(
+            canonical["checkpoints"][-1]["budget"],
+            {
+                "maximumMilliseconds": 100.0,
+                "wallP95Milliseconds": 73.921125,
+                "cpuP95Milliseconds": 74.503375,
+                "status": "pass",
+            },
+        )
+        self.assertEqual(
+            three_variant["checkpoints"][-1]["budget"]["status"],
+            "diagnostic-under-target",
+        )
+        self.assertNotEqual(
+            canonical["identity"]["sha256"],
+            three_variant["identity"]["sha256"],
+        )
+        for path in (ROOT / "docs" / "evidence").glob("semantic-scale*.json"):
+            document = manifest.read_json(path, path.name)
+            self.assertNotEqual(
+                document.get("kind"),
+                manifest.MANIFEST_KIND,
+                f"raw semantic manifest must not be retained: {path.name}",
+            )
+
     def test_historical_90_and_92_ms_reports_are_explicitly_not_comparable(self):
         documents = [
             manifest.read_json(
@@ -532,10 +786,49 @@ class SemanticScaleManifestTests(unittest.TestCase):
         self.assertLess(measurement, assemble)
         self.assertIn('--expected-source "$PARTS/source.snapshot"', source)
         self.assertIn('--snapshot "$PARTS/run.snapshot"', source)
+        self.assertIn('VARIANTS="${PORTAVOZ_SEMANTIC_SCALE_VARIANTS:-1}"', source)
+        self.assertIn('--variants "$VARIANTS"', source)
+
+        control_source = CONTROL_RUNNER.read_text(encoding="utf-8")
+        source_before = control_source.index('source-before.json')
+        canonical = control_source.index('PORTAVOZ_SEMANTIC_SCALE_VARIANTS=1')
+        diagnostic = control_source.index('PORTAVOZ_SEMANTIC_SCALE_VARIANTS=3')
+        baseline = control_source.index('"$MANIFEST_TOOL" baseline')
+        source_after = control_source.index('source-after.json')
+        publish = control_source.index('spec_from_file_location')
+        self.assertLess(source_before, canonical)
+        self.assertLess(canonical, diagnostic)
+        self.assertLess(diagnostic, baseline)
+        self.assertLess(baseline, source_after)
+        self.assertLess(source_after, publish)
+        self.assertIn('for observation in 1 2 3', control_source)
+        self.assertIn('if not source.get("worktreeClean")', control_source)
+        self.assertIn('module.validate_control_baseline', control_source)
 
         perf_source = PERF_RUNNER.read_text(encoding="utf-8")
         self.assertIn('payload.get("kind") == "semantic-scale-run-manifest"', perf_source)
         self.assertIn("semantic manifest toolchain changed", perf_source)
+
+    def test_runner_rejects_invalid_query_variant_before_build(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run(
+                [str(RUNNER), str(Path(directory) / "manifest.json")],
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "PORTAVOZ_SEMANTIC_SCALE_VARIANTS": "0",
+                },
+            )
+
+        self.assertEqual(result.returncode, 64)
+        self.assertIn(
+            "PORTAVOZ_SEMANTIC_SCALE_VARIANTS must be between 1 and 8",
+            result.stderr,
+        )
+        self.assertNotIn("Building for production", result.stdout + result.stderr)
 
     def test_swift_probe_is_content_free_and_measures_all_stage_boundaries(self):
         source = SWIFT_PROBE.read_text(encoding="utf-8")

@@ -2222,6 +2222,65 @@ bundle contains no MLX metallib and its built-in MLX engine remains disabled;
 that environment limit is separate from the semantic runner's Apple Natural
 Language compatibility profile.
 
+D346 retains repeated current-control evidence without retaining raw
+manifests. `scripts/run-semantic-control-baseline.sh` fails fast on a dirty
+checkout, alternates three one-vector and three three-vector matrices, fences
+source before publication, validates both receipts, and publishes them
+owner-only. `scripts/semantic_scale_manifest.py baseline` requires exactly three
+unique clean same-identity observations, canonical scales, 20 measured queries
+per scale, and either one canonical query vector or the separately scoped
+three-vector diagnostic. It rejects copied or missing observations, dirty
+source, identity/configuration drift, unsupported variants, and measured-query
+wall/CPU instability. The established 1.25 limit applies both within each
+20-sample distribution and across the maximum/minimum p95 observations. The
+100k one-vector receipt evaluates the existing 100 ms wall-and-CPU target.
+
+The aggregate receipt preserves the full content-free comparability payload,
+three raw-observation SHA-256 digests, three distinct measurement-payload
+digests, all four scales, and the three content-free timing/footprint
+distribution rows needed to recompute every summary and stability ratio. Its
+own SHA-256 covers the complete retained result. Only
+`measuredQueries` has enough samples for a stability verdict. Store-open and
+corpus-seed have one sample per process and warmup has two, so their variability
+is disclosed but diagnostic. In this collection the 100k corpus-seed wall ratio
+was 1.413 for one variant and 1.636 for three variants; neither is silently
+called stable and neither invalidates a stable query-latency receipt.
+
+Three alternating clean D345 observations on the Mac16,6 reference host under
+macOS 26.5.2 produced the following p95-across-observation p95 values:
+
+| Segments | 1 variant wall / CPU | 3 variants wall / CPU |
+|---:|---:|---:|
+| 1,000 | 1.169 / 1.193 ms | 1.399 / 1.426 ms |
+| 10,000 | 7.105 / 7.244 ms | 7.958 / 8.087 ms |
+| 50,000 | 37.185 / 37.895 ms | 43.067 / 41.517 ms |
+| 100,000 | **73.921 / 74.503 ms** | **80.374 / 81.627 ms** |
+
+The canonical 100k measured-query maximum is under the 100 ms target. Its
+maximum within-run wall/CPU ratios were 1.028/1.025 and across-run ratios were
+1.038/1.033. The three-variant diagnostic ratios were 1.026/1.025 and
+1.024/1.027 respectively. The tracked receipts are
+`docs/evidence/semantic-scale-current-control-20260813.json` and
+`docs/evidence/semantic-scale-three-variant-diagnostic-20260813.json`; they have
+different identities and are never combined into a delta. The canonical
+receipt owns only a one-host current-control budget result. Cross-host,
+Sequoia, other memory profiles, retrieval/answer quality, real meetings, and
+engine selection remain unproved.
+
+The final D346 gate passed 406 Python tooling tests, repository hygiene, the
+strict current-SDK warnings-as-errors build, 2,453 package tests with 14
+explicit model/environment skips and zero failures, ShellCheck/shfmt for the
+semantic runners, and strict SwiftLint with zero violations across 675 files.
+Finalized macOS 26.5.2 (25F84) result bundles passed 92/92 English plus 92/92
+Spanish XCUITest cases with no failures, skips, or expected failures;
+`AppleKeyboardUIMode` returned to `0` and no Portavoz crash report appeared.
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was reinstalled and
+deeply verified. An exact before/after comparison kept the notarized release
+app's 184-entry content/metadata/xattr/identity manifest unchanged at SHA-256
+`8192f7b9b61c321c93e8b4d273b578779c7753aee1fb17f4badff4ae6de49b53`.
+The host still lacks the optional Metal Toolchain, so the Dev bundle has no
+MLX metallib; that does not change the synthetic semantic-control result.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |
@@ -2240,6 +2299,7 @@ Language compatibility profile.
 | Semantic cosine at 100k × 512 dimensions | p95 < 100 ms | ✅ **wall p50/p95 88.81/90.22 ms; CPU p50/p95 89.93/91.26 ms**, down from 307.05/325.41 and 311.46/328.43 ms; **8.42 MiB** incremental footprint p95 (D83) |
 | Semantic cosine with bounded local mapping at 100k × 512 dimensions | p95 < 100 ms | ✅ 9 Aug canonical Release ledger: **wall/CPU p95 63.53/64.54 ms; 0.17 MiB incremental process footprint**; three independent A/B runs also held wall p95 63.49–67.25 ms and CPU p95 64.30–68.07 ms (D318) |
 | D330 accepted-only semantic regression check at 100k × 512 dimensions | p95 < 100 ms | ✅ 11 Aug 20-sample Release development check: **wall/CPU p95 77.09/78.29 ms; 0.16 MiB incremental process footprint; 12/12 results**. This preserves the accepted fast-path budget but is not a correction-heavy or multi-host field baseline. |
+| D346 clean repeated schema-2 semantic current control at 100k × 512 dimensions | p95 < 100 ms | ✅ 13 Aug one-vector wall/CPU p95 maximum **73.92/74.50 ms** across three stable same-identity observations; separate three-vector diagnostic **80.37/81.63 ms**, no cross-identity delta or budget authority |
 | Waveform, 55.9-minute dual channel / 600 buckets | first wall < 150 ms; repeat wall/CPU p95 < 100 ms | ✅ first wall/CPU **109.25/94.81 ms**; repeat wall/CPU p50 **69.22/70.10 ms**, p95 **70.11/71.33 ms**, down from 747.53/754.79 ms; **0.33 MiB** incremental footprint p95; exact fingerprint preserved and replacement changes it (D84) |
 | Spotlight projection, 100k meetings | wall/CPU p95 < 500 ms; absolute/incremental footprint < 160/96 MiB | ✅ wall/CPU p95 **425.64/423.58 ms**, down from 22,085.35/22,720.40 ms; **141.14/76.03 MiB** absolute/incremental footprint p95; exact fingerprint preserved. Synthetic 1k protected named-index delivery: **21.19 ms**, cleanup succeeded (D85) |
 | Detail core read, 2 h / 5k segments | diagnostic | **p50 16.31 ms / p95 17.22 ms** |
