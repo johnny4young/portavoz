@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,444 cases (14 environment-gated) + 91
+Status: the package inventory contains 2,453 cases (14 environment-gated) + 92
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 91
+Meeting Detail tests. The English and Spanish release gates each cover all 92
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -1751,7 +1751,10 @@ SecurityAgent or Notification Center windows block the run. It never asks for a
 window title, bounds, dialog text, control, or credential, and negative-layer
 Notification Center desktop surfaces do not count. Both probes have explicit
 timeouts and exact-shape validation; unavailable or malformed evidence fails
-closed. The preflight never dismisses a prompt or terminates another process.
+closed. The preflight never dismisses a prompt or terminates another process,
+and the UI-test bundle installs no external-prompt interruption handler. A
+privacy or authentication prompt raised after preflight therefore invalidates
+the host run without allowing automation to answer the user's decision.
 It cannot prevent unrelated automation from starting after its second sample,
 so later connection invalidation remains a result-bundle/host classification,
 not automatically a Portavoz crash.
@@ -2281,6 +2284,54 @@ app's 184-entry content/metadata/xattr/identity manifest unchanged at SHA-256
 The host still lacks the optional Metal Toolchain, so the Dev bundle has no
 MLX metallib; that does not change the synthetic semantic-control result.
 
+D347 adds the fail-closed cross-host qualification layer without inventing
+field evidence. `scripts/semantic_scale_manifest.py cross-host` revalidates and
+embeds every supplied D346 receipt, rejects diagnostics, duplicate profiles,
+unsupported memory/OS identities, incoherent host target triples, and any
+source, Swift/Xcode, profile, fixture, query-pack, stage-policy, scale, or
+configuration drift. Only Apple-Silicon hosts qualify. The required set is one
+receipt for each shared resource profile: 7–10 GiB (`memory-8gb`), 14–18 GiB
+(`memory-16gb`), and at least
+32 GiB (`reference`). Those three receipts must collectively cover Sequoia
+(major 15) and Tahoe (major 26). This is the established three-profile/two-OS
+contract, not an unapproved six-cell Cartesian expansion.
+
+The host-derived Swift target may differ only when its architecture and macOS
+major match the sealed host; Swift and Xcode version/build identity must remain
+exact. Each host's Release binary stays distinct and fully retained. The
+matrix embeds the complete aggregate receipts, recomputes every coverage,
+comparability, outcome, reason, and authority surface, and seals the result
+with its own SHA-256. Missing profiles or an OS family produce
+`incomplete-required-matrix` with cross-host authority `none`. A complete set
+reports either a current-control budget pass or fail; even a pass has no
+cross-host regression, retrieval quality, answer quality, or engine-selection
+authority.
+
+The tracked
+`docs/evidence/semantic-scale-cross-host-readiness-20260819.json` contains the
+only real receipt currently available: Tahoe on the 36 GiB reference host. It
+is therefore an explicit 1/3 incomplete result, naming the missing 8 GiB,
+16 GiB, and Sequoia evidence rather than synthesizing it. Both semantic
+collectors accept `PORTAVOZ_SEMANTIC_SOURCE_ROOT`, so the current validation
+tool can build and measure a separate clean worktree at the exact D345 source
+commit named by that receipt. Tool and source roots never become one dirty
+identity by accident.
+
+The final D347 gate passed 416 Python tooling tests, repository hygiene, the
+strict current-SDK warnings-as-errors build, 2,453 package tests with 14
+explicit model/environment skips and zero failures, ShellCheck/shfmt for both
+semantic runners, and strict SwiftLint with zero violations across 675 files.
+Finalized macOS 26.5.2 (25F84) result bundles independently report 92/92
+English plus 92/92 Spanish XCUITest cases, with no failures, skips, or expected
+failures; `AppleKeyboardUIMode` returned to `0` and no Portavoz crash report
+appeared. The Developer-ID-signed `app.portavoz.mac.dev` bundle was reinstalled
+and deeply verified. An exact before/after comparison kept the notarized
+release app's 184-entry content/metadata/xattr/identity manifest unchanged at
+SHA-256 `008b0ffee8537125c66bfd8b5e3a45deb9744d064215318e717aa0dbc06ed33f`.
+The host still lacks the optional Metal Toolchain, so the local Dev bundle has
+no MLX metallib; that does not change the D347 evidence contract or its honest
+1/3 outcome.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |
@@ -2300,6 +2351,7 @@ MLX metallib; that does not change the synthetic semantic-control result.
 | Semantic cosine with bounded local mapping at 100k × 512 dimensions | p95 < 100 ms | ✅ 9 Aug canonical Release ledger: **wall/CPU p95 63.53/64.54 ms; 0.17 MiB incremental process footprint**; three independent A/B runs also held wall p95 63.49–67.25 ms and CPU p95 64.30–68.07 ms (D318) |
 | D330 accepted-only semantic regression check at 100k × 512 dimensions | p95 < 100 ms | ✅ 11 Aug 20-sample Release development check: **wall/CPU p95 77.09/78.29 ms; 0.16 MiB incremental process footprint; 12/12 results**. This preserves the accepted fast-path budget but is not a correction-heavy or multi-host field baseline. |
 | D346 clean repeated schema-2 semantic current control at 100k × 512 dimensions | p95 < 100 ms | ✅ 13 Aug one-vector wall/CPU p95 maximum **73.92/74.50 ms** across three stable same-identity observations; separate three-vector diagnostic **80.37/81.63 ms**, no cross-identity delta or budget authority |
+| D347 cross-host semantic current-control matrix | 8 GiB + 16 GiB + reference; Sequoia + Tahoe | **Incomplete 1/3**: Tahoe/reference present; 8 GiB, 16 GiB, and Sequoia receipts missing; cross-host authority `none` |
 | Waveform, 55.9-minute dual channel / 600 buckets | first wall < 150 ms; repeat wall/CPU p95 < 100 ms | ✅ first wall/CPU **109.25/94.81 ms**; repeat wall/CPU p50 **69.22/70.10 ms**, p95 **70.11/71.33 ms**, down from 747.53/754.79 ms; **0.33 MiB** incremental footprint p95; exact fingerprint preserved and replacement changes it (D84) |
 | Spotlight projection, 100k meetings | wall/CPU p95 < 500 ms; absolute/incremental footprint < 160/96 MiB | ✅ wall/CPU p95 **425.64/423.58 ms**, down from 22,085.35/22,720.40 ms; **141.14/76.03 MiB** absolute/incremental footprint p95; exact fingerprint preserved. Synthetic 1k protected named-index delivery: **21.19 ms**, cleanup succeeded (D85) |
 | Detail core read, 2 h / 5k segments | diagnostic | **p50 16.31 ms / p95 17.22 ms** |

@@ -208,8 +208,11 @@ visible release blocker rather than being inferred from deterministic tests.
   the 100 ms target. The separate three-vector diagnostic identity measured
   80.374/81.627 ms but has no budget authority. Corpus-seed variation remains
   visible and diagnostic; raw manifests were not retained. This closes the
-  current Mac16,6/Tahoe control-budget uncertainty only. Repeat the accepted
-  control across required 8/16 GiB profiles and both supported OS families.
+  current Mac16,6/Tahoe control-budget uncertainty only. D347 now validates the
+  three-profile/two-OS contract and truthfully retains the current 1/3 result:
+  the reference profile and Tahoe are present, while 8 GiB, 16 GiB, and
+  Sequoia evidence remain missing. Repeat the accepted control across those
+  required profiles and the missing supported OS family.
   Until then SEARCH-0b remains open for cross-host and private quality field
   evidence, and neither receipt authorizes chunk or engine selection.
 - **Formal M3 DER**: correct the Speaker column of the draft RTTM in `~/Desktop/portavoz-verificacion/reunion-2026-07-07.md` → measure with `portavoz-cli der --file system.wav --reference <rttm corregido>`.

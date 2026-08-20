@@ -8033,6 +8033,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/evidence/semantic-scale-current-control-20260813.json")
         let semanticThreeVariant = try Self.contents(
             of: "docs/evidence/semantic-scale-three-variant-diagnostic-20260813.json")
+        let semanticCrossHost = try Self.contents(
+            of: "docs/evidence/semantic-scale-cross-host-readiness-20260819.json")
         let spotlightRunner = try Self.contents(
             of: "scripts/run-spotlight-scale-baseline.sh")
         let detailRunner = try Self.contents(of: "scripts/run-detail-ui-baseline.sh")
@@ -8084,9 +8086,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(semanticCLI.contains("usage.ri_phys_footprint"))
         XCTAssertTrue(semanticRunner.contains("swift build -c release --product portavoz-cli"))
         XCTAssertTrue(semanticRunner.contains(#"for raw_size in "${checkpoints[@]}""#))
-        XCTAssertTrue(semanticRunner.contains("semantic_scale_manifest.py source"))
-        XCTAssertTrue(semanticRunner.contains("semantic_scale_manifest.py snapshot"))
-        XCTAssertTrue(semanticRunner.contains("semantic_scale_manifest.py assemble"))
+        XCTAssertTrue(semanticRunner.contains(#""$MANIFEST_TOOL" source"#))
+        XCTAssertTrue(semanticRunner.contains(#""$MANIFEST_TOOL" snapshot"#))
+        XCTAssertTrue(semanticRunner.contains(#""$MANIFEST_TOOL" assemble"#))
+        XCTAssertTrue(semanticRunner.contains(
+            #"SOURCE_ROOT="${PORTAVOZ_SEMANTIC_SOURCE_ROOT:-$TOOL_ROOT}""#))
         XCTAssertTrue(semanticManifest.contains(#"MANIFEST_KIND = "semantic-scale-run-manifest""#))
         XCTAssertTrue(semanticManifest.contains("identitySHA256"))
         XCTAssertTrue(semanticManifest.contains("retentionEligible"))
@@ -8094,6 +8098,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(semanticManifest.contains("usedByMeasuredVectors"))
         XCTAssertTrue(semanticManifest.contains(
             #"CONTROL_BASELINE_KIND = "semantic-scale-control-baseline""#))
+        XCTAssertTrue(semanticManifest.contains(
+            #"CROSS_HOST_MATRIX_KIND = "semantic-scale-cross-host-matrix""#))
         XCTAssertTrue(semanticManifest.contains(
             #""evaluatedStage": "measuredQueries""#))
         XCTAssertTrue(semanticManifest.contains(
@@ -8108,6 +8114,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             #"PORTAVOZ_SEMANTIC_SCALE_VARIANTS=3"#))
         XCTAssertTrue(semanticControlRunner.contains(
             #"module.validate_control_baseline"#))
+        XCTAssertTrue(semanticControlRunner.contains(
+            #"PORTAVOZ_SEMANTIC_SOURCE_ROOT="$ROOT""#))
         XCTAssertTrue(semanticControl.contains(
             #""outcome": "current-control-budget-pass""#))
         XCTAssertTrue(semanticControl.contains(
@@ -8116,6 +8124,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             #""outcome": "stable-three-variant-diagnostic""#))
         XCTAssertTrue(semanticThreeVariant.contains(
             #""currentControlBudget": "none""#))
+        XCTAssertTrue(semanticCrossHost.contains(
+            #""outcome": "incomplete-required-matrix""#))
+        XCTAssertTrue(semanticCrossHost.contains(
+            #""observedReceiptCount": 1"#))
+        XCTAssertTrue(semanticCrossHost.contains(
+            #""crossHostBudget": "none""#))
+        XCTAssertTrue(semanticCrossHost.contains(
+            #""missing-operating-system:sequoia""#))
+        XCTAssertTrue(decisions.contains(
+            "## D347 — Cross-host semantic control requires real profile and OS receipts"))
         XCTAssertTrue(waveformCLI.contains("withWaveformTemporaryDirectory"))
         XCTAssertTrue(waveformCLI.contains("FileManager.default.copyItem"))
         XCTAssertTrue(waveformCLI.contains("usage.ri_phys_footprint"))

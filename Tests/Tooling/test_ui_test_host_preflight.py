@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "check-ui-test-host.py"
 WINDOW_PROBE = ROOT / "scripts" / "ui-test-window-probe.swift"
+UI_TEST_SUPPORT = ROOT / "Tests" / "PortavozUITests" / "UITestSupport.swift"
 SPEC = importlib.util.spec_from_file_location("check_ui_test_host", SCRIPT)
 preflight = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
@@ -225,6 +226,14 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertIn("with timeout of 3 seconds", target)
         self.assertNotIn("killall testmanagerd", target)
         self.assertNotIn("System Events", target)
+
+    def test_ui_test_bundle_never_answers_external_prompts(self):
+        source = UI_TEST_SUPPORT.read_text(encoding="utf-8")
+
+        self.assertNotIn("addUIInterruptionMonitor", source)
+        self.assertNotIn("com.apple.UserNotificationCenter", source)
+        self.assertNotIn("typeKey(.escape", source)
+        self.assertIn("installs no interruption monitor", source)
 
     def test_ci_and_hygiene_keep_the_preflight_regressions_blocking(self):
         workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(

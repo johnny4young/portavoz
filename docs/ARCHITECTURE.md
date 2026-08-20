@@ -1044,6 +1044,23 @@ retrieval found no citation, not a prerequisite for first evidence. The
 resource and quality harnesses prepare their disposable corpus before the
 measured query, so benchmark setup does not weaken this product invariant.
 
+Semantic performance evidence is a separate, content-free boundary. A
+schema-2 Release matrix seals clean source, binary, Apple toolchain, host,
+profile, synthetic fixture/query pack, configuration, stages, and scales.
+Three stable same-host matrices become one aggregate current-control receipt.
+The cross-host comparator then requires one such canonical receipt for each of
+the shared 8 GiB, 16 GiB, and reference memory profiles, with Sequoia and Tahoe
+both represented. Source, Swift/Xcode versions, semantic profile, fixture, and
+configuration must remain exact. The host-derived Swift target and Release
+binary remain sealed per receipt and may differ only with a coherent supported
+Apple-Silicon host.
+Incomplete profile or OS coverage has no cross-host authority; a complete
+matrix may report only the existing 100 ms current-control budget result, never
+retrieval quality, answer quality, a cross-host regression delta, or engine
+selection. Collection tooling may run against a separate clean source
+worktree so later validation code can reproduce the exact source commit named
+by an earlier receipt without dirtying that checkout.
+
 PortavozCore owns one reusable `DurableMaintenanceGate`. The macOS composition
 root maps its lock-protected capture mirror through the pure resource policy
 and injects the gate into both ApplicationKit semantic indexing and
@@ -3912,6 +3929,10 @@ Swift 6 CoreGraphics probe reads only on-screen window owner and layer metadata
 and rejects visible SecurityAgent or Notification Center alerts. It never reads
 a window title, dismisses a prompt, kills the host-wide test service, or
 terminates another process. Probe timeout or malformed output fails closed.
+The UI-test bundle likewise installs no interruption monitor for external
+system prompts: a privacy or authentication choice that appears after preflight
+remains user-owned and invalidates that host run instead of being answered by
+automation.
 This proves only that the host was quiet at those samples; automation started
 afterward remains an external race that the result bundle must classify.
 Visual-only screenshot
@@ -4179,12 +4200,12 @@ silently.
 
 ## Quality evidence
 
-The current 11 Aug 2026 local acceptance inventory, with longer-running
+The current 20 Aug 2026 local acceptance inventory, with longer-running
 reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,377 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,453 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -4192,13 +4213,13 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 656
+- strict SwiftLint remains a blocking CI gate and is clean across all 675
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 355 deterministic tooling cases and the 169-case architecture subset pass;
+- 416 deterministic tooling cases and the 175-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
-- 80 XCUITest cases per locale define the 160-case bilingual release gate;
+- 92 XCUITest cases per locale define the 184-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

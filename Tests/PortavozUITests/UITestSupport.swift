@@ -1,31 +1,11 @@
 import XCTest
 
-class PortavozUITestCase: XCTestCase {
-    private var notificationCenterInterruptionMonitor: NSObjectProtocol?
-
-    override func setUp() {
-        super.setUp()
-        notificationCenterInterruptionMonitor = addUIInterruptionMonitor(
-            withDescription: "Dismiss external Notification Center banners"
-        ) { _ in
-            let notificationCenter = XCUIApplication(
-                bundleIdentifier: "com.apple.UserNotificationCenter")
-            guard notificationCenter.dialogs.firstMatch.exists else {
-                return false
-            }
-            notificationCenter.typeKey(.escape, modifierFlags: [])
-            return true
-        }
-    }
-
-    override func tearDown() {
-        if let notificationCenterInterruptionMonitor {
-            removeUIInterruptionMonitor(notificationCenterInterruptionMonitor)
-        }
-        notificationCenterInterruptionMonitor = nil
-        super.tearDown()
-    }
-}
+/// Shared base for Portavoz UI journeys.
+///
+/// This type deliberately installs no interruption monitor. System-owned
+/// privacy or authentication prompts require a user's decision; the read-only
+/// host preflight reports them instead of allowing tests to answer them.
+class PortavozUITestCase: XCTestCase {}
 
 enum UITestLocale {
     static var environmentLocale: String? {

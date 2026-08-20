@@ -25,6 +25,15 @@ THREE_VARIANT_BASELINE = (
     / "evidence"
     / "semantic-scale-three-variant-diagnostic-20260813.json"
 )
+CROSS_HOST_READINESS = (
+    ROOT
+    / "docs"
+    / "evidence"
+    / "semantic-scale-cross-host-readiness-20260819.json"
+)
+RESOURCE_BASELINE_MATRIX = (
+    ROOT / "docs" / "evidence" / "resource-baseline-matrix.json"
+)
 SPEC = importlib.util.spec_from_file_location("semantic_scale_manifest", SCRIPT)
 manifest = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
@@ -191,6 +200,59 @@ def repeated_manifests(*, variants=1, clean=True):
         )
         for index in range(3)
     ]
+
+
+def current_control_receipt(
+    profile,
+    operating_system_major,
+    *,
+    budget_pass=True,
+    generated_at="2026-08-13T09:00:00Z",
+):
+    starting_wall = 60 if budget_pass else 105
+    documents = [
+        canonical_manifest(
+            wall=starting_wall + index,
+            generated_at=f"2026-08-13T08:0{index}:00Z",
+        )
+        for index in range(3)
+    ]
+    receipt = manifest.build_control_baseline(documents, generated_at)
+    profile_identity = {
+        "memory-8gb": (8 * manifest.GIBIBYTE, "Mac14,2", 8),
+        "memory-16gb": (16 * manifest.GIBIBYTE, "Mac15,3", 10),
+        "reference": (36 * manifest.GIBIBYTE, "Mac16,6", 14),
+    }[profile]
+    os_identity = {
+        15: ("Version 15.7.4 (Build 24G517)", "24G517"),
+        26: ("Version 26.5.2 (Build 25F84)", "25F84"),
+    }[operating_system_major]
+    payload = receipt["identity"]["payload"]
+    payload["host"] = {
+        "operatingSystem": os_identity[0],
+        "operatingSystemBuild": os_identity[1],
+        "architecture": "arm64",
+        "hardwareModel": profile_identity[1],
+        "processorCount": profile_identity[2],
+        "physicalMemoryBytes": profile_identity[0],
+    }
+    payload["binary"] = {
+        "sha256": {
+            "memory-8gb": "8",
+            "memory-16gb": "1",
+            "reference": "f",
+        }[profile]
+        * 64,
+        "sizeBytes": 80_000_000 + profile_identity[2],
+    }
+    payload["toolchain"]["target"] = (
+        f"arm64-apple-macosx{operating_system_major}.0"
+    )
+    receipt["identity"]["sha256"] = manifest.hashlib.sha256(
+        manifest.canonical_json(payload)
+    ).hexdigest()
+    receipt["receiptSHA256"] = manifest.control_receipt_sha256(receipt)
+    return manifest.validate_control_baseline(receipt, "synthetic receipt")
 
 
 class SemanticScaleManifestTests(unittest.TestCase):
@@ -631,6 +693,224 @@ class SemanticScaleManifestTests(unittest.TestCase):
                 f"raw semantic manifest must not be retained: {path.name}",
             )
 
+    def test_cross_host_matrix_is_incomplete_for_the_only_real_receipt(self):
+        receipt = manifest.read_json(CONTROL_BASELINE, "canonical receipt")
+        matrix = manifest.build_cross_host_matrix(
+            [receipt], "2026-08-19T00:00:00Z"
+        )
+
+        self.assertEqual(matrix["outcome"], "incomplete-required-matrix")
+        self.assertFalse(matrix["coverage"]["complete"])
+        self.assertEqual(matrix["coverage"]["observedReceiptCount"], 1)
+        self.assertEqual(
+            matrix["reasons"],
+            [
+                "missing-profile:memory-8gb",
+                "missing-profile:memory-16gb",
+                "missing-operating-system:sequoia",
+            ],
+        )
+        self.assertEqual(matrix["authority"]["crossHostBudget"], "none")
+        self.assertEqual(
+            matrix, manifest.validate_cross_host_matrix(matrix, "matrix")
+        )
+        with self.assertRaisesRegex(manifest.ManifestError, "predates"):
+            manifest.build_cross_host_matrix(
+                [receipt], "2026-08-13T10:00:00Z"
+            )
+
+    def test_cross_host_profiles_match_the_shared_resource_contract(self):
+        resource = manifest.read_json(
+            RESOURCE_BASELINE_MATRIX, "resource baseline matrix"
+        )
+
+        self.assertEqual(
+            manifest.cross_host_policy()["requiredProfiles"],
+            resource["profiles"],
+        )
+
+    def test_cross_host_matrix_requires_three_profiles_and_both_os_families(self):
+        receipts = [
+            current_control_receipt("memory-8gb", 15),
+            current_control_receipt("memory-16gb", 26),
+            current_control_receipt("reference", 26),
+        ]
+        matrix = manifest.build_cross_host_matrix(
+            receipts, "2026-08-19T00:00:00Z"
+        )
+
+        self.assertEqual(
+            matrix["outcome"], "complete-required-matrix-budget-pass"
+        )
+        self.assertTrue(matrix["coverage"]["complete"])
+        self.assertEqual(matrix["coverage"]["observedReceiptCount"], 3)
+        self.assertEqual(
+            [
+                receipt["identity"]["payload"]["toolchain"]["target"]
+                for receipt in matrix["receipts"]
+            ],
+            [
+                "arm64-apple-macosx15.0",
+                "arm64-apple-macosx26.0",
+                "arm64-apple-macosx26.0",
+            ],
+        )
+        self.assertEqual(
+            len(
+                {
+                    receipt["identity"]["payload"]["binary"]["sha256"]
+                    for receipt in matrix["receipts"]
+                }
+            ),
+            3,
+        )
+        self.assertEqual(
+            matrix["authority"]["crossHostBudget"],
+            "required-profile-and-os-current-control",
+        )
+
+    def test_cross_host_complete_budget_miss_is_a_fail_not_a_pass(self):
+        receipts = [
+            current_control_receipt("memory-8gb", 15),
+            current_control_receipt("memory-16gb", 26, budget_pass=False),
+            current_control_receipt("reference", 26),
+        ]
+        matrix = manifest.build_cross_host_matrix(
+            receipts, "2026-08-19T00:00:00Z"
+        )
+
+        self.assertEqual(
+            matrix["outcome"], "complete-required-matrix-budget-fail"
+        )
+        self.assertEqual(
+            matrix["reasons"], ["budget-miss-profile:memory-16gb"]
+        )
+        self.assertEqual(
+            matrix["authority"]["crossHostBudget"],
+            "required-profile-and-os-current-control",
+        )
+
+    def test_cross_host_rejects_duplicate_profile_diagnostic_and_drift(self):
+        first = current_control_receipt("memory-8gb", 15)
+        with self.assertRaisesRegex(manifest.ManifestError, "repeats a control receipt"):
+            manifest.build_cross_host_matrix(
+                [first, copy.deepcopy(first)], "2026-08-19T00:00:00Z"
+            )
+
+        duplicate_profile = current_control_receipt("memory-8gb", 26)
+        with self.assertRaisesRegex(manifest.ManifestError, "repeats profile"):
+            manifest.build_cross_host_matrix(
+                [first, duplicate_profile], "2026-08-19T00:00:00Z"
+            )
+
+        diagnostic = manifest.build_control_baseline(
+            repeated_manifests(variants=3), "2026-08-13T09:00:00Z"
+        )
+        with self.assertRaisesRegex(
+            manifest.ManifestError, "not a canonical current control"
+        ):
+            manifest.build_cross_host_matrix(
+                [diagnostic], "2026-08-19T00:00:00Z"
+            )
+
+        drift = current_control_receipt("memory-16gb", 26)
+        drift["identity"]["payload"]["source"]["commit"] = "d" * 40
+        drift["identity"]["sha256"] = manifest.hashlib.sha256(
+            manifest.canonical_json(drift["identity"]["payload"])
+        ).hexdigest()
+        drift["receiptSHA256"] = manifest.control_receipt_sha256(drift)
+        with self.assertRaisesRegex(manifest.ManifestError, "workload identity changed"):
+            manifest.build_cross_host_matrix(
+                [first, drift], "2026-08-19T00:00:00Z"
+            )
+
+    def test_cross_host_rejects_unsupported_host_and_incoherent_target(self):
+        receipt = current_control_receipt("memory-8gb", 15)
+        for label, mutate, message in (
+            (
+                "memory",
+                lambda item: item["identity"]["payload"]["host"].update(
+                    physicalMemoryBytes=24 * manifest.GIBIBYTE
+                ),
+                "required memory profile",
+            ),
+            (
+                "operating system",
+                lambda item: item["identity"]["payload"]["host"].update(
+                    operatingSystem="Version 14.7.7 (Build 23H723)",
+                    operatingSystemBuild="23H723",
+                ),
+                "operating-system major is unsupported",
+            ),
+            (
+                "target",
+                lambda item: item["identity"]["payload"]["toolchain"].update(
+                    target="arm64-apple-macosx26.0"
+                ),
+                "Swift target does not match",
+            ),
+            (
+                "architecture",
+                lambda item: (
+                    item["identity"]["payload"]["host"].update(
+                        architecture="x86_64"
+                    ),
+                    item["identity"]["payload"]["toolchain"].update(
+                        target="x86_64-apple-macosx15.0"
+                    ),
+                ),
+                "not an Apple-Silicon host",
+            ),
+        ):
+            with self.subTest(label=label):
+                changed = copy.deepcopy(receipt)
+                mutate(changed)
+                changed["identity"]["sha256"] = manifest.hashlib.sha256(
+                    manifest.canonical_json(changed["identity"]["payload"])
+                ).hexdigest()
+                changed["receiptSHA256"] = manifest.control_receipt_sha256(changed)
+                with self.assertRaisesRegex(manifest.ManifestError, message):
+                    manifest.build_cross_host_matrix(
+                        [changed], "2026-08-19T00:00:00Z"
+                    )
+
+    def test_cross_host_validator_rejects_tampered_derived_surfaces(self):
+        matrix = manifest.build_cross_host_matrix(
+            [current_control_receipt("reference", 26)],
+            "2026-08-19T00:00:00Z",
+        )
+        mutations = (
+            lambda item: item["coverage"].update(complete=True),
+            lambda item: item["coverage"].update(observedReceiptCount=True),
+            lambda item: item["comparability"].update(
+                workloadIdentitySHA256="f" * 64
+            ),
+            lambda item: item["authority"].update(
+                crossHostBudget="required-profile-and-os-current-control"
+            ),
+            lambda item: item.update(outcome="complete-required-matrix-budget-pass"),
+            lambda item: item.update(matrixSHA256="f" * 64),
+        )
+        for index, mutate in enumerate(mutations):
+            changed = copy.deepcopy(matrix)
+            mutate(changed)
+            if index < len(mutations) - 1:
+                changed["matrixSHA256"] = manifest.cross_host_matrix_sha256(
+                    changed
+                )
+            with self.assertRaises(manifest.ManifestError):
+                manifest.validate_cross_host_matrix(changed, "matrix")
+
+    def test_tracked_cross_host_readiness_is_truthful_and_recomputable(self):
+        matrix = manifest.read_json(CROSS_HOST_READINESS, "cross-host readiness")
+
+        manifest.validate_cross_host_matrix(matrix, "cross-host readiness")
+        self.assertEqual(matrix["outcome"], "incomplete-required-matrix")
+        self.assertEqual(matrix["coverage"]["observedReceiptCount"], 1)
+        self.assertFalse(matrix["coverage"]["complete"])
+        self.assertEqual(matrix["authority"]["crossHostBudget"], "none")
+        self.assertEqual(len(matrix["receipts"]), 1)
+
     def test_historical_90_and_92_ms_reports_are_explicitly_not_comparable(self):
         documents = [
             manifest.read_json(
@@ -775,11 +1055,11 @@ class SemanticScaleManifestTests(unittest.TestCase):
     def test_runner_fences_source_before_build_and_after_collection(self):
         source = RUNNER.read_text(encoding="utf-8")
 
-        before_build = source.index("semantic_scale_manifest.py source")
+        before_build = source.index('"$MANIFEST_TOOL" source')
         build = source.index("swift build -c release --product portavoz-cli")
-        snapshot = source.index("semantic_scale_manifest.py snapshot")
+        snapshot = source.index('"$MANIFEST_TOOL" snapshot')
         measurement = source.index('"$ROOT/.build/release/portavoz-cli" bench-semantic')
-        assemble = source.index("semantic_scale_manifest.py assemble")
+        assemble = source.index('"$MANIFEST_TOOL" assemble')
         self.assertLess(before_build, build)
         self.assertLess(build, snapshot)
         self.assertLess(snapshot, measurement)
@@ -788,6 +1068,8 @@ class SemanticScaleManifestTests(unittest.TestCase):
         self.assertIn('--snapshot "$PARTS/run.snapshot"', source)
         self.assertIn('VARIANTS="${PORTAVOZ_SEMANTIC_SCALE_VARIANTS:-1}"', source)
         self.assertIn('--variants "$VARIANTS"', source)
+        self.assertIn('SOURCE_ROOT="${PORTAVOZ_SEMANTIC_SOURCE_ROOT:-$TOOL_ROOT}"', source)
+        self.assertIn('MANIFEST_TOOL="$TOOL_ROOT/scripts/semantic_scale_manifest.py"', source)
 
         control_source = CONTROL_RUNNER.read_text(encoding="utf-8")
         source_before = control_source.index('source-before.json')
@@ -804,6 +1086,14 @@ class SemanticScaleManifestTests(unittest.TestCase):
         self.assertIn('for observation in 1 2 3', control_source)
         self.assertIn('if not source.get("worktreeClean")', control_source)
         self.assertIn('module.validate_control_baseline', control_source)
+        self.assertIn(
+            'SOURCE_ROOT="${PORTAVOZ_SEMANTIC_SOURCE_ROOT:-$TOOL_ROOT}"',
+            control_source,
+        )
+        self.assertEqual(
+            control_source.count('PORTAVOZ_SEMANTIC_SOURCE_ROOT="$ROOT"'),
+            2,
+        )
 
         perf_source = PERF_RUNNER.read_text(encoding="utf-8")
         self.assertIn('payload.get("kind") == "semantic-scale-run-manifest"', perf_source)
@@ -826,6 +1116,29 @@ class SemanticScaleManifestTests(unittest.TestCase):
         self.assertEqual(result.returncode, 64)
         self.assertIn(
             "PORTAVOZ_SEMANTIC_SCALE_VARIANTS must be between 1 and 8",
+            result.stderr,
+        )
+        self.assertNotIn("Building for production", result.stdout + result.stderr)
+
+    def test_runner_rejects_unreadable_external_source_root_before_build(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run(
+                [str(RUNNER), str(Path(directory) / "manifest.json")],
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "PORTAVOZ_SEMANTIC_SOURCE_ROOT": str(
+                        Path(directory) / "missing-source"
+                    ),
+                },
+            )
+
+        self.assertEqual(result.returncode, 64)
+        self.assertIn(
+            "PORTAVOZ_SEMANTIC_SOURCE_ROOT must be a readable directory",
             result.stderr,
         )
         self.assertNotIn("Building for production", result.stdout + result.stderr)

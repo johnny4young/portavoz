@@ -4,9 +4,14 @@
 # their validated content-free aggregate receipts.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RUNNER="$ROOT/scripts/run-semantic-scale-baseline.sh"
-MANIFEST_TOOL="$ROOT/scripts/semantic_scale_manifest.py"
+TOOL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE_ROOT="${PORTAVOZ_SEMANTIC_SOURCE_ROOT:-$TOOL_ROOT}"
+if ! ROOT="$(cd "$SOURCE_ROOT" 2>/dev/null && pwd)"; then
+    echo "error: PORTAVOZ_SEMANTIC_SOURCE_ROOT must be a readable directory" >&2
+    exit 64
+fi
+RUNNER="$TOOL_ROOT/scripts/run-semantic-scale-baseline.sh"
+MANIFEST_TOOL="$TOOL_ROOT/scripts/semantic_scale_manifest.py"
 CANONICAL_OUTPUT="${1:-/private/tmp/portavoz-semantic-current-control.json}"
 DIAGNOSTIC_OUTPUT="${2:-/private/tmp/portavoz-semantic-three-variant.json}"
 PARTS="$(mktemp -d /private/tmp/portavoz-semantic-control.XXXXXX)"
@@ -40,10 +45,12 @@ for observation in 1 2 3; do
     PORTAVOZ_SEMANTIC_SCALE_SIZES=1000,10000,50000,100000 \
         PORTAVOZ_SEMANTIC_SCALE_RUNS=20 \
         PORTAVOZ_SEMANTIC_SCALE_VARIANTS=1 \
+        PORTAVOZ_SEMANTIC_SOURCE_ROOT="$ROOT" \
         "$RUNNER" "$PARTS/canonical-$observation.json"
     PORTAVOZ_SEMANTIC_SCALE_SIZES=1000,10000,50000,100000 \
         PORTAVOZ_SEMANTIC_SCALE_RUNS=20 \
         PORTAVOZ_SEMANTIC_SCALE_VARIANTS=3 \
+        PORTAVOZ_SEMANTIC_SOURCE_ROOT="$ROOT" \
         "$RUNNER" "$PARTS/three-variant-$observation.json"
 done
 

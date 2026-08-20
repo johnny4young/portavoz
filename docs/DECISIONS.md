@@ -12366,6 +12366,9 @@ and SecurityAgent windows. It never reads `kCGWindowName`, bounds, dialog text,
 controls, or credentials. The orchestrator applies explicit timeouts, validates
 the exact JSON shape, and fails closed when either inventory is unavailable or
 malformed. It reports only blocker categories and never dismisses a prompt.
+The UI-test bundle installs no interruption monitor for external system
+prompts, so it cannot answer a privacy or authentication decision that appears
+after the final sample.
 
 **Consequences:** already-present authentication alerts, notification alerts,
 Xcode test commands, and UI runners now fail before Portavoz spends a build or
@@ -12478,3 +12481,52 @@ engine selection. `scripts/run-semantic-control-baseline.sh` makes the protocol
 repeatable: it fails fast on a dirty checkout, alternates the one- and
 three-vector matrices, rechecks source before publication, validates both
 receipts, and writes them owner-only without retaining raw manifests.
+
+## D347 — Cross-host semantic control requires real profile and OS receipts (Aug 2026)
+
+**Context:** D346 proves the 100 ms current-control budget only on one 36 GiB
+Mac16,6 running Tahoe. It defines no consumer that can combine aggregate
+receipts without accidentally accepting the diagnostic three-vector identity,
+mixing workloads, double-counting one memory profile, or promoting missing
+Sequoia evidence into a pass. Rebuilding the later evidence tooling directly
+inside the D345 source checkout would also make that source dirty and destroy
+the identity the next host must reproduce.
+
+**Decision:** add a self-verifying `semantic-scale-cross-host-matrix`. It
+accepts one to three complete D346 aggregate receipts but only the canonical
+one-vector scope. The required set is one receipt in each existing shared
+resource profile: 7–10 GiB, 14–18 GiB, and at least 32 GiB reference memory.
+The three receipts collectively cover macOS 15 Sequoia and macOS 26 Tahoe.
+This follows the established cross-host contract; it does not silently expand
+the requirement into every profile/OS Cartesian pair.
+
+Source, clean state, Swift and Xcode version/build, Release configuration,
+semantic compatibility profile, asset policy, synthetic fixture/query pack,
+stage policy, and canonical scales must be byte-for-byte equivalent. Host
+identity may differ. The Swift target is retained per receipt and must match
+that host's architecture and OS major, so it is not falsely treated as one
+cross-OS toolchain constant. The Release binary is likewise retained per host
+and excluded from the shared workload identity. Duplicate receipts or
+profiles, unsupported hosts, incoherent targets, and workload drift produce no
+matrix. Cross-host qualification remains Apple-Silicon-only.
+
+Every output embeds the validated aggregate receipts and exactly recomputes its
+profile/OS coverage, shared workload identity, outcome, reasons, authority, and
+matrix SHA-256. Missing profile or OS coverage is
+`incomplete-required-matrix` with no cross-host authority. A complete matrix
+may report only whether every receipt met the established 100 ms wall-and-CPU
+current-control budget. It never derives a cross-host performance ratio or
+claims retrieval quality, answer quality, chunk policy, serving authority, or
+engine selection.
+
+Both collectors separate their current validation-tool root from an optional
+`PORTAVOZ_SEMANTIC_SOURCE_ROOT`. This lets field hosts use the D347 validator
+while building a separate clean worktree at the exact D345 commit carried by
+the reference receipt. Source inspection, Release build, binary hashing, and
+measurement all remain rooted in that clean checkout.
+
+**Consequences:** the first tracked matrix embeds only the real Tahoe/reference
+receipt and is honestly 1/3 complete. It names 8 GiB, 16 GiB, and Sequoia as
+missing and carries no cross-host budget authority. No unavailable hardware
+evidence is fabricated, and SEARCH-0b remains open for those field receipts and
+owner-supplied private real-meeting quality evidence.

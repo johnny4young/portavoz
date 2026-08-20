@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime as dt
 import hashlib
 import json
@@ -22,10 +23,33 @@ SCHEMA_VERSION = 2
 MANIFEST_KIND = "semantic-scale-run-manifest"
 COMPARISON_KIND = "semantic-scale-comparison"
 CONTROL_BASELINE_KIND = "semantic-scale-control-baseline"
+CROSS_HOST_MATRIX_KIND = "semantic-scale-cross-host-matrix"
 CANONICAL_SCALES = (1_000, 10_000, 50_000, 100_000)
 CONTROL_OBSERVATION_COUNT = 3
 MAXIMUM_TIMING_RATIO = 1.25
 HUNDRED_THOUSAND_BUDGET_MILLISECONDS = 100.0
+GIBIBYTE = 1_073_741_824
+CROSS_HOST_PROFILE_SPECS = (
+    {
+        "id": "memory-8gb",
+        "minimumPhysicalMemoryBytes": 7 * GIBIBYTE,
+        "maximumPhysicalMemoryBytes": 10 * GIBIBYTE,
+    },
+    {
+        "id": "memory-16gb",
+        "minimumPhysicalMemoryBytes": 14 * GIBIBYTE,
+        "maximumPhysicalMemoryBytes": 18 * GIBIBYTE,
+    },
+    {
+        "id": "reference",
+        "minimumPhysicalMemoryBytes": 32 * GIBIBYTE,
+        "maximumPhysicalMemoryBytes": None,
+    },
+)
+CROSS_HOST_OPERATING_SYSTEMS = (
+    {"family": "sequoia", "majorVersion": 15},
+    {"family": "tahoe", "majorVersion": 26},
+)
 CANONICAL_CONFIGURATION = {
     "measurementRuns": 20,
     "warmupRuns": 2,
@@ -41,6 +65,10 @@ TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$")
 OS_DESCRIPTION = re.compile(
     r"^Version (?P<version>\d+\.\d+(?:\.\d+)?) "
     r"\(Build (?P<build>[0-9A-Za-z]+)\)$"
+)
+SWIFT_TARGET = re.compile(
+    r"^(?P<architecture>[A-Za-z0-9_]+)-apple-macosx"
+    r"(?P<major>\d+)\.\d+(?:\.\d+)?$"
 )
 
 REPORT_KEYS = {
@@ -209,6 +237,19 @@ CONTROL_BASELINE_KEYS = {
     "outcome",
     "reasons",
     "receiptSHA256",
+}
+CROSS_HOST_MATRIX_KEYS = {
+    "schemaVersion",
+    "kind",
+    "generatedAt",
+    "policy",
+    "coverage",
+    "comparability",
+    "receipts",
+    "outcome",
+    "reasons",
+    "authority",
+    "matrixSHA256",
 }
 
 
@@ -1941,6 +1982,289 @@ def validate_control_baseline(value: Any, label: str) -> dict[str, Any]:
     return baseline
 
 
+def cross_host_policy() -> dict[str, Any]:
+    return {
+        "version": "semantic-cross-host-current-control-v1",
+        "requiredProfiles": copy.deepcopy(list(CROSS_HOST_PROFILE_SPECS)),
+        "requiredOperatingSystems": copy.deepcopy(
+            list(CROSS_HOST_OPERATING_SYSTEMS)
+        ),
+        "requiredReceiptCount": len(CROSS_HOST_PROFILE_SPECS),
+        "acceptedReceiptKind": CONTROL_BASELINE_KIND,
+        "acceptedReceiptScope": "canonical-current-control",
+        "budgetSegments": 100_000,
+        "budgetMaximumMilliseconds": HUNDRED_THOUSAND_BUDGET_MILLISECONDS,
+        "hostSwiftTargetPolicy": "matching-host-architecture-and-os-major-v1",
+    }
+
+
+def cross_host_workload_payload(receipt: dict[str, Any]) -> dict[str, Any]:
+    payload = receipt["identity"]["payload"]
+    toolchain = payload["toolchain"]
+    return {
+        "source": copy.deepcopy(payload["source"]),
+        "toolchain": {
+            "swift": toolchain["swift"],
+            "xcode": toolchain["xcode"],
+            "xcodeBuild": toolchain["xcodeBuild"],
+        },
+        "buildConfiguration": payload["buildConfiguration"],
+        "configuration": copy.deepcopy(payload["configuration"]),
+        "semanticProfile": copy.deepcopy(payload["semanticProfile"]),
+        "semanticAssets": copy.deepcopy(payload["semanticAssets"]),
+        "fixture": copy.deepcopy(payload["fixture"]),
+        "queryPack": copy.deepcopy(payload["queryPack"]),
+        "stagePolicy": copy.deepcopy(payload["stagePolicy"]),
+        "scales": copy.deepcopy(payload["scales"]),
+    }
+
+
+def cross_host_operating_system_major(
+    receipt: dict[str, Any], label: str
+) -> int:
+    host = receipt["identity"]["payload"]["host"]
+    if host["architecture"] != "arm64":
+        raise ManifestError(f"{label} is not an Apple-Silicon host")
+    os_match = OS_DESCRIPTION.fullmatch(host["operatingSystem"])
+    if os_match is None:
+        raise ManifestError(f"{label} operating-system identity is invalid")
+    major = int(os_match.group("version").split(".", 1)[0])
+    supported = {item["majorVersion"] for item in CROSS_HOST_OPERATING_SYSTEMS}
+    if major not in supported:
+        raise ManifestError(f"{label} operating-system major is unsupported")
+
+    target = receipt["identity"]["payload"]["toolchain"]["target"]
+    target_match = SWIFT_TARGET.fullmatch(target)
+    if (
+        target_match is None
+        or target_match.group("architecture") != host["architecture"]
+        or int(target_match.group("major")) != major
+    ):
+        raise ManifestError(f"{label} Swift target does not match its host")
+    return major
+
+
+def cross_host_profile(receipt: dict[str, Any], label: str) -> str:
+    memory = receipt["identity"]["payload"]["host"]["physicalMemoryBytes"]
+    matches = []
+    for profile in CROSS_HOST_PROFILE_SPECS:
+        minimum = profile["minimumPhysicalMemoryBytes"]
+        maximum = profile["maximumPhysicalMemoryBytes"]
+        if memory >= minimum and (maximum is None or memory <= maximum):
+            matches.append(profile["id"])
+    if len(matches) != 1:
+        raise ManifestError(f"{label} does not match one required memory profile")
+    return matches[0]
+
+
+def cross_host_profile_rows(
+    receipts_by_profile: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows = []
+    for profile in CROSS_HOST_PROFILE_SPECS:
+        identifier = profile["id"]
+        receipt = receipts_by_profile.get(identifier)
+        if receipt is None:
+            rows.append(
+                {
+                    "profile": identifier,
+                    "state": "missing",
+                    "operatingSystemMajor": None,
+                    "receiptSHA256": None,
+                }
+            )
+            continue
+        rows.append(
+            {
+                "profile": identifier,
+                "state": receipt["outcome"],
+                "operatingSystemMajor": cross_host_operating_system_major(
+                    receipt, f"cross-host profile {identifier}"
+                ),
+                "receiptSHA256": receipt["receiptSHA256"],
+            }
+        )
+    return rows
+
+
+def cross_host_operating_system_rows(
+    receipts: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    present = {
+        cross_host_operating_system_major(receipt, "cross-host receipt")
+        for receipt in receipts
+    }
+    return [
+        {
+            "family": operating_system["family"],
+            "majorVersion": operating_system["majorVersion"],
+            "state": (
+                "present"
+                if operating_system["majorVersion"] in present
+                else "missing"
+            ),
+        }
+        for operating_system in CROSS_HOST_OPERATING_SYSTEMS
+    ]
+
+
+def cross_host_matrix_sha256(value: dict[str, Any]) -> str:
+    payload = {key: item for key, item in value.items() if key != "matrixSHA256"}
+    return hashlib.sha256(canonical_json(payload)).hexdigest()
+
+
+def _assemble_cross_host_matrix(
+    documents: Sequence[Any], generated_at: str
+) -> dict[str, Any]:
+    if not documents or len(documents) > len(CROSS_HOST_PROFILE_SPECS):
+        raise ManifestError("cross-host matrix requires one to three receipts")
+    receipts = [
+        validate_control_baseline(document, f"cross-host input {index}")
+        for index, document in enumerate(documents)
+    ]
+    for index, receipt in enumerate(receipts):
+        if receipt["scope"] != "canonical-current-control":
+            raise ManifestError(
+                f"cross-host input {index} is not a canonical current control"
+            )
+
+    receipt_digests = [receipt["receiptSHA256"] for receipt in receipts]
+    if len(set(receipt_digests)) != len(receipt_digests):
+        raise ManifestError("cross-host matrix repeats a control receipt")
+
+    workloads = [cross_host_workload_payload(receipt) for receipt in receipts]
+    if any(workload != workloads[0] for workload in workloads[1:]):
+        raise ManifestError("cross-host workload identity changed")
+    workload_sha256 = hashlib.sha256(canonical_json(workloads[0])).hexdigest()
+
+    receipts_by_profile = {}
+    for index, receipt in enumerate(receipts):
+        cross_host_operating_system_major(receipt, f"cross-host input {index}")
+        profile = cross_host_profile(receipt, f"cross-host input {index}")
+        if profile in receipts_by_profile:
+            raise ManifestError(f"cross-host matrix repeats profile: {profile}")
+        receipts_by_profile[profile] = receipt
+
+    ordered_receipts = [
+        receipts_by_profile[profile["id"]]
+        for profile in CROSS_HOST_PROFILE_SPECS
+        if profile["id"] in receipts_by_profile
+    ]
+    profiles = cross_host_profile_rows(receipts_by_profile)
+    operating_systems = cross_host_operating_system_rows(ordered_receipts)
+    missing_profiles = [
+        row["profile"] for row in profiles if row["state"] == "missing"
+    ]
+    missing_operating_systems = [
+        row["family"] for row in operating_systems if row["state"] == "missing"
+    ]
+    complete = not missing_profiles and not missing_operating_systems
+    failed_profiles = [
+        row["profile"]
+        for row in profiles
+        if row["state"] == "current-control-budget-fail"
+    ]
+    if not complete:
+        outcome = "incomplete-required-matrix"
+        reasons = [
+            *(f"missing-profile:{profile}" for profile in missing_profiles),
+            *(
+                f"missing-operating-system:{family}"
+                for family in missing_operating_systems
+            ),
+        ]
+        cross_host_authority = "none"
+    elif failed_profiles:
+        outcome = "complete-required-matrix-budget-fail"
+        reasons = [f"budget-miss-profile:{profile}" for profile in failed_profiles]
+        cross_host_authority = "required-profile-and-os-current-control"
+    else:
+        outcome = "complete-required-matrix-budget-pass"
+        reasons = []
+        cross_host_authority = "required-profile-and-os-current-control"
+
+    generated = validate_timestamp(generated_at, "generatedAt")
+    generated_value = dt.datetime.fromisoformat(
+        generated.removesuffix("Z") + "+00:00"
+    )
+    for index, receipt in enumerate(ordered_receipts):
+        receipt_time = dt.datetime.fromisoformat(
+            receipt["generatedAt"].removesuffix("Z") + "+00:00"
+        )
+        if generated_value < receipt_time:
+            raise ManifestError(
+                f"generatedAt predates cross-host input {index}"
+            )
+
+    matrix = {
+        "schemaVersion": 1,
+        "kind": CROSS_HOST_MATRIX_KIND,
+        "generatedAt": generated,
+        "policy": cross_host_policy(),
+        "coverage": {
+            "requiredReceiptCount": len(CROSS_HOST_PROFILE_SPECS),
+            "observedReceiptCount": len(ordered_receipts),
+            "profiles": profiles,
+            "operatingSystems": operating_systems,
+            "complete": complete,
+        },
+        "comparability": {
+            "workloadIdentitySHA256": workload_sha256,
+            "workloadIdentityPayload": workloads[0],
+            "hostIdentityPolicy": "required-profile-hosts-may-differ",
+            "binaryIdentityPolicy": "per-host-release-binary",
+        },
+        "receipts": copy.deepcopy(ordered_receipts),
+        "outcome": outcome,
+        "reasons": reasons,
+        "authority": {
+            "perReceiptCurrentControlBudget": "one-host-current-control",
+            "crossHostBudget": cross_host_authority,
+            "crossHostRegression": "none",
+            "retrievalQuality": "none",
+            "answerQuality": "none",
+            "engineSelection": "none",
+        },
+    }
+    matrix["matrixSHA256"] = cross_host_matrix_sha256(matrix)
+    return matrix
+
+
+def build_cross_host_matrix(
+    documents: Sequence[Any], generated_at: str
+) -> dict[str, Any]:
+    matrix = _assemble_cross_host_matrix(documents, generated_at)
+    validate_cross_host_matrix(matrix, "built cross-host matrix")
+    return matrix
+
+
+def validate_cross_host_matrix(value: Any, label: str) -> dict[str, Any]:
+    matrix = exact_object(value, CROSS_HOST_MATRIX_KEYS, label)
+    if exact_int(matrix["schemaVersion"], f"{label}.schemaVersion", minimum=1) != 1:
+        raise ManifestError(f"{label}.schemaVersion is not one")
+    if matrix["kind"] != CROSS_HOST_MATRIX_KIND:
+        raise ManifestError(f"{label}.kind is invalid")
+    generated = validate_timestamp(matrix["generatedAt"], f"{label}.generatedAt")
+    if matrix["policy"] != cross_host_policy():
+        raise ManifestError(f"{label}.policy is not canonical")
+    bounded_string(
+        matrix["matrixSHA256"],
+        f"{label}.matrixSHA256",
+        pattern=HEX_64,
+        maximum=64,
+    )
+
+    receipts = matrix["receipts"]
+    if not isinstance(receipts, list) or not 1 <= len(receipts) <= 3:
+        raise ManifestError(f"{label}.receipts must contain one to three receipts")
+    expected = _assemble_cross_host_matrix(receipts, generated)
+    if canonical_json(matrix) != canonical_json(expected):
+        raise ManifestError(f"{label} is not exactly recomputable")
+    if matrix["matrixSHA256"] != cross_host_matrix_sha256(matrix):
+        raise ManifestError(f"{label}.matrixSHA256 is not recomputable")
+    return matrix
+
+
 def write_json(path: Path | None, value: Any) -> None:
     payload = json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     if path is None:
@@ -2002,6 +2326,11 @@ def parse_arguments() -> argparse.Namespace:
     baseline.add_argument("inputs", nargs="+", type=Path)
     baseline.add_argument("--generated-at", default=None)
     baseline.add_argument("--output", type=Path, required=True)
+
+    cross_host = commands.add_parser("cross-host")
+    cross_host.add_argument("inputs", nargs="+", type=Path)
+    cross_host.add_argument("--generated-at", default=None)
+    cross_host.add_argument("--output", type=Path, required=True)
     return parser.parse_args()
 
 
@@ -2060,6 +2389,12 @@ def main() -> int:
             write_json(
                 options.output,
                 build_control_baseline(documents, options.generated_at or utc_now()),
+            )
+            return 0
+        if options.command == "cross-host":
+            write_json(
+                options.output,
+                build_cross_host_matrix(documents, options.generated_at or utc_now()),
             )
             return 0
         write_json(

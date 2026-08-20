@@ -1,7 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TOOL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE_ROOT="${PORTAVOZ_SEMANTIC_SOURCE_ROOT:-$TOOL_ROOT}"
+if ! ROOT="$(cd "$SOURCE_ROOT" 2>/dev/null && pwd)"; then
+    echo "error: PORTAVOZ_SEMANTIC_SOURCE_ROOT must be a readable directory" >&2
+    exit 64
+fi
+MANIFEST_TOOL="$TOOL_ROOT/scripts/semantic_scale_manifest.py"
 OUTPUT="${1:-/private/tmp/portavoz-semantic-scale-baseline.json}"
 SIZES="${PORTAVOZ_SEMANTIC_SCALE_SIZES:-1000,10000,50000,100000}"
 RUNS="${PORTAVOZ_SEMANTIC_SCALE_RUNS:-20}"
@@ -34,7 +40,7 @@ for raw_size in "${checkpoints[@]}"; do
     seen+="$size,"
 done
 
-python3 scripts/semantic_scale_manifest.py source \
+python3 "$MANIFEST_TOOL" source \
     --root "$ROOT" \
     --output "$PARTS/source.snapshot"
 build_start="$(python3 -c 'import time; print(time.monotonic_ns())')"
@@ -50,7 +56,7 @@ print((end - start) / 1_000_000)
 PY
 )"
 
-python3 scripts/semantic_scale_manifest.py snapshot \
+python3 "$MANIFEST_TOOL" snapshot \
     --root "$ROOT" \
     --binary "$ROOT/.build/release/portavoz-cli" \
     --build-wall-ms "$build_wall_ms" \
@@ -66,7 +72,7 @@ for raw_size in "${checkpoints[@]}"; do
         --output "$PARTS/$size.json"
 done
 
-python3 scripts/semantic_scale_manifest.py assemble \
+python3 "$MANIFEST_TOOL" assemble \
     --root "$ROOT" \
     --binary "$ROOT/.build/release/portavoz-cli" \
     --snapshot "$PARTS/run.snapshot" \

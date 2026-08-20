@@ -1541,6 +1541,17 @@ too small to grant stability authority. One and three query variants always
 produce separate receipts and identities; the latter never owns a product
 budget verdict. Neither receipt changes or validates semantic model quality.
 
+The cross-host boundary consumes only the canonical one-vector receipts. It
+requires one receipt for each shared 8 GiB, 16 GiB, and reference memory
+profile, with macOS 15 Sequoia and macOS 26 Tahoe both represented. Clean
+source, Swift/Xcode versions, semantic profile, synthetic workload, and
+configuration remain exact. The Swift target triple and Release binary stay
+sealed inside each receipt but are host-derived rather than falsely required
+to match across OS families. An incomplete matrix has no cross-host authority;
+a complete matrix can report only whether every host met the existing 100 ms
+wall-and-CPU control budget. It cannot compare host speed, validate relevance,
+or authorize a chunk, model, or search engine.
+
 ## Coauthoring notes (D28) — the notes→summary weave (implemented)
 
 - `SummaryRequest.contextItems`: user notes travel to the FINAL pass as intent. `PromptFactory.notesBlock` formats them with timestamps (`[mm:ss] nota`), chronologically, with a hard budget (120 chars/note, 800 for the block — tested).
