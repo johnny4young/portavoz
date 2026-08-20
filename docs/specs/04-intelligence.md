@@ -1230,6 +1230,43 @@ as control and rejects unknown candidate adapters. This creates no product
 storage, maintenance, query, or serving path; segment retrieval remains the
 shipping default pending clean quality, resource, and correction-cost evidence.
 
+### Semantic-boundary proposal preflight (D350)
+
+`RetrievalSemanticBoundaryPreflight` is a pure ApplicationKit refusal boundary,
+not a chunker or a model adapter. It admits only benchmark-scoped proposals
+whose lowercase candidate identity is versioned and bounded. The proposal must
+operate over complete canonical turn units, keep ordered turn topology,
+publish each canonical source at most once, and use positive append bounds no
+looser than the conversation-window ceiling. A candidate needs at least two and
+at most three turns; tighter character, duration, or gap limits remain
+fingerprinted comparison inputs. As with the existing chunkers, those are
+append bounds: an indivisible over-budget canonical turn is not permission to
+split or discard its evidence.
+
+Intra-source sentence fragments are refused because schema 2 cannot publish
+two ranks containing the same source segment without corrupting canonical
+citation accounting. Apple's OS sentence tokenizer is also refused as a
+standalone boundary signal because it has no exact model/revision identity for
+cross-host comparison. A semantic proposal instead names one valid
+`SemanticEmbeddingProfile`, or one distinct profile per language, plus a finite
+cosine threshold for each vector space. English and Spanish are mandatory. A
+declared shared model may compare both languages under one threshold;
+language-specific profiles carry independently calibrated thresholds, force a
+boundary at every language transition, and never compare their vectors.
+Profile order, language order, and positive-versus-negative zero do not create
+false candidate identities, while every behavioral fence changes the stable
+content-free SHA-256.
+
+Current Apple guidance points semantic-similarity work toward
+revision-selectable `NLEmbedding` sentence embeddings rather than treating
+contextual token pooling as automatically optimal. `NLEmbedding` selection is
+language-specific, so it would enter this contract as distinct English and
+Spanish profiles unless an independently validated shared space exists. D350
+does not select that API or any market model, verify a declared language
+capability, load assets, derive a boundary, or grant serving authority. A
+concrete semantic chunker and clean paired quality, resource, correction, and
+cross-host evidence remain open.
+
 ### Semantic-index query port (D206)
 
 `SemanticIndexSearching` is the read-only ApplicationKit seam between product

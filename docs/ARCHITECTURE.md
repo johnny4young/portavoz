@@ -3643,6 +3643,26 @@ source evidence.
 Historical fixture generations remain verifiable rather than being rewritten
 when corpus topology evolves.
 
+Before a semantic-boundary chunker may be implemented, ApplicationKit's pure
+`RetrievalSemanticBoundaryPreflight` admits only a content-free benchmark
+proposal. It requires complete canonical turns, non-overlapping source
+membership, preserved ordered actor topology, and append bounds no looser than
+the three-turn, 900-character, 45-second, 2.5-second-gap conversation-window
+ceiling. A sentence fragment cannot become a unit because observation schema 2
+cannot represent two ranked units that repeat one canonical source identity.
+The OS sentence tokenizer is not a candidate signal because it exposes no
+stable model/revision identity for cross-host evidence.
+
+An admitted semantic signal carries a valid `SemanticEmbeddingProfile`, a
+finite per-space cosine threshold, and explicit English/Spanish vector-space
+authority. One model may declare a shared bilingual space; language-specific
+models must use distinct profiles and independently fingerprinted thresholds,
+and force a boundary at every language transition rather than comparing
+unrelated spaces. The stable admission fingerprint covers all
+policy, resource, model, language, and threshold identity but no transcript or
+query content. Admission is neither a model-capability proof nor quality,
+storage, serving, or engine authority; no semantic chunker is composed yet.
+
 Semantic maintenance does not publish `.index` work into the owner-leased
 processing ledger. That ledger continues to control the visible meeting
 lifecycle, while degradable derived-index failure remains outside

@@ -2391,6 +2391,37 @@ content/metadata/xattr/identity manifest byte-for-byte unchanged at SHA-256
 This is local Tahoe-family automation, not physical Sequoia evidence, a clean
 paired candidate-quality result, or authority to change product retrieval.
 
+D350 adds a fail-closed semantic-boundary proposal preflight without adding a
+chunker, model runtime, storage, or product composition. Eleven focused cases
+cover canonical shared and language-partitioned English/Spanish identity,
+order-independent fingerprints, behavioral-fence changes, canonical signed
+zero, scope/source/actor refusals, bounded resources, stable candidate identity,
+unversioned tokenizer refusal, embedding-profile and cosine validation,
+language ambiguity, and prevention of one profile impersonating two isolated
+spaces. One architecture ratchet requires the benchmark-only, complete-turn,
+non-overlap, actor-preserving, model-profile, bilingual, and content-free
+fingerprint fences while keeping NaturalLanguage, StorageKit, and product
+composition outside this boundary. Admission proves proposal shape only; no
+semantic-boundary quality, model suitability, asset availability, correction
+cost, or serving claim exists.
+
+The final D350 gate passed the current-SDK warnings-as-errors build, 2,478
+package tests with 14 explicit environment/model skips and zero failures, 421
+tooling tests, repository hygiene, the 178-case architecture subset, and strict
+SwiftLint with zero violations across 677 Swift files. Independently inspected
+macOS 26.5.2 (25F84) result bundles passed the complete 92/92 English and 92/92
+Spanish real-app XCUITest catalogues with no failures, skips, or expected
+failures. Keyboard Navigation returned to `0`, and no recent Portavoz crash
+report appeared. The signed local-only `app.portavoz.mac.dev` bundle was
+reinstalled and deeply verified; an exact before/after comparison kept the
+notarized `app.portavoz.mac` release bundle's 184-entry recursive
+content/metadata/hex-xattr manifest, designated requirement, and bundle ID
+unchanged at SHA-256
+`29a860424136cfb5f398012de8dce16a1e8305e883fb99223602d75f501f51f3`, and
+its deep signature remained valid. The Dev build still lacks the optional Metal
+Toolchain and MLX metallib. This is Tahoe-family local automation, not physical
+Sequoia, independent Tahoe hardware, model-quality, or serving evidence.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |

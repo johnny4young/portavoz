@@ -12614,3 +12614,50 @@ comparison capability only; it does not claim quality parity, private-answer
 quality, resource superiority, or serving authority. Clean paired
 quality/resource/correction evidence and the separate semantic-boundary
 candidate still precede any product-selection decision.
+
+## D350 — Semantic boundary proposals fail closed before implementation (Aug 2026)
+
+**Context:** SEARCH-4b still needs a semantic-boundary candidate, but selecting
+a tokenizer or model first would bypass the citation and bilingual constraints
+learned from the existing candidates. Splitting one transcript segment into
+multiple sentence units would repeat its canonical source identity across
+ranks, which observation schema 2 deliberately rejects. A multi-actor semantic
+unit could also erase turn authority, and a language-specific sentence model
+could silently compare English and Spanish vectors from unrelated spaces.
+Apple's current Natural Language guidance directs semantic-similarity work
+toward `NLEmbedding` sentence embeddings, while those embeddings are selected
+by language and revision. The OS sentence tokenizer, by contrast, exposes no
+model/revision identity suitable for stable cross-host candidate evidence.
+
+**Decision:** add a pure `RetrievalSemanticBoundaryPreflight` contract in
+ApplicationKit before implementing any semantic chunker. It grants only
+benchmark admission. A proposal must carry a bounded lowercase identifier and
+positive revision, operate on complete canonical turns, preserve ordered actor
+topology, avoid source overlap, and use at least two turns without exceeding
+the conversation-window ceilings of three turns, 900 characters, 45 seconds,
+and a 2.5-second adjacent gap. Tighter bounds are allowed and fingerprinted.
+Intra-source sentence fragments, product-serving scope, actor flattening,
+overlap, non-finite limits, and an unversioned OS tokenizer fail closed.
+
+The only admitted boundary signal is semantic similarity with a valid exact
+`SemanticEmbeddingProfile` and a finite per-space cosine threshold in
+`-1...1`. English and Spanish are mandatory. A proposal may explicitly declare
+one shared bilingual vector space and threshold, or provide distinct language
+profiles with independently calibrated thresholds that force a boundary at
+every language transition and never compare cross-space vectors. Duplicate or
+malformed languages, ambiguous reused partitioned profiles, and more than
+sixteen profiles are rejected. A stable SHA-256 covers
+the candidate, scope, source, actor, resource, threshold, language-space, and
+model-profile identities; canonical sorting and signed-zero normalization keep
+semantically identical proposals from acquiring different identities. No text,
+query, vector, meeting, or source identifier enters that fingerprint.
+
+**Consequences:** D350 selects the safety envelope, not a model or chunking
+algorithm. The contract imports neither NaturalLanguage nor StorageKit, loads
+no assets, derives no chunks, changes no schema, and is absent from the app and
+serving composition. A declared shared-space capability still requires runtime
+and quality evidence; admission cannot prove a model card or OS capability.
+The current contextual embedder remains the shipping segment-vector authority,
+and `NLEmbedding`, a pinned open model, or any other semantic-boundary signal
+must first implement this contract and pass clean bilingual quality, resource,
+correction-cost, and Sequoia/Tahoe comparison before any product decision.

@@ -453,6 +453,48 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## D349 — Short conversation windows remain bounded evidence candidates"))
     }
 
+    func testSemanticBoundaryPreflightIsBilingualBoundedAndNonServing() throws {
+        let preflight = try Self.contents(
+            of: "Sources/ApplicationKit/RetrievalSemanticBoundaryPreflight.swift")
+        for required in [
+            "semantic-boundary-preflight-v1",
+            "case benchmarkOnly = \"benchmark-only\"",
+            "case completeTurn = \"complete-turn\"",
+            "case nonOverlapping = \"non-overlapping\"",
+            "case preserved",
+            "conversationWindowCeiling",
+            "case operatingSystemSentenceTokenizer",
+            "case semanticSimilarity(",
+            "case shared(",
+            "case partitionedByLanguage",
+            "requiredLanguages = [\"en\", \"es\"]",
+            "profile.fingerprint",
+            "minimumCosineSimilarity",
+            "canonicalBitPattern"
+        ] {
+            XCTAssertTrue(
+                preflight.contains(required),
+                "semantic-boundary preflight is missing \(required)")
+        }
+        XCTAssertFalse(preflight.contains("import NaturalLanguage"))
+        XCTAssertFalse(preflight.contains("import StorageKit"))
+        XCTAssertFalse(preflight.contains("TranscriptSegment"))
+        XCTAssertFalse(preflight.contains("MeetingStore"))
+
+        for root in ["Sources/portavoz-app", "Sources/StorageKit"] {
+            let productSources = try Self.sourceMatches(
+                under: root,
+                pattern: #"RetrievalSemanticBoundaryPreflight"#)
+            XCTAssertTrue(
+                productSources.isEmpty,
+                "D350 preflight cannot enter product composition: \(root)")
+        }
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains(
+            "## D350 — Semantic boundary proposals fail closed before implementation"))
+    }
+
     func testSemanticIndexPortKeepsExactControlOutsideProductConsumers() throws {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         XCTAssertTrue(decisions.contains("## D206"))
