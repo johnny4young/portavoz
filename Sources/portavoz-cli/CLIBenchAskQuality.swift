@@ -155,6 +155,7 @@ private enum AskQualityIdentity {
 enum AskQualityRetrievalUnit: String, Equatable, Sendable {
     case segment
     case speakerTurn = "speaker-turn"
+    case conversationWindow = "conversation-window"
 
     init(argument: String) throws {
         guard let value = Self(rawValue: argument) else {
@@ -169,6 +170,8 @@ enum AskQualityRetrievalUnit: String, Equatable, Sendable {
             "local-hybrid-preindexed-segment-no-expansion-evidence-v3"
         case .speakerTurn:
             "local-hybrid-preindexed-speaker-turn-v1-no-expansion-evidence-v1"
+        case .conversationWindow:
+            "local-hybrid-preindexed-conversation-window-v1-no-expansion-evidence-v1"
         }
     }
 }

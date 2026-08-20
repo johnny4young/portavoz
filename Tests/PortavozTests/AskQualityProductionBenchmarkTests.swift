@@ -25,6 +25,17 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
             "--asset-download", "if-needed"
         ])
         XCTAssertTrue(downloadOptions.allowAssetDownload)
+        let conversationOptions = try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "test",
+            "--commit", String(repeating: "a", count: 40),
+            "--retrieval-unit", "conversation-window"
+        ])
+        XCTAssertEqual(conversationOptions.retrievalUnit, .conversationWindow)
+        XCTAssertEqual(
+            conversationOptions.retrievalUnit.adapter,
+            "local-hybrid-preindexed-conversation-window-v1-no-expansion-evidence-v1")
         XCTAssertThrowsError(try AskQualityBenchmarkOptions(arguments: [
             "--fixture", "/tmp/fixture.json",
             "--output", "/tmp/observations.json",
@@ -198,6 +209,35 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
         XCTAssertEqual(first.sourceSegmentIDs, ["segment-001", "segment-002"])
         XCTAssertEqual(second.sourceSegmentIDs, ["segment-003", "segment-004"])
         XCTAssertNotEqual(first.unitID, second.unitID)
+    }
+
+    func testCanonicalV2FixtureProjectsOneExactConversationWindowPerMeeting() async throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Fixtures/AskQuality/public-synthetic-v2.json")
+        let fixture = try AskQualityFixture.load(from: fixtureURL)
+        let store = try MeetingStore.inMemory()
+        let mapping = try await AskQualityCorpusMapping.seed(
+            fixture: fixture,
+            store: store,
+            retrievalUnit: .conversationWindow)
+
+        let first = try await Self.observation(
+            matching: "atlas-001",
+            store: store,
+            mapping: mapping)
+        let second = try await Self.observation(
+            matching: "atlas-003",
+            store: store,
+            mapping: mapping)
+
+        XCTAssertEqual(first.sourceSegmentIDs, [
+            "segment-001", "segment-002", "segment-003", "segment-004"
+        ])
+        XCTAssertEqual(second.sourceSegmentIDs, first.sourceSegmentIDs)
+        XCTAssertEqual(first.unitID, second.unitID)
     }
 
     func testPrivateWriterIsOwnerOnlyNonOverwritingAndPreservesParentMode() throws {

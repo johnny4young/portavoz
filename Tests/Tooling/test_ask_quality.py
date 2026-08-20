@@ -211,6 +211,46 @@ class AskQualityTests(unittest.TestCase):
         self.assertNotIn('"queryID"', encoded)
         self.assertNotIn("Mara", encoded)
 
+    def test_paired_receipt_accepts_conversation_window_candidate(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        control = self.scorecard(
+            fixture_document, fixture, quality.SEGMENT_ADAPTER
+        )
+        candidate = copy.deepcopy(control)
+        candidate["subject"]["adapter"] = quality.CONVERSATION_WINDOW_ADAPTER
+
+        receipt = quality.compare_scorecards(
+            fixture,
+            quality.validate_scorecard(control, "controlScorecard"),
+            quality.validate_scorecard(candidate, "candidateScorecard"),
+        )
+
+        self.assertEqual(receipt["outcome"], "candidate-parity")
+        self.assertTrue(receipt["gates"]["adapterRolesMatch"])
+        self.assertEqual(
+            receipt["subject"]["candidateAdapter"],
+            quality.CONVERSATION_WINDOW_ADAPTER,
+        )
+
+    def test_paired_receipt_blocks_unknown_candidate_adapter(self):
+        fixture_document = quality.public_fixture()
+        fixture = quality.validate_fixture(fixture_document)
+        control = self.scorecard(
+            fixture_document, fixture, quality.SEGMENT_ADAPTER
+        )
+        candidate = copy.deepcopy(control)
+        candidate["subject"]["adapter"] = "unregistered-retrieval-candidate"
+
+        receipt = quality.compare_scorecards(
+            fixture,
+            quality.validate_scorecard(control, "controlScorecard"),
+            quality.validate_scorecard(candidate, "candidateScorecard"),
+        )
+
+        self.assertEqual(receipt["outcome"], "blocked")
+        self.assertFalse(receipt["gates"]["adapterRolesMatch"])
+
     def test_paired_receipt_blocks_run_identity_and_retrieval_regressions(self):
         fixture_document = quality.public_fixture()
         fixture = quality.validate_fixture(fixture_document)

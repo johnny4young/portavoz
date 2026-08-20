@@ -12563,3 +12563,54 @@ writer, product composition, or serving authority. Segment vectors remain the
 shipping default. SEARCH-4b still lacks short conversational-window and
 semantic-boundary candidates, paired quality/resource/correction evidence for
 those strategies, and an accepted production-selection decision.
+
+## D349 — Short conversation windows remain bounded evidence candidates (Aug 2026)
+
+**Context:** D202 evaluates complete single-actor turns, but many meeting facts
+depend on a short question/response exchange. Simply sliding a window over
+turns would repeat canonical segments across ranked units. Observation schema
+2 rejects that ambiguity because one source appearing at multiple ranks would
+inflate retrieval evidence and make citation and hard-negative accounting
+non-canonical. Flattening several actors into one apparent speaker would also
+discard the topology the candidate is meant to test.
+
+**Decision:** add a pure `conversation-window-v1` candidate derived only from
+validated `speaker-turn-v1` chunks. It greedily emits non-overlapping windows
+of at most three complete consecutive turns. Adjacent turns must resolve to
+different actors, using confirmed person, meeting-local speaker, local
+microphone, then isolated-turn identity precedence. A window keeps the
+single-turn append budgets of 900 normalized characters, 45 seconds, and a 2.5
+second inter-turn gap; exceeding any budget starts a new unit. An indivisible
+canonical turn that already exceeds a budget remains isolated rather than
+being split, truncated, dropped, or duplicated, so its cost remains explicit
+candidate evidence.
+
+Every `RetrievalChunk` now carries exact ordered turn boundaries in addition
+to its flat canonical sources. Each turn retains source, speaker, person,
+channel, language, and time authority, so a multi-actor window is context and
+never one synthetic speaker. Conversation windows inherit turn validation and
+the mandatory transcript/correction publication fences. Their stable identity
+and source fingerprint are versioned independently; the correction revision
+still remains outside rebuild identity.
+
+The disposable Ask benchmark admits `conversation-window` as an explicitly
+named candidate with its own adapter and deterministic projected identities.
+The paired runner can select either registered candidate, and the comparator
+continues to require the segment control while rejecting unknown candidate
+adapters. Canonical sources never repeat across the candidate corpus. The app,
+StorageKit schema, semantic maintenance owner, Library, Ask serving path, and
+segment default remain unchanged.
+
+**Consequences:** the public-synthetic-v2 topology projects each meeting into
+one exact four-source conversation unit instead of two single-speaker turns,
+making question/response context comparable through the existing production
+retrieval path without weakening citation semantics. A text-only correction
+that preserves turn topology and resource-bound window membership invalidates
+only its containing window. A correction crossing a character append budget,
+or a split, merge, insertion, removal, or actor change, can reflow later greedy
+windows; that cost remains explicit candidate evidence rather than a false
+locality guarantee. This slice adds candidate code and deterministic
+comparison capability only; it does not claim quality parity, private-answer
+quality, resource superiority, or serving authority. Clean paired
+quality/resource/correction evidence and the separate semantic-boundary
+candidate still precede any product-selection decision.

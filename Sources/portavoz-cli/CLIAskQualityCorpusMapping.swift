@@ -103,6 +103,12 @@ struct AskQualityCorpusMapping: Sendable {
                 speakers: speakers,
                 segments: segments,
                 externalIDByUUID: externalIDByUUID)
+        case .conversationWindow:
+            return try conversationWindowProjection(
+                meeting: meeting,
+                speakers: speakers,
+                segments: segments,
+                externalIDByUUID: externalIDByUUID)
         }
     }
 
@@ -134,13 +140,47 @@ struct AskQualityCorpusMapping: Sendable {
             correctionRevision: .accepted,
             segments: segments,
             speakers: speakers)
+        return try chunkProjection(
+            chunks: chunks,
+            candidateLabel: "speaker-turn",
+            identityNamespace: "ask-quality-speaker-turn-unit",
+            externalIDByUUID: externalIDByUUID)
+    }
+
+    private static func conversationWindowProjection(
+        meeting: Meeting,
+        speakers: [Speaker],
+        segments: [TranscriptSegment],
+        externalIDByUUID: [UUID: String]
+    ) throws -> (segments: [TranscriptSegment], unitByUUID: [UUID: Unit]) {
+        let chunks = try RetrievalConversationWindowChunker.chunks(
+            meetingID: meeting.id,
+            transcriptRevision: meeting.transcriptRevision,
+            correctionRevision: .accepted,
+            segments: segments,
+            speakers: speakers)
+        return try chunkProjection(
+            chunks: chunks,
+            candidateLabel: "conversation-window",
+            identityNamespace: "ask-quality-conversation-window-unit",
+            externalIDByUUID: externalIDByUUID)
+    }
+
+    private static func chunkProjection(
+        chunks: [RetrievalChunk],
+        candidateLabel: String,
+        identityNamespace: String,
+        externalIDByUUID: [UUID: String]
+    ) throws -> (segments: [TranscriptSegment], unitByUUID: [UUID: Unit]) {
         var projected: [TranscriptSegment] = []
         var mapping: [UUID: Unit] = [:]
         projected.reserveCapacity(chunks.count)
         mapping.reserveCapacity(chunks.count)
         for chunk in chunks {
-            let candidate = try speakerTurnCandidate(
+            let candidate = try chunkCandidate(
                 chunk,
+                candidateLabel: candidateLabel,
+                identityNamespace: identityNamespace,
                 externalIDByUUID: externalIDByUUID)
             projected.append(candidate.segment)
             guard mapping.updateValue(
@@ -148,27 +188,29 @@ struct AskQualityCorpusMapping: Sendable {
                 forKey: candidate.segment.id) == nil
             else {
                 throw AskQualityBenchmarkError.invalidFixture(
-                    "speaker-turn candidate identity repeats")
+                    "\(candidateLabel) candidate identity repeats")
             }
         }
         return (projected, mapping)
     }
 
-    private static func speakerTurnCandidate(
+    private static func chunkCandidate(
         _ chunk: RetrievalChunk,
+        candidateLabel: String,
+        identityNamespace: String,
         externalIDByUUID: [UUID: String]
     ) throws -> (segment: TranscriptSegment, unit: Unit) {
         guard let channel = chunk.sources.first?.channel else {
             throw AskQualityBenchmarkError.invalidFixture(
-                "speaker-turn candidate has no canonical source")
+                "\(candidateLabel) candidate has no canonical source")
         }
         let identifier = try deterministicUUID(
-            namespace: "ask-quality-speaker-turn-unit",
+            namespace: identityNamespace,
             identifier: chunk.id)
         let sourceIDs = try chunk.sourceSegmentIDs.map { sourceID in
             guard let externalID = externalIDByUUID[sourceID] else {
                 throw AskQualityBenchmarkError.invalidFixture(
-                    "speaker-turn candidate lost canonical source identity")
+                    "\(candidateLabel) candidate lost canonical source identity")
             }
             return externalID
         }

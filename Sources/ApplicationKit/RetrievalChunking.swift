@@ -33,6 +33,32 @@ public struct RetrievalChunk: Equatable, Sendable, Identifiable {
         }
     }
 
+    /// One complete actor turn inside the retrieval unit. Conversation-window
+    /// candidates keep these boundaries explicit instead of flattening several
+    /// actors into one apparent speaker.
+    public struct Turn: Equatable, Sendable {
+        public let sourceSegmentIDs: [UUID]
+        public let speakerIDs: [SpeakerID]
+        public let personIDs: [PersonID]
+        public let channels: [AudioChannel]
+        public let spokenLanguages: [String]
+        public let startTime: TimeInterval
+        public let endTime: TimeInterval
+
+        init(sources: [Source]) {
+            self.sourceSegmentIDs = sources.map(\.segmentID)
+            self.speakerIDs = RetrievalChunk.uniqued(
+                sources.compactMap(\.speakerID))
+            self.personIDs = RetrievalChunk.uniqued(
+                sources.compactMap(\.personID))
+            self.channels = RetrievalChunk.uniqued(sources.map(\.channel))
+            self.spokenLanguages = RetrievalChunk.uniqued(
+                sources.compactMap(\.language))
+            self.startTime = sources.first?.startTime ?? 0
+            self.endTime = sources.last?.endTime ?? 0
+        }
+    }
+
     /// Stable across text-only corrections while source membership and the
     /// chunker version remain unchanged.
     public let id: String
@@ -45,6 +71,8 @@ public struct RetrievalChunk: Equatable, Sendable, Identifiable {
     /// than chunk identity or rebuild admission.
     public let correctionRevision: TranscriptCorrectionRevision
     public let sources: [Source]
+    /// Ordered, non-overlapping turn boundaries over `sources`.
+    public let turns: [Turn]
     public let startTime: TimeInterval
     public let endTime: TimeInterval
     /// Spoken text only. Chunking never translates or rewrites vocabulary.
@@ -79,6 +107,7 @@ public struct RetrievalChunk: Equatable, Sendable, Identifiable {
         transcriptRevision: Int,
         correctionRevision: TranscriptCorrectionRevision,
         sources: [Source],
+        turns: [Turn],
         text: String,
         normalizedTextFingerprint: String,
         sourceFingerprint: String,
@@ -96,6 +125,7 @@ public struct RetrievalChunk: Equatable, Sendable, Identifiable {
         self.transcriptRevision = transcriptRevision
         self.correctionRevision = correctionRevision
         self.sources = sources
+        self.turns = turns
         self.startTime = sources.first?.startTime ?? 0
         self.endTime = sources.last?.endTime ?? 0
         self.text = text
@@ -307,6 +337,7 @@ public enum RetrievalTurnChunker {
             transcriptRevision: transcriptRevision,
             correctionRevision: correctionRevision,
             sources: sources,
+            turns: [RetrievalChunk.Turn(sources: sources)],
             text: text,
             normalizedTextFingerprint: textFingerprint,
             sourceFingerprint: sourceFingerprint,

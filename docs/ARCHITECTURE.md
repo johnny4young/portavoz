@@ -3600,16 +3600,16 @@ v17 performs that same fail-closed reset for legacy vectors whose compatibility
 cannot be proven.
 
 ApplicationKit also owns a storage-independent `RetrievalChunk` derivation
-contract for evaluating speaker-turn retrieval without changing the live
+contract for evaluating richer retrieval units without changing the live
 index. The deterministic `speaker-turn-v1` chunker groups only adjacent rows
 that resolve to the same confirmed person, the same observed speaker, or the
 local microphone. Unattributed system and room rows remain isolated; different
 actors are never merged to satisfy a length target. Every chunk retains its
 ordered segment identities, timestamps, meeting-local speaker and confirmed
-person identities, channel, and per-source spoken language. Its stable ID is
-derived from meeting, chunker version, and source membership, while a separate
-source fingerprint detects per-source text, attribution, language, or timing
-changes.
+person identities, channel, per-source spoken language, and explicit ordered
+turn boundaries. Its stable ID is derived from meeting, chunker version, and
+source membership, while a separate source fingerprint detects per-source
+text, attribution, language, timing, or window-composition changes.
 The meeting transcript revision and effective correction revision remain
 mandatory publication fences but do not force unrelated chunks to rebuild.
 The correction fence cannot use the presentation-only unavailable sentinel;
@@ -3617,15 +3617,29 @@ an uncorrected benchmark must pass the accepted revision explicitly. This is a
 pure candidate boundary only: schema v18, segment-level embeddings, FTS,
 Library, and Ask remain unchanged until a versioned quality and resource
 comparison proves a replacement.
-The CLI quality adapter may project either canonical segments or these
-speaker-turn chunks into its disposable database. Both candidates run through
-the same production retrieval implementation, but every ranked unit is mapped
-back to its complete ordered source membership in observation schema 2. The
-benchmark projection does not create product storage, maintenance, or query
-lanes and cannot select the product default by itself.
+`conversation-window-v1` derives from complete validated turns and greedily
+groups at most three consecutive different-actor turns without overlap. It
+uses the same 900-character, 45-second, and 2.5-second-gap append budgets as
+the single-turn candidate. An indivisible canonical turn that already exceeds
+a budget remains isolated rather than being split, truncated, or silently
+dropped; that cost must remain visible in candidate resource evidence. Actor
+identity prefers a confirmed person, then a meeting-local speaker, the local
+microphone, and finally an isolated turn.
+The result preserves every turn rather than assigning one speaker to a
+multi-actor exchange, and no canonical source belongs to two candidate units.
+The CLI quality adapter may project canonical segments, speaker-turn chunks,
+or conversation-window chunks into its disposable database. All candidates
+run through the same production retrieval implementation, but every ranked
+unit maps back to its complete ordered source membership in observation schema
+2. The paired comparator requires the exact segment control and an allowlisted
+candidate adapter; unknown candidates fail closed. Benchmark projection does
+not create product storage, maintenance, or query lanes and cannot select the
+product default by itself.
 The current public corpus exercises two real same-actor turns per meeting, and
-the paired comparator requires the candidate to match or improve every overall
-and relationship retrieval metric while retaining canonical source evidence.
+the conversation candidate joins those turns into one four-source exchange.
+The paired comparator requires the selected candidate to match or improve
+every overall and relationship retrieval metric while retaining canonical
+source evidence.
 Historical fixture generations remain verifiable rather than being rewritten
 when corpus topology evolves.
 

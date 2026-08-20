@@ -396,6 +396,63 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## D348 — Retrieval chunks carry correction publication authority"))
     }
 
+    func testConversationWindowCandidateIsBoundedComparableAndNonServing() throws {
+        let chunking = try Self.contents(
+            of: "Sources/ApplicationKit/RetrievalConversationWindowChunking.swift")
+        for required in [
+            "version = \"conversation-window-v1\"",
+            "maximumTurns = 3",
+            "maximumCharacters = RetrievalTurnChunker.maximumCharacters",
+            "maximumDuration = RetrievalTurnChunker.maximumDuration",
+            "maximumGap = RetrievalTurnChunker.maximumGap",
+            "RetrievalTurnChunker.chunks(",
+            "guard actor != lastActor",
+            "draft.turns.flatMap(\\.turns)",
+        ] {
+            XCTAssertTrue(
+                chunking.contains(required),
+                "conversation-window policy is missing \(required)")
+        }
+
+        let mapping = try Self.contents(
+            of: "Sources/portavoz-cli/CLIAskQualityCorpusMapping.swift")
+        for required in [
+            "case .conversationWindow:",
+            "RetrievalConversationWindowChunker.chunks(",
+            "ask-quality-conversation-window-unit",
+            "correctionRevision: .accepted",
+        ] {
+            XCTAssertTrue(
+                mapping.contains(required),
+                "conversation-window benchmark mapping is missing \(required)")
+        }
+
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchAskQuality.swift")
+        XCTAssertTrue(adapter.contains(
+            "case conversationWindow = \"conversation-window\""))
+        XCTAssertTrue(adapter.contains(
+            "local-hybrid-preindexed-conversation-window-v1-no-expansion-evidence-v1"))
+
+        let comparator = try Self.contents(of: "scripts/ask_quality.py")
+        XCTAssertTrue(comparator.contains("CONVERSATION_WINDOW_ADAPTER"))
+        XCTAssertTrue(comparator.contains("CANDIDATE_ADAPTERS"))
+        let runner = try Self.contents(of: "scripts/ask_quality_pair.py")
+        XCTAssertTrue(runner.contains("--candidate"))
+        XCTAssertTrue(runner.contains("conversation-window"))
+
+        let productSources = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"RetrievalConversationWindowChunker"#)
+        XCTAssertTrue(
+            productSources.isEmpty,
+            "D349 is an evidence candidate and must not enter product composition")
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains(
+            "## D349 — Short conversation windows remain bounded evidence candidates"))
+    }
+
     func testSemanticIndexPortKeepsExactControlOutsideProductConsumers() throws {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         XCTAssertTrue(decisions.contains("## D206"))

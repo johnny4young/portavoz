@@ -16,10 +16,17 @@ SPEC.loader.exec_module(pair)
 
 
 class FakeCommandRunner:
-    def __init__(self, outcome="candidate-parity", dirty=False, fail_at=None):
+    def __init__(
+        self,
+        outcome="candidate-parity",
+        dirty=False,
+        fail_at=None,
+        reported_candidate_adapter=None,
+    ):
         self.outcome = outcome
         self.dirty = dirty
         self.fail_at = fail_at
+        self.reported_candidate_adapter = reported_candidate_adapter
         self.calls = []
         self.commit = "a" * 40
 
@@ -47,6 +54,12 @@ class FakeCommandRunner:
                 output.write_text("{}\n", encoding="utf-8")
                 return self.result(1)
             if action == "compare":
+                candidate_scorecard = Path(
+                    command[command.index("--candidate") + 1]
+                )
+                candidate = candidate_scorecard.name.removesuffix(
+                    "-scorecard.json"
+                )
                 output.write_text(
                     json.dumps(
                         {
@@ -54,6 +67,11 @@ class FakeCommandRunner:
                             "subject": {
                                 "build": "search4d",
                                 "commit": self.commit,
+                                "controlAdapter": pair.SEGMENT_ADAPTER,
+                                "candidateAdapter": (
+                                    self.reported_candidate_adapter
+                                    or pair.CANDIDATE_ADAPTERS[candidate]
+                                ),
                             },
                         }
                     )
@@ -127,6 +145,86 @@ class AskQualityPairTests(unittest.TestCase):
         self.assertEqual(len(cli_calls), 2)
         self.assertTrue(all("never" in call for call in cli_calls))
         self.assertTrue(all(runner.commit in call for call in cli_calls))
+        self.assertEqual(
+            [
+                call[call.index("--retrieval-unit") + 1]
+                for call in cli_calls
+            ],
+            ["segment", "speaker-turn"],
+        )
+
+    def test_publishes_declared_conversation_window_pair(self):
+        runner = FakeCommandRunner()
+
+        status, receipt = pair.collect_pair(
+            self.root,
+            self.fixture,
+            self.output,
+            "search4d",
+            candidate="conversation-window",
+            runner=runner,
+        )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(receipt, self.output / "comparison.json")
+        self.assertEqual(
+            {path.name for path in self.output.iterdir()},
+            {
+                "segment-observations.json",
+                "segment-scorecard.json",
+                "conversation-window-observations.json",
+                "conversation-window-scorecard.json",
+                "comparison.json",
+            },
+        )
+        cli_calls = [
+            call for call in runner.calls if call[0].endswith("portavoz-cli")
+        ]
+        self.assertEqual(
+            [
+                call[call.index("--retrieval-unit") + 1]
+                for call in cli_calls
+            ],
+            ["segment", "conversation-window"],
+        )
+
+    def test_rejects_an_unknown_candidate_before_inspecting_source(self):
+        runner = FakeCommandRunner()
+
+        with self.assertRaisesRegex(
+            pair.AskQualityPairError, "unsupported candidate"
+        ):
+            pair.collect_pair(
+                self.root,
+                self.fixture,
+                self.output,
+                "search4d",
+                candidate="semantic-paragraph",
+                runner=runner,
+            )
+
+        self.assertEqual(runner.calls, [])
+        self.assertFalse(self.output.exists())
+
+    def test_refuses_a_receipt_for_a_different_registered_candidate(self):
+        runner = FakeCommandRunner(
+            reported_candidate_adapter=pair.CANDIDATE_ADAPTERS["speaker-turn"]
+        )
+
+        with self.assertRaisesRegex(
+            pair.AskQualityPairError, "lost selected adapter identity"
+        ):
+            pair.collect_pair(
+                self.root,
+                self.fixture,
+                self.output,
+                "search4d",
+                candidate="conversation-window",
+                runner=runner,
+            )
+
+        self.assertFalse(self.output.exists())
+        self.assertEqual(list(self.output.parent.glob(".private-evidence.*")), [])
 
     def test_publishes_blocked_receipt_with_nonzero_quality_status(self):
         runner = FakeCommandRunner(outcome="blocked")

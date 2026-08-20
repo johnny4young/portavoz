@@ -1904,7 +1904,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   explanation-supported false suggestions. This is not a retained clean-head
   baseline or accepted quality floor, and no result is served.
 - `make test-ask-quality`: verifies both canonical public-synthetic Ask fixture
-  generations and runs 38 deterministic evaluator/comparator/runner cases without
+  generations and runs 43 deterministic evaluator/comparator/runner cases without
   loading models or user data. Each fixture has exactly 240 judged queries: 60
   Spanish-to-Spanish, 60
   English-to-English, 40 English-to-Spanish, 40 Spanish-to-English, 20
@@ -1921,13 +1921,15 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   into sixty four-segment meetings with two exact two-segment same-actor turns
   per meeting, multilingual turns, and hard negatives from another meeting.
 - `portavoz-cli bench-ask-quality` accepts fixture, output, build, commit, an
-  optional `segment|speaker-turn` retrieval-unit argument, and an explicit
+  optional `segment|speaker-turn|conversation-window` retrieval-unit argument,
+  and an explicit
   `never|if-needed` asset-download policy that defaults to `never`. It seeds and
   explicitly indexes a disposable database outside query observation and runs
   the real corpus-read-only `LocalAskMeetingRetrieval` path without opening the
-  user library. Seven Swift tests cover product retrieval provenance,
-  multilingual same-actor turn projection, exact source membership, and
-  owner-only atomic non-overwriting publication. Observation schema 2 records
+  user library. Eight Swift tests cover product retrieval provenance,
+  multilingual same-actor turn projection, bounded conversation-window
+  projection, exact source membership, and owner-only atomic non-overwriting
+  publication. Observation schema 2 records
   one ranked unit ID and every ordered source segment ID. The evaluator still
   admits historical schema 1 as a one-source unit, rejects repeated, unknown,
   unordered, cross-meeting, or stale source evidence, and counts a hard
@@ -1936,7 +1938,8 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   be scored while answer-quality and answer-policy gates remain blocked until
   a separate versioned judge exists.
 - `make ask-quality-pair`: requires a receipt-safe build identity, explicit
-  private output, and a clean worktree. It verifies `public-synthetic-v2`,
+  private output, a registered `speaker-turn|conversation-window` candidate,
+  and a clean worktree. It verifies `public-synthetic-v2`,
   derives the full HEAD identity, builds the Release CLI once, and runs both
   retrieval units with asset download fixed to `never`. Evaluation exit 1 is
   admitted only when its owner-only scorecard exists, because answer evidence
@@ -1948,7 +1951,8 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   inside the repository must already be ignored. The runner never opens the
   user library and never turns host/model unavailability into a quality score.
 - `scripts/ask_quality.py compare` accepts one canonical fixture plus segment
-  control and speaker-turn candidate scorecards. It validates their complete
+  control and one allowlisted speaker-turn or conversation-window candidate
+  scorecard. It validates their complete
   scorecard shape, canonical quality floors, adapter roles, fixture checksum,
   build, commit, and observation schema before publishing an owner-only,
   non-overwriting, payload-free comparison receipt. The candidate must match
@@ -2355,6 +2359,37 @@ unchanged at SHA-256
 This remains local Tahoe-family automation rather than physical Sequoia,
 separate Tahoe hardware, private-corpus answer quality, or a live retrieval
 cutover.
+
+D349 adds a deterministic short conversation-window retrieval candidate
+without changing product serving. Nine focused chunking tests cover exact turn
+topology, three-turn/non-overlap bounds, inherited character/duration/gap
+append budgets, indivisible over-budget source isolation, anonymous actor
+handling, text-correction locality, explicit resource-bound and topology-change
+reflow, and fail-closed revision validation. The Ask benchmark
+adds one canonical-v2 projection test:
+the two same-actor turns in each meeting become one four-source unit, and
+queries matching either half retain the same ordered canonical membership.
+Tooling coverage proves the paired runner publishes candidate-specific
+owner-only artifacts, defaults compatibly to speaker-turn, admits the exact
+conversation-window adapter, and rejects unregistered candidates before source
+inspection. Architecture policy keeps the candidate out of product
+composition. Clean paired quality, resource, and correction-cost evidence is
+still uncollected, so D349 conveys no parity or serving claim.
+
+The final D349 gate passed 421 Python tooling tests, repository hygiene, the
+strict current-SDK warnings-as-errors build, 2,466 package tests with 14
+explicit model/environment skips and zero failures, the 177-case architecture
+subset, and strict SwiftLint with zero violations across 676 files. Finalized
+macOS 26.5.2 (25F84) result bundles independently report 92/92 English plus
+92/92 Spanish XCUITest cases, with no failures, skips, or expected failures;
+`AppleKeyboardUIMode` returned to `0` and no recent Portavoz crash report
+appeared. The Developer-ID-signed `app.portavoz.mac.dev` bundle was reinstalled
+and deeply verified alongside the signed `app.portavoz.mac` release bundle. An
+exact before/after comparison kept the notarized release app's 184-entry
+content/metadata/xattr/identity manifest byte-for-byte unchanged at SHA-256
+`008b0ffee8537125c66bfd8b5e3a45deb9744d064215318e717aa0dbc06ed33f`.
+This is local Tahoe-family automation, not physical Sequoia evidence, a clean
+paired candidate-quality result, or authority to change product retrieval.
 
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 

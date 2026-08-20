@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one source-bound segment versus speaker-turn Ask quality comparison."""
+"""Run one source-bound segment versus one declared Ask retrieval candidate."""
 
 from __future__ import annotations
 
@@ -18,6 +18,16 @@ ROOT = Path(__file__).resolve().parents[1]
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
 SAFE_BUILD = re.compile(r"^[A-Za-z0-9.+_-]{1,80}$")
 OUTCOMES = {"candidate-parity", "blocked"}
+CANDIDATES = {"speaker-turn", "conversation-window"}
+SEGMENT_ADAPTER = "local-hybrid-preindexed-segment-no-expansion-evidence-v3"
+CANDIDATE_ADAPTERS = {
+    "speaker-turn": (
+        "local-hybrid-preindexed-speaker-turn-v1-no-expansion-evidence-v1"
+    ),
+    "conversation-window": (
+        "local-hybrid-preindexed-conversation-window-v1-no-expansion-evidence-v1"
+    ),
+}
 
 
 class AskQualityPairError(ValueError):
@@ -67,6 +77,7 @@ def collect_pair(
     fixture: Path,
     output: Path,
     build: str,
+    candidate: str = "speaker-turn",
     runner=run_command,
 ) -> tuple[int, Path]:
     root = root.resolve()
@@ -74,6 +85,8 @@ def collect_pair(
     output = output.expanduser().resolve()
     if not SAFE_BUILD.fullmatch(build):
         raise AskQualityPairError("build must be a bounded receipt-safe identifier")
+    if candidate not in CANDIDATES:
+        raise AskQualityPairError(f"unsupported candidate: {candidate}")
     if not fixture.is_file():
         raise AskQualityPairError(f"fixture not found: {fixture}")
     if output.exists():
@@ -151,13 +164,13 @@ def collect_pair(
         artifacts = {
             "segment_observations": staging / "segment-observations.json",
             "segment_scorecard": staging / "segment-scorecard.json",
-            "candidate_observations": staging / "speaker-turn-observations.json",
-            "candidate_scorecard": staging / "speaker-turn-scorecard.json",
+            "candidate_observations": staging / f"{candidate}-observations.json",
+            "candidate_scorecard": staging / f"{candidate}-scorecard.json",
             "comparison": staging / "comparison.json",
         }
         for unit, key in (
             ("segment", "segment_observations"),
-            ("speaker-turn", "candidate_observations"),
+            (candidate, "candidate_observations"),
         ):
             require_command(
                 [
@@ -184,7 +197,7 @@ def collect_pair(
 
         for observation_key, scorecard_key, label in (
             ("segment_observations", "segment_scorecard", "segment"),
-            ("candidate_observations", "candidate_scorecard", "speaker-turn"),
+            ("candidate_observations", "candidate_scorecard", candidate),
         ):
             require_command(
                 [
@@ -233,8 +246,17 @@ def collect_pair(
             raise AskQualityPairError("paired comparison receipt is malformed") from error
         if outcome not in OUTCOMES:
             raise AskQualityPairError("paired comparison receipt has an invalid outcome")
+        if not isinstance(subject, dict):
+            raise AskQualityPairError("paired comparison receipt is malformed")
         if subject.get("build") != build or subject.get("commit") != commit:
             raise AskQualityPairError("paired comparison receipt lost source identity")
+        if (
+            subject.get("controlAdapter") != SEGMENT_ADAPTER
+            or subject.get("candidateAdapter") != CANDIDATE_ADAPTERS[candidate]
+        ):
+            raise AskQualityPairError(
+                "paired comparison receipt lost selected adapter identity"
+            )
         expected_code = 0 if outcome == "candidate-parity" else 1
         if comparison_result.returncode != expected_code:
             raise AskQualityPairError("paired comparison exit status contradicts its receipt")
@@ -260,6 +282,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fixture", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--build", required=True)
+    parser.add_argument("--candidate", default="speaker-turn")
     return parser
 
 
@@ -271,6 +294,7 @@ def main(arguments: list[str] | None = None) -> int:
             Path(args.fixture),
             Path(args.output),
             args.build,
+            candidate=args.candidate,
         )
     except AskQualityPairError as error:
         print(f"ask-quality-pair error: {error}", file=sys.stderr)

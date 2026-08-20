@@ -1199,6 +1199,37 @@ Segment-level embeddings remain authoritative until the candidate proves
 multilingual quality, latency, memory, disk, and incremental correction
 behavior against the current segment baseline.
 
+### Short conversation-window candidate (D349)
+
+`RetrievalConversationWindowChunker` is a second pure ApplicationKit candidate
+built from complete validated `speaker-turn-v1` chunks. It greedily emits
+non-overlapping `conversation-window-v1` units containing at most three
+consecutive different-actor turns. Confirmed person identity takes precedence,
+then the meeting-local speaker, local microphone, and an isolated turn. It uses
+the same 900-character, 45-second, and 2.5-second-gap append budgets as the turn
+candidate; a budget starts a new window rather than truncating or duplicating a
+canonical source. An indivisible canonical turn that already exceeds a budget
+remains isolated and visible to resource evidence rather than being split or
+dropped.
+
+`RetrievalChunk` exposes ordered `Turn` values so a multi-actor exchange keeps
+the source, speaker, person, channel, language, and time boundary of each turn.
+The flattened source list remains exact and non-overlapping for citation
+evaluation. Transcript and correction revisions retain their publication-fence
+semantics. A text-only correction that preserves turn topology and
+resource-bound window membership invalidates only its containing window. A
+correction crossing a character ceiling, or a split, merge, insertion, removal,
+or actor change, may reflow later greedy windows and remains part of the
+outstanding correction-cost comparison.
+
+The CLI quality corpus can project this candidate into a disposable store with
+its own deterministic unit namespace and adapter identity. A multi-speaker
+projection carries no synthetic `speakerID`. The paired runner selects the
+registered candidate explicitly, while the comparator keeps canonical segments
+as control and rejects unknown candidate adapters. This creates no product
+storage, maintenance, query, or serving path; segment retrieval remains the
+shipping default pending clean quality, resource, and correction-cost evidence.
+
 ### Semantic-index query port (D206)
 
 `SemanticIndexSearching` is the read-only ApplicationKit seam between product

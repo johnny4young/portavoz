@@ -27,6 +27,10 @@ SEGMENT_ADAPTER = "local-hybrid-preindexed-segment-no-expansion-evidence-v3"
 SPEAKER_TURN_ADAPTER = (
     "local-hybrid-preindexed-speaker-turn-v1-no-expansion-evidence-v1"
 )
+CONVERSATION_WINDOW_ADAPTER = (
+    "local-hybrid-preindexed-conversation-window-v1-no-expansion-evidence-v1"
+)
+CANDIDATE_ADAPTERS = {SPEAKER_TURN_ADAPTER, CONVERSATION_WINDOW_ADAPTER}
 RELATIONSHIP_COUNTS = {
     "spanishToSpanish": 60,
     "englishToEnglish": 60,
@@ -926,7 +930,7 @@ def compare_scorecards(fixture, control, candidate):
     )
     expected_adapters = (
         control["subject"]["adapter"] == SEGMENT_ADAPTER
-        and candidate["subject"]["adapter"] == SPEAKER_TURN_ADAPTER
+        and candidate["subject"]["adapter"] in CANDIDATE_ADAPTERS
     )
     aggregate_parity = retrieval_parity(
         control["overall"], candidate["overall"]
