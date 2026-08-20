@@ -12530,3 +12530,36 @@ receipt and is honestly 1/3 complete. It names 8 GiB, 16 GiB, and Sequoia as
 missing and carries no cross-host budget authority. No unavailable hardware
 evidence is fabricated, and SEARCH-0b remains open for those field receipts and
 owner-supplied private real-meeting quality evidence.
+
+## D348 — Retrieval chunks carry correction publication authority (Aug 2026)
+
+**Context:** D202's pure speaker-turn candidate predates the immutable
+correction overlay. Its `RetrievalChunk` carries the accepted transcript
+revision but not D233's effective `TranscriptCorrectionRevision`. D330 and D334
+now make accepted, replacement, split, and merge material independently
+searchable, so any future chunk publication that cannot name the exact
+correction overlay could reuse a candidate across different current text or
+speaker authority. Treating the correction revision as chunk identity instead
+would cause an unrelated correction elsewhere in the meeting to rebuild every
+unchanged turn.
+
+**Decision:** require every `RetrievalTurnChunker.chunks` call to provide a
+typed correction revision and retain it on every derived `RetrievalChunk`.
+The presentation-only `unavailable` sentinel is rejected. There is no default:
+the uncorrected public benchmark passes `.accepted` explicitly, so a future
+corrected caller cannot accidentally omit provenance.
+
+Transcript and correction revisions are publication fences, not membership or
+source identity. Neither enters the stable chunk ID or `sourceFingerprint`.
+`RetrievalChunkDelta` compares current source membership and content exactly as
+before, returns the current values for retained chunks, and therefore advances
+both fences without scheduling an unchanged chunk for re-embedding. A text,
+speaker, person, language, timing, or membership change still upserts only the
+overlapping derived unit.
+
+**Consequences:** the speaker-turn candidate is now correction-ready at its
+pure ApplicationKit boundary without adding storage, a migration, an index
+writer, product composition, or serving authority. Segment vectors remain the
+shipping default. SEARCH-4b still lacks short conversational-window and
+semantic-boundary candidates, paired quality/resource/correction evidence for
+those strategies, and an accepted production-selection decision.

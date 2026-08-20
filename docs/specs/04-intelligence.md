@@ -1176,9 +1176,12 @@ speaker, person, and per-source spoken-language evidence. Text receives only
 canonical Unicode and whitespace normalization; chunking never translates or
 corrects vocabulary. Stable membership identity is separate from a source
 fingerprint that covers each source's normalized text. `RetrievalChunkDelta`
-therefore retains unaffected chunks across a meeting revision while upserting
-only membership, source text, attribution, language, or timing changes. The
-revision still travels with the derived value as a future publication fence.
+therefore retains unaffected chunks across accepted-transcript or effective-
+correction revision changes while upserting only membership, source text,
+attribution, language, or timing changes. Both revisions still travel with the
+current derived value as future publication fences. Callers must provide the
+typed `TranscriptCorrectionRevision`; the presentation-only `unavailable`
+sentinel is rejected, and uncorrected inputs pass `.accepted` explicitly.
 
 This contract is not used by product Library, Ask, the semantic maintenance
 owner, or StorageKit. The CLI quality harness may project it into a disposable

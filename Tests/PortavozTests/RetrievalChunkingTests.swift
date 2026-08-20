@@ -23,6 +23,7 @@ final class RetrievalChunkingTests: XCTestCase {
         let chunks = try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 7,
+            correctionRevision: .accepted,
             segments: [laterTurn, continuation, reply, first],
             speakers: [secondSpeaker, firstSpeaker])
 
@@ -60,6 +61,7 @@ final class RetrievalChunkingTests: XCTestCase {
         let chunks = try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 1,
+            correctionRevision: .accepted,
             segments: segments,
             speakers: [firstSpeaker, secondSpeaker])
 
@@ -89,6 +91,7 @@ final class RetrievalChunkingTests: XCTestCase {
         let chunks = try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 1,
+            correctionRevision: .accepted,
             segments: segments,
             speakers: [])
 
@@ -114,6 +117,7 @@ final class RetrievalChunkingTests: XCTestCase {
         let chunk = try XCTUnwrap(RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 2,
+            correctionRevision: .accepted,
             segments: segments,
             speakers: [observedSpeaker]).first)
 
@@ -144,6 +148,7 @@ final class RetrievalChunkingTests: XCTestCase {
         let chunks = try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 1,
+            correctionRevision: .accepted,
             segments: segments,
             speakers: [observedSpeaker])
 
@@ -202,11 +207,14 @@ final class RetrievalChunkingTests: XCTestCase {
         let previous = try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 4,
+            correctionRevision: .accepted,
             segments: original,
             speakers: [firstSpeaker, secondSpeaker])
+        let correctedRevision = correction(1)
         let current = try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
-            transcriptRevision: 5,
+            transcriptRevision: 4,
+            correctionRevision: correctedRevision,
             segments: corrected,
             speakers: [firstSpeaker, secondSpeaker])
         let delta = RetrievalChunkDelta.between(previous: previous, current: current)
@@ -218,7 +226,40 @@ final class RetrievalChunkingTests: XCTestCase {
             [original[3].id]
         ])
         XCTAssertTrue(delta.removedChunkIDs.isEmpty)
-        XCTAssertTrue(delta.retained.allSatisfy { $0.transcriptRevision == 5 })
+        XCTAssertTrue(delta.retained.allSatisfy { $0.transcriptRevision == 4 })
+        XCTAssertTrue(delta.retained.allSatisfy {
+            $0.correctionRevision == correctedRevision
+        })
+    }
+
+    func testCorrectionRevisionIsAPublicationFenceNotRebuildIdentity() throws {
+        let meetingID = meeting(12)
+        let observedSpeaker = speaker(10, meetingID: meetingID)
+        let source = segment(
+            1, meetingID: meetingID, speakerID: observedSpeaker.id,
+            text: "unchanged evidence", start: 0, end: 1)
+        let previous = try RetrievalTurnChunker.chunks(
+            meetingID: meetingID,
+            transcriptRevision: 4,
+            correctionRevision: correction(1),
+            segments: [source],
+            speakers: [observedSpeaker])
+        let currentRevision = correction(2)
+        let current = try RetrievalTurnChunker.chunks(
+            meetingID: meetingID,
+            transcriptRevision: 4,
+            correctionRevision: currentRevision,
+            segments: [source],
+            speakers: [observedSpeaker])
+
+        let delta = RetrievalChunkDelta.between(previous: previous, current: current)
+
+        XCTAssertEqual(previous[0].id, current[0].id)
+        XCTAssertEqual(previous[0].sourceFingerprint, current[0].sourceFingerprint)
+        XCTAssertEqual(delta.retained, current)
+        XCTAssertEqual(delta.retained[0].correctionRevision, currentRevision)
+        XCTAssertTrue(delta.upserts.isEmpty)
+        XCTAssertTrue(delta.removedChunkIDs.isEmpty)
     }
 
     func testMovingWordsBetweenStableSourcesStillInvalidatesTheChunk() throws {
@@ -239,11 +280,13 @@ final class RetrievalChunkingTests: XCTestCase {
         let previous = try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 1,
+            correctionRevision: .accepted,
             segments: original,
             speakers: [observedSpeaker])
         let current = try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 2,
+            correctionRevision: .accepted,
             segments: redistributed,
             speakers: [observedSpeaker])
         let delta = RetrievalChunkDelta.between(previous: previous, current: current)
@@ -267,11 +310,13 @@ final class RetrievalChunkingTests: XCTestCase {
         let previous = try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 1,
+            correctionRevision: .accepted,
             segments: [oldSegment],
             speakers: [observedSpeaker])
         let current = try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 2,
+            correctionRevision: .accepted,
             segments: [replacement],
             speakers: [observedSpeaker])
 
@@ -293,6 +338,7 @@ final class RetrievalChunkingTests: XCTestCase {
         XCTAssertThrowsError(try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: -1,
+            correctionRevision: .accepted,
             segments: [source],
             speakers: [observedSpeaker])) { error in
                 XCTAssertEqual(error as? RetrievalChunkingError, .invalidTranscriptRevision)
@@ -300,6 +346,15 @@ final class RetrievalChunkingTests: XCTestCase {
         XCTAssertThrowsError(try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 1,
+            correctionRevision: .unavailable,
+            segments: [source],
+            speakers: [observedSpeaker])) { error in
+                XCTAssertEqual(error as? RetrievalChunkingError, .invalidCorrectionRevision)
+        }
+        XCTAssertThrowsError(try RetrievalTurnChunker.chunks(
+            meetingID: meetingID,
+            transcriptRevision: 1,
+            correctionRevision: .accepted,
             segments: [source, source],
             speakers: [observedSpeaker])) { error in
                 XCTAssertEqual(error as? RetrievalChunkingError, .duplicateSegmentID(source.id))
@@ -307,6 +362,7 @@ final class RetrievalChunkingTests: XCTestCase {
         XCTAssertThrowsError(try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 1,
+            correctionRevision: .accepted,
             segments: [source],
             speakers: [observedSpeaker, observedSpeaker])) { error in
                 XCTAssertEqual(
@@ -319,6 +375,7 @@ final class RetrievalChunkingTests: XCTestCase {
         XCTAssertThrowsError(try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 1,
+            correctionRevision: .accepted,
             segments: [mixed],
             speakers: [observedSpeaker])) { error in
                 XCTAssertEqual(error as? RetrievalChunkingError, .mixedMeeting)
@@ -329,6 +386,7 @@ final class RetrievalChunkingTests: XCTestCase {
         XCTAssertThrowsError(try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 1,
+            correctionRevision: .accepted,
             segments: [unknown],
             speakers: [observedSpeaker])) { error in
                 XCTAssertEqual(error as? RetrievalChunkingError, .unknownSpeaker(unknown.id))
@@ -339,6 +397,7 @@ final class RetrievalChunkingTests: XCTestCase {
         XCTAssertThrowsError(try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: 1,
+            correctionRevision: .accepted,
             segments: [invalidTime],
             speakers: [])) { error in
                 XCTAssertEqual(error as? RetrievalChunkingError, .invalidTimeline(invalidTime.id))
@@ -354,6 +413,7 @@ final class RetrievalChunkingTests: XCTestCase {
         try RetrievalTurnChunker.chunks(
             meetingID: meetingID,
             transcriptRevision: revision,
+            correctionRevision: .accepted,
             segments: [segment(
                 1, meetingID: meetingID, speakerID: speaker.id,
                 text: text, start: 0, end: 1)],
@@ -404,6 +464,10 @@ final class RetrievalChunkingTests: XCTestCase {
 
     private func person(_ value: Int) -> PersonID {
         PersonID(rawValue: uuid(30_000 + value))
+    }
+
+    private func correction(_ value: Int) -> TranscriptCorrectionRevision {
+        TranscriptCorrectionRevision(rawValue: String(format: "%064x", value))!
     }
 
     private func uuid(_ value: Int) -> UUID {

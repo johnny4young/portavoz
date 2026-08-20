@@ -131,6 +131,7 @@ struct AskQualityCorpusMapping: Sendable {
         let chunks = try RetrievalTurnChunker.chunks(
             meetingID: meeting.id,
             transcriptRevision: meeting.transcriptRevision,
+            correctionRevision: .accepted,
             segments: segments,
             speakers: speakers)
         var projected: [TranscriptSegment] = []

@@ -40,6 +40,10 @@ public struct RetrievalChunk: Equatable, Sendable, Identifiable {
     /// Latest authoritative revision observed while deriving this value. It is
     /// a publication fence, not part of chunk identity or rebuild admission.
     public let transcriptRevision: Int
+    /// Effective immutable correction overlay observed while deriving this
+    /// value. Like `transcriptRevision`, this is a publication fence rather
+    /// than chunk identity or rebuild admission.
+    public let correctionRevision: TranscriptCorrectionRevision
     public let sources: [Source]
     public let startTime: TimeInterval
     public let endTime: TimeInterval
@@ -48,8 +52,9 @@ public struct RetrievalChunk: Equatable, Sendable, Identifiable {
     /// Whitespace- and Unicode-normalized text identity used to avoid needless
     /// embedding work after representation-only edits.
     public let normalizedTextFingerprint: String
-    /// Complete source identity excluding the meeting-wide revision. A changed
-    /// value means this chunk alone must be republished.
+    /// Complete source identity excluding the meeting-wide transcript and
+    /// correction revision fences. A changed value means this chunk alone
+    /// must be republished.
     public let sourceFingerprint: String
     public let chunkerVersion: String
 
@@ -72,6 +77,7 @@ public struct RetrievalChunk: Equatable, Sendable, Identifiable {
     init(
         meetingID: MeetingID,
         transcriptRevision: Int,
+        correctionRevision: TranscriptCorrectionRevision,
         sources: [Source],
         text: String,
         normalizedTextFingerprint: String,
@@ -88,6 +94,7 @@ public struct RetrievalChunk: Equatable, Sendable, Identifiable {
             ])
         self.meetingID = meetingID
         self.transcriptRevision = transcriptRevision
+        self.correctionRevision = correctionRevision
         self.sources = sources
         self.startTime = sources.first?.startTime ?? 0
         self.endTime = sources.last?.endTime ?? 0
@@ -105,6 +112,7 @@ public struct RetrievalChunk: Equatable, Sendable, Identifiable {
 
 public enum RetrievalChunkingError: Error, Equatable, LocalizedError {
     case invalidTranscriptRevision
+    case invalidCorrectionRevision
     case duplicateSegmentID(UUID)
     case duplicateSpeakerID(SpeakerID)
     case mixedMeeting
@@ -115,6 +123,8 @@ public enum RetrievalChunkingError: Error, Equatable, LocalizedError {
         switch self {
         case .invalidTranscriptRevision:
             "retrieval chunks require a nonnegative transcript revision"
+        case .invalidCorrectionRevision:
+            "retrieval chunks require an authoritative correction revision"
         case .duplicateSegmentID:
             "retrieval chunks require unique source segment identities"
         case .duplicateSpeakerID:
@@ -141,11 +151,15 @@ public enum RetrievalTurnChunker {
     public static func chunks(
         meetingID: MeetingID,
         transcriptRevision: Int,
+        correctionRevision: TranscriptCorrectionRevision,
         segments: [TranscriptSegment],
         speakers: [Speaker]
     ) throws -> [RetrievalChunk] {
         guard transcriptRevision >= 0 else {
             throw RetrievalChunkingError.invalidTranscriptRevision
+        }
+        guard correctionRevision != .unavailable else {
+            throw RetrievalChunkingError.invalidCorrectionRevision
         }
         let speakerByID = try validatedSpeakers(speakers, meetingID: meetingID)
         let ordered = try validatedSegments(segments, meetingID: meetingID)
@@ -173,7 +187,8 @@ public enum RetrievalTurnChunker {
                     result.append(makeChunk(
                         from: draft,
                         meetingID: meetingID,
-                        transcriptRevision: transcriptRevision))
+                        transcriptRevision: transcriptRevision,
+                        correctionRevision: correctionRevision))
                 }
                 draft = Draft(actor: actor, source: candidate)
             }
@@ -182,7 +197,8 @@ public enum RetrievalTurnChunker {
             result.append(makeChunk(
                 from: draft,
                 meetingID: meetingID,
-                transcriptRevision: transcriptRevision))
+                transcriptRevision: transcriptRevision,
+                correctionRevision: correctionRevision))
         }
         return result
     }
@@ -259,7 +275,8 @@ public enum RetrievalTurnChunker {
     private static func makeChunk(
         from draft: Draft,
         meetingID: MeetingID,
-        transcriptRevision: Int
+        transcriptRevision: Int,
+        correctionRevision: TranscriptCorrectionRevision
     ) -> RetrievalChunk {
         let text = draft.sources.map(\.normalizedText).joined(separator: " ")
         let textFingerprint = OperationFingerprint.make(
@@ -288,6 +305,7 @@ public enum RetrievalTurnChunker {
         return RetrievalChunk(
             meetingID: meetingID,
             transcriptRevision: transcriptRevision,
+            correctionRevision: correctionRevision,
             sources: sources,
             text: text,
             normalizedTextFingerprint: textFingerprint,
@@ -375,9 +393,10 @@ public enum RetrievalTurnChunker {
     }
 }
 
-/// Pure derived-state comparison. A meeting-wide revision increment does not
-/// force unrelated chunks to rebuild; only changed source membership, text,
-/// actor/language metadata, or timestamps enter `upserts`.
+/// Pure derived-state comparison. A meeting-wide transcript or correction
+/// revision change does not force unrelated chunks to rebuild; only changed
+/// source membership, text, actor/language metadata, or timestamps enter
+/// `upserts`. Retained values still carry the current publication fences.
 public struct RetrievalChunkDelta: Equatable, Sendable {
     public let retained: [RetrievalChunk]
     public let upserts: [RetrievalChunk]

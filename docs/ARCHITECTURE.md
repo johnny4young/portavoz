@@ -3610,10 +3610,13 @@ person identities, channel, and per-source spoken language. Its stable ID is
 derived from meeting, chunker version, and source membership, while a separate
 source fingerprint detects per-source text, attribution, language, or timing
 changes.
-The meeting transcript revision remains a publication fence but does not force
-unrelated chunks to rebuild. This is a pure candidate boundary only: schema
-v18, segment-level embeddings, FTS, Library, and Ask remain unchanged until a
-versioned quality and resource comparison proves a replacement.
+The meeting transcript revision and effective correction revision remain
+mandatory publication fences but do not force unrelated chunks to rebuild.
+The correction fence cannot use the presentation-only unavailable sentinel;
+an uncorrected benchmark must pass the accepted revision explicitly. This is a
+pure candidate boundary only: schema v18, segment-level embeddings, FTS,
+Library, and Ask remain unchanged until a versioned quality and resource
+comparison proves a replacement.
 The CLI quality adapter may project either canonical segments or these
 speaker-turn chunks into its disposable database. Both candidates run through
 the same production retrieval implementation, but every ranked unit is mapped
@@ -4205,7 +4208,7 @@ reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,453 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,455 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -4216,7 +4219,7 @@ reliability evidence retained from 9 Aug, is:
 - strict SwiftLint remains a blocking CI gate and is clean across all 675
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 416 deterministic tooling cases and the 175-case architecture subset pass;
+- 416 deterministic tooling cases and the 176-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
 - 92 XCUITest cases per locale define the 184-case bilingual release gate;

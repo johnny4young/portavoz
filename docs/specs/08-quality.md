@@ -2332,6 +2332,30 @@ The host still lacks the optional Metal Toolchain, so the local Dev bundle has
 no MLX metallib; that does not change the D347 evidence contract or its honest
 1/3 outcome.
 
+D348 characterizes and hardens the already-existing speaker-turn retrieval
+candidate without changing the live index. Unit coverage requires every
+derived chunk to carry the exact accepted correction revision, rejects the
+presentation-only unavailable sentinel, and proves revision-only publication
+changes retain stable chunk/source identity while returning current fence
+values. Architecture policy keeps the source contract mandatory at the
+chunker and explicit in the public synthetic benchmark.
+
+The final D348 gate passed 416 Python tooling tests, repository hygiene, the
+strict current-SDK warnings-as-errors build, 2,455 package tests with 14
+explicit model/environment skips and zero failures, the 176-case architecture
+subset, and strict SwiftLint with zero violations across 675 files. Finalized
+macOS 26.5.2 (25F84) result bundles independently report 92/92 English plus
+92/92 Spanish XCUITest cases, with no failures, skips, or expected failures;
+`AppleKeyboardUIMode` returned to `0` and no Portavoz crash report appeared.
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was reinstalled and
+deeply verified. An exact before/after comparison kept the notarized release
+app's 184-entry content/metadata/xattr/identity manifest byte-for-byte
+unchanged at SHA-256
+`008b0ffee8537125c66bfd8b5e3a45deb9744d064215318e717aa0dbc06ed33f`.
+This remains local Tahoe-family automation rather than physical Sequoia,
+separate Tahoe hardware, private-corpus answer quality, or a live retrieval
+cutover.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |

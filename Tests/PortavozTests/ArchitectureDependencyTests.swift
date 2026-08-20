@@ -370,6 +370,32 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testRetrievalChunksCarryExactCorrectionPublicationAuthority() throws {
+        let chunking = try Self.contents(
+            of: "Sources/ApplicationKit/RetrievalChunking.swift")
+        for required in [
+            "public let correctionRevision: TranscriptCorrectionRevision",
+            "correctionRevision: TranscriptCorrectionRevision,",
+            "guard correctionRevision != .unavailable",
+            "case invalidCorrectionRevision",
+            "Retained values still carry the current publication fences",
+        ] {
+            XCTAssertTrue(
+                chunking.contains(required),
+                "retrieval chunk correction fence is missing \(required)")
+        }
+        XCTAssertFalse(chunking.contains(
+            "correctionRevision: TranscriptCorrectionRevision ="))
+
+        let benchmark = try Self.contents(
+            of: "Sources/portavoz-cli/CLIAskQualityCorpusMapping.swift")
+        XCTAssertTrue(benchmark.contains("correctionRevision: .accepted"))
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains(
+            "## D348 — Retrieval chunks carry correction publication authority"))
+    }
+
     func testSemanticIndexPortKeepsExactControlOutsideProductConsumers() throws {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         XCTAssertTrue(decisions.contains("## D206"))
