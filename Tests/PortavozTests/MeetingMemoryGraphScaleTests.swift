@@ -73,16 +73,20 @@ final class MeetingMemoryGraphScaleTests: XCTestCase {
         // 4. The projection is disposable: a full reset under another profile
         //    rebuilds the identical edge sets from authority alone. Edge rows
         //    carry authority identity, so the raw sets are comparable across
-        //    profiles — and going through the reset path proves rebuild-from-
-        //    zero, not incremental repair. (Returning to the canonical profile
-        //    at the same source generation is refused by design — the done
-        //    operation is idempotent — so this check runs last.)
+        //    profiles — and going through both reset directions proves rebuild-
+        //    from-zero plus same-generation profile readmission, not incremental
+        //    repair or an unrelated authority write.
         let before = try await harness.rawEdgeSets()
         try await harness.project(fingerprint: String(repeating: "ab", count: 32))
-        let after = try await harness.rawEdgeSets()
+        let afterAlternate = try await harness.rawEdgeSets()
         XCTAssertEqual(
-            before, after,
-            "a rebuild from zero must reproduce the same edges")
+            before, afterAlternate,
+            "an alternate-profile rebuild must reproduce the same edges")
+        try await harness.project()
+        let afterCanonicalReturn = try await harness.rawEdgeSets()
+        XCTAssertEqual(
+            before, afterCanonicalReturn,
+            "returning to the canonical profile must rebuild the same edges")
     }
 
     /// The canonical measurement. Prints one content-free JSON report per run:
@@ -421,6 +425,9 @@ struct MeetingMemoryGraphScaleHarness {
             "meetingMemoryGraphMeetingDecision",
             "meetingMemoryGraphMeetingCommitment",
             "meetingMemoryGraphCommitmentPerson",
+            "meetingMemoryGraphMeetingQuestion",
+            "meetingMemoryGraphTopicQuestion",
+            "meetingMemoryGraphMeetingBlocker",
             "meetingMemoryGraphDecisionTopic",
             "meetingMemoryGraphDecisionCommitmentBlocker",
         ]

@@ -519,6 +519,158 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         }
     }
 
+    func testProfileResetClearsLaterEdgeFamiliesBeforeTheFirstPartialBatch() async throws {
+        let fixture = try await seededGraphFixture()
+        _ = try await fixture.store.confirmDecisionTopicLink(
+            DecisionTopicLinkConfirmation(
+                decisionID: fixture.decisionID,
+                topicID: fixture.rootTopicID,
+                observationID: fixture.decisionObservationID,
+                confirmedAt: Self.baseDate.addingTimeInterval(30)))
+        _ = try await projectAll(in: fixture.store)
+        let before = try await fixture.store.database.read { database in
+            try Int.fetchOne(
+                database,
+                sql: "SELECT COUNT(*) FROM meetingMemoryGraphDecisionTopic") ?? 0
+        }
+        let alternateFingerprint = String(repeating: "a", count: 64)
+        let owner = "graph-partial-profile-reset-owner"
+        let job = try await claimGraphJob(
+            in: fixture.store,
+            owner: owner,
+            targetFingerprint: alternateFingerprint)
+
+        let first = try await fixture.store.projectMeetingMemoryGraphBatch(
+            jobID: job.id,
+            owner: owner,
+            targetFingerprint: job.targetFingerprint,
+            through: job.sourceGeneration,
+            limit: 1)
+        let after = try await fixture.store.database.read { database in
+            try Int.fetchOne(
+                database,
+                sql: "SELECT COUNT(*) FROM meetingMemoryGraphDecisionTopic") ?? 0
+        }
+        let pending = try await fixture.store
+            .pendingMeetingMemoryGraphInvalidationCount()
+
+        XCTAssertEqual(before, 1)
+        XCTAssertTrue(first.resetProjection)
+        XCTAssertEqual(first.rebuiltScopes, 1)
+        XCTAssertEqual(after, 0)
+        XCTAssertGreaterThan(pending, 0)
+    }
+
+    func testCompletedProfileCanBeReadmittedAtTheSameSourceGeneration() async throws {
+        let fixture = try await seededGraphFixture()
+        let canonicalFingerprint = MeetingMemoryGraphProjectionProfile.fingerprint
+        let alternateFingerprint = String(repeating: "a", count: 64)
+        _ = try await projectAll(in: fixture.store)
+        let generation = try await sourceGeneration(in: fixture.store)
+        let canonicalEdges = try await graphEdgeCounts(in: fixture.store)
+        _ = try await projectAll(
+            in: fixture.store,
+            targetFingerprint: alternateFingerprint)
+
+        let returned = try await projectAll(
+            in: fixture.store,
+            targetFingerprint: canonicalFingerprint)
+        let jobs = try await fixture.store.derivedMaintenanceJobs(
+            kind: .meetingMemoryGraph)
+        let snapshot = try await fixture.store.meetingMemoryGraphProjectionSnapshot()
+        let returnedGeneration = try await sourceGeneration(in: fixture.store)
+        let returnedFingerprint = try await projectionFingerprint(in: fixture.store)
+        let returnedEdges = try await graphEdgeCounts(in: fixture.store)
+        let requiresMaintenance = try await fixture.store
+            .meetingMemoryGraphRequiresMaintenance()
+
+        XCTAssertTrue(returned.resetProjection)
+        XCTAssertEqual(returnedGeneration, generation)
+        XCTAssertEqual(returnedFingerprint, canonicalFingerprint)
+        XCTAssertEqual(returnedEdges, canonicalEdges)
+        XCTAssertFalse(requiresMaintenance)
+        XCTAssertEqual(snapshot.meetingPeople.count, 1)
+        XCTAssertEqual(snapshot.meetingTopics.count, 1)
+        XCTAssertEqual(snapshot.meetingDecisions.count, 1)
+        XCTAssertEqual(snapshot.meetingCommitments.count, 1)
+        XCTAssertEqual(snapshot.commitmentPeople.count, 1)
+        XCTAssertEqual(snapshot.meetingQuestions.count, 1)
+        XCTAssertEqual(snapshot.topicQuestions.count, 1)
+        XCTAssertEqual(jobs.count, 2, "readmission must reuse the exact operation")
+        XCTAssertEqual(
+            jobs.filter { $0.targetFingerprint == canonicalFingerprint }.map(\.state),
+            [.succeeded])
+    }
+
+    func testCancelledProfileOperationCanBeReadmittedWhileProjectionNeedsIt() async throws {
+        let fixture = try await seededGraphFixture()
+        let canonicalFingerprint = MeetingMemoryGraphProjectionProfile.fingerprint
+        let alternateFingerprint = String(repeating: "a", count: 64)
+        let timestamp = Self.baseDate.addingTimeInterval(1_000)
+        let canonical = try await fixture.store.admitMeetingMemoryGraphMaintenance(
+            targetFingerprint: canonicalFingerprint,
+            at: timestamp)
+        _ = try await fixture.store.admitMeetingMemoryGraphMaintenance(
+            targetFingerprint: alternateFingerprint,
+            at: timestamp.addingTimeInterval(1))
+
+        let readmitted = try await fixture.store.admitMeetingMemoryGraphMaintenance(
+            targetFingerprint: canonicalFingerprint,
+            at: timestamp.addingTimeInterval(2))
+        let claimed = try await fixture.store.claimMeetingMemoryGraphMaintenance(
+            targetFingerprint: canonicalFingerprint,
+            owner: "graph-readmitted-cancelled-owner",
+            leaseDuration: 60,
+            at: timestamp.addingTimeInterval(2))
+
+        XCTAssertEqual(readmitted.id, canonical.id)
+        XCTAssertEqual(readmitted.state, .pending)
+        XCTAssertEqual(readmitted.attempt, 0)
+        XCTAssertEqual(claimed?.id, canonical.id)
+        XCTAssertEqual(claimed?.attempt, 1)
+    }
+
+    func testFailedProfileOperationRemainsTerminalWhenProjectionNeedsIt() async throws {
+        let fixture = try await seededGraphFixture()
+        let fingerprint = MeetingMemoryGraphProjectionProfile.fingerprint
+        let timestamp = Self.baseDate.addingTimeInterval(2_000)
+        _ = try await fixture.store.admitMeetingMemoryGraphMaintenance(
+            targetFingerprint: fingerprint,
+            maxAttempts: 1,
+            at: timestamp)
+        let claimed = try await fixture.store.claimMeetingMemoryGraphMaintenance(
+            targetFingerprint: fingerprint,
+            owner: "graph-terminal-failure-owner",
+            leaseDuration: 60,
+            at: timestamp)
+        let job = try XCTUnwrap(claimed)
+        let failed = try await fixture.store.failMeetingMemoryGraphMaintenance(
+            job.id,
+            owner: "graph-terminal-failure-owner",
+            errorCode: "maintenance.memory-graph.failed",
+            retryAt: timestamp.addingTimeInterval(5),
+            at: timestamp.addingTimeInterval(1))
+
+        let readmitted = try await fixture.store.admitMeetingMemoryGraphMaintenance(
+            targetFingerprint: fingerprint,
+            maxAttempts: 3,
+            at: timestamp.addingTimeInterval(2))
+        let secondClaim = try await fixture.store.claimMeetingMemoryGraphMaintenance(
+            targetFingerprint: fingerprint,
+            owner: "graph-terminal-failure-owner",
+            leaseDuration: 60,
+            at: timestamp.addingTimeInterval(2))
+        let requiresMaintenance = try await fixture.store
+            .meetingMemoryGraphRequiresMaintenance()
+
+        XCTAssertEqual(failed.state, .failed)
+        XCTAssertEqual(readmitted.id, job.id)
+        XCTAssertEqual(readmitted.state, .failed)
+        XCTAssertEqual(readmitted.attempt, 1)
+        XCTAssertNil(secondClaim)
+        XCTAssertTrue(requiresMaintenance)
+    }
+
     func testGovernorPauseCommitsOneBatchAndResumeDrainsTheCursor() async throws {
         let fixture = try await seededGraphFixture()
         let owner = "graph-governor-owner"

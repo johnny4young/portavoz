@@ -101,6 +101,14 @@ final class DerivedMaintenancePersistenceTests: XCTestCase {
             secondOwner.id,
             owner: "semantic-owner-after-relaunch",
             at: relaunchedAt.addingTimeInterval(1))
+        let duplicate = try await store.admitSemanticCorpusMaintenance(
+            targetFingerprint: profile.fingerprint,
+            at: relaunchedAt.addingTimeInterval(2))
+        let duplicateClaim = try await store.claimSemanticCorpusMaintenance(
+            targetFingerprint: profile.fingerprint,
+            owner: "semantic-owner-after-completion",
+            leaseDuration: 60,
+            at: relaunchedAt.addingTimeInterval(2))
         let remaining = try await store.segmentsNeedingEmbeddings()
         let jobs = try await store.derivedMaintenanceJobs(kind: .semanticCorpus)
 
@@ -114,6 +122,10 @@ final class DerivedMaintenancePersistenceTests: XCTestCase {
         XCTAssertTrue(remaining.isEmpty)
         XCTAssertEqual(completed.state, .succeeded)
         XCTAssertEqual(completed.attempt, 2)
+        XCTAssertEqual(duplicate.id, completed.id)
+        XCTAssertEqual(duplicate.state, .succeeded)
+        XCTAssertEqual(duplicate.attempt, 2)
+        XCTAssertNil(duplicateClaim)
         XCTAssertEqual(jobs.count, 1)
     }
 

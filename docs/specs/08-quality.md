@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,540 cases (15 environment-gated) + 95
+Status: the package inventory contains 2,544 cases (15 environment-gated) + 95
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1488,7 +1488,7 @@ pins post-RRF ownership, production bounds, dependency direction, source-marker
 reuse, typed exhaustion, and absence of Presentation adoption. These eleven
 cases use no model, network, user library, SwiftUI, XCUITest, or screenshot.
 
-### Complete graph product truth and scale closure (D308–D314)
+### Complete graph product truth, scale, and profile recovery (D308–D314/D360)
 
 The remaining decision-history, decision-conflict, and change-since adapters
 have deterministic focused tests plus all 18 canonical product mappings. The
@@ -1510,13 +1510,17 @@ The Release scale harness executes every job for 30 samples at 10,000 meetings:
 119 MB database size, and under 6 MB physical-footprint delta. Full-reset
 throughput was then fixed from 17.6 minutes to 27.2 seconds on the same
 deterministic fixture. Always-on tests preserve edge provenance, correction
-awareness, one-way profile-reset determinism, checkpoint/resume, and recursive-
-family behavior. Returning to a previously completed profile at the same source
-generation remains an explicit gap because the done operation is not re-admitted
-until another authority write. These results select SQLite and reject a
-specialized graph-engine migration; they do not supply private owner-reviewed
-field evidence, released graph-aware Ask UX, sync/export, CLI/MCP adoption, or
-product telemetry.
+awareness, bidirectional same-generation profile-reset determinism,
+checkpoint/resume, and recursive-family behavior. D360 adds focused regressions
+for a previously succeeded canonical profile, a cancelled target, and terminal
+failure exclusion: the same durable operation becomes pending only while the
+graph still requires it, attempt state restarts bounded, the source generation
+does not change, all authority-keyed edge sets reproduce exactly in both
+directions, the first partial reset clears later decision-topic edges, and a
+failed row cannot bypass its attempt ceiling. These results select SQLite and
+reject a specialized graph-engine migration; they do not supply private owner-
+reviewed field evidence, released graph-aware Ask UX, sync/export, CLI/MCP
+adoption, or product telemetry.
 
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer

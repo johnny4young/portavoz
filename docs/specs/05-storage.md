@@ -371,6 +371,18 @@ edges in deterministic order inside the existing batch transaction. Exact
 evidence, revision availability, and lifecycle state stay authoritative in
 their original tables.
 
+D360 adds no schema and does not advance the graph source generation. Generic
+derived-operation identity remains `(kind, target profile, source generation)`,
+but graph admission may return that exact row from `succeeded` or `cancelled`
+to `pending` when the same write transaction proves the target projection is
+still unsatisfied. It preserves job and operation identity, clears the prior
+attempt/lease/timing outcome, and starts a fresh bounded attempt lifecycle.
+Pending and running work retain kind-wide lease exclusion; `failed` remains
+terminal so a profile loop cannot bypass retry bounds. Semantic maintenance
+does not opt into this policy. A profile-reset batch clears every disposable
+edge table, including decision-topic edges, and reseeds every authoritative
+scope before any snapshot can become ready.
+
 D274 adds no schema. `meetingMemoryTimeline` first requires the D273 profile,
 source generation, and empty invalidation cursor to agree, then performs the
 complete read in one SQLite snapshot. Topic UUIDs resolve to their current live

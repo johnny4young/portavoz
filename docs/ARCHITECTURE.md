@@ -1950,9 +1950,14 @@ full profile reset originally exposed a superlinear family-root lookup; moving
 family traversal into bounded recursive SQL reduced the same 10,000-meeting
 rebuild from 17.6 minutes to 27.2 seconds. SQLite remains authoritative and the
 graph projection remains disposable; no specialized graph engine is selected.
-Returning to a previously completed profile at the same unchanged source
-generation can still leave maintenance pending until the next authority write;
-that binary-downgrade edge case remains recorded in `GAPS.md`.
+Graph admission also supports repeated profile transitions without changing
+authority: when the exact succeeded or cancelled operation is no longer
+satisfied by the current projection, the graph-only policy returns that same
+durable identity to pending and resets only its bounded attempt lifecycle.
+Running and pending work keep their lease semantics, and a terminal failed
+operation is never silently retried. The first reset batch clears every
+disposable edge family, including decision-topic aboutness, before rebuilding
+from authority. No profile return advances source generation or adds schema.
 
 Ask now has a **separate exact graph-fact evidence lane** beside transcript
 retrieval. `AskGraphFactQuery` can carry one already-resolved active-blocker,

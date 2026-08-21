@@ -7,24 +7,33 @@ extension MeetingStore {
         targetFingerprint: String = MeetingMemoryGraphProjectionProfile.fingerprint
     ) async throws -> Bool {
         try await database.read { database in
-            let active = try String.fetchOne(
-                database,
-                sql: """
-                    SELECT profileFingerprint
-                    FROM meetingMemoryGraphProjectionState
-                    WHERE id = 'current'
-                    """)
-            if active?.lowercased() != targetFingerprint.lowercased() {
-                return true
-            }
-            return try Bool.fetchOne(
-                database,
-                sql: """
-                    SELECT EXISTS (
-                        SELECT 1 FROM meetingMemoryGraphInvalidation
-                    )
-                    """) ?? false
+            try Self.meetingMemoryGraphRequiresMaintenance(
+                targetFingerprint: targetFingerprint,
+                in: database)
         }
+    }
+
+    static func meetingMemoryGraphRequiresMaintenance(
+        targetFingerprint: String,
+        in database: Database
+    ) throws -> Bool {
+        let active = try String.fetchOne(
+            database,
+            sql: """
+                SELECT profileFingerprint
+                FROM meetingMemoryGraphProjectionState
+                WHERE id = 'current'
+                """)
+        if active?.lowercased() != targetFingerprint.lowercased() {
+            return true
+        }
+        return try Bool.fetchOne(
+            database,
+            sql: """
+                SELECT EXISTS (
+                    SELECT 1 FROM meetingMemoryGraphInvalidation
+                )
+                """) ?? false
     }
 
     public func admitMeetingMemoryGraphMaintenance(
@@ -36,6 +45,7 @@ extension MeetingStore {
             kind: .meetingMemoryGraph,
             targetFingerprint: targetFingerprint,
             maxAttempts: maxAttempts,
+            readmissionPolicy: .whenMeetingMemoryGraphProjectionRequiresTarget,
             at: timestamp)
     }
 
@@ -256,7 +266,8 @@ extension MeetingStore {
             "meetingMemoryGraphMeetingQuestion",
             "meetingMemoryGraphTopicQuestion",
             "meetingMemoryGraphMeetingBlocker",
-            "meetingMemoryGraphDecisionCommitmentBlocker"
+            "meetingMemoryGraphDecisionCommitmentBlocker",
+            "meetingMemoryGraphDecisionTopic"
         ] {
             try database.execute(sql: "DELETE FROM \(table)")
         }

@@ -13054,3 +13054,45 @@ route, and calendar subjects without a public opener fail closed. Deterministic
 unit and bilingual real-app tests cover successful and failed routing and prove
 the execution history is unchanged; physical VoiceOver, Sequoia, separate-
 hardware Tahoe, and resident menu-bar interaction remain field evidence.
+
+## D360 — Re-admit an unsatisfied graph profile without inventing authority (Aug 2026)
+
+**Context:** the graph maintenance operation fingerprint deliberately combines
+kind, target profile, and authoritative source generation. That makes duplicate
+admission idempotent, but it also made one binary-downgrade sequence terminal:
+after canonical → alternate → canonical at an unchanged source generation, the
+second canonical admission found its old `succeeded` row, claim found no
+`pending` work, and the projection remained unavailable until an unrelated
+authority mutation created another operation fingerprint. A cancelled target
+could stall the same way. Advancing source generation for a profile request
+would falsely describe derived policy as authority; deleting the old job or
+adding a random operation identity would discard deterministic idempotency.
+
+**Decision:** keep the existing operation fingerprint and make readmission a
+narrow graph-only scheduler policy. Inside the same admission transaction that
+cancels obsolete pending work, reload and fully validate the exact persisted
+job. If its state is `succeeded` or `cancelled` and the current projection still
+requires that target — because its active profile differs or invalidation rows
+remain — move the same row back to `pending`. Preserve job ID, operation
+fingerprint, target profile, source generation, and creation time; reset attempt
+to zero, apply the current bounded maximum, and clear prior scheduling, lease,
+error, start, and finish state. `pending` and `running` jobs are not rewritten,
+and `failed` remains terminal so repeated profile selection cannot bypass the
+bounded failure policy. Semantic maintenance retains its original no-readmit
+policy.
+
+The first profile-reset batch clears all disposable edge tables, including the
+later decision-topic family, then reseeds every authority scope under the
+existing lease/publication fence. No schema migration, authority write, source-
+generation advance, polling loop, graph engine, answer composition, sync field,
+CLI, MCP, or UI control is added.
+
+**Consequences:** completed and cancelled graph targets recover deterministically
+across repeated same-generation profile transitions while keeping one exact
+durable operation identity. Checkpoint/resume, expired-owner recovery,
+capture-yielding batches, snapshot fail-closure, and failure bounds are
+unchanged. Focused projection tests prove completed and cancelled readmission
+plus terminal-failure exclusion; the always-on scale invariant now resets
+alternate → canonical and compares all
+authority-keyed edge sets, including decision-topic aboutness. Released Ask and
+field-evidence limits remain separate.

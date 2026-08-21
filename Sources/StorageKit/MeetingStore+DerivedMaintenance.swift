@@ -11,6 +11,11 @@ struct DerivedMaintenancePublicationClaim {
     let timestamp: Date
 }
 
+enum DerivedMaintenanceReadmissionPolicy {
+    case never
+    case whenMeetingMemoryGraphProjectionRequiresTarget
+}
+
 extension MeetingStore {
     /// Idempotently admits the current semantic source generation for one
     /// embedding profile. The job records ownership only; NULL vectors remain
@@ -132,6 +137,7 @@ extension MeetingStore {
         kind: DerivedMaintenanceKind,
         targetFingerprint: String,
         maxAttempts: Int,
+        readmissionPolicy: DerivedMaintenanceReadmissionPolicy = .never,
         at timestamp: Date
     ) async throws -> DerivedMaintenanceJob {
         try Self.validateDerivedFingerprint(targetFingerprint)
@@ -151,24 +157,11 @@ extension MeetingStore {
                 throw StorageError.invalidDerivedMaintenanceJob(
                     "operation fingerprint inputs are invalid")
             }
-            try db.execute(
-                sql: """
-                    UPDATE derivedMaintenanceJob
-                    SET state = 'cancelled',
-                        notBefore = NULL,
-                        errorCode = NULL,
-                        finishedAt = ?,
-                        updatedAt = ?
-                    WHERE kind = ?
-                      AND state = 'pending'
-                      AND operationFingerprint <> ?
-                    """,
-                arguments: [
-                    timestamp,
-                    timestamp,
-                    kind.rawValue,
-                    fingerprint
-                ])
+            try Self.cancelObsoletePendingDerivedMaintenance(
+                kind: kind,
+                operationFingerprint: fingerprint,
+                at: timestamp,
+                in: db)
             let job = DerivedMaintenanceJob(
                 kind: kind,
                 targetFingerprint: targetFingerprint.lowercased(),
@@ -179,7 +172,7 @@ extension MeetingStore {
                 updatedAt: timestamp)
             try DerivedMaintenanceJobRecord(job).insert(
                 db, onConflict: .ignore)
-            guard let record = try DerivedMaintenanceJobRecord
+            guard var record = try DerivedMaintenanceJobRecord
                 .filter(Column("kind") == kind.rawValue)
                 .filter(Column("operationFingerprint") == fingerprint)
                 .fetchOne(db)
@@ -187,6 +180,14 @@ extension MeetingStore {
                 throw StorageError.invalidDerivedMaintenanceJob(
                     "admitted operation could not be reloaded")
             }
+            try Self.readmitDerivedMaintenanceIfNeeded(
+                &record,
+                targetFingerprint: targetFingerprint,
+                maxAttempts: maxAttempts,
+                policy: readmissionPolicy,
+                at: timestamp,
+                in: db
+            )
             return try record.job
         }
     }
@@ -480,6 +481,78 @@ extension MeetingStore {
             try record.update(db)
         }
         return records.count
+    }
+
+    private static func shouldReadmitDerivedMaintenance(
+        _ job: DerivedMaintenanceJob,
+        targetFingerprint: String,
+        policy: DerivedMaintenanceReadmissionPolicy,
+        in database: Database
+    ) throws -> Bool {
+        guard job.state == .succeeded || job.state == .cancelled
+        else { return false }
+        switch policy {
+        case .never:
+            return false
+        case .whenMeetingMemoryGraphProjectionRequiresTarget:
+            return try meetingMemoryGraphRequiresMaintenance(
+                targetFingerprint: targetFingerprint,
+                in: database)
+        }
+    }
+
+    private static func cancelObsoletePendingDerivedMaintenance(
+        kind: DerivedMaintenanceKind,
+        operationFingerprint: String,
+        at timestamp: Date,
+        in database: Database
+    ) throws {
+        try database.execute(
+            sql: """
+                UPDATE derivedMaintenanceJob
+                SET state = 'cancelled',
+                    notBefore = NULL,
+                    errorCode = NULL,
+                    finishedAt = ?,
+                    updatedAt = ?
+                WHERE kind = ?
+                  AND state = 'pending'
+                  AND operationFingerprint <> ?
+                """,
+            arguments: [
+                timestamp,
+                timestamp,
+                kind.rawValue,
+                operationFingerprint
+            ])
+    }
+
+    private static func readmitDerivedMaintenanceIfNeeded(
+        _ record: inout DerivedMaintenanceJobRecord,
+        targetFingerprint: String,
+        maxAttempts: Int,
+        policy: DerivedMaintenanceReadmissionPolicy,
+        at timestamp: Date,
+        in database: Database
+    ) throws {
+        let persistedJob = try record.job
+        guard try shouldReadmitDerivedMaintenance(
+            persistedJob,
+            targetFingerprint: targetFingerprint,
+            policy: policy,
+            in: database
+        ) else { return }
+        record.state = DerivedMaintenanceJobState.pending.rawValue
+        record.attempt = 0
+        record.maxAttempts = maxAttempts
+        record.notBefore = nil
+        record.leaseOwner = nil
+        record.leaseExpiresAt = nil
+        record.errorCode = nil
+        record.startedAt = nil
+        record.finishedAt = nil
+        record.updatedAt = timestamp
+        try record.update(database)
     }
 
     private static func validateDerivedFingerprint(_ value: String) throws {

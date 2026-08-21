@@ -2608,13 +2608,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "reduced the same 10,000-meeting\n"
                 + "rebuild from 17.6 minutes to 27.2 seconds"))
         XCTAssertTrue(intelligence.contains(
-            "## Complete graph authority, product adapters, and scale "
-                + "(D308–D314)"))
+            "same-generation profile return re-admit the exact completed"))
         XCTAssertTrue(quality.contains(
-            "### Complete graph product truth and scale closure "
-                + "(D308–D314)"))
+            "### Complete graph product truth, scale, and profile recovery "
+                + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,540 cases "
+            "package inventory contains 2,544 cases "
                 + "(15 environment-gated) + 95"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -2622,8 +2621,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             "ordinary Ask, command palette, CLI, MCP, and meeting briefs "
                 + "remain transcript-only"))
         XCTAssertTrue(gaps.contains(
-            "returning to a previously completed graph profile at the same "
-                + "source generation stalls"))
+            "makes same-generation profile re-admission deterministic"))
+        XCTAssertFalse(gaps.contains(
+            "source generation stalls until the next authority write"))
         XCTAssertFalse(gaps.contains(
             "the other three D270 job adapters"))
         XCTAssertFalse(gaps.contains(
@@ -2806,6 +2806,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/Schema+BlockerGraph.swift")
         let storage = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+MeetingMemoryGraph.swift")
+        let maintenance = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+DerivedMaintenance.swift")
         let projector = try Self.contents(
             of: "Sources/ApplicationKit/ProjectMeetingMemoryGraph.swift")
         let workflow = try Self.contents(
@@ -2848,6 +2850,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             "validateOwnedDerivedMaintenancePublication"))
         XCTAssertTrue(storage.contains(
             "meetingMemoryGraphProjectionIsReady"))
+        XCTAssertTrue(storage.contains(
+            "readmissionPolicy: .whenMeetingMemoryGraphProjectionRequiresTarget"))
+        XCTAssertTrue(maintenance.contains(
+            "job.state == .succeeded || job.state == .cancelled"))
+        XCTAssertTrue(maintenance.contains("record.attempt = 0"))
+        XCTAssertFalse(maintenance.contains(
+            "job.state == .failed || job.state == .cancelled"))
         XCTAssertTrue(projector.contains("kind: .memoryGraph"))
         XCTAssertTrue(projector.contains("shouldProceed(at: .checkpoint)"))
         XCTAssertTrue(workflow.contains(
@@ -2873,6 +2882,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(architecture.contains(
             "disposable typed Meeting Memory Graph projection"))
         XCTAssertTrue(decisions.contains("## D273"))
+        XCTAssertTrue(decisions.contains("## D360"))
         XCTAssertTrue(intelligenceSpec.contains(
             "## Disposable Meeting Memory Graph projection (D273)"))
         XCTAssertTrue(storageSpec.contains(
