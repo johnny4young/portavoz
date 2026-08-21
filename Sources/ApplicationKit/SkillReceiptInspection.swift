@@ -27,6 +27,7 @@ public struct SkillControlCenterReceiptInspection: Equatable, Sendable {
     public let skillVersion: Int
     public let state: SkillExecutionState
     public let failureCategory: FailureCategory?
+    public let contextAvailability: SkillReceiptContextAvailability
     public let recoveryAvailability: SkillReceiptRecoveryAvailability
     public let attempt: Int
     public let updatedAt: Date
@@ -48,15 +49,28 @@ public enum SkillReceiptRecoveryAvailability: Equatable, Sendable {
     case unavailable
 }
 
-public protocol SkillReceiptInspectionStore:
-    SkillExecutionPolicyReading,
-    Sendable {
+/// Historical source review is independent from execution policy. This port
+/// exposes only the content-free receipt audit needed to validate one route.
+public protocol SkillReceiptAuditReading: Sendable {
     func skillExecutionAudit(
         proposalID: UUID
     ) async throws -> SkillExecutionAudit?
 }
 
+public protocol SkillReceiptInspectionStore:
+    SkillReceiptAuditReading,
+    SkillExecutionPolicyReading,
+    Sendable {}
+
 extension MeetingStore: SkillReceiptInspectionStore {}
+
+/// A verified non-failed receipt may reveal only where its evidence belongs.
+/// This classification never grants confirmation or effect authority.
+public enum SkillReceiptContextAvailability: Equatable, Sendable {
+    case reviewInContext
+    case residentMenuBar
+    case unavailable
+}
 
 /// Projects one content-free, read-consistent execution timeline for AUTO-6.
 /// Storage owns causal order; this boundary rejects an impossible chain rather
@@ -86,6 +100,7 @@ public struct LoadSkillReceiptInspection: ApplicationUseCase {
             skillVersion: audit.record.skillVersion,
             state: audit.record.state,
             failureCategory: audit.record.failureCategory,
+            contextAvailability: Self.contextAvailability(audit: audit),
             recoveryAvailability: Self.recoveryAvailability(
                 audit: audit,
                 policy: policy),
@@ -155,6 +170,25 @@ public struct LoadSkillReceiptInspection: ApplicationUseCase {
         }
     }
 
+    static func contextAvailability(
+        audit: SkillExecutionAudit
+    ) -> SkillReceiptContextAvailability {
+        guard audit.record.state != .failed,
+              let subject = audit.subject,
+              subject.isValid,
+              let catalogue = SkillCatalogue.entries.first(where: {
+                  $0.id == audit.record.skillID
+              }),
+              catalogue.availability == .available,
+              catalogue.definition.version == audit.record.skillVersion,
+              catalogue.definition.subjectKind == subject.kind
+        else { return .unavailable }
+        return switch subject {
+        case .meeting, .commitment: .reviewInContext
+        case .calendarEvent: .residentMenuBar
+        }
+    }
+
     private static func transition(
         _ entry: SkillExecutionHistoryEntry,
         state: inout SkillExecutionState?,
@@ -199,6 +233,48 @@ public struct LoadSkillReceiptInspection: ApplicationUseCase {
             throw SkillReceiptInspectionError.inconsistentHistory
         }
         return kind
+    }
+}
+
+public enum SkillReceiptContextNavigationOutcome: Equatable, Sendable {
+    case destination(SkillOfferReviewDestination)
+    case unavailable
+}
+
+/// Resolves one historical receipt to its current owning subject using only
+/// its proposal UUID. The route is inert and remains available while Skills
+/// are paused or disabled because inspecting evidence is not execution.
+public struct ResolveSkillReceiptContextDestination: ApplicationUseCase {
+    private let store: any SkillReceiptAuditReading
+
+    public init(store: any SkillReceiptAuditReading) {
+        self.store = store
+    }
+
+    public func execute(
+        _ proposalID: UUID
+    ) async throws -> SkillReceiptContextNavigationOutcome {
+        try Task.checkCancellation()
+        guard let audit = try await store.skillExecutionAudit(
+            proposalID: proposalID),
+              audit.record.proposalID == proposalID
+        else { return .unavailable }
+        _ = try LoadSkillReceiptInspection.validateAndProject(audit)
+        guard LoadSkillReceiptInspection.contextAvailability(audit: audit)
+            == .reviewInContext,
+              let subject = audit.subject
+        else { return .unavailable }
+        return .destination(Self.destination(for: subject))
+    }
+
+    private static func destination(
+        for subject: SkillSubject
+    ) -> SkillOfferReviewDestination {
+        switch subject {
+        case .meeting(let id): .meeting(id)
+        case .commitment(let id): .commitment(id)
+        case .calendarEvent: .residentMenuBar
+        }
     }
 }
 

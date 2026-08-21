@@ -2506,7 +2506,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343/D359, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2701,28 +2701,39 @@ keeps the receipt and shows a retry for that read only. Settings still receives
 no subject, arguments, offer key, idempotency key, preview, destination,
 recipient, confirmation, or effect authority.
 
-Twelve bilingual XCUITest journeys cover the pane: one verifies the fail-closed
-control load state; one proves a selected activity-scope failure neither
-invents rows nor disables verified policy; one isolates proposal-authority
-failure with no invented rows while controls remain usable; one returns from a
-real email proposal to its exact Meeting Detail without executing or duplicating
-the main window; one injects only that resolution failure and proves the row,
-independent dismissal, and retry remain; one dismisses a real email proposal
-and proves re-observation keeps it absent while unrelated offers remain; one
-injects a dismissal failure and proves the row plus retry stay available on
-both Settings and the subject surface; one revokes a real
-confirmed fixture and proves its causal cancellation plus removal from Waiting;
-one injects only the revocation write failure and proves the receipt plus retry
-remain; one returns a seeded recoverable failure to its exact Meeting Detail,
-requires one main window and a fresh recap offer without a confirmation sheet;
-one injects only recovery resolution failure and proves the original receipt,
-causal evidence, Settings window, and route-retry stay available; and the main
-disposable journey
-disables export, pauses all skills, proves offers stay absent, resumes without
-losing the individual choice, confirms the remaining recap proposal, traverses
-all four activity scopes, checks typed why/input explanations from the real
-producers, opens its three-event causal receipt, and verifies both content-free
-boundaries.
+Every verified non-failed receipt separately classifies whether its current
+source can be reviewed. Meeting and commitment receipts expose **Review source
+in context** after the causal audit, exact catalogue version, subject kind, and
+current foreign-key-backed subject all validate. Historical review deliberately
+ignores global pause and per-Skill disablement: those policies gate proposals
+and execution, not access to existing evidence. Calendar receipts instead
+explain that their original event remains resident in the menu bar because
+public SwiftUI cannot open `MenuBarExtra` programmatically. Failed receipts do
+not receive this general route and retain the stricter recovery behavior above.
+
+The source action sends only the proposal UUID and can return only the existing
+inert meeting or commitment route. It neither changes the receipt nor runs the
+Skill. Missing/deleted/legacy subjects, stale catalogue versions, mismatched
+subject kinds, malformed causal history, and calendar subjects without a direct
+opener return unavailable. A thrown resolution retains the receipt timeline,
+the route retry, and the independent Waiting revocation action. Both source and
+recovery navigation use the generic weak Settings-window bridge after the sheet
+dismisses; neither route carries content or effect authority into Settings.
+
+Sixteen bilingual XCUITest journeys cover the pane: fail-closed control loading;
+isolated scope failure; stale-row-free activity transitions; isolated proposal
+failure; successful and failed Proposed review routing; successful and failed
+Proposed dismissal; successful and failed Waiting revocation; successful and
+failed failed-run recovery routing; successful and failed non-failed receipt
+source routing; exact keyboard/accessibility focus restoration; and the main
+disposable journey. The source success returns a real Waiting fixture to its
+exact Meeting Detail without a confirmation sheet or duplicate main window.
+The source failure preserves its causal event, receipt row, independent revoke
+action, Settings window, and route-only retry. The main journey disables export,
+pauses all Skills, proves offers stay absent, resumes without losing the
+individual choice, confirms the remaining recap proposal, traverses all four
+activity scopes, checks typed why/input explanations from real producers, opens
+its causal receipt, and verifies both content-free boundaries.
 
 ## Resident pre-meeting brief proposal (D322, Aug 2026)
 

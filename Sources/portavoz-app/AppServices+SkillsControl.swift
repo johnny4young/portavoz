@@ -103,6 +103,18 @@ extension AppServices {
         return try await ResolveSkillReceiptRecoveryDestination(store: store)
             .execute(proposalID)
     }
+
+    func resolveSkillReceiptContextDestination(
+        proposalID: UUID
+    ) async throws -> SkillReceiptContextNavigationOutcome {
+        if usesTemporaryMeetingStore,
+           ProcessInfo.processInfo.arguments.contains(
+               "-simulate-skill-receipt-context-unavailable") {
+            throw SimulatedSkillReceiptContextFailure()
+        }
+        return try await ResolveSkillReceiptContextDestination(store: store)
+            .execute(proposalID)
+    }
 }
 
 private struct SimulatedSkillControlFailure: Error {}
@@ -111,3 +123,4 @@ private struct SimulatedSkillProposalDismissalFailure: Error {}
 private struct SimulatedSkillProposalReviewFailure: Error {}
 private struct SimulatedSkillReceiptRevocationFailure: Error {}
 private struct SimulatedSkillReceiptRecoveryFailure: Error {}
+private struct SimulatedSkillReceiptContextFailure: Error {}

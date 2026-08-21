@@ -76,7 +76,7 @@ struct SettingsView: View {
     @State private var settingsQuery = ""
     @State private var selectedSkillReceipt: SkillControlCenterReceipt?
     @State private var skillReceiptFocus = SettingsSkillReceiptFocusState()
-    @State private var pendingSkillRecoveryDestination: SkillOfferReviewDestination?
+    @State private var pendingSkillReceiptDestination: SkillOfferReviewDestination?
     @State private var skillActivityRevision = 0
     @State private var settingsWindowReference = SettingsWindowReference()
 
@@ -155,15 +155,15 @@ struct SettingsView: View {
         }
         .sheet(
             item: $selectedSkillReceipt,
-            onDismiss: openPendingSkillRecoveryDestination
+            onDismiss: openPendingSkillReceiptDestination
         ) { receipt in
             SkillReceiptInspectionSheet(
                 receipt: receipt,
                 receiptDidChange: {
                     skillActivityRevision += 1
                 },
-                openRecoveryDestination: { destination in
-                    pendingSkillRecoveryDestination = destination
+                openReceiptDestination: { destination in
+                    pendingSkillReceiptDestination = destination
                 })
         }
         .onAppear {
@@ -206,11 +206,11 @@ struct SettingsView: View {
     }
 
     @MainActor
-    private func openPendingSkillRecoveryDestination() {
-        if let destination = pendingSkillRecoveryDestination {
-            pendingSkillRecoveryDestination = nil
+    private func openPendingSkillReceiptDestination() {
+        if let destination = pendingSkillReceiptDestination {
+            pendingSkillReceiptDestination = nil
             skillReceiptFocus.clear()
-            SettingsSkillRecoveryNavigation.open(
+            SettingsSkillReceiptNavigation.open(
                 destination, services: services, settingsWindow: settingsWindowReference.window
             ) { openWindow(id: "main", value: MainWindowIdentity.primary) }
             return

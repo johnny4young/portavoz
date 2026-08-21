@@ -277,6 +277,14 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "SkillsSettingsUITests",
+            "testWaitingReceiptCanReviewItsSourceWithoutRunning",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
+            "testFailedSourceContextResolutionKeepsReceiptAndAllowsRetry",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
             "testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit",
         ),
     ),

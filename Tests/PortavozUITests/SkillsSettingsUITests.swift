@@ -522,6 +522,75 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testWaitingReceiptCanReviewItsSourceWithoutRunning() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append("-seed-skill-waiting")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+        _ = openWaitingReceipt(in: app)
+
+        let review = app.buttons["skill-receipt-context-action"]
+        XCTAssertTrue(review.waitForStableFrame(timeout: 5))
+        XCTAssertGreaterThan(
+            app.windows.count,
+            1,
+            "source review must begin with Settings above the primary window")
+        review.click()
+
+        XCTAssertTrue(
+            app.control(withIdentifier: "detail-header-section")
+                .waitForStableFrame(timeout: 10),
+            "source review must return to the exact meeting detail")
+        XCTAssertTrue(
+            waitForWindowCount(1, in: app, timeout: 10),
+            "verified source review must close Settings; \(windowDiagnostics(in: app))")
+        XCTAssertFalse(
+            app.control(withIdentifier: "skill-confirm-sheet").exists,
+            "source review must never confirm or run the waiting Skill")
+        attachScreenshot(of: app, named: "skills-waiting-receipt-source")
+    }
+
+    @MainActor
+    func testFailedSourceContextResolutionKeepsReceiptAndAllowsRetry() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append(contentsOf: [
+            "-seed-skill-waiting",
+            "-simulate-skill-receipt-context-unavailable"
+        ])
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+        let receipt = openWaitingReceipt(in: app)
+
+        let review = app.buttons["skill-receipt-context-action"]
+        XCTAssertTrue(review.waitForStableFrame(timeout: 5))
+        review.click()
+        let error = app.control(withIdentifier: "skill-receipt-context-error")
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        let retry = app.buttons["skill-receipt-context-retry"]
+        XCTAssertTrue(retry.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(receipt.exists)
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-receipt-inspection-event-1")
+                .exists,
+            "an unverified route must retain the causal confirmation evidence")
+        XCTAssertTrue(
+            app.buttons["skill-receipt-revoke-action"].exists,
+            "source resolution failure must not remove the independent revoke action")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-category-skills").exists,
+            "failed source resolution must not leave Settings")
+        retry.click()
+        XCTAssertTrue(error.waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "skills-receipt-source-retry")
+    }
+
+    @MainActor
     func testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit() throws {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-waiting")

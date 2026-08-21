@@ -13015,3 +13015,42 @@ symlink handling. Automation does not replace a physical stable/Dev/CLI
 abrupt-termination exercise on Sequoia and Tahoe. BSD locking is advisory, so
 a still-running pre-D358 process does not cooperate; mixed-version exclusion
 remains an operational constraint rather than a data-migration guarantee.
+
+## D359 — Verified non-failed Skill receipts may reopen their exact source (Aug 2026)
+
+**Context:** the Skills control center could inspect every causal execution
+receipt, revoke a run still waiting for handoff, and return a failed local run
+to a fresh recovery review. A succeeded, executing, waiting, or cancelled
+receipt still became a dead-end even when schema v41 retained a current exact
+meeting or commitment owner. Reusing failed-run recovery for this broader
+journey would incorrectly make historical evidence depend on current pause or
+enablement policy, while resolving subjects in SwiftUI would expose authority
+and duplicate the existing inert navigation boundary.
+
+**Decision:** classify source context independently from failed-run recovery.
+After replaying the bounded causal audit, a non-failed receipt may expose a
+meeting or commitment route only when its current subject is valid, its owner
+still exists, and its Skill identity, catalogue version, availability, and
+subject kind still match. Calendar receipts remain resident menu-bar guidance
+because public SwiftUI has no supported `MenuBarExtra` opener. Historical
+source review deliberately ignores global pause and individual disablement;
+failed receipts retain D341 recovery policy, including external/destructive
+verification-only behavior.
+
+Resolve the action through a proposal-UUID-only ApplicationKit use case that
+depends on the content-free audit-reading port, not execution policy. It may
+return only the existing inert `SkillOfferReviewDestination` and may not
+confirm, claim, begin, settle, retry, or perform an effect. Settings generalizes
+its weak-window source/recovery bridge but still receives no subject, offer key,
+idempotency key, arguments, preview, destination content, result, or effect
+port. A failed route keeps the receipt, causal evidence, independent Waiting
+revocation, and a route-only retry.
+
+**Consequences:** existing execution evidence can lead back to the exact place
+that explains it even when future Skill execution is paused, without turning
+Settings into an execution surface. Deleted or legacy subjects, stale catalogue
+versions, mismatched kinds, malformed histories, failed receipts on the general
+route, and calendar subjects without a public opener fail closed. Deterministic
+unit and bilingual real-app tests cover successful and failed routing and prove
+the execution history is unchanged; physical VoiceOver, Sequoia, separate-
+hardware Tahoe, and resident menu-bar interaction remain field evidence.

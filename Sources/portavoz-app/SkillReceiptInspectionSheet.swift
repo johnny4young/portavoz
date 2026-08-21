@@ -11,7 +11,7 @@ struct SkillReceiptInspectionSheet: View {
 
     let receipt: SkillControlCenterReceipt
     let receiptDidChange: () -> Void
-    let openRecoveryDestination: (SkillOfferReviewDestination) -> Void
+    let openReceiptDestination: (SkillOfferReviewDestination) -> Void
 
     @State private var inspection: SkillControlCenterReceiptInspection?
     @State private var isLoading = false
@@ -20,12 +20,21 @@ struct SkillReceiptInspectionSheet: View {
     @State private var revocationFailed = false
     @State private var isResolvingRecovery = false
     @State private var recoveryFailed = false
+    @State private var isResolvingContext = false
+    @State private var contextFailed = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
             Divider()
             content
+            if let inspection,
+               !isLoading,
+               inspection.state != .failed,
+               inspection.contextAvailability != .unavailable {
+                Divider()
+                contextContent
+            }
             if inspection?.state == .confirmed {
                 Divider()
                 revocationContent
@@ -48,7 +57,7 @@ struct SkillReceiptInspectionSheet: View {
         .task(id: receipt.proposalID) {
             await load()
         }
-        .interactiveDismissDisabled(isRevoking || isResolvingRecovery)
+        .interactiveDismissDisabled(isResolvingReceiptAction)
     }
 
     private var header: some View {
@@ -74,7 +83,58 @@ struct SkillReceiptInspectionSheet: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Close receipt details")
             .accessibilityIdentifier("skill-receipt-inspection-close")
-            .disabled(isRevoking || isResolvingRecovery)
+            .disabled(isResolvingReceiptAction)
+        }
+    }
+
+    @ViewBuilder
+    private var contextContent: some View {
+        switch inspection?.contextAvailability ?? .unavailable {
+        case .reviewInContext:
+            if isResolvingContext {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Verifying source context…")
+                }
+                .accessibilityIdentifier("skill-receipt-context-progress")
+            } else if contextFailed {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(
+                        "Source context could not be verified. This action did not start or change the Skill run.",
+                        systemImage: "exclamationmark.triangle")
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("skill-receipt-context-error")
+                    Button("Try again") {
+                        Task { await resolveContext() }
+                    }
+                    .accessibilityIdentifier("skill-receipt-context-retry")
+                    .disabled(isRevoking || isResolvingRecovery)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(
+                        "Review the exact source for this receipt. This action does not start or change the Skill run.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Review source in context") {
+                        Task { await resolveContext() }
+                    }
+                    .accessibilityHint(
+                        "Returns to the original subject without running the Skill")
+                    .accessibilityIdentifier("skill-receipt-context-action")
+                    .disabled(isRevoking || isResolvingRecovery)
+                }
+            }
+        case .residentMenuBar:
+            Label(
+                "Review this receipt beside its original event in the menu bar. Nothing runs automatically.",
+                systemImage: "menubar.rectangle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("skill-receipt-context-resident")
+        case .unavailable:
+            EmptyView()
         }
     }
 
@@ -159,6 +219,7 @@ struct SkillReceiptInspectionSheet: View {
                     Task { await revokeApproval() }
                 }
                 .accessibilityIdentifier("skill-receipt-revoke-retry")
+                .disabled(isResolvingContext || isResolvingRecovery)
             }
         } else {
             VStack(alignment: .leading, spacing: 8) {
@@ -172,6 +233,7 @@ struct SkillReceiptInspectionSheet: View {
                 .accessibilityHint(
                     "Cancels this run only if execution has not started")
                 .accessibilityIdentifier("skill-receipt-revoke-action")
+                .disabled(isResolvingContext || isResolvingRecovery)
             }
         }
     }
@@ -261,15 +323,23 @@ struct SkillReceiptInspectionSheet: View {
                 inspection?.failureCategory ?? receipt.failureCategory)
     }
 
+    private var isResolvingReceiptAction: Bool {
+        isRevoking || isResolvingRecovery || isResolvingContext
+    }
+}
+
+private extension SkillReceiptInspectionSheet {
     @MainActor
-    private func load() async {
-        guard !isLoading, !isRevoking, !isResolvingRecovery else { return }
+    func load() async {
+        guard !isLoading, !isResolvingReceiptAction else { return }
         isLoading = true
         defer { isLoading = false }
         do {
             inspection = try await services.loadSkillReceiptInspection(
                 proposalID: receipt.proposalID)
             loadFailed = false
+            contextFailed = false
+            recoveryFailed = false
         } catch {
             inspection = nil
             loadFailed = true
@@ -277,10 +347,11 @@ struct SkillReceiptInspectionSheet: View {
     }
 
     @MainActor
-    private func revokeApproval() async {
+    func revokeApproval() async {
         guard inspection?.state == .confirmed,
               !isRevoking,
-              !isResolvingRecovery
+              !isResolvingRecovery,
+              !isResolvingContext
         else { return }
         isRevoking = true
         revocationFailed = false
@@ -303,7 +374,7 @@ struct SkillReceiptInspectionSheet: View {
     /// Keeping the two paths separate prevents a successful cancellation from
     /// leaving the sheet on its stale `confirmed` history.
     @MainActor
-    private func reloadAfterVerifiedMutation() async {
+    func reloadAfterVerifiedMutation() async {
         isLoading = true
         defer { isLoading = false }
         do {
@@ -321,12 +392,13 @@ struct SkillReceiptInspectionSheet: View {
     }
 
     @MainActor
-    private func resolveRecovery() async {
+    func resolveRecovery() async {
         guard inspection?.state == .failed,
               inspection?.recoveryAvailability == .reviewInContext,
               !isLoading,
               !isRevoking,
-              !isResolvingRecovery
+              !isResolvingRecovery,
+              !isResolvingContext
         else { return }
         isResolvingRecovery = true
         recoveryFailed = false
@@ -341,7 +413,7 @@ struct SkillReceiptInspectionSheet: View {
                 recoveryFailed = true
             case .destination(let destination):
                 isResolvingRecovery = false
-                openRecoveryDestination(destination)
+                openReceiptDestination(destination)
                 dismiss()
             }
         } catch is CancellationError {
@@ -351,7 +423,40 @@ struct SkillReceiptInspectionSheet: View {
         }
     }
 
-    private func eventTitle(
+    @MainActor
+    func resolveContext() async {
+        guard let inspection,
+              inspection.state != .failed,
+              inspection.contextAvailability == .reviewInContext,
+              !isLoading,
+              !isRevoking,
+              !isResolvingRecovery,
+              !isResolvingContext
+        else { return }
+        isResolvingContext = true
+        contextFailed = false
+        defer { isResolvingContext = false }
+        do {
+            let outcome = try await services
+                .resolveSkillReceiptContextDestination(
+                    proposalID: receipt.proposalID)
+            guard !Task.isCancelled else { return }
+            switch outcome {
+            case .unavailable:
+                contextFailed = true
+            case .destination(let destination):
+                isResolvingContext = false
+                openReceiptDestination(destination)
+                dismiss()
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            contextFailed = true
+        }
+    }
+
+    func eventTitle(
         _ kind: SkillControlCenterReceiptEventKind
     ) -> String {
         switch kind {
@@ -363,7 +468,7 @@ struct SkillReceiptInspectionSheet: View {
         }
     }
 
-    private func eventSymbol(
+    func eventSymbol(
         _ kind: SkillControlCenterReceiptEventKind
     ) -> String {
         switch kind {
@@ -375,7 +480,7 @@ struct SkillReceiptInspectionSheet: View {
         }
     }
 
-    private func eventTint(
+    func eventTint(
         _ kind: SkillControlCenterReceiptEventKind
     ) -> Color {
         switch kind {
@@ -386,7 +491,7 @@ struct SkillReceiptInspectionSheet: View {
         }
     }
 
-    private func failureCategoryTitle(_ category: FailureCategory) -> String {
+    func failureCategoryTitle(_ category: FailureCategory) -> String {
         switch category {
         case .critical: L10n.text("Critical failure")
         case .recoverable: L10n.text("Recoverable failure")

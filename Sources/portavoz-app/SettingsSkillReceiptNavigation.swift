@@ -3,10 +3,10 @@ import ApplicationKit
 import SwiftUI
 
 /// Keeps the imperative Settings-to-main-window transition at one narrow
-/// AppKit boundary. The recovery destination is inert: this helper only routes
+/// AppKit boundary. The receipt destination is inert: this helper only routes
 /// to the owning content and never invokes a Skill effect.
 @MainActor
-enum SettingsSkillRecoveryNavigation {
+enum SettingsSkillReceiptNavigation {
     static func open(
         _ destination: SkillOfferReviewDestination,
         services: AppServices,

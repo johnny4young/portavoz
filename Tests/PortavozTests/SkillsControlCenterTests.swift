@@ -346,8 +346,8 @@ final class SkillsControlCenterTests: XCTestCase {
         let proposalID = UUID()
         _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
-            skillID: RecapDraftSkill.id,
-            skillVersion: RecapDraftSkill.version,
+            skillID: PreMeetingBriefSkill.id,
+            skillVersion: PreMeetingBriefSkill.version,
             subject: .calendarEvent("control-center-test-subject"),
             offerKey: "inspection-retry",
             idempotencyKey: "inspection-retry",
@@ -373,7 +373,7 @@ final class SkillsControlCenterTests: XCTestCase {
             .execute(proposalID)
 
         XCTAssertEqual(inspection.proposalID, proposalID)
-        XCTAssertEqual(inspection.skillID, RecapDraftSkill.id)
+        XCTAssertEqual(inspection.skillID, PreMeetingBriefSkill.id)
         XCTAssertEqual(inspection.state, .succeeded)
         XCTAssertEqual(inspection.attempt, 2)
         XCTAssertEqual(inspection.events.map(\.sequence), [1, 2, 3, 4, 5])
@@ -387,7 +387,53 @@ final class SkillsControlCenterTests: XCTestCase {
             inspection.events.map(\.failureCategory),
             [nil, nil, .recoverable, nil, nil])
         XCTAssertNil(inspection.failureCategory)
+        XCTAssertEqual(inspection.contextAvailability, .residentMenuBar)
         XCTAssertEqual(inspection.recoveryAvailability, .unavailable)
+        let contextNavigation = try await ResolveSkillReceiptContextDestination(
+            store: store
+        ).execute(proposalID)
+        XCTAssertEqual(contextNavigation, .unavailable)
+    }
+
+    func testSuccessfulReceiptReturnsToSourceWhileSkillsAreDisabled() async throws {
+        let store = try MeetingStore.inMemory()
+        let meeting = Meeting(title: "Private", startedAt: now)
+        try await store.save(meeting)
+        let proposalID = UUID()
+        let key = RecapDraftSkill.idempotencyKey(for: meeting.id)
+        _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
+            proposalID: proposalID,
+            skillID: RecapDraftSkill.id,
+            skillVersion: RecapDraftSkill.version,
+            subject: .meeting(meeting.id),
+            offerKey: key,
+            idempotencyKey: key,
+            occurredAt: now))
+        _ = try await store.beginSkillExecution(
+            proposalID: proposalID,
+            at: now.addingTimeInterval(1))
+        _ = try await store.settleSkillExecution(
+            proposalID: proposalID,
+            succeeded: true,
+            failureCategory: nil,
+            at: now.addingTimeInterval(2))
+        try await store.setSkill(RecapDraftSkill.id, isEnabled: false, at: now)
+        try await store.setAllSkillsPaused(true, at: now)
+        let before = try await store.skillExecutionHistory(
+            proposalID: proposalID)
+
+        let inspection = try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
+        let navigation = try await ResolveSkillReceiptContextDestination(
+            store: store
+        ).execute(proposalID)
+        let after = try await store.skillExecutionHistory(
+            proposalID: proposalID)
+
+        XCTAssertEqual(inspection.contextAvailability, .reviewInContext)
+        XCTAssertEqual(inspection.recoveryAvailability, .unavailable)
+        XCTAssertEqual(navigation, .destination(.meeting(meeting.id)))
+        XCTAssertEqual(after, before, "source review must not mutate an execution")
     }
 
     func testRecoverableFailureResolvesOnlyItsOriginalContext() async throws {
@@ -420,13 +466,73 @@ final class SkillsControlCenterTests: XCTestCase {
         let navigation = try await ResolveSkillReceiptRecoveryDestination(
             store: store
         ).execute(proposalID)
+        let contextNavigation = try await ResolveSkillReceiptContextDestination(
+            store: store
+        ).execute(proposalID)
         let after = try await store.skillExecutionHistory(
             proposalID: proposalID)
 
         XCTAssertEqual(inspection.failureCategory, .recoverable)
+        XCTAssertEqual(inspection.contextAvailability, .unavailable)
         XCTAssertEqual(inspection.recoveryAvailability, .reviewInContext)
         XCTAssertEqual(navigation, .destination(.meeting(meeting.id)))
+        XCTAssertEqual(contextNavigation, .unavailable)
         XCTAssertEqual(after, before, "navigation must not claim or retry an effect")
+    }
+
+    func testReceiptContextFailsClosedForDeletedOrStaleAuthority() async throws {
+        let store = try MeetingStore.inMemory()
+        let deletedMeeting = Meeting(title: "Deleted", startedAt: now)
+        let staleMeeting = Meeting(title: "Stale", startedAt: now)
+        try await store.save(deletedMeeting)
+        try await store.save(staleMeeting)
+        let deletedProposalID = UUID()
+        let staleProposalID = UUID()
+
+        for (proposalID, meeting) in [
+            (deletedProposalID, deletedMeeting),
+            (staleProposalID, staleMeeting)
+        ] {
+            let key = RecapDraftSkill.idempotencyKey(for: meeting.id)
+            _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
+                proposalID: proposalID,
+                skillID: RecapDraftSkill.id,
+                skillVersion: RecapDraftSkill.version,
+                subject: .meeting(meeting.id),
+                offerKey: key,
+                idempotencyKey: key,
+                occurredAt: now))
+            _ = try await store.beginSkillExecution(
+                proposalID: proposalID,
+                at: now.addingTimeInterval(1))
+            _ = try await store.settleSkillExecution(
+                proposalID: proposalID,
+                succeeded: true,
+                failureCategory: nil,
+                at: now.addingTimeInterval(2))
+        }
+
+        try await store.delete(deletedMeeting.id)
+        try await store.purge(deletedMeeting.id)
+        try await store.database.write { database in
+            try database.execute(
+                sql: """
+                    UPDATE skillExecutionState
+                    SET skillVersion = ?
+                    WHERE proposalID = ?
+                    """,
+                arguments: [RecapDraftSkill.version + 1, staleProposalID.uuidString])
+        }
+
+        for proposalID in [deletedProposalID, staleProposalID] {
+            let inspection = try await LoadSkillReceiptInspection(store: store)
+                .execute(proposalID)
+            let navigation = try await ResolveSkillReceiptContextDestination(
+                store: store
+            ).execute(proposalID)
+            XCTAssertEqual(inspection.contextAvailability, .unavailable)
+            XCTAssertEqual(navigation, .unavailable)
+        }
     }
 
     func testOutcomeUnknownFailureRequiresExternalVerification() async throws {
@@ -638,6 +744,15 @@ final class SkillsControlCenterTests: XCTestCase {
             _ = try await LoadSkillReceiptInspection(store: inconsistent)
                 .execute(proposalID)
             XCTFail("a terminal state needs matching append-only evidence")
+        } catch let error as SkillReceiptInspectionError {
+            XCTAssertEqual(error, .inconsistentHistory)
+        }
+
+        do {
+            _ = try await ResolveSkillReceiptContextDestination(
+                store: inconsistent
+            ).execute(proposalID)
+            XCTFail("source navigation must replay causal evidence")
         } catch let error as SkillReceiptInspectionError {
             XCTAssertEqual(error, .inconsistentHistory)
         }

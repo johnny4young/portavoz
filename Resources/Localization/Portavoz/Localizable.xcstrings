@@ -13471,6 +13471,56 @@
         }
       }
     },
+    "Verifying source context…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando el contexto de origen…"
+          }
+        }
+      }
+    },
+    "Source context could not be verified. This action did not start or change the Skill run.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar el contexto de origen. Esta acción no inició ni cambió la ejecución del Skill."
+          }
+        }
+      }
+    },
+    "Review the exact source for this receipt. This action does not start or change the Skill run.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa la fuente exacta de este recibo. Esta acción no inicia ni cambia la ejecución del Skill."
+          }
+        }
+      }
+    },
+    "Review source in context": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar la fuente en contexto"
+          }
+        }
+      }
+    },
+    "Review this receipt beside its original event in the menu bar. Nothing runs automatically.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa este recibo junto a su evento original en la barra de menús. Nada se ejecuta automáticamente."
+          }
+        }
+      }
+    },
     "Verifying recovery context…": {
       "localizations": {
         "es": {

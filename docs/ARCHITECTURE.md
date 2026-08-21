@@ -453,13 +453,32 @@ while process-wide key-window inference can target the primary scene after the
 sheet has gone away. The bridge therefore retains neither the scene nor window
 and invokes `close()` only on the exact captured host.
 
+Separately, a verified **non-failed** receipt may return to the current exact
+meeting or commitment that owns its evidence. ApplicationKit replays the same
+causal audit and requires a valid subject, available matching catalogue
+version, and matching subject kind, but deliberately does not consult global
+pause or per-Skill enablement: historical source review is not execution
+authority. Calendar receipts remain resident menu-bar guidance because there
+is no public `MenuBarExtra` opener. Failed receipts keep the stricter recovery
+classification above; deleted/legacy subjects, stale catalogue versions,
+malformed histories, and missing direct routes fail closed.
+
+This source action also sends only the proposal UUID and returns the existing
+inert navigation destination. It cannot confirm, claim, begin, settle, retry,
+or perform an effect, and it does not receive an offer key, idempotency key,
+arguments, preview, destination content, or result. A failed resolution keeps
+the receipt, causal evidence, and any independent Waiting revocation action
+available with a route-only retry. Source and recovery routes share one generic
+Settings-to-main-window bridge because both have the same inert destination
+contract; the bridge still closes only the weakly captured Settings window.
+
 An ordinary receipt-sheet dismissal keeps only the exact proposal UUID long
 enough to return interaction context. The Settings root emits a bounded focus
 request after AppKit removes the sheet focus scope; the activity component that
 owns the receipt rows owns both `FocusState` and `AccessibilityFocusState` and
 matches that request against `proposalID`. A reconstructed activity subtree
 handles the request as initial state and yields once before applying it. A
-recovery route clears the pending receipt request instead, so focus cannot be
+receipt route clears the pending receipt request instead, so focus cannot be
 pulled back into the Settings window that is closing. No retained view, window,
 receipt payload, or execution authority enters this focus handoff.
 

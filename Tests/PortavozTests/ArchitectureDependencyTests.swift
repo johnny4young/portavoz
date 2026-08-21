@@ -4745,8 +4745,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/SkillReceiptInspectionSheet.swift")
         let settings = try Self.contents(
             of: "Sources/portavoz-app/SettingsView.swift")
-        let recoveryNavigation = try Self.contents(
-            of: "Sources/portavoz-app/SettingsSkillRecoveryNavigation.swift")
+        let receiptNavigation = try Self.contents(
+            of: "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(subject.contains("public enum SkillSubject"))
@@ -4785,24 +4785,73 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(receiptSheet.contains(
             "skill-receipt-recovery-action"))
         XCTAssertTrue(receiptSheet.contains(
-            "openRecoveryDestination: (SkillOfferReviewDestination) -> Void"))
+            "openReceiptDestination: (SkillOfferReviewDestination) -> Void"))
         XCTAssertFalse(receiptSheet.contains("services.pendingRoute ="))
         XCTAssertFalse(receiptSheet.contains("openWindow(id:"))
-        XCTAssertTrue(recoveryNavigation.contains(
+        XCTAssertTrue(receiptNavigation.contains(
             "services.pendingRoute = .meeting(meetingID)"))
-        XCTAssertTrue(recoveryNavigation.contains(
+        XCTAssertTrue(receiptNavigation.contains(
             "services.pendingRoute = .commitments(.commitment(commitmentID))"))
         XCTAssertTrue(settings.contains(
             "openWindow(id: \"main\", value: MainWindowIdentity.primary)"))
         XCTAssertTrue(settings.contains(
-            "onDismiss: openPendingSkillRecoveryDestination"))
-        XCTAssertTrue(recoveryNavigation.contains("weak var window: NSWindow?"))
+            "onDismiss: openPendingSkillReceiptDestination"))
+        XCTAssertTrue(receiptNavigation.contains("weak var window: NSWindow?"))
         XCTAssertTrue(settings.contains("SettingsWindowCapture(reference:"))
-        XCTAssertTrue(recoveryNavigation.contains("settingsWindow?.close()"))
+        XCTAssertTrue(receiptNavigation.contains("settingsWindow?.close()"))
         XCTAssertFalse(settings.contains("NSApp.keyWindow"))
-        XCTAssertFalse(recoveryNavigation.contains("NSApp.keyWindow"))
+        XCTAssertFalse(receiptNavigation.contains("NSApp.keyWindow"))
         XCTAssertFalse(receiptSheet.contains("idempotencyKey"))
         XCTAssertTrue(decisions.contains("## D341"))
+    }
+
+    func testSkillReceiptSourceReviewIsInertPolicyIndependentAndFailClosed() throws {
+        let inspection = try Self.contents(
+            of: "Sources/ApplicationKit/SkillReceiptInspection.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+SkillsControl.swift")
+        let receiptSheet = try Self.contents(
+            of: "Sources/portavoz-app/SkillReceiptInspectionSheet.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SettingsView.swift")
+        let receiptNavigation = try Self.contents(
+            of: "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(inspection.contains(
+            "protocol SkillReceiptAuditReading: Sendable"))
+        XCTAssertTrue(inspection.contains(
+            "struct ResolveSkillReceiptContextDestination"))
+        XCTAssertTrue(inspection.contains(
+            "private let store: any SkillReceiptAuditReading"))
+        XCTAssertTrue(inspection.contains(
+            "contextAvailability: Self.contextAvailability(audit: audit)"))
+        XCTAssertTrue(inspection.contains(
+            "guard audit.record.state != .failed,"))
+        XCTAssertTrue(inspection.contains(
+            "LoadSkillReceiptInspection.validateAndProject(audit)"))
+        XCTAssertFalse(inspection.contains("effect.perform"))
+        XCTAssertFalse(inspection.contains("ExecuteSkill"))
+        XCTAssertFalse(inspection.contains("idempotencyKey"))
+        XCTAssertTrue(services.contains(
+            "-simulate-skill-receipt-context-unavailable"))
+        XCTAssertTrue(receiptSheet.contains(
+            "skill-receipt-context-action"))
+        XCTAssertTrue(receiptSheet.contains(
+            "skill-receipt-context-error"))
+        XCTAssertTrue(receiptSheet.contains(
+            "skill-receipt-context-retry"))
+        XCTAssertTrue(receiptSheet.contains(
+            "openReceiptDestination: (SkillOfferReviewDestination) -> Void"))
+        XCTAssertFalse(receiptSheet.contains("services.pendingRoute ="))
+        XCTAssertTrue(settings.contains(
+            "@State private var pendingSkillReceiptDestination"))
+        XCTAssertTrue(settings.contains(
+            "onDismiss: openPendingSkillReceiptDestination"))
+        XCTAssertTrue(receiptNavigation.contains(
+            "enum SettingsSkillReceiptNavigation"))
+        XCTAssertFalse(receiptNavigation.contains("effect.perform"))
+        XCTAssertTrue(decisions.contains("## D359"))
     }
 
     func testSkillReceiptDismissalRestoresLocalFocusWithoutCompetingWithRecovery() throws {
