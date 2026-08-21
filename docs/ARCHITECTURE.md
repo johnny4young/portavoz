@@ -3661,7 +3661,29 @@ and force a boundary at every language transition rather than comparing
 unrelated spaces. The stable admission fingerprint covers all
 policy, resource, model, language, and threshold identity but no transcript or
 query content. Admission is neither a model-capability proof nor quality,
-storage, serving, or engine authority; no semantic chunker is composed yet.
+storage, serving, or engine authority.
+
+`RetrievalSemanticBoundaryChunker` is the first admitted implementation. It
+makes one forward pass over the materialized complete-turn projection, keeps
+only the current draft and adjacent validated vectors as boundary state, and
+greedily joins at most three turns. Each supported turn is vectorized once.
+Only adjacent vectors with the same normalized primary language and exact
+profile fingerprint are compared. English and Spanish use separate spaces;
+language transitions, unknown or mixed-language turns, low similarity, and
+resource limits start a new non-overlapping chunk. The chunker rejects shared
+spaces, wrong language/profile/dimension vectors, non-finite values, and zero
+vectors rather than guessing. It exposes only content-free diagnostic counts.
+
+The concrete outer adapter exists only in `portavoz-cli`. It selects the exact
+current `NLEmbedding` sentence revision separately for English and Spanish,
+verifies the runtime language and dimension, and constructs an admitted proposal
+with provisional per-language cosine thresholds of 0.60 and 0.75. The dynamic
+adapter identity is `semantic-v1.<proposal-sha256>`, so revision, dimension,
+pipeline, threshold, and policy drift cannot share receipts. The disposable
+Ask corpus can project this candidate and preserve exact ordered canonical
+sources; the paired runner accepts only that exact identity shape. Neither the
+app nor StorageKit composes the chunker or NaturalLanguage adapter. Product Ask
+and Library continue to serve canonical segment units.
 
 Semantic maintenance does not publish `.index` work into the owner-leased
 processing ledger. That ledger continues to control the visible meeting
@@ -4242,7 +4264,7 @@ reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,455 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,494 XCTest package cases pass, with 14 real-model/environment cases gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -4250,10 +4272,10 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 675
+- strict SwiftLint remains a blocking CI gate and is clean across all 679
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 416 deterministic tooling cases and the 176-case architecture subset pass;
+- 425 deterministic tooling cases and the 179-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
 - 92 XCUITest cases per locale define the 184-case bilingual release gate;

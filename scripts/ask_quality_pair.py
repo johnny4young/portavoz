@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
 SAFE_BUILD = re.compile(r"^[A-Za-z0-9.+_-]{1,80}$")
 OUTCOMES = {"candidate-parity", "blocked"}
-CANDIDATES = {"speaker-turn", "conversation-window"}
+CANDIDATES = {"speaker-turn", "conversation-window", "semantic-boundary"}
 SEGMENT_ADAPTER = "local-hybrid-preindexed-segment-no-expansion-evidence-v3"
 CANDIDATE_ADAPTERS = {
     "speaker-turn": (
@@ -28,10 +28,19 @@ CANDIDATE_ADAPTERS = {
         "local-hybrid-preindexed-conversation-window-v1-no-expansion-evidence-v1"
     ),
 }
+SEMANTIC_BOUNDARY_ADAPTER = re.compile(r"^semantic-v1\.[0-9a-f]{64}$")
 
 
 class AskQualityPairError(ValueError):
     """A fail-closed paired-run contract violation."""
+
+
+def candidate_adapter_matches(candidate: str, adapter: object) -> bool:
+    if candidate == "semantic-boundary":
+        return isinstance(adapter, str) and bool(
+            SEMANTIC_BOUNDARY_ADAPTER.fullmatch(adapter)
+        )
+    return adapter == CANDIDATE_ADAPTERS[candidate]
 
 
 def run_command(command: list[str], root: Path) -> subprocess.CompletedProcess[str]:
@@ -252,7 +261,9 @@ def collect_pair(
             raise AskQualityPairError("paired comparison receipt lost source identity")
         if (
             subject.get("controlAdapter") != SEGMENT_ADAPTER
-            or subject.get("candidateAdapter") != CANDIDATE_ADAPTERS[candidate]
+            or not candidate_adapter_matches(
+                candidate, subject.get("candidateAdapter")
+            )
         ):
             raise AskQualityPairError(
                 "paired comparison receipt lost selected adapter identity"

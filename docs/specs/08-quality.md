@@ -2422,6 +2422,51 @@ its deep signature remained valid. The Dev build still lacks the optional Metal
 Toolchain and MLX metallib. This is Tahoe-family local automation, not physical
 Sequoia, independent Tahoe hardware, model-quality, or serving evidence.
 
+D351 implements the first D350-admitted semantic-boundary candidate without
+changing product serving. Eleven focused chunker cases cover adjacent join and
+similarity split behavior, exact ordered actor/source topology, distinct
+English/Spanish spaces, forced language transitions, unknown/mixed-language
+isolation without vectorization, shared-space refusal, wrong
+language/profile/dimension and invalid numeric vectors, the three-turn resource
+and append-only oversized-turn ceilings, cancellation propagation, correction
+reflow and delta identity, and a 10,000-turn
+characterization. The scale case proves one vector request per supported turn,
+at most three turns per output, and complete non-repeated source membership; it
+does not claim total constant memory because the canonical turn projection and
+output remain materialized.
+
+Twelve Ask benchmark cases include static profile/proposal validation, a live
+current-host `NLEmbedding` English/Spanish vector smoke, deterministic semantic
+corpus projection with exact ordered sources, dynamic adapter identity, and a
+retrieval-unit/adapter mismatch refusal. The paired Python tools accept only
+`semantic-v1.` followed by one lowercase 64-hex proposal fingerprint, publish
+candidate-specific owner-only artifacts, and reject malformed or spoofed
+semantic identities. An architecture ratchet keeps NaturalLanguage in the CLI
+adapter and keeps the chunker out of the app and StorageKit. The 0.60 English
+and 0.75 Spanish thresholds came from a tiny current-host diagnostic probe and
+remain provisional fingerprinted benchmark inputs. No accepted paired quality,
+resource, correction-cost, private-corpus, physical Sequoia, or independent
+Tahoe evidence exists yet.
+
+The final D351 gate passed the current-SDK warnings-as-errors build, 2,494
+package tests with 14 explicit environment/model skips and zero failures, 425
+tooling tests, repository hygiene, the 179-case architecture subset, and strict
+SwiftLint with zero violations across 679 production Swift files. Independently
+inspected macOS 26.5.2 (25F84) result bundles passed the complete 92/92 English
+and 92/92 Spanish real-app XCUITest catalogues with no failures, skips, or
+expected failures. Keyboard Navigation returned to `0`, and no Portavoz crash
+report appeared during the gate. The signed local-only `app.portavoz.mac.dev`
+bundle was reinstalled and deeply verified; an exact before/after comparison
+kept the signed `app.portavoz.mac` release bundle's 184-entry recursive
+content/metadata/hex-xattr manifest and bundle ID byte-for-byte unchanged at
+SHA-256
+`3c7c15fa935b3034d0145ebb1c019e668c704ee80bb4224a42469cc40f2f8c0f`, and
+its deep signature remained valid. The Dev build still lacks the optional Metal
+Toolchain and MLX metallib. This is Tahoe-family local automation and a live
+current-host vector smoke, not physical Sequoia, independent Tahoe hardware,
+accepted semantic quality/resource/correction evidence, or product-serving
+authority.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |

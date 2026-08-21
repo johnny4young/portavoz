@@ -14,14 +14,50 @@ struct AskQualityCorpusMapping: Sendable {
         let unitByUUID: [UUID: Unit]
     }
 
+    private struct ProjectionConfiguration: Sendable {
+        let retrievalUnit: AskQualityRetrievalUnit
+        let semanticBoundaryEmbedding: (any RetrievalSemanticBoundaryEmbedding)?
+        let expectedAdapter: String
+    }
+
     private let unitByUUID: [UUID: Unit]
     private let externalMeetingIDByDomainID: [MeetingID: String]
+    let adapter: String
 
     static func seed(
         fixture: AskQualityFixture,
         store: MeetingStore,
-        retrievalUnit: AskQualityRetrievalUnit = .segment
+        retrievalUnit: AskQualityRetrievalUnit = .segment,
+        semanticBoundaryEmbedding:
+            (any RetrievalSemanticBoundaryEmbedding)? = nil
     ) async throws -> Self {
+        let boundaryEmbedding: (any RetrievalSemanticBoundaryEmbedding)?
+        if retrievalUnit == .semanticBoundary {
+            if let semanticBoundaryEmbedding {
+                boundaryEmbedding = semanticBoundaryEmbedding
+            } else {
+                boundaryEmbedding = try CLIAppleSentenceBoundaryEmbedding()
+            }
+        } else {
+            boundaryEmbedding = nil
+        }
+        let adapter: String
+        if let boundaryEmbedding {
+            let proposal = try await boundaryEmbedding.boundaryProposal()
+            let admission = try RetrievalSemanticBoundaryPreflight
+                .admit(proposal)
+            adapter = RetrievalSemanticBoundaryChunker
+                .adapterIdentifier(for: admission)
+        } else if let fixedAdapter = retrievalUnit.fixedAdapter {
+            adapter = fixedAdapter
+        } else {
+            throw AskQualityBenchmarkError.invalidRetrievalUnit(
+                retrievalUnit.rawValue)
+        }
+        let configuration = ProjectionConfiguration(
+            retrievalUnit: retrievalUnit,
+            semanticBoundaryEmbedding: boundaryEmbedding,
+            expectedAdapter: adapter)
         let grouped = Dictionary(grouping: fixture.segments, by: \.meetingID)
         var unitByUUID: [UUID: Unit] = [:]
         var externalMeetingIDByDomainID: [MeetingID: String] = [:]
@@ -34,13 +70,14 @@ struct AskQualityCorpusMapping: Sendable {
                 meetingIndex: meetingIndex,
                 segments: fixtureSegments,
                 store: store,
-                retrievalUnit: retrievalUnit)
+                configuration: configuration)
             externalMeetingIDByDomainID[result.meetingID] = externalMeetingID
             unitByUUID.merge(result.unitByUUID) { _, latest in latest }
         }
         return Self(
             unitByUUID: unitByUUID,
-            externalMeetingIDByDomainID: externalMeetingIDByDomainID)
+            externalMeetingIDByDomainID: externalMeetingIDByDomainID,
+            adapter: adapter)
     }
 
     private static func seedMeeting(
@@ -48,7 +85,7 @@ struct AskQualityCorpusMapping: Sendable {
         meetingIndex: Int,
         segments fixtureSegments: [AskQualityFixtureSegment],
         store: MeetingStore,
-        retrievalUnit: AskQualityRetrievalUnit
+        configuration: ProjectionConfiguration
     ) async throws -> SeededMeeting {
         let meetingID = MeetingID(rawValue: try deterministicUUID(
             namespace: "ask-quality-meeting",
@@ -70,12 +107,13 @@ struct AskQualityCorpusMapping: Sendable {
             index: meetingIndex,
             fixtureSegments: fixtureSegments,
             transcriptSegments: transcriptSegments)
-        let projection = try projectedUnits(
-            retrievalUnit,
+        let projection = try await projectedUnits(
+            configuration.retrievalUnit,
             meeting: meeting,
             speakers: speakers,
             segments: transcriptSegments,
-            externalIDByUUID: externalIDByUUID)
+            externalIDByUUID: externalIDByUUID,
+            configuration: configuration)
         try await store.saveImportedMeeting(
             meeting,
             speakers: speakers,
@@ -90,8 +128,9 @@ struct AskQualityCorpusMapping: Sendable {
         meeting: Meeting,
         speakers: [Speaker],
         segments: [TranscriptSegment],
-        externalIDByUUID: [UUID: String]
-    ) throws -> (segments: [TranscriptSegment], unitByUUID: [UUID: Unit]) {
+        externalIDByUUID: [UUID: String],
+        configuration: ProjectionConfiguration
+    ) async throws -> (segments: [TranscriptSegment], unitByUUID: [UUID: Unit]) {
         switch retrievalUnit {
         case .segment:
             return try segmentProjection(
@@ -109,6 +148,14 @@ struct AskQualityCorpusMapping: Sendable {
                 speakers: speakers,
                 segments: segments,
                 externalIDByUUID: externalIDByUUID)
+        case .semanticBoundary:
+            return try await semanticBoundaryProjection(
+                meeting: meeting,
+                speakers: speakers,
+                segments: segments,
+                externalIDByUUID: externalIDByUUID,
+                embedding: configuration.semanticBoundaryEmbedding,
+                expectedAdapter: configuration.expectedAdapter)
         }
     }
 
@@ -354,5 +401,37 @@ struct AskQualityCorpusMapping: Sendable {
             throw AskQualityBenchmarkError.invalidFixture("invalid identity digest")
         }
         return result
+    }
+}
+
+private extension AskQualityCorpusMapping {
+    private static func semanticBoundaryProjection(
+        meeting: Meeting,
+        speakers: [Speaker],
+        segments: [TranscriptSegment],
+        externalIDByUUID: [UUID: String],
+        embedding: (any RetrievalSemanticBoundaryEmbedding)?,
+        expectedAdapter: String
+    ) async throws -> (segments: [TranscriptSegment], unitByUUID: [UUID: Unit]) {
+        guard let embedding else {
+            throw AskQualityBenchmarkError.invalidFixture(
+                "semantic-boundary embedding is unavailable")
+        }
+        let result = try await RetrievalSemanticBoundaryChunker.chunks(
+            meetingID: meeting.id,
+            transcriptRevision: meeting.transcriptRevision,
+            correctionRevision: .accepted,
+            segments: segments,
+            speakers: speakers,
+            embedding: embedding)
+        guard result.adapterIdentifier == expectedAdapter else {
+            throw AskQualityBenchmarkError.invalidFixture(
+                "semantic-boundary candidate identity changed during projection")
+        }
+        return try chunkProjection(
+            chunks: result.chunks,
+            candidateLabel: "semantic-boundary",
+            identityNamespace: "ask-quality-semantic-boundary-unit",
+            externalIDByUUID: externalIDByUUID)
     }
 }

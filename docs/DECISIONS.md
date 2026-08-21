@@ -12661,3 +12661,50 @@ The current contextual embedder remains the shipping segment-vector authority,
 and `NLEmbedding`, a pinned open model, or any other semantic-boundary signal
 must first implement this contract and pass clean bilingual quality, resource,
 correction-cost, and Sequoia/Tahoe comparison before any product decision.
+
+## D351 — Semantic boundaries stay partitioned and benchmark-only (Aug 2026)
+
+**Context:** D350 defines the safe proposal envelope but deliberately leaves
+the concrete model, boundary algorithm, and evidence path open. Apple's current
+sentence embeddings are selected by language: on the current Tahoe-family host
+the English and Spanish sentence profiles expose different dimensions. Treating
+them as one coordinate space would make cross-language cosine meaningless.
+Materializing every meeting vector would also add avoidable memory cost to an
+experiment whose decision depends only on adjacent complete turns. Finally, a
+static adapter label would let a changed Apple revision, dimension, threshold,
+or policy reuse incompatible quality receipts.
+
+**Decision:** implement `RetrievalSemanticBoundaryChunker` as a pure
+ApplicationKit, benchmark-only candidate over the existing validated complete
+turns. It makes one forward pass and keeps only the current draft plus adjacent
+vectors as boundary state. Every supported turn is vectorized once. Adjacent
+turns join greedily only when they share one normalized primary language and
+exact profile, meet that language's cosine threshold, and stay within the
+conversation-window append ceilings. Source membership remains complete,
+ordered, and non-overlapping; actor turns are never flattened. Missing,
+unsupported, or mixed-language turns are isolated without vectorization, and
+every English/Spanish transition is a boundary. The implementation refuses
+shared spaces and fails closed on language, profile, dimension, finite-value,
+or nonzero-magnitude disagreement.
+
+Add `CLIAppleSentenceBoundaryEmbedding` as the sole concrete outer adapter. It
+lives only in `portavoz-cli`, selects the exact current revision through
+`NLEmbedding.sentenceEmbedding(for:revision:)`, verifies runtime language and
+dimension, and never requests downloads. English and Spanish have distinct
+`SemanticEmbeddingProfile` values and provisional cosine thresholds of 0.60
+and 0.75. The thresholds are fingerprinted experimental inputs, not model
+calibration claims. The exact adapter identity is
+`semantic-v1.<proposal-sha256>`. The disposable quality mapping, evaluator, and
+paired runner preserve and validate that dynamic identity while retaining all
+canonical source members in observation schema 2.
+
+**Consequences:** D351 adds deterministic candidate mechanics and a clean
+evidence route, not a product choice. The app, StorageKit, semantic maintenance,
+Ask serving, Library serving, and the canonical segment default remain
+unchanged. The one-pass decision state avoids retaining a vector corpus, but
+the canonical turn projection and output are still materialized, so this is not
+a total constant-memory claim. A current-host live vector smoke proves only API
+availability on that machine. The provisional thresholds and Apple profiles
+must still pass clean paired bilingual quality, resource, correction-cost,
+private-corpus, and physical Sequoia/Tahoe evidence before any serving or
+storage proposal.

@@ -31,6 +31,7 @@ CONVERSATION_WINDOW_ADAPTER = (
     "local-hybrid-preindexed-conversation-window-v1-no-expansion-evidence-v1"
 )
 CANDIDATE_ADAPTERS = {SPEAKER_TURN_ADAPTER, CONVERSATION_WINDOW_ADAPTER}
+SEMANTIC_BOUNDARY_ADAPTER = re.compile(r"^semantic-v1\.[0-9a-f]{64}$")
 RELATIONSHIP_COUNTS = {
     "spanishToSpanish": 60,
     "englishToEnglish": 60,
@@ -121,6 +122,12 @@ SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 class AskQualityError(ValueError):
     """Fail-closed fixture, observation, or publication error."""
+
+
+def is_candidate_adapter(value):
+    return value in CANDIDATE_ADAPTERS or bool(
+        isinstance(value, str) and SEMANTIC_BOUNDARY_ADAPTER.fullmatch(value)
+    )
 
 
 def reject_duplicate_keys(pairs):
@@ -930,7 +937,7 @@ def compare_scorecards(fixture, control, candidate):
     )
     expected_adapters = (
         control["subject"]["adapter"] == SEGMENT_ADAPTER
-        and candidate["subject"]["adapter"] in CANDIDATE_ADAPTERS
+        and is_candidate_adapter(candidate["subject"]["adapter"])
     )
     aggregate_parity = retrieval_parity(
         control["overall"], candidate["overall"]

@@ -1267,6 +1267,48 @@ capability, load assets, derive a boundary, or grant serving authority. A
 concrete semantic chunker and clean paired quality, resource, correction, and
 cross-host evidence remain open.
 
+### Partitioned semantic-boundary candidate (D351)
+
+`RetrievalSemanticBoundaryChunker` implements one narrow D350-admitted
+candidate in ApplicationKit. It first obtains the validated complete-turn
+projection, then makes one forward pass with only the current draft and the
+two adjacent validated vectors as decision state. It does not retain a vector
+corpus. Each supported turn is embedded once, and adjacent turns join only
+when their exact normalized primary language and profile fingerprint match,
+their cosine similarity meets that language space's threshold, and the
+three-turn, 900-character, 45-second, and 2.5-second-gap append bounds still
+hold. A canonical turn that already exceeds an append bound remains isolated.
+
+English and Spanish are deliberately separate spaces. Every language
+transition starts a boundary before similarity is considered. A turn with a
+missing, unsupported, or mixed per-source language is isolated and never sent
+to the vector adapter. Shared-space proposals are not implemented by this
+candidate. A returned vector fails the run if its language, exact profile,
+dimension, finite values, or nonzero magnitude disagrees with the admitted
+proposal. Greedy output remains non-overlapping and preserves all ordered
+source and actor boundaries. Corrections can reflow only through subsequent
+adjacent semantic/resource decisions; the existing chunk delta reports the
+exact removed, retained, and replacement units.
+
+The concrete `CLIAppleSentenceBoundaryEmbedding` lives only in
+`portavoz-cli`. It selects and verifies the current revision exposed by
+`NLEmbedding.sentenceEmbedding(for:revision:)` independently for English and
+Spanish and never requests an asset download. Its profiles include the exact
+runtime revision, dimension, and native cosine pipeline. The proposal uses
+provisional thresholds 0.60 for English and 0.75 for Spanish; these values are
+fingerprinted experiment inputs, not accepted calibration or product policy.
+The benchmark adapter is `semantic-v1.<proposal-sha256>`, so two hosts with a
+different Apple profile cannot silently compare receipts as the same
+candidate.
+
+The disposable quality corpus can now project the candidate through the real
+retrieval path while retaining every ordered canonical source in observation
+schema 2. Product Ask, Library, semantic maintenance, app composition, and
+StorageKit remain unchanged. D351 proves deterministic mechanics and
+fail-closed identity, not multilingual retrieval parity, model suitability,
+resource superiority, physical Sequoia/Tahoe availability, or serving
+authority.
+
 ### Semantic-index query port (D206)
 
 `SemanticIndexSearching` is the read-only ApplicationKit seam between product

@@ -495,6 +495,80 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## D350 — Semantic boundary proposals fail closed before implementation"))
     }
 
+    func testSemanticBoundaryCandidateIsOnePassProfileFencedAndNonServing() throws {
+        let chunking = try Self.contents(
+            of: "Sources/ApplicationKit/RetrievalSemanticBoundaryChunking.swift")
+        for required in [
+            "version = \"semantic-boundary-v1\"",
+            "adapterPrefix = \"semantic-v1.\"",
+            "RetrievalTurnChunker.chunks(",
+            "try Task.checkCancellation()",
+            "case .partitionedByLanguage",
+            "vector.profileFingerprint == configuration.profile.fingerprint",
+            "vector.values.allSatisfy(\\.isFinite)",
+            "draft.canAppend(",
+            "cosineSimilarity(",
+            "minimumCosineSimilarity",
+        ] {
+            XCTAssertTrue(
+                chunking.contains(required),
+                "semantic-boundary chunker is missing \(required)")
+        }
+        XCTAssertFalse(chunking.contains("import NaturalLanguage"))
+        XCTAssertFalse(chunking.contains("import StorageKit"))
+
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-cli/CLIAppleSentenceBoundaryEmbedding.swift")
+        for required in [
+            "import NaturalLanguage",
+            "currentSentenceEmbeddingRevision(for:",
+            "supportedSentenceEmbeddingRevisions(for:",
+            "NLEmbedding.sentenceEmbedding(",
+            "apple.naturallanguage.nlembedding.sentence.",
+            "native-sentence-vector-cosine",
+            "englishMinimumCosineSimilarity = 0.60",
+            "spanishMinimumCosineSimilarity = 0.75",
+        ] {
+            XCTAssertTrue(
+                adapter.contains(required),
+                "Apple boundary adapter is missing \(required)")
+        }
+
+        let mapping = try Self.contents(
+            of: "Sources/portavoz-cli/CLIAskQualityCorpusMapping.swift")
+        for required in [
+            "case .semanticBoundary:",
+            "CLIAppleSentenceBoundaryEmbedding()",
+            "RetrievalSemanticBoundaryChunker.chunks(",
+            "ask-quality-semantic-boundary-unit",
+            "result.adapterIdentifier == expectedAdapter",
+        ] {
+            XCTAssertTrue(
+                mapping.contains(required),
+                "semantic-boundary benchmark mapping is missing \(required)")
+        }
+
+        let comparator = try Self.contents(of: "scripts/ask_quality.py")
+        XCTAssertTrue(comparator.contains(
+            #"^semantic-v1\.[0-9a-f]{64}$"#))
+        let runner = try Self.contents(of: "scripts/ask_quality_pair.py")
+        XCTAssertTrue(runner.contains("semantic-boundary"))
+        XCTAssertTrue(runner.contains("candidate_adapter_matches"))
+
+        for root in ["Sources/portavoz-app", "Sources/StorageKit"] {
+            let productSources = try Self.sourceMatches(
+                under: root,
+                pattern: #"RetrievalSemanticBoundaryChunker"#)
+            XCTAssertTrue(
+                productSources.isEmpty,
+                "D351 is benchmark-only and cannot enter product composition: \(root)")
+        }
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains(
+            "## D351 — Semantic boundaries stay partitioned and benchmark-only"))
+    }
+
     func testSemanticIndexPortKeepsExactControlOutsideProductConsumers() throws {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         XCTAssertTrue(decisions.contains("## D206"))

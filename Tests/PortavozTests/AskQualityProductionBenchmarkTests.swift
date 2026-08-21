@@ -34,8 +34,17 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
         ])
         XCTAssertEqual(conversationOptions.retrievalUnit, .conversationWindow)
         XCTAssertEqual(
-            conversationOptions.retrievalUnit.adapter,
+            conversationOptions.retrievalUnit.fixedAdapter,
             "local-hybrid-preindexed-conversation-window-v1-no-expansion-evidence-v1")
+        let semanticOptions = try AskQualityBenchmarkOptions(arguments: [
+            "--fixture", "/tmp/fixture.json",
+            "--output", "/tmp/observations.json",
+            "--build", "test",
+            "--commit", String(repeating: "a", count: 40),
+            "--retrieval-unit", "semantic-boundary"
+        ])
+        XCTAssertEqual(semanticOptions.retrievalUnit, .semanticBoundary)
+        XCTAssertNil(semanticOptions.retrievalUnit.fixedAdapter)
         XCTAssertThrowsError(try AskQualityBenchmarkOptions(arguments: [
             "--fixture", "/tmp/fixture.json",
             "--output", "/tmp/observations.json",
@@ -240,6 +249,125 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
         XCTAssertEqual(first.unitID, second.unitID)
     }
 
+    func testSemanticBoundaryCandidatePublishesDynamicIdentityAndExactSources() async throws {
+        let fixture = Self.semanticBoundaryFixture()
+        let store = try MeetingStore.inMemory()
+        let embedding = BenchmarkSemanticBoundaryEmbedding()
+        let mapping = try await AskQualityCorpusMapping.seed(
+            fixture: fixture,
+            store: store,
+            retrievalUnit: .semanticBoundary,
+            semanticBoundaryEmbedding: embedding)
+
+        XCTAssertTrue(
+            AskQualityRetrievalUnit.semanticBoundary.matches(
+                adapter: mapping.adapter))
+        XCTAssertTrue(mapping.adapter.hasPrefix("semantic-v1."))
+        let joined = try await Self.observation(
+            matching: "atlas-001",
+            store: store,
+            mapping: mapping)
+        let isolated = try await Self.observation(
+            matching: "zebra-003",
+            store: store,
+            mapping: mapping)
+
+        XCTAssertEqual(
+            joined.sourceSegmentIDs,
+            ["segment-001", "segment-002"])
+        XCTAssertEqual(isolated.sourceSegmentIDs, ["segment-003"])
+        XCTAssertNotEqual(joined.unitID, isolated.unitID)
+    }
+
+    func testObservationRejectsRetrievalUnitAndAdapterMismatch() async throws {
+        let fixture = Self.fixture()
+        let store = try MeetingStore.inMemory()
+        let mapping = try await AskQualityCorpusMapping.seed(
+            fixture: fixture,
+            store: store)
+
+        do {
+            _ = try await AskQualityProductionBenchmark.observe(
+                fixture: fixture,
+                mapping: mapping,
+                retrieval: EmptyAskQualityRetrieval(),
+                build: "test",
+                commit: String(repeating: "0", count: 40),
+                retrievalUnit: .semanticBoundary)
+            XCTFail("expected mismatched adapter identity to fail")
+        } catch {
+            XCTAssertEqual(
+                error as? AskQualityBenchmarkError,
+                .invalidFixture(
+                    "retrieval unit does not match corpus adapter identity"))
+        }
+    }
+
+    func testAppleSentenceBoundaryProposalPinsDistinctLanguageProfiles() throws {
+        let english = CLIAppleSentenceBoundaryEmbedding.profile(
+            language: "en",
+            revision: 7,
+            dimension: 512)
+        let spanish = CLIAppleSentenceBoundaryEmbedding.profile(
+            language: "es",
+            revision: 9,
+            dimension: 640)
+        let proposal = CLIAppleSentenceBoundaryEmbedding.proposal(
+            englishProfile: english,
+            spanishProfile: spanish)
+
+        let admission = try RetrievalSemanticBoundaryPreflight.admit(proposal)
+
+        XCTAssertEqual(admission.scope, .benchmarkOnly)
+        XCTAssertNotEqual(english.fingerprint, spanish.fingerprint)
+        XCTAssertEqual(admission.proposalFingerprint.count, 64)
+        guard case .semanticSimilarity(let space) = proposal.boundarySignal,
+              case .partitionedByLanguage(let profiles) = space
+        else {
+            return XCTFail("expected partitioned semantic language spaces")
+        }
+        XCTAssertEqual(profiles.map(\.language), ["en", "es"])
+        XCTAssertEqual(
+            profiles.map(\.minimumCosineSimilarity),
+            [0.60, 0.75])
+    }
+
+    func testAppleSentenceBoundaryRuntimeProducesExactFiniteProfiles() async throws {
+        let embedding: CLIAppleSentenceBoundaryEmbedding
+        do {
+            embedding = try CLIAppleSentenceBoundaryEmbedding()
+        } catch CLIAppleSentenceBoundaryEmbeddingError.unavailable(let language) {
+            throw XCTSkip(
+                "Apple sentence embedding is unavailable for \(language) on this host")
+        }
+        let proposal = await embedding.boundaryProposal()
+        guard case .semanticSimilarity(let space) = proposal.boundarySignal,
+              case .partitionedByLanguage(let profiles) = space
+        else {
+            return XCTFail("expected partitioned semantic language spaces")
+        }
+        let byLanguage = Dictionary(uniqueKeysWithValues: profiles.map {
+            ($0.language, $0.profile)
+        })
+
+        let english = try await embedding.vector(
+            for: "The local meeting search stays private.",
+            language: "en")
+        let spanish = try await embedding.vector(
+            for: "La busqueda local de reuniones sigue siendo privada.",
+            language: "es")
+
+        XCTAssertEqual(english.language, "en")
+        XCTAssertEqual(spanish.language, "es")
+        XCTAssertEqual(english.profileFingerprint, byLanguage["en"]?.fingerprint)
+        XCTAssertEqual(spanish.profileFingerprint, byLanguage["es"]?.fingerprint)
+        XCTAssertEqual(english.values.count, byLanguage["en"]?.vectorDimension)
+        XCTAssertEqual(spanish.values.count, byLanguage["es"]?.vectorDimension)
+        XCTAssertTrue(english.values.allSatisfy(\.isFinite))
+        XCTAssertTrue(spanish.values.allSatisfy(\.isFinite))
+        XCTAssertNotEqual(english.profileFingerprint, spanish.profileFingerprint)
+    }
+
     func testPrivateWriterIsOwnerOnlyNonOverwritingAndPreservesParentMode() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "ask-quality-writer-\(UUID().uuidString)",
@@ -359,6 +487,55 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
                 answerPolicy: "answer")])
     }
 
+    private static func semanticBoundaryFixture() -> AskQualityFixture {
+        AskQualityFixture(
+            schemaVersion: 1,
+            kind: "ask-quality-fixture",
+            generation: "test-semantic-boundary-v1",
+            contentSource: "public-synthetic-only",
+            segments: [
+                AskQualityFixtureSegment(
+                    id: "segment-001",
+                    meetingID: "meeting-001",
+                    meetingTitle: "Synthetic planning",
+                    timestampMilliseconds: 1_000,
+                    transcriptRevision: 3,
+                    language: "en",
+                    owner: "Mara",
+                    text: "Mara owns atlas-001 for the private migration."),
+                AskQualityFixtureSegment(
+                    id: "segment-002",
+                    meetingID: "meeting-001",
+                    meetingTitle: "Synthetic planning",
+                    timestampMilliseconds: 2_000,
+                    transcriptRevision: 3,
+                    language: "en",
+                    owner: "Noah",
+                    text: "Noah will review atlas-002 for that migration."),
+                AskQualityFixtureSegment(
+                    id: "segment-003",
+                    meetingID: "meeting-001",
+                    meetingTitle: "Synthetic planning",
+                    timestampMilliseconds: 4_000,
+                    transcriptRevision: 3,
+                    language: "en",
+                    owner: "Mara",
+                    text: "The unrelated zebra-003 budget belongs elsewhere.")
+            ],
+            queries: [AskQualityFixtureQuery(
+                id: "query-001",
+                text: "Who owns atlas-001?",
+                relationship: "englishToEnglish",
+                intent: "name",
+                relevant: [AskQualityFixtureRelevant(
+                    segmentID: "segment-001",
+                    grade: 3,
+                    expectedTimestampMilliseconds: 1_000,
+                    expectedOwner: "Mara")],
+                hardNegativeSegmentIDs: ["segment-003"],
+                answerPolicy: "answer")])
+    }
+
     private static func observation(
         matching query: String,
         store: MeetingStore,
@@ -418,4 +595,51 @@ private struct FixedEmbedding: SemanticTextEmbedding {
     func vectors(for texts: [String]) -> [[Float]] {
         texts.map { _ in [1, 0] }
     }
+}
+
+private struct BenchmarkSemanticBoundaryEmbedding:
+    RetrievalSemanticBoundaryEmbedding {
+    private let english = CLIAppleSentenceBoundaryEmbedding.profile(
+        language: "en",
+        revision: 1,
+        dimension: 2)
+    private let spanish = CLIAppleSentenceBoundaryEmbedding.profile(
+        language: "es",
+        revision: 1,
+        dimension: 3)
+
+    func boundaryProposal() -> RetrievalSemanticBoundaryProposal {
+        CLIAppleSentenceBoundaryEmbedding.proposal(
+            englishProfile: english,
+            spanishProfile: spanish)
+    }
+
+    func vector(
+        for text: String,
+        language: String
+    ) throws -> RetrievalSemanticBoundaryVector {
+        switch language {
+        case "en":
+            let values: [Float] = text.contains("zebra-003")
+                ? [0, 1]
+                : [1, 0]
+            return RetrievalSemanticBoundaryVector(
+                language: language,
+                profileFingerprint: english.fingerprint,
+                values: values)
+        case "es":
+            return RetrievalSemanticBoundaryVector(
+                language: language,
+                profileFingerprint: spanish.fingerprint,
+                values: [1, 0, 0])
+        default:
+            throw AskQualityBenchmarkError.invalidFixture(
+                "unsupported fake semantic language")
+        }
+    }
+}
+
+private struct EmptyAskQualityRetrieval: AskMeetingRetrieving {
+    func search(query _: String, limit _: Int) -> [AskSearchResult] { [] }
+    func retrieve(question _: String, limit _: Int) -> [AskCitation] { [] }
 }

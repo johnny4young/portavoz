@@ -16,6 +16,8 @@ SPEC.loader.exec_module(pair)
 
 
 class FakeCommandRunner:
+    semantic_boundary_adapter = "semantic-v1." + ("b" * 64)
+
     def __init__(
         self,
         outcome="candidate-parity",
@@ -70,7 +72,11 @@ class FakeCommandRunner:
                                 "controlAdapter": pair.SEGMENT_ADAPTER,
                                 "candidateAdapter": (
                                     self.reported_candidate_adapter
-                                    or pair.CANDIDATE_ADAPTERS[candidate]
+                                    or (
+                                        self.semantic_boundary_adapter
+                                        if candidate == "semantic-boundary"
+                                        else pair.CANDIDATE_ADAPTERS[candidate]
+                                    )
                                 ),
                             },
                         }
@@ -187,6 +193,61 @@ class AskQualityPairTests(unittest.TestCase):
             ],
             ["segment", "conversation-window"],
         )
+
+    def test_publishes_declared_semantic_boundary_pair(self):
+        runner = FakeCommandRunner()
+
+        status, receipt = pair.collect_pair(
+            self.root,
+            self.fixture,
+            self.output,
+            "search4d",
+            candidate="semantic-boundary",
+            runner=runner,
+        )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(receipt, self.output / "comparison.json")
+        self.assertEqual(
+            {path.name for path in self.output.iterdir()},
+            {
+                "segment-observations.json",
+                "segment-scorecard.json",
+                "semantic-boundary-observations.json",
+                "semantic-boundary-scorecard.json",
+                "comparison.json",
+            },
+        )
+        cli_calls = [
+            call for call in runner.calls if call[0].endswith("portavoz-cli")
+        ]
+        self.assertEqual(
+            [
+                call[call.index("--retrieval-unit") + 1]
+                for call in cli_calls
+            ],
+            ["segment", "semantic-boundary"],
+        )
+
+    def test_refuses_malformed_semantic_boundary_adapter_identity(self):
+        runner = FakeCommandRunner(
+            reported_candidate_adapter="semantic-v1." + ("B" * 64)
+        )
+
+        with self.assertRaisesRegex(
+            pair.AskQualityPairError, "lost selected adapter identity"
+        ):
+            pair.collect_pair(
+                self.root,
+                self.fixture,
+                self.output,
+                "search4d",
+                candidate="semantic-boundary",
+                runner=runner,
+            )
+
+        self.assertFalse(self.output.exists())
+        self.assertEqual(list(self.output.parent.glob(".private-evidence.*")), [])
 
     def test_rejects_an_unknown_candidate_before_inspecting_source(self):
         runner = FakeCommandRunner()

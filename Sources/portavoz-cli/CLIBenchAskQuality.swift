@@ -156,6 +156,7 @@ enum AskQualityRetrievalUnit: String, Equatable, Sendable {
     case segment
     case speakerTurn = "speaker-turn"
     case conversationWindow = "conversation-window"
+    case semanticBoundary = "semantic-boundary"
 
     init(argument: String) throws {
         guard let value = Self(rawValue: argument) else {
@@ -164,7 +165,7 @@ enum AskQualityRetrievalUnit: String, Equatable, Sendable {
         self = value
     }
 
-    var adapter: String {
+    var fixedAdapter: String? {
         switch self {
         case .segment:
             "local-hybrid-preindexed-segment-no-expansion-evidence-v3"
@@ -172,7 +173,23 @@ enum AskQualityRetrievalUnit: String, Equatable, Sendable {
             "local-hybrid-preindexed-speaker-turn-v1-no-expansion-evidence-v1"
         case .conversationWindow:
             "local-hybrid-preindexed-conversation-window-v1-no-expansion-evidence-v1"
+        case .semanticBoundary:
+            nil
         }
+    }
+
+    func matches(adapter: String) -> Bool {
+        if let fixedAdapter {
+            return adapter == fixedAdapter
+        }
+        guard adapter.hasPrefix(RetrievalSemanticBoundaryChunker.adapterPrefix)
+        else { return false }
+        let fingerprint = adapter.dropFirst(
+            RetrievalSemanticBoundaryChunker.adapterPrefix.count)
+        return fingerprint.utf8.count == 64
+            && fingerprint.utf8.allSatisfy {
+                (48...57).contains($0) || (97...102).contains($0)
+            }
     }
 }
 
@@ -400,6 +417,10 @@ enum AskQualityProductionBenchmark {
         commit: String,
         retrievalUnit: AskQualityRetrievalUnit = .segment
     ) async throws -> AskQualityObservationDocument {
+        guard retrievalUnit.matches(adapter: mapping.adapter) else {
+            throw AskQualityBenchmarkError.invalidFixture(
+                "retrieval unit does not match corpus adapter identity")
+        }
         var observations: [AskQualityQueryObservation] = []
         observations.reserveCapacity(fixture.queries.count)
         for query in fixture.queries {
@@ -417,7 +438,7 @@ enum AskQualityProductionBenchmark {
         }
         return AskQualityObservationDocument(
             fixtureGeneration: fixture.generation,
-            adapter: retrievalUnit.adapter,
+            adapter: mapping.adapter,
             build: build,
             commit: commit,
             queries: observations)
