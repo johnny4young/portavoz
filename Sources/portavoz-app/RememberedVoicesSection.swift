@@ -10,11 +10,34 @@ struct RememberedVoicesSection: View {
     @Environment(AppServices.self) private var services
     @State private var voices: [RememberedVoiceSummary] = []
     @State private var errorMessage: String?
+    @State private var hasLoaded = false
 
     var body: some View {
         Group {
-            if !voices.isEmpty {
+            if !hasLoaded {
                 Section("Remembered voices") {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityHidden(true)
+                }
+            } else if !voices.isEmpty || errorMessage != nil {
+                Section("Remembered voices") {
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("settings-remembered-voices-error")
+                        HStack {
+                            Button("Try again") {
+                                Task { await reload() }
+                            }
+                            .accessibilityIdentifier("settings-remembered-voices-retry")
+                            Button("Forget all voices", role: .destructive) {
+                                removeAll()
+                            }
+                            .accessibilityIdentifier("settings-remembered-voices-delete-all")
+                        }
+                    }
                     ForEach(voices) { voice in
                         LabeledContent(
                             voice.name,
@@ -26,22 +49,20 @@ struct RememberedVoicesSection: View {
                             }
                         }
                     }
-                    Button("Forget all voices", role: .destructive) {
-                        removeAll()
+                    if errorMessage == nil {
+                        Button("Forget all voices", role: .destructive) {
+                            removeAll()
+                        }
+                        .accessibilityIdentifier("settings-remembered-voices-delete-all")
                     }
-                    .accessibilityIdentifier("settings-remembered-voices-delete-all")
-                    Text(
-                        // One-line UI help text.
-                        // swiftlint:disable:next line_length
-                        "Encrypted numeric fingerprints of voices you chose to remember, used only to suggest names in future meetings — never audio, never synced. Right-click a name to forget one voice."
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .accessibilityIdentifier("settings-remembered-voices-error")
+                    if !voices.isEmpty {
+                        Text(
+                            // One-line UI help text.
+                            // swiftlint:disable:next line_length
+                            "Encrypted numeric fingerprints of voices you chose to remember, used only to suggest names in future meetings — never audio, never synced. Right-click a name to forget one voice."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -50,11 +71,13 @@ struct RememberedVoicesSection: View {
     }
 
     private func reload() async {
+        defer { hasLoaded = true }
         do {
             voices = try await services.rememberedVoiceSummaries()
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = L10n.text(
+                "Stored remembered voices could not be opened. Nothing was changed.")
         }
     }
 
@@ -64,7 +87,8 @@ struct RememberedVoicesSection: View {
                 try await services.removeRememberedVoice(id: id)
                 await reload()
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = L10n.text(
+                    "Stored remembered voices could not be opened. Nothing was changed.")
             }
         }
     }
@@ -76,7 +100,8 @@ struct RememberedVoicesSection: View {
                 voices = []
                 errorMessage = nil
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = L10n.text(
+                    "Could not delete all remembered voices. Nothing was reported as deleted; try again.")
             }
         }
     }

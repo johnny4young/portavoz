@@ -1231,6 +1231,16 @@
         }
       }
     },
+    "Could not delete all remembered voices. Nothing was reported as deleted; try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron eliminar todas las voces recordadas. No se marcaron como eliminadas; inténtalo de nuevo."
+          }
+        }
+      }
+    },
     "Could not delete your voice. Nothing was reported as deleted; try again.": {
       "localizations": {
         "es": {
@@ -1487,6 +1497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eliminar mi voz"
+          }
+        }
+      }
+    },
+    "Delete stored voice identity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar la identidad de voz guardada"
           }
         }
       }
@@ -4711,6 +4731,16 @@
         }
       }
     },
+    "Stored remembered voices could not be opened. Nothing was changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron abrir las voces recordadas guardadas. No se cambió nada."
+          }
+        }
+      }
+    },
     "Stop": {
       "localizations": {
         "es": {
@@ -5757,6 +5787,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tu voz suena baja — acércate o usa audífonos con micrófono"
+          }
+        }
+      }
+    },
+    "Your stored voice identity could not be opened. Nothing was changed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo abrir tu identidad de voz guardada. No se cambió nada."
           }
         }
       }

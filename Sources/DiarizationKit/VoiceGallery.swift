@@ -49,13 +49,10 @@ public struct VoiceGallery: Sendable {
 
     public func voices() throws -> [RememberedVoice] {
         guard exists else { return [] }
-        guard let keyText = try secrets.value(for: keyIdentifier),
-            let keyData = Data(base64Encoded: keyText)
-        else {
-            // File without key: unreadable by construction; treat as empty.
-            return []
-        }
-        let key = SymmetricKey(data: keyData)
+        let key = try VoiceIdentityStorage.key(
+            secrets: secrets,
+            identifier: keyIdentifier,
+            allowCreation: false)
         let combined = try Data(contentsOf: fileURL)
         let box = try AES.GCM.SealedBox(combined: combined)
         let plaintext = try AES.GCM.open(box, using: key)
@@ -66,14 +63,14 @@ public struct VoiceGallery: Sendable {
     /// Replacing keeps the gallery one-embedding-per-person: re-remembering
     /// someone refreshes their voice rather than accumulating stale ones.
     public func remember(_ voice: RememberedVoice) throws {
-        var all = (try? voices()) ?? []
+        var all = try voices()
         all.removeAll { $0.name.compare(voice.name, options: .caseInsensitive) == .orderedSame }
         all.append(voice)
         try write(all)
     }
 
     public func remove(id: UUID) throws {
-        let remaining = ((try? voices()) ?? []).filter { $0.id != id }
+        let remaining = try voices().filter { $0.id != id }
         if remaining.isEmpty {
             try deleteAll()
         } else {
@@ -90,24 +87,15 @@ public struct VoiceGallery: Sendable {
     }
 
     private func write(_ voices: [RememberedVoice]) throws {
-        let key = try loadOrCreateKey()
+        let key = try VoiceIdentityStorage.key(
+            secrets: secrets,
+            identifier: keyIdentifier,
+            allowCreation: !exists)
         let plaintext = try JSONEncoder().encode(voices)
         let sealed = try AES.GCM.seal(plaintext, using: key)
+        let combined = try VoiceIdentityStorage.combinedData(from: sealed)
         try FileManager.default.createDirectory(
             at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try sealed.combined!.write(to: fileURL, options: .atomic)
-    }
-
-    private func loadOrCreateKey() throws -> SymmetricKey {
-        if let stored = try secrets.value(for: keyIdentifier) {
-            guard let data = Data(base64Encoded: stored), data.count == 32 else {
-                throw VoiceprintStore.VoiceprintError.corruptKey
-            }
-            return SymmetricKey(data: data)
-        }
-        let key = SymmetricKey(size: .bits256)
-        let data = key.withUnsafeBytes { Data($0) }
-        try secrets.set(data.base64EncodedString(), for: keyIdentifier)
-        return key
+        try combined.write(to: fileURL, options: .atomic)
     }
 }

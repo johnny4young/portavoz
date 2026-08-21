@@ -9,9 +9,9 @@ import TranscriptionKit
 /// App settings (⌘,): voice enrollment and the GitHub token. Both secrets
 /// live in the Keychain / encrypted files — never in the database.
 ///
-/// The individual `Section`s live in `extension SettingsView` blocks below
-/// (same file, so they keep access to the private `@State`); the struct body
-/// itself is just the stored state and the `Form` that composes them.
+/// The struct body owns shared settings state and composes focused sections;
+/// feature-specific state stays in dedicated views where it has an independent
+/// lifecycle.
 struct SettingsView: View {
     // Internal so focused SettingsView extension files can use the process
     // service graph without duplicating environment reads.
@@ -19,10 +19,6 @@ struct SettingsView: View {
     @Environment(\.openWindow) private var openWindow
 
     @AppStorage(AppLanguage.storageKey) private var appLanguageRaw = AppLanguage.system.rawValue
-
-    @State private var voiceEnrollmentDate: Date?
-    @State private var enrolling = false
-    @State private var voiceMessage: String?
 
     @AppStorage("meetingReminderMinutes") private var reminderMinutes = 5
     @AppStorage("customVocabulary") private var customVocabulary = ""
@@ -117,7 +113,7 @@ struct SettingsView: View {
                     customStructuresSection
                     vocabularySection
                 case .voice:
-                    voiceSection
+                    SettingsVoiceSection()
                     RememberedVoicesSection()
                     companionSection
                 case .agenda:
@@ -172,15 +168,13 @@ struct SettingsView: View {
         }
         .onAppear {
             applyPendingCategory()
-            if ProcessInfo.processInfo.arguments.contains("-use-temp-store") {
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-use-temp-store") {
                 hasStoredBYOKKey = false
-                voiceEnrollmentDate = nil
             } else {
                 Task {
                     hasStoredBYOKKey =
                         (try? await services.secrets.contains(.byokAPIKey)) ?? false
-                    voiceEnrollmentDate = try? await services
-                        .localVoiceIdentityStatus()?.createdAt
                     // Mined chips arrive async and shift the Form's layout —
                     // skipped under XCUITest so coordinate clicks remain stable.
                     suggestedTerms = await services.mineVocabularySuggestions()
@@ -594,72 +588,9 @@ extension SettingsView {
     }
 }
 
-// MARK: - My voice & Summary engine
+// MARK: - Summary engine
 
 extension SettingsView {
-    // MARK: - My voice (M6)
-
-    private var voiceSection: some View {
-        Section("My voice") {
-            if let voiceEnrollmentDate {
-                LabeledContent(
-                    "Enrolled voice",
-                    value: voiceEnrollmentDate.formatted(date: .abbreviated, time: .shortened))
-                Button("Delete my voice", role: .destructive) {
-                    Task { await deleteVoice() }
-                }
-                .accessibilityIdentifier("settings-voice-delete")
-            } else if enrolling {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("Recording 12 seconds — speak naturally…")
-                }
-            } else {
-                Button {
-                    Task { await enroll() }
-                } label: {
-                    Label("Enroll my voice (12 s)", systemImage: "person.wave.2")
-                }
-                .accessibilityIdentifier("settings-voice-enroll")
-            }
-            Text(
-                // One-line UI help text.
-                // swiftlint:disable:next line_length
-                "With your voice enrolled, Portavoz also recognizes you when you arrive through system audio (hybrid meetings). Only an encrypted numeric fingerprint is stored on this device — never audio, never cloud data; delete it with one click."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            if let voiceMessage {
-                Text(voiceMessage).font(.caption).foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func enroll() async {
-        enrolling = true
-        defer { enrolling = false }
-        do {
-            let voiceprint = try await services.recordAndEnrollLocalVoice(
-                seconds: 12,
-                mode: .echoCancelled)
-            voiceEnrollmentDate = voiceprint.createdAt
-            voiceMessage = L10n.text("Done: your interventions will be tagged as “Me” on any channel.")
-        } catch {
-            voiceMessage = L10n.format("Could not enroll: %@", UseCaseErrorMessages.describe(error))
-        }
-    }
-
-    private func deleteVoice() async {
-        do {
-            try await services.deleteLocalVoiceIdentity()
-            voiceEnrollmentDate = nil
-            voiceMessage = L10n.text("Voiceprint and key deleted.")
-        } catch {
-            voiceMessage = L10n.text(
-                "Could not delete your voice. Nothing was reported as deleted; try again.")
-        }
-    }
-
     // MARK: - Summary engine (D25/M12)
 
     private var summaryEngineSection: some View {

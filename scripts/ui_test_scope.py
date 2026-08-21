@@ -298,6 +298,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testDictationOffersTriggersLanguageAndDictionary"),
     ),
     "settings-voice": (
+        test_id(
+            "SettingsUITests",
+            "testUnreadableVoiceStorageStaysVisibleAndOffersExplicitRecovery",
+        ),
         test_id("SettingsUITests", "testVoicePaneOffersTheMirrorOptIn"),
     ),
     "public-showcase": (

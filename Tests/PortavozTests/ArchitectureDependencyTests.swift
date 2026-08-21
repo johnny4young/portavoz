@@ -5927,6 +5927,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let adapter = try Self.contents(
             of: "Sources/portavoz-app/AppServices+LocalVoiceIdentity.swift")
         let settings = try Self.contents(of: "Sources/portavoz-app/SettingsView.swift")
+            + Self.contents(of: "Sources/portavoz-app/SettingsVoiceSection.swift")
         let onboarding = try Self.contents(of: "Sources/portavoz-app/OnboardingView.swift")
 
         XCTAssertTrue(workflow.contains("case recordAndEnroll("))
@@ -6030,10 +6031,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+SettingsResources.swift")
         let settings = try Self.contents(
             of: "Sources/portavoz-app/SettingsView.swift")
+        let voiceSettings = try Self.contents(
+            of: "Sources/portavoz-app/SettingsVoiceSection.swift")
         let audio = try Self.contents(
             of: "Sources/portavoz-app/AudioSection.swift")
         let voices = try Self.contents(
             of: "Sources/portavoz-app/RememberedVoicesSection.swift")
+        let localVoiceAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+LocalVoiceIdentity.swift")
+        let voiceprintStore = try Self.contents(
+            of: "Sources/DiarizationKit/VoiceprintStore.swift")
+        let voiceGallery = try Self.contents(
+            of: "Sources/DiarizationKit/VoiceGallery.swift")
 
         for useCase in [
             "struct LoadAudioInputOptions",
@@ -6063,9 +6072,26 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(voices.contains("services.rememberedVoiceSummaries()"))
         XCTAssertTrue(voices.contains("services.removeRememberedVoice"))
         XCTAssertTrue(voices.contains("services.removeAllRememberedVoices"))
+        XCTAssertTrue(voices.contains("settings-remembered-voices-error"))
+        XCTAssertTrue(voices.contains("settings-remembered-voices-retry"))
         XCTAssertFalse(voices.contains("services.voiceGallery"))
         XCTAssertFalse(voices.contains("import DiarizationKit"))
         XCTAssertFalse(voices.contains("try?"))
+        XCTAssertTrue(settings.contains("SettingsVoiceSection()"))
+        XCTAssertTrue(voiceSettings.contains("await loadStatus()"))
+        XCTAssertTrue(voiceSettings.contains("settings-voice-storage-retry"))
+        XCTAssertTrue(voiceSettings.contains("settings-voice-storage-reset"))
+        XCTAssertFalse(voiceSettings.contains("enrollmentDate = try?"))
+        XCTAssertTrue(voiceGallery.contains("var all = try voices()"))
+        XCTAssertTrue(voiceGallery.contains("let remaining = try voices().filter"))
+        XCTAssertFalse(voiceGallery.contains("try? voices()"))
+        XCTAssertFalse(voiceGallery.contains("combined!"))
+        XCTAssertTrue(voiceprintStore.contains("guard allowCreation else"))
+        XCTAssertTrue(voiceprintStore.contains("VoiceprintError.missingKey"))
+        XCTAssertTrue(voiceprintStore.contains("_ = try decodeVoiceprint(using: key)"))
+        XCTAssertFalse(voiceprintStore.contains("combined!"))
+        XCTAssertTrue(adapter.contains("simulateUnavailable: usesTemporaryStore"))
+        XCTAssertTrue(localVoiceAdapter.contains("simulateUnavailable: usesTemporaryStore"))
     }
 
     func testAppPostCaptureExecutionEntersThroughApplicationKit() throws {

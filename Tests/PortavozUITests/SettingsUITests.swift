@@ -402,6 +402,43 @@ final class SettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testUnreadableVoiceStorageStaysVisibleAndOffersExplicitRecovery() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append("-simulate-voice-storage-unavailable")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        openCategory(
+            "settings-category-voice",
+            revealing: "settings-voice-storage-error",
+            in: app)
+        XCTAssertTrue(app.staticTexts["settings-voice-storage-error"].exists)
+        XCTAssertTrue(app.buttons["settings-voice-storage-retry"].exists)
+        XCTAssertTrue(app.buttons["settings-voice-storage-reset"].exists)
+
+        XCTAssertTrue(app.openSettingsCategory(
+            "settings-category-voice",
+            revealing: "settings-remembered-voices-error"))
+        XCTAssertTrue(app.staticTexts["settings-remembered-voices-error"].exists)
+        XCTAssertTrue(app.buttons["settings-remembered-voices-retry"].exists)
+        XCTAssertTrue(app.buttons["settings-remembered-voices-delete-all"].exists)
+        attachScreenshot(of: app, named: "voice-storage-recovery")
+
+        app.buttons["settings-remembered-voices-delete-all"].click()
+        XCTAssertTrue(
+            app.staticTexts["settings-remembered-voices-error"]
+                .waitForNonExistence(timeout: 5))
+        openCategory(
+            "settings-category-voice",
+            revealing: "settings-voice-storage-reset",
+            in: app)
+        app.buttons["settings-voice-storage-reset"].click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-voice-enroll")
+                .waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testLanguageToggleSwitchesVisibleTextWithoutRelaunch() {
         // The standalone Settings window (⌘,), not the test sheet: the sheet
         // clips the trailing-edge toggle, the real window lays it out fully.

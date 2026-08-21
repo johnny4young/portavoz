@@ -12931,3 +12931,44 @@ decision does not change the app, MCP protocol, production schedulers, model
 selection, or product behavior. Real microphone, process-tap, and concurrent
 model evidence remains hardware- and permission-dependent; unit and source
 ratchets cannot certify those field conditions.
+
+## D357 — Existing encrypted voice data requires explicit recovery (Aug 2026)
+
+**Context:** the local voiceprint and remembered-participant gallery are
+biometric data split between AES-GCM ciphertext and a device-only Keychain key.
+Their read paths treated an existing file with a missing key as absent or empty,
+and gallery mutations additionally converted every decrypt, authentication, or
+decode failure into an empty collection. A later enrollment, remember, or
+remove action could therefore create a replacement key and overwrite or delete
+the only encrypted identity evidence. Both stores also force-unwrapped the
+sealed representation. Settings swallowed the user's own status failure, and
+the remembered-voices view attached its initial load to a conditional group
+that could render no child, so neither the gallery nor its failure was
+guaranteed to appear.
+
+**Decision:** use one shared storage boundary for both encrypted voice stores.
+If ciphertext already exists, key creation is forbidden: missing and malformed
+key material are typed failures, and unreadable ciphertext, authentication, or
+decoding failures propagate unchanged. Every gallery mutation must decrypt and
+decode the authoritative collection before constructing a replacement. Guard
+the AES-GCM combined representation rather than force-unwrapping it. Only the
+existing explicit delete/reset actions may remove the unreadable file and key;
+after that boundary, a fresh key and enrollment/gallery are allowed.
+
+Settings must present unreadable own-voice and gallery state without claiming
+that anything changed. It offers a separate retry and explicit destructive
+reset, retains any already verified gallery rows on reload failure, and renders
+an initial loading anchor so the first asynchronous read always starts. The
+deterministic unavailable fixture is conjunctively gated by `-use-temp-store`;
+it can exercise the real Settings journey but cannot inspect or mutate host
+Keychain or biometric files.
+
+**Consequences:** losing or corrupting Keychain material no longer authorizes
+silent biometric replacement, and corrupt ciphertext can no longer become an
+empty gallery during mutation. The user must deliberately discard unreadable
+identity state before reenrolling, because Portavoz cannot recover plaintext
+without the original key. This changes neither voice matching, thresholds,
+automatic-name admission, synchronization policy, nor model lifetime. Unit and
+real-app automation prove fail-closed preservation and recovery presentation;
+they do not prove a real Keychain-reset journey, recover lost biometric data,
+or replace physical Sequoia/Tahoe and VoiceOver evidence.

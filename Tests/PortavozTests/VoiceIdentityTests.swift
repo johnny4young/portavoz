@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import ModelStoreKit
 import PortavozCore
@@ -5,6 +6,21 @@ import XCTest
 
 @testable import DiarizationKit
 @testable import IntelligenceKit
+
+private func randomEncodedVoiceKey() -> String {
+    SymmetricKey(size: .bits256).withUnsafeBytes {
+        Data($0).base64EncodedString()
+    }
+}
+
+private func encryptedVoiceFixture(
+    plaintext: Data,
+    encodedKey: String
+) throws -> Data {
+    let keyData = try XCTUnwrap(Data(base64Encoded: encodedKey))
+    let box = try AES.GCM.seal(plaintext, using: SymmetricKey(data: keyData))
+    return try XCTUnwrap(box.combined)
+}
 
 // MARK: - Voiceprint storage (D8: encrypted, deletable, device-only)
 
@@ -61,15 +77,97 @@ final class VoiceprintStoreTests: XCTestCase {
         XCTAssertNil(try store.load())
     }
 
-    func testFileWithoutKeyReadsAsAbsent() throws {
+    func testFileWithoutKeyFailsClosedAndPreservesCiphertext() throws {
         do {
             try store.save(Voiceprint(embedding: [1, 2, 3]))
         } catch {
             throw XCTSkip("keychain unavailable: \(error)")
         }
-        // Key vanishes (e.g. keychain reset) → data is unreadable by design.
+        let fileURL = directory.appendingPathComponent("voiceprint.enc")
+        let ciphertext = try Data(contentsOf: fileURL)
+
+        // Key vanishes (e.g. keychain reset): the encrypted file must stay
+        // authoritative until the user explicitly deletes it.
         try secrets.delete(keyIdentifier)
-        XCTAssertNil(try store.load())
+        XCTAssertThrowsError(try store.load()) { error in
+            XCTAssertEqual(
+                error as? VoiceprintStore.VoiceprintError,
+                .missingKey)
+        }
+        XCTAssertThrowsError(try store.save(Voiceprint(embedding: [4, 5, 6]))) { error in
+            XCTAssertEqual(
+                error as? VoiceprintStore.VoiceprintError,
+                .missingKey)
+        }
+        XCTAssertEqual(try Data(contentsOf: fileURL), ciphertext)
+        XCTAssertNil(try secrets.value(for: keyIdentifier))
+
+        try store.delete()
+        try store.save(Voiceprint(embedding: [4, 5, 6]))
+        XCTAssertEqual(try store.load()?.embedding, [4, 5, 6])
+    }
+
+    func testCorruptKeyOrCiphertextRejectsSaveUntilExplicitReset() throws {
+        do {
+            try store.save(Voiceprint(embedding: [1, 2, 3]))
+        } catch {
+            throw XCTSkip("keychain unavailable: \(error)")
+        }
+        let fileURL = directory.appendingPathComponent("voiceprint.enc")
+        let ciphertext = try Data(contentsOf: fileURL)
+        try secrets.set("not-a-valid-key", for: keyIdentifier)
+
+        XCTAssertThrowsError(try store.load()) { error in
+            XCTAssertEqual(
+                error as? VoiceprintStore.VoiceprintError,
+                .corruptKey)
+        }
+        XCTAssertThrowsError(try store.save(Voiceprint(embedding: [4, 5, 6]))) { error in
+            XCTAssertEqual(
+                error as? VoiceprintStore.VoiceprintError,
+                .corruptKey)
+        }
+        XCTAssertEqual(try Data(contentsOf: fileURL), ciphertext)
+        XCTAssertEqual(try secrets.value(for: keyIdentifier), "not-a-valid-key")
+
+        try store.delete()
+        try store.save(Voiceprint(embedding: [4, 5, 6]))
+        XCTAssertEqual(try store.load()?.embedding, [4, 5, 6])
+
+        let replacementKey = try XCTUnwrap(secrets.value(for: keyIdentifier))
+        let unreadable = Data("not-an-aes-gcm-box".utf8)
+        try unreadable.write(to: fileURL, options: .atomic)
+        XCTAssertThrowsError(try store.load())
+        XCTAssertThrowsError(try store.save(Voiceprint(embedding: [7, 8, 9])))
+        XCTAssertEqual(try Data(contentsOf: fileURL), unreadable)
+        XCTAssertEqual(try secrets.value(for: keyIdentifier), replacementKey)
+
+        try store.delete()
+        try store.save(Voiceprint(embedding: [7, 8, 9]))
+        XCTAssertEqual(try store.load()?.embedding, [7, 8, 9])
+
+        let authenticatedKey = try XCTUnwrap(secrets.value(for: keyIdentifier))
+        let authenticatedCiphertext = try Data(contentsOf: fileURL)
+        let wrongKey = randomEncodedVoiceKey()
+        try secrets.set(wrongKey, for: keyIdentifier)
+        XCTAssertThrowsError(try store.load())
+        XCTAssertThrowsError(try store.save(Voiceprint(embedding: [10, 11, 12])))
+        XCTAssertEqual(try Data(contentsOf: fileURL), authenticatedCiphertext)
+        XCTAssertEqual(try secrets.value(for: keyIdentifier), wrongKey)
+
+        try secrets.set(authenticatedKey, for: keyIdentifier)
+        let invalidJSON = try encryptedVoiceFixture(
+            plaintext: Data("not-json".utf8),
+            encodedKey: authenticatedKey)
+        try invalidJSON.write(to: fileURL, options: .atomic)
+        XCTAssertThrowsError(try store.load())
+        XCTAssertThrowsError(try store.save(Voiceprint(embedding: [10, 11, 12])))
+        XCTAssertEqual(try Data(contentsOf: fileURL), invalidJSON)
+        XCTAssertEqual(try secrets.value(for: keyIdentifier), authenticatedKey)
+
+        try store.delete()
+        try store.save(Voiceprint(embedding: [10, 11, 12]))
+        XCTAssertEqual(try store.load()?.embedding, [10, 11, 12])
     }
 }
 
@@ -153,6 +251,87 @@ final class VoiceGalleryTests: XCTestCase {
         try gallery.deleteAll()
         XCTAssertFalse(gallery.exists)
         XCTAssertNil(try secrets.value(for: keyIdentifier))
+    }
+
+    func testMissingKeyRejectsReadAndRememberWithoutReplacingCiphertext() throws {
+        do {
+            try gallery.remember(RememberedVoice(name: "Marta", embedding: [1, 0]))
+        } catch {
+            throw XCTSkip("keychain unavailable: \(error)")
+        }
+        let fileURL = directory.appendingPathComponent("voice-gallery.enc")
+        let ciphertext = try Data(contentsOf: fileURL)
+        try secrets.delete(keyIdentifier)
+
+        XCTAssertThrowsError(try gallery.voices()) { error in
+            XCTAssertEqual(
+                error as? VoiceprintStore.VoiceprintError,
+                .missingKey)
+        }
+        XCTAssertThrowsError(try gallery.remember(
+            RememberedVoice(name: "Ilarion", embedding: [0, 1]))) { error in
+                XCTAssertEqual(
+                    error as? VoiceprintStore.VoiceprintError,
+                    .missingKey)
+        }
+        XCTAssertEqual(try Data(contentsOf: fileURL), ciphertext)
+        XCTAssertNil(try secrets.value(for: keyIdentifier))
+
+        try gallery.deleteAll()
+        let replacement = RememberedVoice(name: "Ilarion", embedding: [0, 1])
+        try gallery.remember(replacement)
+        XCTAssertEqual(try gallery.voices().map(\.name), ["Ilarion"])
+    }
+
+    func testUnreadableGalleryRejectsRememberWithoutReplacingTheFile() throws {
+        do {
+            try gallery.remember(RememberedVoice(name: "Marta", embedding: [1, 0]))
+        } catch {
+            throw XCTSkip("keychain unavailable: \(error)")
+        }
+        let fileURL = directory.appendingPathComponent("voice-gallery.enc")
+        let ciphertext = try Data(contentsOf: fileURL)
+        let encodedKey = try XCTUnwrap(secrets.value(for: keyIdentifier))
+        let unreadable = Data("not-an-aes-gcm-box".utf8)
+        try unreadable.write(to: fileURL, options: .atomic)
+
+        XCTAssertThrowsError(try gallery.remember(
+            RememberedVoice(name: "Ilarion", embedding: [0, 1])))
+        XCTAssertEqual(try Data(contentsOf: fileURL), unreadable)
+        XCTAssertEqual(try secrets.value(for: keyIdentifier), encodedKey)
+
+        let invalidJSON = try encryptedVoiceFixture(
+            plaintext: Data("not-json".utf8),
+            encodedKey: encodedKey)
+        try invalidJSON.write(to: fileURL, options: .atomic)
+        XCTAssertThrowsError(try gallery.remember(
+            RememberedVoice(name: "Ilarion", embedding: [0, 1])))
+        XCTAssertEqual(try Data(contentsOf: fileURL), invalidJSON)
+        XCTAssertEqual(try secrets.value(for: keyIdentifier), encodedKey)
+
+        try ciphertext.write(to: fileURL, options: .atomic)
+        let wrongKey = randomEncodedVoiceKey()
+        try secrets.set(wrongKey, for: keyIdentifier)
+        XCTAssertThrowsError(try gallery.remember(
+            RememberedVoice(name: "Ilarion", embedding: [0, 1])))
+        XCTAssertEqual(try Data(contentsOf: fileURL), ciphertext)
+        XCTAssertEqual(try secrets.value(for: keyIdentifier), wrongKey)
+    }
+
+    func testUnreadableGalleryRejectsRemoveWithoutDeletingTheFileOrKey() throws {
+        let voice = RememberedVoice(name: "Marta", embedding: [1, 0])
+        do {
+            try gallery.remember(voice)
+        } catch {
+            throw XCTSkip("keychain unavailable: \(error)")
+        }
+        let fileURL = directory.appendingPathComponent("voice-gallery.enc")
+        let unreadable = Data("not-an-aes-gcm-box".utf8)
+        try unreadable.write(to: fileURL, options: .atomic)
+
+        XCTAssertThrowsError(try gallery.remove(id: voice.id))
+        XCTAssertEqual(try Data(contentsOf: fileURL), unreadable)
+        XCTAssertNotNil(try secrets.value(for: keyIdentifier))
     }
 }
 

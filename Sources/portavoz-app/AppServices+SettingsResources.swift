@@ -46,31 +46,40 @@ extension AppServices {
     }
 
     func rememberedVoiceSummaries() async throws -> [RememberedVoiceSummary] {
+        let arguments = ProcessInfo.processInfo.arguments
+        let usesTemporaryStore = arguments.contains("-use-temp-store")
         let result = try await ManageRememberedVoices(
             catalog: AppRememberedVoiceCatalog(
                 gallery: voiceGallery,
-                usesTemporaryStore: ProcessInfo.processInfo.arguments
-                    .contains("-use-temp-store"))
+                usesTemporaryStore: usesTemporaryStore,
+                simulateUnavailable: usesTemporaryStore
+                    && arguments.contains("-simulate-voice-storage-unavailable"))
         ).execute(.list)
         guard case .voices(let voices) = result else { return [] }
         return voices
     }
 
     func removeRememberedVoice(id: UUID) async throws {
+        let arguments = ProcessInfo.processInfo.arguments
+        let usesTemporaryStore = arguments.contains("-use-temp-store")
         _ = try await ManageRememberedVoices(
             catalog: AppRememberedVoiceCatalog(
                 gallery: voiceGallery,
-                usesTemporaryStore: ProcessInfo.processInfo.arguments
-                    .contains("-use-temp-store"))
+                usesTemporaryStore: usesTemporaryStore,
+                simulateUnavailable: usesTemporaryStore
+                    && arguments.contains("-simulate-voice-storage-unavailable"))
         ).execute(.remove(id))
     }
 
     func removeAllRememberedVoices() async throws {
+        let arguments = ProcessInfo.processInfo.arguments
+        let usesTemporaryStore = arguments.contains("-use-temp-store")
         _ = try await ManageRememberedVoices(
             catalog: AppRememberedVoiceCatalog(
                 gallery: voiceGallery,
-                usesTemporaryStore: ProcessInfo.processInfo.arguments
-                    .contains("-use-temp-store"))
+                usesTemporaryStore: usesTemporaryStore,
+                simulateUnavailable: usesTemporaryStore
+                    && arguments.contains("-simulate-voice-storage-unavailable"))
         ).execute(.removeAll)
     }
 }
@@ -153,8 +162,12 @@ private struct AppRecordingStorageManager: RecordingStorageManaging {
 private struct AppRememberedVoiceCatalog: RememberedVoiceCatalogManaging {
     let gallery: VoiceGallery
     let usesTemporaryStore: Bool
+    let simulateUnavailable: Bool
 
     func rememberedVoiceSummaries() async throws -> [RememberedVoiceSummary] {
+        if simulateUnavailable {
+            throw VoiceprintStore.VoiceprintError.missingKey
+        }
         guard !usesTemporaryStore else { return [] }
         return try await Task.detached(priority: .utility) {
             try gallery.voices().map {

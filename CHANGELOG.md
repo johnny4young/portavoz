@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## August 21, 2026
+
+- **🛡️ Unreadable voice data stays protected** — Portavoz no longer replaces encrypted voice identities when their key or file cannot be opened, and Settings keeps an explicit retry or reset available without claiming anything changed.
+
 ## August 20, 2026
 
 - **🔎 Ask keeps tied evidence in a stable order** — Repeating the same local question now returns equally ranked meeting evidence in the same order, keeping citations predictable.

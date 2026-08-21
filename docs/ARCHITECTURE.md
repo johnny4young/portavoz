@@ -4289,6 +4289,15 @@ behind aspirational diagrams:
 - Settings and Onboarding local-voice enrollment enter ApplicationKit. Their
   SwiftUI views do not construct microphone, model, embedding, or encrypted
   identity capabilities; those remain in app composition adapters.
+- Encrypted local-voice and remembered-participant storage fails closed across
+  its shared Keychain/AES-GCM boundary. An existing ciphertext never authorizes
+  a replacement key: missing or malformed key material, unreadable ciphertext,
+  authentication failure, and decoding failure propagate before a mutation can
+  rewrite the file. Serialization is guarded rather than force-unwrapped. Only
+  the explicit Settings reset destroys unreadable biometric state and permits
+  a new key. Settings keeps the failure visible with separate retry and reset
+  actions; its deterministic unavailable fixture is enabled only together with
+  disposable storage and cannot inspect host biometric state.
 - Settings and Onboarding local summary-provider discovery enters
   ApplicationKit as one coherent typed profile and deterministic
   recommendation. A running Ollama service is eligible only when it exposes a
@@ -4321,12 +4330,13 @@ silently.
 
 ## Quality evidence
 
-The current 20 Aug 2026 local acceptance inventory, with longer-running
+The current 21 Aug 2026 local acceptance inventory, with longer-running
 reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,494 XCTest package cases pass, with 14 real-model/environment cases gated;
+- 2,532 XCTest package cases are defined, with 15 real-model/environment cases
+  gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
   an implicit sync seed, and pass an idempotent reopen;
@@ -4334,13 +4344,13 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 679
+- strict SwiftLint remains a blocking CI gate and is clean across all 684
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
 - 425 deterministic tooling cases and the 179-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
-- 92 XCUITest cases per locale define the 184-case bilingual release gate;
+- 93 XCUITest cases per locale define the 186-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

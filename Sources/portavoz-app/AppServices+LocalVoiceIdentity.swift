@@ -36,11 +36,15 @@ extension AppServices {
     }
 
     private var localVoiceIdentity: ManageLocalVoiceIdentity {
-        ManageLocalVoiceIdentity(
+        let arguments = ProcessInfo.processInfo.arguments
+        let usesTemporaryStore = arguments.contains("-use-temp-store")
+        return ManageLocalVoiceIdentity(
             sampleCapture: AppLocalVoiceSampleCapture(),
             identities: AppLocalVoiceIdentityStore(
                 storage: voiceprintStore,
-                disabled: ProcessInfo.processInfo.arguments.contains("-use-temp-store")),
+                disabled: usesTemporaryStore,
+                simulateUnavailable: usesTemporaryStore
+                    && arguments.contains("-simulate-voice-storage-unavailable")),
             sampleExtractor: AppLocalVoiceSampleExtractor(services: self))
     }
 }
@@ -48,8 +52,12 @@ extension AppServices {
 private struct AppLocalVoiceIdentityStore: LocalVoiceIdentityStoring {
     let storage: VoiceprintStore
     let disabled: Bool
+    let simulateUnavailable: Bool
 
     func loadVoiceIdentity() async throws -> Voiceprint? {
+        if simulateUnavailable {
+            throw VoiceprintStore.VoiceprintError.missingKey
+        }
         guard !disabled else { return nil }
         let storage = storage
         return try await Task.detached(priority: .utility) {
