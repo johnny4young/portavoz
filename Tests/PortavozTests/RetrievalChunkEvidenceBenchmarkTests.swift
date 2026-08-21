@@ -115,6 +115,34 @@ final class RetrievalChunkEvidenceBenchmarkTests: XCTestCase {
         XCTAssertFalse(encoded.contains("vectorValues"))
     }
 
+    func testSegmentObservationOmitsInapplicableSemanticDiagnostics() async throws {
+        let fixture = try AskQualityFixture.load(from: Self.fixtureURL)
+        let options = try RetrievalChunkEvidenceOptions(arguments: [
+            "--fixture", Self.fixtureURL.path,
+            "--output", "/tmp/retrieval-chunk-segment-evidence.json",
+            "--build", "test",
+            "--commit", String(repeating: "a", count: 40),
+            "--fixture-sha256", String(repeating: "b", count: 64),
+            "--toolchain-sha256", String(repeating: "c", count: 64),
+            "--host-profile", "test-host",
+            "--retrieval-unit", "segment"
+        ])
+
+        let observation = try await RetrievalChunkEvidenceBenchmark.run(
+            fixture: fixture,
+            options: options)
+        let data = try JSONEncoder().encode(observation)
+        let document = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let construction = try XCTUnwrap(
+            document["construction"] as? [String: Any])
+        let corrections = try XCTUnwrap(
+            document["corrections"] as? [[String: Any]])
+
+        XCTAssertNil(construction["diagnostics"])
+        XCTAssertTrue(corrections.allSatisfy { $0["diagnostics"] == nil })
+    }
+
     private static let fixtureURL = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .deletingLastPathComponent()

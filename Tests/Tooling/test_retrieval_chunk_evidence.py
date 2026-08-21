@@ -74,7 +74,7 @@ class FakeRunner:
             input_segments = 5 if scenario == "structural-split" else (
                 3 if scenario == "structural-merge" else 4
             )
-            corrections.append({
+            correction = {
                 "scenario": scenario,
                 "inputSegmentCount": input_segments,
                 "resultingUnitCount": target_units,
@@ -85,10 +85,20 @@ class FakeRunner:
                 ),
                 "candidateEmbeddingUpsertCount": 0 if index < 2 else 1,
                 "removedUnitCount": 0,
-                "diagnostics": self.diagnostics(2, 1) if semantic else None,
                 "resources": resources,
-            })
+            }
+            if semantic:
+                correction["diagnostics"] = self.diagnostics(2, 1)
+            corrections.append(correction)
         adapter = evidence.FIXED_ADAPTERS.get(role, "semantic-v1." + ("d" * 64))
+        construction = {
+            "resultingUnitCount": units,
+            "sourceReferenceCount": 240,
+            "turnCount": 120,
+            "resources": resources,
+        }
+        if semantic:
+            construction["diagnostics"] = diagnostics
         return {
             "schemaVersion": 1,
             "kind": "retrieval-chunk-resource-correction-observation",
@@ -122,13 +132,7 @@ class FakeRunner:
                 "meetingCount": 60,
                 "sourceSegmentCount": 240,
             },
-            "construction": {
-                "resultingUnitCount": units,
-                "sourceReferenceCount": 240,
-                "turnCount": 120,
-                "diagnostics": diagnostics,
-                "resources": resources,
-            },
+            "construction": construction,
             "corrections": corrections,
         }
 
@@ -269,6 +273,46 @@ class RetrievalChunkEvidenceTests(unittest.TestCase):
         )
         document["text"] = "private"
 
+        with self.assertRaisesRegex(
+            evidence.RetrievalChunkEvidenceError, "invalid shape"
+        ):
+            evidence.validate_observation(
+                document,
+                role="segment",
+                build="test",
+                commit="a" * 40,
+                fixture_sha256="b" * 64,
+                toolchain_sha256="c" * 64,
+                host_profile="reference",
+            )
+
+    def test_nonsemantic_shape_matches_swift_optional_encoding(self):
+        runner = FakeRunner()
+        command = [
+            "portavoz-cli", "--build", "test", "--commit", "a" * 40,
+            "--fixture-sha256", "b" * 64,
+            "--toolchain-sha256", "c" * 64,
+            "--host-profile", "reference",
+        ]
+        document = runner.observation(command, "segment", 1)
+
+        self.assertNotIn("diagnostics", document["construction"])
+        self.assertTrue(all(
+            "diagnostics" not in correction
+            for correction in document["corrections"]
+        ))
+        validated = evidence.validate_observation(
+            document,
+            role="segment",
+            build="test",
+            commit="a" * 40,
+            fixture_sha256="b" * 64,
+            toolchain_sha256="c" * 64,
+            host_profile="reference",
+        )
+        self.assertEqual(validated["subject"]["retrievalUnit"], "segment")
+
+        document["construction"]["diagnostics"] = None
         with self.assertRaisesRegex(
             evidence.RetrievalChunkEvidenceError, "invalid shape"
         ):

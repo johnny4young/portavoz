@@ -345,15 +345,17 @@ def validate_observation(
         corpus["sourceSegmentCount"], "corpus.sourceSegmentCount"
     )
 
+    construction_keys = {
+        "resultingUnitCount",
+        "sourceReferenceCount",
+        "turnCount",
+        "resources",
+    }
+    if role == "semantic-boundary":
+        construction_keys.add("diagnostics")
     construction = require_keys(
         root["construction"],
-        {
-            "resultingUnitCount",
-            "sourceReferenceCount",
-            "turnCount",
-            "diagnostics",
-            "resources",
-        },
+        construction_keys,
         "observation.construction",
     )
     for key in ("resultingUnitCount", "sourceReferenceCount", "turnCount"):
@@ -363,7 +365,7 @@ def validate_observation(
     if construction["sourceReferenceCount"] != source_segment_count:
         raise RetrievalChunkEvidenceError("construction lost or repeated sources")
     diagnostics = require_diagnostics(
-        construction["diagnostics"], "construction.diagnostics"
+        construction.get("diagnostics"), "construction.diagnostics"
     )
     if (role == "semantic-boundary") != (diagnostics is not None):
         raise RetrievalChunkEvidenceError("diagnostics do not match the role")
@@ -380,20 +382,22 @@ def validate_observation(
     if not isinstance(corrections, list) or len(corrections) != len(SCENARIOS):
         raise RetrievalChunkEvidenceError("correction matrix is incomplete")
     for index, expected_scenario in enumerate(SCENARIOS):
+        correction_keys = {
+            "scenario",
+            "inputSegmentCount",
+            "resultingUnitCount",
+            "sourceReferenceCount",
+            "turnCount",
+            "retainedUnitCount",
+            "candidateEmbeddingUpsertCount",
+            "removedUnitCount",
+            "resources",
+        }
+        if role == "semantic-boundary":
+            correction_keys.add("diagnostics")
         correction = require_keys(
             corrections[index],
-            {
-                "scenario",
-                "inputSegmentCount",
-                "resultingUnitCount",
-                "sourceReferenceCount",
-                "turnCount",
-                "retainedUnitCount",
-                "candidateEmbeddingUpsertCount",
-                "removedUnitCount",
-                "diagnostics",
-                "resources",
-            },
+            correction_keys,
             f"corrections[{index}]",
         )
         if correction["scenario"] != expected_scenario:
@@ -433,7 +437,7 @@ def validate_observation(
                 f"{expected_scenario} rebuilt equivalent units"
             )
         scenario_diagnostics = require_diagnostics(
-            correction["diagnostics"], f"{expected_scenario}.diagnostics"
+            correction.get("diagnostics"), f"{expected_scenario}.diagnostics"
         )
         if (role == "semantic-boundary") != (scenario_diagnostics is not None):
             raise RetrievalChunkEvidenceError("scenario diagnostics do not match role")
@@ -501,7 +505,7 @@ def role_receipt(role: str, observations: list[dict], paths: list[Path]) -> dict
             "removedUnitCount": template["removedUnitCount"],
             "vectorizedTurnCount": (
                 template["diagnostics"]["vectorizedTurnCount"]
-                if template["diagnostics"] is not None
+                if template.get("diagnostics") is not None
                 else 0
             ),
             "wallMilliseconds": [
@@ -530,7 +534,7 @@ def role_receipt(role: str, observations: list[dict], paths: list[Path]) -> dict
             "turnCount": construction["turnCount"],
             "vectorizedTurnCount": (
                 construction["diagnostics"]["vectorizedTurnCount"]
-                if construction["diagnostics"] is not None
+                if construction.get("diagnostics") is not None
                 else 0
             ),
             "wallMilliseconds": [
