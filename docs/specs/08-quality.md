@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,532 cases (15 environment-gated) + 93
+Status: the package inventory contains 2,540 cases (15 environment-gated) + 95
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1348,13 +1348,14 @@ freshness filtering and that a truncated unusable window cannot claim there are
 no blockers.
 
 One architecture ratchet keeps the query contract in Core, graph selection and
-authority hydration in StorageKit, orchestration in ApplicationKit, and Ask
-composition absent. It also pins the decision record and bounded candidate
-policy. The
+authority hydration in StorageKit, orchestration in ApplicationKit, and direct
+presentation composition absent. It also pins the decision record and bounded
+candidate policy. The
 tests use in-memory SQLite and exact synthetic transcript rows; no model,
 network, user library, SwiftUI, XCUITest, or screenshot evidence participates.
-The remaining five D270 adapters, corpus mapping, private field evidence, and
-scale budgets are intentionally not claimed.
+At this boundary the remaining five adapters, corpus mapping, private field
+evidence, and scale budgets were intentionally not claimed; the later closure
+section records their implemented status.
 
 ### Canonical blocker product conformance (D279)
 
@@ -1369,9 +1370,9 @@ Every case uses public Summary, commitment, decision, blocker, graph
 maintenance, and ApplicationKit query boundaries. Assertions require exact
 ordered result and evidence identities and reject every forbidden distractor.
 The architecture ratchet prohibits IntelligenceKit, direct authority writes,
-and Ask composition. No model, network, user library, SwiftUI, XCUITest, or
-screenshot participates. The other five D270 product mappings, private field
-evidence, and relational scale budgets remain open.
+and presentation composition. No model, network, user library, SwiftUI,
+XCUITest, or screenshot participates. At this boundary the other five product
+mappings and relational scale budgets were still open; later slices close both.
 
 ### First-discussion query and canonical conformance (D280)
 
@@ -1395,10 +1396,11 @@ and forbidden-result exclusion.
 
 One architecture ratchet pins exact-identity input, authoritative earliest-row
 selection, graph-only consistency checking, public-only product mapping, and
-the absence of Ask composition, GRDB, `@testable`, IntelligenceKit, or direct
-database writes in the conformance adapter. These nine tests use no model,
-network, user library, SwiftUI, XCUITest, or screenshot. Four D270 product
-mappings, private field evidence, and relational scale budgets remain open.
+the absence of direct presentation composition, GRDB, `@testable`,
+IntelligenceKit, or direct database writes in the conformance adapter. These
+nine tests use no model, network, user library, SwiftUI, XCUITest, or
+screenshot. At this boundary four product mappings remained; the later closure
+covers them. Private field evidence remains external.
 
 ### Person-commitment query and canonical conformance (D281–D282)
 
@@ -1422,10 +1424,10 @@ identities in the sixth case must abstain before exact factual serving.
 Two architecture ratchets pin exact `PersonID` input, complete current
 authority-versus-projection ownership reconciliation, continuity hydration,
 exact source evidence, the read-only alias candidate boundary, public-only
-canonical mapping, and the absence of alias-based Ask composition. These seventeen tests
-use no model, network, user library, SwiftUI, XCUITest, or screenshot. The
-remaining graph jobs, private evidence, and relational scale budgets remain
-open.
+canonical mapping, and the absence of alias-based presentation composition.
+These seventeen tests use no model, network, user library, SwiftUI, XCUITest,
+or screenshot. At this boundary the remaining jobs and scale budgets stayed
+open; the later closure covers them. Private evidence remains external.
 
 ### Independent Ask graph-fact evidence lane (D283)
 
@@ -1486,6 +1488,36 @@ pins post-RRF ownership, production bounds, dependency direction, source-marker
 reuse, typed exhaustion, and absence of Presentation adoption. These eleven
 cases use no model, network, user library, SwiftUI, XCUITest, or screenshot.
 
+### Complete graph product truth and scale closure (D308–D314)
+
+The remaining decision-history, decision-conflict, and change-since adapters
+have deterministic focused tests plus all 18 canonical product mappings. The
+local graph-fact route switch and exact filter suite exercise all six job kinds;
+decision queries derive aboutness only from confirmed decision-topic links and
+never from meeting co-occurrence. Paging tests prove candidate counting stays
+bounded before evidence hydration, and mutation tests break if current-only or
+temporal-anchor rules are removed.
+
+Meeting Detail package tests cover composed confirmation and topic retraction.
+The real-app bilingual journey confirms a decision, observes the topic-bearing
+badge, withdraws that exact link through its stable accessibility identifier,
+and verifies that the decision remains confirmed without the topic. This is UI
+evidence for the shipped authority gesture, not proof of VoiceOver quality on a
+physical Sequoia or Tahoe host.
+
+The Release scale harness executes every job for 30 samples at 10,000 meetings:
+2.3...76.1 ms p95 against 250 ms, recursive family/chain probes under 6 ms,
+119 MB database size, and under 6 MB physical-footprint delta. Full-reset
+throughput was then fixed from 17.6 minutes to 27.2 seconds on the same
+deterministic fixture. Always-on tests preserve edge provenance, correction
+awareness, one-way profile-reset determinism, checkpoint/resume, and recursive-
+family behavior. Returning to a previously completed profile at the same source
+generation remains an explicit gap because the done operation is not re-admitted
+until another authority write. These results select SQLite and reject a
+specialized graph-engine migration; they do not supply private owner-reviewed
+field evidence, released graph-aware Ask UX, sync/export, CLI/MCP adoption, or
+product telemetry.
+
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
@@ -1497,7 +1529,7 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 91 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 95 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select bilingual evidence; the

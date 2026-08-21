@@ -927,7 +927,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 40. It includes:
+The current schema version is 41. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -1834,9 +1834,11 @@ It never returns a graph row as evidence.
 Evidence freshness is evaluated before the caller's visible result limit, so a
 newer corrected candidate cannot hide an older current fact. Candidate-window
 overflow is explicit, and a commitment without exact transcript provenance
-causes abstention rather than a weakly sourced answer. Ask does not compose this
-use case yet: natural-language identity discovery, cross-lane ranking, answer
-synthesis, UI, scale budgets, and private field evidence remain later gates.
+causes abstention rather than a weakly sourced answer. The local Ask composition
+can invoke this use case only through an explicit caller-resolved graph request;
+the ordinary released answer path remains transcript-only. Natural-language
+identity discovery, released presentation, and private field evidence remain
+outside this boundary.
 
 The canonical public corpus is not runtime authority. A test-only conformance
 adapter maps its six commitment-blocker cases into isolated in-memory Stores
@@ -1844,9 +1846,9 @@ through public Summary, commitment, decision, blocker, graph-maintenance, and
 ApplicationKit query boundaries. It maps only returned typed identities and
 exact source segments back to corpus identities. Generated association
 distractors are never persisted, and no model, network, user library, direct
-authority write, Ask composition, CLI, MCP, sync, or UI loads the fixture. The
-other three canonical query jobs and relational scale evidence remain separate
-gates.
+authority write, CLI, MCP, sync, or UI loads the fixture. Equivalent public
+product-path adapters now cover all six canonical jobs; the fixture remains
+test-only authority.
 
 The second source-backed graph fact query serves **where one exact topic family
 was first discussed**. Core accepts a caller-resolved `TopicID`; label or
@@ -1862,13 +1864,13 @@ Chronology fails closed. If the authoritative earliest mention is stale,
 unavailable, corrected, or missing, a later current mention cannot stand in for
 it; a ready projection missing the exact edge reports an inconsistency instead
 of inventing an answer. `LoadTopicFirstDiscussion` is an injected ApplicationKit
-boundary and is not composed by Ask yet. A separate package-test adapter maps
-all six canonical `firstDiscussion` cases through public meeting, transcript,
-topic confirmation, graph maintenance, and application APIs. It persists the
-forbidden distractor as a distinct confirmed topic, performs no direct database
-write, and maps only typed returned identities back to the corpus. This query
-adds no model call, graph authority, topic discovery, answer synthesis, UI,
-sync/export, CLI, or MCP surface.
+boundary used by the explicit local graph-fact lane. A separate package-test
+adapter maps all six canonical `firstDiscussion` cases through public meeting,
+transcript, topic confirmation, graph maintenance, and application APIs. It
+persists the forbidden distractor as a distinct confirmed topic, performs no
+direct database write, and maps only typed returned identities back to the
+corpus. This query adds no model call, graph authority, natural-language topic
+discovery, released UI, sync/export, CLI, or MCP surface.
 
 The third source-backed graph fact query serves **current commitments for one
 exact canonical person**. Core accepts a caller-resolved `PersonID` and a
@@ -1903,9 +1905,10 @@ lifecycle, graph-maintenance, and application boundaries. It persists the
 completed and other-person distractors, derives aliases from fixture identity
 rather than query prose, performs no direct database write, and maps only typed
 commitment/evidence identities back to the corpus. The two Alex identities
-therefore abstain without either exact-person query running. Ask does not yet
-compose this workflow; alias extraction, answer synthesis, UI, scale evidence,
-sync/export, CLI, and MCP remain separate gates.
+therefore abstain without either exact-person query running. The explicit local
+graph-fact lane composes this workflow after exact alias resolution; automatic
+natural-language extraction, released UI, sync/export, CLI, and MCP remain
+separate.
 
 Explicit decision-topic aboutness also serves three exact source-backed reads.
 `decisionConflicts` and `changeSince` select only confirmed supersession or
@@ -1931,13 +1934,34 @@ only enough ordered events to fill the visible page rehydrate both endpoint
 decisions and their evidence. Evidence outside that page cannot add work or
 misstate its omission disclosure.
 
+Decision-topic aboutness has a production confirmation and withdrawal surface.
+Meeting Detail confirms one generated decision only over its current exact
+evidence and may optionally bind it to one exact existing topic or a newly
+grounded topic. Ambiguous labels fail closed. Each active topic link appears in
+the confirmed badge and can be retracted independently; the decision remains
+confirmed and append-only link history retains the withdrawal. The model
+reloads durable confirmation state after each mutation rather than applying an
+optimistic badge change.
+
+The relational projection is the accepted serving design. At 10,000 meetings,
+the six product queries measured 2.3...76.1 ms p95 against a 250 ms interactive
+budget, with recursive topic-family and decision-chain probes under 6 ms. A
+full profile reset originally exposed a superlinear family-root lookup; moving
+family traversal into bounded recursive SQL reduced the same 10,000-meeting
+rebuild from 17.6 minutes to 27.2 seconds. SQLite remains authoritative and the
+graph projection remains disposable; no specialized graph engine is selected.
+Returning to a previously completed profile at the same unchanged source
+generation can still leave maintenance pending until the next authority write;
+that binary-downgrade edge case remains recorded in `GAPS.md`.
+
 Ask now has a **separate exact graph-fact evidence lane** beside transcript
-retrieval. `AskGraphFactQuery` can carry only one already-resolved blocker,
-topic-first-discussion, or person-commitment query. A local adapter delegates
-to the three source-backed ApplicationKit use cases and returns their typed
-facts or abstention unchanged. `AskEvidenceBundle` keeps transcript citations
-and the graph outcome in distinct fields; graph unavailability cannot erase
-transcript evidence, and graph facts cannot be flattened into transcript rank.
+retrieval. `AskGraphFactQuery` can carry one already-resolved active-blocker,
+topic-first-discussion, person-commitment, decision-conflict, change-since, or
+decision-history query. A local adapter delegates to all six source-backed
+ApplicationKit use cases and returns their typed facts or abstention unchanged.
+`AskEvidenceBundle` keeps transcript citations and the graph outcome in
+distinct fields; graph unavailability cannot erase transcript evidence, and
+graph facts cannot be flattened into transcript rank.
 
 This is a composition seam, not answer behavior. Existing Ask search,
 progressive transcript evidence, answer generation, UI, CLI, MCP, and meeting
@@ -1950,8 +1974,9 @@ existing read-only candidate ports and admits exactly one canonical identity;
 missing or duplicate aliases abstain without guessing. A person filter can
 only match the exact `PersonID` already carried by a person-commitment query,
 and a topic filter can only match the exact `TopicID` already carried by a
-first-discussion query. Mixed identity dimensions, a mismatched identity, or an
-identity attached to the wrong graph job is invalid before factual retrieval.
+first-discussion, decision-conflict, change-since, or decision-history query.
+Mixed identity dimensions, a mismatched identity, or an identity attached to
+the wrong graph job is invalid before factual retrieval.
 
 Date filtering uses one finite half-open occurrence range, and status filtering
 uses the closed typed fact status. ApplicationKit intersects those constraints
@@ -2017,9 +2042,9 @@ context both carry candidate, selected, additional-source, and selection-
 omission counts. Both layers validate those counts, the facts-to-transcript
 ratio, and exact source overlap before model execution. Selection makes only
 the provider input smaller: `AskEvidenceBundleAnswer` still returns the full
-unselected transcript and graph evidence to its caller. Released adoption,
-the remaining exact graph jobs, relational scale budgets, private field
-evidence, and graph telemetry remain separate gates.
+unselected transcript and graph evidence to its caller. Released graph-aware
+presentation, natural-language query extraction, private field evidence, and
+graph telemetry remain separate gates.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported

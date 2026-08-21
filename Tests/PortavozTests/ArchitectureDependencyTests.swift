@@ -2578,6 +2578,9 @@ final class ArchitectureDependencyTests: XCTestCase {
             "LoadCommitmentBlockers(repository:",
             "LoadTopicFirstDiscussion(repository:",
             "LoadPersonCommitments(repository:",
+            "LoadDecisionConflicts(repository:",
+            "LoadChangeSince(repository:",
+            "LoadDecisionHistory(repository:",
         ] {
             XCTAssertTrue(graphLane.contains(boundary))
         }
@@ -2589,6 +2592,42 @@ final class ArchitectureDependencyTests: XCTestCase {
             "answer(question: String, citations: [AskCitation])"))
         XCTAssertFalse(presentation.contains("evidenceBundle("))
         XCTAssertTrue(decisions.contains("## D283"))
+    }
+
+    func testMeetingMemoryGraphProjectTruthTracksDeliveredSystem() throws {
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligence = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+
+        XCTAssertTrue(architecture.contains("current schema version is 41"))
+        XCTAssertTrue(architecture.contains(
+            "delegates to all six source-backed"))
+        XCTAssertTrue(architecture.contains(
+            "reduced the same 10,000-meeting\n"
+                + "rebuild from 17.6 minutes to 27.2 seconds"))
+        XCTAssertTrue(intelligence.contains(
+            "## Complete graph authority, product adapters, and scale "
+                + "(D308–D314)"))
+        XCTAssertTrue(quality.contains(
+            "### Complete graph product truth and scale closure "
+                + "(D308–D314)"))
+        XCTAssertTrue(quality.contains(
+            "package inventory contains 2,540 cases "
+                + "(15 environment-gated) + 95"))
+        XCTAssertTrue(gaps.contains(
+            "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
+        XCTAssertTrue(gaps.contains(
+            "ordinary Ask, command palette, CLI, MCP, and meeting briefs "
+                + "remain transcript-only"))
+        XCTAssertTrue(gaps.contains(
+            "returning to a previously completed graph profile at the same "
+                + "source generation stalls"))
+        XCTAssertFalse(gaps.contains(
+            "the other three D270 job adapters"))
+        XCTAssertFalse(gaps.contains(
+            "Finish the remaining exact query adapters"))
     }
 
     func testAskGraphFiltersResolveExactIdentitiesBeforeBoundedQueries() throws {
@@ -3345,7 +3384,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let storageSpec = try Self.contents(of: "docs/specs/05-storage.md")
         let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
-        XCTAssertTrue(architecture.contains("current schema version is 40"))
+        XCTAssertTrue(architecture.contains("current schema version is 41"))
         XCTAssertTrue(architecture.contains(
             "Every persisted semantic vector also carries one SHA-256"))
         XCTAssertTrue(decisions.contains("## D199"))
