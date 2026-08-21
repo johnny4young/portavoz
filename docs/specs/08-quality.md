@@ -2539,6 +2539,31 @@ semantic resource coverage until a truthful homogeneous-turn bilingual
 resource fixture exists. This result cannot be promoted to physical Sequoia,
 independent Tahoe hardware, private-corpus, model-quality, or serving evidence.
 
+D354 supplies that missing public resource fixture without changing the judged
+quality pack. `scripts/retrieval_chunk_resource_fixture.py` deterministically
+generates and verifies 60 meetings, 480 segments, and four two-segment turns per
+meeting: exactly 120 homogeneous English and 120 homogeneous Spanish turns. It
+rejects duplicate keys, unexpected fields, noncanonical content, order drift,
+and mixed-language complete turns. The Swift loader independently checks
+bounded identities, meeting consistency, strict timestamps, homogeneous turns,
+and nonzero bilingual coverage. Both loaders cap input reads before decoding so
+the 8 MiB limit does not require loading an oversized fixture first.
+
+Resource observations are now schema 2. Before semantic sampling, one fixed
+public English phrase and one fixed public Spanish phrase must successfully
+vectorize through the admitted exact profiles; content-free preparation counts
+prove those calls occurred outside resource samples. The canonical fixture
+generation, digest, exact language coverage, clean source, Release toolchain,
+host profile, and one cross-role host identity are receipt-bound. Duplicate-key
+or nonstandard observation JSON fails closed. Fixture validation and digesting
+share one byte snapshot, and source cleanliness is checked before compilation,
+after the Release build, and before receipt publication. A complete 240/240
+semantic turn count produces only `review-required`; incomplete coverage
+remains blocked.
+This closes the public-fixture coverage defect, not model quality, performance,
+private-corpus, cross-host, physical Sequoia, independent Tahoe, or product
+serving acceptance.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |

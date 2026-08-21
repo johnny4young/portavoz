@@ -105,12 +105,15 @@ python3 -m unittest Tests.Tooling.test_exact_path_cross_host
 python3 -m unittest Tests.Tooling.test_exact_path_baseline
 python3 -m unittest Tests.Tooling.test_ask_quality
 python3 -m unittest Tests.Tooling.test_ask_quality_pair
+python3 -m unittest Tests.Tooling.test_retrieval_chunk_resource_fixture
 python3 -m unittest Tests.Tooling.test_retrieval_chunk_evidence
 python3 -m unittest Tests.Tooling.test_semantic_scale_manifest
 python3 scripts/ask_quality.py verify-public \
   --fixture Fixtures/AskQuality/public-synthetic-v1.json
 python3 scripts/ask_quality.py verify-public \
   --fixture Fixtures/AskQuality/public-synthetic-v2.json
+python3 scripts/retrieval_chunk_resource_fixture.py verify-public \
+  --fixture Fixtures/RetrievalChunkResource/public-bilingual-homogeneous-v1.json
 python3 -m unittest Tests.Tooling.test_ui_test_scope
 python3 -m unittest Tests.Tooling.test_run_ui_tests
 python3 -m unittest Tests.Tooling.test_ui_test_host_preflight

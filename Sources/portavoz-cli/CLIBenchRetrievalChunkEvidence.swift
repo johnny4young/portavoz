@@ -7,15 +7,13 @@ enum BenchRetrievalChunkEvidenceCommand {
     static func run(_ arguments: [String]) async {
         do {
             let options = try RetrievalChunkEvidenceOptions(arguments: arguments)
-            let fixture = try AskQualityFixture.load(from: options.fixture)
-            let fixtureData = try Data(
-                contentsOf: options.fixture,
-                options: .mappedIfSafe)
-            guard ContentDigest.sha256(fixtureData) == options.fixtureSHA256 else {
+            let snapshot = try RetrievalChunkResourceFixture.loadSnapshot(
+                from: options.fixture)
+            guard ContentDigest.sha256(snapshot.data) == options.fixtureSHA256 else {
                 throw RetrievalChunkEvidenceError.fixtureDigestMismatch
             }
             let observation = try await RetrievalChunkEvidenceBenchmark.run(
-                fixture: fixture,
+                fixture: snapshot.fixture,
                 options: options)
             do {
                 try CLIPrivateJSONWriter.write(observation, to: options.output)
@@ -185,17 +183,18 @@ enum RetrievalChunkEvidenceError: Error, Equatable, LocalizedError {
 }
 
 struct RetrievalChunkEvidenceObservation: Encodable, Sendable {
-    let schemaVersion = 1
+    let schemaVersion = 2
     let kind = "retrieval-chunk-resource-correction-observation"
     let authority = "research-resource-correction-only"
     let contentPolicy = "content-free"
-    let lifecycle = "candidate-construction-and-one-meeting-rebuild-only"
+    let lifecycle = "warm-candidate-construction-and-one-meeting-rebuild-only"
     let assetDownloadPolicy = "never"
     let productComposition = "unchanged"
     let candidateSelection = "not-evaluated"
     let performanceDecision = "not-evaluated"
     let subject: Subject
     let host: Host
+    let preparation: Preparation
     let corpus: Corpus
     let construction: Construction
     let corrections: [Correction]
@@ -219,11 +218,30 @@ struct RetrievalChunkEvidenceObservation: Encodable, Sendable {
         let evidenceScope = "single-development-host"
     }
 
+    struct Preparation: Encodable, Equatable, Sendable {
+        let scope = "outside-resource-samples"
+        let semanticProposalAdmissionCount: Int
+        let englishVectorWarmupCount: Int
+        let spanishVectorWarmupCount: Int
+
+        static let notApplicable = Self(
+            semanticProposalAdmissionCount: 0,
+            englishVectorWarmupCount: 0,
+            spanishVectorWarmupCount: 0)
+
+        static let bilingualSemantic = Self(
+            semanticProposalAdmissionCount: 1,
+            englishVectorWarmupCount: 1,
+            spanishVectorWarmupCount: 1)
+    }
+
     struct Corpus: Encodable, Sendable {
         let contentSource: String
         let userLibraryAccess = "none"
         let meetingCount: Int
         let sourceSegmentCount: Int
+        let homogeneousEnglishTurnCount: Int
+        let homogeneousSpanishTurnCount: Int
     }
 
     struct Construction: Encodable, Sendable {
@@ -325,7 +343,7 @@ enum RetrievalChunkEvidenceBenchmark {
     typealias Observation = RetrievalChunkEvidenceObservation
 
     static func run(
-        fixture: AskQualityFixture,
+        fixture: RetrievalChunkResourceFixture,
         options: RetrievalChunkEvidenceOptions,
         embedding injectedEmbedding: (any RetrievalSemanticBoundaryEmbedding)? = nil
     ) async throws -> Observation {
@@ -342,6 +360,12 @@ enum RetrievalChunkEvidenceBenchmark {
             }
         } else {
             embedding = nil
+        }
+        let preparation: Observation.Preparation
+        if let embedding {
+            preparation = try await prepareSemanticEmbedding(embedding)
+        } else {
+            preparation = .notApplicable
         }
 
         let (projections, constructionSample) = try await samplePeakStage {
@@ -365,23 +389,27 @@ enum RetrievalChunkEvidenceBenchmark {
             adapter: adapter,
             role: options.role,
             embedding: embedding)
-        return makeObservation(
+        return try makeObservation(
             fixture: fixture,
             options: options,
+            preparation: preparation,
             projections: projections,
             constructionResources: constructionSample.resources,
-            corrections: corrections,
-            adapter: adapter)
+            corrections: corrections)
     }
 
     private static func makeObservation(
-        fixture: AskQualityFixture,
+        fixture: RetrievalChunkResourceFixture,
         options: RetrievalChunkEvidenceOptions,
+        preparation: Observation.Preparation,
         projections: [RetrievalChunkEvidenceProjection],
         constructionResources: Observation.Resources,
-        corrections: [Observation.Correction],
-        adapter: String
-    ) -> Observation {
+        corrections: [Observation.Correction]
+    ) throws -> Observation {
+        guard let adapter = projections.first?.adapter else {
+            throw RetrievalChunkEvidenceError.inconsistentAdapter
+        }
+        let coverage = try fixture.coverage()
         let subject = Observation.Subject(
             build: options.build,
             sourceCommit: options.commit,
@@ -399,8 +427,12 @@ enum RetrievalChunkEvidenceBenchmark {
             physicalMemoryBytes: process.physicalMemory)
         let corpus = Observation.Corpus(
             contentSource: fixture.contentSource,
-            meetingCount: Set(fixture.segments.map(\.meetingID)).count,
-            sourceSegmentCount: fixture.segments.count)
+            meetingCount: coverage.meetingCount,
+            sourceSegmentCount: coverage.sourceSegmentCount,
+            homogeneousEnglishTurnCount:
+                coverage.homogeneousEnglishTurnCount,
+            homogeneousSpanishTurnCount:
+                coverage.homogeneousSpanishTurnCount)
         let construction = Observation.Construction(
             resultingUnitCount: projections.reduce(0) {
                 $0 + $1.units.count
@@ -415,9 +447,65 @@ enum RetrievalChunkEvidenceBenchmark {
         return Observation(
             subject: subject,
             host: host,
+            preparation: preparation,
             corpus: corpus,
             construction: construction,
             corrections: corrections)
+    }
+
+    private static func prepareSemanticEmbedding(
+        _ embedding: any RetrievalSemanticBoundaryEmbedding
+    ) async throws -> Observation.Preparation {
+        let proposal = try await embedding.boundaryProposal()
+        _ = try RetrievalSemanticBoundaryPreflight.admit(proposal)
+        guard case .semanticSimilarity(let space) = proposal.boundarySignal,
+              case .partitionedByLanguage(let profiles) = space
+        else {
+            throw RetrievalChunkEvidenceError.semanticEmbeddingUnavailable
+        }
+        var profilesByLanguage: [String: SemanticEmbeddingProfile] = [:]
+        for languageProfile in profiles {
+            let language = languageProfile.language
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased(with: Locale(identifier: "en_US_POSIX"))
+            guard profilesByLanguage.updateValue(
+                languageProfile.profile,
+                forKey: language) == nil
+            else {
+                throw RetrievalChunkEvidenceError.semanticEmbeddingUnavailable
+            }
+        }
+        let warmups = [
+            (
+                language: "en",
+                text: "Public synthetic semantic warmup for a scheduled project review."
+            ),
+            (
+                language: "es",
+                text: "Preparación semántica pública y sintética para una revisión programada."
+            )
+        ]
+        for warmup in warmups {
+            guard let profile = profilesByLanguage[warmup.language] else {
+                throw RetrievalChunkEvidenceError.semanticEmbeddingUnavailable
+            }
+            let vector = try await embedding.vector(
+                for: warmup.text,
+                language: warmup.language)
+            let squaredMagnitude = vector.values.reduce(0.0) {
+                $0 + Double($1) * Double($1)
+            }
+            guard vector.language == warmup.language,
+                  vector.profileFingerprint == profile.fingerprint,
+                  vector.values.count == profile.vectorDimension,
+                  vector.values.allSatisfy(\.isFinite),
+                  squaredMagnitude.isFinite,
+                  squaredMagnitude > 0
+            else {
+                throw RetrievalChunkEvidenceError.semanticEmbeddingUnavailable
+            }
+        }
+        return .bilingualSemantic
     }
 
     private static func correctionObservations(

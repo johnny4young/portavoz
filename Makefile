@@ -524,14 +524,16 @@ retrieval-chunk-evidence:
 	@test -n "$(PORTAVOZ_RETRIEVAL_CHUNK_OUTPUT)" || \
 		(echo "PORTAVOZ_RETRIEVAL_CHUNK_OUTPUT is required" >&2; exit 64)
 	python3 scripts/retrieval_chunk_evidence.py \
-		--fixture Fixtures/AskQuality/public-synthetic-v2.json \
+		--fixture Fixtures/RetrievalChunkResource/public-bilingual-homogeneous-v1.json \
 		--build "$(PORTAVOZ_RETRIEVAL_CHUNK_BUILD)" \
 		--host-profile "$(PORTAVOZ_RETRIEVAL_CHUNK_PROFILE)" \
 		--runs "$(PORTAVOZ_RETRIEVAL_CHUNK_RUNS)" \
 		--output "$(PORTAVOZ_RETRIEVAL_CHUNK_OUTPUT)"
 
 test-retrieval-chunk-evidence:
-	python3 -m unittest Tests.Tooling.test_retrieval_chunk_evidence
+	python3 -m unittest \
+		Tests.Tooling.test_retrieval_chunk_resource_fixture \
+		Tests.Tooling.test_retrieval_chunk_evidence
 
 ## Release performance ledger (PERF-001/PERF-008): run the unattended
 ## benchmark harnesses, evaluate every journey against its declared budget and

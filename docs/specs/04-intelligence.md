@@ -1327,10 +1327,11 @@ normalized source fingerprint; the three chunk roles use the same production-
 independent derivation contracts described above. The output is content-free:
 it carries counts, semantic decision counters, elapsed wall/CPU time, and
 physical-footprint samples, but no transcript, meeting/source/unit identity,
-query, vector, model name, or path. Apple sentence models are prepared before
-measurement and never downloaded by this command. Therefore the lifecycle is
-candidate construction, not model loading, persistent indexing, retrieval, or
-answer generation.
+query, vector, model name, or path. D353 constructed the Apple sentence model
+objects before measurement and never downloaded assets; because its corpus made
+zero semantic vector calls, it could not prove that both language-specific
+runtime paths were warm. The lifecycle still excluded persistent indexing,
+retrieval, and answer generation.
 
 Seven one-meeting correction scenarios distinguish publication fences and
 Unicode/whitespace equivalence from replacement text, actor/language topology,
@@ -1348,6 +1349,34 @@ language metadata and produce zero baseline semantic vectors. This correctly
 blocks semantic resource coverage and requires a separate truthful homogeneous-
 turn bilingual fixture. It is not permission to change the product segment
 default or the serving/indexing composition.
+
+### Truthful bilingual semantic resource coverage (D354)
+
+The resource harness now consumes
+`Fixtures/RetrievalChunkResource/public-bilingual-homogeneous-v1.json`, not the
+judged Ask quality fixture. Its deterministic generator and strict verifier own
+60 public-synthetic meetings, 480 sources, and 240 complete two-source turns:
+120 are wholly English and 120 wholly Spanish. Four distinct actors per meeting
+keep reassignment, language, split, and merge correction scenarios meaningful.
+Duplicate JSON keys, unexpected fields, noncanonical content, out-of-order
+meetings, and a mixed-language complete turn fail before the Release build.
+
+Observation schema 2 publishes the two language coverage counts and an explicit
+content-free preparation record. The semantic role admits the exact proposal,
+then validates one English and one Spanish vector from fixed public warmup
+phrases before the first resource sample. The phrases are separate from the
+fixture, so preparation does not precompute a measured turn. Baseline physical
+footprint includes the prepared runtime; model construction and first vector
+use are excluded from incremental construction time. Nonsemantic roles report
+zero semantic preparation.
+
+The collector requires the fixture generation as well as its digest, rejects
+duplicate-key/nonstandard observation JSON and cross-role host drift, and emits
+a schema-2 receipt with exact corpus coverage. All 240 turns must be reported as
+vectorized for semantic coverage to become `review-required`; any smaller count
+is blocked. `review-required` is neither a performance pass nor candidate,
+threshold, model, engine, indexing, or product-serving authority. The original
+quality corpus and product composition remain unchanged.
 
 ### Semantic-index query port (D206)
 

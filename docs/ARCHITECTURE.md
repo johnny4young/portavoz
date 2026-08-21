@@ -3693,27 +3693,39 @@ sources; the paired runner accepts only that exact identity shape. Neither the
 app nor StorageKit composes the chunker or NaturalLanguage adapter. Product Ask
 and Library continue to serve canonical segment units.
 
-The CLI also owns a separate schema-1 retrieval-chunk resource/correction
+The CLI also owns a separate schema-2 retrieval-chunk resource/correction
 observation. It runs exactly one of the segment, speaker-turn,
-conversation-window, or semantic-boundary roles per fresh process. Concrete
-model preparation stays outside measurement; the measured lifecycle covers
-only in-memory candidate construction and one-meeting correction rebuild, not
-asset acquisition, persistent indexing, retrieval, or answer generation. The
-observation exposes content-free unit/source/turn counts, semantic boundary
+conversation-window, or semantic-boundary roles per fresh process. The semantic
+role admits its proposal and validates one fixed public-synthetic English and
+Spanish vector before any sample; the observation records those warmup counts.
+The measured lifecycle therefore covers warm in-memory candidate construction
+and one-meeting correction rebuild, not asset acquisition, first model use,
+persistent indexing, retrieval, or answer generation. It exposes content-free
+unit/source/turn counts, exact homogeneous-language coverage, semantic boundary
 counters, delta counts, wall/CPU time, and physical-footprint samples. It
 contains no transcript, source identity, unit identity, vector, query, model
 name, or path.
 
-`scripts/retrieval_chunk_evidence.py` admits only a clean source commit and the
-canonical public fixture, binds every artifact to fixture/source/toolchain/host
-identity, rotates all four roles across at least three fresh processes, and
-requires their non-resource structure to agree exactly. Artifacts are atomic,
-non-overwriting, owner-only, and private. The receipt is threshold-free and
-keeps selection and performance decisions unevaluated. Public-synthetic-v2 has
-zero baseline semantic vector coverage because its complete turns are
-mixed-language; that condition produces a blocked receipt instead of a false
-semantic resource conclusion. No part of this harness enters app or StorageKit
-composition.
+`scripts/retrieval_chunk_resource_fixture.py` owns a canonical resource fixture
+separate from the judged Ask corpus: 60 public-synthetic meetings contain 480
+segments and 240 complete two-segment turns, split evenly into 120 homogeneous
+English and 120 homogeneous Spanish turns. The verifier rejects duplicate JSON
+keys, unexpected fields, noncanonical generation, inconsistent meeting order,
+and mixed-language turns; both verifier and Swift loader cap the read itself at
+8 MiB plus one sentinel byte before decoding.
+`scripts/retrieval_chunk_evidence.py` admits only a clean source commit and that
+fixture, binds every artifact to fixture/source/
+toolchain/host identity, rotates all four roles across at least three fresh
+processes, requires their non-resource structure to agree exactly, and rejects
+host drift across roles. The verifier derives the accepted digest from the same
+byte snapshot it validates, while the collector rechecks source cleanliness
+after the Release build and immediately before publication. Artifacts are
+atomic, non-overwriting, owner-only, and private. The threshold-free schema-2
+receipt becomes `review-required` only
+when all 240 homogeneous turns reach the semantic vector path; incomplete
+coverage is blocked. Selection and performance decisions remain unevaluated.
+No part of this harness enters app or StorageKit composition, and the quality
+corpus remains unchanged.
 
 Semantic maintenance does not publish `.index` work into the owner-leased
 processing ledger. That ledger continues to control the visible meeting

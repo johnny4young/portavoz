@@ -610,7 +610,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-cli/CLIBenchRetrievalChunkEvidence.swift")
         for required in [
             "research-resource-correction-only",
-            "candidate-construction-and-one-meeting-rebuild-only",
+            "warm-candidate-construction-and-one-meeting-rebuild-only",
             "content-free",
             "assetDownloadPolicy = \"never\"",
             "candidateSelection = \"not-evaluated\"",
@@ -618,7 +618,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "candidateEmbeddingUpsertCount",
             "vectorizedTurnCount",
             "CLIAppleSentenceBoundaryEmbedding()",
-            "ContentDigest.sha256(fixtureData)",
+            "prepareSemanticEmbedding(",
+            "englishVectorWarmupCount",
+            "spanishVectorWarmupCount",
+            "homogeneousEnglishTurnCount",
+            "homogeneousSpanishTurnCount",
+            "ContentDigest.sha256(snapshot.data)",
             "outputAlreadyExists",
         ] {
             XCTAssertTrue(
@@ -631,7 +636,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             "MINIMUM_RUNS = 3",
             "worktree must be clean",
             "structural observations drifted across fresh processes",
-            "public-fixture-has-zero-baseline-semantic-vector-coverage",
+            "public-fixture-semantic-vector-coverage-incomplete",
+            "host identity drifted across retrieval roles",
+            "duplicate key:",
+            "retrieval_chunk_resource_fixture.py",
+            "public-bilingual-homogeneous-v1",
+            "--print-sha256",
+            "require_clean_worktree(root, runner)",
             #""candidateSelection": "not-evaluated""#,
             #""performanceDecision": "not-evaluated""#,
             "0o600",
@@ -641,18 +652,32 @@ final class ArchitectureDependencyTests: XCTestCase {
                 runner.contains(required),
                 "retrieval chunk runner is missing \(required)")
         }
+        let fixtureTool = try Self.contents(
+            of: "scripts/retrieval_chunk_resource_fixture.py")
+        let fixture = try Self.contents(
+            of: "Fixtures/RetrievalChunkResource/public-bilingual-homogeneous-v1.json")
+        let judgedFixture = try Self.contents(
+            of: "Fixtures/AskQuality/public-synthetic-v2.json")
+        XCTAssertTrue(fixtureTool.contains("ENGLISH_TURN_COUNT = 120"))
+        XCTAssertTrue(fixtureTool.contains("SPANISH_TURN_COUNT = 120"))
+        XCTAssertTrue(fixture.contains(
+            #""kind": "retrieval-chunk-resource-fixture""#))
+        XCTAssertFalse(judgedFixture.contains(
+            "public-bilingual-homogeneous-v1"))
         for root in ["Sources/portavoz-app", "Sources/StorageKit"] {
             let productSources = try Self.sourceMatches(
                 under: root,
-                pattern: #"RetrievalChunkEvidence"#)
+                pattern: #"RetrievalChunk(Evidence|ResourceFixture)"#)
             XCTAssertTrue(
                 productSources.isEmpty,
-                "D353 evidence cannot enter product composition: \(root)")
+                "D354 evidence cannot enter product composition: \(root)")
         }
 
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         XCTAssertTrue(decisions.contains(
             "## D353 — Chunk resource evidence stays threshold-free"))
+        XCTAssertTrue(decisions.contains(
+            "## D354 — Bilingual semantic resource coverage uses a separate warm fixture"))
     }
 
     func testSemanticIndexPortKeepsExactControlOutsideProductConsumers() throws {

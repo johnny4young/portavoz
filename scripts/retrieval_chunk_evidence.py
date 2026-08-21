@@ -18,6 +18,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+FIXTURE_GENERATION = "public-bilingual-homogeneous-v1"
+FIXTURE_MEETING_COUNT = 60
+FIXTURE_SOURCE_SEGMENT_COUNT = 480
+FIXTURE_ENGLISH_TURN_COUNT = 120
+FIXTURE_SPANISH_TURN_COUNT = 120
 ROLES = (
     "segment",
     "speaker-turn",
@@ -56,6 +61,38 @@ OS_VERSION = re.compile(r"(?:^|\s)(\d{1,2})\.")
 
 class RetrievalChunkEvidenceError(ValueError):
     """A fail-closed evidence contract violation."""
+
+
+def reject_duplicate_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise RetrievalChunkEvidenceError(f"duplicate key: {key}")
+        result[key] = value
+    return result
+
+
+def reject_nonstandard_constant(value):
+    raise RetrievalChunkEvidenceError(
+        f"nonstandard JSON constant is not allowed: {value}"
+    )
+
+
+def load_json_file(path: Path, label: str, maximum_bytes=1024 * 1024) -> dict:
+    try:
+        if not path.is_file():
+            raise RetrievalChunkEvidenceError(f"{label} is missing")
+        if path.stat().st_size > maximum_bytes:
+            raise RetrievalChunkEvidenceError(f"{label} exceeds the size limit")
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_keys,
+            parse_constant=reject_nonstandard_constant,
+        )
+    except OSError as error:
+        raise RetrievalChunkEvidenceError(f"{label} could not be read") from error
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise RetrievalChunkEvidenceError(f"{label} is invalid JSON") from error
 
 
 def run_command(command: list[str], root: Path) -> subprocess.CompletedProcess[str]:
@@ -226,6 +263,7 @@ def validate_observation(
     fixture_sha256: str,
     toolchain_sha256: str,
     host_profile: str,
+    fixture_generation: str = FIXTURE_GENERATION,
 ) -> dict:
     root = require_keys(
         document,
@@ -241,6 +279,7 @@ def validate_observation(
             "performanceDecision",
             "subject",
             "host",
+            "preparation",
             "corpus",
             "construction",
             "corrections",
@@ -248,11 +287,11 @@ def validate_observation(
         "observation",
     )
     expected_constants = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "kind": "retrieval-chunk-resource-correction-observation",
         "authority": "research-resource-correction-only",
         "contentPolicy": "content-free",
-        "lifecycle": "candidate-construction-and-one-meeting-rebuild-only",
+        "lifecycle": "warm-candidate-construction-and-one-meeting-rebuild-only",
         "assetDownloadPolicy": "never",
         "productComposition": "unchanged",
         "candidateSelection": "not-evaluated",
@@ -279,6 +318,7 @@ def validate_observation(
     expected_identity = {
         "build": build,
         "sourceCommit": commit,
+        "fixtureGeneration": fixture_generation,
         "fixtureSHA256": fixture_sha256,
         "toolchainSHA256": toolchain_sha256,
         "hostProfile": host_profile,
@@ -324,6 +364,25 @@ def validate_observation(
     if memory < minimum or (maximum is not None and memory > maximum):
         raise RetrievalChunkEvidenceError("physical memory does not match host profile")
 
+    preparation = require_keys(
+        root["preparation"],
+        {
+            "scope",
+            "semanticProposalAdmissionCount",
+            "englishVectorWarmupCount",
+            "spanishVectorWarmupCount",
+        },
+        "observation.preparation",
+    )
+    expected_preparation = {
+        "scope": "outside-resource-samples",
+        "semanticProposalAdmissionCount": 1 if role == "semantic-boundary" else 0,
+        "englishVectorWarmupCount": 1 if role == "semantic-boundary" else 0,
+        "spanishVectorWarmupCount": 1 if role == "semantic-boundary" else 0,
+    }
+    if preparation != expected_preparation:
+        raise RetrievalChunkEvidenceError("semantic preparation does not match the role")
+
     corpus = require_keys(
         root["corpus"],
         {
@@ -331,6 +390,8 @@ def validate_observation(
             "userLibraryAccess",
             "meetingCount",
             "sourceSegmentCount",
+            "homogeneousEnglishTurnCount",
+            "homogeneousSpanishTurnCount",
         },
         "observation.corpus",
     )
@@ -344,6 +405,28 @@ def validate_observation(
     source_segment_count = require_positive_count(
         corpus["sourceSegmentCount"], "corpus.sourceSegmentCount"
     )
+    english_turn_count = require_positive_count(
+        corpus["homogeneousEnglishTurnCount"],
+        "corpus.homogeneousEnglishTurnCount",
+    )
+    spanish_turn_count = require_positive_count(
+        corpus["homogeneousSpanishTurnCount"],
+        "corpus.homogeneousSpanishTurnCount",
+    )
+    expected_coverage = (
+        FIXTURE_MEETING_COUNT,
+        FIXTURE_SOURCE_SEGMENT_COUNT,
+        FIXTURE_ENGLISH_TURN_COUNT,
+        FIXTURE_SPANISH_TURN_COUNT,
+    )
+    if (
+        meeting_count,
+        source_segment_count,
+        english_turn_count,
+        spanish_turn_count,
+    ) != expected_coverage:
+        raise RetrievalChunkEvidenceError("canonical fixture coverage changed")
+    homogeneous_turn_count = english_turn_count + spanish_turn_count
 
     construction_keys = {
         "resultingUnitCount",
@@ -364,6 +447,11 @@ def validate_observation(
         raise RetrievalChunkEvidenceError("construction produced no units")
     if construction["sourceReferenceCount"] != source_segment_count:
         raise RetrievalChunkEvidenceError("construction lost or repeated sources")
+    expected_turn_count = (
+        source_segment_count if role == "segment" else homogeneous_turn_count
+    )
+    if construction["turnCount"] != expected_turn_count:
+        raise RetrievalChunkEvidenceError("construction turn coverage changed")
     diagnostics = require_diagnostics(
         construction.get("diagnostics"), "construction.diagnostics"
     )
@@ -590,14 +678,7 @@ def collect_evidence(
     if output.exists():
         raise RetrievalChunkEvidenceError(f"output already exists: {output}")
 
-    status = require_command(
-        ["git", "status", "--porcelain", "--untracked-files=all"],
-        root,
-        "worktree inspection",
-        runner=runner,
-    )
-    if status.stdout.strip():
-        raise RetrievalChunkEvidenceError("worktree must be clean")
+    require_clean_worktree(root, runner)
     commit = require_command(
         ["git", "rev-parse", "HEAD"], root, "commit inspection", runner=runner
     ).stdout.strip()
@@ -608,18 +689,24 @@ def collect_evidence(
         if ignored.returncode != 0:
             raise RetrievalChunkEvidenceError("repository output must be ignored")
 
-    require_command(
+    fixture_verification = require_command(
         [
             sys.executable,
-            str(root / "scripts" / "ask_quality.py"),
+            str(root / "scripts" / "retrieval_chunk_resource_fixture.py"),
             "verify-public",
             "--fixture",
             str(fixture),
+            "--print-sha256",
         ],
         root,
         "fixture verification",
         runner=runner,
     )
+    fixture_sha256 = fixture_verification.stdout.strip()
+    if not SHA256.fullmatch(fixture_sha256):
+        raise RetrievalChunkEvidenceError(
+            "fixture verification returned an invalid digest"
+        )
     toolchain = require_command(
         ["xcrun", "swiftc", "--version"], root, "toolchain inspection", runner=runner
     )
@@ -630,13 +717,13 @@ def collect_evidence(
         + toolchain.stderr
     ).encode("utf-8")
     toolchain_sha256 = sha256_bytes(toolchain_identity)
-    fixture_sha256 = sha256_file(fixture)
     require_command(
         ["swift", "build", "-c", "release", "--product", "portavoz-cli"],
         root,
         "Release CLI build",
         runner=runner,
     )
+    require_clean_worktree(root, runner)
     cli = root / ".build" / "release" / "portavoz-cli"
     if not cli.is_file():
         raise RetrievalChunkEvidenceError("Release CLI was not published")
@@ -686,10 +773,7 @@ def collect_evidence(
                 if not path.is_file():
                     raise RetrievalChunkEvidenceError(f"{role} output is missing")
                 path.chmod(0o600)
-                try:
-                    document = json.loads(path.read_text(encoding="utf-8"))
-                except (OSError, UnicodeError, json.JSONDecodeError) as error:
-                    raise RetrievalChunkEvidenceError(f"{role} output is invalid JSON") from error
+                document = load_json_file(path, f"{role} output")
                 validated = validate_observation(
                     document,
                     role=role,
@@ -698,6 +782,7 @@ def collect_evidence(
                     fixture_sha256=fixture_sha256,
                     toolchain_sha256=toolchain_sha256,
                     host_profile=host_profile,
+                    fixture_generation=FIXTURE_GENERATION,
                 )
                 by_role[role].append((validated, path))
 
@@ -709,12 +794,24 @@ def collect_evidence(
             )
             for role in ROLES
         ]
+        hosts = [
+            document["host"]
+            for role in ROLES
+            for document, _ in by_role[role]
+        ]
+        if len({canonical_digest(host) for host in hosts}) != 1:
+            raise RetrievalChunkEvidenceError(
+                "host identity drifted across retrieval roles"
+            )
         semantic = next(item for item in roles if item["retrievalUnit"] == "semantic-boundary")
         blockers = []
-        if semantic["construction"]["vectorizedTurnCount"] == 0:
-            blockers.append("public-fixture-has-zero-baseline-semantic-vector-coverage")
+        expected_vectors = (
+            FIXTURE_ENGLISH_TURN_COUNT + FIXTURE_SPANISH_TURN_COUNT
+        )
+        if semantic["construction"]["vectorizedTurnCount"] != expected_vectors:
+            blockers.append("public-fixture-semantic-vector-coverage-incomplete")
         receipt = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "kind": "retrieval-chunk-resource-correction-receipt",
             "authority": "research-resource-correction-only",
             "contentPolicy": "content-free",
@@ -725,12 +822,21 @@ def collect_evidence(
             "productComposition": "unchanged",
             "sourceCommit": commit,
             "build": build,
+            "fixtureGeneration": FIXTURE_GENERATION,
             "fixtureSHA256": fixture_sha256,
             "toolchainSHA256": toolchain_sha256,
             "hostProfile": host_profile,
+            "host": hosts[0],
             "runsPerRole": runs,
+            "corpusCoverage": {
+                "meetingCount": FIXTURE_MEETING_COUNT,
+                "sourceSegmentCount": FIXTURE_SOURCE_SEGMENT_COUNT,
+                "homogeneousEnglishTurnCount": FIXTURE_ENGLISH_TURN_COUNT,
+                "homogeneousSpanishTurnCount": FIXTURE_SPANISH_TURN_COUNT,
+            },
             "roles": roles,
         }
+        require_clean_worktree(root, runner)
         write_private_json(staging / "receipt.json", receipt)
         os.rename(staging, output)
         staging = None
@@ -747,6 +853,17 @@ def collect_evidence(
             pass
         if staging is not None:
             shutil.rmtree(staging, ignore_errors=True)
+
+
+def require_clean_worktree(root: Path, runner=run_command) -> None:
+    status = require_command(
+        ["git", "status", "--porcelain", "--untracked-files=all"],
+        root,
+        "worktree inspection",
+        runner=runner,
+    )
+    if status.stdout.strip():
+        raise RetrievalChunkEvidenceError("worktree must be clean")
 
 
 def main() -> int:

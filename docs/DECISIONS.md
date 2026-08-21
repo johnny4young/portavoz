@@ -12794,3 +12794,47 @@ with homogeneous complete turns, plus physical Sequoia and independent Tahoe
 hosts and owner-reviewed private evidence, is required before resource review.
 This decision changes no app composition, StorageKit schema, semantic writer,
 Ask/Library serving path, product default, threshold, or engine authority.
+
+## D354 — Bilingual semantic resource coverage uses a separate warm fixture (Aug 2026)
+
+**Context:** D353 correctly blocked semantic resource review because the judged
+Ask quality fixture has no homogeneous complete turns. Rewriting that fixture
+to make a resource benchmark pass would silently change the multilingual
+quality corpus. D353 also constructed the two Apple sentence-embedding objects
+before sampling, but its zero-vector corpus never exercised either language
+path. A runtime that performs meaningful work on first `vector(for:)` could
+therefore place first-use cost inside the measured candidate stage once a new
+fixture reached those paths.
+
+**Decision:** keep `public-synthetic-v2` unchanged and add a separate canonical
+`public-bilingual-homogeneous-v1` resource fixture. Its deterministic generator
+owns 60 meetings, 480 sources, and 240 complete two-source turns: 120 English
+and 120 Spanish. Four distinct actors per meeting preserve every D353
+correction scenario. The verifier requires the exact public generation and
+rejects duplicate JSON keys, unknown fields, repeated identities, meeting/order
+drift, unsafe bounds, and mixed-language turns. The CLI owns a separate bounded
+Swift loader rather than importing quality-query semantics into resource work.
+
+Version the observation and receipt to schema 2. The semantic role admits the
+proposal and validates one fixed public-synthetic English vector and one fixed
+public-synthetic Spanish vector before any resource sample. The warmup phrases
+are not fixture text; preparation counts are content-free and nonsemantic roles
+must report zero. Baseline footprint includes the prepared runtime while first
+model use remains outside incremental construction samples. The collector binds
+the exact fixture generation and homogeneous-language counts, rejects duplicate
+or nonstandard observation JSON and cross-role host drift, derives the fixture
+digest from the exact byte snapshot accepted by the verifier, rechecks clean
+source after compilation and before publication, and blocks any semantic
+construction count below all 240 turns. Complete coverage yields
+`review-required`, not `pass`; no timing floor or cross-engine ratio is added.
+
+**Consequences:** public resource characterization can now exercise both
+language-partitioned vector spaces without weakening quality provenance or
+prewarming the actual measured turns. Schema-1 D353 artifacts remain historical
+and cannot mix with schema-2 evidence. A `review-required` receipt proves only a
+complete, warm, content-free one-host construction/correction matrix. It does
+not prove model quality, performance superiority, private-corpus behavior,
+physical Sequoia, independent Tahoe hardware, cross-host stability, persistent
+indexing, serving, or product acceptance. The app, StorageKit, Ask, Library,
+semantic maintenance, segment default, provisional thresholds, and engine
+authority remain unchanged.

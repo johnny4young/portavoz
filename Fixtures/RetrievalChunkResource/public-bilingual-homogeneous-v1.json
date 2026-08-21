@@ -1,0 +1,4808 @@
+{
+  "contentSource": "public-synthetic-only",
+  "generation": "public-bilingual-homogeneous-v1",
+  "kind": "retrieval-chunk-resource-fixture",
+  "schemaVersion": 1,
+  "segments": [
+    {
+      "id": "resource-segment-001-01",
+      "language": "en",
+      "meetingID": "resource-meeting-001",
+      "meetingTitle": "Public retrieval resource meeting 001",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-001.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-001-02",
+      "language": "en",
+      "meetingID": "resource-meeting-001",
+      "meetingTitle": "Public retrieval resource meeting 001",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-001.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-001-03",
+      "language": "en",
+      "meetingID": "resource-meeting-001",
+      "meetingTitle": "Public retrieval resource meeting 001",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-001.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-001-04",
+      "language": "en",
+      "meetingID": "resource-meeting-001",
+      "meetingTitle": "Public retrieval resource meeting 001",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-001.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-001-05",
+      "language": "es",
+      "meetingID": "resource-meeting-001",
+      "meetingTitle": "Public retrieval resource meeting 001",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-001.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-001-06",
+      "language": "es",
+      "meetingID": "resource-meeting-001",
+      "meetingTitle": "Public retrieval resource meeting 001",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-001.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-001-07",
+      "language": "es",
+      "meetingID": "resource-meeting-001",
+      "meetingTitle": "Public retrieval resource meeting 001",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-001.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-001-08",
+      "language": "es",
+      "meetingID": "resource-meeting-001",
+      "meetingTitle": "Public retrieval resource meeting 001",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-001.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-002-01",
+      "language": "en",
+      "meetingID": "resource-meeting-002",
+      "meetingTitle": "Public retrieval resource meeting 002",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-002.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-002-02",
+      "language": "en",
+      "meetingID": "resource-meeting-002",
+      "meetingTitle": "Public retrieval resource meeting 002",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-002.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-002-03",
+      "language": "en",
+      "meetingID": "resource-meeting-002",
+      "meetingTitle": "Public retrieval resource meeting 002",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-002.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-002-04",
+      "language": "en",
+      "meetingID": "resource-meeting-002",
+      "meetingTitle": "Public retrieval resource meeting 002",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-002.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-002-05",
+      "language": "es",
+      "meetingID": "resource-meeting-002",
+      "meetingTitle": "Public retrieval resource meeting 002",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-002.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-002-06",
+      "language": "es",
+      "meetingID": "resource-meeting-002",
+      "meetingTitle": "Public retrieval resource meeting 002",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-002.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-002-07",
+      "language": "es",
+      "meetingID": "resource-meeting-002",
+      "meetingTitle": "Public retrieval resource meeting 002",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-002.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-002-08",
+      "language": "es",
+      "meetingID": "resource-meeting-002",
+      "meetingTitle": "Public retrieval resource meeting 002",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-002.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-003-01",
+      "language": "en",
+      "meetingID": "resource-meeting-003",
+      "meetingTitle": "Public retrieval resource meeting 003",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-003.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-003-02",
+      "language": "en",
+      "meetingID": "resource-meeting-003",
+      "meetingTitle": "Public retrieval resource meeting 003",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-003.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-003-03",
+      "language": "en",
+      "meetingID": "resource-meeting-003",
+      "meetingTitle": "Public retrieval resource meeting 003",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-003.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-003-04",
+      "language": "en",
+      "meetingID": "resource-meeting-003",
+      "meetingTitle": "Public retrieval resource meeting 003",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-003.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-003-05",
+      "language": "es",
+      "meetingID": "resource-meeting-003",
+      "meetingTitle": "Public retrieval resource meeting 003",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-003.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-003-06",
+      "language": "es",
+      "meetingID": "resource-meeting-003",
+      "meetingTitle": "Public retrieval resource meeting 003",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-003.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-003-07",
+      "language": "es",
+      "meetingID": "resource-meeting-003",
+      "meetingTitle": "Public retrieval resource meeting 003",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-003.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-003-08",
+      "language": "es",
+      "meetingID": "resource-meeting-003",
+      "meetingTitle": "Public retrieval resource meeting 003",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-003.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-004-01",
+      "language": "en",
+      "meetingID": "resource-meeting-004",
+      "meetingTitle": "Public retrieval resource meeting 004",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-004.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-004-02",
+      "language": "en",
+      "meetingID": "resource-meeting-004",
+      "meetingTitle": "Public retrieval resource meeting 004",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-004.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-004-03",
+      "language": "en",
+      "meetingID": "resource-meeting-004",
+      "meetingTitle": "Public retrieval resource meeting 004",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-004.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-004-04",
+      "language": "en",
+      "meetingID": "resource-meeting-004",
+      "meetingTitle": "Public retrieval resource meeting 004",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-004.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-004-05",
+      "language": "es",
+      "meetingID": "resource-meeting-004",
+      "meetingTitle": "Public retrieval resource meeting 004",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-004.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-004-06",
+      "language": "es",
+      "meetingID": "resource-meeting-004",
+      "meetingTitle": "Public retrieval resource meeting 004",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-004.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-004-07",
+      "language": "es",
+      "meetingID": "resource-meeting-004",
+      "meetingTitle": "Public retrieval resource meeting 004",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-004.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-004-08",
+      "language": "es",
+      "meetingID": "resource-meeting-004",
+      "meetingTitle": "Public retrieval resource meeting 004",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-004.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-005-01",
+      "language": "en",
+      "meetingID": "resource-meeting-005",
+      "meetingTitle": "Public retrieval resource meeting 005",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-005.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-005-02",
+      "language": "en",
+      "meetingID": "resource-meeting-005",
+      "meetingTitle": "Public retrieval resource meeting 005",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-005.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-005-03",
+      "language": "en",
+      "meetingID": "resource-meeting-005",
+      "meetingTitle": "Public retrieval resource meeting 005",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-005.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-005-04",
+      "language": "en",
+      "meetingID": "resource-meeting-005",
+      "meetingTitle": "Public retrieval resource meeting 005",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-005.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-005-05",
+      "language": "es",
+      "meetingID": "resource-meeting-005",
+      "meetingTitle": "Public retrieval resource meeting 005",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-005.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-005-06",
+      "language": "es",
+      "meetingID": "resource-meeting-005",
+      "meetingTitle": "Public retrieval resource meeting 005",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-005.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-005-07",
+      "language": "es",
+      "meetingID": "resource-meeting-005",
+      "meetingTitle": "Public retrieval resource meeting 005",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-005.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-005-08",
+      "language": "es",
+      "meetingID": "resource-meeting-005",
+      "meetingTitle": "Public retrieval resource meeting 005",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-005.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-006-01",
+      "language": "en",
+      "meetingID": "resource-meeting-006",
+      "meetingTitle": "Public retrieval resource meeting 006",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-006.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-006-02",
+      "language": "en",
+      "meetingID": "resource-meeting-006",
+      "meetingTitle": "Public retrieval resource meeting 006",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-006.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-006-03",
+      "language": "en",
+      "meetingID": "resource-meeting-006",
+      "meetingTitle": "Public retrieval resource meeting 006",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-006.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-006-04",
+      "language": "en",
+      "meetingID": "resource-meeting-006",
+      "meetingTitle": "Public retrieval resource meeting 006",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-006.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-006-05",
+      "language": "es",
+      "meetingID": "resource-meeting-006",
+      "meetingTitle": "Public retrieval resource meeting 006",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-006.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-006-06",
+      "language": "es",
+      "meetingID": "resource-meeting-006",
+      "meetingTitle": "Public retrieval resource meeting 006",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-006.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-006-07",
+      "language": "es",
+      "meetingID": "resource-meeting-006",
+      "meetingTitle": "Public retrieval resource meeting 006",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-006.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-006-08",
+      "language": "es",
+      "meetingID": "resource-meeting-006",
+      "meetingTitle": "Public retrieval resource meeting 006",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-006.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-007-01",
+      "language": "en",
+      "meetingID": "resource-meeting-007",
+      "meetingTitle": "Public retrieval resource meeting 007",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-007.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-007-02",
+      "language": "en",
+      "meetingID": "resource-meeting-007",
+      "meetingTitle": "Public retrieval resource meeting 007",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-007.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-007-03",
+      "language": "en",
+      "meetingID": "resource-meeting-007",
+      "meetingTitle": "Public retrieval resource meeting 007",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-007.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-007-04",
+      "language": "en",
+      "meetingID": "resource-meeting-007",
+      "meetingTitle": "Public retrieval resource meeting 007",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-007.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-007-05",
+      "language": "es",
+      "meetingID": "resource-meeting-007",
+      "meetingTitle": "Public retrieval resource meeting 007",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-007.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-007-06",
+      "language": "es",
+      "meetingID": "resource-meeting-007",
+      "meetingTitle": "Public retrieval resource meeting 007",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-007.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-007-07",
+      "language": "es",
+      "meetingID": "resource-meeting-007",
+      "meetingTitle": "Public retrieval resource meeting 007",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-007.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-007-08",
+      "language": "es",
+      "meetingID": "resource-meeting-007",
+      "meetingTitle": "Public retrieval resource meeting 007",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-007.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-008-01",
+      "language": "en",
+      "meetingID": "resource-meeting-008",
+      "meetingTitle": "Public retrieval resource meeting 008",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-008.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-008-02",
+      "language": "en",
+      "meetingID": "resource-meeting-008",
+      "meetingTitle": "Public retrieval resource meeting 008",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-008.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-008-03",
+      "language": "en",
+      "meetingID": "resource-meeting-008",
+      "meetingTitle": "Public retrieval resource meeting 008",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-008.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-008-04",
+      "language": "en",
+      "meetingID": "resource-meeting-008",
+      "meetingTitle": "Public retrieval resource meeting 008",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-008.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-008-05",
+      "language": "es",
+      "meetingID": "resource-meeting-008",
+      "meetingTitle": "Public retrieval resource meeting 008",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-008.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-008-06",
+      "language": "es",
+      "meetingID": "resource-meeting-008",
+      "meetingTitle": "Public retrieval resource meeting 008",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-008.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-008-07",
+      "language": "es",
+      "meetingID": "resource-meeting-008",
+      "meetingTitle": "Public retrieval resource meeting 008",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-008.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-008-08",
+      "language": "es",
+      "meetingID": "resource-meeting-008",
+      "meetingTitle": "Public retrieval resource meeting 008",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-008.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-009-01",
+      "language": "en",
+      "meetingID": "resource-meeting-009",
+      "meetingTitle": "Public retrieval resource meeting 009",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-009.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-009-02",
+      "language": "en",
+      "meetingID": "resource-meeting-009",
+      "meetingTitle": "Public retrieval resource meeting 009",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-009.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-009-03",
+      "language": "en",
+      "meetingID": "resource-meeting-009",
+      "meetingTitle": "Public retrieval resource meeting 009",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-009.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-009-04",
+      "language": "en",
+      "meetingID": "resource-meeting-009",
+      "meetingTitle": "Public retrieval resource meeting 009",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-009.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-009-05",
+      "language": "es",
+      "meetingID": "resource-meeting-009",
+      "meetingTitle": "Public retrieval resource meeting 009",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-009.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-009-06",
+      "language": "es",
+      "meetingID": "resource-meeting-009",
+      "meetingTitle": "Public retrieval resource meeting 009",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-009.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-009-07",
+      "language": "es",
+      "meetingID": "resource-meeting-009",
+      "meetingTitle": "Public retrieval resource meeting 009",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-009.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-009-08",
+      "language": "es",
+      "meetingID": "resource-meeting-009",
+      "meetingTitle": "Public retrieval resource meeting 009",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-009.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-010-01",
+      "language": "en",
+      "meetingID": "resource-meeting-010",
+      "meetingTitle": "Public retrieval resource meeting 010",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-010.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-010-02",
+      "language": "en",
+      "meetingID": "resource-meeting-010",
+      "meetingTitle": "Public retrieval resource meeting 010",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-010.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-010-03",
+      "language": "en",
+      "meetingID": "resource-meeting-010",
+      "meetingTitle": "Public retrieval resource meeting 010",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-010.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-010-04",
+      "language": "en",
+      "meetingID": "resource-meeting-010",
+      "meetingTitle": "Public retrieval resource meeting 010",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-010.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-010-05",
+      "language": "es",
+      "meetingID": "resource-meeting-010",
+      "meetingTitle": "Public retrieval resource meeting 010",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-010.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-010-06",
+      "language": "es",
+      "meetingID": "resource-meeting-010",
+      "meetingTitle": "Public retrieval resource meeting 010",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-010.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-010-07",
+      "language": "es",
+      "meetingID": "resource-meeting-010",
+      "meetingTitle": "Public retrieval resource meeting 010",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-010.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-010-08",
+      "language": "es",
+      "meetingID": "resource-meeting-010",
+      "meetingTitle": "Public retrieval resource meeting 010",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-010.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-011-01",
+      "language": "en",
+      "meetingID": "resource-meeting-011",
+      "meetingTitle": "Public retrieval resource meeting 011",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-011.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-011-02",
+      "language": "en",
+      "meetingID": "resource-meeting-011",
+      "meetingTitle": "Public retrieval resource meeting 011",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-011.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-011-03",
+      "language": "en",
+      "meetingID": "resource-meeting-011",
+      "meetingTitle": "Public retrieval resource meeting 011",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-011.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-011-04",
+      "language": "en",
+      "meetingID": "resource-meeting-011",
+      "meetingTitle": "Public retrieval resource meeting 011",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-011.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-011-05",
+      "language": "es",
+      "meetingID": "resource-meeting-011",
+      "meetingTitle": "Public retrieval resource meeting 011",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-011.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-011-06",
+      "language": "es",
+      "meetingID": "resource-meeting-011",
+      "meetingTitle": "Public retrieval resource meeting 011",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-011.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-011-07",
+      "language": "es",
+      "meetingID": "resource-meeting-011",
+      "meetingTitle": "Public retrieval resource meeting 011",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-011.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-011-08",
+      "language": "es",
+      "meetingID": "resource-meeting-011",
+      "meetingTitle": "Public retrieval resource meeting 011",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-011.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-012-01",
+      "language": "en",
+      "meetingID": "resource-meeting-012",
+      "meetingTitle": "Public retrieval resource meeting 012",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-012.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-012-02",
+      "language": "en",
+      "meetingID": "resource-meeting-012",
+      "meetingTitle": "Public retrieval resource meeting 012",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-012.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-012-03",
+      "language": "en",
+      "meetingID": "resource-meeting-012",
+      "meetingTitle": "Public retrieval resource meeting 012",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-012.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-012-04",
+      "language": "en",
+      "meetingID": "resource-meeting-012",
+      "meetingTitle": "Public retrieval resource meeting 012",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-012.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-012-05",
+      "language": "es",
+      "meetingID": "resource-meeting-012",
+      "meetingTitle": "Public retrieval resource meeting 012",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-012.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-012-06",
+      "language": "es",
+      "meetingID": "resource-meeting-012",
+      "meetingTitle": "Public retrieval resource meeting 012",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-012.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-012-07",
+      "language": "es",
+      "meetingID": "resource-meeting-012",
+      "meetingTitle": "Public retrieval resource meeting 012",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-012.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-012-08",
+      "language": "es",
+      "meetingID": "resource-meeting-012",
+      "meetingTitle": "Public retrieval resource meeting 012",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-012.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-013-01",
+      "language": "en",
+      "meetingID": "resource-meeting-013",
+      "meetingTitle": "Public retrieval resource meeting 013",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-013.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-013-02",
+      "language": "en",
+      "meetingID": "resource-meeting-013",
+      "meetingTitle": "Public retrieval resource meeting 013",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-013.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-013-03",
+      "language": "en",
+      "meetingID": "resource-meeting-013",
+      "meetingTitle": "Public retrieval resource meeting 013",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-013.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-013-04",
+      "language": "en",
+      "meetingID": "resource-meeting-013",
+      "meetingTitle": "Public retrieval resource meeting 013",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-013.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-013-05",
+      "language": "es",
+      "meetingID": "resource-meeting-013",
+      "meetingTitle": "Public retrieval resource meeting 013",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-013.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-013-06",
+      "language": "es",
+      "meetingID": "resource-meeting-013",
+      "meetingTitle": "Public retrieval resource meeting 013",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-013.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-013-07",
+      "language": "es",
+      "meetingID": "resource-meeting-013",
+      "meetingTitle": "Public retrieval resource meeting 013",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-013.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-013-08",
+      "language": "es",
+      "meetingID": "resource-meeting-013",
+      "meetingTitle": "Public retrieval resource meeting 013",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-013.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-014-01",
+      "language": "en",
+      "meetingID": "resource-meeting-014",
+      "meetingTitle": "Public retrieval resource meeting 014",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-014.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-014-02",
+      "language": "en",
+      "meetingID": "resource-meeting-014",
+      "meetingTitle": "Public retrieval resource meeting 014",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-014.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-014-03",
+      "language": "en",
+      "meetingID": "resource-meeting-014",
+      "meetingTitle": "Public retrieval resource meeting 014",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-014.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-014-04",
+      "language": "en",
+      "meetingID": "resource-meeting-014",
+      "meetingTitle": "Public retrieval resource meeting 014",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-014.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-014-05",
+      "language": "es",
+      "meetingID": "resource-meeting-014",
+      "meetingTitle": "Public retrieval resource meeting 014",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-014.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-014-06",
+      "language": "es",
+      "meetingID": "resource-meeting-014",
+      "meetingTitle": "Public retrieval resource meeting 014",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-014.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-014-07",
+      "language": "es",
+      "meetingID": "resource-meeting-014",
+      "meetingTitle": "Public retrieval resource meeting 014",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-014.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-014-08",
+      "language": "es",
+      "meetingID": "resource-meeting-014",
+      "meetingTitle": "Public retrieval resource meeting 014",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-014.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-015-01",
+      "language": "en",
+      "meetingID": "resource-meeting-015",
+      "meetingTitle": "Public retrieval resource meeting 015",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-015.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-015-02",
+      "language": "en",
+      "meetingID": "resource-meeting-015",
+      "meetingTitle": "Public retrieval resource meeting 015",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-015.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-015-03",
+      "language": "en",
+      "meetingID": "resource-meeting-015",
+      "meetingTitle": "Public retrieval resource meeting 015",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-015.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-015-04",
+      "language": "en",
+      "meetingID": "resource-meeting-015",
+      "meetingTitle": "Public retrieval resource meeting 015",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-015.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-015-05",
+      "language": "es",
+      "meetingID": "resource-meeting-015",
+      "meetingTitle": "Public retrieval resource meeting 015",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-015.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-015-06",
+      "language": "es",
+      "meetingID": "resource-meeting-015",
+      "meetingTitle": "Public retrieval resource meeting 015",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-015.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-015-07",
+      "language": "es",
+      "meetingID": "resource-meeting-015",
+      "meetingTitle": "Public retrieval resource meeting 015",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-015.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-015-08",
+      "language": "es",
+      "meetingID": "resource-meeting-015",
+      "meetingTitle": "Public retrieval resource meeting 015",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-015.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-016-01",
+      "language": "en",
+      "meetingID": "resource-meeting-016",
+      "meetingTitle": "Public retrieval resource meeting 016",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-016.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-016-02",
+      "language": "en",
+      "meetingID": "resource-meeting-016",
+      "meetingTitle": "Public retrieval resource meeting 016",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-016.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-016-03",
+      "language": "en",
+      "meetingID": "resource-meeting-016",
+      "meetingTitle": "Public retrieval resource meeting 016",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-016.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-016-04",
+      "language": "en",
+      "meetingID": "resource-meeting-016",
+      "meetingTitle": "Public retrieval resource meeting 016",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-016.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-016-05",
+      "language": "es",
+      "meetingID": "resource-meeting-016",
+      "meetingTitle": "Public retrieval resource meeting 016",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-016.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-016-06",
+      "language": "es",
+      "meetingID": "resource-meeting-016",
+      "meetingTitle": "Public retrieval resource meeting 016",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-016.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-016-07",
+      "language": "es",
+      "meetingID": "resource-meeting-016",
+      "meetingTitle": "Public retrieval resource meeting 016",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-016.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-016-08",
+      "language": "es",
+      "meetingID": "resource-meeting-016",
+      "meetingTitle": "Public retrieval resource meeting 016",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-016.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-017-01",
+      "language": "en",
+      "meetingID": "resource-meeting-017",
+      "meetingTitle": "Public retrieval resource meeting 017",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-017.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-017-02",
+      "language": "en",
+      "meetingID": "resource-meeting-017",
+      "meetingTitle": "Public retrieval resource meeting 017",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-017.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-017-03",
+      "language": "en",
+      "meetingID": "resource-meeting-017",
+      "meetingTitle": "Public retrieval resource meeting 017",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-017.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-017-04",
+      "language": "en",
+      "meetingID": "resource-meeting-017",
+      "meetingTitle": "Public retrieval resource meeting 017",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-017.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-017-05",
+      "language": "es",
+      "meetingID": "resource-meeting-017",
+      "meetingTitle": "Public retrieval resource meeting 017",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-017.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-017-06",
+      "language": "es",
+      "meetingID": "resource-meeting-017",
+      "meetingTitle": "Public retrieval resource meeting 017",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-017.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-017-07",
+      "language": "es",
+      "meetingID": "resource-meeting-017",
+      "meetingTitle": "Public retrieval resource meeting 017",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-017.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-017-08",
+      "language": "es",
+      "meetingID": "resource-meeting-017",
+      "meetingTitle": "Public retrieval resource meeting 017",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-017.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-018-01",
+      "language": "en",
+      "meetingID": "resource-meeting-018",
+      "meetingTitle": "Public retrieval resource meeting 018",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-018.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-018-02",
+      "language": "en",
+      "meetingID": "resource-meeting-018",
+      "meetingTitle": "Public retrieval resource meeting 018",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-018.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-018-03",
+      "language": "en",
+      "meetingID": "resource-meeting-018",
+      "meetingTitle": "Public retrieval resource meeting 018",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-018.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-018-04",
+      "language": "en",
+      "meetingID": "resource-meeting-018",
+      "meetingTitle": "Public retrieval resource meeting 018",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-018.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-018-05",
+      "language": "es",
+      "meetingID": "resource-meeting-018",
+      "meetingTitle": "Public retrieval resource meeting 018",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-018.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-018-06",
+      "language": "es",
+      "meetingID": "resource-meeting-018",
+      "meetingTitle": "Public retrieval resource meeting 018",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-018.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-018-07",
+      "language": "es",
+      "meetingID": "resource-meeting-018",
+      "meetingTitle": "Public retrieval resource meeting 018",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-018.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-018-08",
+      "language": "es",
+      "meetingID": "resource-meeting-018",
+      "meetingTitle": "Public retrieval resource meeting 018",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-018.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-019-01",
+      "language": "en",
+      "meetingID": "resource-meeting-019",
+      "meetingTitle": "Public retrieval resource meeting 019",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-019.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-019-02",
+      "language": "en",
+      "meetingID": "resource-meeting-019",
+      "meetingTitle": "Public retrieval resource meeting 019",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-019.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-019-03",
+      "language": "en",
+      "meetingID": "resource-meeting-019",
+      "meetingTitle": "Public retrieval resource meeting 019",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-019.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-019-04",
+      "language": "en",
+      "meetingID": "resource-meeting-019",
+      "meetingTitle": "Public retrieval resource meeting 019",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-019.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-019-05",
+      "language": "es",
+      "meetingID": "resource-meeting-019",
+      "meetingTitle": "Public retrieval resource meeting 019",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-019.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-019-06",
+      "language": "es",
+      "meetingID": "resource-meeting-019",
+      "meetingTitle": "Public retrieval resource meeting 019",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-019.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-019-07",
+      "language": "es",
+      "meetingID": "resource-meeting-019",
+      "meetingTitle": "Public retrieval resource meeting 019",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-019.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-019-08",
+      "language": "es",
+      "meetingID": "resource-meeting-019",
+      "meetingTitle": "Public retrieval resource meeting 019",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-019.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-020-01",
+      "language": "en",
+      "meetingID": "resource-meeting-020",
+      "meetingTitle": "Public retrieval resource meeting 020",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-020.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-020-02",
+      "language": "en",
+      "meetingID": "resource-meeting-020",
+      "meetingTitle": "Public retrieval resource meeting 020",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-020.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-020-03",
+      "language": "en",
+      "meetingID": "resource-meeting-020",
+      "meetingTitle": "Public retrieval resource meeting 020",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-020.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-020-04",
+      "language": "en",
+      "meetingID": "resource-meeting-020",
+      "meetingTitle": "Public retrieval resource meeting 020",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-020.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-020-05",
+      "language": "es",
+      "meetingID": "resource-meeting-020",
+      "meetingTitle": "Public retrieval resource meeting 020",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-020.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-020-06",
+      "language": "es",
+      "meetingID": "resource-meeting-020",
+      "meetingTitle": "Public retrieval resource meeting 020",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-020.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-020-07",
+      "language": "es",
+      "meetingID": "resource-meeting-020",
+      "meetingTitle": "Public retrieval resource meeting 020",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-020.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-020-08",
+      "language": "es",
+      "meetingID": "resource-meeting-020",
+      "meetingTitle": "Public retrieval resource meeting 020",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-020.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-021-01",
+      "language": "en",
+      "meetingID": "resource-meeting-021",
+      "meetingTitle": "Public retrieval resource meeting 021",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-021.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-021-02",
+      "language": "en",
+      "meetingID": "resource-meeting-021",
+      "meetingTitle": "Public retrieval resource meeting 021",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-021.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-021-03",
+      "language": "en",
+      "meetingID": "resource-meeting-021",
+      "meetingTitle": "Public retrieval resource meeting 021",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-021.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-021-04",
+      "language": "en",
+      "meetingID": "resource-meeting-021",
+      "meetingTitle": "Public retrieval resource meeting 021",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-021.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-021-05",
+      "language": "es",
+      "meetingID": "resource-meeting-021",
+      "meetingTitle": "Public retrieval resource meeting 021",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-021.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-021-06",
+      "language": "es",
+      "meetingID": "resource-meeting-021",
+      "meetingTitle": "Public retrieval resource meeting 021",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-021.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-021-07",
+      "language": "es",
+      "meetingID": "resource-meeting-021",
+      "meetingTitle": "Public retrieval resource meeting 021",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-021.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-021-08",
+      "language": "es",
+      "meetingID": "resource-meeting-021",
+      "meetingTitle": "Public retrieval resource meeting 021",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-021.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-022-01",
+      "language": "en",
+      "meetingID": "resource-meeting-022",
+      "meetingTitle": "Public retrieval resource meeting 022",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-022.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-022-02",
+      "language": "en",
+      "meetingID": "resource-meeting-022",
+      "meetingTitle": "Public retrieval resource meeting 022",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-022.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-022-03",
+      "language": "en",
+      "meetingID": "resource-meeting-022",
+      "meetingTitle": "Public retrieval resource meeting 022",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-022.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-022-04",
+      "language": "en",
+      "meetingID": "resource-meeting-022",
+      "meetingTitle": "Public retrieval resource meeting 022",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-022.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-022-05",
+      "language": "es",
+      "meetingID": "resource-meeting-022",
+      "meetingTitle": "Public retrieval resource meeting 022",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-022.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-022-06",
+      "language": "es",
+      "meetingID": "resource-meeting-022",
+      "meetingTitle": "Public retrieval resource meeting 022",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-022.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-022-07",
+      "language": "es",
+      "meetingID": "resource-meeting-022",
+      "meetingTitle": "Public retrieval resource meeting 022",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-022.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-022-08",
+      "language": "es",
+      "meetingID": "resource-meeting-022",
+      "meetingTitle": "Public retrieval resource meeting 022",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-022.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-023-01",
+      "language": "en",
+      "meetingID": "resource-meeting-023",
+      "meetingTitle": "Public retrieval resource meeting 023",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-023.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-023-02",
+      "language": "en",
+      "meetingID": "resource-meeting-023",
+      "meetingTitle": "Public retrieval resource meeting 023",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-023.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-023-03",
+      "language": "en",
+      "meetingID": "resource-meeting-023",
+      "meetingTitle": "Public retrieval resource meeting 023",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-023.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-023-04",
+      "language": "en",
+      "meetingID": "resource-meeting-023",
+      "meetingTitle": "Public retrieval resource meeting 023",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-023.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-023-05",
+      "language": "es",
+      "meetingID": "resource-meeting-023",
+      "meetingTitle": "Public retrieval resource meeting 023",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-023.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-023-06",
+      "language": "es",
+      "meetingID": "resource-meeting-023",
+      "meetingTitle": "Public retrieval resource meeting 023",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-023.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-023-07",
+      "language": "es",
+      "meetingID": "resource-meeting-023",
+      "meetingTitle": "Public retrieval resource meeting 023",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-023.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-023-08",
+      "language": "es",
+      "meetingID": "resource-meeting-023",
+      "meetingTitle": "Public retrieval resource meeting 023",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-023.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-024-01",
+      "language": "en",
+      "meetingID": "resource-meeting-024",
+      "meetingTitle": "Public retrieval resource meeting 024",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-024.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-024-02",
+      "language": "en",
+      "meetingID": "resource-meeting-024",
+      "meetingTitle": "Public retrieval resource meeting 024",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-024.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-024-03",
+      "language": "en",
+      "meetingID": "resource-meeting-024",
+      "meetingTitle": "Public retrieval resource meeting 024",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-024.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-024-04",
+      "language": "en",
+      "meetingID": "resource-meeting-024",
+      "meetingTitle": "Public retrieval resource meeting 024",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-024.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-024-05",
+      "language": "es",
+      "meetingID": "resource-meeting-024",
+      "meetingTitle": "Public retrieval resource meeting 024",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-024.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-024-06",
+      "language": "es",
+      "meetingID": "resource-meeting-024",
+      "meetingTitle": "Public retrieval resource meeting 024",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-024.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-024-07",
+      "language": "es",
+      "meetingID": "resource-meeting-024",
+      "meetingTitle": "Public retrieval resource meeting 024",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-024.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-024-08",
+      "language": "es",
+      "meetingID": "resource-meeting-024",
+      "meetingTitle": "Public retrieval resource meeting 024",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-024.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-025-01",
+      "language": "en",
+      "meetingID": "resource-meeting-025",
+      "meetingTitle": "Public retrieval resource meeting 025",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-025.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-025-02",
+      "language": "en",
+      "meetingID": "resource-meeting-025",
+      "meetingTitle": "Public retrieval resource meeting 025",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-025.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-025-03",
+      "language": "en",
+      "meetingID": "resource-meeting-025",
+      "meetingTitle": "Public retrieval resource meeting 025",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-025.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-025-04",
+      "language": "en",
+      "meetingID": "resource-meeting-025",
+      "meetingTitle": "Public retrieval resource meeting 025",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-025.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-025-05",
+      "language": "es",
+      "meetingID": "resource-meeting-025",
+      "meetingTitle": "Public retrieval resource meeting 025",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-025.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-025-06",
+      "language": "es",
+      "meetingID": "resource-meeting-025",
+      "meetingTitle": "Public retrieval resource meeting 025",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-025.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-025-07",
+      "language": "es",
+      "meetingID": "resource-meeting-025",
+      "meetingTitle": "Public retrieval resource meeting 025",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-025.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-025-08",
+      "language": "es",
+      "meetingID": "resource-meeting-025",
+      "meetingTitle": "Public retrieval resource meeting 025",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-025.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-026-01",
+      "language": "en",
+      "meetingID": "resource-meeting-026",
+      "meetingTitle": "Public retrieval resource meeting 026",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-026.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-026-02",
+      "language": "en",
+      "meetingID": "resource-meeting-026",
+      "meetingTitle": "Public retrieval resource meeting 026",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-026.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-026-03",
+      "language": "en",
+      "meetingID": "resource-meeting-026",
+      "meetingTitle": "Public retrieval resource meeting 026",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-026.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-026-04",
+      "language": "en",
+      "meetingID": "resource-meeting-026",
+      "meetingTitle": "Public retrieval resource meeting 026",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-026.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-026-05",
+      "language": "es",
+      "meetingID": "resource-meeting-026",
+      "meetingTitle": "Public retrieval resource meeting 026",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-026.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-026-06",
+      "language": "es",
+      "meetingID": "resource-meeting-026",
+      "meetingTitle": "Public retrieval resource meeting 026",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-026.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-026-07",
+      "language": "es",
+      "meetingID": "resource-meeting-026",
+      "meetingTitle": "Public retrieval resource meeting 026",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-026.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-026-08",
+      "language": "es",
+      "meetingID": "resource-meeting-026",
+      "meetingTitle": "Public retrieval resource meeting 026",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-026.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-027-01",
+      "language": "en",
+      "meetingID": "resource-meeting-027",
+      "meetingTitle": "Public retrieval resource meeting 027",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-027.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-027-02",
+      "language": "en",
+      "meetingID": "resource-meeting-027",
+      "meetingTitle": "Public retrieval resource meeting 027",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-027.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-027-03",
+      "language": "en",
+      "meetingID": "resource-meeting-027",
+      "meetingTitle": "Public retrieval resource meeting 027",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-027.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-027-04",
+      "language": "en",
+      "meetingID": "resource-meeting-027",
+      "meetingTitle": "Public retrieval resource meeting 027",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-027.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-027-05",
+      "language": "es",
+      "meetingID": "resource-meeting-027",
+      "meetingTitle": "Public retrieval resource meeting 027",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-027.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-027-06",
+      "language": "es",
+      "meetingID": "resource-meeting-027",
+      "meetingTitle": "Public retrieval resource meeting 027",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-027.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-027-07",
+      "language": "es",
+      "meetingID": "resource-meeting-027",
+      "meetingTitle": "Public retrieval resource meeting 027",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-027.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-027-08",
+      "language": "es",
+      "meetingID": "resource-meeting-027",
+      "meetingTitle": "Public retrieval resource meeting 027",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-027.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-028-01",
+      "language": "en",
+      "meetingID": "resource-meeting-028",
+      "meetingTitle": "Public retrieval resource meeting 028",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-028.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-028-02",
+      "language": "en",
+      "meetingID": "resource-meeting-028",
+      "meetingTitle": "Public retrieval resource meeting 028",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-028.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-028-03",
+      "language": "en",
+      "meetingID": "resource-meeting-028",
+      "meetingTitle": "Public retrieval resource meeting 028",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-028.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-028-04",
+      "language": "en",
+      "meetingID": "resource-meeting-028",
+      "meetingTitle": "Public retrieval resource meeting 028",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-028.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-028-05",
+      "language": "es",
+      "meetingID": "resource-meeting-028",
+      "meetingTitle": "Public retrieval resource meeting 028",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-028.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-028-06",
+      "language": "es",
+      "meetingID": "resource-meeting-028",
+      "meetingTitle": "Public retrieval resource meeting 028",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-028.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-028-07",
+      "language": "es",
+      "meetingID": "resource-meeting-028",
+      "meetingTitle": "Public retrieval resource meeting 028",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-028.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-028-08",
+      "language": "es",
+      "meetingID": "resource-meeting-028",
+      "meetingTitle": "Public retrieval resource meeting 028",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-028.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-029-01",
+      "language": "en",
+      "meetingID": "resource-meeting-029",
+      "meetingTitle": "Public retrieval resource meeting 029",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-029.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-029-02",
+      "language": "en",
+      "meetingID": "resource-meeting-029",
+      "meetingTitle": "Public retrieval resource meeting 029",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-029.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-029-03",
+      "language": "en",
+      "meetingID": "resource-meeting-029",
+      "meetingTitle": "Public retrieval resource meeting 029",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-029.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-029-04",
+      "language": "en",
+      "meetingID": "resource-meeting-029",
+      "meetingTitle": "Public retrieval resource meeting 029",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-029.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-029-05",
+      "language": "es",
+      "meetingID": "resource-meeting-029",
+      "meetingTitle": "Public retrieval resource meeting 029",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-029.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-029-06",
+      "language": "es",
+      "meetingID": "resource-meeting-029",
+      "meetingTitle": "Public retrieval resource meeting 029",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-029.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-029-07",
+      "language": "es",
+      "meetingID": "resource-meeting-029",
+      "meetingTitle": "Public retrieval resource meeting 029",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-029.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-029-08",
+      "language": "es",
+      "meetingID": "resource-meeting-029",
+      "meetingTitle": "Public retrieval resource meeting 029",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-029.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-030-01",
+      "language": "en",
+      "meetingID": "resource-meeting-030",
+      "meetingTitle": "Public retrieval resource meeting 030",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-030.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-030-02",
+      "language": "en",
+      "meetingID": "resource-meeting-030",
+      "meetingTitle": "Public retrieval resource meeting 030",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-030.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-030-03",
+      "language": "en",
+      "meetingID": "resource-meeting-030",
+      "meetingTitle": "Public retrieval resource meeting 030",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-030.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-030-04",
+      "language": "en",
+      "meetingID": "resource-meeting-030",
+      "meetingTitle": "Public retrieval resource meeting 030",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-030.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-030-05",
+      "language": "es",
+      "meetingID": "resource-meeting-030",
+      "meetingTitle": "Public retrieval resource meeting 030",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-030.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-030-06",
+      "language": "es",
+      "meetingID": "resource-meeting-030",
+      "meetingTitle": "Public retrieval resource meeting 030",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-030.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-030-07",
+      "language": "es",
+      "meetingID": "resource-meeting-030",
+      "meetingTitle": "Public retrieval resource meeting 030",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-030.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-030-08",
+      "language": "es",
+      "meetingID": "resource-meeting-030",
+      "meetingTitle": "Public retrieval resource meeting 030",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-030.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-031-01",
+      "language": "en",
+      "meetingID": "resource-meeting-031",
+      "meetingTitle": "Public retrieval resource meeting 031",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-031.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-031-02",
+      "language": "en",
+      "meetingID": "resource-meeting-031",
+      "meetingTitle": "Public retrieval resource meeting 031",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-031.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-031-03",
+      "language": "en",
+      "meetingID": "resource-meeting-031",
+      "meetingTitle": "Public retrieval resource meeting 031",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-031.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-031-04",
+      "language": "en",
+      "meetingID": "resource-meeting-031",
+      "meetingTitle": "Public retrieval resource meeting 031",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-031.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-031-05",
+      "language": "es",
+      "meetingID": "resource-meeting-031",
+      "meetingTitle": "Public retrieval resource meeting 031",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-031.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-031-06",
+      "language": "es",
+      "meetingID": "resource-meeting-031",
+      "meetingTitle": "Public retrieval resource meeting 031",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-031.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-031-07",
+      "language": "es",
+      "meetingID": "resource-meeting-031",
+      "meetingTitle": "Public retrieval resource meeting 031",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-031.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-031-08",
+      "language": "es",
+      "meetingID": "resource-meeting-031",
+      "meetingTitle": "Public retrieval resource meeting 031",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-031.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-032-01",
+      "language": "en",
+      "meetingID": "resource-meeting-032",
+      "meetingTitle": "Public retrieval resource meeting 032",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-032.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-032-02",
+      "language": "en",
+      "meetingID": "resource-meeting-032",
+      "meetingTitle": "Public retrieval resource meeting 032",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-032.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-032-03",
+      "language": "en",
+      "meetingID": "resource-meeting-032",
+      "meetingTitle": "Public retrieval resource meeting 032",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-032.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-032-04",
+      "language": "en",
+      "meetingID": "resource-meeting-032",
+      "meetingTitle": "Public retrieval resource meeting 032",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-032.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-032-05",
+      "language": "es",
+      "meetingID": "resource-meeting-032",
+      "meetingTitle": "Public retrieval resource meeting 032",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-032.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-032-06",
+      "language": "es",
+      "meetingID": "resource-meeting-032",
+      "meetingTitle": "Public retrieval resource meeting 032",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-032.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-032-07",
+      "language": "es",
+      "meetingID": "resource-meeting-032",
+      "meetingTitle": "Public retrieval resource meeting 032",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-032.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-032-08",
+      "language": "es",
+      "meetingID": "resource-meeting-032",
+      "meetingTitle": "Public retrieval resource meeting 032",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-032.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-033-01",
+      "language": "en",
+      "meetingID": "resource-meeting-033",
+      "meetingTitle": "Public retrieval resource meeting 033",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-033.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-033-02",
+      "language": "en",
+      "meetingID": "resource-meeting-033",
+      "meetingTitle": "Public retrieval resource meeting 033",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-033.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-033-03",
+      "language": "en",
+      "meetingID": "resource-meeting-033",
+      "meetingTitle": "Public retrieval resource meeting 033",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-033.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-033-04",
+      "language": "en",
+      "meetingID": "resource-meeting-033",
+      "meetingTitle": "Public retrieval resource meeting 033",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-033.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-033-05",
+      "language": "es",
+      "meetingID": "resource-meeting-033",
+      "meetingTitle": "Public retrieval resource meeting 033",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-033.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-033-06",
+      "language": "es",
+      "meetingID": "resource-meeting-033",
+      "meetingTitle": "Public retrieval resource meeting 033",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-033.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-033-07",
+      "language": "es",
+      "meetingID": "resource-meeting-033",
+      "meetingTitle": "Public retrieval resource meeting 033",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-033.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-033-08",
+      "language": "es",
+      "meetingID": "resource-meeting-033",
+      "meetingTitle": "Public retrieval resource meeting 033",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-033.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-034-01",
+      "language": "en",
+      "meetingID": "resource-meeting-034",
+      "meetingTitle": "Public retrieval resource meeting 034",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-034.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-034-02",
+      "language": "en",
+      "meetingID": "resource-meeting-034",
+      "meetingTitle": "Public retrieval resource meeting 034",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-034.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-034-03",
+      "language": "en",
+      "meetingID": "resource-meeting-034",
+      "meetingTitle": "Public retrieval resource meeting 034",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-034.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-034-04",
+      "language": "en",
+      "meetingID": "resource-meeting-034",
+      "meetingTitle": "Public retrieval resource meeting 034",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-034.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-034-05",
+      "language": "es",
+      "meetingID": "resource-meeting-034",
+      "meetingTitle": "Public retrieval resource meeting 034",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-034.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-034-06",
+      "language": "es",
+      "meetingID": "resource-meeting-034",
+      "meetingTitle": "Public retrieval resource meeting 034",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-034.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-034-07",
+      "language": "es",
+      "meetingID": "resource-meeting-034",
+      "meetingTitle": "Public retrieval resource meeting 034",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-034.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-034-08",
+      "language": "es",
+      "meetingID": "resource-meeting-034",
+      "meetingTitle": "Public retrieval resource meeting 034",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-034.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-035-01",
+      "language": "en",
+      "meetingID": "resource-meeting-035",
+      "meetingTitle": "Public retrieval resource meeting 035",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-035.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-035-02",
+      "language": "en",
+      "meetingID": "resource-meeting-035",
+      "meetingTitle": "Public retrieval resource meeting 035",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-035.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-035-03",
+      "language": "en",
+      "meetingID": "resource-meeting-035",
+      "meetingTitle": "Public retrieval resource meeting 035",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-035.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-035-04",
+      "language": "en",
+      "meetingID": "resource-meeting-035",
+      "meetingTitle": "Public retrieval resource meeting 035",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-035.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-035-05",
+      "language": "es",
+      "meetingID": "resource-meeting-035",
+      "meetingTitle": "Public retrieval resource meeting 035",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-035.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-035-06",
+      "language": "es",
+      "meetingID": "resource-meeting-035",
+      "meetingTitle": "Public retrieval resource meeting 035",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-035.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-035-07",
+      "language": "es",
+      "meetingID": "resource-meeting-035",
+      "meetingTitle": "Public retrieval resource meeting 035",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-035.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-035-08",
+      "language": "es",
+      "meetingID": "resource-meeting-035",
+      "meetingTitle": "Public retrieval resource meeting 035",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-035.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-036-01",
+      "language": "en",
+      "meetingID": "resource-meeting-036",
+      "meetingTitle": "Public retrieval resource meeting 036",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-036.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-036-02",
+      "language": "en",
+      "meetingID": "resource-meeting-036",
+      "meetingTitle": "Public retrieval resource meeting 036",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-036.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-036-03",
+      "language": "en",
+      "meetingID": "resource-meeting-036",
+      "meetingTitle": "Public retrieval resource meeting 036",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-036.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-036-04",
+      "language": "en",
+      "meetingID": "resource-meeting-036",
+      "meetingTitle": "Public retrieval resource meeting 036",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-036.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-036-05",
+      "language": "es",
+      "meetingID": "resource-meeting-036",
+      "meetingTitle": "Public retrieval resource meeting 036",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-036.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-036-06",
+      "language": "es",
+      "meetingID": "resource-meeting-036",
+      "meetingTitle": "Public retrieval resource meeting 036",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-036.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-036-07",
+      "language": "es",
+      "meetingID": "resource-meeting-036",
+      "meetingTitle": "Public retrieval resource meeting 036",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-036.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-036-08",
+      "language": "es",
+      "meetingID": "resource-meeting-036",
+      "meetingTitle": "Public retrieval resource meeting 036",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-036.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-037-01",
+      "language": "en",
+      "meetingID": "resource-meeting-037",
+      "meetingTitle": "Public retrieval resource meeting 037",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-037.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-037-02",
+      "language": "en",
+      "meetingID": "resource-meeting-037",
+      "meetingTitle": "Public retrieval resource meeting 037",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-037.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-037-03",
+      "language": "en",
+      "meetingID": "resource-meeting-037",
+      "meetingTitle": "Public retrieval resource meeting 037",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-037.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-037-04",
+      "language": "en",
+      "meetingID": "resource-meeting-037",
+      "meetingTitle": "Public retrieval resource meeting 037",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-037.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-037-05",
+      "language": "es",
+      "meetingID": "resource-meeting-037",
+      "meetingTitle": "Public retrieval resource meeting 037",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-037.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-037-06",
+      "language": "es",
+      "meetingID": "resource-meeting-037",
+      "meetingTitle": "Public retrieval resource meeting 037",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-037.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-037-07",
+      "language": "es",
+      "meetingID": "resource-meeting-037",
+      "meetingTitle": "Public retrieval resource meeting 037",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-037.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-037-08",
+      "language": "es",
+      "meetingID": "resource-meeting-037",
+      "meetingTitle": "Public retrieval resource meeting 037",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-037.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-038-01",
+      "language": "en",
+      "meetingID": "resource-meeting-038",
+      "meetingTitle": "Public retrieval resource meeting 038",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-038.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-038-02",
+      "language": "en",
+      "meetingID": "resource-meeting-038",
+      "meetingTitle": "Public retrieval resource meeting 038",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-038.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-038-03",
+      "language": "en",
+      "meetingID": "resource-meeting-038",
+      "meetingTitle": "Public retrieval resource meeting 038",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-038.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-038-04",
+      "language": "en",
+      "meetingID": "resource-meeting-038",
+      "meetingTitle": "Public retrieval resource meeting 038",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-038.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-038-05",
+      "language": "es",
+      "meetingID": "resource-meeting-038",
+      "meetingTitle": "Public retrieval resource meeting 038",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-038.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-038-06",
+      "language": "es",
+      "meetingID": "resource-meeting-038",
+      "meetingTitle": "Public retrieval resource meeting 038",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-038.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-038-07",
+      "language": "es",
+      "meetingID": "resource-meeting-038",
+      "meetingTitle": "Public retrieval resource meeting 038",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-038.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-038-08",
+      "language": "es",
+      "meetingID": "resource-meeting-038",
+      "meetingTitle": "Public retrieval resource meeting 038",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-038.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-039-01",
+      "language": "en",
+      "meetingID": "resource-meeting-039",
+      "meetingTitle": "Public retrieval resource meeting 039",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-039.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-039-02",
+      "language": "en",
+      "meetingID": "resource-meeting-039",
+      "meetingTitle": "Public retrieval resource meeting 039",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-039.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-039-03",
+      "language": "en",
+      "meetingID": "resource-meeting-039",
+      "meetingTitle": "Public retrieval resource meeting 039",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-039.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-039-04",
+      "language": "en",
+      "meetingID": "resource-meeting-039",
+      "meetingTitle": "Public retrieval resource meeting 039",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-039.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-039-05",
+      "language": "es",
+      "meetingID": "resource-meeting-039",
+      "meetingTitle": "Public retrieval resource meeting 039",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-039.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-039-06",
+      "language": "es",
+      "meetingID": "resource-meeting-039",
+      "meetingTitle": "Public retrieval resource meeting 039",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-039.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-039-07",
+      "language": "es",
+      "meetingID": "resource-meeting-039",
+      "meetingTitle": "Public retrieval resource meeting 039",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-039.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-039-08",
+      "language": "es",
+      "meetingID": "resource-meeting-039",
+      "meetingTitle": "Public retrieval resource meeting 039",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-039.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-040-01",
+      "language": "en",
+      "meetingID": "resource-meeting-040",
+      "meetingTitle": "Public retrieval resource meeting 040",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-040.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-040-02",
+      "language": "en",
+      "meetingID": "resource-meeting-040",
+      "meetingTitle": "Public retrieval resource meeting 040",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-040.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-040-03",
+      "language": "en",
+      "meetingID": "resource-meeting-040",
+      "meetingTitle": "Public retrieval resource meeting 040",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-040.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-040-04",
+      "language": "en",
+      "meetingID": "resource-meeting-040",
+      "meetingTitle": "Public retrieval resource meeting 040",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-040.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-040-05",
+      "language": "es",
+      "meetingID": "resource-meeting-040",
+      "meetingTitle": "Public retrieval resource meeting 040",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-040.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-040-06",
+      "language": "es",
+      "meetingID": "resource-meeting-040",
+      "meetingTitle": "Public retrieval resource meeting 040",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-040.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-040-07",
+      "language": "es",
+      "meetingID": "resource-meeting-040",
+      "meetingTitle": "Public retrieval resource meeting 040",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-040.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-040-08",
+      "language": "es",
+      "meetingID": "resource-meeting-040",
+      "meetingTitle": "Public retrieval resource meeting 040",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-040.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-041-01",
+      "language": "en",
+      "meetingID": "resource-meeting-041",
+      "meetingTitle": "Public retrieval resource meeting 041",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-041.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-041-02",
+      "language": "en",
+      "meetingID": "resource-meeting-041",
+      "meetingTitle": "Public retrieval resource meeting 041",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-041.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-041-03",
+      "language": "en",
+      "meetingID": "resource-meeting-041",
+      "meetingTitle": "Public retrieval resource meeting 041",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-041.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-041-04",
+      "language": "en",
+      "meetingID": "resource-meeting-041",
+      "meetingTitle": "Public retrieval resource meeting 041",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-041.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-041-05",
+      "language": "es",
+      "meetingID": "resource-meeting-041",
+      "meetingTitle": "Public retrieval resource meeting 041",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-041.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-041-06",
+      "language": "es",
+      "meetingID": "resource-meeting-041",
+      "meetingTitle": "Public retrieval resource meeting 041",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-041.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-041-07",
+      "language": "es",
+      "meetingID": "resource-meeting-041",
+      "meetingTitle": "Public retrieval resource meeting 041",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-041.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-041-08",
+      "language": "es",
+      "meetingID": "resource-meeting-041",
+      "meetingTitle": "Public retrieval resource meeting 041",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-041.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-042-01",
+      "language": "en",
+      "meetingID": "resource-meeting-042",
+      "meetingTitle": "Public retrieval resource meeting 042",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-042.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-042-02",
+      "language": "en",
+      "meetingID": "resource-meeting-042",
+      "meetingTitle": "Public retrieval resource meeting 042",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-042.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-042-03",
+      "language": "en",
+      "meetingID": "resource-meeting-042",
+      "meetingTitle": "Public retrieval resource meeting 042",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-042.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-042-04",
+      "language": "en",
+      "meetingID": "resource-meeting-042",
+      "meetingTitle": "Public retrieval resource meeting 042",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-042.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-042-05",
+      "language": "es",
+      "meetingID": "resource-meeting-042",
+      "meetingTitle": "Public retrieval resource meeting 042",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-042.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-042-06",
+      "language": "es",
+      "meetingID": "resource-meeting-042",
+      "meetingTitle": "Public retrieval resource meeting 042",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-042.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-042-07",
+      "language": "es",
+      "meetingID": "resource-meeting-042",
+      "meetingTitle": "Public retrieval resource meeting 042",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-042.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-042-08",
+      "language": "es",
+      "meetingID": "resource-meeting-042",
+      "meetingTitle": "Public retrieval resource meeting 042",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-042.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-043-01",
+      "language": "en",
+      "meetingID": "resource-meeting-043",
+      "meetingTitle": "Public retrieval resource meeting 043",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-043.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-043-02",
+      "language": "en",
+      "meetingID": "resource-meeting-043",
+      "meetingTitle": "Public retrieval resource meeting 043",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-043.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-043-03",
+      "language": "en",
+      "meetingID": "resource-meeting-043",
+      "meetingTitle": "Public retrieval resource meeting 043",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-043.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-043-04",
+      "language": "en",
+      "meetingID": "resource-meeting-043",
+      "meetingTitle": "Public retrieval resource meeting 043",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-043.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-043-05",
+      "language": "es",
+      "meetingID": "resource-meeting-043",
+      "meetingTitle": "Public retrieval resource meeting 043",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-043.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-043-06",
+      "language": "es",
+      "meetingID": "resource-meeting-043",
+      "meetingTitle": "Public retrieval resource meeting 043",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-043.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-043-07",
+      "language": "es",
+      "meetingID": "resource-meeting-043",
+      "meetingTitle": "Public retrieval resource meeting 043",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-043.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-043-08",
+      "language": "es",
+      "meetingID": "resource-meeting-043",
+      "meetingTitle": "Public retrieval resource meeting 043",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-043.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-044-01",
+      "language": "en",
+      "meetingID": "resource-meeting-044",
+      "meetingTitle": "Public retrieval resource meeting 044",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-044.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-044-02",
+      "language": "en",
+      "meetingID": "resource-meeting-044",
+      "meetingTitle": "Public retrieval resource meeting 044",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-044.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-044-03",
+      "language": "en",
+      "meetingID": "resource-meeting-044",
+      "meetingTitle": "Public retrieval resource meeting 044",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-044.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-044-04",
+      "language": "en",
+      "meetingID": "resource-meeting-044",
+      "meetingTitle": "Public retrieval resource meeting 044",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-044.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-044-05",
+      "language": "es",
+      "meetingID": "resource-meeting-044",
+      "meetingTitle": "Public retrieval resource meeting 044",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-044.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-044-06",
+      "language": "es",
+      "meetingID": "resource-meeting-044",
+      "meetingTitle": "Public retrieval resource meeting 044",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-044.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-044-07",
+      "language": "es",
+      "meetingID": "resource-meeting-044",
+      "meetingTitle": "Public retrieval resource meeting 044",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-044.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-044-08",
+      "language": "es",
+      "meetingID": "resource-meeting-044",
+      "meetingTitle": "Public retrieval resource meeting 044",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-044.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-045-01",
+      "language": "en",
+      "meetingID": "resource-meeting-045",
+      "meetingTitle": "Public retrieval resource meeting 045",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-045.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-045-02",
+      "language": "en",
+      "meetingID": "resource-meeting-045",
+      "meetingTitle": "Public retrieval resource meeting 045",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-045.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-045-03",
+      "language": "en",
+      "meetingID": "resource-meeting-045",
+      "meetingTitle": "Public retrieval resource meeting 045",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-045.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-045-04",
+      "language": "en",
+      "meetingID": "resource-meeting-045",
+      "meetingTitle": "Public retrieval resource meeting 045",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-045.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-045-05",
+      "language": "es",
+      "meetingID": "resource-meeting-045",
+      "meetingTitle": "Public retrieval resource meeting 045",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-045.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-045-06",
+      "language": "es",
+      "meetingID": "resource-meeting-045",
+      "meetingTitle": "Public retrieval resource meeting 045",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-045.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-045-07",
+      "language": "es",
+      "meetingID": "resource-meeting-045",
+      "meetingTitle": "Public retrieval resource meeting 045",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-045.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-045-08",
+      "language": "es",
+      "meetingID": "resource-meeting-045",
+      "meetingTitle": "Public retrieval resource meeting 045",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-045.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-046-01",
+      "language": "en",
+      "meetingID": "resource-meeting-046",
+      "meetingTitle": "Public retrieval resource meeting 046",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-046.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-046-02",
+      "language": "en",
+      "meetingID": "resource-meeting-046",
+      "meetingTitle": "Public retrieval resource meeting 046",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-046.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-046-03",
+      "language": "en",
+      "meetingID": "resource-meeting-046",
+      "meetingTitle": "Public retrieval resource meeting 046",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-046.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-046-04",
+      "language": "en",
+      "meetingID": "resource-meeting-046",
+      "meetingTitle": "Public retrieval resource meeting 046",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-046.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-046-05",
+      "language": "es",
+      "meetingID": "resource-meeting-046",
+      "meetingTitle": "Public retrieval resource meeting 046",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-046.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-046-06",
+      "language": "es",
+      "meetingID": "resource-meeting-046",
+      "meetingTitle": "Public retrieval resource meeting 046",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-046.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-046-07",
+      "language": "es",
+      "meetingID": "resource-meeting-046",
+      "meetingTitle": "Public retrieval resource meeting 046",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-046.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-046-08",
+      "language": "es",
+      "meetingID": "resource-meeting-046",
+      "meetingTitle": "Public retrieval resource meeting 046",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-046.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-047-01",
+      "language": "en",
+      "meetingID": "resource-meeting-047",
+      "meetingTitle": "Public retrieval resource meeting 047",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-047.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-047-02",
+      "language": "en",
+      "meetingID": "resource-meeting-047",
+      "meetingTitle": "Public retrieval resource meeting 047",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-047.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-047-03",
+      "language": "en",
+      "meetingID": "resource-meeting-047",
+      "meetingTitle": "Public retrieval resource meeting 047",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-047.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-047-04",
+      "language": "en",
+      "meetingID": "resource-meeting-047",
+      "meetingTitle": "Public retrieval resource meeting 047",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-047.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-047-05",
+      "language": "es",
+      "meetingID": "resource-meeting-047",
+      "meetingTitle": "Public retrieval resource meeting 047",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-047.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-047-06",
+      "language": "es",
+      "meetingID": "resource-meeting-047",
+      "meetingTitle": "Public retrieval resource meeting 047",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-047.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-047-07",
+      "language": "es",
+      "meetingID": "resource-meeting-047",
+      "meetingTitle": "Public retrieval resource meeting 047",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-047.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-047-08",
+      "language": "es",
+      "meetingID": "resource-meeting-047",
+      "meetingTitle": "Public retrieval resource meeting 047",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-047.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-048-01",
+      "language": "en",
+      "meetingID": "resource-meeting-048",
+      "meetingTitle": "Public retrieval resource meeting 048",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-048.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-048-02",
+      "language": "en",
+      "meetingID": "resource-meeting-048",
+      "meetingTitle": "Public retrieval resource meeting 048",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-048.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-048-03",
+      "language": "en",
+      "meetingID": "resource-meeting-048",
+      "meetingTitle": "Public retrieval resource meeting 048",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-048.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-048-04",
+      "language": "en",
+      "meetingID": "resource-meeting-048",
+      "meetingTitle": "Public retrieval resource meeting 048",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-048.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-048-05",
+      "language": "es",
+      "meetingID": "resource-meeting-048",
+      "meetingTitle": "Public retrieval resource meeting 048",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-048.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-048-06",
+      "language": "es",
+      "meetingID": "resource-meeting-048",
+      "meetingTitle": "Public retrieval resource meeting 048",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-048.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-048-07",
+      "language": "es",
+      "meetingID": "resource-meeting-048",
+      "meetingTitle": "Public retrieval resource meeting 048",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-048.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-048-08",
+      "language": "es",
+      "meetingID": "resource-meeting-048",
+      "meetingTitle": "Public retrieval resource meeting 048",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-048.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-049-01",
+      "language": "en",
+      "meetingID": "resource-meeting-049",
+      "meetingTitle": "Public retrieval resource meeting 049",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-049.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-049-02",
+      "language": "en",
+      "meetingID": "resource-meeting-049",
+      "meetingTitle": "Public retrieval resource meeting 049",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-049.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-049-03",
+      "language": "en",
+      "meetingID": "resource-meeting-049",
+      "meetingTitle": "Public retrieval resource meeting 049",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-049.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-049-04",
+      "language": "en",
+      "meetingID": "resource-meeting-049",
+      "meetingTitle": "Public retrieval resource meeting 049",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-049.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-049-05",
+      "language": "es",
+      "meetingID": "resource-meeting-049",
+      "meetingTitle": "Public retrieval resource meeting 049",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-049.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-049-06",
+      "language": "es",
+      "meetingID": "resource-meeting-049",
+      "meetingTitle": "Public retrieval resource meeting 049",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-049.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-049-07",
+      "language": "es",
+      "meetingID": "resource-meeting-049",
+      "meetingTitle": "Public retrieval resource meeting 049",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-049.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-049-08",
+      "language": "es",
+      "meetingID": "resource-meeting-049",
+      "meetingTitle": "Public retrieval resource meeting 049",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-049.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-050-01",
+      "language": "en",
+      "meetingID": "resource-meeting-050",
+      "meetingTitle": "Public retrieval resource meeting 050",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-050.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-050-02",
+      "language": "en",
+      "meetingID": "resource-meeting-050",
+      "meetingTitle": "Public retrieval resource meeting 050",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-050.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-050-03",
+      "language": "en",
+      "meetingID": "resource-meeting-050",
+      "meetingTitle": "Public retrieval resource meeting 050",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-050.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-050-04",
+      "language": "en",
+      "meetingID": "resource-meeting-050",
+      "meetingTitle": "Public retrieval resource meeting 050",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-050.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-050-05",
+      "language": "es",
+      "meetingID": "resource-meeting-050",
+      "meetingTitle": "Public retrieval resource meeting 050",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-050.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-050-06",
+      "language": "es",
+      "meetingID": "resource-meeting-050",
+      "meetingTitle": "Public retrieval resource meeting 050",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-050.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-050-07",
+      "language": "es",
+      "meetingID": "resource-meeting-050",
+      "meetingTitle": "Public retrieval resource meeting 050",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-050.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-050-08",
+      "language": "es",
+      "meetingID": "resource-meeting-050",
+      "meetingTitle": "Public retrieval resource meeting 050",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-050.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-051-01",
+      "language": "en",
+      "meetingID": "resource-meeting-051",
+      "meetingTitle": "Public retrieval resource meeting 051",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-051.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-051-02",
+      "language": "en",
+      "meetingID": "resource-meeting-051",
+      "meetingTitle": "Public retrieval resource meeting 051",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-051.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-051-03",
+      "language": "en",
+      "meetingID": "resource-meeting-051",
+      "meetingTitle": "Public retrieval resource meeting 051",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-051.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-051-04",
+      "language": "en",
+      "meetingID": "resource-meeting-051",
+      "meetingTitle": "Public retrieval resource meeting 051",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-051.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-051-05",
+      "language": "es",
+      "meetingID": "resource-meeting-051",
+      "meetingTitle": "Public retrieval resource meeting 051",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-051.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-051-06",
+      "language": "es",
+      "meetingID": "resource-meeting-051",
+      "meetingTitle": "Public retrieval resource meeting 051",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-051.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-051-07",
+      "language": "es",
+      "meetingID": "resource-meeting-051",
+      "meetingTitle": "Public retrieval resource meeting 051",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-051.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-051-08",
+      "language": "es",
+      "meetingID": "resource-meeting-051",
+      "meetingTitle": "Public retrieval resource meeting 051",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-051.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-052-01",
+      "language": "en",
+      "meetingID": "resource-meeting-052",
+      "meetingTitle": "Public retrieval resource meeting 052",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-052.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-052-02",
+      "language": "en",
+      "meetingID": "resource-meeting-052",
+      "meetingTitle": "Public retrieval resource meeting 052",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-052.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-052-03",
+      "language": "en",
+      "meetingID": "resource-meeting-052",
+      "meetingTitle": "Public retrieval resource meeting 052",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-052.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-052-04",
+      "language": "en",
+      "meetingID": "resource-meeting-052",
+      "meetingTitle": "Public retrieval resource meeting 052",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-052.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-052-05",
+      "language": "es",
+      "meetingID": "resource-meeting-052",
+      "meetingTitle": "Public retrieval resource meeting 052",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-052.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-052-06",
+      "language": "es",
+      "meetingID": "resource-meeting-052",
+      "meetingTitle": "Public retrieval resource meeting 052",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-052.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-052-07",
+      "language": "es",
+      "meetingID": "resource-meeting-052",
+      "meetingTitle": "Public retrieval resource meeting 052",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-052.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-052-08",
+      "language": "es",
+      "meetingID": "resource-meeting-052",
+      "meetingTitle": "Public retrieval resource meeting 052",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-052.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-053-01",
+      "language": "en",
+      "meetingID": "resource-meeting-053",
+      "meetingTitle": "Public retrieval resource meeting 053",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-053.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-053-02",
+      "language": "en",
+      "meetingID": "resource-meeting-053",
+      "meetingTitle": "Public retrieval resource meeting 053",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-053.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-053-03",
+      "language": "en",
+      "meetingID": "resource-meeting-053",
+      "meetingTitle": "Public retrieval resource meeting 053",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-053.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-053-04",
+      "language": "en",
+      "meetingID": "resource-meeting-053",
+      "meetingTitle": "Public retrieval resource meeting 053",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-053.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-053-05",
+      "language": "es",
+      "meetingID": "resource-meeting-053",
+      "meetingTitle": "Public retrieval resource meeting 053",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-053.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-053-06",
+      "language": "es",
+      "meetingID": "resource-meeting-053",
+      "meetingTitle": "Public retrieval resource meeting 053",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-053.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-053-07",
+      "language": "es",
+      "meetingID": "resource-meeting-053",
+      "meetingTitle": "Public retrieval resource meeting 053",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-053.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-053-08",
+      "language": "es",
+      "meetingID": "resource-meeting-053",
+      "meetingTitle": "Public retrieval resource meeting 053",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-053.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-054-01",
+      "language": "en",
+      "meetingID": "resource-meeting-054",
+      "meetingTitle": "Public retrieval resource meeting 054",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-054.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-054-02",
+      "language": "en",
+      "meetingID": "resource-meeting-054",
+      "meetingTitle": "Public retrieval resource meeting 054",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-054.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-054-03",
+      "language": "en",
+      "meetingID": "resource-meeting-054",
+      "meetingTitle": "Public retrieval resource meeting 054",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-054.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-054-04",
+      "language": "en",
+      "meetingID": "resource-meeting-054",
+      "meetingTitle": "Public retrieval resource meeting 054",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-054.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-054-05",
+      "language": "es",
+      "meetingID": "resource-meeting-054",
+      "meetingTitle": "Public retrieval resource meeting 054",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-054.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-054-06",
+      "language": "es",
+      "meetingID": "resource-meeting-054",
+      "meetingTitle": "Public retrieval resource meeting 054",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-054.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-054-07",
+      "language": "es",
+      "meetingID": "resource-meeting-054",
+      "meetingTitle": "Public retrieval resource meeting 054",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-054.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-054-08",
+      "language": "es",
+      "meetingID": "resource-meeting-054",
+      "meetingTitle": "Public retrieval resource meeting 054",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-054.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-055-01",
+      "language": "en",
+      "meetingID": "resource-meeting-055",
+      "meetingTitle": "Public retrieval resource meeting 055",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-055.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-055-02",
+      "language": "en",
+      "meetingID": "resource-meeting-055",
+      "meetingTitle": "Public retrieval resource meeting 055",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-055.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-055-03",
+      "language": "en",
+      "meetingID": "resource-meeting-055",
+      "meetingTitle": "Public retrieval resource meeting 055",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-055.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-055-04",
+      "language": "en",
+      "meetingID": "resource-meeting-055",
+      "meetingTitle": "Public retrieval resource meeting 055",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-055.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-055-05",
+      "language": "es",
+      "meetingID": "resource-meeting-055",
+      "meetingTitle": "Public retrieval resource meeting 055",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-055.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-055-06",
+      "language": "es",
+      "meetingID": "resource-meeting-055",
+      "meetingTitle": "Public retrieval resource meeting 055",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-055.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-055-07",
+      "language": "es",
+      "meetingID": "resource-meeting-055",
+      "meetingTitle": "Public retrieval resource meeting 055",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-055.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-055-08",
+      "language": "es",
+      "meetingID": "resource-meeting-055",
+      "meetingTitle": "Public retrieval resource meeting 055",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-055.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-056-01",
+      "language": "en",
+      "meetingID": "resource-meeting-056",
+      "meetingTitle": "Public retrieval resource meeting 056",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-056.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-056-02",
+      "language": "en",
+      "meetingID": "resource-meeting-056",
+      "meetingTitle": "Public retrieval resource meeting 056",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-056.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-056-03",
+      "language": "en",
+      "meetingID": "resource-meeting-056",
+      "meetingTitle": "Public retrieval resource meeting 056",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-056.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-056-04",
+      "language": "en",
+      "meetingID": "resource-meeting-056",
+      "meetingTitle": "Public retrieval resource meeting 056",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-056.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-056-05",
+      "language": "es",
+      "meetingID": "resource-meeting-056",
+      "meetingTitle": "Public retrieval resource meeting 056",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-056.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-056-06",
+      "language": "es",
+      "meetingID": "resource-meeting-056",
+      "meetingTitle": "Public retrieval resource meeting 056",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-056.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-056-07",
+      "language": "es",
+      "meetingID": "resource-meeting-056",
+      "meetingTitle": "Public retrieval resource meeting 056",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-056.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-056-08",
+      "language": "es",
+      "meetingID": "resource-meeting-056",
+      "meetingTitle": "Public retrieval resource meeting 056",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-056.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-057-01",
+      "language": "en",
+      "meetingID": "resource-meeting-057",
+      "meetingTitle": "Public retrieval resource meeting 057",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-057.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-057-02",
+      "language": "en",
+      "meetingID": "resource-meeting-057",
+      "meetingTitle": "Public retrieval resource meeting 057",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-057.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-057-03",
+      "language": "en",
+      "meetingID": "resource-meeting-057",
+      "meetingTitle": "Public retrieval resource meeting 057",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-057.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-057-04",
+      "language": "en",
+      "meetingID": "resource-meeting-057",
+      "meetingTitle": "Public retrieval resource meeting 057",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-057.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-057-05",
+      "language": "es",
+      "meetingID": "resource-meeting-057",
+      "meetingTitle": "Public retrieval resource meeting 057",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-057.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-057-06",
+      "language": "es",
+      "meetingID": "resource-meeting-057",
+      "meetingTitle": "Public retrieval resource meeting 057",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-057.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-057-07",
+      "language": "es",
+      "meetingID": "resource-meeting-057",
+      "meetingTitle": "Public retrieval resource meeting 057",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-057.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-057-08",
+      "language": "es",
+      "meetingID": "resource-meeting-057",
+      "meetingTitle": "Public retrieval resource meeting 057",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-057.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-058-01",
+      "language": "en",
+      "meetingID": "resource-meeting-058",
+      "meetingTitle": "Public retrieval resource meeting 058",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-058.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-058-02",
+      "language": "en",
+      "meetingID": "resource-meeting-058",
+      "meetingTitle": "Public retrieval resource meeting 058",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-058.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-058-03",
+      "language": "en",
+      "meetingID": "resource-meeting-058",
+      "meetingTitle": "Public retrieval resource meeting 058",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-058.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-058-04",
+      "language": "en",
+      "meetingID": "resource-meeting-058",
+      "meetingTitle": "Public retrieval resource meeting 058",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-058.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-058-05",
+      "language": "es",
+      "meetingID": "resource-meeting-058",
+      "meetingTitle": "Public retrieval resource meeting 058",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-058.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-058-06",
+      "language": "es",
+      "meetingID": "resource-meeting-058",
+      "meetingTitle": "Public retrieval resource meeting 058",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-058.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-058-07",
+      "language": "es",
+      "meetingID": "resource-meeting-058",
+      "meetingTitle": "Public retrieval resource meeting 058",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-058.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-058-08",
+      "language": "es",
+      "meetingID": "resource-meeting-058",
+      "meetingTitle": "Public retrieval resource meeting 058",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-058.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-059-01",
+      "language": "en",
+      "meetingID": "resource-meeting-059",
+      "meetingTitle": "Public retrieval resource meeting 059",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-059.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-059-02",
+      "language": "en",
+      "meetingID": "resource-meeting-059",
+      "meetingTitle": "Public retrieval resource meeting 059",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-059.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-059-03",
+      "language": "en",
+      "meetingID": "resource-meeting-059",
+      "meetingTitle": "Public retrieval resource meeting 059",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-059.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-059-04",
+      "language": "en",
+      "meetingID": "resource-meeting-059",
+      "meetingTitle": "Public retrieval resource meeting 059",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-059.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-059-05",
+      "language": "es",
+      "meetingID": "resource-meeting-059",
+      "meetingTitle": "Public retrieval resource meeting 059",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-059.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-059-06",
+      "language": "es",
+      "meetingID": "resource-meeting-059",
+      "meetingTitle": "Public retrieval resource meeting 059",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-059.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-059-07",
+      "language": "es",
+      "meetingID": "resource-meeting-059",
+      "meetingTitle": "Public retrieval resource meeting 059",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-059.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-059-08",
+      "language": "es",
+      "meetingID": "resource-meeting-059",
+      "meetingTitle": "Public retrieval resource meeting 059",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-059.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-060-01",
+      "language": "en",
+      "meetingID": "resource-meeting-060",
+      "meetingTitle": "Public retrieval resource meeting 060",
+      "owner": "Avery",
+      "text": "Avery reviewed the public synthetic plan for resource-060.",
+      "timestampMilliseconds": 1000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-060-02",
+      "language": "en",
+      "meetingID": "resource-meeting-060",
+      "meetingTitle": "Public retrieval resource meeting 060",
+      "owner": "Avery",
+      "text": "Avery confirmed the public schedule for resource-060.",
+      "timestampMilliseconds": 2000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-060-03",
+      "language": "en",
+      "meetingID": "resource-meeting-060",
+      "meetingTitle": "Public retrieval resource meeting 060",
+      "owner": "Blake",
+      "text": "Blake documented the public synthetic risks for resource-060.",
+      "timestampMilliseconds": 3000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-060-04",
+      "language": "en",
+      "meetingID": "resource-meeting-060",
+      "meetingTitle": "Public retrieval resource meeting 060",
+      "owner": "Blake",
+      "text": "Blake confirmed the public mitigation for resource-060.",
+      "timestampMilliseconds": 4000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-060-05",
+      "language": "es",
+      "meetingID": "resource-meeting-060",
+      "meetingTitle": "Public retrieval resource meeting 060",
+      "owner": "Carmen",
+      "text": "Carmen revisó el plan público sintético para resource-060.",
+      "timestampMilliseconds": 5000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-060-06",
+      "language": "es",
+      "meetingID": "resource-meeting-060",
+      "meetingTitle": "Public retrieval resource meeting 060",
+      "owner": "Carmen",
+      "text": "Carmen confirmó el calendario público para resource-060.",
+      "timestampMilliseconds": 6000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-060-07",
+      "language": "es",
+      "meetingID": "resource-meeting-060",
+      "meetingTitle": "Public retrieval resource meeting 060",
+      "owner": "Diego",
+      "text": "Diego documentó los riesgos públicos sintéticos de resource-060.",
+      "timestampMilliseconds": 7000,
+      "transcriptRevision": 1
+    },
+    {
+      "id": "resource-segment-060-08",
+      "language": "es",
+      "meetingID": "resource-meeting-060",
+      "meetingTitle": "Public retrieval resource meeting 060",
+      "owner": "Diego",
+      "text": "Diego confirmó la mitigación pública de resource-060.",
+      "timestampMilliseconds": 8000,
+      "transcriptRevision": 1
+    }
+  ]
+}

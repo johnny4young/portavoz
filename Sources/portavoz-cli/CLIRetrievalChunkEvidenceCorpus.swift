@@ -106,7 +106,7 @@ struct RetrievalChunkEvidenceDelta: Equatable, Sendable {
 
 enum RetrievalChunkEvidenceCorpus {
     static func meetings(
-        from fixture: AskQualityFixture
+        from fixture: RetrievalChunkResourceFixture
     ) throws -> [RetrievalChunkEvidenceMeeting] {
         let grouped = Dictionary(grouping: fixture.segments, by: \.meetingID)
         return try grouped.keys.sorted().map { externalMeetingID in
