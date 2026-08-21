@@ -1,6 +1,6 @@
 # Spec 07 — Interfaces: CLI, MCP, and exporters
 
-Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence), D81 (production lexical candidate benchmark), D82 (isolated semantic resource benchmark), D83 (comparable semantic after matrix), D84 (copied real-audio waveform evidence), D85 (protected measured Spotlight reconciliation), D87 (portable typed evidence), D88 (portable current claim feedback), D89 (portable decision evidence), D90 (portable action-item evidence), D91 (portable role-separated Apuntador evidence), D100 (shared Ask workflow across app, CLI, and MCP), D102 (one executable composition and bounded meeting reads), D103 (terminal product workflows enter ApplicationKit), D115 (private-iCloud receipt evidence), D116 (filesystem-capability-safe private publication), D179 (capture-safe existing-library sync admission), D183 (bounded backup destination identity), D184 (durable backup publication evidence), D185 (strict staged-source adoption), D186 (successful-publication source checkpoints), D187 (fail-closed pending-publication reconciliation), D188 (durable typed backup failure outcomes), D189 (fail-closed backup launch continuation), D233 (correction-lineage invalidation before composed interfaces), D234 (correction-aware documents and protected correction replay), D237 (transport-neutral confirmed commitment replay).
+Status: implemented; MCP verified E2E with a real agent. Decisions: D12 (sharing ladder), D22 (RAG), D47 (revision-fenced CLI refine persistence), D51 (safe atomic bundle import), D52 (read-consistent off-main bundle export), D67–D69 (enforced meeting-content egress, including explicit publishing), D75 (persisted CLI privacy receipts), D76 (local support evidence is not an outbound integration), D79 (disposable Release scale evidence), D81 (production lexical candidate benchmark), D82 (isolated semantic resource benchmark), D83 (comparable semantic after matrix), D84 (copied real-audio waveform evidence), D85 (protected measured Spotlight reconciliation), D87 (portable typed evidence), D88 (portable current claim feedback), D89 (portable decision evidence), D90 (portable action-item evidence), D91 (portable role-separated Apuntador evidence), D100 (shared Ask workflow across app, CLI, and MCP), D102 (one executable composition and bounded meeting reads), D103 (terminal product workflows enter ApplicationKit), D115 (private-iCloud receipt evidence), D116 (filesystem-capability-safe private publication), D179 (capture-safe existing-library sync admission), D183 (bounded backup destination identity), D184 (durable backup publication evidence), D185 (strict staged-source adoption), D186 (successful-publication source checkpoints), D187 (fail-closed pending-publication reconciliation), D188 (durable typed backup failure outcomes), D189 (fail-closed backup launch continuation), D233 (correction-lineage invalidation before composed interfaces), D234 (correction-aware documents and protected correction replay), D237 (transport-neutral confirmed commitment replay), D356 (bounded legacy CLI input and drained capture tasks).
 
 Native automation decisions: D324 (honest Start/Stop actions), D325 (bounded
 meeting/person/commitment App Entities and exact open routes), and D326
@@ -51,6 +51,24 @@ voice identity, and pinned-model lifecycle enter ApplicationKit workflows.
 `CLIProductAdapters` confines concrete files, models, Store, provider,
 integration, voice, and streaming-fingerprint behavior. Capture diagnostics
 and benchmark harnesses deliberately retain isolated direct construction.
+
+The original hand-written development commands share a strict throwing value
+reader rather than silently retaining defaults. String values must be present
+and non-empty; numeric values must parse exactly, floating-point values must be
+finite, and all values are admitted before any concrete side effect. Recording
+and live-benchmark durations are `1...86,400` seconds, Ask result limits are
+`1...50`, process IDs fit a positive `pid_t`, diarization thresholds are inside
+`0...1`, and DER collars are `0...60` seconds. The disposable FTS harness
+accepts at most 100,000 meetings and 10,000 segments per meeting, then uses
+checked multiplication and rejects any corpus above 1,000,000 segments.
+
+`record` owns and drains every live-transcription task. Normal completion
+finishes its channel streams and awaits them; cancellation or capture failure
+first stops the recording session, then finishes, cancels, and awaits them.
+`bench-m2` starts its batch loop only after microphone admission. Cancellation
+stops the microphone, finishes the feed, cancels the feeder and in-flight batch,
+and awaits both. Normal benchmark completion still lets the current batch pass
+finish so the reported concurrent-load measurement remains comparable.
 
 | Command | Usage (from the code) |
 |---|---|

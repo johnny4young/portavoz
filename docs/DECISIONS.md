@@ -12886,3 +12886,48 @@ real-time factor reflects an upstream machine-dependent aggregate and is never
 Portavoz evidence. Parakeet remains the live product authority unless the
 owner-reviewed bilingual matrix wins within the existing D7/D137 latency and
 resource budgets and the license review is explicitly accepted.
+
+## D356 — Legacy CLI input is bounded before side effects and capture tasks drain (Aug 2026)
+
+**Context:** the original development CLI commands parsed numbers with
+`Int`/`Float`/`Double` plus a fallback to the current default. Malformed values
+therefore looked successful, while negative recording or benchmark durations
+could later trap when converted to `UInt64`. Negative FTS corpus dimensions
+could trap in ranges or allocation, their product could overflow, and a
+negative Ask limit could behave as an effectively unbounded request. The
+recording and concurrent M2 harnesses also created unstructured work whose
+cancellation and startup-failure ownership was incomplete. Newer evidence
+commands already have strict typed option structs, but importing another direct
+argument-parser dependency solely for these internal commands would not repair
+their capture lifetimes.
+
+**Decision:** retain the small hand-written development dispatcher and add one
+shared throwing value reader for its seven legacy commands. It rejects missing
+or empty strings, a following option in place of a value, malformed and
+non-finite numbers, and values outside explicit closed bounds before any model,
+database, capture, file, or corpus work begins. Durations are 1 through 86,400
+seconds, Ask limits 1 through 50, process IDs positive `pid_t` values,
+diarization thresholds strictly between zero and one, DER collars zero through
+60 seconds, meetings 1 through 100,000, and segments per meeting 1 through
+10,000. FTS corpus size uses checked multiplication and has a separate
+1,000,000-segment ceiling.
+
+Use clock durations with `Task.sleep(for:)` rather than converting unchecked
+user input to nanoseconds. The recording command finishes every channel stream
+and awaits each live transcription; failure or cancellation first stops
+capture, then cancels and drains those jobs. The M2 harness creates its batch
+task only after microphone startup succeeds. Its cancellation path stops the
+microphone, finishes the feed, cancels the feeder/consumer and batch work, and
+awaits both top-level jobs. Its successful measurement still drains the live
+feed and waits for the already-running batch pass so the acceptance report does
+not change semantics.
+
+**Consequences:** invalid legacy options fail closed instead of selecting a
+default, trapping in a numeric conversion, or allocating an attacker-sized
+synthetic corpus. Returning from a cancelled capture command no longer means
+owned capture/transcription work may still be running. The helper is not a
+promise that the development CLI has a stable public argument ABI, and this
+decision does not change the app, MCP protocol, production schedulers, model
+selection, or product behavior. Real microphone, process-tap, and concurrent
+model evidence remains hardware- and permission-dependent; unit and source
+ratchets cannot certify those field conditions.

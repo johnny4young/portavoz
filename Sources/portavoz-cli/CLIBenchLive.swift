@@ -29,40 +29,47 @@ enum BenchLiveCommand {
         var referencePath: String?
         var outputPath: String?
 
-        var index = 0
-        while index < arguments.count {
-            switch arguments[index] {
-            case "--file":
-                index += 1
-                if index < arguments.count { file = arguments[index] }
-            case "--engine":
-                index += 1
-                if index < arguments.count { engineName = arguments[index] }
-            case "--seconds":
-                index += 1
-                if index < arguments.count { seconds = Int(arguments[index]) ?? seconds }
-            case "--language":
-                index += 1
-                if index < arguments.count { language = arguments[index] }
-            case "--vocab":
-                index += 1
-                if index < arguments.count {
-                    vocabulary = VocabularyPrompt.parse(arguments[index])
+        do {
+            var index = 0
+            while index < arguments.count {
+                switch arguments[index] {
+                case "--file":
+                    file = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--file")
+                case "--engine":
+                    engineName = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--engine")
+                case "--seconds":
+                    seconds = try CLIOptionValue.integer(
+                        arguments,
+                        index: &index,
+                        option: "--seconds",
+                        range: CLIOptionBounds.durationSeconds)
+                case "--language":
+                    language = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--language")
+                case "--vocab":
+                    let raw = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--vocab")
+                    vocabulary = VocabularyPrompt.parse(raw)
+                case "--models-dir":
+                    modelsDir = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--models-dir")
+                case "--reference":
+                    referencePath = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--reference")
+                case "--output":
+                    outputPath = try CLIOptionValue.string(
+                        arguments, index: &index, option: "--output")
+                default:
+                    print("Unknown option: \(arguments[index])")
+                    return
                 }
-            case "--models-dir":
                 index += 1
-                if index < arguments.count { modelsDir = arguments[index] }
-            case "--reference":
-                index += 1
-                if index < arguments.count { referencePath = arguments[index] }
-            case "--output":
-                index += 1
-                if index < arguments.count { outputPath = arguments[index] }
-            default:
-                print("Unknown option: \(arguments[index])")
-                return
             }
-            index += 1
+        } catch {
+            print("error: \(error.localizedDescription)")
+            return
         }
 
         guard let file else {
@@ -76,10 +83,6 @@ enum BenchLiveCommand {
 
         guard let engineChoice = BenchLiveEngineChoice(rawValue: engineName) else {
             print("error: unknown engine \(engineName) (\(BenchLiveEngineChoice.usage))")
-            return
-        }
-        guard seconds > 0 else {
-            print("error: --seconds must be a positive integer")
             return
         }
         guard FileManager.default.isReadableFile(atPath: file) else {

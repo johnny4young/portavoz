@@ -5156,6 +5156,45 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testLegacyCLIOptionsAreBoundedAndCaptureTasksAreDrained() throws {
+        let optionCommands = [
+            "CLIAsk.swift", "CLIBench.swift", "CLIBenchFTS.swift",
+            "CLIBenchLive.swift", "CLIDer.swift", "CLIDiarize.swift",
+            "CLIRecord.swift",
+        ]
+        for file in optionCommands {
+            let source = try Self.contents(of: "Sources/portavoz-cli/\(file)")
+            XCTAssertTrue(source.contains("CLIOptionValue."), file)
+            XCTAssertFalse(
+                source.range(
+                    of: #"(?:Int|Float|Double)\(arguments\[index\]\)\s*\?\?"#,
+                    options: .regularExpression) != nil,
+                file)
+        }
+
+        let support = try Self.contents(of: "Sources/portavoz-cli/CLISupport.swift")
+        XCTAssertTrue(support.contains("maximumFTSSegments = 1_000_000"))
+        XCTAssertTrue(support.contains("multipliedReportingOverflow"))
+        XCTAssertTrue(support.contains("value.isFinite"))
+
+        let record = try Self.contents(of: "Sources/portavoz-cli/CLIRecord.swift")
+        XCTAssertTrue(record.contains("finishLiveJobs("))
+        XCTAssertTrue(record.contains("_ = await session.stop()"))
+        XCTAssertTrue(
+            record.range(
+                of: #"jobs: liveJobs,\s+cancel: true"#,
+                options: .regularExpression) != nil)
+        XCTAssertTrue(record.contains("catch is CancellationError"))
+        XCTAssertFalse(record.contains("Task.sleep(nanoseconds: UInt64(seconds)"))
+
+        let benchmark = try Self.contents(of: "Sources/portavoz-cli/CLIBench.swift")
+        XCTAssertTrue(benchmark.contains("cancelAndDrain("))
+        XCTAssertTrue(benchmark.contains("batch.cancel()"))
+        XCTAssertTrue(benchmark.contains("_ = await feeder.value"))
+        XCTAssertTrue(benchmark.contains("_ = await batch.value"))
+        XCTAssertFalse(benchmark.contains("Task.sleep(nanoseconds: UInt64(seconds)"))
+    }
+
     func testCompanionBYOKEgressCannotBypassTheGateway() throws {
         let core = try Self.contents(of: "Sources/PortavozCore/DataEgress.swift")
         let adapter = try Self.contents(

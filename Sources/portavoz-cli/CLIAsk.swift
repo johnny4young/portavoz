@@ -14,19 +14,33 @@ enum AskCommand {
         var dbPath: String?
         var limit = 6
 
-        var index = 0
-        while index < arguments.count {
-            switch arguments[index] {
-            case "--db":
+        do {
+            var index = 0
+            while index < arguments.count {
+                switch arguments[index] {
+                case "--db":
+                    dbPath = try CLIOptionValue.string(
+                        arguments,
+                        index: &index,
+                        option: "--db")
+                case "--limit":
+                    limit = try CLIOptionValue.integer(
+                        arguments,
+                        index: &index,
+                        option: "--limit",
+                        range: CLIOptionBounds.askLimit)
+                default:
+                    guard !arguments[index].hasPrefix("--") else {
+                        print("Unknown option: \(arguments[index])")
+                        return
+                    }
+                    positional.append(arguments[index])
+                }
                 index += 1
-                if index < arguments.count { dbPath = arguments[index] }
-            case "--limit":
-                index += 1
-                if index < arguments.count { limit = Int(arguments[index]) ?? limit }
-            default:
-                positional.append(arguments[index])
             }
-            index += 1
+        } catch {
+            print("error: \(error.localizedDescription)")
+            return
         }
 
         let question = positional.joined(separator: " ")

@@ -719,7 +719,12 @@ records. Detail plus the latest live General summary comes from one SQLite read
 snapshot. File transcription, diarization, summarization, persisted refinement,
 document export/publication, action-item publication, local voice management,
 and pinned-model lifecycle also enter ApplicationKit workflows. Command files
-retain argument parsing and terminal/protocol formatting. Concrete filesystem,
+retain argument parsing and terminal/protocol formatting. Original development
+commands share strict throwing value readers and explicit resource ranges;
+malformed, non-finite, missing, and oversized values are rejected before model,
+capture, database, or corpus work begins. Capture diagnostics explicitly finish
+their streams, cancel on failure or command cancellation, and await every owned
+live, feeder, consumer, and batch task before returning. Concrete filesystem,
 model, storage, voice, provider, integration, hashing, and platform behavior is
 confined to `CLIComposition` and `CLIProductAdapters`. Capture diagnostics and
 benchmark harnesses retain isolated direct capability construction.
