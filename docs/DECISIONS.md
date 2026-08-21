@@ -12838,3 +12838,51 @@ physical Sequoia, independent Tahoe hardware, cross-host stability, persistent
 indexing, serving, or product acceptance. The app, StorageKit, Ask, Library,
 semantic maintenance, segment default, provisional thresholds, and engine
 authority remain unchanged.
+
+## D355 — Nemotron Latin remains a pinned non-serving live challenger (Aug 2026)
+
+**Context:** `bench-live` already gives live engines the same real-time pacing,
+finalization-lag, WER/CER, and JSON evidence boundary, but Parakeet had no
+executable open-model challenger. FluidAudio 0.15.5 now exposes a multilingual
+Nemotron streaming manager and an upstream Latin 1120 ms CoreML build. Importing
+the whole repository would add unused preprocessors and decoder variants, a
+moving branch would make later evidence irreproducible, timestamp-based delta
+deduplication can drop RNN-T tokens that share a time, and placing an
+unqualified candidate in app composition would turn upstream claims into a
+product decision. Its OpenMDW-1.1 terms also require owner review before
+distribution policy can be accepted.
+
+**Decision:** add one research-only `ModelCatalog.nemotronLatin1120` descriptor
+pinned to exact revision `1a41b75758b0337ff67db7d5408280aaaf23074e` and ten
+individually sized and SHA-256-pinned artifacts: encoder, fused decoder/joint,
+metadata, and tokenizer. FluidAudio's native Swift mel path and fused B1 decode
+make all other repository artifacts inapplicable. Add
+`NemotronLatin1120Engine`, which preloads one immutable shared model set and
+creates all converter, cache, prediction, and decoder state per stream. The
+adapter accepts only an explicit English or Spanish hint, rejects vocabulary
+prompts it cannot honor, validates finite positive PCM and finite monotonic
+token intervals, consumes cumulative timings with an integer cursor, finalizes
+once, and cleans up on success, failure, or cancellation. The shared live
+benchmark must propagate engine/file errors rather than score or write a
+partial hypothesis; it rejects invalid duration/audio, cancels and drains its
+real-time feeder on error, and fails if an engine ends before input completion.
+
+Expose the candidate only as the exact opt-in CLI value
+`bench-live --engine nemotron-latin-1120`. Validate its hints before model
+download, then reuse the existing reference and JSON harness unchanged.
+`ModelCatalog.recommended(for: .liveTranscription)` continues to return
+Parakeet, and the macOS app, recording flow, scheduler, residency ledger,
+Settings model UI, and durable recovery do not reference Nemotron. Gated
+real-model coverage requires a separately installed verified model and explicit
+environment opt-in; ordinary tests and XCUITest never download it.
+
+**Consequences:** Portavoz now has reproducible challenger plumbing and unit
+ratchets for artifact scope, default routing, language/capability admission,
+stable delta projection, malformed model output, and final deduplication. It
+does not yet have a Nemotron Portavoz quality result, model-residency/thermal
+result, physical Sequoia/Tahoe result, code-switching acceptance, or approved
+OpenMDW redistribution/attribution decision. The descriptor's rounded 0.02
+real-time factor reflects an upstream machine-dependent aggregate and is never
+Portavoz evidence. Parakeet remains the live product authority unless the
+owner-reviewed bilingual matrix wins within the existing D7/D137 latency and
+resource budgets and the license review is explicitly accepted.

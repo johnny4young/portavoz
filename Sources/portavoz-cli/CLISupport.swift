@@ -16,8 +16,27 @@ enum CLISupport {
     /// loads the engine.
     static func loadEngine(store: ModelStore) async throws -> ParakeetEngine {
         guard let descriptor = ModelCatalog.recommended(for: .liveTranscription) else {
-            fatalError("catalog has no transcription model")
+            throw ModelStore.ModelStoreError.notInstalled(
+                missing: ["no recommended live-transcription model"],
+                corrupted: [])
         }
+        let directory = try await ensureModel(descriptor, store: store)
+        return try await ParakeetEngine.load(fromVerifiedDirectory: directory)
+    }
+
+    static func loadNemotronResearchEngine(
+        store: ModelStore
+    ) async throws -> NemotronLatin1120Engine {
+        let descriptor = ModelCatalog.nemotronLatin1120
+        let directory = try await ensureModel(descriptor, store: store)
+        return try await NemotronLatin1120Engine.load(
+            fromVerifiedDirectory: directory)
+    }
+
+    private static func ensureModel(
+        _ descriptor: ModelDescriptor,
+        store: ModelStore
+    ) async throws -> URL {
         let report = await store.verify(descriptor)
         if !report.isComplete {
             let megabytes = descriptor.totalSizeBytes / 1_000_000
@@ -30,7 +49,7 @@ enum CLISupport {
             fflush(stdout)
         }
         print("Loading models (first load compiles for the ANE; can take ~a minute)…")
-        return try await ParakeetEngine.load(fromVerifiedDirectory: directory)
+        return directory
     }
 
     static func timestamp(_ seconds: TimeInterval) -> String {

@@ -680,6 +680,33 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## D354 — Bilingual semantic resource coverage uses a separate warm fixture"))
     }
 
+    func testNemotronLiveChallengerIsBenchmarkOnlyAndParakeetStillServes() throws {
+        let registry = try Self.contents(
+            of: "Sources/ModelStoreKit/ModelRegistry.swift")
+        XCTAssertTrue(registry.contains("public static let nemotronLatin1120"))
+        XCTAssertTrue(registry.contains("case .liveTranscription:\n            return parakeetTdtV3"))
+
+        let bench = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchLive.swift")
+        XCTAssertTrue(bench.contains(
+            "case nemotronLatin1120 = \"nemotron-latin-1120\""))
+        XCTAssertTrue(bench.contains("loadNemotronResearchEngine"))
+        let cli = try Self.contents(of: "Sources/portavoz-cli/CLI.swift")
+        XCTAssertTrue(cli.contains(
+            "[--engine parakeet|speech|nemotron-latin-1120]"))
+
+        let productMatches = try Self.sourceMatches(
+            under: "Sources/portavoz-app",
+            pattern: #"NemotronLatin1120|nemotronLatin1120"#)
+        XCTAssertTrue(
+            productMatches.isEmpty,
+            "D355 challenger cannot enter product composition")
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains(
+            "## D355 — Nemotron Latin remains a pinned non-serving live challenger"))
+    }
+
     func testSemanticIndexPortKeepsExactControlOutsideProductConsumers() throws {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         XCTAssertTrue(decisions.contains("## D206"))

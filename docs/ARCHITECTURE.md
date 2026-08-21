@@ -119,7 +119,7 @@ self-contained over system frameworks and carries no module dependency.
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
-| `TranscriptionKit` | Live Parakeet, quality Whisper, and macOS 26 SpeechAnalyzer adapters; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
+| `TranscriptionKit` | Live Parakeet, quality Whisper, macOS 26 SpeechAnalyzer, and a CLI-only non-serving Nemotron live challenger; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
@@ -880,6 +880,21 @@ host installations. Settings verifies in the background and renders a checking
 state until evidence exists; it never exposes a partial installation as
 downloaded. Recording remains audio-first and does not await any of these
 checks.
+
+The model catalog includes one separately pinned research descriptor for the
+Nemotron 3.5 ASR Latin 1120 ms CoreML build. Its lean ten-artifact set contains
+only the encoder, fused decoder/joint, metadata, and tokenizer consumed by
+FluidAudio's native-Swift mel path. `NemotronLatin1120Engine` shares immutable
+model graphs but creates decoder, cache, converter, and prediction state per
+stream; cumulative RNN-T timings are projected by token index rather than
+timestamp. An exact directory fence also rejects unlisted optional bundles and
+filesystem links before FluidAudio can choose a decode path. The adapter
+requires an explicit English or Spanish hint, rejects unsupported vocabulary
+and malformed audio/model output, and is reachable only through the explicit
+`bench-live --engine nemotron-latin-1120` CLI path. It is absent from the app
+composition and `ModelCatalog.recommended`; Parakeet remains the live authority.
+The descriptor and adapter are executable benchmark plumbing, not accepted
+quality, memory, thermal, license-distribution, Sequoia, or Tahoe evidence.
 
 ## Persistence and aggregate integrity
 

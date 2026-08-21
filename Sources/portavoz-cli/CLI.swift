@@ -93,6 +93,10 @@ struct PortavozCLI {
               portavoz-cli record [--seconds N] [--mic <name-or-uid>] [--pid <pid> ...] [--system]
                                   [--out <dir>] [--transcribe] [--language es] [--models-dir <dir>]
               portavoz-cli transcribe --file <wav> [--language es] [--models-dir <dir>]
+              portavoz-cli bench-live --file <wav|caf>
+                                      [--engine parakeet|speech|nemotron-latin-1120]
+                                      [--seconds N] [--language es] [--reference <txt>]
+                                      [--output <json>] [--models-dir <dir>]
               portavoz-cli bench-fts [--meetings N] [--segments-per-meeting N]
               portavoz-cli bench-scale [--library-sizes 1000,10000,50000,100000]
                                         [--meeting-minutes 30,120,480] [--runs 20] [--output <json>]

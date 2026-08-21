@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime), D355 (pinned non-serving Nemotron challenger).
 
 Additional decision: D235 (correction recovery and scale gates).
 
@@ -137,11 +137,12 @@ invoke this composer and corrected text remains intentionally unmaterialized.
 |---|---|---|
 | Live (`liveTranscription`) | Parakeet TDT 0.6B v3 int8 (FluidAudio) | ✅ 0.53 s p95 measured |
 | Quality (`finalTranscription`) | Whisper large-v3-turbo (WhisperKit 1.0.0, exact pin) | ✅ 23–42x measured |
+| Research-only live challenger | Nemotron 3.5 ASR Latin 1120 ms (FluidAudio) | Adapter complete; Portavoz evidence not accepted |
 | Multiple per role with recommender | — | Planned (D25/M12) |
 
 ## Model registry — ModelStoreKit
 
-- `ModelCatalog` with 7 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), `speakerDiarization` (10 artifacts, ~14 MB), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperLargeV3_626MB`, `whisperTokenizer` (3 files), the default `mlxQwen35`, and the retained `mlxQwen3` A/B alternative. Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` is pinned to an exact Hugging Face commit.
+- `ModelCatalog` with 8 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), research-only `nemotronLatin1120` (10 artifacts, ~588 MB, lean fused-decoder subset), `speakerDiarization` (10 artifacts, ~14 MB), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperLargeV3_626MB`, `whisperTokenizer` (3 files), the default `mlxQwen35`, and the retained `mlxQwen3` A/B alternative. Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` is pinned to an exact Hugging Face commit.
 - `ModelStore` (actor): download each artifact into a sibling on the destination volume → verify size + sha256 (CryptoKit streaming 1 MiB) → atomically rename or replace. `verify()` re-hashes; `ensureAvailable()` heals missing/corrupt artifacts without first deleting the old destination. Installed in `~/Library/Application Support/Portavoz/Models/` (`--models-dir` override).
 - `VerifiedModelLifecycle` (actor): coalesces complete descriptor checks, returns an opaque `VerifiedInstallation` only after every pinned digest passes, and caches only successful evidence by descriptor ID + revision. Missing/corrupt results are never cached. Same-descriptor install/remove operations execute in invocation order; invalidation and forced verification supersede stale checks, and waiting callers retry current evidence rather than returning an obsolete result. Cancellation is honored before publication but not reported as false failure after a verified install commits. No app readiness path infers installation from one filename or aggregate size.
 - **Gotcha protected by a test**: Parakeet's `folderName` must be `parakeet-tdt-0.6b-v3` (WITHOUT the `-coreml` suffix) — FluidAudio resolves the folder that way, and if it does not find the files it **re-downloads the entire repository without verification** into a sibling directory.
@@ -176,6 +177,41 @@ invoke this composer and corrected text remains intentionally unmaterialized.
 - `TdtDecoderState()` is `throws` and is passed `inout` (local variable). `ASRResult.duration` = 0 on the disk-backed path → read actual duration with AVAudioFile.
 - First load compiles for ANE (~14 s for the encoder on M4 Max); CoreML caches it afterward (~1 s).
 - Licenses: Parakeet v3 model CC-BY-4.0, FluidAudio Apache-2.0, WhisperKit MIT — all MIT-compatible with attribution.
+
+## Research-only live challenger: Nemotron Latin 1120 ms (D355)
+
+- `ModelCatalog.nemotronLatin1120` pins the exact upstream revision and all ten
+  files required by FluidAudio's lean B1 path. Native Swift computes mel input;
+  the fused `decoder_joint.mlmodelc` makes bare decoder/joint and preprocessor
+  bundles unnecessary. Before load, an exact directory fence rejects every
+  symlink, special file, unlisted file, and unlisted directory: FluidAudio's
+  optional-bundle discovery must never choose an artifact outside the verified
+  descriptor. The registry entry is not returned by `recommended`.
+- `NemotronLatin1120Engine` preloads one immutable
+  `SharedNemotronMultilingualModels` set, then constructs a fresh actor-owned
+  stream manager for every transcription. Per-stream caches, decoder state,
+  audio conversion, prediction buffers, cancellation, finalization, and cleanup
+  therefore never cross jobs.
+- The upstream manager exposes cumulative stable token timings. The adapter
+  remembers an integer token cursor and emits only its new suffix; timestamp
+  filtering is forbidden because adjacent RNN-T tokens may share a timestamp.
+  Cursor regression, non-finite timings, invalid PCM, missing/unsupported
+  language, and vocabulary prompts fail closed. A timing-free final transcript
+  has one duration-bounded fallback segment.
+- The only composition path is
+  `portavoz-cli bench-live --engine nemotron-latin-1120 --language en|es`.
+  It validates hints before a possible ~588 MB download and reuses the existing
+  real-time pacing, finalization-lag, WER/CER, and JSON evidence harness. That
+  harness now rejects nonpositive duration and invalid audio, propagates stream
+  and file-read failures instead of returning partial evidence, and cancels and
+  drains its real-time feeder if an engine fails or ends early. The app,
+  recording, scheduler, residency ledger, and product model UI do not reference
+  this candidate.
+- OpenMDW-1.1 is recorded as upstream license metadata, not accepted
+  redistribution policy. Parakeet remains the live engine until the same
+  owner-reviewed bilingual corpus demonstrates quality, names/digits,
+  code-switching, latency, thermals, and resident memory on supported Sequoia
+  and Tahoe hosts and the owner accepts the license/attribution obligations.
 
 Live transcript presentation also receives a content-free quality signal when
 the accepted system channel remains at the PCM ceiling. This warning is
@@ -391,7 +427,7 @@ effort (D65).
 2. **⚠️ Hangs in CLI processes without a bundle**: `SpeechTranscriber.supportedLocale(equivalentTo:)` (first await) suspends FOREVER in `portavoz-cli` — sample shows the cooperative pool empty and the run loop parked (the Speech daemon never responds to a process without bundle/TCC context). **The live-role benchmark must run INSIDE the app** — `NSSpeechRecognitionUsageDescription` has already been added to Info.plist.
 3. **Shared harness**: `LiveTranscriptionBench` (TranscriptionKit) paces the file in real time (1 s chunks) and measures finalization lag. Entry points: `portavoz-cli bench-live --engine parakeet` and, for speech, `Portavoz.app/Contents/MacOS/portavoz-app --bench-live <file> [--seconds] [--language]` (hidden launch argument: runs in-bundle, prints to stdout, exits).
 4. **Accuracy lane (MODEL-001, Jul 2026)**: `TranscriptionAccuracy` (TranscriptionKit, pure, 5 tests) computes WER and CER with rolling-buffer Levenshtein over normalization that keeps Spanish accents — they are phonemic ("papa" vs "papá" is a real error), while case, punctuation, and whitespace are not. The bench result now carries every final row (`Result.hypothesis`), and `bench-live` gains `--reference <txt>` (scores WER/CER against a plain-text transcript) and `--output <json>` (one evidence artifact per run, same convention as the scale benches), so an engine comparison leaves committed numbers instead of prose. The quality spec's rule stands: third-party accuracy tables are citations, never our measurements.
-5. **Nemotron challenger (MODEL-001 audit, Aug 2026)**: FluidAudio
+5. **Nemotron challenger (MODEL-001/D355, Aug 2026)**: FluidAudio
    0.15.5—the exact resolved dependency—contains
    `StreamingNemotronMultilingualAsrManager` and tagged downloadable Nemotron
    3.5 ASR Streaming Multilingual 0.6B CoreML variants. The Latin-vocabulary
@@ -399,12 +435,14 @@ effort (D65).
    identifies 560/1120/2240 ms tiers targeting macOS 14+/iOS 17+. This
    supersedes the earlier Qwen3 wait: FluidAudio 0.15.3
    explicitly removed that experimental backend. No upstream WER/RTFx value is
-   a Portavoz result. The next step is a **non-serving, sha256-pinned 1120 ms
-   Latin adapter** through `bench-live --reference/--output`, tested against
-   Parakeet v3 on the same owner-reviewed bilingual accents, code-switching,
-   names, digits, latency, thermal, and resident-memory corpus. Product routing
-   stays unchanged until that evidence wins within D7/D137 resource budgets and
-   the OpenMDW-1.1 redistribution/attribution terms pass review.
+   a Portavoz result. D355 now supplies the **non-serving, sha256-pinned 1120 ms
+   Latin adapter** through `bench-live --reference/--output`; no model was
+   downloaded and no quality run is implied by that code delivery. The next
+   step is the same owner-reviewed bilingual comparison against Parakeet v3 for
+   accents, code-switching, names, digits, latency, thermal, and resident
+   memory. Product routing stays unchanged until that evidence wins within
+   D7/D137 resource budgets and the OpenMDW-1.1 redistribution/attribution terms
+   pass owner review.
 6. **⚠️ Finalization bug (fixed)**: `finalizeAndFinishThroughEndOfInput()` is called by the FEEDER when the input is exhausted — sequencing it after the `transcriber.results` loop deadlocks (results ends only when someone finalizes; the first benchmark remained parked forever).
 7. **AVAudioConverter concurrency boundary**: the converter's `@Sendable` input callback receives its fully initialized, immutable source through one private lock-protected one-shot box. The localized `@unchecked Sendable` proof avoids mutable captures and does not suppress AVFoundation concurrency checking at import scope (D118).
 8. **Structured cancellation and input ownership**: the input feeder is a child task of the results scope, not an unstructured task. Results completion, error, or consumer cancellation cancels and drains the feeder before output termination; its input continuation always finishes, and one actor gate invokes `cancelAndFinishNow()` at most once. Empty chunks are rejected before AVAudioPCMBuffer construction and no unsafe buffer address is force-unwrapped. First Listen prepares the optional Apple asset before opening the microphone, so a cold wait cannot accumulate an unbounded capture backlog.

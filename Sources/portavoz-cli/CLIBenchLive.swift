@@ -3,7 +3,8 @@ import ModelStoreKit
 import PortavozCore
 import TranscriptionKit
 
-/// `portavoz-cli bench-live --file <wav|caf> [--engine parakeet|speech]
+/// `portavoz-cli bench-live --file <wav|caf>
+///                          [--engine parakeet|speech|nemotron-latin-1120]
 ///                          [--seconds N] [--language es] [--vocab "a,b"]
 ///                          [--models-dir <dir>] [--reference <txt>]
 ///                          [--output <json>]`
@@ -20,7 +21,7 @@ enum BenchLiveCommand {
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(_ arguments: [String]) async {
         var file: String?
-        var engineName = "parakeet"
+        var engineName = BenchLiveEngineChoice.parakeet.rawValue
         var seconds = 60
         var language: String?
         var vocabulary: [String] = []
@@ -68,8 +69,26 @@ enum BenchLiveCommand {
             print(
                 // One-line usage text.
                 // swiftlint:disable:next line_length
-                "Usage: portavoz-cli bench-live --file <wav|caf> [--engine parakeet|speech] [--seconds N] [--language es] [--vocab \"a,b\"] [--reference <txt>] [--output <json>]"
+                "Usage: portavoz-cli bench-live --file <wav|caf> [--engine parakeet|speech|nemotron-latin-1120] [--seconds N] [--language es] [--vocab \"a,b\"] [--reference <txt>] [--output <json>]"
             )
+            return
+        }
+
+        guard let engineChoice = BenchLiveEngineChoice(rawValue: engineName) else {
+            print("error: unknown engine \(engineName) (\(BenchLiveEngineChoice.usage))")
+            return
+        }
+        guard seconds > 0 else {
+            print("error: --seconds must be a positive integer")
+            return
+        }
+        guard FileManager.default.isReadableFile(atPath: file) else {
+            print("error: input audio is not readable: \(file)")
+            return
+        }
+        if let referencePath,
+            !FileManager.default.isReadableFile(atPath: referencePath) {
+            print("error: reference transcript is not readable: \(referencePath)")
             return
         }
 
@@ -78,15 +97,15 @@ enum BenchLiveCommand {
             print("bench-live · \(engineName) · \(seconds)s de \(file)")
 
             let result: LiveTranscriptionBench.Result
-            switch engineName {
-            case "parakeet":
+            switch engineChoice {
+            case .parakeet:
                 let store = CLISupport.modelStore(fromModelsDir: modelsDir)
                 let engine = try await CLISupport.loadEngine(store: store)
                 result = try await LiveTranscriptionBench.run(
                     file: URL(fileURLWithPath: file), seconds: seconds,
                     transcribe: { engine.transcribe($0, hints: hints) },
                     log: { print($0) })
-            case "speech":
+            case .speech:
                 guard #available(macOS 26.0, *) else {
                     print("error: --engine speech requiere macOS 26")
                     return
@@ -104,9 +123,15 @@ enum BenchLiveCommand {
                         SpeechAnalyzerEngine().transcribe($0, hints: hints, locale: locale)
                     },
                     log: { print($0) })
-            default:
-                print("error: engine desconocido \(engineName) (parakeet|speech)")
-                return
+            case .nemotronLatin1120:
+                _ = try NemotronLatin1120Engine.validate(hints: hints)
+                let store = CLISupport.modelStore(fromModelsDir: modelsDir)
+                let engine = try await CLISupport.loadNemotronResearchEngine(
+                    store: store)
+                result = try await LiveTranscriptionBench.run(
+                    file: URL(fileURLWithPath: file), seconds: seconds,
+                    transcribe: { engine.transcribe($0, hints: hints) },
+                    log: { print($0) })
             }
 
             print("")
@@ -179,5 +204,15 @@ enum BenchLiveCommand {
         let data = try JSONSerialization.data(
             withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])
         try data.write(to: URL(fileURLWithPath: path))
+    }
+}
+
+enum BenchLiveEngineChoice: String, CaseIterable {
+    case parakeet
+    case speech
+    case nemotronLatin1120 = "nemotron-latin-1120"
+
+    static var usage: String {
+        allCases.map(\.rawValue).joined(separator: "|")
     }
 }
