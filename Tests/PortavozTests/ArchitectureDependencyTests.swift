@@ -605,6 +605,56 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## D352 — Ask quality evidence rejects randomized ties"))
     }
 
+    func testRetrievalChunkEvidenceIsContentFreeAndNonServing() throws {
+        let benchmark = try Self.contents(
+            of: "Sources/portavoz-cli/CLIBenchRetrievalChunkEvidence.swift")
+        for required in [
+            "research-resource-correction-only",
+            "candidate-construction-and-one-meeting-rebuild-only",
+            "content-free",
+            "assetDownloadPolicy = \"never\"",
+            "candidateSelection = \"not-evaluated\"",
+            "performanceDecision = \"not-evaluated\"",
+            "candidateEmbeddingUpsertCount",
+            "vectorizedTurnCount",
+            "CLIAppleSentenceBoundaryEmbedding()",
+            "ContentDigest.sha256(fixtureData)",
+            "outputAlreadyExists",
+        ] {
+            XCTAssertTrue(
+                benchmark.contains(required),
+                "retrieval chunk evidence is missing \(required)")
+        }
+        let runner = try Self.contents(
+            of: "scripts/retrieval_chunk_evidence.py")
+        for required in [
+            "MINIMUM_RUNS = 3",
+            "worktree must be clean",
+            "structural observations drifted across fresh processes",
+            "public-fixture-has-zero-baseline-semantic-vector-coverage",
+            #""candidateSelection": "not-evaluated""#,
+            #""performanceDecision": "not-evaluated""#,
+            "0o600",
+            "0o700",
+        ] {
+            XCTAssertTrue(
+                runner.contains(required),
+                "retrieval chunk runner is missing \(required)")
+        }
+        for root in ["Sources/portavoz-app", "Sources/StorageKit"] {
+            let productSources = try Self.sourceMatches(
+                under: root,
+                pattern: #"RetrievalChunkEvidence"#)
+            XCTAssertTrue(
+                productSources.isEmpty,
+                "D353 evidence cannot enter product composition: \(root)")
+        }
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains(
+            "## D353 — Chunk resource evidence stays threshold-free"))
+    }
+
     func testSemanticIndexPortKeepsExactControlOutsideProductConsumers() throws {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         XCTAssertTrue(decisions.contains("## D206"))

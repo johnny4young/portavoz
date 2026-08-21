@@ -12746,3 +12746,51 @@ but added 39 hard-negative hits and regressed code-switched and same-language
 relationship slices. No threshold is tuned from that one host, no candidate is
 selected, and resource, correction-cost, private-corpus, Sequoia, and
 independent Tahoe evidence remain open.
+
+## D353 — Chunk resource evidence stays threshold-free (Aug 2026)
+
+**Context:** D351 added a concrete semantic-boundary candidate, but the first
+quality comparison carried no construction, memory, or correction-cost
+evidence. Comparing one timing from a warm process would mix model preparation,
+candidate construction, indexing, and serving lifecycles. It would also invite
+a product or performance verdict from one synthetic corpus on one Tahoe-family
+development host. Correction publication fences, representation-only text
+changes, topology changes, and structural split/merge operations exercise
+different invalidation behavior and must remain distinguishable.
+
+**Decision:** add a CLI-only, content-free resource/correction observation for
+the segment source control, `speaker-turn-v1`, `conversation-window-v1`, and
+the dynamic `semantic-v1.<proposal-sha256>` candidate. One fresh process owns
+one role. Concrete Apple model construction happens before measurement and
+never requests asset downloads; the measured construction lifecycle begins at
+candidate derivation and ends before any persistent index write or query. It
+reports wall time, process CPU, baseline/peak/ending physical footprint,
+resulting unit/source/turn counts, and semantic boundary counters. It never
+emits transcript text, meeting/source/unit identities, vectors, model names,
+queries, or paths.
+
+The correction matrix rebuilds only one deterministic meeting and records
+construction cost plus retained, upsert, and removed unit counts for publication
+fences, Unicode/whitespace-equivalent text, replacement text, actor and language
+changes, and structural split/merge. Semantic vector calls remain separate from
+delta upserts because this benchmark candidate has no incremental vector cache
+or product writer. The clean orchestrator binds observations to fixture digest,
+source commit, Release build, toolchain digest, explicit host profile, runtime
+OS, hardware shape, and dynamic adapter. It rotates all four roles across three
+to five fresh processes, requires exact structural agreement while retaining
+raw timing samples, publishes owner-only non-overwriting artifacts, and leaves
+candidate selection and performance `not-evaluated`. No numeric pass threshold
+is derived.
+
+**Consequences:** the canonical public-synthetic-v2 corpus produces 120
+complete turns but zero baseline semantic vector calls: every turn either
+contains mixed English/Spanish source metadata or carries the explicit mixed
+sentinel, so the partitioned candidate correctly refuses cross-space cosine.
+The clean receipt must therefore be `blocked` for semantic resource coverage
+rather than laundering model-load footprint into vector-construction evidence.
+The matrix still characterizes deterministic unit and correction invalidation
+mechanics for every role. A separate public, truthful bilingual resource fixture
+with homogeneous complete turns, plus physical Sequoia and independent Tahoe
+hosts and owner-reviewed private evidence, is required before resource review.
+This decision changes no app composition, StorageKit schema, semantic writer,
+Ask/Library serving path, product default, threshold, or engine authority.

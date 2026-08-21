@@ -2508,6 +2508,37 @@ optional Metal Toolchain/MLX metallib. This is Tahoe-family host automation,
 not physical Sequoia, independent Tahoe hardware, accepted model quality,
 resource/correction cost, or product-serving authority.
 
+D353 adds a threshold-free, content-free construction and correction-cost
+matrix for all four SEARCH-4b unit roles. `make retrieval-chunk-evidence`
+requires one clean commit, verifies the canonical public fixture, builds one
+Release CLI, fingerprints the fixture and Swift toolchain, and rotates segment,
+speaker-turn, conversation-window, and semantic-boundary roles through three
+to five fresh processes. Every observation is also bound to an explicit host
+profile, runtime OS/hardware, build identity, and exact dynamic semantic
+adapter. Non-resource structure must agree exactly across repetitions; any
+drift removes staging and publishes nothing.
+
+The measured lifecycle is deliberately narrow. Apple model preparation occurs
+before sampling and asset download is forbidden. Full-corpus candidate
+construction records wall/CPU time, baseline/peak/ending physical footprint,
+resulting unit/source/turn counts, and semantic boundary counters. Seven
+one-meeting scenarios cover publication fences, normalization-equivalent text,
+replacement text, actor reassignment, language change, structural split, and
+structural merge. Each records retained/upsert/removed units plus resource and
+semantic vector-call counts. These values do not include a persistent index
+write, query, answer, asset download, or product maintenance lifecycle.
+
+The validator rejects unexpected fields and explicit text, meeting/source/unit
+identities, vectors, model names, queries, and paths. Complete observations and
+their aggregate receipt are atomically published with directory mode 0700 and
+file mode 0600. The receipt remains research-only with selection/performance
+`not-evaluated`. The public fixture exposes a material evidence gap: its 120
+complete turns are mixed-language, so the partitioned candidate correctly
+performs zero baseline vector calls. The receipt is therefore blocked for
+semantic resource coverage until a truthful homogeneous-turn bilingual
+resource fixture exists. This result cannot be promoted to physical Sequoia,
+independent Tahoe hardware, private-corpus, model-quality, or serving evidence.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |

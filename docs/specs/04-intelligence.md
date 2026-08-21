@@ -1319,6 +1319,36 @@ fail-closed identity, not multilingual retrieval parity, model suitability,
 resource superiority, physical Sequoia/Tahoe availability, or serving
 authority.
 
+### Retrieval-chunk resource and correction observation (D353)
+
+`portavoz-cli bench-retrieval-chunks` characterizes one retrieval-unit role in
+one fresh process. The segment control uses canonical segment identity and a
+normalized source fingerprint; the three chunk roles use the same production-
+independent derivation contracts described above. The output is content-free:
+it carries counts, semantic decision counters, elapsed wall/CPU time, and
+physical-footprint samples, but no transcript, meeting/source/unit identity,
+query, vector, model name, or path. Apple sentence models are prepared before
+measurement and never downloaded by this command. Therefore the lifecycle is
+candidate construction, not model loading, persistent indexing, retrieval, or
+answer generation.
+
+Seven one-meeting correction scenarios distinguish publication fences and
+Unicode/whitespace equivalence from replacement text, actor/language topology,
+and structural split/merge. Each scenario reports retained, upsert, and removed
+units. Semantic vector calls are reported independently: the benchmark has no
+incremental vector cache, so recomputation work is not equivalent to the final
+index-write set.
+
+The clean collector rotates all four roles through three to five Release
+processes and requires deterministic non-resource structure. Its private
+receipt is source, fixture, toolchain, host-profile, OS, hardware, and dynamic-
+adapter bound, but threshold-free; selection and performance remain
+`not-evaluated`. The canonical public fixture's 120 complete turns have mixed
+language metadata and produce zero baseline semantic vectors. This correctly
+blocks semantic resource coverage and requires a separate truthful homogeneous-
+turn bilingual fixture. It is not permission to change the product segment
+default or the serving/indexing composition.
+
 ### Semantic-index query port (D206)
 
 `SemanticIndexSearching` is the read-only ApplicationKit seam between product

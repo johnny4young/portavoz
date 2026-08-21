@@ -13,6 +13,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-ask-quality ask-quality-pair \
+	test-retrieval-chunk-evidence retrieval-chunk-evidence \
 	test-commitment-quality commitment-quality-deterministic \
 	commitment-quality-model commitment-quality-compare \
 	test-commitment-link-quality commitment-link-quality-control \
@@ -510,6 +511,27 @@ ask-quality-pair:
 		--candidate "$(PORTAVOZ_ASK_QUALITY_CANDIDATE)" \
 		--runs "$(PORTAVOZ_ASK_QUALITY_RUNS)" \
 		--output "$(PORTAVOZ_ASK_QUALITY_OUTPUT)"
+
+## Collect content-free construction and one-meeting correction observations
+## for all four SEARCH-4b retrieval units from one clean Release commit.
+PORTAVOZ_RETRIEVAL_CHUNK_RUNS ?= 3
+PORTAVOZ_RETRIEVAL_CHUNK_OUTPUT ?=
+retrieval-chunk-evidence:
+	@test -n "$(PORTAVOZ_RETRIEVAL_CHUNK_BUILD)" || \
+		(echo "PORTAVOZ_RETRIEVAL_CHUNK_BUILD is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RETRIEVAL_CHUNK_PROFILE)" || \
+		(echo "PORTAVOZ_RETRIEVAL_CHUNK_PROFILE is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RETRIEVAL_CHUNK_OUTPUT)" || \
+		(echo "PORTAVOZ_RETRIEVAL_CHUNK_OUTPUT is required" >&2; exit 64)
+	python3 scripts/retrieval_chunk_evidence.py \
+		--fixture Fixtures/AskQuality/public-synthetic-v2.json \
+		--build "$(PORTAVOZ_RETRIEVAL_CHUNK_BUILD)" \
+		--host-profile "$(PORTAVOZ_RETRIEVAL_CHUNK_PROFILE)" \
+		--runs "$(PORTAVOZ_RETRIEVAL_CHUNK_RUNS)" \
+		--output "$(PORTAVOZ_RETRIEVAL_CHUNK_OUTPUT)"
+
+test-retrieval-chunk-evidence:
+	python3 -m unittest Tests.Tooling.test_retrieval_chunk_evidence
 
 ## Release performance ledger (PERF-001/PERF-008): run the unattended
 ## benchmark harnesses, evaluate every journey against its declared budget and

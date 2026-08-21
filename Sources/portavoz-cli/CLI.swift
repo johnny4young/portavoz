@@ -67,6 +67,8 @@ struct PortavozCLI {
             await BenchCaptureCommand.run(arguments)
         case "bench-ask-quality":
             await BenchAskQualityCommand.run(arguments)
+        case "bench-retrieval-chunks":
+            await BenchRetrievalChunkEvidenceCommand.run(arguments)
         case "bench-commitment-link-quality":
             await BenchCommitmentLinkQualityCommand.run(arguments)
         case "bench-commitment-link-similarity":
@@ -79,8 +81,11 @@ struct PortavozCLI {
     }
 
     static func printUsage() {
-        print(
-            """
+        print(usage)
+    }
+
+    private static let usage =
+        """
             Portavoz dev CLI
 
             Usage:
@@ -102,6 +107,14 @@ struct PortavozCLI {
                                               --build <id> --commit <sha>
                                               [--retrieval-unit <unit>]
                                               [--asset-download never|if-needed]
+                units: segment, speaker-turn, conversation-window,
+                       semantic-boundary
+              portavoz-cli bench-retrieval-chunks --fixture <json> --output <json>
+                                                  --build <id> --commit <sha>
+                                                  --fixture-sha256 <sha256>
+                                                  --toolchain-sha256 <sha256>
+                                                  --host-profile <profile>
+                                                  --retrieval-unit <unit>
                 units: segment, speaker-turn, conversation-window,
                        semantic-boundary
               portavoz-cli bench-commitment-link-quality --fixture <json> --output <json>
@@ -134,8 +147,6 @@ struct PortavozCLI {
               --language <tag>   Language hint, e.g. "es" or "en" (default: auto-detect)
               --models-dir <dir> Model store root (default: ~/Library/Application Support/Portavoz/Models)
             """
-        )
-    }
 
     static func listDevices() {
         #if os(macOS)

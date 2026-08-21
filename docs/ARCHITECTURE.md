@@ -3693,6 +3693,28 @@ sources; the paired runner accepts only that exact identity shape. Neither the
 app nor StorageKit composes the chunker or NaturalLanguage adapter. Product Ask
 and Library continue to serve canonical segment units.
 
+The CLI also owns a separate schema-1 retrieval-chunk resource/correction
+observation. It runs exactly one of the segment, speaker-turn,
+conversation-window, or semantic-boundary roles per fresh process. Concrete
+model preparation stays outside measurement; the measured lifecycle covers
+only in-memory candidate construction and one-meeting correction rebuild, not
+asset acquisition, persistent indexing, retrieval, or answer generation. The
+observation exposes content-free unit/source/turn counts, semantic boundary
+counters, delta counts, wall/CPU time, and physical-footprint samples. It
+contains no transcript, source identity, unit identity, vector, query, model
+name, or path.
+
+`scripts/retrieval_chunk_evidence.py` admits only a clean source commit and the
+canonical public fixture, binds every artifact to fixture/source/toolchain/host
+identity, rotates all four roles across at least three fresh processes, and
+requires their non-resource structure to agree exactly. Artifacts are atomic,
+non-overwriting, owner-only, and private. The receipt is threshold-free and
+keeps selection and performance decisions unevaluated. Public-synthetic-v2 has
+zero baseline semantic vector coverage because its complete turns are
+mixed-language; that condition produces a blocked receipt instead of a false
+semantic resource conclusion. No part of this harness enters app or StorageKit
+composition.
+
 Semantic maintenance does not publish `.index` work into the owner-leased
 processing ledger. That ledger continues to control the visible meeting
 lifecycle, while degradable derived-index failure remains outside
