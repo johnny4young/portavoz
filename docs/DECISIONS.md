@@ -12972,3 +12972,46 @@ automatic-name admission, synchronization policy, nor model lifetime. Unit and
 real-app automation prove fail-closed preservation and recovery presentation;
 they do not prove a real Keychain-reset journey, recover lost biometric data,
 or replace physical Sequoia/Tahoe and VoiceOver evidence.
+
+## D358 — Encrypted voice identity mutations are serialized across processes (Aug 2026)
+
+**Context:** D357 made each encrypted read fail closed but did not make a
+multi-step mutation indivisible. Two `VoiceGallery` values could both decrypt
+the same collection and atomically replace it in succession, silently losing
+one newly remembered participant. An own-voice save could also cross a delete
+between its file and Keychain operations and leave ciphertext without its key.
+App adapters execute these synchronous capabilities on independent utility
+tasks, and the stable app, Dev app, and CLI may share the same local identity
+root. A Swift actor or in-memory mutex would protect only one instance/process;
+`Synchronization.Mutex` additionally requires macOS 15 while the package still
+compiles for macOS 14.4.
+
+**Decision:** guard each encrypted identity payload with a persistent,
+content-free sidecar (`voiceprint.lock` or `voice-gallery.lock`) and hold one
+exclusive BSD `flock` lease across the complete authoritative transaction:
+file-presence recheck, Keychain read/create/delete, decrypt/decode,
+read-modify-write, encryption and atomic replacement, or payload deletion.
+Open the sidecar with `O_CLOEXEC | O_NOFOLLOW`, force mode `0600`, retry
+`EINTR`, and fail before touching identity state when open, permission, or lock
+acquisition fails. The sidecar remains after explicit reset so reset and save
+cannot cross. A public `exists` property remains only a momentary UI/test
+snapshot and is never mutation authority.
+
+Keep the capability API synchronous and the existing app adapters on their
+utility executor. Once a transaction has been admitted, caller cancellation
+waits for that short file/Keychain boundary rather than splitting it. The file
+descriptor releases the advisory lock on scope exit, thrown error, or process
+termination.
+
+**Consequences:** gallery additions/removals are linearizable per payload even
+across separately constructed stores and processes, while own-voice save/load/
+delete cannot interleave their ciphertext and key halves. Independent files do
+not block each other, the lock stores no biometric material, and no macOS
+15-only synchronization API raises the deployment floor. Deterministic tests
+hold one store inside the secret boundary and prove a contender cannot enter,
+then verify both gallery updates survive and save-then-delete leaves neither
+file nor key. They also verify empty mode-`0600` sidecars and fail-closed
+symlink handling. Automation does not replace a physical stable/Dev/CLI
+abrupt-termination exercise on Sequoia and Tahoe. BSD locking is advisory, so
+a still-running pre-D358 process does not cooperate; mixed-version exclusion
+remains an operational constraint rather than a data-migration guarantee.

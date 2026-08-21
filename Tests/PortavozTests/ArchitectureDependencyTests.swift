@@ -6082,8 +6082,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(voiceSettings.contains("settings-voice-storage-retry"))
         XCTAssertTrue(voiceSettings.contains("settings-voice-storage-reset"))
         XCTAssertFalse(voiceSettings.contains("enrollmentDate = try?"))
-        XCTAssertTrue(voiceGallery.contains("var all = try voices()"))
-        XCTAssertTrue(voiceGallery.contains("let remaining = try voices().filter"))
+        XCTAssertTrue(voiceGallery.contains("var all = try readWithoutLock()"))
+        XCTAssertTrue(voiceGallery.contains("let remaining = try readWithoutLock().filter"))
         XCTAssertFalse(voiceGallery.contains("try? voices()"))
         XCTAssertFalse(voiceGallery.contains("combined!"))
         XCTAssertTrue(voiceprintStore.contains("guard allowCreation else"))
@@ -6092,6 +6092,34 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(voiceprintStore.contains("combined!"))
         XCTAssertTrue(adapter.contains("simulateUnavailable: usesTemporaryStore"))
         XCTAssertTrue(localVoiceAdapter.contains("simulateUnavailable: usesTemporaryStore"))
+    }
+
+    func testEncryptedVoiceIdentityMutationsRemainCrossProcessTransactions() throws {
+        let gallery = try Self.contents(of: "Sources/DiarizationKit/VoiceGallery.swift")
+        let voiceprint = try Self.contents(
+            of: "Sources/DiarizationKit/VoiceprintStore.swift")
+        let transaction = try Self.contents(
+            of: "Sources/DiarizationKit/VoiceIdentityStorageTransaction.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertEqual(
+            gallery.components(separatedBy:
+                "VoiceIdentityStorageTransaction.withExclusiveAccess").count - 1,
+            4)
+        XCTAssertEqual(
+            voiceprint.components(separatedBy:
+                "VoiceIdentityStorageTransaction.withExclusiveAccess").count - 1,
+            3)
+        XCTAssertTrue(gallery.contains("var all = try readWithoutLock()"))
+        XCTAssertFalse(gallery.contains("var all = try voices()"))
+        XCTAssertTrue(transaction.contains("O_CLOEXEC | O_NOFOLLOW"))
+        XCTAssertTrue(transaction.contains("Darwin.fchmod"))
+        XCTAssertTrue(transaction.contains("S_IRUSR | S_IWUSR"))
+        XCTAssertTrue(transaction.contains("LOCK_EX"))
+        XCTAssertTrue(transaction.contains("code == EINTR"))
+        XCTAssertTrue(transaction.contains(#"@_silgen_name("flock")"#))
+        XCTAssertTrue(decisions.contains(
+            "D358 — Encrypted voice identity mutations are serialized across processes"))
     }
 
     func testAppPostCaptureExecutionEntersThroughApplicationKit() throws {

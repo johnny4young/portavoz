@@ -61,6 +61,10 @@ final class VoiceprintStoreTests: XCTestCase {
         // At rest the file must be ciphertext: no float patterns, no JSON.
         let raw = try Data(contentsOf: directory.appendingPathComponent("voiceprint.enc"))
         XCTAssertFalse(String(decoding: raw, as: UTF8.self).contains("embedding"))
+        let lockURL = directory.appendingPathComponent("voiceprint.lock")
+        XCTAssertEqual(try Data(contentsOf: lockURL), Data())
+        let attributes = try FileManager.default.attributesOfItem(atPath: lockURL.path)
+        XCTAssertEqual((attributes[.posixPermissions] as? NSNumber)?.intValue, 0o600)
     }
 
     func testDeleteRemovesFileAndKeyInOneAction() throws {
@@ -211,6 +215,28 @@ final class VoiceGalleryTests: XCTestCase {
 
         let raw = try Data(contentsOf: directory.appendingPathComponent("voice-gallery.enc"))
         XCTAssertFalse(String(decoding: raw, as: UTF8.self).contains("Marta"))
+        let lockURL = directory.appendingPathComponent("voice-gallery.lock")
+        XCTAssertEqual(try Data(contentsOf: lockURL), Data())
+        let attributes = try FileManager.default.attributesOfItem(atPath: lockURL.path)
+        XCTAssertEqual((attributes[.posixPermissions] as? NSNumber)?.intValue, 0o600)
+    }
+
+    func testLockSymlinkFailsClosedBeforeIdentityMutation() throws {
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true)
+        let targetURL = directory.appendingPathComponent("unrelated-lock-target")
+        try Data().write(to: targetURL)
+        try FileManager.default.createSymbolicLink(
+            at: directory.appendingPathComponent("voice-gallery.lock"),
+            withDestinationURL: targetURL)
+
+        XCTAssertThrowsError(try gallery.remember(
+            RememberedVoice(name: "Marta", embedding: [1, 0, 0])))
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: directory.appendingPathComponent("voice-gallery.enc").path))
+        XCTAssertNil(try secrets.value(for: keyIdentifier))
+        XCTAssertEqual(try Data(contentsOf: targetURL), Data())
     }
 
     func testReRememberingReplacesByNameCaseInsensitively() throws {

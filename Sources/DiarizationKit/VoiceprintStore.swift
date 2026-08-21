@@ -47,34 +47,39 @@ public struct VoiceprintStore: Sendable {
         self.keyIdentifier = keyIdentifier
     }
 
+    /// A momentary presence snapshot. Authoritative operations re-check while
+    /// holding the cross-process storage transaction.
     public var exists: Bool {
-        FileManager.default.fileExists(atPath: fileURL.path)
+        fileExists
     }
 
     public func save(_ voiceprint: Voiceprint) throws {
-        let fileExists = exists
-        let key = try VoiceIdentityStorage.key(
-            secrets: secrets,
-            identifier: keyIdentifier,
-            allowCreation: !fileExists)
-        if fileExists {
-            _ = try decodeVoiceprint(using: key)
+        try VoiceIdentityStorageTransaction.withExclusiveAccess(to: fileURL) {
+            let hadCiphertext = fileExists
+            let key = try VoiceIdentityStorage.key(
+                secrets: secrets,
+                identifier: keyIdentifier,
+                allowCreation: !hadCiphertext)
+            if hadCiphertext {
+                _ = try decodeVoiceprint(using: key)
+            }
+            let plaintext = try JSONEncoder().encode(voiceprint)
+            let sealed = try AES.GCM.seal(plaintext, using: key)
+            let combined = try VoiceIdentityStorage.combinedData(from: sealed)
+            try combined.write(to: fileURL, options: .atomic)
         }
-        let plaintext = try JSONEncoder().encode(voiceprint)
-        let sealed = try AES.GCM.seal(plaintext, using: key)
-        let combined = try VoiceIdentityStorage.combinedData(from: sealed)
-        try FileManager.default.createDirectory(
-            at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try combined.write(to: fileURL, options: .atomic)
     }
 
     public func load() throws -> Voiceprint? {
-        guard exists else { return nil }
-        let key = try VoiceIdentityStorage.key(
-            secrets: secrets,
-            identifier: keyIdentifier,
-            allowCreation: false)
-        return try decodeVoiceprint(using: key)
+        guard fileExists else { return nil }
+        return try VoiceIdentityStorageTransaction.withExclusiveAccess(to: fileURL) {
+            guard fileExists else { return nil }
+            let key = try VoiceIdentityStorage.key(
+                secrets: secrets,
+                identifier: keyIdentifier,
+                allowCreation: false)
+            return try decodeVoiceprint(using: key)
+        }
     }
 
     private func decodeVoiceprint(using key: SymmetricKey) throws -> Voiceprint {
@@ -86,10 +91,16 @@ public struct VoiceprintStore: Sendable {
 
     /// One action, both halves gone (D8: "deletable with one action").
     public func delete() throws {
-        if exists {
-            try FileManager.default.removeItem(at: fileURL)
+        try VoiceIdentityStorageTransaction.withExclusiveAccess(to: fileURL) {
+            if fileExists {
+                try FileManager.default.removeItem(at: fileURL)
+            }
+            try secrets.delete(keyIdentifier)
         }
-        try secrets.delete(keyIdentifier)
+    }
+
+    private var fileExists: Bool {
+        FileManager.default.fileExists(atPath: fileURL.path)
     }
 }
 

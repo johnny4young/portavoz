@@ -4297,7 +4297,20 @@ behind aspirational diagrams:
   the explicit Settings reset destroys unreadable biometric state and permits
   a new key. Settings keeps the failure visible with separate retry and reset
   actions; its deterministic unavailable fixture is enabled only together with
-  disposable storage and cannot inspect host biometric state.
+  disposable storage and cannot inspect host biometric state. Every read of an
+  existing own-voice or participant-gallery payload and every mutation rechecks
+  authority inside a complete per-file transaction guarded by a content-free
+  BSD sidecar lease. The lease opens no-follow/close-on-exec, is forced to mode
+  `0600`, retries interrupted
+  acquisition, and spans file presence, Keychain access, decode, mutation,
+  encryption, atomic replacement, or deletion. It survives payload reset, so
+  independent store values and current cooperating stable/Dev/CLI processes
+  sharing the identity root cannot lose a gallery update or strand ciphertext
+  without its key. The lock is advisory; a still-running older binary does not
+  participate and must not mutate voice identity concurrently. The
+  synchronous capability remains off MainActor through the existing utility
+  adapters; task cancellation waits for an admitted transaction rather than
+  interrupting its ciphertext/key boundary.
 - Settings and Onboarding local summary-provider discovery enters
   ApplicationKit as one coherent typed profile and deterministic
   recommendation. A running Ollama service is eligible only when it exposes a

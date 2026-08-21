@@ -43,12 +43,21 @@ public struct VoiceGallery: Sendable {
         self.keyIdentifier = keyIdentifier
     }
 
+    /// A momentary presence snapshot. Authoritative operations re-check while
+    /// holding the cross-process storage transaction.
     public var exists: Bool {
-        FileManager.default.fileExists(atPath: fileURL.path)
+        fileExists
     }
 
     public func voices() throws -> [RememberedVoice] {
-        guard exists else { return [] }
+        guard fileExists else { return [] }
+        return try VoiceIdentityStorageTransaction.withExclusiveAccess(to: fileURL) {
+            try readWithoutLock()
+        }
+    }
+
+    private func readWithoutLock() throws -> [RememberedVoice] {
+        guard fileExists else { return [] }
         let key = try VoiceIdentityStorage.key(
             secrets: secrets,
             identifier: keyIdentifier,
@@ -63,39 +72,53 @@ public struct VoiceGallery: Sendable {
     /// Replacing keeps the gallery one-embedding-per-person: re-remembering
     /// someone refreshes their voice rather than accumulating stale ones.
     public func remember(_ voice: RememberedVoice) throws {
-        var all = try voices()
-        all.removeAll { $0.name.compare(voice.name, options: .caseInsensitive) == .orderedSame }
-        all.append(voice)
-        try write(all)
+        try VoiceIdentityStorageTransaction.withExclusiveAccess(to: fileURL) {
+            var all = try readWithoutLock()
+            all.removeAll {
+                $0.name.compare(voice.name, options: .caseInsensitive) == .orderedSame
+            }
+            all.append(voice)
+            try writeWithoutLock(all)
+        }
     }
 
     public func remove(id: UUID) throws {
-        let remaining = try voices().filter { $0.id != id }
-        if remaining.isEmpty {
-            try deleteAll()
-        } else {
-            try write(remaining)
+        try VoiceIdentityStorageTransaction.withExclusiveAccess(to: fileURL) {
+            let remaining = try readWithoutLock().filter { $0.id != id }
+            if remaining.isEmpty {
+                try deleteAllWithoutLock()
+            } else {
+                try writeWithoutLock(remaining)
+            }
         }
     }
 
     /// One action, both halves gone (D8).
     public func deleteAll() throws {
-        if exists {
+        try VoiceIdentityStorageTransaction.withExclusiveAccess(to: fileURL) {
+            try deleteAllWithoutLock()
+        }
+    }
+
+    private var fileExists: Bool {
+        FileManager.default.fileExists(atPath: fileURL.path)
+    }
+
+    private func deleteAllWithoutLock() throws {
+        if fileExists {
             try FileManager.default.removeItem(at: fileURL)
         }
         try secrets.delete(keyIdentifier)
     }
 
-    private func write(_ voices: [RememberedVoice]) throws {
+    private func writeWithoutLock(_ voices: [RememberedVoice]) throws {
         let key = try VoiceIdentityStorage.key(
             secrets: secrets,
             identifier: keyIdentifier,
-            allowCreation: !exists)
+            allowCreation: !fileExists)
         let plaintext = try JSONEncoder().encode(voices)
         let sealed = try AES.GCM.seal(plaintext, using: key)
         let combined = try VoiceIdentityStorage.combinedData(from: sealed)
-        try FileManager.default.createDirectory(
-            at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try combined.write(to: fileURL, options: .atomic)
     }
 }
