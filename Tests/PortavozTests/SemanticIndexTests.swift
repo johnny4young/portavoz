@@ -1,9 +1,9 @@
-import ApplicationKit
 import Foundation
 import PortavozCore
 import SQLiteVecResearchKit
 import XCTest
 
+@testable import ApplicationKit
 @testable import StorageKit
 
 final class SemanticIndexTests: XCTestCase {
@@ -178,6 +178,69 @@ final class SemanticIndexTests: XCTestCase {
             requests.count,
             batches.first,
             "no variant may reach the index outside that one traversal")
+    }
+
+    func testAskOrdersSemanticCandidatesByRankVariantAndStableIdentity() throws {
+        let earlyLowerIdentity = try XCTUnwrap(UUID(
+            uuidString: "00000000-0000-0000-0000-000000000000"))
+        let laterVariantLowerIdentity = try XCTUnwrap(UUID(
+            uuidString: "00000000-0000-0000-0000-000000000001"))
+        let earlyHigherIdentity = try XCTUnwrap(UUID(
+            uuidString: "00000000-0000-0000-0000-000000000002"))
+        let laterRank = try XCTUnwrap(UUID(
+            uuidString: "00000000-0000-0000-0000-000000000003"))
+        let representativeRanks = [
+            laterVariantLowerIdentity:
+                LocalAskMeetingRetrieval.SemanticCandidateRank(
+                    rank: 0, variant: 1),
+            laterRank: LocalAskMeetingRetrieval.SemanticCandidateRank(
+                rank: 1, variant: 0),
+            earlyHigherIdentity:
+                LocalAskMeetingRetrieval.SemanticCandidateRank(
+                    rank: 0, variant: 0),
+            earlyLowerIdentity:
+                LocalAskMeetingRetrieval.SemanticCandidateRank(
+                    rank: 0, variant: 0),
+        ]
+        XCTAssertEqual(
+            LocalAskMeetingRetrieval.orderedSemanticCandidateIDs(
+                representativeRanks),
+            [
+                earlyLowerIdentity,
+                earlyHigherIdentity,
+                laterVariantLowerIdentity,
+                laterRank,
+            ],
+            "variant authority must precede UUID, with rank remaining primary")
+
+        let identifiers = try (0..<256).map { value in
+            try XCTUnwrap(UUID(uuidString: String(
+                format: "00000000-0000-0000-0000-%012d",
+                value)))
+        }
+        let ranks = Dictionary(uniqueKeysWithValues: identifiers.enumerated().map {
+            index, identifier in
+            (
+                identifier,
+                LocalAskMeetingRetrieval.SemanticCandidateRank(
+                    rank: index % 4,
+                    variant: (index / 4) % 3))
+        })
+        let expected = identifiers.sorted { left, right in
+            let leftRank = ranks[left, default: .worst]
+            let rightRank = ranks[right, default: .worst]
+            if leftRank != rightRank { return leftRank < rightRank }
+            return left.uuidString < right.uuidString
+        }
+
+        XCTAssertEqual(
+            LocalAskMeetingRetrieval.orderedSemanticCandidateIDs(ranks),
+            expected)
+        XCTAssertEqual(
+            LocalAskMeetingRetrieval.orderedSemanticCandidateIDs(
+                Dictionary(uniqueKeysWithValues: ranks.reversed())),
+            expected,
+            "dictionary insertion order cannot change equal-rank Ask evidence")
     }
 
     func testLibraryUsesInjectedSemanticIndexWithoutChangingItsLimit() async throws {

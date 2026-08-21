@@ -569,6 +569,42 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## D351 — Semantic boundaries stay partitioned and benchmark-only"))
     }
 
+    func testAskQualityEvidenceRejectsProcessRandomizedTieOrder() throws {
+        let retrieval = try Self.contents(
+            of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
+        XCTAssertTrue(retrieval.contains(
+            "orderedSemanticCandidateIDs("))
+        XCTAssertTrue(retrieval.contains("SemanticCandidateRank("))
+        XCTAssertTrue(retrieval.contains("variant: variant)"))
+        XCTAssertTrue(retrieval.contains(
+            "return left.uuidString < right.uuidString"))
+
+        let runner = try Self.contents(of: "scripts/ask_quality_pair.py")
+        for required in [
+            "MINIMUM_RUNS = 3",
+            "publish_deterministic_observation(",
+            "not deterministic across fresh processes",
+            #""kind": "ask-quality-determinism""#,
+            #""outcome": "deterministic""#,
+        ] {
+            XCTAssertTrue(
+                runner.contains(required),
+                "Ask quality determinism gate is missing \(required)")
+        }
+
+        let cli = try Self.contents(of: "Sources/portavoz-cli/CLI.swift")
+        for unit in [
+            "segment", "speaker-turn", "conversation-window",
+            "semantic-boundary",
+        ] {
+            XCTAssertTrue(cli.contains(unit), "CLI help is missing \(unit)")
+        }
+
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        XCTAssertTrue(decisions.contains(
+            "## D352 — Ask quality evidence rejects randomized ties"))
+    }
+
     func testSemanticIndexPortKeepsExactControlOutsideProductConsumers() throws {
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
         XCTAssertTrue(decisions.contains("## D206"))

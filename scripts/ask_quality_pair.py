@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -19,6 +20,8 @@ COMMIT = re.compile(r"^[0-9a-f]{40}$")
 SAFE_BUILD = re.compile(r"^[A-Za-z0-9.+_-]{1,80}$")
 OUTCOMES = {"candidate-parity", "blocked"}
 CANDIDATES = {"speaker-turn", "conversation-window", "semantic-boundary"}
+MINIMUM_RUNS = 3
+MAXIMUM_RUNS = 5
 SEGMENT_ADAPTER = "local-hybrid-preindexed-segment-no-expansion-evidence-v3"
 CANDIDATE_ADAPTERS = {
     "speaker-turn": (
@@ -73,6 +76,51 @@ def ensure_private_file(path: Path, label: str) -> None:
     path.chmod(0o600)
 
 
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def files_equal(first: Path, second: Path) -> bool:
+    with first.open("rb") as left, second.open("rb") as right:
+        while True:
+            left_block = left.read(1024 * 1024)
+            right_block = right.read(1024 * 1024)
+            if left_block != right_block:
+                return False
+            if not left_block:
+                return True
+
+
+def publish_deterministic_observation(
+    paths: list[Path], destination: Path, label: str
+) -> str:
+    if not paths:
+        raise AskQualityPairError(f"{label} observation runs are missing")
+    digest = sha256(paths[0])
+    for path in paths[1:]:
+        if not files_equal(paths[0], path):
+            raise AskQualityPairError(
+                f"{label} observations are not deterministic across fresh processes"
+            )
+    os.replace(paths[0], destination)
+    destination.chmod(0o600)
+    for path in paths[1:]:
+        path.unlink()
+    return digest
+
+
+def write_private_json(path: Path, document: dict) -> None:
+    path.write_text(
+        json.dumps(document, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    path.chmod(0o600)
+
+
 def is_within(path: Path, directory: Path) -> bool:
     try:
         path.relative_to(directory)
@@ -87,6 +135,7 @@ def collect_pair(
     output: Path,
     build: str,
     candidate: str = "speaker-turn",
+    runs: int = MINIMUM_RUNS,
     runner=run_command,
 ) -> tuple[int, Path]:
     root = root.resolve()
@@ -96,6 +145,12 @@ def collect_pair(
         raise AskQualityPairError("build must be a bounded receipt-safe identifier")
     if candidate not in CANDIDATES:
         raise AskQualityPairError(f"unsupported candidate: {candidate}")
+    if isinstance(runs, bool) or not isinstance(runs, int):
+        raise AskQualityPairError("runs must be an integer")
+    if not MINIMUM_RUNS <= runs <= MAXIMUM_RUNS:
+        raise AskQualityPairError(
+            f"runs must be between {MINIMUM_RUNS} and {MAXIMUM_RUNS}"
+        )
     if not fixture.is_file():
         raise AskQualityPairError(f"fixture not found: {fixture}")
     if output.exists():
@@ -176,33 +231,56 @@ def collect_pair(
             "candidate_observations": staging / f"{candidate}-observations.json",
             "candidate_scorecard": staging / f"{candidate}-scorecard.json",
             "comparison": staging / "comparison.json",
+            "determinism": staging / "determinism.json",
         }
-        for unit, key in (
-            ("segment", "segment_observations"),
-            (candidate, "candidate_observations"),
-        ):
-            require_command(
-                [
-                    str(cli),
-                    "bench-ask-quality",
-                    "--fixture",
-                    str(fixture),
-                    "--output",
-                    str(artifacts[key]),
-                    "--build",
-                    build,
-                    "--commit",
-                    commit,
-                    "--retrieval-unit",
-                    unit,
-                    "--asset-download",
-                    "never",
-                ],
-                root,
-                f"{unit} observation",
-                runner=runner,
-            )
-            ensure_private_file(artifacts[key], f"{unit} observation")
+        run_paths = {
+            "segment_observations": [],
+            "candidate_observations": [],
+        }
+        for run_index in range(runs):
+            for unit, key in (
+                ("segment", "segment_observations"),
+                (candidate, "candidate_observations"),
+            ):
+                run_path = staging / f".{unit}-run-{run_index + 1}.json"
+                require_command(
+                    [
+                        str(cli),
+                        "bench-ask-quality",
+                        "--fixture",
+                        str(fixture),
+                        "--output",
+                        str(run_path),
+                        "--build",
+                        build,
+                        "--commit",
+                        commit,
+                        "--retrieval-unit",
+                        unit,
+                        "--asset-download",
+                        "never",
+                    ],
+                    root,
+                    f"{unit} observation run {run_index + 1}",
+                    runner=runner,
+                )
+                ensure_private_file(
+                    run_path, f"{unit} observation run {run_index + 1}"
+                )
+                run_paths[key].append(run_path)
+
+        observation_digests = {
+            "control": publish_deterministic_observation(
+                run_paths["segment_observations"],
+                artifacts["segment_observations"],
+                "segment",
+            ),
+            "candidate": publish_deterministic_observation(
+                run_paths["candidate_observations"],
+                artifacts["candidate_observations"],
+                candidate,
+            ),
+        }
 
         for observation_key, scorecard_key, label in (
             ("segment_observations", "segment_scorecard", "segment"),
@@ -272,6 +350,28 @@ def collect_pair(
         if comparison_result.returncode != expected_code:
             raise AskQualityPairError("paired comparison exit status contradicts its receipt")
 
+        write_private_json(
+            artifacts["determinism"],
+            {
+                "schemaVersion": 1,
+                "kind": "ask-quality-determinism",
+                "outcome": "deterministic",
+                "runsPerRole": runs,
+                "subject": {
+                    "build": build,
+                    "commit": commit,
+                    "observationSchemaVersion": 2,
+                    "controlAdapter": SEGMENT_ADAPTER,
+                    "candidateAdapter": subject.get("candidateAdapter"),
+                },
+                "digests": {
+                    "controlObservationSHA256": observation_digests["control"],
+                    "candidateObservationSHA256": observation_digests["candidate"],
+                    "comparisonSHA256": sha256(artifacts["comparison"]),
+                },
+            },
+        )
+
         if output.exists():
             raise AskQualityPairError(f"output already exists: {output}")
         os.rename(staging, output)
@@ -294,6 +394,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", required=True)
     parser.add_argument("--build", required=True)
     parser.add_argument("--candidate", default="speaker-turn")
+    parser.add_argument("--runs", type=int, default=MINIMUM_RUNS)
     return parser
 
 
@@ -306,6 +407,7 @@ def main(arguments: list[str] | None = None) -> int:
             Path(args.output),
             args.build,
             candidate=args.candidate,
+            runs=args.runs,
         )
     except AskQualityPairError as error:
         print(f"ask-quality-pair error: {error}", file=sys.stderr)

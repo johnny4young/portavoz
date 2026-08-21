@@ -24,12 +24,15 @@ class FakeCommandRunner:
         dirty=False,
         fail_at=None,
         reported_candidate_adapter=None,
+        drift_unit=None,
     ):
         self.outcome = outcome
         self.dirty = dirty
         self.fail_at = fail_at
         self.reported_candidate_adapter = reported_candidate_adapter
+        self.drift_unit = drift_unit
         self.calls = []
+        self.observation_calls = {}
         self.commit = "a" * 40
 
     def __call__(self, command, root):
@@ -90,7 +93,15 @@ class FakeCommandRunner:
             if self.fail_at == unit:
                 return self.result(64, error="embedding assets unavailable")
             output = Path(command[command.index("--output") + 1])
-            output.write_text("{}\n", encoding="utf-8")
+            count = self.observation_calls.get(unit, 0) + 1
+            self.observation_calls[unit] = count
+            document = {"unit": unit}
+            if unit == self.drift_unit and count > 1:
+                document["run"] = count
+            output.write_text(
+                json.dumps(document, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
             return self.result(0)
         return self.result(64, error=f"unexpected command: {command}")
 
@@ -138,6 +149,7 @@ class AskQualityPairTests(unittest.TestCase):
                 "speaker-turn-observations.json",
                 "speaker-turn-scorecard.json",
                 "comparison.json",
+                "determinism.json",
             },
         )
         self.assertEqual(self.output.stat().st_mode & 0o777, 0o700)
@@ -148,7 +160,7 @@ class AskQualityPairTests(unittest.TestCase):
         cli_calls = [
             call for call in runner.calls if call[0].endswith("portavoz-cli")
         ]
-        self.assertEqual(len(cli_calls), 2)
+        self.assertEqual(len(cli_calls), 6)
         self.assertTrue(all("never" in call for call in cli_calls))
         self.assertTrue(all(runner.commit in call for call in cli_calls))
         self.assertEqual(
@@ -156,8 +168,26 @@ class AskQualityPairTests(unittest.TestCase):
                 call[call.index("--retrieval-unit") + 1]
                 for call in cli_calls
             ],
-            ["segment", "speaker-turn"],
+            [
+                "segment", "speaker-turn",
+                "segment", "speaker-turn",
+                "segment", "speaker-turn",
+            ],
         )
+        determinism = json.loads(
+            (self.output / "determinism.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(determinism["kind"], "ask-quality-determinism")
+        self.assertEqual(determinism["outcome"], "deterministic")
+        self.assertEqual(determinism["runsPerRole"], 3)
+        self.assertEqual(
+            determinism["subject"]["candidateAdapter"],
+            pair.CANDIDATE_ADAPTERS["speaker-turn"],
+        )
+        self.assertTrue(all(
+            len(value) == 64
+            for value in determinism["digests"].values()
+        ))
 
     def test_publishes_declared_conversation_window_pair(self):
         runner = FakeCommandRunner()
@@ -181,6 +211,7 @@ class AskQualityPairTests(unittest.TestCase):
                 "conversation-window-observations.json",
                 "conversation-window-scorecard.json",
                 "comparison.json",
+                "determinism.json",
             },
         )
         cli_calls = [
@@ -191,7 +222,11 @@ class AskQualityPairTests(unittest.TestCase):
                 call[call.index("--retrieval-unit") + 1]
                 for call in cli_calls
             ],
-            ["segment", "conversation-window"],
+            [
+                "segment", "conversation-window",
+                "segment", "conversation-window",
+                "segment", "conversation-window",
+            ],
         )
 
     def test_publishes_declared_semantic_boundary_pair(self):
@@ -216,6 +251,7 @@ class AskQualityPairTests(unittest.TestCase):
                 "semantic-boundary-observations.json",
                 "semantic-boundary-scorecard.json",
                 "comparison.json",
+                "determinism.json",
             },
         )
         cli_calls = [
@@ -226,8 +262,45 @@ class AskQualityPairTests(unittest.TestCase):
                 call[call.index("--retrieval-unit") + 1]
                 for call in cli_calls
             ],
-            ["segment", "semantic-boundary"],
+            [
+                "segment", "semantic-boundary",
+                "segment", "semantic-boundary",
+                "segment", "semantic-boundary",
+            ],
         )
+
+    def test_refuses_nondeterministic_fresh_process_observations(self):
+        runner = FakeCommandRunner(drift_unit="semantic-boundary")
+
+        with self.assertRaisesRegex(
+            pair.AskQualityPairError, "not deterministic across fresh processes"
+        ):
+            pair.collect_pair(
+                self.root,
+                self.fixture,
+                self.output,
+                "search4d",
+                candidate="semantic-boundary",
+                runner=runner,
+            )
+
+        self.assertFalse(self.output.exists())
+        self.assertEqual(list(self.output.parent.glob(".private-evidence.*")), [])
+
+    def test_refuses_too_few_or_too_many_determinism_runs(self):
+        for runs in (2, 6, True):
+            runner = FakeCommandRunner()
+            with self.subTest(runs=runs):
+                with self.assertRaisesRegex(pair.AskQualityPairError, "runs"):
+                    pair.collect_pair(
+                        self.root,
+                        self.fixture,
+                        self.output,
+                        "search4d",
+                        runs=runs,
+                        runner=runner,
+                    )
+                self.assertEqual(runner.calls, [])
 
     def test_refuses_malformed_semantic_boundary_adapter_identity(self):
         runner = FakeCommandRunner(

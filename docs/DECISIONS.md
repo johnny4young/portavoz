@@ -12708,3 +12708,41 @@ availability on that machine. The provisional thresholds and Apple profiles
 must still pass clean paired bilingual quality, resource, correction-cost,
 private-corpus, and physical Sequoia/Tahoe evidence before any serving or
 storage proposal.
+
+## D352 — Ask quality evidence rejects randomized ties (Aug 2026)
+
+**Context:** three fresh Release processes ran the exact D351 segment control
+and semantic-boundary candidate over `public-synthetic-v2`. All three retained
+the same source identity, dynamic adapter, citation validity, Recall@10,
+hard-negative count, and blocked candidate verdict, but several equal-rank
+semantic hits exchanged positions. `LocalAskMeetingRetrieval` reduced every
+segment to its best rank across query variants and then sorted a Swift
+dictionary by rank alone. Dictionary iteration order is intentionally
+process-randomized, so equal ranks leaked that randomness into user citations
+and rank-sensitive quality metrics. The one-run pair orchestrator could not
+detect the drift even though SEARCH-0b requires deterministic evidence.
+
+**Decision:** preserve best-rank authority and break equal semantic ranks by
+the earliest deterministic query variant, then by stable result UUID before
+RRF. Non-tied semantic rank, lexical rank, scores, source projection, and
+citation content do not change. The clean-pair
+orchestrator now runs the segment control and selected candidate three times in
+alternating fresh Release CLI processes. Each role must produce byte-identical
+schema-2 observations before evaluation; any disagreement removes the private
+staging directory and publishes no partial comparison. A sixth owner-only
+`ask-quality-determinism` receipt records the run count and SHA-256 digests of
+the two canonical observations and their comparison. The runner accepts only
+three to five repetitions, defaults to three, keeps asset downloads disabled,
+and retains the existing clean-commit and dynamic-adapter fences. CLI help must
+list the semantic-boundary retrieval unit that D351 made executable.
+
+**Consequences:** repeating the same local Ask query now gives equal-rank
+evidence a stable order across processes, and candidate evidence cannot be
+published from one lucky ordering. Previously arbitrary ties may move once to
+their variant-then-UUID order; this is an explicit determinism fix rather than
+a relevance claim. The three D351 diagnostic pairs remain blocked: the semantic
+candidate improved aggregate retrieval and kept zero invalid/stale citations,
+but added 39 hard-negative hits and regressed code-switched and same-language
+relationship slices. No threshold is tuned from that one host, no candidate is
+selected, and resource, correction-cost, private-corpus, Sequoia, and
+independent Tahoe evidence remain open.

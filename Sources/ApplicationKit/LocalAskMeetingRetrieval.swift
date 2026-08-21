@@ -131,9 +131,8 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         limit: Int,
         trace: AskPipelineTrace
     ) async -> [AskCitation] {
-        let semantic = semanticResult.bestRank.sorted {
-            $0.value < $1.value
-        }.map(\.key)
+        let semantic = Self.orderedSemanticCandidateIDs(
+            semanticResult.bestRank)
         var hitsByID = semanticResult.hitsByID
         for hit in lexical where hitsByID[hit.segmentID] == nil {
             hitsByID[hit.segmentID] = hit
@@ -245,18 +244,48 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         var result = SemanticCandidates.empty
         // One traversal scores every variant; the fold keeps each segment's
         // best rank across variants, earliest variant winning a tie.
-        for variantHits in try await semanticIndex.search(
+        for (variant, variantHits) in try await semanticIndex.search(
             vectors,
             profile: profile,
             limit: 12
-        ) {
+        ).enumerated() {
             for (rank, hit) in variantHits.enumerated()
-            where result.bestRank[hit.segmentID].map({ rank < $0 }) ?? true {
-                result.bestRank[hit.segmentID] = rank
+            where result.bestRank[hit.segmentID].map({
+                SemanticCandidateRank(rank: rank, variant: variant) < $0
+            }) ?? true {
+                result.bestRank[hit.segmentID] = SemanticCandidateRank(
+                    rank: rank,
+                    variant: variant)
                 result.hitsByID[hit.segmentID] = hit
             }
         }
         return result
+    }
+
+    struct SemanticCandidateRank: Comparable, Sendable {
+        let rank: Int
+        let variant: Int
+
+        static let worst = Self(rank: .max, variant: .max)
+
+        static func < (left: Self, right: Self) -> Bool {
+            if left.rank != right.rank { return left.rank < right.rank }
+            return left.variant < right.variant
+        }
+    }
+
+    /// A segment's best rank across variants is its semantic authority. The
+    /// earlier deterministic variant wins equal ranks; stable UUID identity
+    /// makes the remaining total-order tie independent of dictionary hashing.
+    static func orderedSemanticCandidateIDs(
+        _ bestRank: [UUID: SemanticCandidateRank]
+    ) -> [UUID] {
+        bestRank.keys.sorted { left, right in
+            let leftRank = bestRank[left, default: .worst]
+            let rightRank = bestRank[right, default: .worst]
+            if leftRank != rightRank { return leftRank < rightRank }
+            return left.uuidString < right.uuidString
+        }
     }
 
     private static func citation(_ hit: SearchHit) -> AskCitation {
@@ -362,7 +391,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
 }
 
 private struct SemanticCandidates: Sendable {
-    var bestRank: [UUID: Int]
+    var bestRank: [UUID: LocalAskMeetingRetrieval.SemanticCandidateRank]
     var hitsByID: [UUID: SearchHit]
 
     static let empty = Self(bestRank: [:], hitsByID: [:])

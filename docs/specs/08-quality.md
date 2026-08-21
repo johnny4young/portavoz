@@ -2467,6 +2467,47 @@ current-host vector smoke, not physical Sequoia, independent Tahoe hardware,
 accepted semantic quality/resource/correction evidence, or product-serving
 authority.
 
+D352 closes a determinism hole found while collecting the first clean D351
+pair. Three fresh Release processes on the same commit, build, host, fixture,
+control, and dynamic candidate produced the same blocked gates, Recall@10,
+hard-negative counts, and zero invalid/stale citations, but equal-best-rank
+semantic hits exchanged adjacent positions. The segment-control Hit@1 varied
+from 0.510638 to 0.514894; candidate Hit@1 varied from 0.719149 to 0.723404.
+The root was not vector or citation drift: `LocalAskMeetingRetrieval` sorted a
+best-rank dictionary by rank alone, allowing Swift's process-randomized key
+iteration to decide equal ranks.
+
+Ask now breaks equal semantic best ranks by earliest deterministic query
+variant and then stable result UUID before RRF. A 256-identity regression proves
+rank-first/variant-second/UUID-third order regardless of dictionary insertion.
+The clean-pair runner alternates three fresh Release CLI processes per role and
+requires each role's complete schema-2 observations to be byte-identical before
+evaluation. A forged repeat causes complete staging
+cleanup and no output; a valid pair adds one owner-only, content-free
+`ask-quality-determinism` receipt with the repetition count and SHA-256 digests
+of both observations and the comparison. Runs below three or above five fail
+before source inspection. This is a user-visible stability correction and an
+evidence gate, not a relevance improvement or semantic-candidate selection.
+The D351 diagnostic remains blocked because the candidate added 39 hard-
+negative hits and lost code-switched and same-language relationship parity;
+resource and correction-cost characterization remain open.
+
+The final D352 gate passed the Swift 6 warnings-as-errors build, 2,496 package
+tests with 14 explicit environment/model skips, 427 tooling tests, the 180-case
+architecture subset, repository hygiene, and strict SwiftLint with zero
+violations across 679 files. Independently inspected macOS 26.5.2 (25F84)
+result bundles passed the complete 92/92 English and 92/92 Spanish XCUITest
+catalogues with no failures, skips, or expected failures. Keyboard Navigation
+returned to `0`, and no Portavoz diagnostic appeared during the gate. The
+signed `app.portavoz.mac.dev` bundle was reinstalled and deeply verified while
+the notarized `app.portavoz.mac` release retained its exact 184-entry structured
+manifest (`008b0ffee8537125c66bfd8b5e3a45deb9744d064215318e717aa0dbc06ed33f`)
+and JSONL manifest (`3c7c15fa935b3034d0145ebb1c019e668c704ee80bb4224a42469cc40f2f8c0f`),
+plus a valid deep signature. The local Dev app remains unnotarized and lacks the
+optional Metal Toolchain/MLX metallib. This is Tahoe-family host automation,
+not physical Sequoia, independent Tahoe hardware, accepted model quality,
+resource/correction cost, or product-serving authority.
+
 ## Measured numbers (MacBook Pro M4 Max 36 GB, macOS 26, Jul 2026)
 
 | Metric | Target | Measured |

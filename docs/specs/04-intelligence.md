@@ -839,7 +839,7 @@ meeting-content HTTP receipt boundary.
 - **Application boundary (D100/D201)**: `ApplicationKit.AskMeetings` is the only public workflow used by the macOS Ask route, resident command palette, CLI `ask`, local MCP `ask`, and meeting-brief evidence lookup. Instant results and citations are storage-independent values; the optional progressive contract emits lexical and final fused evidence without changing final-result consumers. Generated text is optional, so unavailable or failed local generation preserves evidence instead of converting retrieval success into failure; cancellation still propagates as cancellation.
 - **Meeting preparation (D101)**: `ApplicationKit.PrepareMeetingBrief` ranks the shared Ask citations, joins them to one batched latest-live-General-summary projection and independently loaded open commitments, and exposes only storage-independent related meetings, commitments, and knowledge points. Foundation Models synthesis is optional and every returned source index is validated before it becomes a navigable knowledge point; invalid indexes and ordinary model failure produce no invented source, while cancellation remains cancellation.
 - **Lexical candidates (D81)**: `ApplicationKit.LocalAskMeetingRetrieval` owns the policy. It normalizes and deduplicates content words ≥ 4 characters, retrieves a bounded FTS top-k list per term for normal questions of up to eight unique terms, and fuses those lists with RRF (`k=60`). Multi-term passages climb without scoring one complete OR union. Longer pasted questions retain the released broad-OR fallback, and every selected hit carries complete segment text in addition to its UI snippet.
-- **Hybrid retrieval (D201)**: deterministic English/Spanish variants start bounded lexical and brute-force semantic candidate work concurrently, then fuse with RRF (`k=60`). Lexical citations may publish before semantic completion; only the final fused set reaches generation. FM expansion is a bounded evidence-empty fallback, never a first-evidence prerequisite, and term deduplication spans all variants.
+- **Hybrid retrieval (D201/D352)**: deterministic English/Spanish variants start bounded lexical and brute-force semantic candidate work concurrently, then fuse with RRF (`k=60`). Each semantic result keeps its best rank across variants; different results at that rank prefer the earliest deterministic variant and then stable UUID order rather than process-randomized dictionary order. Lexical citations may publish before semantic completion; only the final fused set reaches generation. FM expansion is a bounded evidence-empty fallback, never a first-evidence prerequisite, and term deduplication spans all variants.
 - **Answer**: `OnDeviceAskMeetingIntelligence` wraps the IntelligenceKit query-expansion and answer primitives. The on-device FM receives complete selected segments, not bounded highlighted UI snippets, and citations retain segment/meeting identity plus timestamp. Verified E2E: MCP agent answered "what did we agree about the transcription budget?" with correct sources.
 
 ### Corpus-read-only Ask retrieval (D196)
@@ -923,6 +923,13 @@ remain explicitly `notEvaluated`, so retrieval metrics are useful while complete
 answer and policy gates still block. The version-2 adapter identity records the
 preindexed setup contract. The owner-only observation writer is atomic and
 non-overwriting; none of this tooling enters the app dependency graph.
+The clean-pair runner executes the segment control and selected candidate in
+three alternating fresh Release processes. Both schema-2 observation documents
+must remain byte-identical before either is evaluated. Drift removes the
+private staging directory and publishes no partial pair. A content-free sixth
+artifact records the repetition count and SHA-256 digests of the canonical
+control, candidate, and comparison documents. This catches equal-rank ordering
+drift that one structurally valid run cannot reveal.
 One complete unaccepted development run over all 240 queries reproduced the
 adapter-v1 aggregate retrieval metrics exactly, including zero invalid or stale
 citations. That is no-drift evidence for the preindexed query path, not an
@@ -1191,10 +1198,13 @@ ordered canonical source segment identities, so source order, revision,
 hard-negative inclusion, and exact citation timestamps remain fail-closed.
 The current public-synthetic-v2 topology contains two two-segment same-actor
 turns in every four-segment meeting and interleaves spoken languages. A strict
-offline comparator accepts only the exact segment-control and speaker-turn
-adapter identities from one fixture, build, commit, and schema-2 observation
-pair. It blocks any aggregate or language-relationship retrieval regression;
-its parity outcome is evidence, not permission to alter product retrieval.
+offline comparator accepts only the exact segment-control and declared
+candidate adapter identities from one fixture, build, commit, and schema-2
+observation pair. Dynamic semantic-boundary identity must retain its lowercase
+64-hex proposal fingerprint. Three fresh processes per role must agree exactly.
+The comparison blocks any aggregate, language-relationship, or hard-negative
+retrieval regression; its parity outcome is evidence, not permission to alter
+product retrieval.
 Segment-level embeddings remain authoritative until the candidate proves
 multilingual quality, latency, memory, disk, and incremental correction
 behavior against the current segment baseline.

@@ -2835,6 +2835,10 @@ inside every relevant turn.
 The CLI production-observation adapter loads that fixture into a disposable,
 owner-only database and executes the real `LocalAskMeetingRetrieval` hybrid
 path with deterministic no-expansion control. It never opens the user library.
+When several semantic results share their best rank across query variants,
+the earliest deterministic variant wins before stable result UUID provides the
+final tie-break; Swift dictionary order never decides user citation or
+benchmark rank.
 The current observation schema records one ranked retrieval-unit ID plus every
 ordered canonical source segment ID, meeting, first-source timestamp, and
 transcript revision. Historical schema-1 single-segment observations remain
@@ -2847,10 +2851,11 @@ retrieval metrics while forcing the complete quality gate to remain blocked
 until a separately versioned answer judge supplies evidence. Observation
 publication is owner-only, atomic, non-overwriting, and remains outside the
 application dependency graph. The offline comparator accepts only canonical
-fixture-bound scorecards, exact segment-control and speaker-turn adapter roles,
-one build and commit, and observation schema 2. Its owner-only, payload-free
-receipt reports aggregate and per-relationship retrieval deltas and blocks on
-any citation, hard-negative, identity, aggregate, or language-relationship regression.
+fixture-bound scorecards, the exact segment control and one declared candidate
+adapter role, one build and commit, and observation schema 2. Its owner-only,
+payload-free receipt reports aggregate and per-relationship retrieval deltas
+and blocks on any citation, hard-negative, identity, aggregate, or
+language-relationship regression.
 Candidate parity is quality evidence only; it cannot select product storage,
 indexing, or retrieval and does not replace the still-required resource and
 correction-cost matrix.
@@ -2858,15 +2863,18 @@ correction-cost matrix.
 The paired quality runner is the only accepted orchestration path for that
 comparison. It requires a clean worktree, derives one full commit identity,
 verifies the canonical public fixture, builds the Release CLI once, and runs
-the segment control and speaker-turn candidate with OS embedding downloads
-disabled. Both blocked source scorecards remain valid because answer evidence
-is deliberately unevaluated; the final comparator exit status alone reports
-retrieval parity. Artifacts are assembled in an owner-only staging directory
-and published as one non-overwriting directory only after every observation,
-scorecard, and comparison receipt is complete. Host/model unavailability
-removes the staging state and produces no comparable evidence. Direct CLI
-experiments may explicitly opt into an OS asset request, but such preparation
-is not admitted inside a paired evidence run.
+the segment control and declared candidate in three alternating fresh processes
+with OS embedding downloads disabled. Each role's complete observation bytes
+must agree across all three runs before evaluation. Both blocked source
+scorecards remain valid because answer evidence is deliberately unevaluated;
+the final comparator exit status alone reports retrieval parity. Five prior
+artifacts plus one content-free determinism digest receipt are assembled in an
+owner-only staging directory and published as one non-overwriting directory
+only after every observation, scorecard, and comparison is complete. A changed
+repeat, host/model unavailability, or invalid dynamic adapter removes staging
+and produces no comparable evidence. Direct CLI experiments may explicitly opt
+into an OS asset request, but such preparation is not admitted inside a paired
+evidence run.
 
 Indexing prepares
 the already-installed embedding runtime before sampling, drains 1,024 fixed

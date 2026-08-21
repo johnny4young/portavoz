@@ -286,9 +286,15 @@ final class MeetingDetailUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "transcript-correction-original-evidence")
         app.buttons["transcript-correction-save"].click()
 
+        let transcript = app.control(withIdentifier: "detail-transcript-section")
+        let correctedReading = transcript.descendants(matching: .staticText)
+            .matching(NSPredicate(
+                format: "label == %@ OR value == %@",
+                "El rollout del modelo queda para el lunes.",
+                "El rollout del modelo queda para el lunes."))
+            .firstMatch
         XCTAssertTrue(
-            app.staticTexts["El rollout del modelo queda para el lunes."]
-                .waitForExistence(timeout: 5),
+            correctedReading.waitForExistence(timeout: 10),
             "the composed Meeting Detail reading must update after persistence")
         XCTAssertTrue(correct.waitForExistence(timeout: 5))
         correct.click()
@@ -298,9 +304,14 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "an active correction must expose durable restore-based undo")
         undo.click()
 
+        let restoredReading = transcript.descendants(matching: .staticText)
+            .matching(NSPredicate(
+                format: "label == %@ OR value == %@",
+                "El rollout del modelo queda para el viernes.",
+                "El rollout del modelo queda para el viernes."))
+            .firstMatch
         XCTAssertTrue(
-            app.staticTexts["El rollout del modelo queda para el viernes."]
-                .waitForExistence(timeout: 5),
+            restoredReading.waitForExistence(timeout: 10),
             "undo must restore the accepted reading without deleting history")
     }
 

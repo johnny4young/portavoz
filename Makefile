@@ -498,6 +498,7 @@ meeting-detail-baseline:
 ## Build one Release CLI and compare segment control with one declared candidate
 ## from the same clean commit. Output is private, non-overwriting local evidence.
 PORTAVOZ_ASK_QUALITY_CANDIDATE ?= speaker-turn
+PORTAVOZ_ASK_QUALITY_RUNS ?= 3
 ask-quality-pair:
 	@test -n "$(PORTAVOZ_ASK_QUALITY_BUILD)" || \
 		(echo "PORTAVOZ_ASK_QUALITY_BUILD is required" >&2; exit 64)
@@ -507,6 +508,7 @@ ask-quality-pair:
 		--fixture Fixtures/AskQuality/public-synthetic-v2.json \
 		--build "$(PORTAVOZ_ASK_QUALITY_BUILD)" \
 		--candidate "$(PORTAVOZ_ASK_QUALITY_CANDIDATE)" \
+		--runs "$(PORTAVOZ_ASK_QUALITY_RUNS)" \
 		--output "$(PORTAVOZ_ASK_QUALITY_OUTPUT)"
 
 ## Release performance ledger (PERF-001/PERF-008): run the unattended

@@ -100,8 +100,10 @@ struct PortavozCLI {
                                          [--source-commit <sha>] [--output <json>]
               portavoz-cli bench-ask-quality --fixture <json> --output <json>
                                               --build <id> --commit <sha>
-                                              [--retrieval-unit segment|speaker-turn|conversation-window]
+                                              [--retrieval-unit <unit>]
                                               [--asset-download never|if-needed]
+                units: segment, speaker-turn, conversation-window,
+                       semantic-boundary
               portavoz-cli bench-commitment-link-quality --fixture <json> --output <json>
                                                          [--asset-download never|if-needed]
               portavoz-cli bench-commitment-link-similarity --fixture <json> --output <json>
