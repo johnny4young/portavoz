@@ -444,8 +444,9 @@ The meaning of "first" is strict: stale, deleted, corrected, non-final, or
 missing earliest evidence causes typed abstention. The query never skips ahead
 to a later current mention, and a ready graph missing the authoritative edge
 reports a projection inconsistency. `LoadTopicFirstDiscussion` is an injected
-ApplicationKit port used by the explicit local graph-fact lane; automatic
-natural-language topic discovery and released presentation remain absent.
+ApplicationKit port used by both the explicit local graph-fact lane and the
+released exact-topic explorer. Automatic natural-language topic discovery
+remains absent.
 
 All six canonical `firstDiscussion` cases cross public persistence,
 topic-confirmation, graph-maintenance, and ApplicationKit boundaries in fresh
@@ -454,9 +455,9 @@ returned topic-evidence and transcript identities to the oracle, and checks
 exact result/evidence order, forbidden-result exclusion, and stale-evidence
 abstention. It imports no IntelligenceKit or GRDB and performs no direct
 authority write. This closes the second canonical product mapping at this
-boundary; later adapters complete the other four. D361 and D362 now release
-exact person-commitment and topic-decision presentation; private evidence and
-presentation for the other four jobs remain open.
+boundary; later adapters complete the other four. D361–D363 now release exact
+person-commitment, topic-decision, and topic-first-discussion presentation;
+private evidence and presentation for the other three jobs remain open.
 
 ## Source-backed person commitments (D281–D282)
 
@@ -490,9 +491,9 @@ distractors and maps exact typed commitments and segments back to the oracle;
 it does not parse query prose, import IntelligenceKit/GRDB, or write authority
 directly. Exact alias filtering and opt-in Ask composition are implemented;
 automatic natural-language extraction and private evidence remain open. D361
-releases the exact-person commitment job and D362 releases current decisions
-for one exact topic through separate explicit selectors; the other four jobs
-and free-form graph-aware answers remain open.
+releases the exact-person commitment job, while D362 and D363 release current
+decisions and first confirmed discussion for one exact topic through explicit
+selectors; the other three jobs and free-form graph-aware answers remain open.
 
 ## Independent Ask graph-fact lane (D283)
 
@@ -564,7 +565,7 @@ markers carry structure only, and generated claims may cite `[T…]` or `[S…]`
 exact segment markers but never `[F…]` alone. Missing primary, duplicate, or
 cross-lane-inconsistent source provenance fails before model execution. No
 free-form Ask, CLI, MCP, command-palette, or meeting-brief consumer invokes
-this boundary. The separate D361 and D362 explorers render validated typed
+this boundary. The separate D361–D363 explorers render validated typed
 facts directly and never call `answerBundle`.
 
 ## Bounded post-RRF fact-aware selection (D286)
@@ -587,7 +588,7 @@ evidence, or inconsistent exact overlap. Selection omissions make the fact
 page incomplete and forbid exhaustive all/none claims. The answer result still
 returns the complete unselected evidence bundle. Released free-form Ask, CLI,
 MCP, command-palette, and meeting-brief consumers remain transcript-only;
-D361 and D362 do not execute this generated-answer path.
+D361–D363 do not execute this generated-answer path.
 
 ## Complete graph authority, product adapters, and scale (D308–D314)
 
@@ -616,7 +617,7 @@ remains disposable and capture-yielding. No specialized graph engine is
 selected. D360 makes same-generation profile return re-admit the exact completed
 or cancelled graph operation only while its target is still unsatisfied; failed
 work remains terminal and source generation remains authority-only. Private
-owner-reviewed evidence, natural-language query extraction, the other four
+owner-reviewed evidence, natural-language query extraction, the other three
 dedicated query surfaces, sync/export, CLI/MCP adoption, and product telemetry
 remain outside this implemented boundary.
 
@@ -644,7 +645,7 @@ invoke a model, call the graph-aware answer bundle, or flatten facts into
 transcript rank. Typed graph abstention, malformed evidence, and operational
 unavailability remain distinct UI states. It therefore provides source-backed
 answers without Foundation Models on both Sequoia and Tahoe. Together with the
-D362 topic explorer, the other four graph jobs, free-form answer composition,
+D362–D363 topic explorer, the other three graph jobs, free-form answer composition,
 private evidence, sync/export, CLI/MCP adoption, product telemetry, and physical
 accessibility/OS validation remain separate gates.
 
@@ -671,6 +672,30 @@ closed. This surface does not parse question prose, guess aliases, invoke
 Foundation Models, execute the graph-aware answer bundle, or change graph
 authority. Sequoia and Tahoe use the same SwiftUI and SQLite path; physical
 VoiceOver and independent OS/hardware evidence remain open.
+
+## Released exact-topic first-discussion explorer (D363)
+
+The existing **By topic** surface adds an explicit subordinate memory-view
+selector instead of adding another top-level Ask mode. After the user chooses
+one canonical live `TopicID`, **First confirmed discussion** passes only that
+identity to `LoadTopicFirstDiscussion`; topic text remains discovery metadata
+and never becomes query authority.
+
+Presentation accepts exactly one complete synthesis page with no pagination,
+selection, stale, or unavailable omissions. Its only fact must be a confirmed
+topic-to-meeting relationship for the selected topic, name the same meeting as
+its only primary current source, and place the occurrence at the meeting start
+plus the source segment offset. Any extra fact/source, identity mismatch,
+partial page, or inconsistent time fails closed instead of being described as
+the first discussion.
+
+The first-discussion and current-decision jobs share one generation-fenced
+per-window task. Changing jobs, topics, surfaces, or closing the window cancels
+the read and prevents a late result from publishing into another selection.
+The UI says **first confirmed discussion**, not “first ever”, renders the exact
+meeting and date, and reuses the exact evidence seek route. It does not invoke
+Foundation Models or require Tahoe-only APIs; physical VoiceOver and
+independent Sequoia/Tahoe evidence remain external gates.
 
 ## Human claim feedback is not model material (D88)
 

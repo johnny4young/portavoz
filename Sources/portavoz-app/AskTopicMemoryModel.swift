@@ -18,6 +18,20 @@ struct AskMemoryDecision: Identifiable, Equatable {
     let primaryCitation: AskCitation
 }
 
+struct AskMemoryFirstDiscussion: Identifiable, Equatable {
+    let id: TopicMeetingEvidenceID
+    let topicLabel: String
+    let meetingID: MeetingID
+    let meetingTitle: String
+    let occurredAt: Date
+    let citation: AskCitation
+}
+
+enum AskTopicMemoryJob: Equatable {
+    case currentDecisions
+    case firstConfirmedDiscussion
+}
+
 enum AskMemoryTopicsPhase: Equatable {
     case idle
     case loading
@@ -29,15 +43,16 @@ enum AskMemoryTopicsPhase: Equatable {
 enum AskTopicMemoryOutcome: Equatable {
     case idle
     case loading
-    case facts([AskMemoryDecision], AskMemoryDisclosure)
+    case decisions([AskMemoryDecision], AskMemoryDisclosure)
+    case firstDiscussion(AskMemoryFirstDiscussion)
     case abstained(MeetingMemoryGraphQueryAbstention)
     case invalidEvidence
     case unavailable
 }
 
-/// Per-window owner for exact confirmed-topic discovery and current decisions.
+/// Per-window owner for exact confirmed-topic discovery and topic-memory jobs.
 /// Catalog and fact generations are independent, and only a selected TopicID
-/// can cross into the source-backed decision-history query.
+/// can cross into either source-backed graph query.
 @MainActor
 @Observable
 final class AskTopicMemoryModel {
@@ -47,6 +62,7 @@ final class AskTopicMemoryModel {
         fileprivate(set) var topicsPhase = AskMemoryTopicsPhase.idle
         fileprivate(set) var topicsHaveMore = false
         fileprivate(set) var selectedTopic: AskMemoryTopic?
+        fileprivate(set) var selectedJob = AskTopicMemoryJob.currentDecisions
         fileprivate(set) var outcome = AskTopicMemoryOutcome.idle
     }
 
@@ -59,9 +75,9 @@ final class AskTopicMemoryModel {
     private let client: any AskMemoryModelClient
     private let searchDelay: Duration
     private var topicsTask: Task<Void, Never>?
-    private var decisionsTask: Task<Void, Never>?
+    private var factTask: Task<Void, Never>?
     private var topicsGeneration = 0
-    private var decisionsGeneration = 0
+    private var factGeneration = 0
 
     init(
         client: any AskMemoryModelClient,
@@ -73,7 +89,7 @@ final class AskTopicMemoryModel {
 
     isolated deinit {
         topicsTask?.cancel()
-        decisionsTask?.cancel()
+        factTask?.cancel()
     }
 
     func activate() {
@@ -86,7 +102,7 @@ final class AskTopicMemoryModel {
         state.topicQuery = value
         state.selectedTopic = nil
         state.outcome = .idle
-        cancelDecisionLoad()
+        cancelFactLoad()
         startTopicSearch(delay: searchDelay)
     }
 
@@ -95,7 +111,7 @@ final class AskTopicMemoryModel {
             return
         }
         cancelTopicSearch()
-        cancelDecisionLoad()
+        cancelFactLoad()
         state.topicQuery = topic.label
         state.topics = []
         state.topicsHaveMore = false
@@ -105,7 +121,7 @@ final class AskTopicMemoryModel {
     }
 
     func clearTopicSelection() {
-        cancelDecisionLoad()
+        cancelFactLoad()
         state.topicQuery = ""
         state.selectedTopic = nil
         state.outcome = .idle
@@ -118,20 +134,33 @@ final class AskTopicMemoryModel {
         startTopicSearch(delay: .zero)
     }
 
-    func loadSelectedTopicDecisions() {
+    func selectJob(_ job: AskTopicMemoryJob) {
+        guard job != state.selectedJob else { return }
+        cancelFactLoad()
+        state.selectedJob = job
+        state.outcome = .idle
+    }
+
+    func loadSelectedTopicMemory() {
         guard let topic = state.selectedTopic else { return }
-        decisionsGeneration += 1
-        let requestGeneration = decisionsGeneration
-        decisionsTask?.cancel()
+        factGeneration += 1
+        let requestGeneration = factGeneration
+        factTask?.cancel()
         state.outcome = .loading
-        startDecisionLoad(
+        startFactLoad(
             for: topic,
+            job: state.selectedJob,
             generation: requestGeneration)
+    }
+
+    func loadSelectedTopicDecisions() {
+        selectJob(.currentDecisions)
+        loadSelectedTopicMemory()
     }
 
     func cancelPendingWork() {
         cancelTopicSearch()
-        cancelDecisionLoad()
+        cancelFactLoad()
         if state.topicsPhase == .loading {
             state.topicsPhase = .idle
         }
@@ -185,33 +214,44 @@ final class AskTopicMemoryModel {
         }
     }
 
-    private func startDecisionLoad(
+    private func startFactLoad(
         for topic: AskMemoryTopic,
+        job: AskTopicMemoryJob,
         generation requestGeneration: Int
     ) {
-        decisionsTask = Task { [weak self, client] in
+        factTask = Task { [weak self, client] in
             do {
-                let result = try await client.loadAskMemoryDecisionHistory(
-                    topicID: topic.id,
-                    limit: Self.decisionLimit)
+                let result: MeetingMemoryGraphQueryResult
+                switch job {
+                case .currentDecisions:
+                    result = try await client.loadAskMemoryDecisionHistory(
+                        topicID: topic.id,
+                        limit: Self.decisionLimit)
+                case .firstConfirmedDiscussion:
+                    result = try await client.loadAskMemoryTopicFirstDiscussion(
+                        topicID: topic.id)
+                }
                 try Task.checkCancellation()
                 guard let self,
-                      self.decisionsGeneration == requestGeneration,
-                      self.state.selectedTopic?.id == topic.id
+                      self.factGeneration == requestGeneration,
+                      self.state.selectedTopic?.id == topic.id,
+                      self.state.selectedJob == job
                 else { return }
                 self.state.outcome = Self.prepareOutcome(
                     result,
-                    expectedTopic: topic)
-                self.decisionsTask = nil
+                    expectedTopic: topic,
+                    job: job)
+                self.factTask = nil
             } catch is CancellationError {
                 return
             } catch {
                 guard let self,
-                      self.decisionsGeneration == requestGeneration,
-                      self.state.selectedTopic?.id == topic.id
+                      self.factGeneration == requestGeneration,
+                      self.state.selectedTopic?.id == topic.id,
+                      self.state.selectedJob == job
                 else { return }
                 self.state.outcome = .unavailable
-                self.decisionsTask = nil
+                self.factTask = nil
             }
         }
     }
@@ -222,10 +262,10 @@ final class AskTopicMemoryModel {
         topicsTask = nil
     }
 
-    private func cancelDecisionLoad() {
-        decisionsGeneration += 1
-        decisionsTask?.cancel()
-        decisionsTask = nil
+    private func cancelFactLoad() {
+        factGeneration += 1
+        factTask?.cancel()
+        factTask = nil
     }
 
     private static func prepareTopics(_ topics: [Topic]) -> [AskMemoryTopic]? {
@@ -245,30 +285,86 @@ final class AskTopicMemoryModel {
 
     private static func prepareOutcome(
         _ result: MeetingMemoryGraphQueryResult,
-        expectedTopic: AskMemoryTopic
+        expectedTopic: AskMemoryTopic,
+        job: AskTopicMemoryJob
     ) -> AskTopicMemoryOutcome {
         switch result {
         case .abstained(let reason):
             return .abstained(reason)
         case .facts(let page):
-            guard page.facts.count <= decisionLimit,
-                  let synthesis = AskGraphFactSynthesisPage(page: page)
-            else {
-                return .invalidEvidence
+            switch job {
+            case .currentDecisions:
+                return prepareDecisions(page, expectedTopic: expectedTopic)
+            case .firstConfirmedDiscussion:
+                guard let discussion = prepareFirstDiscussion(
+                    page,
+                    expectedTopic: expectedTopic)
+                else { return .invalidEvidence }
+                return .firstDiscussion(discussion)
             }
-            let decisions = synthesis.facts.compactMap {
-                prepareDecision($0, expectedTopic: expectedTopic)
-            }
-            guard decisions.count == synthesis.facts.count else {
-                return .invalidEvidence
-            }
-            return .facts(
-                decisions,
-                AskMemoryDisclosure(
-                    hasMore: synthesis.hasMore,
-                    omittedStaleCount: synthesis.omittedStaleCount,
-                    omittedUnavailableCount: synthesis.omittedUnavailableCount))
         }
+    }
+
+    private static func prepareDecisions(
+        _ page: MeetingMemoryGraphFactPage,
+        expectedTopic: AskMemoryTopic
+    ) -> AskTopicMemoryOutcome {
+        guard page.facts.count <= decisionLimit,
+              let synthesis = AskGraphFactSynthesisPage(page: page)
+        else { return .invalidEvidence }
+        let decisions = synthesis.facts.compactMap {
+            prepareDecision($0, expectedTopic: expectedTopic)
+        }
+        guard decisions.count == synthesis.facts.count else {
+            return .invalidEvidence
+        }
+        return .decisions(
+            decisions,
+            AskMemoryDisclosure(
+                hasMore: synthesis.hasMore,
+                omittedStaleCount: synthesis.omittedStaleCount,
+                omittedUnavailableCount: synthesis.omittedUnavailableCount))
+    }
+
+    private static func prepareFirstDiscussion(
+        _ page: MeetingMemoryGraphFactPage,
+        expectedTopic: AskMemoryTopic
+    ) -> AskMemoryFirstDiscussion? {
+        guard page.facts.count == 1,
+              let synthesis = AskGraphFactSynthesisPage(page: page),
+              synthesis.isComplete,
+              synthesis.facts.count == 1,
+              let evidence = synthesis.facts.first,
+              evidence.sourceSegments.count == 1,
+              evidence.fact.evidence.count == 1
+        else { return nil }
+
+        let fact = evidence.fact
+        let source = fact.evidence[0]
+        let citation = evidence.sourceSegments[0]
+        guard case .topicEvidence(let evidenceID) = fact.id,
+              fact.kind == .topicDiscussedInMeeting,
+              case .topic(let topicID) = fact.subject,
+              topicID == expectedTopic.id,
+              case .meeting(let meetingID) = fact.object,
+              fact.status == .confirmed,
+              fact.subjectText == expectedTopic.label,
+              fact.objectText == citation.meetingTitle,
+              source.meetingID == meetingID,
+              citation.meetingID == meetingID,
+              source.segmentID == fact.primaryEvidenceSegmentID,
+              citation.segmentID == fact.primaryEvidenceSegmentID,
+              fact.occurredAt
+                == source.meetingStartedAt.addingTimeInterval(source.startTime)
+        else { return nil }
+
+        return AskMemoryFirstDiscussion(
+            id: evidenceID,
+            topicLabel: expectedTopic.label,
+            meetingID: meetingID,
+            meetingTitle: citation.meetingTitle,
+            occurredAt: fact.occurredAt,
+            citation: citation)
     }
 
     private static func prepareDecision(

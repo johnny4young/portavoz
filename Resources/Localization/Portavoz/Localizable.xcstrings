@@ -1,6 +1,116 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "The first confirmed discussion needs current transcript evidence before Portavoz can show it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La primera conversación confirmada necesita evidencia actual de la transcripción antes de que Portavoz pueda mostrarla."
+          }
+        }
+      }
+    },
+    "Choose one confirmed topic and a memory view. Portavoz uses the exact identity you select and only shows source-backed facts you explicitly confirmed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un tema confirmado y una vista de memoria. Portavoz usa la identidad exacta que selecciones y solo muestra hechos respaldados por fuentes que confirmaste explícitamente."
+          }
+        }
+      }
+    },
+    "Confirmed topic: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tema confirmado: %@"
+          }
+        }
+      }
+    },
+    "Could not load the first confirmed discussion.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cargar la primera conversación confirmada."
+          }
+        }
+      }
+    },
+    "First confirmed discussion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primera conversación confirmada"
+          }
+        }
+      }
+    },
+    "Loading the first confirmed discussion…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando la primera conversación confirmada…"
+          }
+        }
+      }
+    },
+    "No confirmed discussion is available for this topic.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay una conversación confirmada disponible para este tema."
+          }
+        }
+      }
+    },
+    "Portavoz could not verify the first discussion evidence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo verificar la evidencia de la primera conversación."
+          }
+        }
+      }
+    },
+    "Show first confirmed discussion": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar la primera conversación confirmada"
+          }
+        }
+      }
+    },
+    "Topic memory": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Memoria del tema"
+          }
+        }
+      }
+    },
+    "Topic memory view": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista de memoria del tema"
+          }
+        }
+      }
+    },
     "1 meeting exported.": {
       "localizations": {
         "es": {

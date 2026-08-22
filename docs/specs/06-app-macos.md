@@ -1363,6 +1363,28 @@ Foundation Models nor Tahoe-only APIs, so the deployment floor and Sequoia
 behavior remain unchanged; physical VoiceOver and independent Sequoia/Tahoe
 validation are still external evidence.
 
+## First confirmed discussion by topic in Ask (D363)
+
+The existing **By topic** surface now exposes a subordinate segmented memory-
+view selector: **Current decisions** or **First confirmed discussion**. The
+selected job is retained while changing exact topics, but changing the job
+cancels any in-flight fact read and clears its visible result. Search remains a
+separate bounded task, and closing or leaving Ask cancels both lanes.
+
+First-discussion presentation accepts only one complete, source-backed
+topic-to-meeting fact for the selected `TopicID`. The card names the exact
+meeting and confirmed occurrence date, uses deliberately narrower wording than
+“first ever”, and provides one evidence action through the existing exact seek
+route. Partial pages, extra facts or sources, mismatched topic/meeting identity,
+and inconsistent occurrence time render an explicit verification failure.
+
+The picker, both segments, load action, card, and evidence action have stable
+`ask-topic-*` accessibility identifiers and localized English/Spanish copy.
+The temporary-store graph fixture drives an independent bilingual XCUITest that
+switches jobs, loads the first discussion, and follows its source to 00:03.
+No Foundation Models or Tahoe-only API is involved; physical VoiceOver and
+independent Sequoia/Tahoe validation remain external.
+
 The hidden Ask resource mode installs one observer only around its disposable
 `AskMeetings.local` call (D193). `AskPipelineRunProbe` accepts exactly one
 answer trace, one completion for every declared stage, first evidence, first

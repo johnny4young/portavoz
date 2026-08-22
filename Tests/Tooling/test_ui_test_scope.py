@@ -226,6 +226,17 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
+    def test_topic_first_discussion_selects_only_exact_ask_journeys(self):
+        expected = FEATURE_TESTS["ask"]
+        for path in (
+            "Sources/ApplicationKit/LoadTopicFirstDiscussion.swift",
+            "Sources/StorageKit/MeetingStore+TopicFirstDiscussionQuery.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
+
     def test_summary_storage_selects_its_consumers_without_full_fallback(self):
         selection = select_paths(["Sources/StorageKit/MeetingStore+Summaries.swift"])
         self.assertIn(

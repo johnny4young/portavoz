@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,559 cases (15 environment-gated) + 97
+Status: the package inventory contains 2,564 cases (15 environment-gated) + 98
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 97
+Meeting Detail tests. The English and Spanish release gates each cover all 98
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -1519,7 +1519,7 @@ does not change, all authority-keyed edge sets reproduce exactly in both
 directions, the first partial reset clears later decision-topic edges, and a
 failed row cannot bypass its attempt ceiling. These results select SQLite and
 reject a specialized graph-engine migration; they do not supply private owner-
-reviewed field evidence, the other four released query surfaces, free-form
+reviewed field evidence, the other three released query surfaces, free-form
 graph-aware Ask, sync/export, CLI/MCP adoption, or product telemetry.
 
 ### First released exact graph query surface (D361)
@@ -1567,6 +1567,27 @@ localized Sequoia/Tahoe-compatible code path, not physical VoiceOver,
 clean-install Sequoia, separate-hardware Tahoe, private-corpus quality, or
 graph telemetry.
 
+### Third released exact graph query surface (D363)
+
+Four presentation-model cases prove that the exact selected `TopicID` crosses
+the first-discussion boundary; that the one returned topic-to-meeting fact,
+meeting identity, single primary source, and meeting-relative occurrence time
+are preserved; that pagination, wrong-topic, wrong-meeting, and inconsistent-
+time responses fail closed; that changing jobs fences a late response; and
+that a pending first-discussion read cannot retain a closed window model.
+The existing topic-search cases continue to cover bounded selection and closed-
+window non-retention. One architecture ratchet pins production composition,
+job-specific completeness validation, stable accessibility identifiers,
+fixture reuse, bilingual XCUITest, and honest remaining gaps.
+
+One additional real-app XCUITest per locale launches the temporary store,
+confirms and projects the same exact `model rollout` topic evidence, opens **By
+topic**, switches to **First confirmed discussion**, and follows its only exact
+source to 00:03. It uses no user library, network, Foundation Models, or Tahoe-
+only API. This is executable bilingual regression evidence on the local host,
+not physical VoiceOver, clean-install Sequoia, separate-hardware Tahoe, private-
+corpus quality, or graph telemetry.
+
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
@@ -1578,7 +1599,7 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 97 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 98 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select bilingual evidence; the

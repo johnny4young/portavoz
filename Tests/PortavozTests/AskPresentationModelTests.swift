@@ -342,11 +342,11 @@ final class AskPresentationModelTests: XCTestCase {
             for: fixture.topic.id,
             with: .facts(fixture.page()))
         try await waitUntil {
-            if case .facts = topicModel.state.outcome { return true }
+            if case .decisions = topicModel.state.outcome { return true }
             return false
         }
 
-        guard case .facts(let values, let disclosure) = topicModel.state.outcome
+        guard case .decisions(let values, let disclosure) = topicModel.state.outcome
         else { return XCTFail("Expected exact topic decision facts") }
         let value = try XCTUnwrap(values.first)
         XCTAssertEqual(values.count, 1)
@@ -413,6 +413,132 @@ final class AskPresentationModelTests: XCTestCase {
             "an in-flight topic read must not retain a closed Ask window")
         memory.completeTopics("", with: [])
         await Task.yield()
+    }
+
+    func testTopicMemoryFirstDiscussionExposesOneExactSourceBackedFact() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(fixture.topic, in: model, using: memory)
+        model.selectJob(.firstConfirmedDiscussion)
+        model.loadSelectedTopicMemory()
+        try await waitUntil {
+            memory.firstDiscussionRequests == [fixture.topic.id]
+        }
+        memory.completeFirstDiscussion(
+            for: fixture.topic.id,
+            with: .facts(fixture.firstDiscussionPage()))
+        try await waitUntil {
+            if case .firstDiscussion = model.state.outcome { return true }
+            return false
+        }
+
+        guard case .firstDiscussion(let discussion) = model.state.outcome
+        else { return XCTFail("Expected exact topic first discussion") }
+        XCTAssertEqual(discussion.id, fixture.topicEvidenceID)
+        XCTAssertEqual(discussion.topicLabel, "Model rollout")
+        XCTAssertEqual(discussion.meetingID, fixture.meetingID)
+        XCTAssertEqual(discussion.meetingTitle, "Test meeting")
+        XCTAssertEqual(
+            discussion.occurredAt,
+            fixture.meetingStartedAt.addingTimeInterval(3))
+        XCTAssertEqual(discussion.citation, fixture.citation)
+    }
+
+    func testTopicMemoryFirstDiscussionFailsClosedForPartialOrMismatchedEvidence() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(fixture.topic, in: model, using: memory)
+        model.selectJob(.firstConfirmedDiscussion)
+
+        let malformedPages = [
+            fixture.firstDiscussionPage(factCount: 0),
+            fixture.firstDiscussionPage(factCount: 2),
+            fixture.firstDiscussionPage(sourceCount: 2),
+            fixture.firstDiscussionPage(hasMore: true),
+            fixture.firstDiscussionPage(omittedStaleCount: 1),
+            fixture.firstDiscussionPage(topicID: TopicID()),
+            fixture.firstDiscussionPage(meetingID: MeetingID()),
+            fixture.firstDiscussionPage(occurredAtOffset: 4)
+        ]
+        for (index, page) in malformedPages.enumerated() {
+            model.loadSelectedTopicMemory()
+            try await waitUntil {
+                memory.firstDiscussionRequests.count == index + 1
+            }
+            memory.completeFirstDiscussion(
+                for: fixture.topic.id,
+                with: .facts(page))
+            try await waitUntil { model.state.outcome == .invalidEvidence }
+        }
+    }
+
+    func testTopicMemoryJobChangeFencesLateFirstDiscussionResult() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(fixture.topic, in: model, using: memory)
+        model.selectJob(.firstConfirmedDiscussion)
+        model.loadSelectedTopicMemory()
+        try await waitUntil { memory.firstDiscussionRequests.count == 1 }
+
+        model.selectJob(.currentDecisions)
+        XCTAssertEqual(model.state.outcome, .idle)
+        memory.completeFirstDiscussion(
+            for: fixture.topic.id,
+            with: .facts(fixture.firstDiscussionPage()))
+        await Task.yield()
+
+        XCTAssertEqual(model.state.selectedJob, .currentDecisions)
+        XCTAssertEqual(model.state.outcome, .idle)
+    }
+
+    func testTopicMemoryPendingFirstDiscussionDoesNotRetainClosedWindowModel() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        var model: AskTopicMemoryModel? = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(
+            fixture.topic,
+            in: try XCTUnwrap(model),
+            using: memory)
+        model?.selectJob(.firstConfirmedDiscussion)
+        model?.loadSelectedTopicMemory()
+        try await waitUntil { memory.firstDiscussionRequests.count == 1 }
+        weak let retainedModel = model
+        model = nil
+
+        XCTAssertNil(
+            retainedModel,
+            "an in-flight first-discussion read must not retain a closed Ask window")
+        memory.completeFirstDiscussion(
+            for: fixture.topic.id,
+            with: .facts(fixture.firstDiscussionPage()))
+        await Task.yield()
+    }
+
+    private func selectTopic(
+        _ topic: Topic,
+        in model: AskTopicMemoryModel,
+        using memory: ControlledAskMemoryModelClient
+    ) async throws {
+        model.activate()
+        try await waitUntil { memory.topicRequests == [""] }
+        memory.completeTopics("", with: [topic])
+        try await waitUntil { model.state.topicsPhase == .ready }
+        model.selectTopic(topic.id)
     }
 
     func testPaletteResetPreventsClosedGenerationFromPublishingIntoReopen() async throws {
@@ -636,8 +762,10 @@ private struct AskTopicMemoryPresentationFixture {
     let topic = Topic(preferredLabel: "Model rollout")
     let decisionID = DecisionID()
     let linkID = DecisionTopicLinkID()
+    let topicEvidenceID = TopicMeetingEvidenceID()
     let meetingID = MeetingID()
     let segmentID = UUID()
+    let meetingStartedAt = Date(timeIntervalSince1970: 1_700_000_000)
 
     var citation: AskCitation {
         AskCitation(
@@ -682,6 +810,58 @@ private struct AskTopicMemoryPresentationFixture {
             hasMore: false,
             projectionGeneration: 1,
             omittedStaleCount: 0,
+            omittedUnavailableCount: 0)
+    }
+
+    func firstDiscussionPage(
+        topicID: TopicID? = nil,
+        meetingID: MeetingID? = nil,
+        occurredAtOffset: TimeInterval = 3,
+        factCount: Int = 1,
+        sourceCount: Int = 1,
+        hasMore: Bool = false,
+        omittedStaleCount: Int = 0
+    ) -> MeetingMemoryGraphFactPage {
+        let resolvedMeetingID = meetingID ?? self.meetingID
+        return MeetingMemoryGraphFactPage(
+            facts: (0..<factCount).map { factIndex in
+                let factEvidenceID = factIndex == 0
+                    ? topicEvidenceID
+                    : TopicMeetingEvidenceID()
+                let primarySegmentID = factIndex == 0 ? segmentID : UUID()
+                let sources: [MeetingMemoryGraphEvidence] = (0..<sourceCount).map {
+                    sourceIndex in
+                    let sourceSegmentID: UUID = sourceIndex == 0
+                        ? primarySegmentID
+                        : UUID()
+                    let sourceStart = TimeInterval(3 + sourceIndex)
+                    return MeetingMemoryGraphEvidence(
+                        meetingID: self.meetingID,
+                        meetingTitle: "Test meeting",
+                        meetingStartedAt: meetingStartedAt,
+                        transcriptRevision: 0,
+                        segmentID: sourceSegmentID,
+                        startTime: sourceStart,
+                        endTime: sourceStart + 3,
+                        text: "We ship the model on Friday.",
+                        language: "en")
+                }
+                return MeetingMemoryGraphFact(
+                    id: .topicEvidence(factEvidenceID),
+                    kind: .topicDiscussedInMeeting,
+                    subject: .topic(topicID ?? topic.id),
+                    object: .meeting(resolvedMeetingID),
+                    subjectText: "Model rollout",
+                    objectText: "Test meeting",
+                    status: .confirmed,
+                    occurredAt: meetingStartedAt.addingTimeInterval(
+                        occurredAtOffset),
+                    evidence: sources,
+                    primaryEvidenceSegmentID: primarySegmentID)
+            },
+            hasMore: hasMore,
+            projectionGeneration: 1,
+            omittedStaleCount: omittedStaleCount,
             omittedUnavailableCount: 0)
     }
 }
@@ -759,6 +939,7 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
     private(set) var topicLimits: [Int] = []
     private(set) var decisionRequests: [TopicID] = []
     private(set) var decisionLimits: [Int] = []
+    private(set) var firstDiscussionRequests: [TopicID] = []
     private var peopleContinuations:
         [String: CheckedContinuation<[Person], Error>] = [:]
     private var commitmentContinuations:
@@ -766,6 +947,8 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
     private var topicContinuations:
         [String: CheckedContinuation<[Topic], Error>] = [:]
     private var decisionContinuations:
+        [TopicID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
+    private var firstDiscussionContinuations:
         [TopicID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
 
     func searchAskMemoryPeople(
@@ -812,6 +995,15 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         }
     }
 
+    func loadAskMemoryTopicFirstDiscussion(
+        topicID: TopicID
+    ) async throws -> MeetingMemoryGraphQueryResult {
+        firstDiscussionRequests.append(topicID)
+        return try await withCheckedThrowingContinuation { continuation in
+            firstDiscussionContinuations[topicID, default: []].append(continuation)
+        }
+    }
+
     func completePeople(_ query: String, with people: [Person]) {
         peopleContinuations.removeValue(forKey: query)?.resume(returning: people)
     }
@@ -841,6 +1033,18 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         else { return }
         let continuation = continuations.removeFirst()
         decisionContinuations[topicID] = continuations
+        continuation.resume(returning: result)
+    }
+
+    func completeFirstDiscussion(
+        for topicID: TopicID,
+        with result: MeetingMemoryGraphQueryResult
+    ) {
+        guard var continuations = firstDiscussionContinuations[topicID],
+              !continuations.isEmpty
+        else { return }
+        let continuation = continuations.removeFirst()
+        firstDiscussionContinuations[topicID] = continuations
         continuation.resume(returning: result)
     }
 }

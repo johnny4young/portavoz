@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 21, 2026
 
+- **🕰️ First topic memory opens its proof** — Choose one exact confirmed topic in Ask, see the first discussion you explicitly confirmed for it, and jump straight to the meeting moment that established it.
 - **🧭 Confirmed decisions stay filed by topic** — Choose one exact confirmed topic in Ask and review its current source-backed decisions without identity guessing or Apple Intelligence, with every result linked to the meeting moment that proves it.
 - **🧠 Confirmed commitments answer without guessing** — Choose one exact confirmed person in Ask and review their current source-backed commitments, even without Apple Intelligence, with every result linked to the meeting moment that proves it.
 - **🧭 Skill receipts reopen their source** — Review a verified non-failed run in its exact meeting or commitment without running it again, even while Skills are paused; calendar receipts stay honestly in the menu bar.

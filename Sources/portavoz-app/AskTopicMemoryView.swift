@@ -2,8 +2,9 @@ import ApplicationKit
 import PortavozCore
 import SwiftUI
 
-/// Explicit confirmed-decision query UI. The user chooses one canonical topic;
-/// no free-form question, model, or alias guess can select graph authority.
+/// Explicit topic-memory query UI. The user chooses one canonical topic and
+/// one factual job; no free-form question, model, or alias guess can select
+/// graph authority.
 struct AskTopicMemoryView: View {
     let model: AskTopicMemoryModel
     let onOpenCitation: (AskCitation) -> Void
@@ -27,12 +28,12 @@ struct AskTopicMemoryView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Current decisions", systemImage: "checkmark.seal")
+            Label("Topic memory", systemImage: "checkmark.seal")
                 .font(.title2.bold())
                 .accessibilityIdentifier("ask-topic-title")
             Text(
                 // swiftlint:disable:next line_length
-                "Choose one confirmed topic. Portavoz uses the exact identity you select and shows only current decisions you explicitly confirmed about it.")
+                "Choose one confirmed topic and a memory view. Portavoz uses the exact identity you select and only shows source-backed facts you explicitly confirmed.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -105,22 +106,54 @@ struct AskTopicMemoryView: View {
     }
 
     private func selectedTopic(_ topic: AskMemoryTopic) -> some View {
-        HStack(spacing: 10) {
-            Label(topic.label, systemImage: "number.circle.fill")
-                .font(.headline)
-                .accessibilityIdentifier("ask-topic-selected")
-            Spacer()
-            Button("Change") { model.clearTopicSelection() }
-                .accessibilityIdentifier("ask-topic-change")
-            Button("Show current decisions") {
-                model.loadSelectedTopicDecisions()
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Label(topic.label, systemImage: "number.circle.fill")
+                    .font(.headline)
+                    .accessibilityIdentifier("ask-topic-selected")
+                Spacer()
+                Button("Change") { model.clearTopicSelection() }
+                    .accessibilityIdentifier("ask-topic-change")
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(model.state.outcome == .loading)
-            .accessibilityIdentifier("ask-topic-load")
+            jobPicker
+            HStack {
+                Spacer()
+                Button(loadButtonTitle) {
+                    model.loadSelectedTopicMemory()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(model.state.outcome == .loading)
+                .accessibilityIdentifier("ask-topic-load")
+            }
         }
         .padding(12)
         .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var jobPicker: some View {
+        Picker(
+            "Topic memory view",
+            selection: Binding(
+                get: { model.state.selectedJob },
+                set: { model.selectJob($0) })) {
+            Text("Current decisions")
+                .tag(AskTopicMemoryJob.currentDecisions)
+                .accessibilityIdentifier("ask-topic-job-current-decisions")
+            Text("First confirmed discussion")
+                .tag(AskTopicMemoryJob.firstConfirmedDiscussion)
+                .accessibilityIdentifier("ask-topic-job-first-discussion")
+        }
+        .pickerStyle(.segmented)
+        .accessibilityIdentifier("ask-topic-job")
+    }
+
+    private var loadButtonTitle: LocalizedStringKey {
+        switch model.state.selectedJob {
+        case .currentDecisions:
+            "Show current decisions"
+        case .firstConfirmedDiscussion:
+            "Show first confirmed discussion"
+        }
     }
 
     @ViewBuilder
@@ -130,28 +163,57 @@ struct AskTopicMemoryView: View {
             EmptyView()
         case .loading:
             statusRow(
-                "Loading confirmed decisions…",
+                loadingMessage,
                 systemImage: nil,
                 showsProgress: true)
-        case .facts(let decisions, let disclosure):
+        case .decisions(let decisions, let disclosure):
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(decisions) { decision in
                     decisionCard(decision)
                 }
                 disclosureView(disclosure)
             }
+        case .firstDiscussion(let discussion):
+            firstDiscussionCard(discussion)
         case .abstained(let reason):
             topicFailure(
                 message: abstentionMessage(reason),
                 identifier: "ask-topic-abstained")
         case .invalidEvidence:
             topicFailure(
-                message: "Portavoz could not verify the returned decision evidence.",
+                message: invalidEvidenceMessage,
                 identifier: "ask-topic-invalid-evidence")
         case .unavailable:
             topicFailure(
-                message: "Could not load confirmed decisions.",
+                message: unavailableMessage,
                 identifier: "ask-topic-unavailable")
+        }
+    }
+
+    private var loadingMessage: String {
+        switch model.state.selectedJob {
+        case .currentDecisions:
+            "Loading confirmed decisions…"
+        case .firstConfirmedDiscussion:
+            "Loading the first confirmed discussion…"
+        }
+    }
+
+    private var invalidEvidenceMessage: String {
+        switch model.state.selectedJob {
+        case .currentDecisions:
+            "Portavoz could not verify the returned decision evidence."
+        case .firstConfirmedDiscussion:
+            "Portavoz could not verify the first discussion evidence."
+        }
+    }
+
+    private var unavailableMessage: String {
+        switch model.state.selectedJob {
+        case .currentDecisions:
+            "Could not load confirmed decisions."
+        case .firstConfirmedDiscussion:
+            "Could not load the first confirmed discussion."
         }
     }
 
@@ -194,6 +256,44 @@ struct AskTopicMemoryView: View {
         .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
     }
 
+    private func firstDiscussionCard(
+        _ discussion: AskMemoryFirstDiscussion
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("First confirmed discussion", systemImage: "clock.arrow.circlepath")
+                .font(.headline)
+            Text(discussion.meetingTitle)
+                .font(.title3.weight(.semibold))
+                .accessibilityIdentifier(
+                    "ask-topic-first-discussion-\(discussion.id.rawValue.uuidString)")
+            Text(L10n.format("Confirmed topic: %@", discussion.topicLabel))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(discussion.occurredAt.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            Divider()
+            Button {
+                onOpenCitation(discussion.citation)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.turn.down.right")
+                    Text(
+                        "\(discussion.meetingTitle) · \(AskMarkdown.clock(discussion.citation.timestamp))")
+                        .lineLimit(1)
+                }
+                .font(.caption)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(PVDesign.accent)
+            .help(discussion.citation.text)
+            .accessibilityIdentifier(
+                "ask-topic-first-discussion-evidence-\(discussion.id.rawValue.uuidString)")
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
+    }
+
     @ViewBuilder
     private func disclosureView(_ disclosure: AskMemoryDisclosure) -> some View {
         if disclosure.hasMore {
@@ -222,7 +322,7 @@ struct AskTopicMemoryView: View {
                 message,
                 systemImage: "exclamationmark.triangle",
                 identifier: identifier)
-            Button("Try again") { model.loadSelectedTopicDecisions() }
+            Button("Try again") { model.loadSelectedTopicMemory() }
                 .accessibilityIdentifier("ask-topic-load-retry")
         }
     }
@@ -260,13 +360,13 @@ struct AskTopicMemoryView: View {
     ) -> String {
         switch reason {
         case .insufficientConfirmedDecision, .noMatchingFacts:
-            "No current confirmed decisions for this topic."
+            noMatchingFactsMessage
         case .projectionNotReady:
             "Confirmed memory is still preparing. Try again shortly."
         case .topicUnavailable:
             "This confirmed topic is no longer available."
         case .staleEvidenceOnly, .evidenceUnavailable:
-            "The matching decisions need current transcript evidence before Portavoz can show them."
+            unavailableEvidenceMessage
         case .projectionInconsistent:
             "Confirmed memory could not verify a complete projection yet."
         case .candidateBudgetExceeded:
@@ -276,6 +376,24 @@ struct AskTopicMemoryView: View {
              .noActiveCommitments, .unsupportedCausalLink,
              .unsupportedConflict, .missingTemporalBaseline:
             "The memory request was not specific enough to answer safely."
+        }
+    }
+
+    private var noMatchingFactsMessage: String {
+        switch model.state.selectedJob {
+        case .currentDecisions:
+            "No current confirmed decisions for this topic."
+        case .firstConfirmedDiscussion:
+            "No confirmed discussion is available for this topic."
+        }
+    }
+
+    private var unavailableEvidenceMessage: String {
+        switch model.state.selectedJob {
+        case .currentDecisions:
+            "The matching decisions need current transcript evidence before Portavoz can show them."
+        case .firstConfirmedDiscussion:
+            "The first confirmed discussion needs current transcript evidence before Portavoz can show it."
         }
     }
 }

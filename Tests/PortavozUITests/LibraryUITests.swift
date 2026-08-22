@@ -655,8 +655,8 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertEqual(
             renderedText(of: title),
             UITestLocale.environmentLocale == "es"
-                ? "Decisiones actuales"
-                : "Current decisions")
+                ? "Memoria del tema"
+                : "Topic memory")
 
         let topic = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
@@ -683,6 +683,60 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(evidence.waitForExistence(timeout: 5))
         XCTAssertTrue(evidence.label.contains("Test meeting · 00:03"))
         attachScreenshot(of: app, named: "ask-confirmed-topic-decisions")
+
+        evidence.click()
+        let currentTime = app.staticTexts["player-current-time"]
+        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 10)
+    }
+
+    @MainActor
+    func testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedAskTopicMemory: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        app.buttons["library-ask-button"].click()
+
+        let topicSurface = app.descendants(matching: .any)[
+            "ask-surface-topic-decisions"]
+        XCTAssertTrue(topicSurface.waitForExistence(timeout: 10))
+        topicSurface.click()
+
+        let topic = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
+            .firstMatch
+        XCTAssertTrue(topic.waitForExistence(timeout: 10))
+        XCTAssertTrue(topic.label.contains("model rollout"))
+        topic.click()
+
+        let firstDiscussionJob = app.descendants(matching: .any)[
+            "ask-topic-job-first-discussion"]
+        XCTAssertTrue(firstDiscussionJob.waitForExistence(timeout: 5))
+        firstDiscussionJob.click()
+        app.buttons["ask-topic-load"].click()
+
+        let discussion = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH 'ask-topic-first-discussion-' "
+                    + "AND NOT identifier BEGINSWITH "
+                    + "'ask-topic-first-discussion-evidence-'"))
+            .firstMatch
+        XCTAssertTrue(discussion.waitForExistence(timeout: 10))
+        XCTAssertTrue(renderedText(of: discussion).contains("Test meeting"))
+        let evidence = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH 'ask-topic-first-discussion-evidence-'"))
+            .firstMatch
+        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(evidence.label.contains("Test meeting · 00:03"))
+        attachScreenshot(of: app, named: "ask-confirmed-topic-first-discussion")
 
         evidence.click()
         let currentTime = app.staticTexts["player-current-time"]

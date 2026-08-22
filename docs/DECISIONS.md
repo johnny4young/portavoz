@@ -13176,3 +13176,41 @@ measure a materially larger topic catalogue before selecting FTS, prefix-only,
 or another index. The other four dedicated jobs, private evidence, telemetry,
 physical VoiceOver, clean-install Sequoia, and separate-hardware Tahoe remain
 open.
+
+## D363 — Release first confirmed discussion inside exact topic memory (Aug 2026)
+
+**Context:** D362 already established a bounded, alias-aware topic catalogue and
+required the user to choose one canonical live `TopicID`. Four dedicated graph
+jobs remained without released presentation. `LoadTopicFirstDiscussion` was the
+next coherent topic journey because its authoritative earliest occurrence,
+source evidence, typed abstention, and six-case canonical conformance were
+already implemented. Adding another top-level Ask surface would duplicate topic
+identity selection, while calling the result “first ever” would overstate an
+explicit-confirmation boundary.
+
+**Decision:** extend the existing **By topic** surface with a subordinate
+**Current decisions / First confirmed discussion** selector. Pass only the
+user-selected `TopicID` to `LoadTopicFirstDiscussion`; topic search text remains
+discovery metadata and no model or natural-language resolver chooses authority.
+Keep one generation-fenced fact task shared by the two jobs so changing the job,
+topic, Ask surface, or window cancels and rejects late results.
+
+Admit a first-discussion result only when `AskGraphFactSynthesisPage` validates
+it and the page is complete: exactly one confirmed topic-to-meeting fact for the
+selected topic, exactly one current primary source, matching object/source
+meeting identities and titles, and an occurrence timestamp equal to meeting
+start plus the source segment offset. Any extra fact/source, pagination,
+omission, entity mismatch, or temporal mismatch fails closed. Render the exact
+meeting, date, and source navigation with the narrower phrase **first confirmed
+discussion**.
+
+**Consequences:** three of six dedicated graph jobs now have released,
+source-backed, identity-safe SwiftUI consumers without Foundation Models or a
+Tahoe-only API. The existing disposable confirmation fixture can exercise the
+new path through independent English and Spanish XCUITest and exact evidence
+seek without mutating storage authority. No schema, new search index, graph
+engine, model prompt, sync/export field, CLI, MCP, palette, brief, or free-form
+Ask behavior is added. Active blockers still need an exact commitment selector;
+decision conflicts and change-since still need bounded decision/meeting anchors.
+Private evidence, telemetry, physical VoiceOver, clean-install Sequoia, and
+separate-hardware Tahoe validation remain open.
