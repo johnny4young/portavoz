@@ -13214,3 +13214,43 @@ Ask behavior is added. Active blockers still need an exact commitment selector;
 decision conflicts and change-since still need bounded decision/meeting anchors.
 Private evidence, telemetry, physical VoiceOver, clean-install Sequoia, and
 separate-hardware Tahoe validation remain open.
+
+## D364 — Release confirmed decision changes inside exact topic memory (Aug 2026)
+
+**Context:** D362–D363 already give one canonical live `TopicID` an exact
+current-decision and first-confirmed-discussion journey. Three dedicated graph
+jobs remained without presentation. `LoadDecisionConflicts` was the next most
+cohesive consumer because it needs only that same exact topic identity and its
+source-backed reader, while active blockers still need an exact commitment
+selector and change-since needs a second exact meeting anchor. Adding another
+top-level Ask surface or inferring a topic from prose would duplicate selection
+or weaken authority.
+
+**Decision:** add **Decision changes** as the third subordinate **By topic**
+job. Pass only the selected `TopicID` and the existing 100-fact maximum to
+`LoadDecisionConflicts`. Keep the single topic fact task and generation fence,
+so changing the job, topic, Ask surface, or window cancels the read and rejects
+late results. Topic labels remain discovery metadata; no model chooses graph
+authority.
+
+Before presentation, require `AskGraphFactSynthesisPage` to validate the page
+and every row to be one confirmed decision-relationship event with distinct
+successor and replaced decision identities, nonempty statements, at least two
+exact current source segments, and one exact primary source. Render the
+successor as **Changed to**, the prior statement as **Replaced**, retain all
+evidence, and place the successor's primary source first for navigation.
+Preserve pagination and stale/unavailable omission disclosure. Treat
+`unsupportedConflict` as an honest no-confirmed-change state, not a vague query
+failure.
+
+**Consequences:** four of six dedicated graph jobs now have released,
+source-backed, identity-safe SwiftUI consumers without Foundation Models or a
+Tahoe-only API. A deterministic temporary-store fixture confirms an unlinked
+earlier decision, links the successor to the exact topic, confirms their
+supersession, projects the real disposable graph, and lets independent English
+and Spanish XCUITest verify both statements, both sources, and the successor
+seek. No schema, authority write from the explorer, search index, graph engine,
+model prompt, sync/export field, CLI, MCP, palette, brief, or free-form Ask
+behavior is added. Exact active blockers, exact topic-plus-meeting change-since,
+private evidence, telemetry, physical VoiceOver, clean-install Sequoia, and
+separate-hardware Tahoe validation remain open.

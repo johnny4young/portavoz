@@ -529,6 +529,98 @@ final class AskPresentationModelTests: XCTestCase {
         await Task.yield()
     }
 
+    func testTopicMemoryDecisionConflictsExposeExactReplacementAndPrimaryEvidence() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(fixture.topic, in: model, using: memory)
+        model.selectJob(.decisionConflicts)
+        model.loadSelectedTopicMemory()
+        try await waitUntil {
+            memory.conflictRequests == [fixture.topic.id]
+        }
+        XCTAssertEqual(memory.conflictLimits, [100])
+        memory.completeConflicts(
+            for: fixture.topic.id,
+            with: .facts(fixture.conflictPage()))
+        try await waitUntil {
+            if case .conflicts = model.state.outcome { return true }
+            return false
+        }
+
+        guard case .conflicts(let conflicts, let disclosure) = model.state.outcome
+        else { return XCTFail("Expected exact topic decision conflicts") }
+        let conflict = try XCTUnwrap(conflicts.first)
+        XCTAssertEqual(conflicts.count, 1)
+        XCTAssertEqual(conflict.id, fixture.relationshipEventID)
+        XCTAssertEqual(conflict.successorDecisionID, fixture.decisionID)
+        XCTAssertEqual(conflict.replacedDecisionID, fixture.replacedDecisionID)
+        XCTAssertEqual(conflict.successorStatement, "Ship the model on Friday")
+        XCTAssertEqual(conflict.replacedStatement, "Ship the model on Thursday")
+        XCTAssertEqual(
+            conflict.citations,
+            [fixture.replacedCitation, fixture.citation])
+        XCTAssertEqual(conflict.primaryCitation, fixture.citation)
+        XCTAssertFalse(disclosure.hasMore)
+        XCTAssertEqual(disclosure.omittedStaleCount, 0)
+        XCTAssertEqual(disclosure.omittedUnavailableCount, 0)
+    }
+
+    func testTopicMemoryDecisionConflictsRejectMalformedRelationshipEvidence() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(fixture.topic, in: model, using: memory)
+        model.selectJob(.decisionConflicts)
+        let malformedPages = [
+            fixture.conflictPage(factCount: 101),
+            fixture.conflictPage(kind: .decisionAboutTopic),
+            fixture.conflictPage(replacedDecisionID: fixture.decisionID),
+            fixture.conflictPage(sourceCount: 1),
+            fixture.conflictPage(primarySegmentID: UUID()),
+            fixture.conflictPage(successorStatement: "  "),
+            fixture.conflictPage(status: .active),
+            fixture.conflictPage(usesRelationshipID: false)
+        ]
+        for (index, page) in malformedPages.enumerated() {
+            model.loadSelectedTopicMemory()
+            try await waitUntil { memory.conflictRequests.count == index + 1 }
+            memory.completeConflicts(
+                for: fixture.topic.id,
+                with: .facts(page))
+            try await waitUntil { model.state.outcome == .invalidEvidence }
+        }
+    }
+
+    func testTopicMemoryJobChangeFencesLateDecisionConflictResult() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(fixture.topic, in: model, using: memory)
+        model.selectJob(.decisionConflicts)
+        model.loadSelectedTopicMemory()
+        try await waitUntil { memory.conflictRequests.count == 1 }
+
+        model.selectJob(.firstConfirmedDiscussion)
+        XCTAssertEqual(model.state.outcome, .idle)
+        memory.completeConflicts(
+            for: fixture.topic.id,
+            with: .facts(fixture.conflictPage()))
+        await Task.yield()
+
+        XCTAssertEqual(model.state.selectedJob, .firstConfirmedDiscussion)
+        XCTAssertEqual(model.state.outcome, .idle)
+    }
+
     private func selectTopic(
         _ topic: Topic,
         in model: AskTopicMemoryModel,
@@ -762,9 +854,13 @@ private struct AskTopicMemoryPresentationFixture {
     let topic = Topic(preferredLabel: "Model rollout")
     let decisionID = DecisionID()
     let linkID = DecisionTopicLinkID()
+    let relationshipEventID = DecisionEventID()
+    let replacedDecisionID = DecisionID()
     let topicEvidenceID = TopicMeetingEvidenceID()
     let meetingID = MeetingID()
+    let replacedMeetingID = MeetingID()
     let segmentID = UUID()
+    let replacedSegmentID = UUID()
     let meetingStartedAt = Date(timeIntervalSince1970: 1_700_000_000)
 
     var citation: AskCitation {
@@ -775,6 +871,16 @@ private struct AskTopicMemoryPresentationFixture {
             timestamp: 3,
             transcriptRevision: 0,
             text: "We ship the model on Friday.")
+    }
+
+    var replacedCitation: AskCitation {
+        AskCitation(
+            segmentID: replacedSegmentID,
+            meetingID: replacedMeetingID,
+            meetingTitle: "Planning baseline",
+            timestamp: 4,
+            transcriptRevision: 0,
+            text: "We ship the model on Thursday.")
     }
 
     func page(
@@ -864,6 +970,69 @@ private struct AskTopicMemoryPresentationFixture {
             omittedStaleCount: omittedStaleCount,
             omittedUnavailableCount: 0)
     }
+
+    func conflictPage(
+        factCount: Int = 1,
+        kind: MeetingMemoryGraphFactKind = .decisionSupersededDecision,
+        replacedDecisionID: DecisionID? = nil,
+        sourceCount: Int = 2,
+        primarySegmentID: UUID? = nil,
+        successorStatement: String = "Ship the model on Friday",
+        status: MeetingMemoryGraphFactStatus = .confirmed,
+        usesRelationshipID: Bool = true
+    ) -> MeetingMemoryGraphFactPage {
+        MeetingMemoryGraphFactPage(
+            facts: (0..<factCount).map { index in
+                let eventID = index == 0 ? relationshipEventID : DecisionEventID()
+                let successorID = index == 0 ? decisionID : DecisionID()
+                let replacedID = index == 0
+                    ? (replacedDecisionID ?? self.replacedDecisionID)
+                    : DecisionID()
+                let oldSegmentID = index == 0 ? self.replacedSegmentID : UUID()
+                let newSegmentID = index == 0 ? self.segmentID : UUID()
+                let oldMeetingID = index == 0 ? self.replacedMeetingID : MeetingID()
+                let newMeetingID = index == 0 ? self.meetingID : MeetingID()
+                let evidence = [
+                    MeetingMemoryGraphEvidence(
+                        meetingID: oldMeetingID,
+                        meetingTitle: "Planning baseline",
+                        meetingStartedAt: meetingStartedAt.addingTimeInterval(-86_400),
+                        transcriptRevision: 0,
+                        segmentID: oldSegmentID,
+                        startTime: 4,
+                        endTime: 7,
+                        text: "We ship the model on Thursday.",
+                        language: "en"),
+                    MeetingMemoryGraphEvidence(
+                        meetingID: newMeetingID,
+                        meetingTitle: "Test meeting",
+                        meetingStartedAt: meetingStartedAt,
+                        transcriptRevision: 0,
+                        segmentID: newSegmentID,
+                        startTime: 3,
+                        endTime: 6,
+                        text: "We ship the model on Friday.",
+                        language: "en")
+                ]
+                return MeetingMemoryGraphFact(
+                    id: usesRelationshipID
+                        ? .decisionRelationship(eventID)
+                        : .decisionAboutness(DecisionTopicLinkID()),
+                    kind: kind,
+                    subject: .decision(successorID),
+                    object: .decision(replacedID),
+                    subjectText: successorStatement,
+                    objectText: "Ship the model on Thursday",
+                    status: status,
+                    occurredAt: Date(timeIntervalSince1970: 1_700_000_100),
+                    evidence: Array(evidence.prefix(sourceCount)),
+                    primaryEvidenceSegmentID: primarySegmentID ?? newSegmentID)
+            },
+            hasMore: false,
+            projectionGeneration: 1,
+            omittedStaleCount: 0,
+            omittedUnavailableCount: 0)
+    }
 }
 
 @MainActor
@@ -940,6 +1109,8 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
     private(set) var decisionRequests: [TopicID] = []
     private(set) var decisionLimits: [Int] = []
     private(set) var firstDiscussionRequests: [TopicID] = []
+    private(set) var conflictRequests: [TopicID] = []
+    private(set) var conflictLimits: [Int] = []
     private var peopleContinuations:
         [String: CheckedContinuation<[Person], Error>] = [:]
     private var commitmentContinuations:
@@ -949,6 +1120,8 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
     private var decisionContinuations:
         [TopicID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
     private var firstDiscussionContinuations:
+        [TopicID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
+    private var conflictContinuations:
         [TopicID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
 
     func searchAskMemoryPeople(
@@ -1004,6 +1177,17 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         }
     }
 
+    func loadAskMemoryDecisionConflicts(
+        topicID: TopicID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult {
+        conflictRequests.append(topicID)
+        conflictLimits.append(limit)
+        return try await withCheckedThrowingContinuation { continuation in
+            conflictContinuations[topicID, default: []].append(continuation)
+        }
+    }
+
     func completePeople(_ query: String, with people: [Person]) {
         peopleContinuations.removeValue(forKey: query)?.resume(returning: people)
     }
@@ -1045,6 +1229,18 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         else { return }
         let continuation = continuations.removeFirst()
         firstDiscussionContinuations[topicID] = continuations
+        continuation.resume(returning: result)
+    }
+
+    func completeConflicts(
+        for topicID: TopicID,
+        with result: MeetingMemoryGraphQueryResult
+    ) {
+        guard var continuations = conflictContinuations[topicID],
+              !continuations.isEmpty
+        else { return }
+        let continuation = continuations.removeFirst()
+        conflictContinuations[topicID] = continuations
         continuation.resume(returning: result)
     }
 }

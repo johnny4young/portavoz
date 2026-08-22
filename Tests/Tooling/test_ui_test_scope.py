@@ -169,6 +169,14 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
+    def test_decision_relationship_sources_select_exact_ask_journeys(self):
+        selection = select_paths([
+            "Sources/ApplicationKit/LoadDecisionRelationships.swift",
+            "Sources/StorageKit/MeetingStore+DecisionRelationshipQuery.swift",
+        ])
+        self.assertEqual(selection.tests, FEATURE_TESTS["ask"])
+        self.assertEqual(selection.locales, ("en",))
+
     def test_recording_sources_select_callback_recovery_evidence(self):
         selection = select_paths(["Sources/AudioCaptureKit/RecordingSession.swift"])
         self.assertIn(

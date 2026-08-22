@@ -1385,6 +1385,31 @@ switches jobs, loads the first discussion, and follows its source to 00:03.
 No Foundation Models or Tahoe-only API is involved; physical VoiceOver and
 independent Sequoia/Tahoe validation remain external.
 
+## Confirmed decision changes by topic in Ask (D364)
+
+The **By topic** memory picker now has three localized jobs: **Current
+decisions**, **First confirmed discussion**, and **Decision changes**. The third
+job reuses the exact selected `TopicID`, the existing load button, and the same
+per-window generation-fenced fact task. Switching jobs clears the previous
+result and cancels its read; a late conflict page must still match both the
+request generation and selected job before it can render.
+
+Each conflict card shows the successor statement as **Changed to** above the
+replaced statement and retains the confirmed relationship time. It exposes
+every exact source while moving the fact's successor primary source to the first action;
+both successor and earlier evidence remain independently navigable. Stable leaf-
+level `ask-topic-conflict-*` and button-level
+`ask-topic-conflict-evidence-*` identifiers avoid the macOS SwiftUI container-
+identifier propagation that can hide nested controls.
+
+The temporary-store fixture creates a separate source-backed earlier decision,
+leaves it unlinked to the topic, confirms the existing linked decision as its
+successor, confirms their supersession, and projects the real disposable graph.
+An independent bilingual XCUITest verifies both statements, both exact source
+actions, and the successor seek to 00:03. The app path adds no Foundation
+Models or Tahoe-only dependency; physical VoiceOver and independent
+Sequoia/Tahoe validation remain external.
+
 The hidden Ask resource mode installs one observer only around its disposable
 `AskMeetings.local` call (D193). `AskPipelineRunProbe` accepts exactly one
 answer trace, one completion for every declared stage, first evidence, first

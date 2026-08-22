@@ -438,35 +438,7 @@ extension AppServices {
             citedSegmentID: citedSegmentID)
     }
 
-    /// Real confirmation authority and the same disposable graph projection as
-    /// production. The generated observation is fixed by the summary fixture;
-    /// the user gesture creates one exact topic identity and decision link.
-    private func seedAskTopicMemoryIfRequested(
-        meetingID: MeetingID,
-        citedSegmentID: UUID
-    ) async {
-        guard ProcessInfo.processInfo.arguments.contains("-seed-ask-topic-memory") else {
-            return
-        }
-        let timestamp = Date(timeIntervalSince1970: 1_700_000_110)
-        do {
-            _ = try await ConfirmDecisionAboutTopic(store: store).execute(
-                ConfirmDecisionAboutTopicRequest(
-                    observationID: Self.seedDecisionObservationID,
-                    meetingID: meetingID,
-                    evidenceSegmentID: citedSegmentID,
-                    sourceTranscriptRevision: 0,
-                    topic: .labeled("model rollout"),
-                    confirmedAt: timestamp))
-            try await projectAskMemoryGraph(
-                at: timestamp,
-                owner: "ui-test-ask-topic-memory")
-        } catch {
-            assertionFailure("Could not seed Ask topic memory: \(error)")
-        }
-    }
-
-    private func projectAskMemoryGraph(
+    func projectAskMemoryGraph(
         at timestamp: Date,
         owner: String
     ) async throws {
@@ -576,7 +548,7 @@ extension AppServices {
 
     private static let seedActionItemID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000001")!
-    private static let seedDecisionObservationID = SummaryDecisionID(rawValue: UUID(
+    static let seedDecisionObservationID = SummaryDecisionID(rawValue: UUID(
         uuidString: "B5D40000-0000-4000-8000-000000000001")!)
     private static let seedReviewActionItemID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000002")!

@@ -1983,11 +1983,13 @@ graph facts cannot be flattened into transcript rank.
 The evidence bundle remains a composition seam, not implicit answer behavior.
 Existing free-form Ask search, progressive transcript evidence, answer
 generation, command palette, CLI, MCP, and meeting-brief consumers do not
-request it. The answer provider still receives only transcript citations. A
-separate explicit UI consumer covers one exact job: current commitments for
-one user-selected canonical person. It calls the existing typed use case
-directly and renders its source-backed facts; it does not derive a graph query
-from question prose or silently opt the answer provider into the bundle.
+request it. The answer provider still receives only transcript citations.
+Separate explicit UI consumers cover current commitments for one user-selected
+canonical person plus current decisions, first confirmed discussion, and
+confirmed decision conflicts for one user-selected canonical topic. They call
+the existing typed use cases directly and render source-backed facts; they do
+not derive a graph query from question prose or silently opt the answer
+provider into the bundle.
 
 The graph lane also accepts an optional **caller-extracted exact filter**. A
 narrow ApplicationKit resolver normalizes a person or topic alias through the
@@ -2068,12 +2070,17 @@ ratio, and exact source overlap before model execution. Selection makes only
 the provider input smaller: `AskEvidenceBundleAnswer` still returns the full
 unselected transcript and graph evidence to its caller. The released explorers
 cover exact-person/current-commitments, exact confirmed-topic/current-
-decisions, and exact confirmed-topic/first-discussion presentation. The first-
-discussion consumer accepts only one complete topic-to-meeting fact with one
-exact current source and checks its meeting-relative occurrence time before
-rendering it. The other three graph jobs, natural-language query extraction,
-free-form graph-aware answers, private field evidence, and graph telemetry
-remain separate gates.
+decisions, exact confirmed-topic/first-discussion, and
+exact confirmed-topic/decision-conflicts presentation. The first-discussion
+consumer accepts only one complete topic-to-meeting fact with one exact current
+source and checks its meeting-relative occurrence time before rendering it. The
+decision-conflict
+consumer accepts at most 100 confirmed successor-to-replaced relationships,
+requires distinct endpoint identities and at least two exact current source
+segments, and preserves the successor source as the primary navigation target.
+The other two graph jobs, natural-language query extraction, free-form graph-
+aware answers, private field evidence, and graph telemetry remain separate
+gates.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported

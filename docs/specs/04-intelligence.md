@@ -645,7 +645,7 @@ invoke a model, call the graph-aware answer bundle, or flatten facts into
 transcript rank. Typed graph abstention, malformed evidence, and operational
 unavailability remain distinct UI states. It therefore provides source-backed
 answers without Foundation Models on both Sequoia and Tahoe. Together with the
-D362–D363 topic explorer, the other three graph jobs, free-form answer composition,
+D362–D364 topic explorer, the other two graph jobs, free-form answer composition,
 private evidence, sync/export, CLI/MCP adoption, product telemetry, and physical
 accessibility/OS validation remain separate gates.
 
@@ -696,6 +696,35 @@ The UI says **first confirmed discussion**, not “first ever”, renders the ex
 meeting and date, and reuses the exact evidence seek route. It does not invoke
 Foundation Models or require Tahoe-only APIs; physical VoiceOver and
 independent Sequoia/Tahoe evidence remain external gates.
+
+## Released exact-topic decision-conflict explorer (D364)
+
+The existing **By topic** surface adds **Decision changes** as its third
+subordinate job. The already selected canonical `TopicID` enters
+`LoadDecisionConflicts` at its existing maximum of 100 facts; neither the
+topic's display label nor free-form question text can authorize the query. The
+source-backed reader remains responsible for exact topic-family membership,
+confirmed supersession/reversal authority, graph-projection consistency, and
+current transcript hydration inside one SQLite snapshot.
+
+Presentation validates the complete synthesis page, then requires every row to
+be one confirmed decision-relationship event with distinct successor and
+replaced decision identities, nonempty reviewed statements, at least two exact
+current transcript sources, and one exact primary source. Storage orders the
+replaced decision's evidence before the successor's evidence; the fact's
+primary identity names the successor source, which the UI presents first for
+navigation without discarding the earlier proof. Pagination and stale or
+unavailable omission counts remain visible.
+
+The conflict job shares the existing generation-fenced topic fact task.
+Changing job, topic, Ask surface, or window cancels the read and rejects late
+publication. `unsupportedConflict` becomes the truthful no-confirmed-change
+state instead of a vague query error; malformed provenance and operational
+failure remain separate. This adds no model, graph authority, natural-language
+topic inference, new index, or Tahoe-only API. Exact commitment blockers,
+topic-plus-meeting change-since, private owner-reviewed evidence, telemetry,
+sync/export, CLI/MCP adoption, and physical VoiceOver/Sequoia/Tahoe validation
+remain separate gates.
 
 ## Human claim feedback is not model material (D88)
 

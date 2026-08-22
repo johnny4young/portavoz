@@ -142,6 +142,9 @@ struct AskTopicMemoryView: View {
             Text("First confirmed discussion")
                 .tag(AskTopicMemoryJob.firstConfirmedDiscussion)
                 .accessibilityIdentifier("ask-topic-job-first-discussion")
+            Text("Decision changes")
+                .tag(AskTopicMemoryJob.decisionConflicts)
+                .accessibilityIdentifier("ask-topic-job-decision-conflicts")
         }
         .pickerStyle(.segmented)
         .accessibilityIdentifier("ask-topic-job")
@@ -153,6 +156,8 @@ struct AskTopicMemoryView: View {
             "Show current decisions"
         case .firstConfirmedDiscussion:
             "Show first confirmed discussion"
+        case .decisionConflicts:
+            "Show decision changes"
         }
     }
 
@@ -175,6 +180,13 @@ struct AskTopicMemoryView: View {
             }
         case .firstDiscussion(let discussion):
             firstDiscussionCard(discussion)
+        case .conflicts(let conflicts, let disclosure):
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(conflicts) { conflict in
+                    conflictCard(conflict)
+                }
+                disclosureView(disclosure)
+            }
         case .abstained(let reason):
             topicFailure(
                 message: abstentionMessage(reason),
@@ -196,6 +208,8 @@ struct AskTopicMemoryView: View {
             "Loading confirmed decisions…"
         case .firstConfirmedDiscussion:
             "Loading the first confirmed discussion…"
+        case .decisionConflicts:
+            "Loading confirmed decision changes…"
         }
     }
 
@@ -205,6 +219,8 @@ struct AskTopicMemoryView: View {
             "Portavoz could not verify the returned decision evidence."
         case .firstConfirmedDiscussion:
             "Portavoz could not verify the first discussion evidence."
+        case .decisionConflicts:
+            "Portavoz could not verify the decision change evidence."
         }
     }
 
@@ -214,9 +230,13 @@ struct AskTopicMemoryView: View {
             "Could not load confirmed decisions."
         case .firstConfirmedDiscussion:
             "Could not load the first confirmed discussion."
+        case .decisionConflicts:
+            "Could not load confirmed decision changes."
         }
     }
+}
 
+extension AskTopicMemoryView {
     private func decisionCard(_ decision: AskMemoryDecision) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(decision.statement, systemImage: "checkmark.seal.fill")
@@ -294,23 +314,87 @@ struct AskTopicMemoryView: View {
         .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
     }
 
+    private func conflictCard(
+        _ conflict: AskMemoryDecisionConflict
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Confirmed decision change", systemImage: "arrow.triangle.2.circlepath")
+                .font(.headline)
+            Text("Changed to")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(conflict.successorStatement)
+                .font(.title3.weight(.semibold))
+                .accessibilityIdentifier(
+                    "ask-topic-conflict-\(conflict.id.rawValue.uuidString)")
+            Text("Replaced")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.top, 2)
+            Text(conflict.replacedStatement)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(
+                    "ask-topic-conflict-replaced-\(conflict.id.rawValue.uuidString)")
+            Text(conflict.occurredAt.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            Divider()
+            Text("Evidence")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            ForEach(
+                Array(orderedCitations(conflict).enumerated()),
+                id: \.offset
+            ) { index, citation in
+                Button {
+                    onOpenCitation(citation)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.turn.down.right")
+                        Text(
+                            "\(citation.meetingTitle) · \(AskMarkdown.clock(citation.timestamp))")
+                            .lineLimit(1)
+                    }
+                    .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(PVDesign.accent)
+                .help(citation.text)
+                .accessibilityIdentifier(
+                    "ask-topic-conflict-evidence-\(conflict.id.rawValue.uuidString)-\(index)")
+            }
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
+    }
+
     @ViewBuilder
     private func disclosureView(_ disclosure: AskMemoryDisclosure) -> some View {
         if disclosure.hasMore {
-            Label(
-                "More than 100 current decisions exist; this view shows the newest verified results.",
-                systemImage: "ellipsis.circle")
-                .accessibilityIdentifier("ask-topic-more-decisions")
+            switch model.state.selectedJob {
+            case .currentDecisions:
+                Label(
+                    "More than 100 current decisions exist; this view shows the newest verified results.",
+                    systemImage: "ellipsis.circle")
+                    .accessibilityIdentifier("ask-topic-more-decisions")
+            case .decisionConflicts:
+                Label(
+                    "More than 100 confirmed decision changes exist; this view shows the earliest verified results.",
+                    systemImage: "ellipsis.circle")
+                    .accessibilityIdentifier("ask-topic-more-conflicts")
+            case .firstConfirmedDiscussion:
+                EmptyView()
+            }
         }
         if disclosure.omittedStaleCount > 0 {
             Label(
-                "Some decisions with outdated evidence were omitted.",
+                omittedStaleMessage,
                 systemImage: "clock")
                 .accessibilityIdentifier("ask-topic-omitted-stale")
         }
         if disclosure.omittedUnavailableCount > 0 {
             Label(
-                "Some decisions without available evidence were omitted.",
+                omittedUnavailableMessage,
                 systemImage: "exclamationmark.shield")
                 .accessibilityIdentifier("ask-topic-omitted-unavailable")
         }
@@ -355,6 +439,16 @@ struct AskTopicMemoryView: View {
         }
     }
 
+    private func orderedCitations(
+        _ conflict: AskMemoryDecisionConflict
+    ) -> [AskCitation] {
+        [conflict.primaryCitation] + conflict.citations.filter {
+            $0.segmentID != conflict.primaryCitation.segmentID
+        }
+    }
+}
+
+extension AskTopicMemoryView {
     private func abstentionMessage(
         _ reason: MeetingMemoryGraphQueryAbstention
     ) -> String {
@@ -371,10 +465,12 @@ struct AskTopicMemoryView: View {
             "Confirmed memory could not verify a complete projection yet."
         case .candidateBudgetExceeded:
             "The result is too large to verify safely."
+        case .unsupportedConflict:
+            noMatchingFactsMessage
         case .invalidQuery, .ambiguousPerson, .ambiguousTopic,
              .commitmentUnavailable, .personUnavailable,
              .noActiveCommitments, .unsupportedCausalLink,
-             .unsupportedConflict, .missingTemporalBaseline:
+             .missingTemporalBaseline:
             "The memory request was not specific enough to answer safely."
         }
     }
@@ -385,6 +481,8 @@ struct AskTopicMemoryView: View {
             "No current confirmed decisions for this topic."
         case .firstConfirmedDiscussion:
             "No confirmed discussion is available for this topic."
+        case .decisionConflicts:
+            "No confirmed decision changes for this topic."
         }
     }
 
@@ -394,6 +492,30 @@ struct AskTopicMemoryView: View {
             "The matching decisions need current transcript evidence before Portavoz can show them."
         case .firstConfirmedDiscussion:
             "The first confirmed discussion needs current transcript evidence before Portavoz can show it."
+        case .decisionConflicts:
+            "The matching decision changes need current transcript evidence before Portavoz can show them."
+        }
+    }
+
+    private var omittedStaleMessage: LocalizedStringKey {
+        switch model.state.selectedJob {
+        case .currentDecisions:
+            "Some decisions with outdated evidence were omitted."
+        case .firstConfirmedDiscussion:
+            "Some discussions with outdated evidence were omitted."
+        case .decisionConflicts:
+            "Some decision changes with outdated evidence were omitted."
+        }
+    }
+
+    private var omittedUnavailableMessage: LocalizedStringKey {
+        switch model.state.selectedJob {
+        case .currentDecisions:
+            "Some decisions without available evidence were omitted."
+        case .firstConfirmedDiscussion:
+            "Some discussions without available evidence were omitted."
+        case .decisionConflicts:
+            "Some decision changes without available evidence were omitted."
         }
     }
 }

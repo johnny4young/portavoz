@@ -11,6 +11,7 @@ final class AppAskModelClient: AskModelClient {
     private let memoryTopics: LoadConfirmedTopicCatalog
     private let memoryDecisionHistory: LoadDecisionHistory
     private let memoryTopicFirstDiscussion: LoadTopicFirstDiscussion
+    private let memoryDecisionConflicts: LoadDecisionConflicts
 
     init(useCase: AskMeetings, store: MeetingStore) {
         self.useCase = useCase
@@ -19,6 +20,7 @@ final class AppAskModelClient: AskModelClient {
         memoryTopics = LoadConfirmedTopicCatalog(catalog: store)
         memoryDecisionHistory = LoadDecisionHistory(repository: store)
         memoryTopicFirstDiscussion = LoadTopicFirstDiscussion(repository: store)
+        memoryDecisionConflicts = LoadDecisionConflicts(repository: store)
     }
 
     func searchAskMeetings(
@@ -89,6 +91,15 @@ extension AppAskModelClient: AskMemoryModelClient {
     ) async throws -> MeetingMemoryGraphQueryResult {
         try await memoryTopicFirstDiscussion.execute(TopicFirstDiscussionQuery(
             topicID: topicID))
+    }
+
+    func loadAskMemoryDecisionConflicts(
+        topicID: TopicID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult {
+        try await memoryDecisionConflicts.execute(DecisionConflictsQuery(
+            topicID: topicID,
+            itemLimit: limit))
     }
 }
 

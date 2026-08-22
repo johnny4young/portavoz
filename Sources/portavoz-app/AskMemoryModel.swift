@@ -27,6 +27,10 @@ protocol AskMemoryModelClient: AnyObject {
     func loadAskMemoryTopicFirstDiscussion(
         topicID: TopicID
     ) async throws -> MeetingMemoryGraphQueryResult
+    func loadAskMemoryDecisionConflicts(
+        topicID: TopicID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult
 }
 
 struct AskMemoryPerson: Identifiable, Equatable {

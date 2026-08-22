@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## August 22, 2026
+
+- **🔁 Decision changes keep both sides of the story** — Choose one exact confirmed topic in Ask, see which confirmed decision replaced which, and open the current evidence without losing the earlier source.
+
 ## August 21, 2026
 
 - **🕰️ First topic memory opens its proof** — Choose one exact confirmed topic in Ask, see the first discussion you explicitly confirmed for it, and jump straight to the meeting moment that established it.

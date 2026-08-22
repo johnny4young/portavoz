@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,564 cases "
-                + "(15 environment-gated) + 98"))
+            "package inventory contains 2,568 cases "
+                + "(15 environment-gated) + 99"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -2690,7 +2690,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## Released exact-person commitment explorer (D361)"))
         XCTAssertTrue(quality.contains(
             "### First released exact graph query surface (D361)"))
-        XCTAssertTrue(gaps.contains("the other three dedicated job surfaces"))
+        XCTAssertTrue(gaps.contains("dedicated job surfaces"))
         XCTAssertTrue(gaps.contains(
             "physical VoiceOver/Sequoia/Tahoe validation remain absent"))
         XCTAssertTrue(decisions.contains("## D361"))
@@ -2711,6 +2711,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+Ask.swift")
         let fixture = try Self.contents(
             of: "Sources/portavoz-app/AppServices+UITestFixtures.swift")
+        let topicMemoryFixture = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+AskTopicMemoryUITestFixture.swift")
         let uiTest = try Self.contents(
             of: "Tests/PortavozUITests/LibraryUITests.swift")
         let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
@@ -2760,8 +2762,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(view.contains("answerBundle("))
         XCTAssertFalse(view.contains("AskGraphFactFilterRequest"))
 
-        XCTAssertTrue(fixture.contains("-seed-ask-topic-memory"))
-        XCTAssertTrue(fixture.contains("ConfirmDecisionAboutTopic(store: store)"))
+        XCTAssertTrue(topicMemoryFixture.contains("-seed-ask-topic-memory"))
+        XCTAssertTrue(topicMemoryFixture.contains(
+            "ConfirmDecisionAboutTopic(store: store)"))
         XCTAssertTrue(fixture.contains("ProjectMeetingMemoryGraph("))
         XCTAssertTrue(uiTest.contains(
             "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence"))
@@ -2779,7 +2782,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## Exact decisions by topic in Ask (D362)"))
         XCTAssertTrue(quality.contains(
             "### Second released exact graph query surface (D362)"))
-        XCTAssertTrue(gaps.contains("the other three dedicated job surfaces"))
+        XCTAssertTrue(gaps.contains("dedicated job surfaces"))
         XCTAssertTrue(decisions.contains("## D362"))
     }
 
@@ -2792,8 +2795,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AskTopicMemoryView.swift")
         let composition = try Self.contents(
             of: "Sources/portavoz-app/AppServices+Ask.swift")
-        let fixture = try Self.contents(
-            of: "Sources/portavoz-app/AppServices+UITestFixtures.swift")
+        let topicMemoryFixture = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+AskTopicMemoryUITestFixture.swift")
         let uiTest = try Self.contents(
             of: "Tests/PortavozUITests/LibraryUITests.swift")
         let scope = try Self.contents(of: "scripts/ui_test_scope.py")
@@ -2827,7 +2830,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(view.contains("ask-topic-first-discussion-"))
         XCTAssertTrue(view.contains("ask-topic-first-discussion-evidence-"))
         XCTAssertTrue(view.contains("onOpenCitation(discussion.citation)"))
-        XCTAssertTrue(fixture.contains("-seed-ask-topic-memory"))
+        XCTAssertTrue(topicMemoryFixture.contains("-seed-ask-topic-memory"))
         XCTAssertTrue(uiTest.contains(
             "testAskConfirmedMemoryLoadsExactTopicFirstDiscussionAndEvidence"))
         XCTAssertTrue(scope.contains("topicfirstdiscussion"))
@@ -2840,8 +2843,74 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## First confirmed discussion by topic in Ask (D363)"))
         XCTAssertTrue(quality.contains(
             "### Third released exact graph query surface (D363)"))
-        XCTAssertTrue(gaps.contains("the other three dedicated job surfaces"))
+        XCTAssertTrue(gaps.contains("dedicated job surfaces"))
         XCTAssertTrue(decisions.contains("## D363"))
+    }
+
+    func testReleasedTopicDecisionConflictsRequireExactReplacementEvidence() throws {
+        let client = try Self.contents(
+            of: "Sources/portavoz-app/AskMemoryModel.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/AskTopicMemoryModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/AskTopicMemoryView.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let fixture = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+AskTopicMemoryUITestFixture.swift")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligence = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(client.contains("loadAskMemoryDecisionConflicts"))
+        XCTAssertTrue(model.contains("case decisionConflicts"))
+        XCTAssertTrue(model.contains(
+            "DecisionConflictsQuery.maximumItemLimit"))
+        XCTAssertTrue(model.contains("loadAskMemoryDecisionConflicts"))
+        XCTAssertTrue(model.contains(
+            "fact.kind == .decisionSupersededDecision"))
+        XCTAssertTrue(model.contains("successorID != replacedID"))
+        XCTAssertTrue(model.contains("evidence.sourceSegments.count >= 2"))
+        XCTAssertTrue(model.contains(
+            "$0.segmentID == fact.primaryEvidenceSegmentID"))
+        XCTAssertFalse(model.contains("import StorageKit"))
+        XCTAssertFalse(model.contains("import IntelligenceKit"))
+
+        XCTAssertTrue(composition.contains(
+            "memoryDecisionConflicts = LoadDecisionConflicts(repository: store)"))
+        XCTAssertTrue(composition.contains("DecisionConflictsQuery("))
+        XCTAssertTrue(view.contains("ask-topic-job-decision-conflicts"))
+        XCTAssertTrue(view.contains("ask-topic-conflict-"))
+        XCTAssertTrue(view.contains("ask-topic-conflict-replaced-"))
+        XCTAssertTrue(view.contains("ask-topic-conflict-evidence-"))
+        XCTAssertTrue(view.contains("onOpenCitation(citation)"))
+        XCTAssertTrue(fixture.contains("ConfirmDecisionRelationship(store: store)"))
+        XCTAssertTrue(fixture.contains("topic: .none"))
+        XCTAssertTrue(fixture.contains("guard usesTemporaryMeetingStore"))
+        XCTAssertTrue(uiTest.contains(
+            "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence"))
+        XCTAssertTrue(uiTest.contains(
+            "ask-topic-conflict-B5D40000-0000-4000-8000-000000000005"))
+        XCTAssertTrue(scope.contains("decisionrelationship"))
+
+        XCTAssertTrue(architecture.contains(
+            "exact confirmed-topic/decision-conflicts"))
+        XCTAssertTrue(intelligence.contains(
+            "## Released exact-topic decision-conflict explorer (D364)"))
+        XCTAssertTrue(appSpec.contains(
+            "## Confirmed decision changes by topic in Ask (D364)"))
+        XCTAssertTrue(quality.contains(
+            "### Fourth released exact graph query surface (D364)"))
+        XCTAssertTrue(gaps.contains("the other two dedicated job surfaces"))
+        XCTAssertTrue(decisions.contains("## D364"))
     }
 
     func testAskGraphFiltersResolveExactIdentitiesBeforeBoundedQueries() throws {
@@ -3255,7 +3324,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             try Self.sourceMatches(
                 under: "Sources/portavoz-app",
                 pattern: #"ConfirmObservedDecision|ConfirmDecisionRelationship"#),
-            [])
+            ["AppServices+AskTopicMemoryUITestFixture.swift"],
+            "only the temporary-store XCUITest fixture may confirm a relationship")
         XCTAssertTrue(decisions.contains("## D272"))
     }
 

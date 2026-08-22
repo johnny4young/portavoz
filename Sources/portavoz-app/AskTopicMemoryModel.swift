@@ -27,9 +27,21 @@ struct AskMemoryFirstDiscussion: Identifiable, Equatable {
     let citation: AskCitation
 }
 
+struct AskMemoryDecisionConflict: Identifiable, Equatable {
+    let id: DecisionEventID
+    let successorDecisionID: DecisionID
+    let replacedDecisionID: DecisionID
+    let successorStatement: String
+    let replacedStatement: String
+    let occurredAt: Date
+    let citations: [AskCitation]
+    let primaryCitation: AskCitation
+}
+
 enum AskTopicMemoryJob: Equatable {
     case currentDecisions
     case firstConfirmedDiscussion
+    case decisionConflicts
 }
 
 enum AskMemoryTopicsPhase: Equatable {
@@ -45,6 +57,7 @@ enum AskTopicMemoryOutcome: Equatable {
     case loading
     case decisions([AskMemoryDecision], AskMemoryDisclosure)
     case firstDiscussion(AskMemoryFirstDiscussion)
+    case conflicts([AskMemoryDecisionConflict], AskMemoryDisclosure)
     case abstained(MeetingMemoryGraphQueryAbstention)
     case invalidEvidence
     case unavailable
@@ -69,6 +82,7 @@ final class AskTopicMemoryModel {
     static let visibleTopicLimit = 20
     private static let topicRequestLimit = visibleTopicLimit + 1
     private static let decisionLimit = DecisionHistoryQuery.maximumItemLimit
+    private static let conflictLimit = DecisionConflictsQuery.maximumItemLimit
 
     private(set) var state = State()
 
@@ -230,6 +244,10 @@ final class AskTopicMemoryModel {
                 case .firstConfirmedDiscussion:
                     result = try await client.loadAskMemoryTopicFirstDiscussion(
                         topicID: topic.id)
+                case .decisionConflicts:
+                    result = try await client.loadAskMemoryDecisionConflicts(
+                        topicID: topic.id,
+                        limit: Self.conflictLimit)
                 }
                 try Task.checkCancellation()
                 guard let self,
@@ -301,8 +319,28 @@ final class AskTopicMemoryModel {
                     expectedTopic: expectedTopic)
                 else { return .invalidEvidence }
                 return .firstDiscussion(discussion)
+            case .decisionConflicts:
+                return prepareConflicts(page)
             }
         }
+    }
+
+    private static func prepareConflicts(
+        _ page: MeetingMemoryGraphFactPage
+    ) -> AskTopicMemoryOutcome {
+        guard page.facts.count <= conflictLimit,
+              let synthesis = AskGraphFactSynthesisPage(page: page)
+        else { return .invalidEvidence }
+        let conflicts = synthesis.facts.compactMap(prepareConflict)
+        guard conflicts.count == synthesis.facts.count else {
+            return .invalidEvidence
+        }
+        return .conflicts(
+            conflicts,
+            AskMemoryDisclosure(
+                hasMore: synthesis.hasMore,
+                omittedStaleCount: synthesis.omittedStaleCount,
+                omittedUnavailableCount: synthesis.omittedUnavailableCount))
     }
 
     private static func prepareDecisions(
@@ -390,6 +428,36 @@ final class AskTopicMemoryModel {
             decisionID: decisionID,
             topicLabel: expectedTopic.label,
             statement: fact.subjectText,
+            occurredAt: fact.occurredAt,
+            citations: evidence.sourceSegments,
+            primaryCitation: primary)
+    }
+
+    private static func prepareConflict(
+        _ evidence: AskGraphFactSynthesisEvidence
+    ) -> AskMemoryDecisionConflict? {
+        let fact = evidence.fact
+        guard case .decisionRelationship(let eventID) = fact.id,
+              fact.kind == .decisionSupersededDecision,
+              case .decision(let successorID) = fact.subject,
+              case .decision(let replacedID) = fact.object,
+              successorID != replacedID,
+              fact.status == .confirmed,
+              !fact.subjectText.trimmingCharacters(
+                  in: .whitespacesAndNewlines).isEmpty,
+              !fact.objectText.trimmingCharacters(
+                  in: .whitespacesAndNewlines).isEmpty,
+              evidence.sourceSegments.count >= 2,
+              let primary = evidence.sourceSegments.first(where: {
+                  $0.segmentID == fact.primaryEvidenceSegmentID
+              })
+        else { return nil }
+        return AskMemoryDecisionConflict(
+            id: eventID,
+            successorDecisionID: successorID,
+            replacedDecisionID: replacedID,
+            successorStatement: fact.subjectText,
+            replacedStatement: fact.objectText,
             occurredAt: fact.occurredAt,
             citations: evidence.sourceSegments,
             primaryCitation: primary)

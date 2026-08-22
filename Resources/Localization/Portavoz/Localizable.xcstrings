@@ -1,6 +1,156 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Decision changes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambios de decisión"
+          }
+        }
+      }
+    },
+    "Show decision changes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar cambios de decisión"
+          }
+        }
+      }
+    },
+    "Loading confirmed decision changes…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando cambios de decisión confirmados…"
+          }
+        }
+      }
+    },
+    "Portavoz could not verify the decision change evidence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo verificar la evidencia del cambio de decisión."
+          }
+        }
+      }
+    },
+    "Could not load confirmed decision changes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar los cambios de decisión confirmados."
+          }
+        }
+      }
+    },
+    "Confirmed decision change": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambio de decisión confirmado"
+          }
+        }
+      }
+    },
+    "Changed to": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambió a"
+          }
+        }
+      }
+    },
+    "Replaced": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reemplazada"
+          }
+        }
+      }
+    },
+    "More than 100 confirmed decision changes exist; this view shows the earliest verified results.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay más de 100 cambios de decisión confirmados; esta vista muestra los primeros resultados verificados."
+          }
+        }
+      }
+    },
+    "Some decision changes with outdated evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunos cambios de decisión con evidencia desactualizada."
+          }
+        }
+      }
+    },
+    "Some decision changes without available evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunos cambios de decisión sin evidencia disponible."
+          }
+        }
+      }
+    },
+    "No confirmed decision changes for this topic.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay cambios de decisión confirmados para este tema."
+          }
+        }
+      }
+    },
+    "The matching decision changes need current transcript evidence before Portavoz can show them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los cambios de decisión encontrados necesitan evidencia vigente de la transcripción antes de que Portavoz pueda mostrarlos."
+          }
+        }
+      }
+    },
+    "Some discussions with outdated evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunas conversaciones con evidencia desactualizada."
+          }
+        }
+      }
+    },
+    "Some discussions without available evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunas conversaciones sin evidencia disponible."
+          }
+        }
+      }
+    },
     "The first confirmed discussion needs current transcript evidence before Portavoz can show it.": {
       "localizations": {
         "es": {
