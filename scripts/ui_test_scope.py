@@ -91,6 +91,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "LibraryUITests",
             "testAskConfirmedMemoryLoadsExactTopicDecisionConflictsAndEvidence",
         ),
+        test_id(
+            "LibraryUITests",
+            "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence",
+        ),
         test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
     ),
     "insights": (

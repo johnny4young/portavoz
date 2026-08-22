@@ -1,6 +1,236 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Change meeting anchor from %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar la reunión de referencia de %@"
+          }
+        }
+      }
+    },
+    "Changes since %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambios desde %@"
+          }
+        }
+      }
+    },
+    "Changes since…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambios desde…"
+          }
+        }
+      }
+    },
+    "Confirmed change since meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambio confirmado desde la reunión"
+          }
+        }
+      }
+    },
+    "Could not load confirmed changes since this meeting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar los cambios confirmados desde esta reunión."
+          }
+        }
+      }
+    },
+    "Could not search meetings.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron buscar reuniones."
+          }
+        }
+      }
+    },
+    "Ended %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finalizó %@"
+          }
+        }
+      }
+    },
+    "Find a meeting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar una reunión…"
+          }
+        }
+      }
+    },
+    "Loading confirmed changes since the selected meeting…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando cambios confirmados desde la reunión seleccionada…"
+          }
+        }
+      }
+    },
+    "More meetings match. Refine the title to choose the right one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay más reuniones coincidentes. Precisa el título para elegir la correcta."
+          }
+        }
+      }
+    },
+    "More than 100 confirmed changes exist since this meeting; this view shows the earliest verified results.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay más de 100 cambios confirmados desde esta reunión; esta vista muestra los primeros resultados verificados."
+          }
+        }
+      }
+    },
+    "No confirmed decision changes for this topic since the selected meeting.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay cambios de decisión confirmados para este tema desde la reunión seleccionada."
+          }
+        }
+      }
+    },
+    "No meetings match this search.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna reunión coincide con esta búsqueda."
+          }
+        }
+      }
+    },
+    "Portavoz could not verify the changes-since evidence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo verificar la evidencia de los cambios desde la reunión."
+          }
+        }
+      }
+    },
+    "Searching meetings…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando reuniones…"
+          }
+        }
+      }
+    },
+    "Select meeting %lld: %@, ended %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionar la reunión %lld: %@, finalizó %@"
+          }
+        }
+      }
+    },
+    "Select meeting %lld: %@, started %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seleccionar la reunión %lld: %@, comenzó %@"
+          }
+        }
+      }
+    },
+    "Show changes since meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar cambios desde la reunión"
+          }
+        }
+      }
+    },
+    "Since meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desde la reunión"
+          }
+        }
+      }
+    },
+    "Some changes since this meeting with outdated evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunos cambios desde esta reunión con evidencia desactualizada."
+          }
+        }
+      }
+    },
+    "Some changes since this meeting without available evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunos cambios desde esta reunión sin evidencia disponible."
+          }
+        }
+      }
+    },
+    "Started %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comenzó %@"
+          }
+        }
+      }
+    },
+    "The matching changes since this meeting need current transcript evidence before Portavoz can show them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los cambios coincidentes desde esta reunión necesitan evidencia actual de la transcripción antes de que Portavoz pueda mostrarlos."
+          }
+        }
+      }
+    },
     "Active blockers": {
       "localizations": {
         "es": {

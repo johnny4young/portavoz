@@ -866,6 +866,93 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedAskTopicMemory: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        app.buttons["library-ask-button"].click()
+
+        let topicSurface = app.descendants(matching: .any)[
+            "ask-surface-topic-decisions"]
+        XCTAssertTrue(topicSurface.waitForExistence(timeout: 10))
+        topicSurface.click()
+
+        let topic = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
+            .firstMatch
+        XCTAssertTrue(topic.waitForExistence(timeout: 10))
+        XCTAssertTrue(topic.label.contains("model rollout"))
+        topic.click()
+
+        let changesSinceJob = app.descendants(matching: .any)[
+            "ask-topic-job-changes-since"]
+        XCTAssertTrue(changesSinceJob.waitForExistence(timeout: 5))
+        changesSinceJob.click()
+
+        let anchorSearch = app.textFields["ask-topic-anchor-search"]
+        XCTAssertTrue(anchorSearch.waitForExistence(timeout: 5))
+        anchorSearch.click()
+        anchorSearch.typeText("Planning")
+
+        let anchor = app.buttons[
+            "ask-topic-anchor-option-B5D40000-0000-4000-8000-000000000003"]
+        XCTAssertTrue(anchor.waitForExistence(timeout: 10))
+        XCTAssertTrue(anchor.label.contains("Planning baseline"))
+        anchor.click()
+
+        let selectedAnchor = app.descendants(matching: .any)[
+            "ask-topic-anchor-selected"]
+        XCTAssertTrue(selectedAnchor.waitForExistence(timeout: 5))
+        XCTAssertTrue(renderedText(of: selectedAnchor).contains(
+            "Planning baseline"))
+        let load = app.buttons["ask-topic-load"]
+        XCTAssertTrue(load.isEnabled)
+        load.click()
+
+        let change = app.descendants(matching: .any)[
+            "ask-topic-change-since-B5D40000-0000-4000-8000-000000000005"]
+        XCTAssertTrue(change.waitForExistence(timeout: 10))
+        XCTAssertTrue(renderedText(of: change).contains(
+            "El rollout del modelo queda para el viernes."))
+        let replaced = app.descendants(matching: .any)[
+            "ask-topic-change-since-replaced-"
+                + "B5D40000-0000-4000-8000-000000000005"]
+        XCTAssertTrue(replaced.waitForExistence(timeout: 5))
+        XCTAssertTrue(renderedText(of: replaced).contains(
+            "El rollout del modelo quedaba para el jueves."))
+        let anchorSummary = app.descendants(matching: .any)[
+            "ask-topic-change-since-anchor"]
+        XCTAssertTrue(anchorSummary.waitForExistence(timeout: 5))
+        XCTAssertTrue(renderedText(of: anchorSummary).contains(
+            "Planning baseline"))
+
+        let currentEvidence = app.buttons[
+            "ask-topic-change-since-evidence-"
+                + "B5D40000-0000-4000-8000-000000000005-0"]
+        let replacedEvidence = app.buttons[
+            "ask-topic-change-since-evidence-"
+                + "B5D40000-0000-4000-8000-000000000005-1"]
+        XCTAssertTrue(currentEvidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(replacedEvidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(currentEvidence.label.contains("Test meeting · 00:03"))
+        XCTAssertTrue(replacedEvidence.label.contains(
+            "Planning baseline · 00:04"))
+        attachScreenshot(of: app, named: "ask-confirmed-topic-changes-since")
+
+        currentEvidence.click()
+        let currentTime = app.staticTexts["player-current-time"]
+        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 10)
+    }
+
+    @MainActor
     func testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()

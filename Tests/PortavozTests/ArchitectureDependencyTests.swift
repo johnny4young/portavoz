@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,573 cases "
-                + "(15 environment-gated) + 100"))
+            "package inventory contains 2,579 cases "
+                + "(15 environment-gated) + 101"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -2664,7 +2664,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(model.contains("import IntelligenceKit"))
 
         XCTAssertTrue(composition.contains(
-            "memoryPeople = LoadAutomationEntities(catalog: store)"))
+            "memoryEntities = LoadAutomationEntities(catalog: store)"))
         XCTAssertTrue(composition.contains(
             "memoryCommitments = LoadPersonCommitments(repository: store)"))
         XCTAssertTrue(composition.contains(
@@ -2772,8 +2772,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(uiTest.contains("player-current-time"))
 
         XCTAssertTrue(architecture.contains(
-            "exact confirmed-topic/current-\n"
-                + "decisions"))
+            "exact confirmed-topic/current-decisions"))
         XCTAssertTrue(intelligence.contains(
             "## Released exact-topic decision explorer (D362)"))
         XCTAssertTrue(storageSpec.contains(
@@ -2855,6 +2854,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AskTopicMemoryModel.swift")
         let view = try Self.contents(
             of: "Sources/portavoz-app/AskTopicMemoryView.swift")
+        let relationship = try Self.contents(
+            of: "Sources/portavoz-app/AskTopicDecisionRelationship.swift")
+        let relationshipView = try Self.contents(
+            of: "Sources/portavoz-app/AskTopicDecisionChangesView.swift")
         let composition = try Self.contents(
             of: "Sources/portavoz-app/AppServices+Ask.swift")
         let fixture = try Self.contents(
@@ -2876,11 +2879,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(model.contains(
             "DecisionConflictsQuery.maximumItemLimit"))
         XCTAssertTrue(model.contains("loadAskMemoryDecisionConflicts"))
-        XCTAssertTrue(model.contains(
+        XCTAssertTrue(relationship.contains(
             "fact.kind == .decisionSupersededDecision"))
-        XCTAssertTrue(model.contains("successorID != replacedID"))
-        XCTAssertTrue(model.contains("evidence.sourceSegments.count >= 2"))
-        XCTAssertTrue(model.contains(
+        XCTAssertTrue(relationship.contains("successorID != replacedID"))
+        XCTAssertTrue(relationship.contains(
+            "evidence.sourceSegments.count >= 2"))
+        XCTAssertTrue(relationship.contains(
             "$0.segmentID == fact.primaryEvidenceSegmentID"))
         XCTAssertFalse(model.contains("import StorageKit"))
         XCTAssertFalse(model.contains("import IntelligenceKit"))
@@ -2889,10 +2893,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "memoryDecisionConflicts = LoadDecisionConflicts(repository: store)"))
         XCTAssertTrue(composition.contains("DecisionConflictsQuery("))
         XCTAssertTrue(view.contains("ask-topic-job-decision-conflicts"))
-        XCTAssertTrue(view.contains("ask-topic-conflict-"))
-        XCTAssertTrue(view.contains("ask-topic-conflict-replaced-"))
-        XCTAssertTrue(view.contains("ask-topic-conflict-evidence-"))
-        XCTAssertTrue(view.contains("onOpenCitation(citation)"))
+        XCTAssertTrue(relationshipView.contains("ask-topic-conflict"))
+        XCTAssertTrue(relationshipView.contains("-replaced-"))
+        XCTAssertTrue(relationshipView.contains("-evidence-"))
+        XCTAssertTrue(relationshipView.contains("onOpenCitation(citation)"))
         XCTAssertTrue(fixture.contains("ConfirmDecisionRelationship(store: store)"))
         XCTAssertTrue(fixture.contains("topic: .none"))
         XCTAssertTrue(fixture.contains("guard usesTemporaryMeetingStore"))
@@ -2911,7 +2915,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(quality.contains(
             "### Fourth released exact graph query surface (D364)"))
         XCTAssertTrue(gaps.contains(
-            "the remaining dedicated change-since surface"))
+            "D364 adds **Decision changes**"))
         XCTAssertTrue(decisions.contains("## D364"))
     }
 
@@ -2984,8 +2988,110 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(quality.contains(
             "### Fifth released exact graph query surface (D365)"))
         XCTAssertTrue(gaps.contains(
-            "the remaining dedicated change-since surface"))
+            "D365 adds **Active blockers**"))
         XCTAssertTrue(decisions.contains("## D365"))
+    }
+
+    func testReleasedTopicChangesSinceRequiresExactMeetingAnchor() throws {
+        let client = try Self.contents(
+            of: "Sources/portavoz-app/AskMemoryModel.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/AskTopicMemoryModel.swift")
+        let anchorModel = try Self.contents(
+            of: "Sources/portavoz-app/AskMeetingAnchorModel.swift")
+        let relationship = try Self.contents(
+            of: "Sources/portavoz-app/AskTopicDecisionRelationship.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/AskTopicMemoryView.swift")
+        let anchorView = try Self.contents(
+            of: "Sources/portavoz-app/AskMeetingAnchorView.swift")
+        let relationshipView = try Self.contents(
+            of: "Sources/portavoz-app/AskTopicDecisionChangesView.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let fixture = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+AskTopicMemoryUITestFixture.swift")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligence = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(client.contains("searchAskMemoryMeetingAnchors"))
+        XCTAssertTrue(client.contains("loadAskMemoryChangesSince"))
+        XCTAssertTrue(model.contains("case changesSince"))
+        XCTAssertTrue(model.contains("ChangeSinceQuery.maximumItemLimit"))
+        XCTAssertTrue(model.contains("sinceMeetingID: anchor.id"))
+        XCTAssertTrue(model.contains("anchorIsCurrent(anchor, for: job)"))
+        XCTAssertTrue(model.contains("state.selectedTopic?.id == topic.id"))
+        XCTAssertFalse(model.contains("import StorageKit"))
+        XCTAssertFalse(model.contains("import IntelligenceKit"))
+
+        XCTAssertTrue(anchorModel.contains("visibleMeetingLimit = 20"))
+        XCTAssertTrue(anchorModel.contains("visibleMeetingLimit + 1"))
+        XCTAssertTrue(anchorModel.contains("Task { [weak self, client]"))
+        XCTAssertTrue(anchorModel.contains("ids.insert(meeting.id).inserted"))
+        XCTAssertTrue(anchorModel.contains(
+            "meeting.endedAt.map({ $0 >= meeting.startedAt })"))
+        XCTAssertFalse(anchorModel.contains("import StorageKit"))
+        XCTAssertFalse(anchorModel.contains("import IntelligenceKit"))
+
+        XCTAssertTrue(relationship.contains(
+            "AskGraphFactSynthesisPage(page: page)"))
+        XCTAssertTrue(relationship.contains(
+            "fact.kind == .decisionSupersededDecision"))
+        XCTAssertTrue(relationship.contains(
+            "evidence.sourceSegments.count >= 2"))
+        XCTAssertTrue(relationship.contains(
+            "$0.segmentID == fact.primaryEvidenceSegmentID"))
+
+        XCTAssertTrue(composition.contains(
+            "memoryEntities = LoadAutomationEntities(catalog: store)"))
+        XCTAssertTrue(composition.contains(
+            "memoryChangesSince = LoadChangeSince(repository: store)"))
+        XCTAssertTrue(composition.contains("memoryEntities.meetings("))
+        XCTAssertTrue(composition.contains("ChangeSinceQuery("))
+
+        XCTAssertTrue(view.contains("ask-topic-job-changes-since"))
+        XCTAssertTrue(view.contains(".pickerStyle(.radioGroup)"))
+        XCTAssertTrue(view.contains("ask-topic-change-since-anchor"))
+        XCTAssertTrue(anchorView.contains("ask-topic-anchor-search"))
+        XCTAssertTrue(anchorView.contains("ask-topic-anchor-option-"))
+        XCTAssertTrue(anchorView.contains("ask-topic-anchor-selected"))
+        XCTAssertTrue(anchorView.contains(
+            "Select meeting %lld: %@, ended %@"))
+        XCTAssertTrue(relationshipView.contains("ask-topic-change-since"))
+        XCTAssertTrue(relationshipView.contains("onOpenCitation(citation)"))
+
+        XCTAssertTrue(fixture.contains("Planning baseline"))
+        XCTAssertTrue(fixture.contains("guard usesTemporaryMeetingStore"))
+        XCTAssertTrue(uiTest.contains(
+            "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"))
+        XCTAssertTrue(uiTest.contains(
+            "ask-topic-anchor-option-B5D40000-0000-4000-8000-000000000003"))
+        XCTAssertTrue(uiTest.contains("value == '0:03'"))
+        XCTAssertTrue(scope.contains(
+            "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"))
+
+        XCTAssertTrue(architecture.contains(
+            "exact confirmed-topic/meeting-anchor change-since"))
+        XCTAssertTrue(intelligence.contains(
+            "## Released exact-topic change-since explorer (D366)"))
+        XCTAssertTrue(appSpec.contains(
+            "## Confirmed changes since one exact meeting in Ask (D366)"))
+        XCTAssertTrue(quality.contains(
+            "### Sixth released exact graph query surface (D366)"))
+        XCTAssertTrue(gaps.contains(
+            "D366 adds **Changes since**"))
+        XCTAssertTrue(gaps.contains(
+            "All six dedicated exact graph surfaces are released"))
+        XCTAssertTrue(decisions.contains("## D366"))
     }
 
     func testAskGraphFiltersResolveExactIdentitiesBeforeBoundedQueries() throws {

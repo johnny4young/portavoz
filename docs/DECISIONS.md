@@ -13292,3 +13292,42 @@ graph engine, model prompt, sync/export field, CLI, MCP, palette, brief, or
 free-form Ask behavior is added. Exact topic-plus-meeting change-since, private
 evidence, telemetry, physical VoiceOver, clean-install Sequoia, and separate-
 hardware Tahoe validation remain open.
+
+## D366 — Release change-since behind exact topic and meeting selection (Aug 2026)
+
+**Context:** D361–D365 released five identity-safe graph consumers. The final
+dedicated job, `LoadChangeSince`, already required one exact `TopicID` and one
+exact `sinceMeetingID`, but its result does not echo the temporal baseline.
+Inferring “last meeting” from question prose or restricting the anchor to a
+topic-related meeting would add unsupported authority. Adding its catalogue and
+cards directly to the already large topic files would also create avoidable
+presentation and testing risk.
+
+**Decision:** add **Changes since** as the fourth subordinate **By topic** job.
+Reuse `LoadAutomationEntities.meetings` as a bounded, newest-first, title-only
+discovery catalogue: request 21, display 20 plus overflow, and allow only a
+currently visible exact `MeetingID` to enter `ChangeSinceQuery` beside the
+already selected exact `TopicID`. Accept any live meeting as the baseline. Show
+`endedAt` when present and otherwise `startedAt`, exactly matching StorageKit's
+temporal contract; reject invalid aggregate dates and catalogue shape.
+
+Own meeting discovery in a focused per-window weak cancellable model. Changing
+topic, job, meeting query, or exact anchor clears facts and cancels the request;
+publication must still match topic, anchor, job, and generation because the
+result cannot validate the baseline itself. Reuse one strict decision-
+relationship preparation and rendering boundary for decision conflicts and
+change-since, preserving distinct endpoints, at least two exact current
+sources, the successor primary source, and typed page disclosure. Replace the
+three-way segmented job picker with a native radio group so four localized jobs
+remain legible and follow standard macOS accessibility behavior.
+
+**Consequences:** all six dedicated graph jobs now have released, source-backed,
+identity-safe SwiftUI consumers without Foundation Models or a Tahoe-only API.
+The existing temporary fixture already contains an exact earlier **Planning
+baseline** meeting and later confirmed replacement, so bilingual XCUITest can
+select the baseline, verify both Spanish statements and both sources, and seek
+the successor at 00:03 without new schema or user data. No graph authority,
+natural-language inference, search engine, model prompt, sync/export field,
+CLI, MCP, palette, brief, or free-form Ask behavior is added. Private owner-
+reviewed evidence, telemetry, physical VoiceOver, clean-install Sequoia, and
+separate-hardware Tahoe validation remain open.

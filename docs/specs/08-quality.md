@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,573 cases (15 environment-gated) + 100
+Status: the package inventory contains 2,579 cases (15 environment-gated) + 101
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 98
+Meeting Detail tests. The English and Spanish release gates each cover all 101
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -1626,7 +1626,7 @@ One architecture ratchet pins the existing ApplicationKit/StorageKit query,
 exact current-commitment app composition, no unconditional two-source rule,
 stable leaf accessibility identifiers, temporary-store-only explicit
 authority fixture, UI-impact scope, tracked documentation, and the remaining
-change-since/product/field gaps. One additional real-app XCUITest per locale
+product/field gaps. One additional real-app XCUITest per locale
 opens **By person**, loads one exact commitment, loads its active blocker,
 verifies the Spanish decision and commitment plus both exact evidence actions,
 and follows the blocker-confirmation source to 00:04. It uses disposable
@@ -1634,6 +1634,32 @@ synthetic audio, no network, no user library, no Foundation Models, and no
 Tahoe-only API. This is local bilingual regression evidence, not physical
 VoiceOver, clean-install Sequoia, separate-hardware Tahoe, private-corpus
 quality, or graph telemetry.
+
+### Sixth released exact graph query surface (D366)
+
+Five new presentation-model cases prove that the meeting-anchor catalogue
+requests 21 newest-first rows, publishes at most 20 plus overflow, ignores stale
+search generations, and fails closed on oversized or invalid temporal data.
+They prove only the selected exact `MeetingID` crosses `ChangeSinceQuery` beside
+the selected exact `TopicID` at the existing 100-fact maximum; the shared strict
+relationship synthesis preserves both endpoints, both exact sources, and the
+successor primary source. Anchor changes fence late fact pages, and an in-flight
+catalogue read cannot retain a closed Ask window.
+
+One architecture ratchet pins reuse of the protected `LoadAutomationEntities`
+meeting catalogue and existing `LoadChangeSince`, the 21-to-20 bound, exact
+topic/meeting identities, four-dimensional publication fence, shared strict
+relationship validation, native radio-group UX, unique speakable accessibility
+labels, stable leaf identifiers, temporary-store fixture, UI-impact scope,
+tracked documentation, and honest remaining broader product/field gaps.
+
+One additional real-app XCUITest per locale opens **By topic**, selects
+**Changes since**, searches and selects the exact **Planning baseline** meeting,
+verifies both Spanish decision statements and both exact source actions, and
+follows the successor source to 00:03. It uses a disposable store, no network,
+no user library, no Foundation Models, and no Tahoe-only API. This is local
+bilingual regression evidence, not physical VoiceOver, clean-install Sequoia,
+separate-hardware Tahoe, private-corpus quality, or graph telemetry.
 
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -1646,7 +1672,7 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 100 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 101 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select bilingual evidence; the

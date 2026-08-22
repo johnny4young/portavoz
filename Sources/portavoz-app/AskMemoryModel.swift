@@ -24,6 +24,10 @@ protocol AskMemoryModelClient: AnyObject {
         _ query: String,
         limit: Int
     ) async throws -> [Topic]
+    func searchAskMemoryMeetingAnchors(
+        _ query: String,
+        limit: Int
+    ) async throws -> [Meeting]
     func loadAskMemoryDecisionHistory(
         topicID: TopicID,
         limit: Int
@@ -33,6 +37,11 @@ protocol AskMemoryModelClient: AnyObject {
     ) async throws -> MeetingMemoryGraphQueryResult
     func loadAskMemoryDecisionConflicts(
         topicID: TopicID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult
+    func loadAskMemoryChangesSince(
+        topicID: TopicID,
+        sinceMeetingID: MeetingID,
         limit: Int
     ) async throws -> MeetingMemoryGraphQueryResult
 }

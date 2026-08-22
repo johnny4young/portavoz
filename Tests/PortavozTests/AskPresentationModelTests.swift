@@ -754,6 +754,187 @@ final class AskPresentationModelTests: XCTestCase {
         XCTAssertEqual(model.state.outcome, .idle)
     }
 
+    func testTopicMemoryMeetingAnchorSearchPublishesOnlyLatestBoundedCandidates() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(fixture.topic, in: model, using: memory)
+        model.selectJob(.changesSince)
+        try await waitUntil { memory.meetingAnchorRequests == [""] }
+        XCTAssertEqual(memory.meetingAnchorLimits, [21])
+
+        model.updateMeetingAnchorQuery("baseline")
+        try await waitUntil {
+            memory.meetingAnchorRequests == ["", "baseline"]
+        }
+        memory.completeMeetingAnchors("", with: [fixture.anchorMeeting])
+        await Task.yield()
+        XCTAssertEqual(model.meetingAnchors.state.phase, .loading)
+
+        var candidates: [Meeting] = []
+        for index in 0..<21 {
+            let offset = -TimeInterval(index) * 3_600
+            candidates.append(Meeting(
+                title: "Planning \(index + 1)",
+                startedAt: fixture.meetingStartedAt.addingTimeInterval(offset),
+                endedAt: fixture.meetingStartedAt.addingTimeInterval(
+                    offset + 600)))
+        }
+        memory.completeMeetingAnchors("baseline", with: candidates)
+        try await waitUntil {
+            model.meetingAnchors.state.phase == .ready
+        }
+
+        XCTAssertEqual(model.meetingAnchors.state.meetings.count, 20)
+        XCTAssertEqual(
+            model.meetingAnchors.state.meetings.map(\.id),
+            candidates.prefix(20).map { $0.id })
+        XCTAssertTrue(model.meetingAnchors.state.hasMore)
+
+        model.selectMeetingAnchor(candidates[4].id)
+        XCTAssertEqual(
+            model.meetingAnchors.state.selectedMeeting?.id,
+            candidates[4].id)
+        XCTAssertEqual(model.meetingAnchors.state.query, "Planning 5")
+    }
+
+    func testTopicMemoryMeetingAnchorSearchFailsClosedForMalformedCatalogs() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(fixture.topic, in: model, using: memory)
+        model.selectJob(.changesSince)
+        try await waitUntil { memory.meetingAnchorRequests == [""] }
+        memory.completeMeetingAnchors(
+            "",
+            with: (0..<22).map {
+                Meeting(
+                    title: "Meeting \($0)",
+                    startedAt: fixture.meetingStartedAt)
+            })
+        try await waitUntil {
+            model.meetingAnchors.state.phase == .unavailable
+        }
+
+        model.retryMeetingAnchorSearch()
+        try await waitUntil { memory.meetingAnchorRequests.count == 2 }
+        memory.completeMeetingAnchors(
+            "",
+            with: [Meeting(
+                title: "Invalid boundary",
+                startedAt: fixture.meetingStartedAt,
+                endedAt: fixture.meetingStartedAt.addingTimeInterval(-1))])
+        try await waitUntil {
+            model.meetingAnchors.state.phase == .unavailable
+        }
+        XCTAssertTrue(model.meetingAnchors.state.meetings.isEmpty)
+        XCTAssertNil(model.meetingAnchors.state.selectedMeeting)
+    }
+
+    func testTopicMemoryChangesSinceUsesExactTopicAnchorAndRelationshipEvidence() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(fixture.topic, in: model, using: memory)
+        model.selectJob(.changesSince)
+        try await waitUntil { memory.meetingAnchorRequests == [""] }
+        memory.completeMeetingAnchors("", with: [fixture.anchorMeeting])
+        try await waitUntil {
+            model.meetingAnchors.state.phase == .ready
+        }
+        model.selectMeetingAnchor(fixture.anchorMeeting.id)
+        model.loadSelectedTopicMemory()
+        try await waitUntil { memory.changesSinceMeetingRequests.count == 1 }
+
+        XCTAssertEqual(memory.changesSinceTopicRequests, [fixture.topic.id])
+        XCTAssertEqual(
+            memory.changesSinceMeetingRequests,
+            [fixture.anchorMeeting.id])
+        XCTAssertEqual(memory.changesSinceLimits, [100])
+        memory.completeChangesSince(
+            for: fixture.anchorMeeting.id,
+            with: .facts(fixture.conflictPage()))
+        try await waitUntil {
+            if case .changesSince = model.state.outcome { return true }
+            return false
+        }
+
+        guard case .changesSince(let changes, let anchor, let disclosure) =
+                model.state.outcome
+        else { return XCTFail("Expected exact changes-since facts") }
+        let change = try XCTUnwrap(changes.first)
+        XCTAssertEqual(changes.count, 1)
+        XCTAssertEqual(anchor.id, fixture.anchorMeeting.id)
+        XCTAssertEqual(anchor.title, "Planning baseline")
+        XCTAssertEqual(change.id, fixture.relationshipEventID)
+        XCTAssertEqual(change.primaryCitation, fixture.citation)
+        XCTAssertEqual(
+            change.citations,
+            [fixture.replacedCitation, fixture.citation])
+        XCTAssertFalse(disclosure.hasMore)
+    }
+
+    func testTopicMemoryAnchorChangeFencesLateChangesSinceResult() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(fixture.topic, in: model, using: memory)
+        model.selectJob(.changesSince)
+        try await waitUntil { memory.meetingAnchorRequests == [""] }
+        memory.completeMeetingAnchors("", with: [fixture.anchorMeeting])
+        try await waitUntil {
+            model.meetingAnchors.state.phase == .ready
+        }
+        model.selectMeetingAnchor(fixture.anchorMeeting.id)
+        model.loadSelectedTopicMemory()
+        try await waitUntil { memory.changesSinceMeetingRequests.count == 1 }
+
+        model.clearMeetingAnchorSelection()
+        XCTAssertEqual(model.state.outcome, .idle)
+        XCTAssertNil(model.meetingAnchors.state.selectedMeeting)
+        memory.completeChangesSince(
+            for: fixture.anchorMeeting.id,
+            with: .facts(fixture.conflictPage()))
+        await Task.yield()
+
+        XCTAssertEqual(model.state.outcome, .idle)
+    }
+
+    func testPendingMeetingAnchorSearchDoesNotRetainClosedTopicModel() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        var model: AskTopicMemoryModel? = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        try await selectTopic(
+            fixture.topic,
+            in: try XCTUnwrap(model),
+            using: memory)
+        model?.selectJob(.changesSince)
+        try await waitUntil { memory.meetingAnchorRequests == [""] }
+        weak let retainedModel = model
+        model = nil
+
+        XCTAssertNil(
+            retainedModel,
+            "an in-flight anchor read must not retain a closed Ask window")
+        memory.completeMeetingAnchors("", with: [])
+        await Task.yield()
+    }
+
     private func selectTopic(
         _ topic: Topic,
         in model: AskTopicMemoryModel,
@@ -1096,6 +1277,15 @@ private struct AskTopicMemoryPresentationFixture {
     let replacedSegmentID = UUID()
     let meetingStartedAt = Date(timeIntervalSince1970: 1_700_000_000)
 
+    var anchorMeeting: Meeting {
+        Meeting(
+            id: replacedMeetingID,
+            title: "Planning baseline",
+            startedAt: meetingStartedAt.addingTimeInterval(-86_400),
+            endedAt: meetingStartedAt.addingTimeInterval(-85_800),
+            language: "en")
+    }
+
     var citation: AskCitation {
         AskCitation(
             segmentID: segmentID,
@@ -1346,6 +1536,11 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
     private(set) var firstDiscussionRequests: [TopicID] = []
     private(set) var conflictRequests: [TopicID] = []
     private(set) var conflictLimits: [Int] = []
+    private(set) var meetingAnchorRequests: [String] = []
+    private(set) var meetingAnchorLimits: [Int] = []
+    private(set) var changesSinceTopicRequests: [TopicID] = []
+    private(set) var changesSinceMeetingRequests: [MeetingID] = []
+    private(set) var changesSinceLimits: [Int] = []
     private var peopleContinuations:
         [String: CheckedContinuation<[Person], Error>] = [:]
     private var commitmentContinuations:
@@ -1360,6 +1555,10 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         [TopicID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
     private var conflictContinuations:
         [TopicID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
+    private var meetingAnchorContinuations:
+        [String: CheckedContinuation<[Meeting], Error>] = [:]
+    private var changesSinceContinuations:
+        [MeetingID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
 
     func searchAskMemoryPeople(
         _ query: String,
@@ -1405,6 +1604,17 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         }
     }
 
+    func searchAskMemoryMeetingAnchors(
+        _ query: String,
+        limit: Int
+    ) async throws -> [Meeting] {
+        meetingAnchorRequests.append(query)
+        meetingAnchorLimits.append(limit)
+        return try await withCheckedThrowingContinuation { continuation in
+            meetingAnchorContinuations[query] = continuation
+        }
+    }
+
     func loadAskMemoryDecisionHistory(
         topicID: TopicID,
         limit: Int
@@ -1433,6 +1643,20 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         conflictLimits.append(limit)
         return try await withCheckedThrowingContinuation { continuation in
             conflictContinuations[topicID, default: []].append(continuation)
+        }
+    }
+
+    func loadAskMemoryChangesSince(
+        topicID: TopicID,
+        sinceMeetingID: MeetingID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult {
+        changesSinceTopicRequests.append(topicID)
+        changesSinceMeetingRequests.append(sinceMeetingID)
+        changesSinceLimits.append(limit)
+        return try await withCheckedThrowingContinuation { continuation in
+            changesSinceContinuations[sinceMeetingID, default: []]
+                .append(continuation)
         }
     }
 
@@ -1468,6 +1692,14 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         topicContinuations.removeValue(forKey: query)?.resume(returning: topics)
     }
 
+    func completeMeetingAnchors(
+        _ query: String,
+        with meetings: [Meeting]
+    ) {
+        meetingAnchorContinuations.removeValue(forKey: query)?
+            .resume(returning: meetings)
+    }
+
     func completeDecisions(
         for topicID: TopicID,
         with result: MeetingMemoryGraphQueryResult
@@ -1501,6 +1733,18 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         else { return }
         let continuation = continuations.removeFirst()
         conflictContinuations[topicID] = continuations
+        continuation.resume(returning: result)
+    }
+
+    func completeChangesSince(
+        for meetingID: MeetingID,
+        with result: MeetingMemoryGraphQueryResult
+    ) {
+        guard var continuations = changesSinceContinuations[meetingID],
+              !continuations.isEmpty
+        else { return }
+        let continuation = continuations.removeFirst()
+        changesSinceContinuations[meetingID] = continuations
         continuation.resume(returning: result)
     }
 }

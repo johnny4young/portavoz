@@ -116,13 +116,16 @@ struct AskTopicMemoryView: View {
                     .accessibilityIdentifier("ask-topic-change")
             }
             jobPicker
+            if model.state.selectedJob == .changesSince {
+                AskMeetingAnchorView(topicModel: model)
+            }
             HStack {
                 Spacer()
                 Button(loadButtonTitle) {
                     model.loadSelectedTopicMemory()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(model.state.outcome == .loading)
+                .disabled(loadIsDisabled)
                 .accessibilityIdentifier("ask-topic-load")
             }
         }
@@ -145,9 +148,18 @@ struct AskTopicMemoryView: View {
             Text("Decision changes")
                 .tag(AskTopicMemoryJob.decisionConflicts)
                 .accessibilityIdentifier("ask-topic-job-decision-conflicts")
+            Text("Changes since…")
+                .tag(AskTopicMemoryJob.changesSince)
+                .accessibilityIdentifier("ask-topic-job-changes-since")
         }
-        .pickerStyle(.segmented)
+        .pickerStyle(.radioGroup)
         .accessibilityIdentifier("ask-topic-job")
+    }
+
+    private var loadIsDisabled: Bool {
+        model.state.outcome == .loading
+            || (model.state.selectedJob == .changesSince
+                && model.meetingAnchors.state.selectedMeeting == nil)
     }
 
     private var loadButtonTitle: LocalizedStringKey {
@@ -158,6 +170,8 @@ struct AskTopicMemoryView: View {
             "Show first confirmed discussion"
         case .decisionConflicts:
             "Show decision changes"
+        case .changesSince:
+            "Show changes since meeting"
         }
     }
 
@@ -182,9 +196,23 @@ struct AskTopicMemoryView: View {
             firstDiscussionCard(discussion)
         case .conflicts(let conflicts, let disclosure):
             VStack(alignment: .leading, spacing: 12) {
-                ForEach(conflicts) { conflict in
-                    conflictCard(conflict)
-                }
+                AskTopicDecisionChangesView(
+                    changes: conflicts,
+                    context: .decisionConflicts,
+                    onOpenCitation: onOpenCitation)
+                disclosureView(disclosure)
+            }
+        case .changesSince(let changes, let anchor, let disclosure):
+            VStack(alignment: .leading, spacing: 12) {
+                Label(
+                    L10n.format("Changes since %@", anchor.title),
+                    systemImage: "calendar.badge.clock")
+                    .font(.headline)
+                    .accessibilityIdentifier("ask-topic-change-since-anchor")
+                AskTopicDecisionChangesView(
+                    changes: changes,
+                    context: .changesSince,
+                    onOpenCitation: onOpenCitation)
                 disclosureView(disclosure)
             }
         case .abstained(let reason):
@@ -210,6 +238,8 @@ struct AskTopicMemoryView: View {
             "Loading the first confirmed discussion…"
         case .decisionConflicts:
             "Loading confirmed decision changes…"
+        case .changesSince:
+            "Loading confirmed changes since the selected meeting…"
         }
     }
 
@@ -221,6 +251,8 @@ struct AskTopicMemoryView: View {
             "Portavoz could not verify the first discussion evidence."
         case .decisionConflicts:
             "Portavoz could not verify the decision change evidence."
+        case .changesSince:
+            "Portavoz could not verify the changes-since evidence."
         }
     }
 
@@ -232,6 +264,8 @@ struct AskTopicMemoryView: View {
             "Could not load the first confirmed discussion."
         case .decisionConflicts:
             "Could not load confirmed decision changes."
+        case .changesSince:
+            "Could not load confirmed changes since this meeting."
         }
     }
 }
@@ -314,60 +348,6 @@ extension AskTopicMemoryView {
         .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    private func conflictCard(
-        _ conflict: AskMemoryDecisionConflict
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Confirmed decision change", systemImage: "arrow.triangle.2.circlepath")
-                .font(.headline)
-            Text("Changed to")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Text(conflict.successorStatement)
-                .font(.title3.weight(.semibold))
-                .accessibilityIdentifier(
-                    "ask-topic-conflict-\(conflict.id.rawValue.uuidString)")
-            Text("Replaced")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.top, 2)
-            Text(conflict.replacedStatement)
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier(
-                    "ask-topic-conflict-replaced-\(conflict.id.rawValue.uuidString)")
-            Text(conflict.occurredAt.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-            Divider()
-            Text("Evidence")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-            ForEach(
-                Array(orderedCitations(conflict).enumerated()),
-                id: \.offset
-            ) { index, citation in
-                Button {
-                    onOpenCitation(citation)
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.turn.down.right")
-                        Text(
-                            "\(citation.meetingTitle) · \(AskMarkdown.clock(citation.timestamp))")
-                            .lineLimit(1)
-                    }
-                    .font(.caption)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(PVDesign.accent)
-                .help(citation.text)
-                .accessibilityIdentifier(
-                    "ask-topic-conflict-evidence-\(conflict.id.rawValue.uuidString)-\(index)")
-            }
-        }
-        .padding(12)
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
-    }
-
     @ViewBuilder
     private func disclosureView(_ disclosure: AskMemoryDisclosure) -> some View {
         if disclosure.hasMore {
@@ -382,6 +362,12 @@ extension AskTopicMemoryView {
                     "More than 100 confirmed decision changes exist; this view shows the earliest verified results.",
                     systemImage: "ellipsis.circle")
                     .accessibilityIdentifier("ask-topic-more-conflicts")
+            case .changesSince:
+                Label(
+                    // swiftlint:disable:next line_length
+                    "More than 100 confirmed changes exist since this meeting; this view shows the earliest verified results.",
+                    systemImage: "ellipsis.circle")
+                    .accessibilityIdentifier("ask-topic-more-changes-since")
             case .firstConfirmedDiscussion:
                 EmptyView()
             }
@@ -439,13 +425,6 @@ extension AskTopicMemoryView {
         }
     }
 
-    private func orderedCitations(
-        _ conflict: AskMemoryDecisionConflict
-    ) -> [AskCitation] {
-        [conflict.primaryCitation] + conflict.citations.filter {
-            $0.segmentID != conflict.primaryCitation.segmentID
-        }
-    }
 }
 
 extension AskTopicMemoryView {
@@ -483,6 +462,8 @@ extension AskTopicMemoryView {
             "No confirmed discussion is available for this topic."
         case .decisionConflicts:
             "No confirmed decision changes for this topic."
+        case .changesSince:
+            "No confirmed decision changes for this topic since the selected meeting."
         }
     }
 
@@ -494,6 +475,8 @@ extension AskTopicMemoryView {
             "The first confirmed discussion needs current transcript evidence before Portavoz can show it."
         case .decisionConflicts:
             "The matching decision changes need current transcript evidence before Portavoz can show them."
+        case .changesSince:
+            "The matching changes since this meeting need current transcript evidence before Portavoz can show them."
         }
     }
 
@@ -505,6 +488,8 @@ extension AskTopicMemoryView {
             "Some discussions with outdated evidence were omitted."
         case .decisionConflicts:
             "Some decision changes with outdated evidence were omitted."
+        case .changesSince:
+            "Some changes since this meeting with outdated evidence were omitted."
         }
     }
 
@@ -516,6 +501,8 @@ extension AskTopicMemoryView {
             "Some discussions without available evidence were omitted."
         case .decisionConflicts:
             "Some decision changes without available evidence were omitted."
+        case .changesSince:
+            "Some changes since this meeting without available evidence were omitted."
         }
     }
 }

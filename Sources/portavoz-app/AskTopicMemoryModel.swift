@@ -27,21 +27,11 @@ struct AskMemoryFirstDiscussion: Identifiable, Equatable {
     let citation: AskCitation
 }
 
-struct AskMemoryDecisionConflict: Identifiable, Equatable {
-    let id: DecisionEventID
-    let successorDecisionID: DecisionID
-    let replacedDecisionID: DecisionID
-    let successorStatement: String
-    let replacedStatement: String
-    let occurredAt: Date
-    let citations: [AskCitation]
-    let primaryCitation: AskCitation
-}
-
 enum AskTopicMemoryJob: Equatable {
     case currentDecisions
     case firstConfirmedDiscussion
     case decisionConflicts
+    case changesSince
 }
 
 enum AskMemoryTopicsPhase: Equatable {
@@ -58,6 +48,10 @@ enum AskTopicMemoryOutcome: Equatable {
     case decisions([AskMemoryDecision], AskMemoryDisclosure)
     case firstDiscussion(AskMemoryFirstDiscussion)
     case conflicts([AskMemoryDecisionConflict], AskMemoryDisclosure)
+    case changesSince(
+        [AskMemoryDecisionConflict],
+        AskMemoryMeetingAnchor,
+        AskMemoryDisclosure)
     case abstained(MeetingMemoryGraphQueryAbstention)
     case invalidEvidence
     case unavailable
@@ -83,8 +77,10 @@ final class AskTopicMemoryModel {
     private static let topicRequestLimit = visibleTopicLimit + 1
     private static let decisionLimit = DecisionHistoryQuery.maximumItemLimit
     private static let conflictLimit = DecisionConflictsQuery.maximumItemLimit
+    private static let changesSinceLimit = ChangeSinceQuery.maximumItemLimit
 
     private(set) var state = State()
+    let meetingAnchors: AskMeetingAnchorModel
 
     private let client: any AskMemoryModelClient
     private let searchDelay: Duration
@@ -99,6 +95,9 @@ final class AskTopicMemoryModel {
     ) {
         self.client = client
         self.searchDelay = searchDelay
+        meetingAnchors = AskMeetingAnchorModel(
+            client: client,
+            searchDelay: searchDelay)
     }
 
     isolated deinit {
@@ -117,6 +116,7 @@ final class AskTopicMemoryModel {
         state.selectedTopic = nil
         state.outcome = .idle
         cancelFactLoad()
+        meetingAnchors.reset()
         startTopicSearch(delay: searchDelay)
     }
 
@@ -132,6 +132,10 @@ final class AskTopicMemoryModel {
         state.topicsPhase = .ready
         state.selectedTopic = topic
         state.outcome = .idle
+        meetingAnchors.reset()
+        if state.selectedJob == .changesSince {
+            meetingAnchors.activate()
+        }
     }
 
     func clearTopicSelection() {
@@ -139,12 +143,14 @@ final class AskTopicMemoryModel {
         state.topicQuery = ""
         state.selectedTopic = nil
         state.outcome = .idle
+        meetingAnchors.reset()
         startTopicSearch(delay: .zero)
     }
 
     func retryTopicSearch() {
         state.selectedTopic = nil
         state.outcome = .idle
+        meetingAnchors.reset()
         startTopicSearch(delay: .zero)
     }
 
@@ -153,10 +159,51 @@ final class AskTopicMemoryModel {
         cancelFactLoad()
         state.selectedJob = job
         state.outcome = .idle
+        meetingAnchors.reset()
+        if job == .changesSince, state.selectedTopic != nil {
+            meetingAnchors.activate()
+        }
+    }
+
+    func updateMeetingAnchorQuery(_ value: String) {
+        guard state.selectedJob == .changesSince else { return }
+        cancelFactLoad()
+        state.outcome = .idle
+        meetingAnchors.updateQuery(value)
+    }
+
+    func selectMeetingAnchor(_ id: MeetingID) {
+        guard state.selectedJob == .changesSince else { return }
+        cancelFactLoad()
+        state.outcome = .idle
+        meetingAnchors.selectMeeting(id)
+    }
+
+    func clearMeetingAnchorSelection() {
+        guard state.selectedJob == .changesSince else { return }
+        cancelFactLoad()
+        state.outcome = .idle
+        meetingAnchors.clearSelection()
+    }
+
+    func retryMeetingAnchorSearch() {
+        guard state.selectedJob == .changesSince else { return }
+        cancelFactLoad()
+        state.outcome = .idle
+        meetingAnchors.retrySearch()
     }
 
     func loadSelectedTopicMemory() {
         guard let topic = state.selectedTopic else { return }
+        let anchor: AskMemoryMeetingAnchor?
+        if state.selectedJob == .changesSince {
+            guard let selected = meetingAnchors.state.selectedMeeting else {
+                return
+            }
+            anchor = selected
+        } else {
+            anchor = nil
+        }
         factGeneration += 1
         let requestGeneration = factGeneration
         factTask?.cancel()
@@ -164,6 +211,7 @@ final class AskTopicMemoryModel {
         startFactLoad(
             for: topic,
             job: state.selectedJob,
+            anchor: anchor,
             generation: requestGeneration)
     }
 
@@ -175,6 +223,7 @@ final class AskTopicMemoryModel {
     func cancelPendingWork() {
         cancelTopicSearch()
         cancelFactLoad()
+        meetingAnchors.cancelPendingWork()
         if state.topicsPhase == .loading {
             state.topicsPhase = .idle
         }
@@ -231,6 +280,7 @@ final class AskTopicMemoryModel {
     private func startFactLoad(
         for topic: AskMemoryTopic,
         job: AskTopicMemoryJob,
+        anchor: AskMemoryMeetingAnchor?,
         generation requestGeneration: Int
     ) {
         factTask = Task { [weak self, client] in
@@ -248,17 +298,25 @@ final class AskTopicMemoryModel {
                     result = try await client.loadAskMemoryDecisionConflicts(
                         topicID: topic.id,
                         limit: Self.conflictLimit)
+                case .changesSince:
+                    guard let anchor else { return }
+                    result = try await client.loadAskMemoryChangesSince(
+                        topicID: topic.id,
+                        sinceMeetingID: anchor.id,
+                        limit: Self.changesSinceLimit)
                 }
                 try Task.checkCancellation()
                 guard let self,
                       self.factGeneration == requestGeneration,
                       self.state.selectedTopic?.id == topic.id,
-                      self.state.selectedJob == job
+                      self.state.selectedJob == job,
+                      self.anchorIsCurrent(anchor, for: job)
                 else { return }
                 self.state.outcome = Self.prepareOutcome(
                     result,
                     expectedTopic: topic,
-                    job: job)
+                    job: job,
+                    anchor: anchor)
                 self.factTask = nil
             } catch is CancellationError {
                 return
@@ -266,7 +324,8 @@ final class AskTopicMemoryModel {
                 guard let self,
                       self.factGeneration == requestGeneration,
                       self.state.selectedTopic?.id == topic.id,
-                      self.state.selectedJob == job
+                      self.state.selectedJob == job,
+                      self.anchorIsCurrent(anchor, for: job)
                 else { return }
                 self.state.outcome = .unavailable
                 self.factTask = nil
@@ -284,6 +343,18 @@ final class AskTopicMemoryModel {
         factGeneration += 1
         factTask?.cancel()
         factTask = nil
+    }
+
+    private func anchorIsCurrent(
+        _ anchor: AskMemoryMeetingAnchor?,
+        for job: AskTopicMemoryJob
+    ) -> Bool {
+        switch job {
+        case .changesSince:
+            return meetingAnchors.state.selectedMeeting?.id == anchor?.id
+        case .currentDecisions, .firstConfirmedDiscussion, .decisionConflicts:
+            return anchor == nil
+        }
     }
 
     private static func prepareTopics(_ topics: [Topic]) -> [AskMemoryTopic]? {
@@ -304,7 +375,8 @@ final class AskTopicMemoryModel {
     private static func prepareOutcome(
         _ result: MeetingMemoryGraphQueryResult,
         expectedTopic: AskMemoryTopic,
-        job: AskTopicMemoryJob
+        job: AskTopicMemoryJob,
+        anchor: AskMemoryMeetingAnchor?
     ) -> AskTopicMemoryOutcome {
         switch result {
         case .abstained(let reason):
@@ -321,6 +393,13 @@ final class AskTopicMemoryModel {
                 return .firstDiscussion(discussion)
             case .decisionConflicts:
                 return prepareConflicts(page)
+            case .changesSince:
+                guard let anchor,
+                      let prepared = AskTopicDecisionRelationshipPage.prepare(
+                        page,
+                        maximumCount: changesSinceLimit)
+                else { return .invalidEvidence }
+                return .changesSince(prepared.0, anchor, prepared.1)
             }
         }
     }
@@ -328,21 +407,15 @@ final class AskTopicMemoryModel {
     private static func prepareConflicts(
         _ page: MeetingMemoryGraphFactPage
     ) -> AskTopicMemoryOutcome {
-        guard page.facts.count <= conflictLimit,
-              let synthesis = AskGraphFactSynthesisPage(page: page)
+        guard let prepared = AskTopicDecisionRelationshipPage.prepare(
+            page,
+            maximumCount: conflictLimit)
         else { return .invalidEvidence }
-        let conflicts = synthesis.facts.compactMap(prepareConflict)
-        guard conflicts.count == synthesis.facts.count else {
-            return .invalidEvidence
-        }
-        return .conflicts(
-            conflicts,
-            AskMemoryDisclosure(
-                hasMore: synthesis.hasMore,
-                omittedStaleCount: synthesis.omittedStaleCount,
-                omittedUnavailableCount: synthesis.omittedUnavailableCount))
+        return .conflicts(prepared.0, prepared.1)
     }
+}
 
+extension AskTopicMemoryModel {
     private static func prepareDecisions(
         _ page: MeetingMemoryGraphFactPage,
         expectedTopic: AskMemoryTopic
@@ -428,36 +501,6 @@ final class AskTopicMemoryModel {
             decisionID: decisionID,
             topicLabel: expectedTopic.label,
             statement: fact.subjectText,
-            occurredAt: fact.occurredAt,
-            citations: evidence.sourceSegments,
-            primaryCitation: primary)
-    }
-
-    private static func prepareConflict(
-        _ evidence: AskGraphFactSynthesisEvidence
-    ) -> AskMemoryDecisionConflict? {
-        let fact = evidence.fact
-        guard case .decisionRelationship(let eventID) = fact.id,
-              fact.kind == .decisionSupersededDecision,
-              case .decision(let successorID) = fact.subject,
-              case .decision(let replacedID) = fact.object,
-              successorID != replacedID,
-              fact.status == .confirmed,
-              !fact.subjectText.trimmingCharacters(
-                  in: .whitespacesAndNewlines).isEmpty,
-              !fact.objectText.trimmingCharacters(
-                  in: .whitespacesAndNewlines).isEmpty,
-              evidence.sourceSegments.count >= 2,
-              let primary = evidence.sourceSegments.first(where: {
-                  $0.segmentID == fact.primaryEvidenceSegmentID
-              })
-        else { return nil }
-        return AskMemoryDecisionConflict(
-            id: eventID,
-            successorDecisionID: successorID,
-            replacedDecisionID: replacedID,
-            successorStatement: fact.subjectText,
-            replacedStatement: fact.objectText,
             occurredAt: fact.occurredAt,
             citations: evidence.sourceSegments,
             primaryCitation: primary)

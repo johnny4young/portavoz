@@ -1984,12 +1984,13 @@ The evidence bundle remains a composition seam, not implicit answer behavior.
 Existing free-form Ask search, progressive transcript evidence, answer
 generation, command palette, CLI, MCP, and meeting-brief consumers do not
 request it. The answer provider still receives only transcript citations.
-Separate explicit UI consumers cover current commitments for one user-selected
-canonical person plus current decisions, first confirmed discussion, and
-confirmed decision conflicts for one user-selected canonical topic. They call
-the existing typed use cases directly and render source-backed facts; they do
-not derive a graph query from question prose or silently opt the answer
-provider into the bundle.
+Separate explicit UI consumers now cover all six source-backed jobs: current
+commitments for one user-selected canonical person, active blockers for one
+exact returned commitment, and current decisions, first confirmed discussion,
+confirmed decision conflicts, plus changes since one exact meeting for one
+user-selected canonical topic. They call the existing typed use cases directly
+and render source-backed facts; they do not derive a graph query from question
+prose or silently opt the answer provider into the bundle.
 
 The graph lane also accepts an optional **caller-extracted exact filter**. A
 narrow ApplicationKit resolver normalizes a person or topic alias through the
@@ -2069,10 +2070,12 @@ omission counts. Both layers validate those counts, the facts-to-transcript
 ratio, and exact source overlap before model execution. Selection makes only
 the provider input smaller: `AskEvidenceBundleAnswer` still returns the full
 unselected transcript and graph evidence to its caller. The released explorers
-cover exact-person/current-commitments, exact confirmed-topic/current-
-decisions, exact confirmed-topic/first-discussion, and
-exact confirmed-topic/decision-conflicts plus exact selected-commitment/active-blockers
-presentation. The first-discussion
+cover exact-person/current-commitments,
+exact selected-commitment/active-blockers,
+exact confirmed-topic/current-decisions,
+exact confirmed-topic/first-discussion,
+exact confirmed-topic/decision-conflicts, and
+exact confirmed-topic/meeting-anchor change-since presentation. The first-discussion
 consumer accepts only one complete topic-to-meeting fact with one exact current
 source and checks its meeting-relative occurrence time before rendering it. The
 decision-conflict
@@ -2087,9 +2090,18 @@ while placing the blocker-confirmation source first; one source remains valid
 when blocker and commitment authority deduplicate to the same segment. Changing
 the person, reloading commitments, selecting another commitment, changing Ask
 surface, or closing the window cancels and generation-fences the nested read.
-The remaining change-since graph job, natural-language query extraction, free-
-form graph-aware answers, private field evidence, and graph telemetry remain
-separate gates.
+The change-since consumer reuses the protected title-only meeting catalogue,
+requests 21 newest-first candidates, renders at most 20 plus overflow, and
+admits only the exact visible `MeetingID` the user selects. It displays whether
+the temporal boundary is the meeting end or, for an unfinished meeting, its
+start, matching StorageKit's `endedAt ?? startedAt` contract. A separate weak
+catalogue task and the shared fact task fence topic, job, anchor, and generation
+before publication. Relationship synthesis is shared with decision conflicts:
+both endpoints, at least two current sources, and the successor primary source
+remain mandatory. The native radio-group job picker avoids an increasingly
+compressed four-segment control and preserves standard macOS accessibility.
+Natural-language query extraction, free-form graph-aware answers, private field
+evidence, and graph telemetry remain separate gates.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported

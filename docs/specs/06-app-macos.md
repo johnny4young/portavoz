@@ -1365,8 +1365,8 @@ validation are still external evidence.
 
 ## First confirmed discussion by topic in Ask (D363)
 
-The existing **By topic** surface now exposes a subordinate segmented memory-
-view selector: **Current decisions** or **First confirmed discussion**. The
+The existing **By topic** surface now exposes a subordinate native memory-view
+selector, initially **Current decisions** or **First confirmed discussion**. The
 selected job is retained while changing exact topics, but changing the job
 cancels any in-flight fact read and clears its visible result. Search remains a
 separate bounded task, and closing or leaving Ask cancels both lanes.
@@ -1437,6 +1437,39 @@ XCUITest can verify both exact sources and follow the blocker source to 00:04.
 No user library, model, inferred causality, network, or Tahoe-only API is
 involved; physical VoiceOver and independent Sequoia/Tahoe validation remain
 external.
+
+## Confirmed changes since one exact meeting in Ask (D366)
+
+The **By topic** memory picker now has four jobs and uses a native radio group so
+the localized choices remain legible instead of compressing into four segments.
+**Changes since** appears only after one exact canonical topic is selected and
+requires a second exact selection from a bounded title-only meeting catalogue.
+The catalogue requests 21 newest-first meetings, renders 20 plus overflow, and
+uses title search only for discovery; the load control stays disabled until one
+currently visible `MeetingID` is selected.
+
+Each candidate shows the actual temporal boundary used by the query: **Ended**
+for completed meetings, or **Started** when no end exists. Empty titles,
+duplicate identities, non-finite dates, end-before-start aggregates, and
+oversized responses fail closed. Search and fact work use weak cancellable
+tasks; topic, job, query, or anchor changes clear visible results, and a late
+relationship page must still match the captured topic, anchor, job, and
+generation before it can publish.
+
+Result cards use the same strict relationship component as **Decision changes**
+while keeping independent `ask-topic-change-since-*` identifiers. The selected
+baseline remains visible, both successor and replaced statements remain visible,
+and every exact source remains independently navigable with the successor
+primary source first. Meeting search, options, selection, change, retry, result,
+and evidence actions all have stable identifiers and localized speakable labels.
+
+The temporary-store fixture reuses **Planning baseline** as the exact earlier
+anchor and the real projected relationship already confirmed for `model
+rollout`. The bilingual XCUITest searches and selects that exact meeting,
+verifies both Spanish statements and both evidence paths, then follows the
+successor source to 00:03. It touches no user library, network, Foundation
+Models, new storage authority, or Tahoe-only API; physical VoiceOver and
+independent Sequoia/Tahoe validation remain external.
 
 The hidden Ask resource mode installs one observer only around its disposable
 `AskMeetings.local` call (D193). `AskPipelineRunProbe` accepts exactly one

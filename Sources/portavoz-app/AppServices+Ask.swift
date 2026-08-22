@@ -6,23 +6,25 @@ import StorageKit
 @MainActor
 final class AppAskModelClient: AskModelClient {
     private let useCase: AskMeetings
-    private let memoryPeople: LoadAutomationEntities
+    private let memoryEntities: LoadAutomationEntities
     private let memoryCommitments: LoadPersonCommitments
     private let memoryCommitmentBlockers: LoadCommitmentBlockers
     private let memoryTopics: LoadConfirmedTopicCatalog
     private let memoryDecisionHistory: LoadDecisionHistory
     private let memoryTopicFirstDiscussion: LoadTopicFirstDiscussion
     private let memoryDecisionConflicts: LoadDecisionConflicts
+    private let memoryChangesSince: LoadChangeSince
 
     init(useCase: AskMeetings, store: MeetingStore) {
         self.useCase = useCase
-        memoryPeople = LoadAutomationEntities(catalog: store)
+        memoryEntities = LoadAutomationEntities(catalog: store)
         memoryCommitments = LoadPersonCommitments(repository: store)
         memoryCommitmentBlockers = LoadCommitmentBlockers(repository: store)
         memoryTopics = LoadConfirmedTopicCatalog(catalog: store)
         memoryDecisionHistory = LoadDecisionHistory(repository: store)
         memoryTopicFirstDiscussion = LoadTopicFirstDiscussion(repository: store)
         memoryDecisionConflicts = LoadDecisionConflicts(repository: store)
+        memoryChangesSince = LoadChangeSince(repository: store)
     }
 
     func searchAskMeetings(
@@ -56,7 +58,7 @@ extension AppAskModelClient: AskMemoryModelClient {
         _ query: String,
         limit: Int
     ) async throws -> [Person] {
-        try await memoryPeople.people(AutomationEntityLookup(
+        try await memoryEntities.people(AutomationEntityLookup(
             matching: query,
             limit: limit))
     }
@@ -88,6 +90,15 @@ extension AppAskModelClient: AskMemoryModelClient {
             limit: limit))
     }
 
+    func searchAskMemoryMeetingAnchors(
+        _ query: String,
+        limit: Int
+    ) async throws -> [Meeting] {
+        try await memoryEntities.meetings(AutomationEntityLookup(
+            matching: query,
+            limit: limit))
+    }
+
     func loadAskMemoryDecisionHistory(
         topicID: TopicID,
         limit: Int
@@ -110,6 +121,17 @@ extension AppAskModelClient: AskMemoryModelClient {
     ) async throws -> MeetingMemoryGraphQueryResult {
         try await memoryDecisionConflicts.execute(DecisionConflictsQuery(
             topicID: topicID,
+            itemLimit: limit))
+    }
+
+    func loadAskMemoryChangesSince(
+        topicID: TopicID,
+        sinceMeetingID: MeetingID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult {
+        try await memoryChangesSince.execute(ChangeSinceQuery(
+            topicID: topicID,
+            sinceMeetingID: sinceMeetingID,
             itemLimit: limit))
     }
 }
