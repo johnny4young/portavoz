@@ -1,6 +1,7 @@
 import ApplicationKit
 import Foundation
 import PortavozCore
+import StorageKit
 
 extension AppServices {
     func loadSkillControlCenter(
@@ -77,7 +78,15 @@ extension AppServices {
     func loadSkillReceiptInspection(
         proposalID: UUID
     ) async throws -> SkillControlCenterReceiptInspection {
-        try await LoadSkillReceiptInspection(store: store).execute(proposalID)
+        if usesTemporaryMeetingStore,
+           ProcessInfo.processInfo.arguments.contains(
+               "-simulate-skill-receipt-policy-unavailable") {
+            return try await LoadSkillReceiptInspection(
+                store: UnavailableReceiptPolicyStore(store: store)
+            ).execute(proposalID)
+        }
+        return try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
     }
 
     func revokeWaitingSkillExecution(
@@ -124,3 +133,21 @@ private struct SimulatedSkillProposalReviewFailure: Error {}
 private struct SimulatedSkillReceiptRevocationFailure: Error {}
 private struct SimulatedSkillReceiptRecoveryFailure: Error {}
 private struct SimulatedSkillReceiptContextFailure: Error {}
+
+/// Proves that policy-independent receipt paths do not consult an unrelated
+/// authority. The disposable-store gate keeps this failure out of production.
+private struct UnavailableReceiptPolicyStore: SkillReceiptInspectionStore {
+    let store: MeetingStore
+
+    func skillExecutionAudit(
+        proposalID: UUID
+    ) async throws -> SkillExecutionAudit? {
+        try await store.skillExecutionAudit(proposalID: proposalID)
+    }
+
+    func skillExecutionPolicy() async throws -> SkillExecutionPolicy {
+        throw SimulatedSkillReceiptPolicyFailure()
+    }
+}
+
+private struct SimulatedSkillReceiptPolicyFailure: Error {}

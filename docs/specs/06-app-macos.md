@@ -2703,7 +2703,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343/D359, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343/D359/D369, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2859,6 +2859,16 @@ typed failure category, and timestamp. It does not
 receive or render the idempotency key, arguments, destination, result, meeting
 title, transcript, or summary. The inspection-error **Try again** repeats only
 that read and cannot execute or retry a Skill.
+
+Inspection does not make every receipt depend on execution policy. It reads
+and causally replays the audit first. A non-failed receipt derives historical
+source context without a policy read, and external/destructive failure guidance
+derives its verification-only boundary the same way. Missing, legacy, or stale
+subjects resolve unavailable before policy as well. Only a failed local receipt
+with an otherwise-valid current subject/catalogue match reads global pause and
+per-Skill enablement. Cancellation is checked around those boundaries, so an
+unrelated policy failure cannot erase verified history or outside-outcome
+guidance, while local recovery still fails closed.
 
 A verified Waiting receipt has one additional action: **Revoke approval**.
 The sheet sends only the proposal UUID to `RevokeWaitingSkillExecution`, which

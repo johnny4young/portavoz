@@ -522,9 +522,12 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testWaitingReceiptCanReviewItsSourceWithoutRunning() {
+    func testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning() {
         let app = XCUIApplication.portavoz(seedDemo: true)
-        app.launchArguments.append("-seed-skill-waiting")
+        app.launchArguments.append(contentsOf: [
+            "-seed-skill-waiting",
+            "-simulate-skill-receipt-policy-unavailable"
+        ])
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -534,6 +537,9 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
         let review = app.buttons["skill-receipt-context-action"]
         XCTAssertTrue(review.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(
+            app.buttons["skill-receipt-revoke-action"].exists,
+            "audit-only inspection must preserve its independent Waiting action")
         XCTAssertGreaterThan(
             app.windows.count,
             1,

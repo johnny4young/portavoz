@@ -506,6 +506,16 @@ typed category, and time; it never receives the
 idempotency key, proposal arguments, destination, result, or meeting material,
 and its inspection-error retry retries only the read.
 
+The inspection read orders authority by need. It first loads and replays the
+content-free audit. Non-failed historical context and external/destructive
+verification guidance resolve from that audit alone; missing, legacy, or stale
+subjects also fail closed without consulting unrelated controls. Only an
+otherwise-valid failed local recovery reads current global/per-Skill policy.
+Cancellation is checked before the audit and before publication, and again
+after the optional policy read. A policy failure therefore cannot hide
+historical evidence or outcome-unknown guidance, but it still blocks every
+local recovery action that depends on current enablement.
+
 After that inspection verifies the current state is `confirmed`, the sheet may
 send only the proposal UUID through `RevokeWaitingSkillExecution`. Its narrow
 storage port exposes only the existing cancellation transition: it cannot
@@ -4477,12 +4487,12 @@ silently.
 
 ## Quality evidence
 
-The current 21 Aug 2026 local acceptance inventory, with longer-running
+The current 22 Aug 2026 local acceptance inventory, with longer-running
 reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,532 XCTest package cases are defined, with 15 real-model/environment cases
+- 2,597 XCTest package cases are defined, with 15 real-model/environment cases
   gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
@@ -4491,13 +4501,13 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 684
+- strict SwiftLint remains a blocking CI gate and is clean across all 702
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 425 deterministic tooling cases and the 179-case architecture subset pass;
+- 456 deterministic tooling cases and the 194-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
-- 93 XCUITest cases per locale define the 186-case bilingual release gate;
+- 101 XCUITest cases per locale define the 202-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

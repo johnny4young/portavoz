@@ -13404,3 +13404,39 @@ authority, schema, model, ranking, query limit, serving behavior, or budget. One
 Tahoe machine is not Sequoia or cross-hardware evidence, and the receipt itself
 accepts no latency policy; supported-host acceptance, private owner-reviewed
 behavior, physical VoiceOver, and broader graph adoption remain separate gates.
+
+## D369 — Receipt inspection reads execution policy only when recovery needs it (Aug 2026)
+
+**Context:** D359 made non-failed receipt source review independent from pause
+and per-Skill enablement, and D341 made external/destructive failures
+verification-only. The route resolver already depended only on the content-free
+audit, but `LoadSkillReceiptInspection` still started an execution-policy read
+for every receipt before causal replay. An unrelated missing or temporarily
+unavailable policy could therefore hide verified historical evidence or the
+warning to verify an outcome outside Portavoz. It also spent one unnecessary
+database read on every normal receipt inspection.
+
+**Decision:** load one read-consistent audit first, verify its proposal identity,
+and replay the complete bounded causal chain before deriving presentation.
+Resolve non-failed recovery as unavailable, external/destructive failures as
+verification-only, and missing/legacy/stale local subjects as unavailable
+without reading execution policy. Only an otherwise-valid failed local subject
+and matching current catalogue version may request current global pause and
+per-Skill enablement. Check structured-task cancellation before the audit,
+after that optional policy read, and before publishing the inspection.
+
+Keep local recovery fail-closed: if its required policy read fails, the
+inspection remains unavailable and no recovery route appears. A temporary-store
+test adapter fails only this optional policy port; the real-app waiting-receipt
+journey proves historical source review, causal evidence, and independent
+revocation still work without consulting it. Unit tests count exact policy
+reads for non-failed, external, and local-recovery cases.
+
+**Consequences:** verified historical evidence and outcome-unknown external
+guidance no longer disappear because unrelated future-execution controls cannot
+be read, and ordinary inspection performs less I/O. Local recovery still needs
+current policy and receives no cached or optimistic authority. No schema,
+receipt payload, standing rule, confirmation, retry, adapter, transport, effect,
+or deployment-floor change is introduced. Deterministic automation exercises
+public APIs available at the macOS 14.4 floor; physical VoiceOver, Sequoia, and
+separate-hardware Tahoe behavior remain field evidence.

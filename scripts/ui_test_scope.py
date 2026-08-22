@@ -301,7 +301,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "SkillsSettingsUITests",
-            "testWaitingReceiptCanReviewItsSourceWithoutRunning",
+            "testWaitingReceiptIgnoresUnavailablePolicyAndReviewsSourceWithoutRunning",
         ),
         test_id(
             "SkillsSettingsUITests",

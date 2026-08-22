@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,594 cases "
+            "package inventory contains 2,597 cases "
                 + "(15 environment-gated) + 101"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -5471,7 +5471,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(recovery.contains(
             "struct ResolveSkillReceiptRecoveryDestination"))
         XCTAssertTrue(recovery.contains(
-            "recoveryAvailability: Self.recoveryAvailability"))
+            "let recoveryAvailability = try await recoveryAvailability(audit: audit)"))
+        XCTAssertTrue(recovery.contains(
+            "recoveryAvailability: recoveryAvailability"))
         XCTAssertTrue(recovery.contains("case verifyExternally"))
         XCTAssertFalse(recovery.contains("effect.perform"))
         XCTAssertFalse(recovery.contains("ExecuteSkill"))
@@ -5521,6 +5523,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(inspection.contains(
             "contextAvailability: Self.contextAvailability(audit: audit)"))
         XCTAssertTrue(inspection.contains(
+            "switch Self.recoveryPolicyRequirement(audit: audit)"))
+        XCTAssertTrue(inspection.contains("case .currentPolicy:"))
+        XCTAssertTrue(inspection.contains(
+            "let policy = try await store.skillExecutionPolicy()"))
+        XCTAssertTrue(inspection.contains(
+            "return .resolved(.verifyExternally)"))
+        XCTAssertTrue(inspection.contains("try Task.checkCancellation()"))
+        XCTAssertTrue(inspection.contains(
             "guard audit.record.state != .failed,"))
         XCTAssertTrue(inspection.contains(
             "LoadSkillReceiptInspection.validateAndProject(audit)"))
@@ -5529,6 +5539,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(inspection.contains("idempotencyKey"))
         XCTAssertTrue(services.contains(
             "-simulate-skill-receipt-context-unavailable"))
+        XCTAssertTrue(services.contains(
+            "-simulate-skill-receipt-policy-unavailable"))
+        XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))
         XCTAssertTrue(receiptSheet.contains(
             "skill-receipt-context-action"))
         XCTAssertTrue(receiptSheet.contains(
@@ -5546,6 +5559,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "enum SettingsSkillReceiptNavigation"))
         XCTAssertFalse(receiptNavigation.contains("effect.perform"))
         XCTAssertTrue(decisions.contains("## D359"))
+        XCTAssertTrue(decisions.contains("## D369"))
     }
 
     func testSkillReceiptDismissalRestoresLocalFocusWithoutCompetingWithRecovery() throws {

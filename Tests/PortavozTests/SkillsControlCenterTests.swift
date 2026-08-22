@@ -767,6 +767,69 @@ final class SkillsControlCenterTests: XCTestCase {
         }
     }
 
+    func testNonFailedReceiptInspectionDoesNotReadUnavailableExecutionPolicy() async throws {
+        let proposalID = UUID()
+        let store = StubSkillReceiptInspectionStore(
+            audit: completedInspectionAudit(
+                proposalID: proposalID,
+                failureCategory: nil),
+            policyResult: .failure(.unavailable))
+
+        let inspection = try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
+        let policyReadCount = await store.policyReadCount
+
+        XCTAssertEqual(inspection.state, .succeeded)
+        XCTAssertEqual(inspection.contextAvailability, .reviewInContext)
+        XCTAssertEqual(inspection.recoveryAvailability, .unavailable)
+        XCTAssertEqual(
+            policyReadCount,
+            0,
+            "historical evidence is independent from execution policy")
+    }
+
+    func testExternalFailureGuidanceDoesNotReadUnavailableExecutionPolicy() async throws {
+        let proposalID = UUID()
+        let store = StubSkillReceiptInspectionStore(
+            audit: completedInspectionAudit(
+                proposalID: proposalID,
+                failureCategory: .external),
+            policyResult: .failure(.unavailable))
+
+        let inspection = try await LoadSkillReceiptInspection(store: store)
+            .execute(proposalID)
+        let policyReadCount = await store.policyReadCount
+
+        XCTAssertEqual(inspection.state, .failed)
+        XCTAssertEqual(inspection.contextAvailability, .unavailable)
+        XCTAssertEqual(inspection.recoveryAvailability, .verifyExternally)
+        XCTAssertEqual(
+            policyReadCount,
+            0,
+            "outcome-unknown guidance must survive unrelated policy failure")
+    }
+
+    func testLocalFailureRecoveryStillFailsClosedWhenPolicyIsUnavailable() async {
+        let proposalID = UUID()
+        let store = StubSkillReceiptInspectionStore(
+            audit: completedInspectionAudit(
+                proposalID: proposalID,
+                failureCategory: .recoverable),
+            policyResult: .failure(.unavailable))
+
+        do {
+            _ = try await LoadSkillReceiptInspection(store: store)
+                .execute(proposalID)
+            XCTFail("local recovery must verify current execution policy")
+        } catch let error as StubSkillReceiptPolicyFailure {
+            XCTAssertEqual(error, .unavailable)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+        let policyReadCount = await store.policyReadCount
+        XCTAssertEqual(policyReadCount, 1)
+    }
+
     func testReceiptAuditRejectsUnknownPersistedFailureCategory() async throws {
         let store = try MeetingStore.inMemory()
         let proposalID = UUID()
@@ -1064,6 +1127,44 @@ final class SkillsControlCenterTests: XCTestCase {
         }
     }
 
+    private func completedInspectionAudit(
+        proposalID: UUID,
+        failureCategory: FailureCategory?
+    ) -> SkillExecutionAudit {
+        let state: SkillExecutionState = failureCategory == nil
+            ? .succeeded
+            : .failed
+        let terminalKind = failureCategory == nil ? "succeed" : "fail"
+        return SkillExecutionAudit(
+            record: SkillExecutionRecord(
+                proposalID: proposalID,
+                skillID: RecapDraftSkill.id,
+                skillVersion: RecapDraftSkill.version,
+                idempotencyKey: "policy-read-\(proposalID.uuidString)",
+                state: state,
+                failureCategory: failureCategory,
+                attempt: 1,
+                updatedAt: now.addingTimeInterval(2)),
+            history: [
+                SkillExecutionHistoryEntry(
+                    kind: "confirm",
+                    attempt: 1,
+                    failureCategory: nil,
+                    occurredAt: now),
+                SkillExecutionHistoryEntry(
+                    kind: "begin",
+                    attempt: 1,
+                    failureCategory: nil,
+                    occurredAt: now.addingTimeInterval(1)),
+                SkillExecutionHistoryEntry(
+                    kind: terminalKind,
+                    attempt: 1,
+                    failureCategory: failureCategory,
+                    occurredAt: now.addingTimeInterval(2))
+            ],
+            subject: .meeting(MeetingID(rawValue: UUID())))
+    }
+
     func testReceiptDecoderRejectsMalformedPersistedProposalIdentity() throws {
         let database = try DatabaseQueue()
         let row = try database.read { database in
@@ -1172,9 +1273,18 @@ private struct SkillControlCenterStoreRequest: Equatable, Sendable {
 
 private actor StubSkillReceiptInspectionStore: SkillReceiptInspectionStore {
     let audit: SkillExecutionAudit?
+    let policyResult: Result<SkillExecutionPolicy, StubSkillReceiptPolicyFailure>
+    private(set) var policyReadCount = 0
 
-    init(audit: SkillExecutionAudit?) {
+    init(
+        audit: SkillExecutionAudit?,
+        policyResult: Result<
+            SkillExecutionPolicy,
+            StubSkillReceiptPolicyFailure
+        > = .success(SkillExecutionPolicy())
+    ) {
         self.audit = audit
+        self.policyResult = policyResult
     }
 
     func skillExecutionAudit(
@@ -1183,9 +1293,14 @@ private actor StubSkillReceiptInspectionStore: SkillReceiptInspectionStore {
         audit?.record.proposalID == proposalID ? audit : nil
     }
 
-    func skillExecutionPolicy() -> SkillExecutionPolicy {
-        SkillExecutionPolicy()
+    func skillExecutionPolicy() throws -> SkillExecutionPolicy {
+        policyReadCount += 1
+        return try policyResult.get()
     }
+}
+
+private enum StubSkillReceiptPolicyFailure: Error, Equatable {
+    case unavailable
 }
 
 private struct StubWaitingSkillExecutionRevoker: WaitingSkillExecutionRevoking {

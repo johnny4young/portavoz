@@ -85,15 +85,16 @@ public struct LoadSkillReceiptInspection: ApplicationUseCase {
     public func execute(
         _ proposalID: UUID
     ) async throws -> SkillControlCenterReceiptInspection {
-        async let auditRead = store.skillExecutionAudit(proposalID: proposalID)
-        async let policyRead = store.skillExecutionPolicy()
-        guard let audit = try await auditRead
+        try Task.checkCancellation()
+        guard let audit = try await store.skillExecutionAudit(
+            proposalID: proposalID)
         else { throw SkillReceiptInspectionError.unavailable }
-        let policy = try await policyRead
         guard audit.record.proposalID == proposalID else {
             throw SkillReceiptInspectionError.inconsistentHistory
         }
         let events = try Self.validateAndProject(audit)
+        let recoveryAvailability = try await recoveryAvailability(audit: audit)
+        try Task.checkCancellation()
         return SkillControlCenterReceiptInspection(
             proposalID: audit.record.proposalID,
             skillID: audit.record.skillID,
@@ -101,12 +102,28 @@ public struct LoadSkillReceiptInspection: ApplicationUseCase {
             state: audit.record.state,
             failureCategory: audit.record.failureCategory,
             contextAvailability: Self.contextAvailability(audit: audit),
-            recoveryAvailability: Self.recoveryAvailability(
-                audit: audit,
-                policy: policy),
+            recoveryAvailability: recoveryAvailability,
             attempt: audit.record.attempt,
             updatedAt: audit.record.updatedAt,
             events: events)
+    }
+
+    /// Historical context and outcome-unknown external guidance are audit
+    /// facts, not execution-policy decisions. Read policy only after a valid
+    /// failed local subject proves that recovery could be offered.
+    private func recoveryAvailability(
+        audit: SkillExecutionAudit
+    ) async throws -> SkillReceiptRecoveryAvailability {
+        switch Self.recoveryPolicyRequirement(audit: audit) {
+        case .resolved(let availability):
+            return availability
+        case .currentPolicy:
+            let policy = try await store.skillExecutionPolicy()
+            try Task.checkCancellation()
+            return Self.recoveryAvailability(
+                audit: audit,
+                policy: policy)
+        }
     }
 
     static func validateAndProject(
@@ -168,6 +185,35 @@ public struct LoadSkillReceiptInspection: ApplicationUseCase {
         case .meeting, .commitment: .reviewInContext
         case .calendarEvent: .residentMenuBar
         }
+    }
+
+    private enum RecoveryPolicyRequirement {
+        case resolved(SkillReceiptRecoveryAvailability)
+        case currentPolicy
+    }
+
+    /// Resolves every policy-independent outcome first. A missing, legacy, or
+    /// stale subject cannot become recoverable through policy, so it also does
+    /// not need an unrelated authority read.
+    private static func recoveryPolicyRequirement(
+        audit: SkillExecutionAudit
+    ) -> RecoveryPolicyRequirement {
+        guard audit.record.state == .failed,
+              let failureCategory = audit.record.failureCategory
+        else { return .resolved(.unavailable) }
+        if failureCategory == .external || failureCategory == .destructive {
+            return .resolved(.verifyExternally)
+        }
+        guard let subject = audit.subject,
+              subject.isValid,
+              let catalogue = SkillCatalogue.entries.first(where: {
+                  $0.id == audit.record.skillID
+              }),
+              catalogue.availability == .available,
+              catalogue.definition.version == audit.record.skillVersion,
+              catalogue.definition.subjectKind == subject.kind
+        else { return .resolved(.unavailable) }
+        return .currentPolicy
     }
 
     static func contextAvailability(
