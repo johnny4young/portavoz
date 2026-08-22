@@ -1410,6 +1410,34 @@ actions, and the successor seek to 00:03. The app path adds no Foundation
 Models or Tahoe-only dependency; physical VoiceOver and independent
 Sequoia/Tahoe validation remain external.
 
+## Active blockers for one exact commitment in Ask (D365)
+
+Each validated current-commitment card in **By person** now has a localized
+**Show active blockers** action. The presentation model accepts only a
+`CommitmentID` still present in the currently displayed exact-person result;
+unknown, stale, or previously selected identities start no read. Its nested
+task is weak, cancellable, and independently generation-fenced so selecting a
+different commitment, changing person, reloading commitments, leaving Ask, or
+closing the window rejects late publication.
+
+The inline result shows each confirmed blocking decision, the exact commitment
+it blocks, confirmation time, and every current transcript source with the
+blocker-confirmation source first. Stable leaf identifiers use
+`ask-memory-blocker-*`; every evidence action uses
+`ask-memory-blocker-evidence-*`, and retry remains a separate accessible
+control. Honest no-blocker, unavailable commitment, preparing projection,
+invalid evidence, and operational failure states never collapse into an empty
+success.
+
+The temporary-store fixture confirms the existing exact commitment, creates
+and confirms a separate Spanish security-review decision, explicitly confirms
+the causal blocker, and projects the real disposable graph. Its evidence
+meeting reuses only the fixture's synthetic audio so the independent bilingual
+XCUITest can verify both exact sources and follow the blocker source to 00:04.
+No user library, model, inferred causality, network, or Tahoe-only API is
+involved; physical VoiceOver and independent Sequoia/Tahoe validation remain
+external.
+
 The hidden Ask resource mode installs one observer only around its disposable
 `AskMeetings.local` call (D193). `AskPipelineRunProbe` accepts exactly one
 answer trace, one completion for every declared stage, first evidence, first

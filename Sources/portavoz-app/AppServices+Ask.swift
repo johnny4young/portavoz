@@ -8,6 +8,7 @@ final class AppAskModelClient: AskModelClient {
     private let useCase: AskMeetings
     private let memoryPeople: LoadAutomationEntities
     private let memoryCommitments: LoadPersonCommitments
+    private let memoryCommitmentBlockers: LoadCommitmentBlockers
     private let memoryTopics: LoadConfirmedTopicCatalog
     private let memoryDecisionHistory: LoadDecisionHistory
     private let memoryTopicFirstDiscussion: LoadTopicFirstDiscussion
@@ -17,6 +18,7 @@ final class AppAskModelClient: AskModelClient {
         self.useCase = useCase
         memoryPeople = LoadAutomationEntities(catalog: store)
         memoryCommitments = LoadPersonCommitments(repository: store)
+        memoryCommitmentBlockers = LoadCommitmentBlockers(repository: store)
         memoryTopics = LoadConfirmedTopicCatalog(catalog: store)
         memoryDecisionHistory = LoadDecisionHistory(repository: store)
         memoryTopicFirstDiscussion = LoadTopicFirstDiscussion(repository: store)
@@ -65,6 +67,15 @@ extension AppAskModelClient: AskMemoryModelClient {
     ) async throws -> MeetingMemoryGraphQueryResult {
         try await memoryCommitments.execute(PersonCommitmentsQuery(
             personID: personID,
+            itemLimit: limit))
+    }
+
+    func loadAskMemoryCommitmentBlockers(
+        commitmentID: CommitmentID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult {
+        try await memoryCommitmentBlockers.execute(CommitmentBlockerQuery(
+            commitmentID: commitmentID,
             itemLimit: limit))
     }
 

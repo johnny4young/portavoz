@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 22, 2026
 
+- **🛑 Active blockers reveal their proof** — Open one exact current commitment in Ask, see every confirmed decision blocking it, and jump to the evidence that established the blocker.
 - **🔁 Decision changes keep both sides of the story** — Choose one exact confirmed topic in Ask, see which confirmed decision replaced which, and open the current evidence without losing the earlier source.
 
 ## August 21, 2026

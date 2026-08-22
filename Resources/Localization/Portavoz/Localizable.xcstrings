@@ -1,6 +1,136 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Active blockers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bloqueadores activos"
+          }
+        }
+      }
+    },
+    "Blocks: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bloquea: %@"
+          }
+        }
+      }
+    },
+    "Could not load confirmed active blockers.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar los bloqueadores activos confirmados."
+          }
+        }
+      }
+    },
+    "Loading confirmed active blockers…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando bloqueadores activos confirmados…"
+          }
+        }
+      }
+    },
+    "More than 100 active blockers exist; this view shows the newest verified results.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay más de 100 bloqueadores activos; esta vista muestra los resultados verificados más recientes."
+          }
+        }
+      }
+    },
+    "No confirmed active blockers for this commitment.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay bloqueadores activos confirmados para este compromiso."
+          }
+        }
+      }
+    },
+    "Portavoz could not verify the blocker evidence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo verificar la evidencia del bloqueador."
+          }
+        }
+      }
+    },
+    "Show active blockers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar bloqueadores activos"
+          }
+        }
+      }
+    },
+    "Show active blockers for %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar bloqueadores activos para %@"
+          }
+        }
+      }
+    },
+    "Some blockers with outdated evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunos bloqueadores con evidencia desactualizada."
+          }
+        }
+      }
+    },
+    "Some blockers without available evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunos bloqueadores sin evidencia disponible."
+          }
+        }
+      }
+    },
+    "The matching blockers need current transcript evidence before Portavoz can show them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los bloqueadores coincidentes necesitan evidencia actual de la transcripción antes de que Portavoz pueda mostrarlos."
+          }
+        }
+      }
+    },
+    "This commitment is no longer available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este compromiso ya no está disponible."
+          }
+        }
+      }
+    },
     "Decision changes": {
       "localizations": {
         "es": {

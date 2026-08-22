@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,568 cases (15 environment-gated) + 99
+Status: the package inventory contains 2,573 cases (15 environment-gated) + 100
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1490,7 +1490,7 @@ cases use no model, network, user library, SwiftUI, XCUITest, or screenshot.
 
 ### Complete graph product truth, scale, and profile recovery (D308–D314/D360)
 
-The remaining decision-history, decision-conflict, and change-since adapters
+The decision-history, decision-conflict, and change-since adapters
 have deterministic focused tests plus all 18 canonical product mappings. The
 local graph-fact route switch and exact filter suite exercise all six job kinds;
 decision queries derive aboutness only from confirmed decision-topic links and
@@ -1611,6 +1611,30 @@ no user library, no Foundation Models, and no Tahoe-only API. This is local
 bilingual regression evidence, not physical VoiceOver, clean-install Sequoia,
 separate-hardware Tahoe, private-corpus quality, or graph telemetry.
 
+### Fifth released exact graph query surface (D365)
+
+Four new presentation-model cases prove that only one current commitment from
+the selected person's validated result can cross the blocker boundary at the
+existing 100-fact maximum. They preserve exact decision/blocker/commitment
+identities, authoritative text, disclosure, all current sources, and the
+blocker primary source; accept one source when authority deduplicates to that
+same segment; reject oversized, wrong-kind, wrong-entity, wrong-commitment,
+wrong-title, wrong-status, and missing-primary pages; start no read for an
+unknown commitment; and fence a late result after commitment selection changes.
+
+One architecture ratchet pins the existing ApplicationKit/StorageKit query,
+exact current-commitment app composition, no unconditional two-source rule,
+stable leaf accessibility identifiers, temporary-store-only explicit
+authority fixture, UI-impact scope, tracked documentation, and the remaining
+change-since/product/field gaps. One additional real-app XCUITest per locale
+opens **By person**, loads one exact commitment, loads its active blocker,
+verifies the Spanish decision and commitment plus both exact evidence actions,
+and follows the blocker-confirmation source to 00:04. It uses disposable
+synthetic audio, no network, no user library, no Foundation Models, and no
+Tahoe-only API. This is local bilingual regression evidence, not physical
+VoiceOver, clean-install Sequoia, separate-hardware Tahoe, private-corpus
+quality, or graph telemetry.
+
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
@@ -1622,7 +1646,7 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 99 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 100 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select bilingual evidence; the

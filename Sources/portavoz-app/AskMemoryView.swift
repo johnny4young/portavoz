@@ -190,6 +190,24 @@ struct AskMemoryView: View {
                 .accessibilityIdentifier(
                     "ask-memory-evidence-\(commitment.id.rawValue.uuidString)-\(index)")
             }
+            Button("Show active blockers") {
+                model.loadCommitmentBlockers(for: commitment.id)
+            }
+            .buttonStyle(.bordered)
+            .disabled(
+                model.state.selectedCommitmentIDForBlockers == commitment.id
+                    && model.state.blockerOutcome == .loading)
+            .accessibilityIdentifier(
+                "ask-memory-blockers-load-\(commitment.id.rawValue.uuidString)")
+            .accessibilityLabel(L10n.format(
+                "Show active blockers for %@",
+                commitment.title))
+            if model.state.selectedCommitmentIDForBlockers == commitment.id {
+                AskMemoryBlockersView(
+                    outcome: model.state.blockerOutcome,
+                    onRetry: { model.retryCommitmentBlockers() },
+                    onOpenCitation: onOpenCitation)
+            }
         }
         .padding(12)
         .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))

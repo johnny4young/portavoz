@@ -77,6 +77,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "LibraryUITests",
+            "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence",
+        ),
+        test_id(
+            "LibraryUITests",
             "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence",
         ),
         test_id(
@@ -596,6 +600,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "loadcommitmentblockers" in lowered:
+        return {"ask"}
     if "decisionrelationship" in lowered:
         return {"ask"}
     if "topicfirstdiscussion" in lowered:

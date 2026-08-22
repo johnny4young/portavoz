@@ -2379,7 +2379,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(application.contains(
             "protocol CommitmentBlockerFactReading"))
         XCTAssertTrue(application.contains("struct LoadCommitmentBlockers"))
-        XCTAssertFalse(askServices.contains("LoadCommitmentBlockers"))
+        XCTAssertTrue(askServices.contains("LoadCommitmentBlockers"))
         XCTAssertTrue(decisions.contains("## D278"))
     }
 
@@ -2413,7 +2413,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(adapter.contains("unsupportedCausalLink"))
         XCTAssertFalse(adapter.contains("import IntelligenceKit"))
         XCTAssertFalse(adapter.contains("database.write"))
-        XCTAssertFalse(askServices.contains("LoadCommitmentBlockers"))
+        XCTAssertTrue(askServices.contains("LoadCommitmentBlockers"))
         XCTAssertTrue(decisions.contains("## D279"))
     }
 
@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,568 cases "
-                + "(15 environment-gated) + 99"))
+            "package inventory contains 2,573 cases "
+                + "(15 environment-gated) + 100"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -2690,7 +2690,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## Released exact-person commitment explorer (D361)"))
         XCTAssertTrue(quality.contains(
             "### First released exact graph query surface (D361)"))
-        XCTAssertTrue(gaps.contains("dedicated job surfaces"))
+        XCTAssertTrue(gaps.contains("D361 ships **By person**"))
         XCTAssertTrue(gaps.contains(
             "physical VoiceOver/Sequoia/Tahoe validation remain absent"))
         XCTAssertTrue(decisions.contains("## D361"))
@@ -2782,7 +2782,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## Exact decisions by topic in Ask (D362)"))
         XCTAssertTrue(quality.contains(
             "### Second released exact graph query surface (D362)"))
-        XCTAssertTrue(gaps.contains("dedicated job surfaces"))
+        XCTAssertTrue(gaps.contains("D362 adds **By topic**"))
         XCTAssertTrue(decisions.contains("## D362"))
     }
 
@@ -2843,7 +2843,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## First confirmed discussion by topic in Ask (D363)"))
         XCTAssertTrue(quality.contains(
             "### Third released exact graph query surface (D363)"))
-        XCTAssertTrue(gaps.contains("dedicated job surfaces"))
+        XCTAssertTrue(gaps.contains(
+            "D363 adds **First confirmed discussion**"))
         XCTAssertTrue(decisions.contains("## D363"))
     }
 
@@ -2909,8 +2910,82 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## Confirmed decision changes by topic in Ask (D364)"))
         XCTAssertTrue(quality.contains(
             "### Fourth released exact graph query surface (D364)"))
-        XCTAssertTrue(gaps.contains("the other two dedicated job surfaces"))
+        XCTAssertTrue(gaps.contains(
+            "the remaining dedicated change-since surface"))
         XCTAssertTrue(decisions.contains("## D364"))
+    }
+
+    func testReleasedCommitmentBlockersRequireOneExactSelectedCommitment() throws {
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/AskMemoryModel.swift")
+        let parentView = try Self.contents(
+            of: "Sources/portavoz-app/AskMemoryView.swift")
+        let blockerView = try Self.contents(
+            of: "Sources/portavoz-app/AskMemoryBlockersView.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let fixture = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+AskCommitmentBlockerUITestFixture.swift")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligence = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(model.contains("loadAskMemoryCommitmentBlockers"))
+        XCTAssertTrue(model.contains(
+            "CommitmentBlockerQuery.maximumItemLimit"))
+        XCTAssertTrue(model.contains("currentCommitment(id: commitmentID)"))
+        XCTAssertTrue(model.contains("fact.kind == .decisionBlocksCommitment"))
+        XCTAssertTrue(model.contains("commitmentID == expectedCommitment.id"))
+        XCTAssertTrue(model.contains(
+            "fact.objectText == expectedCommitment.title"))
+        XCTAssertTrue(model.contains(
+            "$0.segmentID == fact.primaryEvidenceSegmentID"))
+        XCTAssertFalse(model.contains(
+            "evidence.sourceSegments.count >= 2"))
+        XCTAssertFalse(model.contains("import StorageKit"))
+        XCTAssertFalse(model.contains("import IntelligenceKit"))
+
+        XCTAssertTrue(composition.contains(
+            "memoryCommitmentBlockers = LoadCommitmentBlockers(repository: store)"))
+        XCTAssertTrue(composition.contains("CommitmentBlockerQuery("))
+        XCTAssertTrue(parentView.contains("ask-memory-blockers-load-"))
+        XCTAssertTrue(parentView.contains("Show active blockers for %@"))
+        XCTAssertTrue(blockerView.contains("ask-memory-blocker-"))
+        XCTAssertTrue(blockerView.contains("ask-memory-blocker-evidence-"))
+        XCTAssertTrue(blockerView.contains("onOpenCitation(citation)"))
+
+        XCTAssertTrue(fixture.contains("guard usesTemporaryMeetingStore"))
+        XCTAssertTrue(fixture.contains("ConfirmObservedDecision(store: store)"))
+        XCTAssertTrue(fixture.contains(
+            "ConfirmDecisionCommitmentBlocker(store: store)"))
+        XCTAssertTrue(uiTest.contains(
+            "testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence"))
+        XCTAssertTrue(uiTest.contains(
+            "ask-memory-blocker-B5D50000-0000-4000-8000-000000000007"))
+        XCTAssertTrue(uiTest.contains(
+            "loadBlockers.label.contains(\"Prepare the rollout\")"))
+        XCTAssertTrue(uiTest.contains("value == '0:04'"))
+        XCTAssertTrue(scope.contains("loadcommitmentblockers"))
+
+        XCTAssertTrue(architecture.contains(
+            "exact selected-commitment/active-blockers"))
+        XCTAssertTrue(intelligence.contains(
+            "## Released exact commitment-blocker explorer (D365)"))
+        XCTAssertTrue(appSpec.contains(
+            "## Active blockers for one exact commitment in Ask (D365)"))
+        XCTAssertTrue(quality.contains(
+            "### Fifth released exact graph query surface (D365)"))
+        XCTAssertTrue(gaps.contains(
+            "the remaining dedicated change-since surface"))
+        XCTAssertTrue(decisions.contains("## D365"))
     }
 
     func testAskGraphFiltersResolveExactIdentitiesBeforeBoundedQueries() throws {
@@ -3244,7 +3319,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             try Self.sourceMatches(
                 under: "Sources/portavoz-app",
                 pattern: #"ConfirmDecisionCommitmentBlocker|ManageDecisionCommitmentBlocker"#),
-            [])
+            ["AppServices+AskCommitmentBlockerUITestFixture.swift"])
         XCTAssertTrue(decisions.contains("## D277"))
     }
 
@@ -3324,8 +3399,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             try Self.sourceMatches(
                 under: "Sources/portavoz-app",
                 pattern: #"ConfirmObservedDecision|ConfirmDecisionRelationship"#),
-            ["AppServices+AskTopicMemoryUITestFixture.swift"],
-            "only the temporary-store XCUITest fixture may confirm a relationship")
+            [
+                "AppServices+AskCommitmentBlockerUITestFixture.swift",
+                "AppServices+AskTopicMemoryUITestFixture.swift",
+            ],
+            "only temporary-store XCUITest fixtures may confirm decisions or relationships")
         XCTAssertTrue(decisions.contains("## D272"))
     }
 

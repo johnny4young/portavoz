@@ -49,10 +49,10 @@ extension AppServices {
             canonicalPersonID: canonicalPersonID)
         await seedAskGraphFixtures(
             canonicalPersonID: canonicalPersonID,
-            meetingID: meeting.id, citedSegmentID: citedSegmentID)
-        try? await store.save([
-            ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
-        ])
+            meetingID: meeting.id,
+            citedSegmentID: citedSegmentID,
+            audioDirectory: audioDirectory)
+        await seedDemoContext(for: meeting.id)
         await seedCompanionCards(
             meetingID: meeting.id,
             questionSegmentID: companionQuestionID,
@@ -69,6 +69,14 @@ extension AppServices {
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         requestSearchReconciliation()
+    }
+
+    private func seedDemoContext(for meetingID: MeetingID) async {
+        try? await store.save([ContextItem(
+            meetingID: meetingID,
+            kind: .note,
+            content: "revisar budget Q3",
+            timestamp: 12)])
     }
 
     private static func seedDemoTranscript(
@@ -395,44 +403,15 @@ extension AppServices {
         }
     }
 
-    /// Real authority plus a real disposable graph projection for the exact
-    /// Ask-memory UI journey. Temporary-store composition disables background
-    /// projection, so this fixture owns the deterministic one-shot drain.
-    private func seedAskMemoryIfRequested(
-        canonicalPersonID: PersonID?
-    ) async {
-        guard ProcessInfo.processInfo.arguments.contains("-seed-ask-memory") else {
-            return
-        }
-        guard let canonicalPersonID else {
-            assertionFailure("Could not seed Ask memory's canonical person")
-            return
-        }
-        let timestamp = Date(timeIntervalSince1970: 1_700_000_100)
-        do {
-            _ = try await store.confirmCommitment(
-                CommitmentConfirmation(
-                    commitmentID: Self.askMemoryCommitmentID,
-                    sourceID: Self.askMemorySourceID,
-                    eventID: Self.askMemoryEventID,
-                    title: "Prepare the rollout",
-                    assignee: .person(canonicalPersonID),
-                    origin: .generatedActionItem(Self.seedActionItemID)),
-                at: timestamp)
-            try await projectAskMemoryGraph(
-                at: timestamp,
-                owner: "ui-test-ask-memory")
-        } catch {
-            assertionFailure("Could not seed Ask memory: \(error)")
-        }
-    }
-
     private func seedAskGraphFixtures(
         canonicalPersonID: PersonID?,
         meetingID: MeetingID,
-        citedSegmentID: UUID
+        citedSegmentID: UUID,
+        audioDirectory: String?
     ) async {
-        await seedAskMemoryIfRequested(canonicalPersonID: canonicalPersonID)
+        await seedAskMemoryIfRequested(
+            canonicalPersonID: canonicalPersonID,
+            audioDirectory: audioDirectory)
         await seedAskTopicMemoryIfRequested(
             meetingID: meetingID,
             citedSegmentID: citedSegmentID)
@@ -546,7 +525,7 @@ extension AppServices {
             at: old.addingTimeInterval(240))
     }
 
-    private static let seedActionItemID = UUID(
+    static let seedActionItemID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000001")!
     static let seedDecisionObservationID = SummaryDecisionID(rawValue: UUID(
         uuidString: "B5D40000-0000-4000-8000-000000000001")!)
@@ -556,13 +535,6 @@ extension AppServices {
         uuidString: "B5E00000-0000-4000-8000-000000000003")!
     private static let seedFailedSkillProposalID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000004")!
-    private static let askMemoryCommitmentID = CommitmentID(rawValue: UUID(
-        uuidString: "B5D10000-0000-4000-8000-000000000005")!)
-    private static let askMemorySourceID = CommitmentSourceID(rawValue: UUID(
-        uuidString: "B5D20000-0000-4000-8000-000000000005")!)
-    private static let askMemoryEventID = CommitmentEventID(rawValue: UUID(
-        uuidString: "B5D30000-0000-4000-8000-000000000008")!)
-
     private static func radarCommitmentID(_ ordinal: Int) -> CommitmentID {
         CommitmentID(rawValue: UUID(uuidString: String(
             format: "B5D10000-0000-4000-8000-%012d",

@@ -16,6 +16,10 @@ protocol AskMemoryModelClient: AnyObject {
         personID: PersonID,
         limit: Int
     ) async throws -> MeetingMemoryGraphQueryResult
+    func loadAskMemoryCommitmentBlockers(
+        commitmentID: CommitmentID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult
     func searchAskMemoryTopics(
         _ query: String,
         limit: Int
@@ -47,6 +51,17 @@ struct AskMemoryCommitment: Identifiable, Equatable {
     let primaryCitation: AskCitation
 }
 
+struct AskMemoryBlocker: Identifiable, Equatable {
+    let id: DecisionCommitmentBlockerID
+    let decisionID: DecisionID
+    let commitmentID: CommitmentID
+    let decisionStatement: String
+    let commitmentTitle: String
+    let occurredAt: Date
+    let citations: [AskCitation]
+    let primaryCitation: AskCitation
+}
+
 struct AskMemoryDisclosure: Equatable {
     let hasMore: Bool
     let omittedStaleCount: Int
@@ -70,6 +85,15 @@ enum AskMemoryOutcome: Equatable {
     case unavailable
 }
 
+enum AskMemoryBlockerOutcome: Equatable {
+    case idle
+    case loading
+    case facts([AskMemoryBlocker], AskMemoryDisclosure)
+    case abstained(MeetingMemoryGraphQueryAbstention)
+    case invalidEvidence
+    case unavailable
+}
+
 /// Per-window owner for exact confirmed-memory discovery and facts. Search and
 /// fact generations are independent so stale catalog reads cannot replace a
 /// newer query and a late graph result cannot publish after person selection.
@@ -83,11 +107,14 @@ final class AskMemoryModel {
         fileprivate(set) var peopleHasMore = false
         fileprivate(set) var selectedPerson: AskMemoryPerson?
         fileprivate(set) var outcome = AskMemoryOutcome.idle
+        fileprivate(set) var selectedCommitmentIDForBlockers: CommitmentID?
+        fileprivate(set) var blockerOutcome = AskMemoryBlockerOutcome.idle
     }
 
     static let visiblePersonLimit = 20
     private static let personRequestLimit = visiblePersonLimit + 1
     private static let commitmentLimit = PersonCommitmentsQuery.maximumItemLimit
+    private static let blockerLimit = CommitmentBlockerQuery.maximumItemLimit
 
     private(set) var state = State()
 
@@ -95,8 +122,10 @@ final class AskMemoryModel {
     private let searchDelay: Duration
     private var peopleTask: Task<Void, Never>?
     private var commitmentTask: Task<Void, Never>?
+    private var blockerTask: Task<Void, Never>?
     private var peopleGeneration = 0
     private var commitmentGeneration = 0
+    private var blockerGeneration = 0
 
     init(
         client: any AskMemoryModelClient,
@@ -109,6 +138,7 @@ final class AskMemoryModel {
     isolated deinit {
         peopleTask?.cancel()
         commitmentTask?.cancel()
+        blockerTask?.cancel()
     }
 
     func activate() {
@@ -122,6 +152,7 @@ final class AskMemoryModel {
         state.selectedPerson = nil
         state.outcome = .idle
         cancelCommitmentLoad()
+        resetBlockerSelection()
         startPeopleSearch(delay: searchDelay)
     }
 
@@ -131,6 +162,7 @@ final class AskMemoryModel {
         }
         cancelPeopleSearch()
         cancelCommitmentLoad()
+        resetBlockerSelection()
         state.personQuery = person.name
         state.people = []
         state.peopleHasMore = false
@@ -141,6 +173,7 @@ final class AskMemoryModel {
 
     func clearPersonSelection() {
         cancelCommitmentLoad()
+        resetBlockerSelection()
         state.personQuery = ""
         state.selectedPerson = nil
         state.outcome = .idle
@@ -155,6 +188,7 @@ final class AskMemoryModel {
 
     func loadSelectedPersonCommitments() {
         guard let person = state.selectedPerson else { return }
+        resetBlockerSelection()
         commitmentGeneration += 1
         let requestGeneration = commitmentGeneration
         commitmentTask?.cancel()
@@ -167,11 +201,15 @@ final class AskMemoryModel {
     func cancelPendingWork() {
         cancelPeopleSearch()
         cancelCommitmentLoad()
+        cancelBlockerLoad()
         if state.peoplePhase == .loading {
             state.peoplePhase = .idle
         }
         if state.outcome == .loading {
             state.outcome = .idle
+        }
+        if state.blockerOutcome == .loading {
+            state.blockerOutcome = .idle
         }
     }
 
@@ -263,6 +301,18 @@ final class AskMemoryModel {
         commitmentTask = nil
     }
 
+    private func cancelBlockerLoad() {
+        blockerGeneration += 1
+        blockerTask?.cancel()
+        blockerTask = nil
+    }
+
+    private func resetBlockerSelection() {
+        cancelBlockerLoad()
+        state.selectedCommitmentIDForBlockers = nil
+        state.blockerOutcome = .idle
+    }
+
     private static func preparePeople(_ people: [Person]) -> [AskMemoryPerson]? {
         guard people.count <= personRequestLimit else { return nil }
         var ids = Set<PersonID>()
@@ -325,6 +375,114 @@ final class AskMemoryModel {
             id: id,
             personName: fact.subjectText,
             title: fact.objectText,
+            occurredAt: fact.occurredAt,
+            citations: evidence.sourceSegments,
+            primaryCitation: primary)
+    }
+}
+
+extension AskMemoryModel {
+    func loadCommitmentBlockers(for commitmentID: CommitmentID) {
+        guard currentCommitment(id: commitmentID) != nil else { return }
+        cancelBlockerLoad()
+        let requestGeneration = blockerGeneration
+        state.selectedCommitmentIDForBlockers = commitmentID
+        state.blockerOutcome = .loading
+        blockerTask = Task { [weak self, client] in
+            do {
+                let result = try await client.loadAskMemoryCommitmentBlockers(
+                    commitmentID: commitmentID,
+                    limit: Self.blockerLimit)
+                try Task.checkCancellation()
+                guard let self,
+                      self.blockerGeneration == requestGeneration,
+                      self.state.selectedCommitmentIDForBlockers == commitmentID,
+                      let commitment = self.currentCommitment(id: commitmentID)
+                else { return }
+                self.state.blockerOutcome = Self.prepareBlockerOutcome(
+                    result,
+                    expectedCommitment: commitment)
+                self.blockerTask = nil
+            } catch is CancellationError {
+                return
+            } catch {
+                guard let self,
+                      self.blockerGeneration == requestGeneration,
+                      self.state.selectedCommitmentIDForBlockers == commitmentID,
+                      self.currentCommitment(id: commitmentID) != nil
+                else { return }
+                self.state.blockerOutcome = .unavailable
+                self.blockerTask = nil
+            }
+        }
+    }
+
+    func retryCommitmentBlockers() {
+        guard let commitmentID = state.selectedCommitmentIDForBlockers else {
+            return
+        }
+        loadCommitmentBlockers(for: commitmentID)
+    }
+
+    private func currentCommitment(
+        id commitmentID: CommitmentID
+    ) -> AskMemoryCommitment? {
+        guard case .facts(let commitments, _) = state.outcome else {
+            return nil
+        }
+        return commitments.first { $0.id == commitmentID }
+    }
+
+    private static func prepareBlockerOutcome(
+        _ result: MeetingMemoryGraphQueryResult,
+        expectedCommitment: AskMemoryCommitment
+    ) -> AskMemoryBlockerOutcome {
+        switch result {
+        case .abstained(let reason):
+            return .abstained(reason)
+        case .facts(let page):
+            guard page.facts.count <= blockerLimit,
+                  let synthesis = AskGraphFactSynthesisPage(page: page)
+            else {
+                return .invalidEvidence
+            }
+            let blockers = synthesis.facts.compactMap {
+                prepareBlocker($0, expectedCommitment: expectedCommitment)
+            }
+            guard blockers.count == synthesis.facts.count else {
+                return .invalidEvidence
+            }
+            return .facts(
+                blockers,
+                AskMemoryDisclosure(
+                    hasMore: synthesis.hasMore,
+                    omittedStaleCount: synthesis.omittedStaleCount,
+                    omittedUnavailableCount: synthesis.omittedUnavailableCount))
+        }
+    }
+
+    private static func prepareBlocker(
+        _ evidence: AskGraphFactSynthesisEvidence,
+        expectedCommitment: AskMemoryCommitment
+    ) -> AskMemoryBlocker? {
+        let fact = evidence.fact
+        guard case .blocker(let blockerID) = fact.id,
+              fact.kind == .decisionBlocksCommitment,
+              case .decision(let decisionID) = fact.subject,
+              case .commitment(let commitmentID) = fact.object,
+              commitmentID == expectedCommitment.id,
+              fact.objectText == expectedCommitment.title,
+              fact.status == .active,
+              let primary = evidence.sourceSegments.first(where: {
+                  $0.segmentID == fact.primaryEvidenceSegmentID
+              })
+        else { return nil }
+        return AskMemoryBlocker(
+            id: blockerID,
+            decisionID: decisionID,
+            commitmentID: commitmentID,
+            decisionStatement: fact.subjectText,
+            commitmentTitle: fact.objectText,
             occurredAt: fact.occurredAt,
             citations: evidence.sourceSegments,
             primaryCitation: primary)

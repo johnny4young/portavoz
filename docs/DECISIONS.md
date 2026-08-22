@@ -13254,3 +13254,41 @@ model prompt, sync/export field, CLI, MCP, palette, brief, or free-form Ask
 behavior is added. Exact active blockers, exact topic-plus-meeting change-since,
 private evidence, telemetry, physical VoiceOver, clean-install Sequoia, and
 separate-hardware Tahoe validation remain open.
+
+## D365 — Release active blockers behind one exact current commitment (Aug 2026)
+
+**Context:** D361 already lets a user select one canonical `PersonID` and load
+that person's current confirmed commitments. After D364, two dedicated graph
+jobs remained without presentation. `LoadCommitmentBlockers` already accepted
+an exact `CommitmentID`, returned only active source-backed causal authority,
+and needed no new identity catalogue; change-since still needs a separately
+designed exact meeting-anchor selector. Inferring either a commitment or
+causality from prose would weaken the explicit authority model.
+
+**Decision:** add **Show active blockers** to each validated commitment card in
+**By person**. Start the bounded `CommitmentBlockerQuery` only when the exact
+identity is still present in the current person-commitment result. Give the
+nested read its own weak task and generation fence; changing person, reloading
+commitments, selecting another commitment, changing Ask surface, or closing the
+window cancels and rejects late publication.
+
+Before presentation, require `AskGraphFactSynthesisPage` to validate the page
+and every row to be an active decision-to-commitment fact whose object identity
+and title equal the selected current commitment. Preserve all exact sources and
+present the fact's blocker-confirmation source first. Do not require two
+citations: storage legitimately deduplicates evidence when commitment and
+blocker authority share one segment, but that exact primary blocker segment
+remains mandatory. Render unsupported causality as an honest no-active-blocker
+state, distinct from malformed evidence and operational failure.
+
+**Consequences:** five of six dedicated graph jobs now have released,
+source-backed, identity-safe SwiftUI consumers without Foundation Models or a
+Tahoe-only API. A temporary-store-only fixture confirms the commitment, a
+separate Spanish decision, and their causal blocker, then projects the real
+disposable graph. Independent English and Spanish XCUITest verify both exact
+sources and follow the blocker primary source to 00:04 using synthetic audio.
+No schema, authority write from the explorer, inferred causality, search index,
+graph engine, model prompt, sync/export field, CLI, MCP, palette, brief, or
+free-form Ask behavior is added. Exact topic-plus-meeting change-since, private
+evidence, telemetry, physical VoiceOver, clean-install Sequoia, and separate-
+hardware Tahoe validation remain open.

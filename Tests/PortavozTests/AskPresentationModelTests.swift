@@ -246,6 +246,139 @@ final class AskPresentationModelTests: XCTestCase {
         }
     }
 
+    func testMemoryCommitmentBlockersExposeExactActiveEvidenceWithPrimaryFirst() async throws {
+        let fixture = AskMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskMemoryModel(client: memory, searchDelay: .zero)
+
+        try await loadCommitments(fixture: fixture, in: model, using: memory)
+        model.loadCommitmentBlockers(for: fixture.commitmentID)
+        try await waitUntil {
+            memory.blockerRequests == [fixture.commitmentID]
+        }
+        XCTAssertEqual(memory.blockerLimits, [100])
+        memory.completeBlockers(
+            for: fixture.commitmentID,
+            with: .facts(fixture.blockerPage()))
+        try await waitUntil {
+            if case .facts = model.state.blockerOutcome { return true }
+            return false
+        }
+
+        guard case .facts(let blockers, let disclosure) = model.state.blockerOutcome
+        else { return XCTFail("Expected exact commitment blocker facts") }
+        let blocker = try XCTUnwrap(blockers.first)
+        XCTAssertEqual(blockers.count, 1)
+        XCTAssertEqual(blocker.id, fixture.blockerID)
+        XCTAssertEqual(blocker.decisionID, fixture.decisionID)
+        XCTAssertEqual(blocker.commitmentID, fixture.commitmentID)
+        XCTAssertEqual(blocker.decisionStatement, "Security review must pass")
+        XCTAssertEqual(blocker.commitmentTitle, "Prepare the rollout")
+        XCTAssertEqual(
+            blocker.citations,
+            [fixture.commitmentCitation, fixture.blockerCitation])
+        XCTAssertEqual(blocker.primaryCitation, fixture.blockerCitation)
+        XCTAssertFalse(disclosure.hasMore)
+        XCTAssertEqual(disclosure.omittedStaleCount, 0)
+        XCTAssertEqual(disclosure.omittedUnavailableCount, 0)
+    }
+
+    func testMemoryCommitmentBlockersAllowOneExactSharedSource() async throws {
+        let fixture = AskMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskMemoryModel(client: memory, searchDelay: .zero)
+
+        try await loadCommitments(fixture: fixture, in: model, using: memory)
+        model.loadCommitmentBlockers(for: fixture.commitmentID)
+        try await waitUntil { memory.blockerRequests.count == 1 }
+        memory.completeBlockers(
+            for: fixture.commitmentID,
+            with: .facts(fixture.blockerPage(sharedSource: true)))
+        try await waitUntil {
+            if case .facts = model.state.blockerOutcome { return true }
+            return false
+        }
+
+        guard case .facts(let blockers, _) = model.state.blockerOutcome
+        else { return XCTFail("Expected one source-backed blocker") }
+        XCTAssertEqual(blockers.first?.citations, [fixture.blockerCitation])
+        XCTAssertEqual(blockers.first?.primaryCitation, fixture.blockerCitation)
+    }
+
+    func testMemoryCommitmentBlockersRejectMalformedOrUnselectedFacts() async throws {
+        let fixture = AskMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskMemoryModel(client: memory, searchDelay: .zero)
+
+        try await loadCommitments(fixture: fixture, in: model, using: memory)
+        model.loadCommitmentBlockers(for: CommitmentID())
+        await Task.yield()
+        XCTAssertTrue(memory.blockerRequests.isEmpty)
+
+        let malformedPages = [
+            fixture.blockerPage(count: 101),
+            fixture.blockerPage(kind: .personCommittedTo),
+            fixture.blockerPage(factID: .commitment(fixture.commitmentID)),
+            fixture.blockerPage(subject: .person(fixture.person.id)),
+            fixture.blockerPage(object: .commitment(CommitmentID())),
+            fixture.blockerPage(objectText: "Different commitment"),
+            fixture.blockerPage(status: .confirmed),
+            fixture.blockerPage(primarySegmentID: UUID()),
+        ]
+        for (index, page) in malformedPages.enumerated() {
+            model.loadCommitmentBlockers(for: fixture.commitmentID)
+            try await waitUntil { memory.blockerRequests.count == index + 1 }
+            memory.completeBlockers(
+                for: fixture.commitmentID,
+                with: .facts(page))
+            try await waitUntil {
+                model.state.blockerOutcome == .invalidEvidence
+            }
+        }
+    }
+
+    func testMemoryCommitmentBlockerSelectionFencesLateResults() async throws {
+        let fixture = AskMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskMemoryModel(client: memory, searchDelay: .zero)
+
+        try await loadCommitments(
+            fixture: fixture,
+            count: 2,
+            in: model,
+            using: memory)
+        guard case .facts(let commitments, _) = model.state.outcome,
+              commitments.count == 2
+        else { return XCTFail("Expected two exact commitments") }
+        let nextCommitmentID = commitments[1].id
+
+        model.loadCommitmentBlockers(for: fixture.commitmentID)
+        try await waitUntil { memory.blockerRequests.count == 1 }
+        model.loadCommitmentBlockers(for: nextCommitmentID)
+        try await waitUntil { memory.blockerRequests.count == 2 }
+
+        memory.completeBlockers(
+            for: fixture.commitmentID,
+            with: .facts(fixture.blockerPage()))
+        await Task.yield()
+        XCTAssertEqual(
+            model.state.selectedCommitmentIDForBlockers,
+            nextCommitmentID)
+        XCTAssertEqual(model.state.blockerOutcome, .loading)
+
+        memory.completeBlockers(
+            for: nextCommitmentID,
+            with: .facts(fixture.blockerPage(
+                commitmentID: nextCommitmentID)))
+        try await waitUntil {
+            if case .facts = model.state.blockerOutcome { return true }
+            return false
+        }
+        guard case .facts(let blockers, _) = model.state.blockerOutcome
+        else { return XCTFail("Expected latest exact blocker result") }
+        XCTAssertEqual(blockers.first?.commitmentID, nextCommitmentID)
+    }
+
     func testMemoryPendingReadDoesNotRetainClosedWindowModel() async throws {
         let memory = ControlledAskMemoryModelClient()
         var model: AskMemoryModel? = AskMemoryModel(
@@ -633,6 +766,28 @@ final class AskPresentationModelTests: XCTestCase {
         model.selectTopic(topic.id)
     }
 
+    private func loadCommitments(
+        fixture: AskMemoryPresentationFixture,
+        count: Int = 1,
+        in model: AskMemoryModel,
+        using memory: ControlledAskMemoryModelClient
+    ) async throws {
+        model.activate()
+        try await waitUntil { memory.peopleRequests == [""] }
+        memory.completePeople("", with: [fixture.person])
+        try await waitUntil { model.state.peoplePhase == .ready }
+        model.selectPerson(fixture.person.id)
+        model.loadSelectedPersonCommitments()
+        try await waitUntil { memory.commitmentRequests.count == 1 }
+        memory.completeCommitments(
+            for: fixture.person.id,
+            with: .facts(fixture.page(count: count)))
+        try await waitUntil {
+            if case .facts = model.state.outcome { return true }
+            return false
+        }
+    }
+
     func testPaletteResetPreventsClosedGenerationFromPublishingIntoReopen() async throws {
         let fixture = AskPresentationFixture()
         let client = ControlledAskModelClient()
@@ -801,8 +956,12 @@ private struct AskPresentationFixture {
 private struct AskMemoryPresentationFixture {
     let person = Person(preferredName: "Ana")
     let commitmentID = CommitmentID()
+    let blockerID = DecisionCommitmentBlockerID()
+    let decisionID = DecisionID()
     let meetingID = MeetingID()
     let segmentID = UUID()
+    let blockerMeetingID = MeetingID()
+    let blockerSegmentID = UUID()
 
     var citation: AskCitation {
         AskCitation(
@@ -812,6 +971,18 @@ private struct AskMemoryPresentationFixture {
             timestamp: 3,
             transcriptRevision: 0,
             text: "Ana will prepare the rollout.")
+    }
+
+    var commitmentCitation: AskCitation { citation }
+
+    var blockerCitation: AskCitation {
+        AskCitation(
+            segmentID: blockerSegmentID,
+            meetingID: blockerMeetingID,
+            meetingTitle: "Security review",
+            timestamp: 4,
+            transcriptRevision: 0,
+            text: "Security review must pass before the rollout.")
     }
 
     func page(
@@ -847,6 +1018,68 @@ private struct AskMemoryPresentationFixture {
             projectionGeneration: 1,
             omittedStaleCount: 0,
             omittedUnavailableCount: 0)
+    }
+
+    func blockerPage(
+        commitmentID: CommitmentID? = nil,
+        count: Int = 1,
+        kind: MeetingMemoryGraphFactKind = .decisionBlocksCommitment,
+        factID: MeetingMemoryGraphFactID? = nil,
+        subject: MeetingMemoryGraphFactEntity? = nil,
+        object: MeetingMemoryGraphFactEntity? = nil,
+        objectText: String = "Prepare the rollout",
+        status: MeetingMemoryGraphFactStatus = .active,
+        primarySegmentID: UUID? = nil,
+        sharedSource: Bool = false
+    ) -> MeetingMemoryGraphFactPage {
+        let expectedCommitmentID = commitmentID ?? self.commitmentID
+        let evidence = sharedSource
+            ? [blockerEvidence]
+            : [commitmentEvidence, blockerEvidence]
+        return MeetingMemoryGraphFactPage(
+            facts: (0..<count).map { _ in
+                MeetingMemoryGraphFact(
+                    id: factID ?? .blocker(blockerID),
+                    kind: kind,
+                    subject: subject ?? .decision(decisionID),
+                    object: object ?? .commitment(expectedCommitmentID),
+                    subjectText: "Security review must pass",
+                    objectText: objectText,
+                    status: status,
+                    occurredAt: Date(timeIntervalSince1970: 1_700_000_200),
+                    evidence: evidence,
+                    primaryEvidenceSegmentID: primarySegmentID ?? blockerSegmentID)
+            },
+            hasMore: false,
+            projectionGeneration: 1,
+            omittedStaleCount: 0,
+            omittedUnavailableCount: 0)
+    }
+
+    private var commitmentEvidence: MeetingMemoryGraphEvidence {
+        MeetingMemoryGraphEvidence(
+            meetingID: meetingID,
+            meetingTitle: "Test meeting",
+            meetingStartedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            transcriptRevision: 0,
+            segmentID: segmentID,
+            startTime: 3,
+            endTime: 6,
+            text: "Ana will prepare the rollout.",
+            language: "en")
+    }
+
+    private var blockerEvidence: MeetingMemoryGraphEvidence {
+        MeetingMemoryGraphEvidence(
+            meetingID: blockerMeetingID,
+            meetingTitle: "Security review",
+            meetingStartedAt: Date(timeIntervalSince1970: 1_700_000_150),
+            transcriptRevision: 0,
+            segmentID: blockerSegmentID,
+            startTime: 4,
+            endTime: 8,
+            text: "Security review must pass before the rollout.",
+            language: "en")
     }
 }
 
@@ -1104,6 +1337,8 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
     private(set) var peopleLimits: [Int] = []
     private(set) var commitmentRequests: [PersonID] = []
     private(set) var commitmentLimits: [Int] = []
+    private(set) var blockerRequests: [CommitmentID] = []
+    private(set) var blockerLimits: [Int] = []
     private(set) var topicRequests: [String] = []
     private(set) var topicLimits: [Int] = []
     private(set) var decisionRequests: [TopicID] = []
@@ -1115,6 +1350,8 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         [String: CheckedContinuation<[Person], Error>] = [:]
     private var commitmentContinuations:
         [PersonID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
+    private var blockerContinuations:
+        [CommitmentID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
     private var topicContinuations:
         [String: CheckedContinuation<[Topic], Error>] = [:]
     private var decisionContinuations:
@@ -1143,6 +1380,17 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         commitmentLimits.append(limit)
         return try await withCheckedThrowingContinuation { continuation in
             commitmentContinuations[personID, default: []].append(continuation)
+        }
+    }
+
+    func loadAskMemoryCommitmentBlockers(
+        commitmentID: CommitmentID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult {
+        blockerRequests.append(commitmentID)
+        blockerLimits.append(limit)
+        return try await withCheckedThrowingContinuation { continuation in
+            blockerContinuations[commitmentID, default: []].append(continuation)
         }
     }
 
@@ -1201,6 +1449,18 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         else { return }
         let continuation = continuations.removeFirst()
         commitmentContinuations[personID] = continuations
+        continuation.resume(returning: result)
+    }
+
+    func completeBlockers(
+        for commitmentID: CommitmentID,
+        with result: MeetingMemoryGraphQueryResult
+    ) {
+        guard var continuations = blockerContinuations[commitmentID],
+              !continuations.isEmpty
+        else { return }
+        let continuation = continuations.removeFirst()
+        blockerContinuations[commitmentID] = continuations
         continuation.resume(returning: result)
     }
 

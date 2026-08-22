@@ -112,6 +112,7 @@ final class EnglishSourceTests: XCTestCase {
 
     private static func isAllowedSpanishFixture(_ relative: String, line: String) -> Bool {
         isAllowedSpanishScriptFixture(relative, line: line)
+            || isAllowedSpanishAskMemoryFixture(relative, line: line)
             || isAllowedSpanishAppFixture(relative, line: line)
             || isAllowedSpanishBenchmarkFixture(relative, line: line)
             || isAllowedSpanishDomainData(relative, line: line)
@@ -142,6 +143,18 @@ final class EnglishSourceTests: XCTestCase {
                 || trimmed.hasPrefix("return f\"")
         }
         return false
+    }
+
+    private static func isAllowedSpanishAskMemoryFixture(
+        _ relative: String,
+        line: String
+    ) -> Bool {
+        // The exact blocker XCUITest deliberately verifies one Spanish
+        // decision in both UI locales; all explanatory prose stays English.
+        relative
+            == "Sources/portavoz-app/AppServices+AskCommitmentBlockerUITestFixture.swift"
+            && line.contains(
+                "La revisión de seguridad debe aprobarse antes del rollout")
     }
 
     private static func isAllowedSpanishAppFixture(

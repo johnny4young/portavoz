@@ -245,6 +245,14 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
+    def test_commitment_blocker_query_selects_only_exact_ask_journeys(self):
+        selection = select_paths([
+            "Sources/ApplicationKit/LoadCommitmentBlockers.swift",
+        ])
+        self.assertEqual(selection.tests, FEATURE_TESTS["ask"])
+        self.assertEqual(selection.locales, ("en",))
+        self.assertLess(len(selection.tests), len(ALL_TESTS))
+
     def test_summary_storage_selects_its_consumers_without_full_fallback(self):
         selection = select_paths(["Sources/StorageKit/MeetingStore+Summaries.swift"])
         self.assertIn(

@@ -635,6 +635,64 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedAskMemory: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        app.buttons["library-ask-button"].click()
+        let memorySurface = app.descendants(matching: .any)[
+            "ask-surface-person-commitments"]
+        XCTAssertTrue(memorySurface.waitForExistence(timeout: 10))
+        memorySurface.click()
+
+        let person = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-memory-person-'"))
+            .firstMatch
+        XCTAssertTrue(person.waitForExistence(timeout: 10))
+        person.click()
+        app.buttons["ask-memory-load"].click()
+
+        let loadBlockers = app.buttons[
+            "ask-memory-blockers-load-B5D10000-0000-4000-8000-000000000005"]
+        XCTAssertTrue(loadBlockers.waitForExistence(timeout: 10))
+        XCTAssertTrue(loadBlockers.label.contains("Prepare the rollout"))
+        loadBlockers.click()
+
+        let blocker = app.descendants(matching: .any)[
+            "ask-memory-blocker-B5D50000-0000-4000-8000-000000000007"]
+        XCTAssertTrue(blocker.waitForExistence(timeout: 10))
+        XCTAssertTrue(renderedText(of: blocker).contains(
+            "La revisión de seguridad debe aprobarse antes del rollout."))
+        let blockedCommitment = app.descendants(matching: .any)[
+            "ask-memory-blocker-commitment-B5D50000-0000-4000-8000-000000000007"]
+        XCTAssertTrue(blockedCommitment.waitForExistence(timeout: 5))
+        XCTAssertTrue(renderedText(of: blockedCommitment).contains(
+            "Prepare the rollout"))
+
+        let primaryEvidence = app.buttons[
+            "ask-memory-blocker-evidence-B5D50000-0000-4000-8000-000000000007-0"]
+        let commitmentEvidence = app.buttons[
+            "ask-memory-blocker-evidence-B5D50000-0000-4000-8000-000000000007-1"]
+        XCTAssertTrue(primaryEvidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(primaryEvidence.label.contains("Security review · 00:04"))
+        XCTAssertTrue(commitmentEvidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(commitmentEvidence.label.contains("Test meeting · 00:03"))
+        attachScreenshot(of: app, named: "ask-confirmed-commitment-blockers")
+
+        primaryEvidence.click()
+        let currentTime = app.staticTexts["player-current-time"]
+        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:04'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 10)
+    }
+
+    @MainActor
     func testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence() {
         let app = XCUIApplication.portavoz(
             seedDemo: true,

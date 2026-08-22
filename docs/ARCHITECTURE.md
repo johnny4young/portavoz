@@ -2071,16 +2071,25 @@ the provider input smaller: `AskEvidenceBundleAnswer` still returns the full
 unselected transcript and graph evidence to its caller. The released explorers
 cover exact-person/current-commitments, exact confirmed-topic/current-
 decisions, exact confirmed-topic/first-discussion, and
-exact confirmed-topic/decision-conflicts presentation. The first-discussion
+exact confirmed-topic/decision-conflicts plus exact selected-commitment/active-blockers
+presentation. The first-discussion
 consumer accepts only one complete topic-to-meeting fact with one exact current
 source and checks its meeting-relative occurrence time before rendering it. The
 decision-conflict
 consumer accepts at most 100 confirmed successor-to-replaced relationships,
 requires distinct endpoint identities and at least two exact current source
 segments, and preserves the successor source as the primary navigation target.
-The other two graph jobs, natural-language query extraction, free-form graph-
-aware answers, private field evidence, and graph telemetry remain separate
-gates.
+The commitment-blocker consumer accepts only a commitment from the current
+selected person's validated result page, sends its exact `CommitmentID` to the
+existing bounded reader, and requires every active decision-to-commitment fact
+to name that same identity and title. It preserves all exact current sources
+while placing the blocker-confirmation source first; one source remains valid
+when blocker and commitment authority deduplicate to the same segment. Changing
+the person, reloading commitments, selecting another commitment, changing Ask
+surface, or closing the window cancels and generation-fences the nested read.
+The remaining change-since graph job, natural-language query extraction, free-
+form graph-aware answers, private field evidence, and graph telemetry remain
+separate gates.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
