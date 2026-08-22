@@ -2017,7 +2017,7 @@ incompatible fixed fact status or a complete constrained miss returns typed
 command-palette, and answer consumers still do not request the bundle. The
 separate explicit person selector already carries an exact `PersonID`, so it does
 not use this alias-filter boundary. Fact-aware free-form synthesis and graph
-telemetry remain later gates.
+answer adoption remain later gates.
 
 Ask synthesis now has an explicit **two-lane evidence contract**. ApplicationKit
 converts each source-backed graph fact into a typed relationship plus the exact
@@ -2101,7 +2101,20 @@ both endpoints, at least two current sources, and the successor primary source
 remain mandatory. The native radio-group job picker avoids an increasingly
 compressed four-segment control and preserves standard macOS accessibility.
 Natural-language query extraction, free-form graph-aware answers, private field
-evidence, and graph telemetry remain separate gates.
+evidence, and supported-host performance receipts remain separate gates.
+
+Every released exact graph read emits one content-free process-local timing
+span. ApplicationKit owns a closed six-job/four-outcome vocabulary and
+wraps the source-backed use cases; its default recorder is inert, so tests,
+CLI, and other consumers gain no implicit logging. Exact alias resolution emits
+nothing until it has one unambiguous canonical identity. The app composition
+injects one `OSSignposter` adapter and closes every interval as facts,
+abstained, cancelled, or failed. Only a random process-local correlation token
+and those closed enums cross the port: person/topic/meeting/commitment IDs,
+text, evidence, result counts, abstention reasons, and errors are structurally
+absent. The spans are neither persisted nor sent over a network and establish
+no performance baseline by themselves; accepted Sequoia/Tahoe receipts remain
+external evidence.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported

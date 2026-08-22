@@ -13,15 +13,22 @@ extension MeetingStore: DecisionHistoryReading {}
 /// confirmed decisions linked to one exact topic, superseded truth excluded.
 public struct LoadDecisionHistory: ApplicationUseCase {
     private let repository: any DecisionHistoryReading
+    private let telemetry: MeetingMemoryGraphQueryTelemetry
 
-    public init(repository: any DecisionHistoryReading) {
+    public init(
+        repository: any DecisionHistoryReading,
+        telemetry: MeetingMemoryGraphQueryTelemetry = .disabled
+    ) {
         self.repository = repository
+        self.telemetry = telemetry
     }
 
     public func execute(
         _ query: DecisionHistoryQuery
     ) async throws -> MeetingMemoryGraphQueryResult {
-        try await repository.decisionHistory(query)
+        try await telemetry.measure(.decisionHistory) {
+            try await repository.decisionHistory(query)
+        }
     }
 }
 
@@ -45,15 +52,22 @@ extension MeetingStore: ChangeSinceReading {}
 /// outside this exact retrieval boundary.
 public struct LoadDecisionConflicts: ApplicationUseCase {
     private let repository: any DecisionConflictsReading
+    private let telemetry: MeetingMemoryGraphQueryTelemetry
 
-    public init(repository: any DecisionConflictsReading) {
+    public init(
+        repository: any DecisionConflictsReading,
+        telemetry: MeetingMemoryGraphQueryTelemetry = .disabled
+    ) {
         self.repository = repository
+        self.telemetry = telemetry
     }
 
     public func execute(
         _ query: DecisionConflictsQuery
     ) async throws -> MeetingMemoryGraphQueryResult {
-        try await repository.decisionConflicts(query)
+        try await telemetry.measure(.decisionConflicts) {
+            try await repository.decisionConflicts(query)
+        }
     }
 }
 
@@ -62,14 +76,21 @@ public struct LoadDecisionConflicts: ApplicationUseCase {
 /// abstains on an unresolvable baseline rather than guessing one.
 public struct LoadChangeSince: ApplicationUseCase {
     private let repository: any ChangeSinceReading
+    private let telemetry: MeetingMemoryGraphQueryTelemetry
 
-    public init(repository: any ChangeSinceReading) {
+    public init(
+        repository: any ChangeSinceReading,
+        telemetry: MeetingMemoryGraphQueryTelemetry = .disabled
+    ) {
         self.repository = repository
+        self.telemetry = telemetry
     }
 
     public func execute(
         _ query: ChangeSinceQuery
     ) async throws -> MeetingMemoryGraphQueryResult {
-        try await repository.changeSince(query)
+        try await telemetry.measure(.changeSince) {
+            try await repository.changeSince(query)
+        }
     }
 }

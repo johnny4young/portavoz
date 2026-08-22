@@ -13331,3 +13331,36 @@ natural-language inference, search engine, model prompt, sync/export field,
 CLI, MCP, palette, brief, or free-form Ask behavior is added. Private owner-
 reviewed evidence, telemetry, physical VoiceOver, clean-install Sequoia, and
 separate-hardware Tahoe validation remain open.
+
+## D367 — Observe exact graph query timing without content (Aug 2026)
+
+**Context:** D361–D366 released identity-safe product consumers for all six
+exact Meeting Memory Graph jobs. The relational harness supplies deterministic
+synthetic scale evidence, but the live product had no per-job timing boundary
+from which to collect supported-host receipts. Reusing the general Ask pipeline
+taxonomy would mislabel direct exact reads and could encourage question or
+evidence payloads. Starting timing before alias resolution would also record an
+ambiguous identity lookup as an authorized person query.
+
+**Decision:** define a separate ApplicationKit observation port with a closed
+six-job taxonomy: commitment blockers, topic first discussion, person
+commitments, decision conflicts, change since, and decision history. A trace
+contains only a random process-local UUID and its job. Completion contains only
+facts, abstained, cancelled, or failed. The disabled adapter remains the
+default.
+
+Measure the repository boundary inside each exact use case. For alias-based
+person commitments, start only after exactly one candidate resolves. Compose
+the shared graph-fact workflow from those measured use cases rather than adding
+an outer span. The app injects one process-scoped `OSSignposter` adapter whose
+interval messages expose only job and outcome and whose observer lifetime uses
+an explicit removable token.
+
+**Consequences:** Instruments and controlled probes can distinguish timing and
+terminal behavior for every released exact graph read without logging meeting,
+person, topic, commitment, decision, question, answer, source, count,
+abstention-reason, or error material. Nothing is persisted or sent over a
+network. This adds no UI, graph authority, schema, query semantics, model, or
+performance baseline; accepted Sequoia/Tahoe receipts and physical VoiceOver,
+private-corpus, sync/export, CLI/MCP, and broader graph-answer evidence remain
+external gates.

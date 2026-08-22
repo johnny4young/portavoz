@@ -617,9 +617,11 @@ remains disposable and capture-yielding. No specialized graph engine is
 selected. D360 makes same-generation profile return re-admit the exact completed
 or cancelled graph operation only while its target is still unsatisfied; failed
 work remains terminal and source generation remains authority-only. Private
-owner-reviewed evidence, natural-language query extraction, the other three
-dedicated query surfaces, sync/export, CLI/MCP adoption, and product telemetry
-remain outside this implemented boundary.
+owner-reviewed evidence, natural-language query extraction, sync/export,
+CLI/MCP adoption, and accepted timing receipts from supported Sequoia/Tahoe
+hosts remain outside this implemented boundary. D361–D366 release all six
+dedicated query surfaces, and D367 instruments their local product timing
+without turning observation into authority.
 
 ## Released exact-person commitment explorer (D361)
 
@@ -646,8 +648,8 @@ transcript rank. Typed graph abstention, malformed evidence, and operational
 unavailability remain distinct UI states. It therefore provides source-backed
 answers without Foundation Models on both Sequoia and Tahoe. Together with the
 D362–D366 explorers, free-form answer composition, private evidence,
-sync/export, CLI/MCP adoption, product telemetry, and physical
-accessibility/OS validation remain separate gates.
+sync/export, CLI/MCP adoption, accepted supported-host performance receipts,
+and physical accessibility/OS validation remain separate gates.
 
 ## Released exact-topic decision explorer (D362)
 
@@ -723,7 +725,7 @@ state instead of a vague query error; malformed provenance and operational
 failure remain separate. This adds no model, graph authority, natural-language
 topic inference, new index, or Tahoe-only API. Exact commitment blockers are
 released by D365 and exact topic-plus-meeting change-since by D366; private
-owner-reviewed evidence, telemetry,
+owner-reviewed evidence, accepted supported-host performance receipts,
 sync/export, CLI/MCP adoption, and physical VoiceOver/Sequoia/Tahoe validation
 remain separate gates.
 
@@ -751,8 +753,9 @@ Ask surface, or closing the window prevents a late result from publishing.
 `unsupportedCausalLink` renders as an honest absence of confirmed active
 blockers, while malformed evidence and operational failure remain distinct.
 The surface adds no model, inferred causality, graph write, new index, or Tahoe-
-only API. Private evidence, telemetry, sync/export, CLI/MCP, free-form graph
-answers, and physical VoiceOver/Sequoia/Tahoe validation remain
+only API. Private evidence, accepted supported-host performance receipts,
+sync/export, CLI/MCP, free-form graph answers, and physical
+VoiceOver/Sequoia/Tahoe validation remain
 separate gates.
 
 ## Released exact-topic change-since explorer (D366)
@@ -781,8 +784,35 @@ identifiers, and the result uses separate `ask-topic-change-since-*` identities.
 The bilingual temporary-store journey selects **Planning baseline**, verifies
 both Spanish decision statements and both sources, and follows the successor
 to 00:03. No new schema, graph authority, model, network, or Tahoe-only API is
-introduced. Private evidence, telemetry, sync/export, free-form graph answers,
-physical VoiceOver, and independent Sequoia/Tahoe validation remain open.
+introduced. Private evidence, accepted supported-host performance receipts,
+sync/export, free-form graph answers, physical VoiceOver, and independent
+Sequoia/Tahoe validation remain open.
+
+## Content-free exact graph query telemetry (D367)
+
+ApplicationKit owns a separate observation port for the six released exact
+graph reads. Its closed job taxonomy is commitment blockers, topic first
+discussion, person commitments, decision conflicts, change since, and decision
+history. Every trace contains only a random process-local UUID plus that job;
+the four terminal outcomes are facts, abstained, cancelled, and failed. The
+default adapter is disabled, so package consumers and tests never acquire an
+implicit OSLog dependency.
+
+Each exact use case measures only its repository operation. Alias-based person
+lookup starts a span only after candidate resolution yields exactly one
+identity, so rejected or ambiguous aliases cannot create a misleading query
+sample. The shared graph-fact workflow composes the same use cases rather than
+wrapping them again, which keeps one interval per released exact read.
+
+The app injects a private Points of Interest signposter adapter whose interval
+labels contain only the closed job and terminal outcome. It retains active
+interval state behind a lock and offers an explicit, removable process-local
+observer seam for controlled measurement. No meeting, person, topic,
+commitment, decision, question, answer, source, count, abstention reason, or
+error text enters the event. Nothing is persisted or sent over a network, and
+the spans do not establish a performance baseline. Accepted Sequoia and Tahoe
+latency receipts still require controlled runs on the supported physical
+hosts.
 
 ## Human claim feedback is not model material (D88)
 

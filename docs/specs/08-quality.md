@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,579 cases (15 environment-gated) + 101
+Status: the package inventory contains 2,586 cases (15 environment-gated) + 101
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -80,6 +80,7 @@ local justification.
 | MenuBarModelTests / MenuBarObservationTests | Storage-independent recent/pending composition, empty/degraded/failed phases, last-healthy-section preservation, and bounded newest-first live meeting roots through delete/restore |
 | ExportLibraryMarkdownBackupUseCaseTests / BackupPublicationReconcileTests / RecoverLibraryMarkdownBackupTests / LibraryMarkdownBackupRecoveryStoreTests / LibraryMarkdownBackupStoreTests / LibraryMarkdownBackupFilesTests / LibraryMarkdownBackupModelTests | Portable canonical filename allocation, existing/concurrent collision retries, typed partial and fatal outcomes, bounded page-copy suspension with partial-stage cleanup, one immutable newest-first SQLite stage with corrupt-aggregate isolation and General-summary parity, one-at-a-time aggregate delivery, process-local suspension/resume without rerender or republish, atomic non-replacing file publication, cursor-bound reservations, no-follow exact-byte destination evidence, missing/matching/conflicting and cursor-less reconciliation, cancellation and destination-failure lease closure, publication-before-source-checkpoint ordering, idempotent and monotonic cursor persistence, checkpoint-only retry without destination inspection or republish, failure-frozen cursor advancement, catalog-before-cleanup stage preservation, ambiguous/conflicting launch fail-closed behavior, exact active continuation and completed-result reconstruction, retryable adopted-stage abandon after destination setup failure, terminal recovered-source cleanup without an implicit fresh export, and process-scoped progress/terminal state |
 | AskMeetingsUseCaseTests / AskPipelineTelemetryTests | Shared trimming/search/evidence/answer behavior; lexical evidence before generation; deterministic bilingual exact retrieval before bounded generative fallback; concurrent lexical/semantic work with partial-order telemetry invariants; no-evidence generation skip; evidence-preserving ordinary generation failure; an independent exact graph-fact bundle that cannot replace transcript evidence, distinguishes no request/domain abstention/operational unavailability, routes all three implemented fact adapters, and propagates cancellation; corpus-read-only product retrieval; cold/unavailable semantic fallback to lexical evidence; honest semantic and pipeline cancellation propagation; capability bypass for empty/invalid requests without trace creation; closed content-free Ask telemetry taxonomy; matched success/failure/cancellation intervals; and first-evidence/first-observable-token milestones |
+| MeetingMemoryGraphQueryTelemetryTests | Closed six-job/four-outcome exact-graph telemetry taxonomy; facts/abstention/cancellation/failure classification without payload material; all six use-case mappings; alias-resolution timing only after one exact identity; and explicit app-observer removal without callback accumulation |
 | AskPresentationModelTests | Full Ask progressive finding/refinement/generation state, early citations, evidence fallback, cancellation and stale-progress rejection, process-scoped palette search/answer ownership, stale completion rejection across reset/reopen, and Markdown answer receipts |
 | RetrievalChunkingTests | Deterministic single-actor turn grouping; confirmed-person continuity across observed labels; anonymous remote isolation and local-microphone continuity; mixed-language source preservation; character/duration/gap bounds; stable membership identity; representation-only retention; correction-local and per-source-text delta invalidation; source replacement; and fail-closed meeting, revision, identity, speaker, and timeline validation |
 | SuggestMeetingReviewMetadataTests / MeetingDetailModelTests | Title/structure/chapter eligibility, known-recipe and bounded-label admission, independent failure degradation, cancellation propagation, route-owned one-shot state, revision/request fencing, and suggestion preservation after failed title persistence |
@@ -1519,8 +1520,9 @@ does not change, all authority-keyed edge sets reproduce exactly in both
 directions, the first partial reset clears later decision-topic edges, and a
 failed row cannot bypass its attempt ceiling. These results select SQLite and
 reject a specialized graph-engine migration; they do not supply private owner-
-reviewed field evidence, the other three released query surfaces, free-form
-graph-aware Ask, sync/export, CLI/MCP adoption, or product telemetry.
+reviewed field evidence, accepted supported-host timing receipts, free-form
+graph-aware Ask, sync/export, or CLI/MCP adoption. D361–D366 separately release
+all six exact query surfaces, and D367 observes their local runtime timing.
 
 ### First released exact graph query surface (D361)
 
@@ -1543,7 +1545,8 @@ opens full Ask, selects **By person**, loads the exact typed fact, and follows
 its exact evidence to 00:03. The journey does not touch the user library or
 invoke Foundation Models. It proves the released Sequoia/Tahoe-compatible code
 path and localization contract, not physical VoiceOver, clean-install
-Sequoia, separate-hardware Tahoe, private-corpus quality, or graph telemetry.
+Sequoia, separate-hardware Tahoe, private-corpus quality, or accepted
+supported-host graph performance evidence.
 
 ### Second released exact graph query surface (D362)
 
@@ -1565,7 +1568,7 @@ loads the current decision, and follows its exact evidence to 00:03. It uses no
 user library, network, or Foundation Models. This proves the executable
 localized Sequoia/Tahoe-compatible code path, not physical VoiceOver,
 clean-install Sequoia, separate-hardware Tahoe, private-corpus quality, or
-graph telemetry.
+accepted supported-host graph performance evidence.
 
 ### Third released exact graph query surface (D363)
 
@@ -1586,7 +1589,7 @@ topic**, switches to **First confirmed discussion**, and follows its only exact
 source to 00:03. It uses no user library, network, Foundation Models, or Tahoe-
 only API. This is executable bilingual regression evidence on the local host,
 not physical VoiceOver, clean-install Sequoia, separate-hardware Tahoe, private-
-corpus quality, or graph telemetry.
+corpus quality, or accepted supported-host graph performance evidence.
 
 ### Fourth released exact graph query surface (D364)
 
@@ -1609,7 +1612,8 @@ and replaced Spanish statements plus both exact evidence actions, and follows
 the successor source to 00:03. It uses a disposable temporary store, no network,
 no user library, no Foundation Models, and no Tahoe-only API. This is local
 bilingual regression evidence, not physical VoiceOver, clean-install Sequoia,
-separate-hardware Tahoe, private-corpus quality, or graph telemetry.
+separate-hardware Tahoe, private-corpus quality, or accepted supported-host
+graph performance evidence.
 
 ### Fifth released exact graph query surface (D365)
 
@@ -1633,7 +1637,7 @@ and follows the blocker-confirmation source to 00:04. It uses disposable
 synthetic audio, no network, no user library, no Foundation Models, and no
 Tahoe-only API. This is local bilingual regression evidence, not physical
 VoiceOver, clean-install Sequoia, separate-hardware Tahoe, private-corpus
-quality, or graph telemetry.
+quality, or accepted supported-host graph performance evidence.
 
 ### Sixth released exact graph query surface (D366)
 
@@ -1659,7 +1663,34 @@ verifies both Spanish decision statements and both exact source actions, and
 follows the successor source to 00:03. It uses a disposable store, no network,
 no user library, no Foundation Models, and no Tahoe-only API. This is local
 bilingual regression evidence, not physical VoiceOver, clean-install Sequoia,
-separate-hardware Tahoe, private-corpus quality, or graph telemetry.
+separate-hardware Tahoe, private-corpus quality, or accepted supported-host
+graph performance evidence.
+
+### Content-free exact graph query telemetry (D367)
+
+Six focused package tests pin the closed six-job taxonomy and four terminal
+outcomes, distinguish fact pages from typed abstention, classify cancellation
+separately from operational failure, and inspect only random trace identity,
+job, and outcome. A fixed repository proves that all six released use cases
+emit their stable job. Alias tests prove zero query events for missing or
+ambiguous candidates and exactly one interval only after one exact person is
+resolved. The app-adapter test registers and removes an observer explicitly,
+then proves later events cannot reach the removed callback.
+
+One architecture ratchet keeps the taxonomy closed and content-free, pins all
+six use-case measurement boundaries plus exact-identity alias fencing, verifies
+one app composition injection per released graph read, and restricts the
+Points of Interest messages to job and outcome. It also binds implemented
+architecture, intelligence, app, quality, decision, and gap truth so a future
+payload, missing query, double wrapper, stale telemetry gap, or undocumented
+composition change fails development tests.
+
+D367 changes no UI, localization, accessibility identifier, schema, query
+result, or graph authority, so it adds no new UI test case. The mandatory full
+English and Spanish 101-case XCUITest gates still qualify the existing product
+journeys after composition changes. Local signposts and synthetic relational
+budgets do not certify clean-install Sequoia, separate-hardware Tahoe, physical
+VoiceOver, private-corpus behavior, or accepted supported-host latency receipts.
 
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer

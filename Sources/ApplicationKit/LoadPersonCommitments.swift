@@ -34,15 +34,22 @@ public struct PersonCommitmentsAliasQuery: Equatable, Sendable {
 /// separate concerns.
 public struct LoadPersonCommitments: ApplicationUseCase {
     private let repository: any PersonCommitmentFactReading
+    private let telemetry: MeetingMemoryGraphQueryTelemetry
 
-    public init(repository: any PersonCommitmentFactReading) {
+    public init(
+        repository: any PersonCommitmentFactReading,
+        telemetry: MeetingMemoryGraphQueryTelemetry = .disabled
+    ) {
         self.repository = repository
+        self.telemetry = telemetry
     }
 
     public func execute(
         _ query: PersonCommitmentsQuery
     ) async throws -> MeetingMemoryGraphQueryResult {
-        try await repository.personCommitmentFacts(query)
+        try await telemetry.measure(.personCommitments) {
+            try await repository.personCommitmentFacts(query)
+        }
     }
 }
 
@@ -52,13 +59,16 @@ public struct LoadPersonCommitments: ApplicationUseCase {
 public struct LoadPersonCommitmentsByAlias: ApplicationUseCase {
     private let people: any CanonicalPersonCandidateReading
     private let commitments: any PersonCommitmentFactReading
+    private let telemetry: MeetingMemoryGraphQueryTelemetry
 
     public init(
         people: any CanonicalPersonCandidateReading,
-        commitments: any PersonCommitmentFactReading
+        commitments: any PersonCommitmentFactReading,
+        telemetry: MeetingMemoryGraphQueryTelemetry = .disabled
     ) {
         self.people = people
         self.commitments = commitments
+        self.telemetry = telemetry
     }
 
     public func execute(
@@ -72,7 +82,9 @@ public struct LoadPersonCommitmentsByAlias: ApplicationUseCase {
         guard candidates.count == 1, let person = candidates.first else {
             return .abstained(.ambiguousPerson)
         }
-        return try await LoadPersonCommitments(repository: commitments).execute(
+        return try await LoadPersonCommitments(
+            repository: commitments,
+            telemetry: telemetry).execute(
             PersonCommitmentsQuery(
                 personID: person.id,
                 itemLimit: query.itemLimit))

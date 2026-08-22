@@ -1471,6 +1471,31 @@ successor source to 00:03. It touches no user library, network, Foundation
 Models, new storage authority, or Tahoe-only API; physical VoiceOver and
 independent Sequoia/Tahoe validation remain external.
 
+## Exact graph query timing in the app (D367)
+
+The app composition root injects one process-scoped
+`AppMeetingMemoryGraphQueryTelemetry` into every direct exact graph use case:
+person commitments, commitment blockers, decision history, first discussion,
+decision changes, and changes since. All released UI reads therefore reach the
+same adapter through their use cases. The optional ApplicationKit graph-fact
+workflow can compose those measured boundaries explicitly instead of adding an
+outer interval; ordinary Ask, palette, CLI, MCP, and meeting-brief behavior
+remains unchanged.
+
+The adapter maps the ApplicationKit trace to a Points of Interest interval
+named **Memory graph query**. Its begin message contains only the closed job;
+its end message contains only the closed terminal outcome. A lock protects the
+process-local active-interval and observer dictionaries, and callbacks execute
+only after that lock is released. Observation uses explicit add/remove tokens,
+so a controlled performance probe cannot leave an accumulating callback after
+its lifetime ends.
+
+No SwiftUI state, copy, accessibility identity, graph authority, database
+schema, model, or support export changes. No identity, text, source, count,
+abstention reason, or error description reaches OSLog, persistence, or a
+network. The signposts make local Instruments runs possible; they are not an
+accepted Sequoia/Tahoe performance receipt by themselves.
+
 The hidden Ask resource mode installs one observer only around its disposable
 `AskMeetings.local` call (D193). `AskPipelineRunProbe` accepts exactly one
 answer trace, one completion for every declared stage, first evidence, first

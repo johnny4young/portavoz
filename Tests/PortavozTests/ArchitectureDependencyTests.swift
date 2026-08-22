@@ -2575,12 +2575,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(graphLane.contains(
             "graphFacts: AskGraphFactLaneOutcome"))
         for boundary in [
-            "LoadCommitmentBlockers(repository:",
-            "LoadTopicFirstDiscussion(repository:",
-            "LoadPersonCommitments(repository:",
-            "LoadDecisionConflicts(repository:",
-            "LoadChangeSince(repository:",
-            "LoadDecisionHistory(repository:",
+            "LoadCommitmentBlockers(",
+            "LoadTopicFirstDiscussion(",
+            "LoadPersonCommitments(",
+            "LoadDecisionConflicts(",
+            "LoadChangeSince(",
+            "LoadDecisionHistory(",
         ] {
             XCTAssertTrue(graphLane.contains(boundary))
         }
@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,579 cases "
+            "package inventory contains 2,586 cases "
                 + "(15 environment-gated) + 101"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -2666,7 +2666,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(composition.contains(
             "memoryEntities = LoadAutomationEntities(catalog: store)"))
         XCTAssertTrue(composition.contains(
-            "memoryCommitments = LoadPersonCommitments(repository: store)"))
+            "memoryCommitments = LoadPersonCommitments("))
         XCTAssertTrue(composition.contains(
             "PersonCommitmentsQuery("))
         XCTAssertTrue(askView.contains("ask-surface-person-commitments"))
@@ -2751,7 +2751,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(composition.contains(
             "memoryTopics = LoadConfirmedTopicCatalog(catalog: store)"))
         XCTAssertTrue(composition.contains(
-            "memoryDecisionHistory = LoadDecisionHistory(repository: store)"))
+            "memoryDecisionHistory = LoadDecisionHistory("))
         XCTAssertTrue(composition.contains("DecisionHistoryQuery("))
 
         XCTAssertTrue(askView.contains("ask-surface-topic-decisions"))
@@ -2823,7 +2823,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(model.contains("import IntelligenceKit"))
 
         XCTAssertTrue(composition.contains(
-            "memoryTopicFirstDiscussion = LoadTopicFirstDiscussion(repository: store)"))
+            "memoryTopicFirstDiscussion = LoadTopicFirstDiscussion("))
         XCTAssertTrue(composition.contains("TopicFirstDiscussionQuery("))
         XCTAssertTrue(view.contains("ask-topic-job-first-discussion"))
         XCTAssertTrue(view.contains("ask-topic-first-discussion-"))
@@ -2890,7 +2890,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(model.contains("import IntelligenceKit"))
 
         XCTAssertTrue(composition.contains(
-            "memoryDecisionConflicts = LoadDecisionConflicts(repository: store)"))
+            "memoryDecisionConflicts = LoadDecisionConflicts("))
         XCTAssertTrue(composition.contains("DecisionConflictsQuery("))
         XCTAssertTrue(view.contains("ask-topic-job-decision-conflicts"))
         XCTAssertTrue(relationshipView.contains("ask-topic-conflict"))
@@ -2958,7 +2958,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(model.contains("import IntelligenceKit"))
 
         XCTAssertTrue(composition.contains(
-            "memoryCommitmentBlockers = LoadCommitmentBlockers(repository: store)"))
+            "memoryCommitmentBlockers = LoadCommitmentBlockers("))
         XCTAssertTrue(composition.contains("CommitmentBlockerQuery("))
         XCTAssertTrue(parentView.contains("ask-memory-blockers-load-"))
         XCTAssertTrue(parentView.contains("Show active blockers for %@"))
@@ -3054,7 +3054,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(composition.contains(
             "memoryEntities = LoadAutomationEntities(catalog: store)"))
         XCTAssertTrue(composition.contains(
-            "memoryChangesSince = LoadChangeSince(repository: store)"))
+            "memoryChangesSince = LoadChangeSince("))
         XCTAssertTrue(composition.contains("memoryEntities.meetings("))
         XCTAssertTrue(composition.contains("ChangeSinceQuery("))
 
@@ -3092,6 +3092,113 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(gaps.contains(
             "All six dedicated exact graph surfaces are released"))
         XCTAssertTrue(decisions.contains("## D366"))
+    }
+
+    func testExactGraphQueryTelemetryIsClosedContentFreeAndComposed() throws {
+        let telemetry = try Self.contents(
+            of: "Sources/ApplicationKit/MeetingMemoryGraphQueryTelemetry.swift")
+        let blockers = try Self.contents(
+            of: "Sources/ApplicationKit/LoadCommitmentBlockers.swift")
+        let firstDiscussion = try Self.contents(
+            of: "Sources/ApplicationKit/LoadTopicFirstDiscussion.swift")
+        let commitments = try Self.contents(
+            of: "Sources/ApplicationKit/LoadPersonCommitments.swift")
+        let decisionsUseCases = try Self.contents(
+            of: "Sources/ApplicationKit/LoadDecisionRelationships.swift")
+        let graphLane = try Self.contents(
+            of: "Sources/ApplicationKit/AskGraphFacts.swift")
+        let adapter = try Self.contents(
+            of: "Sources/portavoz-app/AppMeetingMemoryGraphQueryTelemetry.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let tests = try Self.contents(
+            of: "Tests/PortavozTests/MeetingMemoryGraphQueryTelemetryTests.swift")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligence = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(telemetry.contains("enum MeetingMemoryGraphQueryJob"))
+        for job in [
+            "case commitmentBlockers",
+            "case topicFirstDiscussion",
+            "case personCommitments",
+            "case decisionConflicts",
+            "case changeSince",
+            "case decisionHistory",
+        ] {
+            XCTAssertTrue(telemetry.contains(job), "missing graph job \(job)")
+        }
+        for outcome in [
+            "case facts", "case abstained", "case cancelled", "case failed",
+        ] {
+            XCTAssertTrue(
+                telemetry.contains(outcome),
+                "missing graph telemetry outcome \(outcome)")
+        }
+        for forbidden in [
+            "MeetingID", "TopicID", "PersonID", "CommitmentID",
+            "subjectText", "objectText", "localizedDescription",
+        ] {
+            XCTAssertFalse(
+                telemetry.contains(forbidden),
+                "graph telemetry admits payload field \(forbidden)")
+        }
+
+        XCTAssertTrue(blockers.contains(
+            "telemetry.measure(.commitmentBlockers)"))
+        XCTAssertTrue(firstDiscussion.contains(
+            "telemetry.measure(.topicFirstDiscussion)"))
+        XCTAssertTrue(commitments.contains(
+            "telemetry.measure(.personCommitments)"))
+        XCTAssertTrue(commitments.contains(
+            "guard candidates.count == 1"))
+        XCTAssertTrue(decisionsUseCases.contains(
+            "telemetry.measure(.decisionHistory)"))
+        XCTAssertTrue(decisionsUseCases.contains(
+            "telemetry.measure(.decisionConflicts)"))
+        XCTAssertTrue(decisionsUseCases.contains(
+            "telemetry.measure(.changeSince)"))
+        XCTAssertTrue(graphLane.contains(
+            "telemetry: MeetingMemoryGraphQueryTelemetry = .disabled"))
+        XCTAssertTrue(graphLane.contains("telemetry: telemetry"))
+
+        XCTAssertTrue(adapter.contains("OSSignposter("))
+        XCTAssertTrue(adapter.contains("category: .pointsOfInterest"))
+        XCTAssertTrue(adapter.contains(
+            "job=\\(trace.job.rawValue, privacy: .public)"))
+        XCTAssertTrue(adapter.contains(
+            "outcome=\\(outcome.rawValue, privacy: .public)"))
+        XCTAssertFalse(adapter.contains("localizedDescription"))
+        XCTAssertTrue(composition.contains(
+            "graphTelemetry: MeetingMemoryGraphQueryTelemetry"))
+        XCTAssertEqual(
+            composition.components(
+                separatedBy: "telemetry: graphTelemetry").count - 1,
+            6)
+
+        XCTAssertTrue(tests.contains(
+            "testEveryExactUseCaseEmitsItsStableJob"))
+        XCTAssertTrue(tests.contains(
+            "testAliasResolutionStartsTelemetryOnlyAfterExactIdentity"))
+        XCTAssertTrue(tests.contains(
+            "testAppAdapterObserverHasExplicitLifetime"))
+        XCTAssertTrue(architecture.contains(
+            "Every released exact graph read emits one content-free"))
+        XCTAssertTrue(intelligence.contains(
+            "## Content-free exact graph query telemetry (D367)"))
+        XCTAssertTrue(appSpec.contains(
+            "## Exact graph query timing in the app (D367)"))
+        XCTAssertTrue(quality.contains(
+            "### Content-free exact graph query telemetry (D367)"))
+        XCTAssertTrue(gaps.contains(
+            "D367 adds content-free local timing spans"))
+        XCTAssertFalse(gaps.contains("graph telemetry remain absent"))
+        XCTAssertTrue(decisions.contains("## D367"))
     }
 
     func testAskGraphFiltersResolveExactIdentitiesBeforeBoundedQueries() throws {

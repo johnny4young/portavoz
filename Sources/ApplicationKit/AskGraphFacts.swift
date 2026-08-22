@@ -31,14 +31,19 @@ public struct LocalAskGraphFactRetrieval: AskGraphFactRetrieving {
     private let conflicts: any DecisionConflictsReading
     private let changes: any ChangeSinceReading
     private let history: any DecisionHistoryReading
+    private let telemetry: MeetingMemoryGraphQueryTelemetry
 
-    public init(store: MeetingStore) {
+    public init(
+        store: MeetingStore,
+        telemetry: MeetingMemoryGraphQueryTelemetry = .disabled
+    ) {
         blockers = store
         topics = store
         commitments = store
         conflicts = store
         changes = store
         history = store
+        self.telemetry = telemetry
     }
 
     public init(
@@ -47,7 +52,8 @@ public struct LocalAskGraphFactRetrieval: AskGraphFactRetrieving {
         commitments: any PersonCommitmentFactReading,
         conflicts: any DecisionConflictsReading,
         changes: any ChangeSinceReading,
-        history: any DecisionHistoryReading
+        history: any DecisionHistoryReading,
+        telemetry: MeetingMemoryGraphQueryTelemetry = .disabled
     ) {
         self.blockers = blockers
         self.topics = topics
@@ -55,6 +61,7 @@ public struct LocalAskGraphFactRetrieval: AskGraphFactRetrieving {
         self.conflicts = conflicts
         self.changes = changes
         self.history = history
+        self.telemetry = telemetry
     }
 
     public func retrieve(
@@ -62,22 +69,34 @@ public struct LocalAskGraphFactRetrieval: AskGraphFactRetrieving {
     ) async throws -> MeetingMemoryGraphQueryResult {
         switch query {
         case .commitmentBlockers(let query):
-            return try await LoadCommitmentBlockers(repository: blockers)
+            return try await LoadCommitmentBlockers(
+                repository: blockers,
+                telemetry: telemetry)
                 .execute(query)
         case .topicFirstDiscussion(let query):
-            return try await LoadTopicFirstDiscussion(repository: topics)
+            return try await LoadTopicFirstDiscussion(
+                repository: topics,
+                telemetry: telemetry)
                 .execute(query)
         case .personCommitments(let query):
-            return try await LoadPersonCommitments(repository: commitments)
+            return try await LoadPersonCommitments(
+                repository: commitments,
+                telemetry: telemetry)
                 .execute(query)
         case .decisionConflicts(let query):
-            return try await LoadDecisionConflicts(repository: conflicts)
+            return try await LoadDecisionConflicts(
+                repository: conflicts,
+                telemetry: telemetry)
                 .execute(query)
         case .changeSince(let query):
-            return try await LoadChangeSince(repository: changes)
+            return try await LoadChangeSince(
+                repository: changes,
+                telemetry: telemetry)
                 .execute(query)
         case .decisionHistory(let query):
-            return try await LoadDecisionHistory(repository: history)
+            return try await LoadDecisionHistory(
+                repository: history,
+                telemetry: telemetry)
                 .execute(query)
         }
     }

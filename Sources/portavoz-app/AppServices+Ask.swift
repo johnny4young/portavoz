@@ -15,16 +15,33 @@ final class AppAskModelClient: AskModelClient {
     private let memoryDecisionConflicts: LoadDecisionConflicts
     private let memoryChangesSince: LoadChangeSince
 
-    init(useCase: AskMeetings, store: MeetingStore) {
+    init(
+        useCase: AskMeetings,
+        store: MeetingStore,
+        graphTelemetry: MeetingMemoryGraphQueryTelemetry =
+            AppMeetingMemoryGraphQueryTelemetry.shared.telemetry
+    ) {
         self.useCase = useCase
         memoryEntities = LoadAutomationEntities(catalog: store)
-        memoryCommitments = LoadPersonCommitments(repository: store)
-        memoryCommitmentBlockers = LoadCommitmentBlockers(repository: store)
+        memoryCommitments = LoadPersonCommitments(
+            repository: store,
+            telemetry: graphTelemetry)
+        memoryCommitmentBlockers = LoadCommitmentBlockers(
+            repository: store,
+            telemetry: graphTelemetry)
         memoryTopics = LoadConfirmedTopicCatalog(catalog: store)
-        memoryDecisionHistory = LoadDecisionHistory(repository: store)
-        memoryTopicFirstDiscussion = LoadTopicFirstDiscussion(repository: store)
-        memoryDecisionConflicts = LoadDecisionConflicts(repository: store)
-        memoryChangesSince = LoadChangeSince(repository: store)
+        memoryDecisionHistory = LoadDecisionHistory(
+            repository: store,
+            telemetry: graphTelemetry)
+        memoryTopicFirstDiscussion = LoadTopicFirstDiscussion(
+            repository: store,
+            telemetry: graphTelemetry)
+        memoryDecisionConflicts = LoadDecisionConflicts(
+            repository: store,
+            telemetry: graphTelemetry)
+        memoryChangesSince = LoadChangeSince(
+            repository: store,
+            telemetry: graphTelemetry)
     }
 
     func searchAskMeetings(
