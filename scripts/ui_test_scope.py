@@ -253,6 +253,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "SkillsSettingsUITests",
+            "testFailedSkillControlMutationReloadsWithoutClosingSettings",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
             "testSkillsPaneControlsOffersAndShowsTheConfirmedReceipt",
         ),
         test_id(
@@ -723,7 +727,13 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(f"{path}: bilingual localization canaries")
             continue
 
-        if path in {"Makefile", "project.yml", "scripts/run-ui-tests.sh"} or path == "Tests/PortavozUITests/UITestSupport.swift":
+        if path in {
+            "Makefile",
+            "project.yml",
+            "scripts/run-ui-tests.sh",
+            "Sources/portavoz-app/UITestWindowPlacement.swift",
+            "Tests/PortavozUITests/UITestSupport.swift",
+        }:
             selected.update(HARNESS_TESTS)
             locales.add("es")
             reasons.append(f"{path}: shared UI harness")

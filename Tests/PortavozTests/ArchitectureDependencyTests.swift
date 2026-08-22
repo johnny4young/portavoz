@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,597 cases "
-                + "(15 environment-gated) + 101"))
+            "package inventory contains 2,598 cases "
+                + "(15 environment-gated) + 102"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -5206,6 +5206,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             "store.skillExecutions(\n            idempotencyKeys: oneShotKeys)"))
         XCTAssertTrue(settings.contains("settings-skills-pause-all"))
         XCTAssertTrue(settings.contains("settings-skill-\\(skill.id)-enabled"))
+        XCTAssertTrue(settings.contains(
+            "Button(\"Reload controls\") {\n"
+                + "                        Task { await load() }\n"
+                + "                    }\n"
+                + "                    .accessibilityIdentifier("
+                + "\"settings-skills-stale-retry\")"))
+        XCTAssertFalse(settings.contains("Close and reopen Settings"))
         XCTAssertTrue(activity.contains("settings-skills-receipt-scope-recent"))
         XCTAssertTrue(activity.contains("settings-skills-receipt-scope-waiting"))
         XCTAssertTrue(activity.contains(
@@ -5225,6 +5232,21 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))
         XCTAssertTrue(services.contains(
             "-simulate-skill-receipt-refresh-delay"))
+        XCTAssertTrue(services.contains(
+            "if usesTemporaryMeetingStore,\n"
+                + "           ProcessInfo.processInfo.arguments.contains(\n"
+                + "               \"-simulate-skill-control-mutation-unavailable\")"))
+        let controlMutation = try XCTUnwrap(services.range(
+            of: "let outcome = try await ManageSkillControl(store: store)"))
+        let simulatedResponseFailure = try XCTUnwrap(services.range(
+            of: "-simulate-skill-control-mutation-unavailable"))
+        XCTAssertLessThan(
+            controlMutation.lowerBound,
+            simulatedResponseFailure.lowerBound)
+        XCTAssertTrue(services.contains(
+            "if usesTemporaryMeetingStore,\n"
+                + "           ProcessInfo.processInfo.arguments.contains(\n"
+                + "               \"-simulate-skill-proposal-unavailable\")"))
         XCTAssertTrue(activity.contains(
             "notification: .announcementRequested"))
         XCTAssertTrue(control.contains("definition.declaresExternalEffect"))
@@ -5253,6 +5275,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "never executes or retries a Skill effect"))
         XCTAssertTrue(decisions.contains("## D317"))
         XCTAssertTrue(decisions.contains("## D333"))
+        XCTAssertTrue(decisions.contains("## D370"))
         XCTAssertTrue(decisions.contains("## D335"))
         XCTAssertTrue(decisions.contains("## D336"))
         XCTAssertTrue(decisions.contains("## D343"))
@@ -8990,6 +9013,31 @@ final class ArchitectureDependencyTests: XCTestCase {
             #"CFBundleIdentifier") != "app.portavoz.mac.dev""#))
         XCTAssertFalse(project.contains(
             "PRODUCT_BUNDLE_IDENTIFIER: app.portavoz.mac\n"))
+    }
+
+    func testDisposableUITestWindowsStayOnAppKitsZeroScreen() throws {
+        let placement = try Self.contents(
+            of: "Sources/portavoz-app/UITestWindowPlacement.swift")
+        let content = try Self.contents(of: "Sources/portavoz-app/ContentView.swift")
+        let settingsCapture = try Self.contents(
+            of: "Sources/portavoz-app/SettingsSkillReceiptNavigation.swift")
+        let uiTestSupport = try Self.contents(
+            of: "Tests/PortavozUITests/UITestSupport.swift")
+
+        XCTAssertTrue(placement.contains(
+            #"arguments.contains("-use-temp-store")"#))
+        XCTAssertTrue(placement.contains("NSScreen.screens.first"))
+        XCTAssertFalse(placement.contains("NSScreen.main"))
+        XCTAssertFalse(placement.contains("window.screen"))
+        XCTAssertTrue(placement.contains("window.constrainFrameRect(frame, to: screen)"))
+        XCTAssertTrue(content.contains(
+            "UITestWindowPlacement.positionMainWindow(window)"))
+        XCTAssertTrue(settingsCapture.contains(
+            "UITestWindowPlacement.positionSettingsWindow(window)"))
+        XCTAssertTrue(uiTestSupport.contains(
+            #"general.frame.minX,"#))
+        XCTAssertTrue(uiTestSupport.contains(
+            #"temporary Settings must stay on AppKit's zero screen"#))
     }
 
     func testProductionSandboxDecisionStaysExplicitAndReproducible() throws {

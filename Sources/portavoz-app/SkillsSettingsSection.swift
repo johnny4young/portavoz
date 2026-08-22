@@ -95,57 +95,6 @@ struct SkillsSettingsSection: View {
         }
     }
 
-    @ViewBuilder
-    private var controlContent: some View {
-        if isLoading, snapshot == nil {
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text("Loading skills…")
-            }
-            .accessibilityIdentifier("settings-skills-loading")
-        } else if controlLoadFailed, snapshot == nil {
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Skill controls are unavailable", systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.orange)
-                    .accessibilityIdentifier("settings-skills-load-error")
-                Text("Nothing can be changed until Portavoz reads the durable policy.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Button("Try again") {
-                    Task { await load() }
-                }
-                .accessibilityIdentifier("settings-skills-retry")
-            }
-        } else {
-            Toggle("Pause all skills", isOn: pauseBinding)
-                .accessibilityIdentifier("settings-skills-pause-all")
-                .disabled(
-                    snapshot == nil || isMutating
-                        || proposalMutationInFlight || controlLoadFailed)
-            Text(
-                // Keep this as one literal so localization validation sees it.
-                // swiftlint:disable:next line_length
-                "Paused skills disappear from proposal surfaces and are refused again immediately before execution. Your individual choices stay saved."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            if snapshot?.isPaused == true {
-                Label("All skills are paused", systemImage: "pause.circle.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.orange)
-                    .accessibilityIdentifier("settings-skills-paused-status")
-            }
-            if controlLoadFailed {
-                Label(
-                    "The last change could not be verified. Close and reopen Settings before trying again.",
-                    systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .accessibilityIdentifier("settings-skills-stale-error")
-            }
-        }
-    }
-
     private var pauseBinding: Binding<Bool> {
         Binding(
             get: { snapshot?.isPaused ?? false },
@@ -435,6 +384,65 @@ struct SkillsSettingsSection: View {
 }
 
 private extension SkillsSettingsSection {
+    @ViewBuilder
+    var controlContent: some View {
+        if isLoading, snapshot == nil {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Loading skills…")
+            }
+            .accessibilityIdentifier("settings-skills-loading")
+        } else if controlLoadFailed, snapshot == nil {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Skill controls are unavailable", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("settings-skills-load-error")
+                Text("Nothing can be changed until Portavoz reads the durable policy.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Try again") {
+                    Task { await load() }
+                }
+                .accessibilityIdentifier("settings-skills-retry")
+            }
+        } else {
+            Toggle("Pause all skills", isOn: pauseBinding)
+                .accessibilityIdentifier("settings-skills-pause-all")
+                .disabled(
+                    snapshot == nil || isMutating
+                        || proposalMutationInFlight || controlLoadFailed)
+            Text(
+                // Keep this as one literal so localization validation sees it.
+                // swiftlint:disable:next line_length
+                "Paused skills disappear from proposal surfaces and are refused again immediately before execution. Your individual choices stay saved."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            if snapshot?.isPaused == true {
+                Label("All skills are paused", systemImage: "pause.circle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("settings-skills-paused-status")
+            }
+            if controlLoadFailed {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(
+                        "The last change could not be verified. Reload controls before trying again.",
+                        systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("settings-skills-stale-error")
+                    Button("Reload controls") {
+                        Task { await load() }
+                    }
+                    .accessibilityIdentifier("settings-skills-stale-retry")
+                    .disabled(
+                        isLoading || isMutating || proposalMutationInFlight)
+                }
+            }
+        }
+    }
+
     var proposalMutationInFlight: Bool {
         reviewingProposalID != nil || dismissingProposalID != nil
     }

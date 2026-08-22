@@ -29,6 +29,49 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testFailedSkillControlMutationReloadsWithoutClosingSettings() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchArguments.append(
+            "-simulate-skill-control-mutation-unavailable")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.openSettingsCategory(
+                "settings-category-skills",
+                revealing: "settings-skills-pause-all"))
+        let pause = app.control(withIdentifier: "settings-skills-pause-all")
+        XCTAssertTrue(pause.waitForExistence(timeout: 5))
+        XCTAssertFalse(Self.isOn(pause))
+        pause.click()
+
+        let error = app.control(withIdentifier: "settings-skills-stale-error")
+        XCTAssertTrue(
+            error.waitForExistence(timeout: 5),
+            "an unverified mutation must retain a fail-closed stale state")
+        XCTAssertFalse(
+            Self.isOn(pause),
+            "an unverified response must not look committed before a durable read")
+        XCTAssertFalse(pause.isEnabled)
+
+        let reload = app.buttons["settings-skills-stale-retry"]
+        XCTAssertTrue(reload.waitForStableFrame(timeout: 5))
+        reload.click()
+
+        XCTAssertTrue(
+            waitForDisappearance(error),
+            "a verified read must clear the stale control state")
+        XCTAssertTrue(pause.exists)
+        XCTAssertTrue(pause.isEnabled)
+        XCTAssertTrue(
+            Self.isOn(pause),
+            "the verified read must surface the already committed durable state")
+        XCTAssertTrue(
+            app.control(withIdentifier: "settings-category-skills").exists,
+            "recovery must not require closing or reconstructing Settings")
+    }
+
+    @MainActor
     func testSkillActivityScopeFailureDoesNotInventRowsOrDisableVerifiedPolicy() {
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-receipt-scope-unavailable")

@@ -431,6 +431,13 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.locales, ("en",))
         self.assertLess(len(selection.tests), len(ALL_TESTS))
 
+    def test_window_placement_selects_bilingual_shared_harness_canaries(self):
+        selection = select_paths(
+            ["Sources/portavoz-app/UITestWindowPlacement.swift"]
+        )
+        self.assertEqual(selection.tests, HARNESS_TESTS)
+        self.assertEqual(selection.locales, ("en", "es"))
+
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
         selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
         self.assertEqual(

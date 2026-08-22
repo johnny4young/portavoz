@@ -39,13 +39,19 @@ extension AppServices {
     func manageSkillControl(
         _ action: ManageSkillControlAction
     ) async throws -> ManageSkillControlOutcome {
-        try await ManageSkillControl(store: store).execute(action)
+        let outcome = try await ManageSkillControl(store: store).execute(action)
+        if usesTemporaryMeetingStore,
+           ProcessInfo.processInfo.arguments.contains(
+               "-simulate-skill-control-mutation-unavailable") {
+            throw SimulatedSkillControlMutationFailure()
+        }
+        return outcome
     }
 
     func loadSkillOfferReview() async throws -> SkillOfferReviewSnapshot {
-        if ProcessInfo.processInfo.arguments.contains(
-            "-simulate-skill-proposal-unavailable"
-        ) {
+        if usesTemporaryMeetingStore,
+           ProcessInfo.processInfo.arguments.contains(
+               "-simulate-skill-proposal-unavailable") {
             throw SimulatedSkillProposalFailure()
         }
         return try await LoadSkillOfferReview(store: store).execute(
@@ -127,6 +133,7 @@ extension AppServices {
 }
 
 private struct SimulatedSkillControlFailure: Error {}
+private struct SimulatedSkillControlMutationFailure: Error {}
 private struct SimulatedSkillProposalFailure: Error {}
 private struct SimulatedSkillProposalDismissalFailure: Error {}
 private struct SimulatedSkillProposalReviewFailure: Error {}

@@ -12061,12 +12061,22 @@
         }
       }
     },
-    "The last change could not be verified. Close and reopen Settings before trying again.": {
+    "The last change could not be verified. Reload controls before trying again.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo verificar el último cambio. Cierra y vuelve a abrir Configuración antes de intentarlo de nuevo."
+            "value": "No se pudo verificar el último cambio. Recarga los controles antes de intentarlo de nuevo."
+          }
+        }
+      }
+    },
+    "Reload controls": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recargar controles"
           }
         }
       }

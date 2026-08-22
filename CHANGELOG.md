@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 22, 2026
 
+- **🔄 Skill controls recover in place** — If a control change cannot be verified, reload durable policy without closing Settings or repeating a change that may already have committed.
 - **🧭 Skill receipt evidence survives unrelated policy trouble** — Historical source review and outside-outcome guidance stay available when execution policy cannot be read, while local recovery still waits for verified current controls.
 - **📅 Changes since a meeting stay exact** — Choose one confirmed topic and one exact meeting in Ask to see every later confirmed decision replacement, with both sides and their original proof.
 - **🛑 Active blockers reveal their proof** — Open one exact current commitment in Ask, see every confirmed decision blocking it, and jump to the evidence that established the blocker.

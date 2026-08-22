@@ -374,6 +374,15 @@ unavailable transitions request one localized medium-priority application-level
 accessibility announcement through public AppKit. Loading is deliberately
 silent, and the retry remains a separate reachable control.
 
+If a control mutation or its owned refresh cannot verify the new durable
+policy, Settings retains the last snapshot only as stale evidence and disables
+every policy control. The stale state exposes one explicit **Reload controls**
+action. That action performs only the generation-fenced control read; it never
+repeats the mutation whose commit outcome may be ambiguous. A successful read
+adopts the durable pause and per-Skill values and re-enables the pane without
+reconstructing the Settings window; another failure remains fail-closed with
+the same explicit reload.
+
 The same pane reads a separate content-free **Proposed** projection from the
 v40 Skill offer authority. Every executable definition declares both its
 effect capabilities and the exact input-data classes it may read; an execution
@@ -429,15 +438,14 @@ execution receipt remains. Legacy executions receive no inferred subject:
 idempotency and offer-key strings are never parsed to manufacture authority.
 
 A verified failed receipt can therefore classify recovery without becoming a
-retry engine. ApplicationKit replays the causal audit, re-reads current global
-and individual policy, requires the same available catalogue version and
-subject kind, and distinguishes local/recoverable failures from external or
-destructive outcomes. Meeting and commitment failures may return to their
-original context; calendar recovery remains resident in the menu bar. External
-or destructive failures expose verification guidance only because their effect
-may already exist outside Portavoz. Missing subjects, deleted owners, disabled
-policy, stale catalogue versions, malformed history, and legacy rows remain
-unavailable.
+retry engine. ApplicationKit replays the causal audit first. External or
+destructive failures resolve directly to verification guidance because their
+effect may already exist outside Portavoz. Only a local/recoverable failure
+with the same available catalogue version and subject kind reads current global
+and individual policy before it may return to its original meeting or
+commitment context; calendar recovery remains resident in the menu bar.
+Missing subjects, deleted owners, disabled local policy, stale catalogue
+versions, malformed history, and legacy rows remain unavailable.
 
 The recovery action sends only the proposal UUID and returns at most an inert
 navigation destination. Settings receives no arguments, preview, destination,
@@ -4198,6 +4206,13 @@ The UI-test bundle likewise installs no interruption monitor for external
 system prompts: a privacy or authentication choice that appears after preflight
 remains user-owned and invalidates that host run instead of being answered by
 automation.
+Disposable UI-test windows do not inherit a user's multi-display placement.
+Only with `-use-temp-store`, one shared AppKit boundary places both the primary
+window and the real Settings scene on `NSScreen.screens.first`, AppKit's zero
+screen, and constrains Settings to its visible frame. The harness asserts that
+the Settings navigation anchor has nonnegative global coordinates before any
+journey continues. Production launches never enter this boundary and retain
+SwiftUI's saved window placement.
 This proves only that the host was quiet at those samples; automation started
 afterward remains an external race that the result bundle must classify.
 Visual-only screenshot
@@ -4492,7 +4507,7 @@ reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,597 XCTest package cases are defined, with 15 real-model/environment cases
+- 2,598 XCTest package cases are defined, with 15 real-model/environment cases
   gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
@@ -4501,13 +4516,13 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 702
+- strict SwiftLint remains a blocking CI gate and is clean across all 703
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 456 deterministic tooling cases and the 194-case architecture subset pass;
+- 457 deterministic tooling cases and the 195-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
-- 101 XCUITest cases per locale define the 202-case bilingual release gate;
+- 102 XCUITest cases per locale define the 204-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

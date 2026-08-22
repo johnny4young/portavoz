@@ -62,5 +62,8 @@ final class SettingsWindowCaptureView: NSView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         reference.window = window
+        if let window {
+            UITestWindowPlacement.positionSettingsWindow(window)
+        }
     }
 }

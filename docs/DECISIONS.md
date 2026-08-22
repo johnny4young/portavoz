@@ -13440,3 +13440,47 @@ receipt payload, standing rule, confirmation, retry, adapter, transport, effect,
 or deployment-floor change is introduced. Deterministic automation exercises
 public APIs available at the macOS 14.4 floor; physical VoiceOver, Sequoia, and
 separate-hardware Tahoe behavior remain field evidence.
+
+## D370 — An unverified Skill-control mutation recovers by reading, never replaying (Aug 2026)
+
+**Context:** Skills Settings already retained the last verified snapshot and
+disabled policy controls when a mutation or its owned refresh failed, but its
+only guidance was to close and reopen Settings. The same view had a
+generation-fenced control load that could safely recover durable truth, yet no
+action exposed it from that stale state. Automatically retrying the mutation is
+not safe: the write may have committed even when its response or following read
+failed, so replay could create a duplicate or reverse a later choice.
+
+**Decision:** keep the stale snapshot visibly fail-closed and add one explicit
+**Reload controls** action. It invokes only the existing control-center read,
+never `ManageSkillControl`. A successful read adopts the durable global pause,
+per-Skill values, and selected receipt scope before re-enabling controls; a
+failed read keeps the same disabled state and retry. Recovery stays in the
+current Settings scene rather than requiring window reconstruction.
+
+Add a temporary-store-only mutation-failure argument that commits the requested
+policy write and then throws instead of returning; subsequent reads remain
+healthy. Cover the real app in both locales: the unverified toggle must not look
+committed before a read, controls must disable, reload must adopt the committed
+durable value and clear stale state, and the Skills pane must remain open. Give
+the action a stable accessibility identifier and keep its selector in the
+diff-to-UI-test catalogue. While auditing that boundary, require the older
+proposal-read failure argument to be temporary-store-only as its quality
+contract already stated.
+
+The first closure catalogue exposed an independent harness defect on a
+multi-display host: the Spanish Voice Settings journey reached a lower control,
+then XCTest tried to scroll its ancestor at a negative global coordinate and
+could not synthesize a hit point. Temporary-store windows therefore share one
+AppKit placement boundary that uses `NSScreen.screens.first`, the documented
+zero screen. It moves both the disposable primary window and real Settings
+scene and constrains Settings to the visible frame; the harness rejects a
+negative Settings anchor before continuing. Production launches never enter
+this path and keep the user's saved multi-display placement.
+
+**Consequences:** users can recover from transient or ambiguous persistence
+failures without losing context, while Portavoz never guesses whether to repeat
+a write. This adds no schema, optimistic state, background retry, confirmation,
+effect authority, adapter, consent, or standing rule. Automation exercises the
+public SwiftUI/AppKit path on the local Tahoe-family host; physical VoiceOver,
+Sequoia, and separate-hardware Tahoe behavior remain field evidence.

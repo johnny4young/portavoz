@@ -2703,7 +2703,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343/D359/D369, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343/D359/D369/D370, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2819,6 +2819,15 @@ or corrupt singleton state fails closed. A Settings read failure shows an
 explicit unavailable/retry state and never renders an implicit enabled
 control.
 
+If a control mutation or its owned verification read fails, Settings retains
+the last verified snapshot, disables all policy switches, and exposes one
+**Reload controls** action in the same pane. That action calls only the
+generation-fenced control-center read; it never repeats the ambiguous mutation,
+because the write may have committed before its response failed. A successful
+read replaces pause, per-Skill, receipt-scope, and receipt state with durable
+truth and re-enables the switches without reconstructing Settings. Another read
+failure keeps the stale snapshot disabled and the reload action available.
+
 Each available row also renders two independent truths. Its transfer boundary
 is derived from the definition's declared capabilities: `sendRemote` means the
 material may leave Portavoz, while every other contract says only that Portavoz
@@ -2927,14 +2936,18 @@ the route retry, and the independent Waiting revocation action. Both source and
 recovery navigation use the generic weak Settings-window bridge after the sheet
 dismisses; neither route carries content or effect authority into Settings.
 
-Sixteen bilingual XCUITest journeys cover the pane: fail-closed control loading;
-isolated scope failure; stale-row-free activity transitions; isolated proposal
-failure; successful and failed Proposed review routing; successful and failed
-Proposed dismissal; successful and failed Waiting revocation; successful and
-failed failed-run recovery routing; successful and failed non-failed receipt
-source routing; exact keyboard/accessibility focus restoration; and the main
-disposable journey. The source success returns a real Waiting fixture to its
-exact Meeting Detail without a confirmation sheet or duplicate main window.
+Seventeen bilingual XCUITest journeys cover the pane: fail-closed control
+loading; read-only recovery after an unverified control mutation; isolated
+scope failure; stale-row-free activity transitions; isolated proposal failure;
+successful and failed Proposed review routing; successful and failed Proposed
+dismissal; successful and failed Waiting revocation; successful and failed
+failed-run recovery routing; successful and failed non-failed receipt source
+routing; exact keyboard/accessibility focus restoration; and the main
+disposable journey. The mutation-recovery case proves the failed toggle never
+looks committed before verification, controls stay disabled until a verified
+read adopts the already committed durable value, and reload neither repeats the
+write nor closes Settings. The source success returns a real Waiting fixture to
+its exact Meeting Detail without a confirmation sheet or duplicate main window.
 The source failure preserves its causal event, receipt row, independent revoke
 action, Settings window, and route-only retry. The main journey disables export,
 pauses all Skills, proves offers stay absent, resumes without losing the

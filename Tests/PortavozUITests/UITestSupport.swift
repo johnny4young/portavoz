@@ -216,6 +216,18 @@ extension XCUIApplication {
             XCTAssertTrue(
                 openSettingsWindow(),
                 "the Settings command must open the settings window")
+            let general = control(withIdentifier: "settings-category-general")
+            XCTAssertTrue(
+                general.waitForStableFrame(timeout: 10),
+                "the disposable Settings window must finish placement")
+            XCTAssertGreaterThanOrEqual(
+                general.frame.minX,
+                0,
+                "temporary Settings must stay on AppKit's zero screen")
+            XCTAssertGreaterThanOrEqual(
+                general.frame.minY,
+                0,
+                "temporary Settings must stay inside the zero screen's visible frame")
         }
     }
 
