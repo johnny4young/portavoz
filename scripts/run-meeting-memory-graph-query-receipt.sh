@@ -73,6 +73,10 @@ require_unsigned_integer "$ITERATIONS" "--iterations"
 (( RUNS >= 3 && RUNS <= 100 )) || fail "--runs must be between 3 and 100"
 (( ITERATIONS >= 5 && ITERATIONS <= 1000 )) || \
     fail "--iterations must be between 5 and 1000"
+SIGN_ID="${PORTAVOZ_SIGN_IDENTITY:-}"
+[[ -n "$SIGN_ID" && "$SIGN_ID" != "-" ]] || \
+    fail "PORTAVOZ_SIGN_IDENTITY must select a real Developer ID identity;" \
+        "ad-hoc signing cannot satisfy hardened-runtime library validation"
 
 cd "$ROOT"
 if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
@@ -93,7 +97,6 @@ FRAGMENTS="$COLLECTION/fragments"
 mkdir -p "$FRAGMENTS"
 RUN_ROOT="$(mktemp -d /private/tmp/portavoz-graph-query.XXXXXX)"
 APP="$RUN_ROOT/Portavoz Graph Query Bench.app"
-SIGN_ID="${PORTAVOZ_SIGN_IDENTITY:--}"
 
 cleanup() {
     if [[ -n "${COLLECTION:-}" && -d "$COLLECTION" ]]; then

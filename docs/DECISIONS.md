@@ -13388,11 +13388,14 @@ trace and domain identities, text, evidence, domain counts, paths, and raw
 errors are structurally excluded. Files are owner-only, atomic, and
 non-replacing.
 
-The canonical script refuses a dirty worktree, builds and signs one isolated
-Release app with a separate bundle identity, then collects at least three fresh
-processes. A strict duplicate-key-rejecting assembler requires contiguous runs
-with identical host and iteration evidence and binds the final receipt to the
-exact source commit, version, and build.
+The canonical script refuses a dirty worktree, requires one real Developer ID
+identity, builds and signs one isolated Release app plus its embedded frameworks
+with that same team, assigns a separate bundle identity, then collects at least
+three fresh processes. Ad-hoc signing fails closed because hardened-runtime
+library validation cannot load separately ad-hoc-signed embedded Sparkle. A
+strict duplicate-key-rejecting assembler requires contiguous runs with
+identical host and iteration evidence and binds the final receipt to the exact
+source commit, version, and build.
 
 **Consequences:** Portavoz can now produce reproducible content-free timing
 input from the actual composed graph-query path without reading a user library

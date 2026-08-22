@@ -1703,7 +1703,8 @@ host readiness and fixture generations are rejected, while output is mode 0600,
 atomic, and non-replacing.
 
 Seven deterministic tooling tests validate the assembled receipt and runner:
-bounded required shell arguments, exactly three or more contiguous runs,
+bounded required shell arguments, real-identity forwarding plus ad-hoc
+rejection, exactly three or more contiguous runs,
 identical host and iteration evidence, exact closed
 objects, duplicate-key and non-finite rejection, monotonic summaries, fact-only
 jobs, lowercase full source SHA, and private non-replacing publication. One

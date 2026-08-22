@@ -121,7 +121,7 @@ class MeetingMemoryGraphQueryReceiptTests(unittest.TestCase):
                 receipt.write_private_json(output, {"schemaVersion": 2})
             self.assertEqual(json.loads(output.read_text()), {"schemaVersion": 1})
 
-    def test_runner_rejects_missing_or_unbounded_arguments_before_build(self):
+    def test_runner_rejects_invalid_arguments_and_ad_hoc_signing_before_build(self):
         help_result = subprocess.run(
             [RUNNER, "--help"], capture_output=True, text=True, check=False
         )
@@ -153,6 +153,38 @@ class MeetingMemoryGraphQueryReceiptTests(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 64)
                 self.assertIn(expected, result.stderr)
+
+        ad_hoc_environment = os.environ.copy()
+        ad_hoc_environment["PORTAVOZ_SIGN_IDENTITY"] = "-"
+        ad_hoc_result = subprocess.run(
+            [RUNNER, "--version", "1.0", "--build", "1"],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=ad_hoc_environment,
+        )
+        self.assertEqual(ad_hoc_result.returncode, 64)
+        self.assertIn("real Developer ID identity", ad_hoc_result.stderr)
+
+        make_result = subprocess.run(
+            [
+                "make",
+                "-n",
+                "meeting-memory-graph-query-receipt",
+                "PORTAVOZ_GRAPH_QUERY_VERSION=1.0",
+                "PORTAVOZ_GRAPH_QUERY_BUILD=1",
+                "PORTAVOZ_SIGN_IDENTITY=TEST-SIGNING-IDENTITY",
+            ],
+            cwd=REPOSITORY,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(make_result.returncode, 0, make_result.stderr)
+        self.assertIn(
+            "PORTAVOZ_SIGN_IDENTITY=TEST-SIGNING-IDENTITY",
+            make_result.stdout,
+        )
 
     @staticmethod
     def fragment(run):

@@ -163,7 +163,8 @@ meeting-memory-graph-query-receipt:
 		(echo "PORTAVOZ_GRAPH_QUERY_VERSION is required" >&2; exit 64)
 	@test -n "$(PORTAVOZ_GRAPH_QUERY_BUILD)" || \
 		(echo "PORTAVOZ_GRAPH_QUERY_BUILD is required" >&2; exit 64)
-	scripts/run-meeting-memory-graph-query-receipt.sh \
+	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) \
+		scripts/run-meeting-memory-graph-query-receipt.sh \
 		--version "$(PORTAVOZ_GRAPH_QUERY_VERSION)" \
 		--build "$(PORTAVOZ_GRAPH_QUERY_BUILD)" \
 		--runs "$(PORTAVOZ_GRAPH_QUERY_RUNS)" \

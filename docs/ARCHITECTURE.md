@@ -2127,11 +2127,14 @@ per-job wall/CPU p50, p95, and maximum values; identities, text, evidence,
 counts from the domain, trace UUIDs, paths, and errors cannot enter the schema.
 Each fragment requires an arm64 host on AC power with nominal thermal state and
 Low Power Mode off, uses owner-only non-replacing output, and fails on lifecycle
-or sample-count drift. The canonical clean-worktree runner builds and signs one
-isolated Release app, collects at least three fresh processes, and assembles an
-exact-commit receipt with a strict duplicate-key-rejecting tool. A receipt is
-host evidence only: it does not select a latency budget or certify another macOS
-version, hardware profile, private corpus, or real user library.
+or sample-count drift. The canonical clean-worktree runner requires and
+forwards one real Developer ID identity, builds and signs the isolated Release
+app and its embedded frameworks with that same team, collects at least three
+fresh processes, and assembles an exact-commit receipt with a strict duplicate-
+key-rejecting tool. Ad-hoc signing is rejected because hardened-runtime library
+validation cannot load a separately ad-hoc-signed embedded Sparkle framework.
+A receipt is host evidence only: it does not select a latency budget or certify
+another macOS version, hardware profile, private corpus, or real user library.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported

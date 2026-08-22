@@ -1514,9 +1514,12 @@ duplicate, unmatched, incomplete, late, failed, cancelled, abstaining, missing,
 or excess events. It writes one mode-0600 fragment without replacing an existing
 file and exits; it never opens the real library.
 
-`run-meeting-memory-graph-query-receipt.sh` refuses a dirty worktree, builds one
-isolated Release app, gives it a separate bundle identity, verifies its
-signature, and collects at least three fresh app processes. The Python assembler
+`run-meeting-memory-graph-query-receipt.sh` refuses a dirty worktree, requires
+one real Developer ID identity, builds one isolated Release app, gives it a
+separate bundle identity, verifies that its app and embedded frameworks share
+the signing team, and collects at least three fresh app processes. It rejects
+ad-hoc signing because hardened-runtime library validation cannot load a
+separately ad-hoc-signed embedded Sparkle framework. The Python assembler
 accepts only the exact fragment schema, rejects duplicate JSON keys and
 non-finite/non-monotonic durations, requires identical host/iteration evidence,
 and atomically publishes a content-free receipt bound to source commit, version,
