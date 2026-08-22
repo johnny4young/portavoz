@@ -3,8 +3,8 @@ import GRDB
 import PortavozCore
 
 extension MeetingStore {
-    /// Bounded, title-only catalog reads for App Intents and other local
-    /// automation adapters. Identifier resolution preserves caller order;
+    /// Bounded, title-only catalog reads for protected local entity consumers.
+    /// Identifier resolution preserves caller order;
     /// text matching stays in SQLite and never hydrates the whole library.
     public func automationMeetings(
         identifiers: [MeetingID]?,

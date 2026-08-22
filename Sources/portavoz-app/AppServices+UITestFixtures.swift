@@ -47,6 +47,8 @@ extension AppServices {
         await seedCommitmentRadarIfRequested(
             meetingID: meeting.id,
             canonicalPersonID: canonicalPersonID)
+        await seedAskMemoryIfRequested(
+            canonicalPersonID: canonicalPersonID)
         try? await store.save([
             ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
         ])
@@ -139,6 +141,7 @@ extension AppServices {
         let arguments = ProcessInfo.processInfo.arguments
         guard arguments.contains("-seed-commitment-inbox")
                 || arguments.contains("-seed-commitment-radar")
+                || arguments.contains("-seed-ask-memory")
         else { return nil }
         return try? await store.createPersonAndLink(
             speakerID: speaker.id,
@@ -390,6 +393,58 @@ extension AppServices {
         }
     }
 
+    /// Real authority plus a real disposable graph projection for the exact
+    /// Ask-memory UI journey. Temporary-store composition disables background
+    /// projection, so this fixture owns the deterministic one-shot drain.
+    private func seedAskMemoryIfRequested(
+        canonicalPersonID: PersonID?
+    ) async {
+        guard ProcessInfo.processInfo.arguments.contains("-seed-ask-memory") else {
+            return
+        }
+        guard let canonicalPersonID else {
+            assertionFailure("Could not seed Ask memory's canonical person")
+            return
+        }
+        let timestamp = Date(timeIntervalSince1970: 1_700_000_100)
+        let owner = "ui-test-ask-memory"
+        do {
+            _ = try await store.confirmCommitment(
+                CommitmentConfirmation(
+                    commitmentID: Self.askMemoryCommitmentID,
+                    sourceID: Self.askMemorySourceID,
+                    eventID: Self.askMemoryEventID,
+                    title: "Prepare the rollout",
+                    assignee: .person(canonicalPersonID),
+                    origin: .generatedActionItem(Self.seedActionItemID)),
+                at: timestamp)
+            _ = try await store.admitMeetingMemoryGraphMaintenance(at: timestamp)
+            guard let job = try await store.claimMeetingMemoryGraphMaintenance(
+                owner: owner,
+                leaseDuration: 120,
+                at: timestamp)
+            else {
+                assertionFailure("Could not claim Ask memory projection")
+                return
+            }
+            let result = try await ProjectMeetingMemoryGraph(
+                store: store,
+                now: { timestamp }).all(
+                job: job,
+                owner: owner)
+            guard !result.pausedByPolicy else {
+                assertionFailure("Ask memory projection unexpectedly paused")
+                return
+            }
+            _ = try await store.completeMeetingMemoryGraphMaintenance(
+                job.id,
+                owner: owner,
+                at: timestamp)
+        } catch {
+            assertionFailure("Could not seed Ask memory: \(error)")
+        }
+    }
+
     private func seedNewRadarCommitment(
         personID: PersonID,
         now: Date
@@ -480,6 +535,12 @@ extension AppServices {
         uuidString: "B5E00000-0000-4000-8000-000000000003")!
     private static let seedFailedSkillProposalID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000004")!
+    private static let askMemoryCommitmentID = CommitmentID(rawValue: UUID(
+        uuidString: "B5D10000-0000-4000-8000-000000000005")!)
+    private static let askMemorySourceID = CommitmentSourceID(rawValue: UUID(
+        uuidString: "B5D20000-0000-4000-8000-000000000005")!)
+    private static let askMemoryEventID = CommitmentEventID(rawValue: UUID(
+        uuidString: "B5D30000-0000-4000-8000-000000000008")!)
 
     private static func radarCommitmentID(_ ordinal: Int) -> CommitmentID {
         CommitmentID(rawValue: UUID(uuidString: String(

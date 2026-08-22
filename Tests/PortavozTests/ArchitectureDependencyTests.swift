@@ -2502,7 +2502,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(storage.contains("projectionInconsistent"))
         XCTAssertTrue(application.contains("protocol PersonCommitmentFactReading"))
         XCTAssertTrue(application.contains("struct LoadPersonCommitments"))
-        XCTAssertFalse(askServices.contains("LoadPersonCommitments"))
+        XCTAssertTrue(askServices.contains("LoadPersonCommitments"))
         XCTAssertTrue(decisions.contains("## D281"))
     }
 
@@ -2613,12 +2613,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,544 cases "
-                + "(15 environment-gated) + 95"))
+            "package inventory contains 2,550 cases "
+                + "(15 environment-gated) + 96"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
-            "ordinary Ask, command palette, CLI, MCP, and meeting briefs "
+            "ordinary free-form Ask, command palette, CLI, MCP, and meeting briefs "
                 + "remain transcript-only"))
         XCTAssertTrue(gaps.contains(
             "makes same-generation profile re-admission deterministic"))
@@ -2628,6 +2628,72 @@ final class ArchitectureDependencyTests: XCTestCase {
             "the other three D270 job adapters"))
         XCTAssertFalse(gaps.contains(
             "Finish the remaining exact query adapters"))
+    }
+
+    func testReleasedAskMemoryRequiresExactPersonSelection() throws {
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/AskMemoryModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/AskMemoryView.swift")
+        let askView = try Self.contents(
+            of: "Sources/portavoz-app/AskView.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let fixture = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+UITestFixtures.swift")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligence = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(model.contains("final class AskMemoryModel"))
+        XCTAssertTrue(model.contains("static let visiblePersonLimit = 20"))
+        XCTAssertTrue(model.contains(
+            "personRequestLimit = visiblePersonLimit + 1"))
+        XCTAssertTrue(model.contains(
+            "PersonCommitmentsQuery.maximumItemLimit"))
+        XCTAssertTrue(model.contains("AskGraphFactSynthesisPage(page: page)"))
+        XCTAssertTrue(model.contains("fact.kind == .personCommittedTo"))
+        XCTAssertTrue(model.contains("subjectID == expectedPersonID"))
+        XCTAssertTrue(model.contains("objectID == id"))
+        XCTAssertFalse(model.contains("import StorageKit"))
+        XCTAssertFalse(model.contains("import IntelligenceKit"))
+
+        XCTAssertTrue(composition.contains(
+            "memoryPeople = LoadAutomationEntities(catalog: store)"))
+        XCTAssertTrue(composition.contains(
+            "memoryCommitments = LoadPersonCommitments(repository: store)"))
+        XCTAssertTrue(composition.contains(
+            "PersonCommitmentsQuery("))
+        XCTAssertTrue(askView.contains("ask-surface-person-commitments"))
+        XCTAssertTrue(view.contains("ask-memory-person-search"))
+        XCTAssertTrue(view.contains("ask-memory-load"))
+        XCTAssertTrue(view.contains("ask-memory-evidence-"))
+        XCTAssertTrue(view.contains("onOpenCitation(citation)"))
+        XCTAssertFalse(view.contains("answerBundle("))
+        XCTAssertFalse(view.contains("AskGraphFactFilterRequest"))
+
+        XCTAssertTrue(fixture.contains("-seed-ask-memory"))
+        XCTAssertTrue(fixture.contains("ProjectMeetingMemoryGraph("))
+        XCTAssertTrue(uiTest.contains(
+            "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence"))
+        XCTAssertTrue(uiTest.contains("ask-memory-load"))
+        XCTAssertTrue(uiTest.contains("player-current-time"))
+
+        XCTAssertTrue(architecture.contains(
+            "explicit confirmed-memory surface"))
+        XCTAssertTrue(intelligence.contains(
+            "## Released exact-person commitment explorer (D361)"))
+        XCTAssertTrue(quality.contains(
+            "### First released exact graph query surface (D361)"))
+        XCTAssertTrue(gaps.contains("the other five dedicated job surfaces"))
+        XCTAssertTrue(gaps.contains(
+            "physical VoiceOver/Sequoia/Tahoe validation remain absent"))
+        XCTAssertTrue(decisions.contains("## D361"))
     }
 
     func testAskGraphFiltersResolveExactIdentitiesBeforeBoundedQueries() throws {

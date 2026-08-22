@@ -579,6 +579,62 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedAskMemory: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        app.buttons["library-ask-button"].click()
+
+        let memorySurface = app.descendants(matching: .any)[
+            "ask-surface-person-commitments"]
+        XCTAssertTrue(memorySurface.waitForExistence(timeout: 10))
+        memorySurface.click()
+
+        let title = app.descendants(matching: .any)["ask-memory-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertEqual(
+            renderedText(of: title),
+            UITestLocale.environmentLocale == "es"
+                ? "Compromisos actuales"
+                : "Current commitments")
+
+        let person = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-memory-person-'"))
+            .firstMatch
+        XCTAssertTrue(person.waitForExistence(timeout: 10))
+        XCTAssertTrue(person.label.contains("Ana"))
+        person.click()
+
+        let selected = app.descendants(matching: .any)[
+            "ask-memory-selected-person"]
+        XCTAssertTrue(selected.waitForExistence(timeout: 5))
+        XCTAssertTrue(renderedText(of: selected).contains("Ana"))
+        app.buttons["ask-memory-load"].click()
+
+        let commitment = app.descendants(matching: .any)[
+            "ask-memory-commitment-B5D10000-0000-4000-8000-000000000005"]
+        XCTAssertTrue(commitment.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Prepare the rollout"].exists)
+        let evidence = app.buttons[
+            "ask-memory-evidence-B5D10000-0000-4000-8000-000000000005-0"]
+        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(evidence.label.contains("Test meeting · 00:03"))
+        attachScreenshot(of: app, named: "ask-confirmed-person-commitments")
+
+        evidence.click()
+        let currentTime = app.staticTexts["player-current-time"]
+        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 10)
+    }
+
+    @MainActor
     func testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()

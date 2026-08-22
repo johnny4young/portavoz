@@ -71,6 +71,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     ),
     "ask": (
         test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
+        test_id(
+            "LibraryUITests",
+            "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence",
+        ),
         test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
     ),
     "insights": (

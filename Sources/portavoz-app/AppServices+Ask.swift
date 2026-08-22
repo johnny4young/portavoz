@@ -6,9 +6,13 @@ import StorageKit
 @MainActor
 final class AppAskModelClient: AskModelClient {
     private let useCase: AskMeetings
+    private let memoryPeople: LoadAutomationEntities
+    private let memoryCommitments: LoadPersonCommitments
 
-    init(useCase: AskMeetings) {
+    init(useCase: AskMeetings, store: MeetingStore) {
         self.useCase = useCase
+        memoryPeople = LoadAutomationEntities(catalog: store)
+        memoryCommitments = LoadPersonCommitments(repository: store)
     }
 
     func searchAskMeetings(
@@ -37,6 +41,26 @@ final class AppAskModelClient: AskModelClient {
     }
 }
 
+extension AppAskModelClient: AskMemoryModelClient {
+    func searchAskMemoryPeople(
+        _ query: String,
+        limit: Int
+    ) async throws -> [Person] {
+        try await memoryPeople.people(AutomationEntityLookup(
+            matching: query,
+            limit: limit))
+    }
+
+    func loadAskMemoryPersonCommitments(
+        personID: PersonID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult {
+        try await memoryCommitments.execute(PersonCommitmentsQuery(
+            personID: personID,
+            itemLimit: limit))
+    }
+}
+
 struct AppSemanticSearchComposition {
     let coordinator: SemanticCorpusIndexingCoordinator
     let ask: AskMeetings
@@ -47,7 +71,7 @@ struct AppSemanticSearchComposition {
 
 extension AppServices {
     func makeAskModel() -> AskModel {
-        AskModel(client: askClient)
+        AskModel(client: askClient, memoryClient: askClient)
     }
 
     static func makeSemanticSearchComposition(

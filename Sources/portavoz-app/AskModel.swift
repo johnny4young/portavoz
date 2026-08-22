@@ -40,6 +40,11 @@ extension AskModelClient {
 @MainActor
 @Observable
 final class AskModel {
+    enum Surface: Equatable {
+        case conversation
+        case personCommitments
+    }
+
     enum PendingPhase: Equatable {
         case findingEvidence
         case refiningEvidence
@@ -66,6 +71,7 @@ final class AskModel {
     }
 
     struct State {
+        fileprivate(set) var surface = Surface.conversation
         fileprivate(set) var draft = ""
         fileprivate(set) var exchanges: [Exchange] = []
         fileprivate(set) var isAsking = false
@@ -75,13 +81,34 @@ final class AskModel {
     }
 
     private(set) var state = State()
+    let memory: AskMemoryModel?
 
     private let client: any AskModelClient
     private var answerTask: Task<Void, Never>?
     private var generation = 0
 
-    init(client: any AskModelClient) {
+    init(
+        client: any AskModelClient,
+        memoryClient: (any AskMemoryModelClient)? = nil,
+        memorySearchDelay: Duration = .milliseconds(200)
+    ) {
         self.client = client
+        memory = memoryClient.map {
+            AskMemoryModel(client: $0, searchDelay: memorySearchDelay)
+        }
+    }
+
+    func selectSurface(_ surface: Surface) {
+        guard surface != state.surface else { return }
+        switch surface {
+        case .conversation:
+            memory?.cancelPendingWork()
+        case .personCommitments:
+            guard let memory else { return }
+            cancelPendingAnswer()
+            memory.activate()
+        }
+        state.surface = surface
     }
 
     func updateDraft(_ value: String) {
@@ -109,6 +136,11 @@ final class AskModel {
         answerTask?.cancel()
         answerTask = nil
         clearPendingState()
+    }
+
+    func cancelAllWork() {
+        cancelPendingAnswer()
+        memory?.cancelPendingWork()
     }
 
     private func answer(_ question: String, generation requestGeneration: Int) async {

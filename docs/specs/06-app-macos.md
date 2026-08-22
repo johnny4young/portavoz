@@ -1312,7 +1312,10 @@ folder panel.
 `AppServices` composes one `AskMeetings` workflow and exposes it through one
 main-actor app client. Each `ContentView` owns a per-window `AskModel`; the
 resident command palette owns one process-scoped `CommandPaletteModel`. The
-models own answer/search tasks and generations, and the palette resets both on
+app client also composes the protected canonical-person catalogue and
+`LoadPersonCommitments`. Each full Ask model may therefore own one subordinate
+`AskMemoryModel` without giving SwiftUI a store or graph adapter. The models
+own answer/search tasks and generations, and the palette resets both on
 close/reopen. Full Ask additionally owns the pending question, lexical/fused
 citations, and distinct finding/refinement/generation presentation phases.
 Every progressive update crosses the same request-generation fence; cancel or
@@ -1328,6 +1331,18 @@ meeting-scoped seek request before opening Meeting Detail. The destination
 consumes it after playback is ready; if that meeting is already open, its
 detail observes the identity-bearing request directly instead of depending on
 a no-op route assignment to reconstruct the view (D100).
+
+D361 adds a segmented **By person** surface only to the full Ask window. Its
+per-window owner requests 21 canonical people, displays 20 plus overflow, and
+accepts only an exact currently displayed `PersonID`. It loads at most 100
+current commitment facts, validates every typed relationship and exact source,
+and routes evidence through the existing meeting seek. Person search and graph
+loading keep independent tasks and generation fences; switching surfaces or
+closing the window cancels hidden work. Typed abstention, malformed evidence,
+and an operational read failure remain separate states with explicit retry.
+The existing free-form Ask, command palette, CLI, MCP, and meeting briefs do
+not inherit this query, and no Foundation Models capability is required on
+Sequoia or Tahoe.
 
 The hidden Ask resource mode installs one observer only around its disposable
 `AskMeetings.local` call (D193). `AskPipelineRunProbe` accepts exactly one

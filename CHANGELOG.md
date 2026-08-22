@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 21, 2026
 
+- **🧠 Confirmed commitments answer without guessing** — Choose one exact confirmed person in Ask and review their current source-backed commitments, even without Apple Intelligence, with every result linked to the meeting moment that proves it.
 - **🧭 Skill receipts reopen their source** — Review a verified non-failed run in its exact meeting or commitment without running it again, even while Skills are paused; calendar receipts stay honestly in the menu bar.
 - **🛡️ Unreadable voice data stays protected** — Portavoz no longer replaces encrypted voice identities when their key or file cannot be opened, and Settings keeps an explicit retry or reset available without claiming anything changed.
 

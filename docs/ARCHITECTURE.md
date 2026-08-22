@@ -731,6 +731,18 @@ clipboard access, panel lifecycle, route selection, and exact evidence seeking.
 The CLI command and local MCP tool enter the same workflow before formatting
 their terminal or protocol responses.
 
+The full Ask window additionally owns one explicit confirmed-memory surface
+that is deliberately separate from free-form questions. Its per-window
+`AskMemoryModel` searches the existing protected canonical-person catalog in
+SQLite with a 21-row request, shows at most 20 exact choices plus overflow
+disclosure, and requires one selected `PersonID`. That identity enters
+`LoadPersonCommitments` with the existing 100-fact bound. Presentation validates
+the typed active person-to-commitment relationship and complete exact evidence
+before rendering, preserves page/omission disclosure, and reuses the same
+meeting-and-timestamp citation route. Search and fact generations cancel and
+reject stale work independently. No question text, alias guess, model, graph
+row, or transcript co-occurrence can choose the person.
+
 The CLI has one process-wide platform composition and one database composition
 surface. Meeting list, detail, search, open-item, Ask, and MCP reads enter
 `QueryMeetingLibrary` or `AskMeetings`; the application values expose no GRDB
@@ -1968,10 +1980,14 @@ ApplicationKit use cases and returns their typed facts or abstention unchanged.
 distinct fields; graph unavailability cannot erase transcript evidence, and
 graph facts cannot be flattened into transcript rank.
 
-This is a composition seam, not answer behavior. Existing Ask search,
-progressive transcript evidence, answer generation, UI, CLI, MCP, and meeting
-brief consumers do not request the bundle. The answer provider still receives
-only transcript citations.
+The evidence bundle remains a composition seam, not implicit answer behavior.
+Existing free-form Ask search, progressive transcript evidence, answer
+generation, command palette, CLI, MCP, and meeting-brief consumers do not
+request it. The answer provider still receives only transcript citations. A
+separate explicit UI consumer covers one exact job: current commitments for
+one user-selected canonical person. It calls the existing typed use case
+directly and renders its source-backed facts; it does not derive a graph query
+from question prose or silently opt the answer provider into the bundle.
 
 The graph lane also accepts an optional **caller-extracted exact filter**. A
 narrow ApplicationKit resolver normalizes a person or topic alias through the
@@ -1994,10 +2010,11 @@ Its meeting and segment chronology is loaded in one batch, and an unknown
 occurrence fails closed instead of hiding a potentially earlier source.
 Hydration rechecks the same exact filter inside the SQLite snapshot, while an
 incompatible fixed fact status or a complete constrained miss returns typed
-`no-matching-facts`. This adds no natural-language parser and current UI, CLI,
-MCP, command-palette, and answer consumers still do not request the bundle.
-Fact-aware synthesis, cross-lane selection, and graph telemetry remain later
-gates.
+`no-matching-facts`. This adds no natural-language parser, and UI, CLI, MCP,
+command-palette, and answer consumers still do not request the bundle. The
+separate explicit person selector already carries an exact `PersonID`, so it does
+not use this alias-filter boundary. Fact-aware free-form synthesis and graph
+telemetry remain later gates.
 
 Ask synthesis now has an explicit **two-lane evidence contract**. ApplicationKit
 converts each source-backed graph fact into a typed relationship plus the exact
@@ -2025,9 +2042,11 @@ popularity. A fact carries its exact source passages, page completeness is
 disclosed in the prompt, and generated claims may cite only transcript/source-
 segment markers, never a fact marker alone. The answer result returns the
 unchanged evidence bundle when the opt-in provider is absent or ordinary
-generation fails; cancellation still cancels the operation. No presentation,
-CLI, MCP, command-palette, or meeting-brief surface invokes the graph-aware
-boundary yet.
+generation fails; cancellation still cancels the operation. No CLI, MCP,
+command-palette, meeting-brief, or free-form answer surface invokes the
+graph-aware bundle. The explicit person-commitment explorer instead shows the
+validated typed facts directly, including their exact source navigation, so it
+works without Foundation Models on Sequoia as well as Tahoe.
 
 Before the opt-in provider runs, ApplicationKit applies a deterministic
 **post-RRF fact-aware selector**. Transcript rank is reserved first as the
@@ -2047,9 +2066,10 @@ context both carry candidate, selected, additional-source, and selection-
 omission counts. Both layers validate those counts, the facts-to-transcript
 ratio, and exact source overlap before model execution. Selection makes only
 the provider input smaller: `AskEvidenceBundleAnswer` still returns the full
-unselected transcript and graph evidence to its caller. Released graph-aware
-presentation, natural-language query extraction, private field evidence, and
-graph telemetry remain separate gates.
+unselected transcript and graph evidence to its caller. The released explorer
+covers only exact-person/current-commitments presentation; the other five graph
+jobs, natural-language query extraction, free-form graph-aware answers, private
+field evidence, and graph telemetry remain separate gates.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported

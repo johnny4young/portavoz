@@ -13,22 +13,66 @@ struct AskView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if model.state.exchanges.isEmpty && !model.state.isAsking {
-                ContentUnavailableView(
-                    "Ask your meetings",
-                    systemImage: "bubble.left.and.text.bubble.right",
-                    // One-line UI copy.
-                    // swiftlint:disable:next line_length
-                    description: Text("Questions like \"what did we agree about the budget?\" — answered on your Mac, citing meeting and moment.")
-                )
-            } else {
-                exchangeList
+            if model.memory != nil {
+                surfacePicker
+                Divider()
             }
-            inputBar
+            switch model.state.surface {
+            case .conversation:
+                conversation
+            case .personCommitments:
+                if let memory = model.memory {
+                    AskMemoryView(
+                        model: memory,
+                        onOpenCitation: onOpenCitation)
+                }
+            }
         }
         .navigationTitle("Ask your meetings")
-        .onAppear { questionFocused = true }
-        .onDisappear { model.cancelPendingAnswer() }
+        .onAppear {
+            questionFocused = model.state.surface == .conversation
+            if model.state.surface == .personCommitments {
+                model.memory?.activate()
+            }
+        }
+        .onChange(of: model.state.surface) { _, surface in
+            questionFocused = surface == .conversation
+        }
+        .onDisappear { model.cancelAllWork() }
+    }
+
+    @ViewBuilder
+    private var conversation: some View {
+        if model.state.exchanges.isEmpty && !model.state.isAsking {
+            ContentUnavailableView(
+                "Ask your meetings",
+                systemImage: "bubble.left.and.text.bubble.right",
+                // One-line UI copy.
+                // swiftlint:disable:next line_length
+                description: Text("Questions like \"what did we agree about the budget?\" — answered on your Mac, citing meeting and moment."))
+        } else {
+            exchangeList
+        }
+        inputBar
+    }
+
+    private var surfacePicker: some View {
+        Picker(
+            "Ask view",
+            selection: Binding(
+                get: { model.state.surface },
+                set: { model.selectSurface($0) })) {
+            Text("Ask")
+                .tag(AskModel.Surface.conversation)
+                .accessibilityIdentifier("ask-surface-conversation")
+            Text("By person")
+                .tag(AskModel.Surface.personCommitments)
+                .accessibilityIdentifier("ask-surface-person-commitments")
+        }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 360)
+        .padding(10)
+        .accessibilityIdentifier("ask-surface")
     }
 
     private var exchangeList: some View {

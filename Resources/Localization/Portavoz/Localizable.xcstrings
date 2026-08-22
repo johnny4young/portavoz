@@ -13630,6 +13630,256 @@
           }
         }
       }
+    },
+    "Ask view": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista de preguntas"
+          }
+        }
+      }
+    },
+    "By person": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por persona"
+          }
+        }
+      }
+    },
+    "Current commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compromisos actuales"
+          }
+        }
+      }
+    },
+    "Choose one confirmed person. Portavoz uses the exact identity you select and never guesses from question text.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una persona confirmada. Portavoz usa la identidad exacta que selecciones y nunca la deduce del texto de una pregunta."
+          }
+        }
+      }
+    },
+    "Find a confirmed person…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar una persona confirmada…"
+          }
+        }
+      }
+    },
+    "Searching confirmed people…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando personas confirmadas…"
+          }
+        }
+      }
+    },
+    "No confirmed people match this search.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna persona confirmada coincide con esta búsqueda."
+          }
+        }
+      }
+    },
+    "Could not search confirmed people.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron buscar personas confirmadas."
+          }
+        }
+      }
+    },
+    "More people match. Refine the name to choose the right one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay más personas coincidentes. Precisa el nombre para elegir la correcta."
+          }
+        }
+      }
+    },
+    "Change": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar"
+          }
+        }
+      }
+    },
+    "Show current commitments": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar compromisos actuales"
+          }
+        }
+      }
+    },
+    "Confirmed for %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmado para %@"
+          }
+        }
+      }
+    },
+    "Evidence": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidencia"
+          }
+        }
+      }
+    },
+    "More than 100 current commitments exist; this view shows the newest verified results.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay más de 100 compromisos actuales; esta vista muestra los resultados verificados más recientes."
+          }
+        }
+      }
+    },
+    "Some commitments with outdated evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunos compromisos con evidencia desactualizada."
+          }
+        }
+      }
+    },
+    "Some commitments without available evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunos compromisos sin evidencia disponible."
+          }
+        }
+      }
+    },
+    "Portavoz could not verify the returned evidence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo verificar la evidencia devuelta."
+          }
+        }
+      }
+    },
+    "Could not load confirmed memory.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cargar la memoria confirmada."
+          }
+        }
+      }
+    },
+    "No current confirmed commitments for this person.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay compromisos confirmados actuales para esta persona."
+          }
+        }
+      }
+    },
+    "Confirmed memory is still preparing. Try again shortly.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La memoria confirmada aún se está preparando. Inténtalo de nuevo en breve."
+          }
+        }
+      }
+    },
+    "This confirmed person is no longer available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta persona confirmada ya no está disponible."
+          }
+        }
+      }
+    },
+    "The matching commitments need current transcript evidence before Portavoz can show them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los compromisos coincidentes necesitan evidencia actual de la transcripción antes de que Portavoz pueda mostrarlos."
+          }
+        }
+      }
+    },
+    "Confirmed memory could not verify a complete projection yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La memoria confirmada aún no pudo verificar una proyección completa."
+          }
+        }
+      }
+    },
+    "The result is too large to verify safely.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El resultado es demasiado grande para verificarlo de forma segura."
+          }
+        }
+      }
+    },
+    "The memory request was not specific enough to answer safely.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La solicitud de memoria no es lo bastante específica para responder de forma segura."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

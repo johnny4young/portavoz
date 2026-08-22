@@ -315,7 +315,7 @@ final class AppServices {
             usesTemporaryStore: usesTemporaryStore,
             voiceGallery: voiceGallery,
             voiceprintStore: voiceprintStore)
-        askClient = AppAskModelClient(useCase: askUseCase)
+        askClient = AppAskModelClient(useCase: askUseCase, store: store)
         recapSkillDelivery = Self.makeRecapSkillDelivery(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         emailRecapDraftDelivery = Self.makeEmailRecapDraftDelivery(usesTemporaryStore: usesTemporaryStore)
         upcomingEventSource = AppUpcomingEventSource(arguments: arguments, usesTemporaryStore: usesTemporaryStore)

@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,544 cases (15 environment-gated) + 95
+Status: the package inventory contains 2,550 cases (15 environment-gated) + 96
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 93
+Meeting Detail tests. The English and Spanish release gates each cover all 96
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -1519,8 +1519,31 @@ does not change, all authority-keyed edge sets reproduce exactly in both
 directions, the first partial reset clears later decision-topic edges, and a
 failed row cannot bypass its attempt ceiling. These results select SQLite and
 reject a specialized graph-engine migration; they do not supply private owner-
-reviewed field evidence, released graph-aware Ask UX, sync/export, CLI/MCP
-adoption, or product telemetry.
+reviewed field evidence, the other five released query surfaces, free-form
+graph-aware Ask, sync/export, CLI/MCP adoption, or product telemetry.
+
+### First released exact graph query surface (D361)
+
+Five presentation-model cases prove that canonical-person search rejects a
+stale generation, requests 21 rows, publishes at most 20 plus overflow, fails
+closed if its client exceeds that bound, and selects only an exact current
+candidate; that a selected person maps one
+validated active commitment and its primary citation without losing typed page
+disclosure; that a wrong-person fact fails closed while `projectionNotReady`
+remains a typed abstention; and that a pending local read cannot retain a
+closed per-window model. One architecture ratchet pins
+the protected ApplicationKit composition, exact `PersonID`, maximum 100-fact
+read, synthesis-page validation, absence of a model/bundle/filter dependency,
+stable accessibility identifiers, disposable real graph fixture, honest docs,
+and remaining product/field gaps.
+
+One real-app XCUITest per locale launches a temporary store, confirms an exact
+Ana commitment through the real authority, projects the disposable graph,
+opens full Ask, selects **By person**, loads the exact typed fact, and follows
+its exact evidence to 00:03. The journey does not touch the user library or
+invoke Foundation Models. It proves the released Sequoia/Tahoe-compatible code
+path and localization contract, not physical VoiceOver, clean-install
+Sequoia, separate-hardware Tahoe, private-corpus quality, or graph telemetry.
 
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -1533,7 +1556,7 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 95 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 96 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select bilingual evidence; the

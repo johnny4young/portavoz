@@ -9,7 +9,7 @@ public enum AutomationEntityLookupError: Error, Equatable, Sendable {
     case conflictingSelectors
 }
 
-/// One bounded query shape shared by the three native App Entity types.
+/// One bounded query shape shared by protected local entity-catalog consumers.
 /// `nil` identifiers means a suggestion or text-search request; an empty
 /// identifier list is an exact request for no values.
 public struct AutomationEntityLookup<ID: Hashable & Sendable>: Sendable {
@@ -77,8 +77,8 @@ public protocol AutomationEntityCatalogReading: Sendable {
 
 extension MeetingStore: AutomationEntityCatalogReading {}
 
-/// Application-owned, read-only boundary for Shortcuts/Siri entity queries.
-/// It never opens transcript, audio, summary, or evidence material.
+/// Application-owned, read-only boundary for native automation and explicit
+/// local selectors. It never opens transcript, audio, summary, or evidence.
 public struct LoadAutomationEntities: Sendable {
     private let catalog: any AutomationEntityCatalogReading
 

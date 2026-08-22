@@ -13096,3 +13096,41 @@ plus terminal-failure exclusion; the always-on scale invariant now resets
 alternate → canonical and compares all
 authority-keyed edge sets, including decision-topic aboutness. Released Ask and
 field-evidence limits remain separate.
+
+## D361 — Release one exact graph query before natural-language inference (Aug 2026)
+
+**Context:** all six Meeting Memory Graph jobs crossed public Core, Storage,
+projection, and ApplicationKit boundaries, but no released query surface used
+them. Free-form extraction would have needed to guess a job and possibly a
+person alias before the user could verify identity. It would also have coupled
+the first graph result to model availability even though the exact typed facts
+and source evidence already existed. Foundation Models is unavailable on
+Sequoia and may be unavailable by policy or setup on Tahoe.
+
+**Decision:** add a separate **By person** surface to the full Ask window rather
+than changing free-form Ask. Search the existing protected canonical-person
+SQLite catalogue with a 21-row request, display at most 20 rows plus overflow,
+and accept only one exact currently displayed `PersonID` selected by the user.
+Do not parse question text, infer aliases, merge identities, or fall back to a
+nearby person.
+
+Pass that identity directly to `LoadPersonCommitments` with its maximum
+100-fact bound. Before presentation, validate the complete page through
+`AskGraphFactSynthesisPage` and require every row to be an active
+person-to-commitment relationship whose subject is the selection and whose
+object matches its commitment ID. Render the typed fact directly with
+truncation and omission disclosure; every source action reuses the exact
+meeting-and-timestamp route. Keep canonical-person and commitment tasks under
+independent per-window cancellation and generation fences. A temporary-store
+XCUITest fixture may project one real disposable confirmed event because the
+background projector is deliberately disabled for temporary stores.
+
+**Consequences:** one of six graph jobs now has a released, source-backed,
+identity-safe UI without Foundation Models on Sequoia or Tahoe. The graph-aware
+answer bundle, exact alias-filter boundary, free-form Ask, command palette,
+CLI, MCP, and meeting briefs remain unchanged and transcript-only. The other
+five dedicated job surfaces, natural-language extraction, private evidence,
+sync/export, telemetry, physical VoiceOver, clean-install Sequoia, and
+separate-hardware Tahoe validation remain open. This decision does not create
+new graph authority, write user data, select another graph engine, or claim
+private-corpus answer quality.
