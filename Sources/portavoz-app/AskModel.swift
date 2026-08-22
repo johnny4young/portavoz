@@ -43,6 +43,7 @@ final class AskModel {
     enum Surface: Equatable {
         case conversation
         case personCommitments
+        case topicDecisions
     }
 
     enum PendingPhase: Equatable {
@@ -82,6 +83,7 @@ final class AskModel {
 
     private(set) var state = State()
     let memory: AskMemoryModel?
+    let topicMemory: AskTopicMemoryModel?
 
     private let client: any AskModelClient
     private var answerTask: Task<Void, Never>?
@@ -96,6 +98,9 @@ final class AskModel {
         memory = memoryClient.map {
             AskMemoryModel(client: $0, searchDelay: memorySearchDelay)
         }
+        topicMemory = memoryClient.map {
+            AskTopicMemoryModel(client: $0, searchDelay: memorySearchDelay)
+        }
     }
 
     func selectSurface(_ surface: Surface) {
@@ -103,10 +108,17 @@ final class AskModel {
         switch surface {
         case .conversation:
             memory?.cancelPendingWork()
+            topicMemory?.cancelPendingWork()
         case .personCommitments:
             guard let memory else { return }
             cancelPendingAnswer()
+            topicMemory?.cancelPendingWork()
             memory.activate()
+        case .topicDecisions:
+            guard let topicMemory else { return }
+            cancelPendingAnswer()
+            memory?.cancelPendingWork()
+            topicMemory.activate()
         }
         state.surface = surface
     }
@@ -141,6 +153,7 @@ final class AskModel {
     func cancelAllWork() {
         cancelPendingAnswer()
         memory?.cancelPendingWork()
+        topicMemory?.cancelPendingWork()
     }
 
     private func answer(_ question: String, generation requestGeneration: Int) async {

@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,550 cases (15 environment-gated) + 96
+Status: the package inventory contains 2,559 cases (15 environment-gated) + 97
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 96
+Meeting Detail tests. The English and Spanish release gates each cover all 97
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -1519,7 +1519,7 @@ does not change, all authority-keyed edge sets reproduce exactly in both
 directions, the first partial reset clears later decision-topic edges, and a
 failed row cannot bypass its attempt ceiling. These results select SQLite and
 reject a specialized graph-engine migration; they do not supply private owner-
-reviewed field evidence, the other five released query surfaces, free-form
+reviewed field evidence, the other four released query surfaces, free-form
 graph-aware Ask, sync/export, CLI/MCP adoption, or product telemetry.
 
 ### First released exact graph query surface (D361)
@@ -1545,6 +1545,28 @@ invoke Foundation Models. It proves the released Sequoia/Tahoe-compatible code
 path and localization contract, not physical VoiceOver, clean-install
 Sequoia, separate-hardware Tahoe, private-corpus quality, or graph telemetry.
 
+### Second released exact graph query surface (D362)
+
+Three catalog cases prove normalized/bounded request validation, exact
+ApplicationKit delegation, literal wildcard escaping, stable limiting, and
+merged-alias resolution to one live root without whole-catalog Swift
+hydration. Five presentation-model cases prove 21-to-20 overflow, stale-search
+fencing, oversized-response fail-closure, exact topic selection, maximum
+100-row decision serving, synthesis and typed-relationship validation,
+wrong-topic/unready handling, and non-retention of a closed model. A dedicated
+architecture ratchet pins the catalog/application/storage boundary, exact
+`TopicID`, absence of model inference, stable accessibility identifiers, real
+confirmation fixture, honest docs, and remaining product/field gaps.
+
+One real-app XCUITest per locale launches a temporary store, saves the fixed
+summary observation, confirms it about the exact `model rollout` topic through
+`ConfirmDecisionAboutTopic`, projects the disposable graph, opens **By topic**,
+loads the current decision, and follows its exact evidence to 00:03. It uses no
+user library, network, or Foundation Models. This proves the executable
+localized Sequoia/Tahoe-compatible code path, not physical VoiceOver,
+clean-install Sequoia, separate-hardware Tahoe, private-corpus quality, or
+graph telemetry.
+
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift test` — xcode-select points to CommandLineTools). XCTest, not Swift
@@ -1556,7 +1578,7 @@ Disposable launches isolate auxiliary sensitive state as well as SQLite:
 Settings and Meeting Detail never inspect the host participant-voice gallery
 or its Keychain key while `-use-temp-store` is active.
 
-`scripts/ui_test_scope.py` is the executable PR-impact policy for all 96 UI
+`scripts/ui_test_scope.py` is the executable PR-impact policy for all 97 UI
 tests. Each test belongs to a feature scope. Known app and application files
 select only the scopes they can affect; a changed UI-test file selects its own
 class; localization and shared-harness changes select bilingual evidence; the

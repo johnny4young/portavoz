@@ -635,6 +635,65 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedAskTopicMemory: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        app.buttons["library-ask-button"].click()
+
+        let topicSurface = app.descendants(matching: .any)[
+            "ask-surface-topic-decisions"]
+        XCTAssertTrue(topicSurface.waitForExistence(timeout: 10))
+        topicSurface.click()
+
+        let title = app.descendants(matching: .any)["ask-topic-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertEqual(
+            renderedText(of: title),
+            UITestLocale.environmentLocale == "es"
+                ? "Decisiones actuales"
+                : "Current decisions")
+
+        let topic = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
+            .firstMatch
+        XCTAssertTrue(topic.waitForExistence(timeout: 10))
+        XCTAssertTrue(topic.label.contains("model rollout"))
+        topic.click()
+
+        let selected = app.descendants(matching: .any)["ask-topic-selected"]
+        XCTAssertTrue(selected.waitForExistence(timeout: 5))
+        XCTAssertTrue(renderedText(of: selected).contains("model rollout"))
+        app.buttons["ask-topic-load"].click()
+
+        let decision = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-topic-decision-'"))
+            .firstMatch
+        XCTAssertTrue(decision.waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            renderedText(of: decision).contains(
+                "El rollout del modelo queda para el viernes."))
+        let evidence = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-topic-evidence-'"))
+            .firstMatch
+        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(evidence.label.contains("Test meeting · 00:03"))
+        attachScreenshot(of: app, named: "ask-confirmed-topic-decisions")
+
+        evidence.click()
+        let currentTime = app.staticTexts["player-current-time"]
+        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
+        let seeked = expectation(
+            for: NSPredicate(format: "value == '0:03'"),
+            evaluatedWith: currentTime)
+        wait(for: [seeked], timeout: 10)
+    }
+
+    @MainActor
     func testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchPortavoz()

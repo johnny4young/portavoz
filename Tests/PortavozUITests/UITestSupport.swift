@@ -49,6 +49,7 @@ extension XCUIApplication {
         seedCommitmentInbox: Bool = false,
         seedCommitmentRadar: Bool = false,
         seedAskMemory: Bool = false,
+        seedAskTopicMemory: Bool = false,
         simulateSequoiaCapabilities: Bool = false,
         simulateRecordingStartFailure: Bool = false,
         simulateSystemCaptureStall: Bool = false,
@@ -99,6 +100,7 @@ extension XCUIApplication {
         if seedCommitmentInbox { app.launchArguments.append("-seed-commitment-inbox") }
         if seedCommitmentRadar { app.launchArguments.append("-seed-commitment-radar") }
         if seedAskMemory { app.launchArguments.append("-seed-ask-memory") }
+        if seedAskTopicMemory { app.launchArguments.append("-seed-ask-topic-memory") }
         if simulateSequoiaCapabilities {
             app.launchArguments.append("-simulate-sequoia-capabilities")
         }

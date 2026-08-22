@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,550 cases "
-                + "(15 environment-gated) + 96"))
+            "package inventory contains 2,559 cases "
+                + "(15 environment-gated) + 97"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -2690,10 +2690,97 @@ final class ArchitectureDependencyTests: XCTestCase {
             "## Released exact-person commitment explorer (D361)"))
         XCTAssertTrue(quality.contains(
             "### First released exact graph query surface (D361)"))
-        XCTAssertTrue(gaps.contains("the other five dedicated job surfaces"))
+        XCTAssertTrue(gaps.contains("the other four dedicated job surfaces"))
         XCTAssertTrue(gaps.contains(
             "physical VoiceOver/Sequoia/Tahoe validation remain absent"))
         XCTAssertTrue(decisions.contains("## D361"))
+    }
+
+    func testReleasedAskTopicMemoryRequiresExactTopicSelection() throws {
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/AskTopicMemoryModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/AskTopicMemoryView.swift")
+        let askView = try Self.contents(
+            of: "Sources/portavoz-app/AskView.swift")
+        let catalog = try Self.contents(
+            of: "Sources/ApplicationKit/LoadConfirmedTopicCatalog.swift")
+        let storage = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+ConfirmedTopicCatalog.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let fixture = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+UITestFixtures.swift")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligence = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let storageSpec = try Self.contents(
+            of: "docs/specs/05-storage.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(model.contains("final class AskTopicMemoryModel"))
+        XCTAssertTrue(model.contains("static let visibleTopicLimit = 20"))
+        XCTAssertTrue(model.contains(
+            "topicRequestLimit = visibleTopicLimit + 1"))
+        XCTAssertTrue(model.contains(
+            "DecisionHistoryQuery.maximumItemLimit"))
+        XCTAssertTrue(model.contains("AskGraphFactSynthesisPage(page: page)"))
+        XCTAssertTrue(model.contains("fact.kind == .decisionAboutTopic"))
+        XCTAssertTrue(model.contains("topicID == expectedTopic.id"))
+        XCTAssertTrue(model.contains("fact.status == .confirmed"))
+        XCTAssertFalse(model.contains("import StorageKit"))
+        XCTAssertFalse(model.contains("import IntelligenceKit"))
+
+        XCTAssertTrue(catalog.contains("maximumResultCount = 50"))
+        XCTAssertTrue(catalog.contains("maximumQueryCharacterCount = 120"))
+        XCTAssertTrue(catalog.contains("protocol ConfirmedTopicCatalogReading"))
+        XCTAssertTrue(storage.contains("WITH RECURSIVE"))
+        XCTAssertTrue(storage.contains(
+            "maximumConfirmedTopicCatalogQueryCharacterCount = 120"))
+        XCTAssertTrue(storage.contains("alias.normalizedAlias"))
+        XCTAssertTrue(storage.contains("mergedIntoTopicID IS NULL"))
+        XCTAssertTrue(storage.contains("LIMIT :limit"))
+        XCTAssertTrue(composition.contains(
+            "memoryTopics = LoadConfirmedTopicCatalog(catalog: store)"))
+        XCTAssertTrue(composition.contains(
+            "memoryDecisionHistory = LoadDecisionHistory(repository: store)"))
+        XCTAssertTrue(composition.contains("DecisionHistoryQuery("))
+
+        XCTAssertTrue(askView.contains("ask-surface-topic-decisions"))
+        XCTAssertTrue(view.contains("ask-topic-search"))
+        XCTAssertTrue(view.contains("ask-topic-load"))
+        XCTAssertTrue(view.contains("ask-topic-evidence-"))
+        XCTAssertTrue(view.contains("onOpenCitation(citation)"))
+        XCTAssertFalse(view.contains("answerBundle("))
+        XCTAssertFalse(view.contains("AskGraphFactFilterRequest"))
+
+        XCTAssertTrue(fixture.contains("-seed-ask-topic-memory"))
+        XCTAssertTrue(fixture.contains("ConfirmDecisionAboutTopic(store: store)"))
+        XCTAssertTrue(fixture.contains("ProjectMeetingMemoryGraph("))
+        XCTAssertTrue(uiTest.contains(
+            "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence"))
+        XCTAssertTrue(uiTest.contains("ask-topic-load"))
+        XCTAssertTrue(uiTest.contains("player-current-time"))
+
+        XCTAssertTrue(architecture.contains(
+            "exact confirmed-topic/current-\n"
+                + "decisions presentation"))
+        XCTAssertTrue(intelligence.contains(
+            "## Released exact-topic decision explorer (D362)"))
+        XCTAssertTrue(storageSpec.contains(
+            "## Bounded confirmed-topic catalog (D362)"))
+        XCTAssertTrue(appSpec.contains(
+            "## Exact decisions by topic in Ask (D362)"))
+        XCTAssertTrue(quality.contains(
+            "### Second released exact graph query surface (D362)"))
+        XCTAssertTrue(gaps.contains("the other four dedicated job surfaces"))
+        XCTAssertTrue(decisions.contains("## D362"))
     }
 
     func testAskGraphFiltersResolveExactIdentitiesBeforeBoundedQueries() throws {

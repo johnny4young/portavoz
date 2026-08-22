@@ -13134,3 +13134,45 @@ sync/export, telemetry, physical VoiceOver, clean-install Sequoia, and
 separate-hardware Tahoe validation remain open. This decision does not create
 new graph authority, write user data, select another graph engine, or claim
 private-corpus answer quality.
+
+## D362 — Release current decisions behind one exact topic selection (Aug 2026)
+
+**Context:** D361 proved the first identity-safe graph consumer through a
+canonical person selector, while the roadmap still prioritized topic/history
+before any free-form graph inference. `LoadDecisionHistory` already served
+current confirmed decisions for one exact topic family, but the only public
+topic lookup was exact-alias authority and the broad linkable-topic read would
+hydrate the full active catalogue. Reusing either directly for typeahead would
+mix mutation semantics with presentation or introduce an unbounded Swift read.
+Guessing a topic from question prose would recreate the ambiguity D361 avoided.
+
+**Decision:** add a read-only `LoadConfirmedTopicCatalog` ApplicationKit
+boundary with a 1...50 result bound and 120-character normalized-query bound.
+Storage searches active normalized aliases, escapes literal wildcard input, and
+uses one recursive SQLite CTE to resolve matched merged children to distinct
+live roots before stable ordering, limiting, and Swift hydration. Empty input
+returns only bounded live roots. Catalogue text remains discovery metadata and
+never authorizes a fact; full Ask accepts only one exact currently displayed
+`TopicID` selected by the user.
+
+Add **By topic** as a separate full-Ask surface. Pass that exact identity to
+`LoadDecisionHistory` with its existing 100-fact maximum. Before presentation,
+validate the complete page through `AskGraphFactSynthesisPage` and require every
+row to be a confirmed decision-about-topic relationship whose object and live
+label match the selection and whose primary evidence exists. Keep catalogue and
+decision tasks under independent per-window cancellation and generation fences;
+oversized, duplicate, merged, malformed, wrong-topic, or incomplete responses
+fail closed. Reuse the existing exact meeting-and-timestamp evidence route.
+
+**Consequences:** two of six graph jobs now have released source-backed,
+identity-safe SwiftUI consumers without Foundation Models on Sequoia or Tahoe.
+A deterministic temporary-store fixture confirms a real summary decision about
+a real topic, projects the disposable graph, and bilingual XCUITest follows its
+evidence. No schema, authority write from the explorer, FTS table, graph engine,
+model prompt, sync/export field, CLI, MCP, palette, brief, or free-form Ask
+behavior is added. The substring catalogue returns and hydrates only a bounded
+page, but SQLite may still scan active aliases for a leading-wildcard match;
+measure a materially larger topic catalogue before selecting FTS, prefix-only,
+or another index. The other four dedicated jobs, private evidence, telemetry,
+physical VoiceOver, clean-install Sequoia, and separate-hardware Tahoe remain
+open.

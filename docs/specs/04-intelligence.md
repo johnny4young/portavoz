@@ -1,6 +1,6 @@
 # Spec 04 — Intelligence (IntelligenceKit)
 
-Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (ApplicationKit durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence), D206 (injected semantic-index query port with exact control retained), D207–D217 (governed non-serving semantic shadows, exact-path evidence, and research-only baseline retention), D233 (correction-aware generation lineage and stale artifacts), D236 (commitment-candidate benchmark before continuity state), D245 (adapter-neutral cross-meeting link quality), D246 (bounded non-serving product observation), D247 (isolated product-path quality adapter), D248 (profile-bound non-serving similarity evidence), D249 (versioned scored evidence contract), D250 (deterministic non-serving similarity-policy replay), D251 (private anonymized calibration-pack boundary), D252 (isolated private product-path evidence collection), D253 (deterministic private policy replay), D254 (clean-head public/private profile matrix), D255 (explicit private calibration review gate), D270 (query contract before graph schema), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (disposable typed graph projection), D274 (authoritative memory timeline hydration), D275 (exact commitment-change evidence), D276 (explicit topic-scoped question continuity), D277 (explicit decision-to-commitment blocker continuity), D278 (source-backed commitment-blocker query), D279 (canonical blocker product conformance), D280 (authoritative first-discussion query and canonical conformance), D281 (exact source-backed person commitments), D282 (fail-closed alias resolution and canonical person-commitment conformance), D283 (independent exact graph-fact Ask lane), D284 (exact ambiguity-safe graph filters), D285 (typed source-backed graph-fact synthesis), D286 (bounded post-RRF fact-aware selection), D308–D314 (explicit decision-topic authority, complete graph adapters, user confirmation/retraction, relational scale verdict, and near-linear rebuild), D315 (content-free Ask answer judge), D330 (correction-aware semantic maintenance), D331 (explicit correction-aware Apuntador regeneration), D332 (explicit semantic asset preparation), D360 (same-generation graph-profile readmission), D361 (released exact-person commitment explorer).
+Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (ApplicationKit durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence), D206 (injected semantic-index query port with exact control retained), D207–D217 (governed non-serving semantic shadows, exact-path evidence, and research-only baseline retention), D233 (correction-aware generation lineage and stale artifacts), D236 (commitment-candidate benchmark before continuity state), D245 (adapter-neutral cross-meeting link quality), D246 (bounded non-serving product observation), D247 (isolated product-path quality adapter), D248 (profile-bound non-serving similarity evidence), D249 (versioned scored evidence contract), D250 (deterministic non-serving similarity-policy replay), D251 (private anonymized calibration-pack boundary), D252 (isolated private product-path evidence collection), D253 (deterministic private policy replay), D254 (clean-head public/private profile matrix), D255 (explicit private calibration review gate), D270 (query contract before graph schema), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (disposable typed graph projection), D274 (authoritative memory timeline hydration), D275 (exact commitment-change evidence), D276 (explicit topic-scoped question continuity), D277 (explicit decision-to-commitment blocker continuity), D278 (source-backed commitment-blocker query), D279 (canonical blocker product conformance), D280 (authoritative first-discussion query and canonical conformance), D281 (exact source-backed person commitments), D282 (fail-closed alias resolution and canonical person-commitment conformance), D283 (independent exact graph-fact Ask lane), D284 (exact ambiguity-safe graph filters), D285 (typed source-backed graph-fact synthesis), D286 (bounded post-RRF fact-aware selection), D308–D314 (explicit decision-topic authority, complete graph adapters, user confirmation/retraction, relational scale verdict, and near-linear rebuild), D315 (content-free Ask answer judge), D330 (correction-aware semantic maintenance), D331 (explicit correction-aware Apuntador regeneration), D332 (explicit semantic asset preparation), D360 (same-generation graph-profile readmission), D361 (released exact-person commitment explorer), D362 (released exact-topic decision explorer).
 
 D239 additionally owns explicit evidence-first commitment admission in Meeting
 Detail. D243 adds an explicit Application/Storage link boundary for a later
@@ -454,9 +454,9 @@ returned topic-evidence and transcript identities to the oracle, and checks
 exact result/evidence order, forbidden-result exclusion, and stale-evidence
 abstention. It imports no IntelligenceKit or GRDB and performs no direct
 authority write. This closes the second canonical product mapping at this
-boundary; later adapters complete the other four. D361 now releases the exact
-person-commitment presentation only; private evidence and presentation for the
-other five jobs remain open.
+boundary; later adapters complete the other four. D361 and D362 now release
+exact person-commitment and topic-decision presentation; private evidence and
+presentation for the other four jobs remain open.
 
 ## Source-backed person commitments (D281–D282)
 
@@ -490,8 +490,9 @@ distractors and maps exact typed commitments and segments back to the oracle;
 it does not parse query prose, import IntelligenceKit/GRDB, or write authority
 directly. Exact alias filtering and opt-in Ask composition are implemented;
 automatic natural-language extraction and private evidence remain open. D361
-releases only the exact-person commitment job through a separate explicit
-selector; the other five jobs and free-form graph-aware answers remain open.
+releases the exact-person commitment job and D362 releases current decisions
+for one exact topic through separate explicit selectors; the other four jobs
+and free-form graph-aware answers remain open.
 
 ## Independent Ask graph-fact lane (D283)
 
@@ -563,8 +564,8 @@ markers carry structure only, and generated claims may cite `[T…]` or `[S…]`
 exact segment markers but never `[F…]` alone. Missing primary, duplicate, or
 cross-lane-inconsistent source provenance fails before model execution. No
 free-form Ask, CLI, MCP, command-palette, or meeting-brief consumer invokes
-this boundary. The separate D361 explorer renders validated typed facts
-directly and never calls `answerBundle`.
+this boundary. The separate D361 and D362 explorers render validated typed
+facts directly and never call `answerBundle`.
 
 ## Bounded post-RRF fact-aware selection (D286)
 
@@ -585,8 +586,8 @@ IntelligenceKit both reject mismatched counts, facts that outnumber transcript
 evidence, or inconsistent exact overlap. Selection omissions make the fact
 page incomplete and forbid exhaustive all/none claims. The answer result still
 returns the complete unselected evidence bundle. Released free-form Ask, CLI,
-MCP, command-palette, and meeting-brief consumers remain transcript-only; D361
-does not execute this generated-answer path.
+MCP, command-palette, and meeting-brief consumers remain transcript-only;
+D361 and D362 do not execute this generated-answer path.
 
 ## Complete graph authority, product adapters, and scale (D308–D314)
 
@@ -615,7 +616,7 @@ remains disposable and capture-yielding. No specialized graph engine is
 selected. D360 makes same-generation profile return re-admit the exact completed
 or cancelled graph operation only while its target is still unsatisfied; failed
 work remains terminal and source generation remains authority-only. Private
-owner-reviewed evidence, natural-language query extraction, the other five
+owner-reviewed evidence, natural-language query extraction, the other four
 dedicated query surfaces, sync/export, CLI/MCP adoption, and product telemetry
 remain outside this implemented boundary.
 
@@ -642,10 +643,34 @@ This surface does not parse a question, resolve an alias, infer identity,
 invoke a model, call the graph-aware answer bundle, or flatten facts into
 transcript rank. Typed graph abstention, malformed evidence, and operational
 unavailability remain distinct UI states. It therefore provides source-backed
-answers without Foundation Models on both Sequoia and Tahoe. The other five
-graph jobs, free-form answer composition, private evidence, sync/export,
-CLI/MCP adoption, product telemetry, and physical accessibility/OS validation
-remain separate gates.
+answers without Foundation Models on both Sequoia and Tahoe. Together with the
+D362 topic explorer, the other four graph jobs, free-form answer composition,
+private evidence, sync/export, CLI/MCP adoption, product telemetry, and physical
+accessibility/OS validation remain separate gates.
+
+## Released exact-topic decision explorer (D362)
+
+The full Ask window now exposes **By topic** beside conversation and person
+commitments. A dedicated per-window model asks a read-only confirmed-topic
+catalogue for 21 candidates, displays at most 20 plus overflow, and accepts
+only one currently visible live root `TopicID`. The normalized text search is
+discovery only: a merged-child alias resolves to its live root inside SQLite,
+while the factual query receives only the exact identity the user selected.
+
+The selected identity enters `LoadDecisionHistory` at its existing maximum of
+100 facts. Presentation validates the complete synthesis page, then requires
+every row to be one confirmed decision-about-topic relationship whose object
+is that selected `TopicID`, whose label still matches the selected live root,
+and whose primary exact source exists. Truncation and stale/unavailable
+omissions remain visible, and each source reuses the exact meeting seek route.
+
+Topic search and decision loading own independent cancellation and generation
+fences, and an in-flight read cannot retain a closed window model. Oversized,
+duplicate, merged, malformed, wrong-topic, or incomplete responses fail
+closed. This surface does not parse question prose, guess aliases, invoke
+Foundation Models, execute the graph-aware answer bundle, or change graph
+authority. Sequoia and Tahoe use the same SwiftUI and SQLite path; physical
+VoiceOver and independent OS/hardware evidence remain open.
 
 ## Human claim feedback is not model material (D88)
 

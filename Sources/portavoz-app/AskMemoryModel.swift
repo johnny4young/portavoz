@@ -16,6 +16,14 @@ protocol AskMemoryModelClient: AnyObject {
         personID: PersonID,
         limit: Int
     ) async throws -> MeetingMemoryGraphQueryResult
+    func searchAskMemoryTopics(
+        _ query: String,
+        limit: Int
+    ) async throws -> [Topic]
+    func loadAskMemoryDecisionHistory(
+        topicID: TopicID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult
 }
 
 struct AskMemoryPerson: Identifiable, Equatable {
@@ -270,7 +278,9 @@ final class AskMemoryModel {
         case .abstained(let reason):
             return .abstained(reason)
         case .facts(let page):
-            guard let synthesis = AskGraphFactSynthesisPage(page: page) else {
+            guard page.facts.count <= commitmentLimit,
+                  let synthesis = AskGraphFactSynthesisPage(page: page)
+            else {
                 return .invalidEvidence
             }
             let commitments = synthesis.facts.compactMap {

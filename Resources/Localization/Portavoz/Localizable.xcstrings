@@ -13880,6 +13880,196 @@
           }
         }
       }
+    },
+    "By topic": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Por tema"
+          }
+        }
+      }
+    },
+    "Current decisions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decisiones actuales"
+          }
+        }
+      }
+    },
+    "Choose one confirmed topic. Portavoz uses the exact identity you select and shows only current decisions you explicitly confirmed about it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige un tema confirmado. Portavoz usa la identidad exacta que selecciones y muestra solo las decisiones actuales que confirmaste explícitamente sobre ese tema."
+          }
+        }
+      }
+    },
+    "Find a confirmed topic…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar un tema confirmado…"
+          }
+        }
+      }
+    },
+    "Searching confirmed topics…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando temas confirmados…"
+          }
+        }
+      }
+    },
+    "No confirmed topics match this search.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún tema confirmado coincide con esta búsqueda."
+          }
+        }
+      }
+    },
+    "Could not search confirmed topics.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron buscar los temas confirmados."
+          }
+        }
+      }
+    },
+    "More topics match. Refine the name to choose the right one.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay más temas coincidentes. Refina el nombre para elegir el correcto."
+          }
+        }
+      }
+    },
+    "Show current decisions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar decisiones actuales"
+          }
+        }
+      }
+    },
+    "Loading confirmed decisions…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando decisiones confirmadas…"
+          }
+        }
+      }
+    },
+    "Portavoz could not verify the returned decision evidence.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz no pudo verificar la evidencia de la decisión recibida."
+          }
+        }
+      }
+    },
+    "Could not load confirmed decisions.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar las decisiones confirmadas."
+          }
+        }
+      }
+    },
+    "Confirmed about %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirmada sobre %@"
+          }
+        }
+      }
+    },
+    "More than 100 current decisions exist; this view shows the newest verified results.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay más de 100 decisiones actuales; esta vista muestra los resultados verificados más recientes."
+          }
+        }
+      }
+    },
+    "Some decisions with outdated evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunas decisiones con evidencia desactualizada."
+          }
+        }
+      }
+    },
+    "Some decisions without available evidence were omitted.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se omitieron algunas decisiones sin evidencia disponible."
+          }
+        }
+      }
+    },
+    "No current confirmed decisions for this topic.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay decisiones confirmadas actuales para este tema."
+          }
+        }
+      }
+    },
+    "This confirmed topic is no longer available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este tema confirmado ya no está disponible."
+          }
+        }
+      }
+    },
+    "The matching decisions need current transcript evidence before Portavoz can show them.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las decisiones coincidentes necesitan evidencia actual de la transcripción antes de que Portavoz pueda mostrarlas."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

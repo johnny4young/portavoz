@@ -207,7 +207,7 @@ final class AskPresentationModelTests: XCTestCase {
         XCTAssertEqual(disclosure.omittedUnavailableCount, 0)
     }
 
-    func testMemoryPersonCommitmentsFailClosedForWrongPersonOrUnreadyGraph() async throws {
+    func testMemoryPersonCommitmentsFailClosedForOversizeWrongPersonOrUnreadyGraph() async throws {
         let fixture = AskMemoryPresentationFixture()
         let ask = ControlledAskModelClient()
         let memory = ControlledAskMemoryModelClient()
@@ -226,11 +226,18 @@ final class AskPresentationModelTests: XCTestCase {
         try await waitUntil { memory.commitmentRequests.count == 1 }
         memory.completeCommitments(
             for: fixture.person.id,
-            with: .facts(fixture.page(subjectID: PersonID())))
+            with: .facts(fixture.page(count: 101)))
         try await waitUntil { memoryModel.state.outcome == .invalidEvidence }
 
         memoryModel.loadSelectedPersonCommitments()
         try await waitUntil { memory.commitmentRequests.count == 2 }
+        memory.completeCommitments(
+            for: fixture.person.id,
+            with: .facts(fixture.page(subjectID: PersonID())))
+        try await waitUntil { memoryModel.state.outcome == .invalidEvidence }
+
+        memoryModel.loadSelectedPersonCommitments()
+        try await waitUntil { memory.commitmentRequests.count == 3 }
         memory.completeCommitments(
             for: fixture.person.id,
             with: .abstained(.projectionNotReady))
@@ -254,6 +261,157 @@ final class AskPresentationModelTests: XCTestCase {
             retainedModel,
             "an in-flight local read must not retain a closed Ask window")
         memory.completePeople("", with: [])
+        await Task.yield()
+    }
+
+    func testTopicMemorySearchPublishesOnlyLatestBoundedExactCandidates() async throws {
+        let ask = ControlledAskModelClient()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskModel(
+            client: ask,
+            memoryClient: memory,
+            memorySearchDelay: .zero)
+        let topicModel = try XCTUnwrap(model.topicMemory)
+
+        model.selectSurface(.topicDecisions)
+        try await waitUntil { memory.topicRequests == [""] }
+        XCTAssertEqual(memory.topicLimits, [21])
+        topicModel.updateTopicQuery("rollout")
+        try await waitUntil { memory.topicRequests == ["", "rollout"] }
+        XCTAssertEqual(memory.topicLimits, [21, 21])
+
+        memory.completeTopics("", with: [Topic(preferredLabel: "Stale")])
+        await Task.yield()
+        XCTAssertEqual(topicModel.state.topicsPhase, .loading)
+        XCTAssertTrue(topicModel.state.topics.isEmpty)
+
+        let candidates = (0..<21).map {
+            Topic(preferredLabel: "Rollout \($0 + 1)")
+        }
+        memory.completeTopics("rollout", with: candidates)
+        try await waitUntil { topicModel.state.topicsPhase == .ready }
+
+        XCTAssertEqual(topicModel.state.topics.count, 20)
+        XCTAssertEqual(
+            topicModel.state.topics.map(\.id),
+            candidates.prefix(20).map(\.id))
+        XCTAssertTrue(topicModel.state.topicsHaveMore)
+
+        topicModel.selectTopic(candidates[4].id)
+        XCTAssertEqual(topicModel.state.selectedTopic?.id, candidates[4].id)
+        XCTAssertEqual(topicModel.state.topicQuery, "Rollout 5")
+        XCTAssertTrue(topicModel.state.topics.isEmpty)
+    }
+
+    func testTopicMemorySearchFailsClosedForAnOversizedCatalogResponse() async throws {
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        model.activate()
+        try await waitUntil { memory.topicRequests == [""] }
+        memory.completeTopics(
+            "",
+            with: (0..<22).map { Topic(preferredLabel: "Topic \($0)") })
+        try await waitUntil { model.state.topicsPhase == .unavailable }
+
+        XCTAssertTrue(model.state.topics.isEmpty)
+        XCTAssertFalse(model.state.topicsHaveMore)
+    }
+
+    func testTopicMemoryDecisionsExposeOnlyExactTypedEvidence() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let ask = ControlledAskModelClient()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskModel(
+            client: ask,
+            memoryClient: memory,
+            memorySearchDelay: .zero)
+        let topicModel = try XCTUnwrap(model.topicMemory)
+
+        model.selectSurface(.topicDecisions)
+        try await waitUntil { memory.topicRequests == [""] }
+        memory.completeTopics("", with: [fixture.topic])
+        try await waitUntil { topicModel.state.topicsPhase == .ready }
+        topicModel.selectTopic(fixture.topic.id)
+        topicModel.loadSelectedTopicDecisions()
+        try await waitUntil { memory.decisionRequests == [fixture.topic.id] }
+        XCTAssertEqual(memory.decisionLimits, [100])
+        memory.completeDecisions(
+            for: fixture.topic.id,
+            with: .facts(fixture.page()))
+        try await waitUntil {
+            if case .facts = topicModel.state.outcome { return true }
+            return false
+        }
+
+        guard case .facts(let values, let disclosure) = topicModel.state.outcome
+        else { return XCTFail("Expected exact topic decision facts") }
+        let value = try XCTUnwrap(values.first)
+        XCTAssertEqual(values.count, 1)
+        XCTAssertEqual(value.id, fixture.linkID)
+        XCTAssertEqual(value.decisionID, fixture.decisionID)
+        XCTAssertEqual(value.topicLabel, "Model rollout")
+        XCTAssertEqual(value.statement, "Ship the model on Friday")
+        XCTAssertEqual(value.citations, [fixture.citation])
+        XCTAssertEqual(value.primaryCitation, fixture.citation)
+        XCTAssertFalse(disclosure.hasMore)
+        XCTAssertEqual(disclosure.omittedStaleCount, 0)
+        XCTAssertEqual(disclosure.omittedUnavailableCount, 0)
+    }
+
+    func testTopicMemoryDecisionsFailClosedForOversizeWrongTopicOrUnreadyGraph() async throws {
+        let fixture = AskTopicMemoryPresentationFixture()
+        let memory = ControlledAskMemoryModelClient()
+        let model = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+
+        model.activate()
+        try await waitUntil { memory.topicRequests == [""] }
+        memory.completeTopics("", with: [fixture.topic])
+        try await waitUntil { model.state.topicsPhase == .ready }
+        model.selectTopic(fixture.topic.id)
+        model.loadSelectedTopicDecisions()
+        try await waitUntil { memory.decisionRequests.count == 1 }
+        memory.completeDecisions(
+            for: fixture.topic.id,
+            with: .facts(fixture.page(count: 101)))
+        try await waitUntil { model.state.outcome == .invalidEvidence }
+
+        model.loadSelectedTopicDecisions()
+        try await waitUntil { memory.decisionRequests.count == 2 }
+        memory.completeDecisions(
+            for: fixture.topic.id,
+            with: .facts(fixture.page(topicID: TopicID())))
+        try await waitUntil { model.state.outcome == .invalidEvidence }
+
+        model.loadSelectedTopicDecisions()
+        try await waitUntil { memory.decisionRequests.count == 3 }
+        memory.completeDecisions(
+            for: fixture.topic.id,
+            with: .abstained(.projectionNotReady))
+        try await waitUntil {
+            model.state.outcome == .abstained(.projectionNotReady)
+        }
+    }
+
+    func testTopicMemoryPendingReadDoesNotRetainClosedWindowModel() async throws {
+        let memory = ControlledAskMemoryModelClient()
+        var model: AskTopicMemoryModel? = AskTopicMemoryModel(
+            client: memory,
+            searchDelay: .zero)
+        weak let retainedModel = model
+
+        model?.activate()
+        try await waitUntil { memory.topicRequests == [""] }
+        model = nil
+
+        XCTAssertNil(
+            retainedModel,
+            "an in-flight topic read must not retain a closed Ask window")
+        memory.completeTopics("", with: [])
         await Task.yield()
     }
 
@@ -439,10 +597,14 @@ private struct AskMemoryPresentationFixture {
     }
 
     func page(
-        subjectID: PersonID? = nil
+        subjectID: PersonID? = nil,
+        count: Int = 1
     ) -> MeetingMemoryGraphFactPage {
         MeetingMemoryGraphFactPage(
-            facts: [MeetingMemoryGraphFact(
+            facts: (0..<count).map { index in
+                let commitmentID = index == 0 ? self.commitmentID : CommitmentID()
+                let segmentID = index == 0 ? self.segmentID : UUID()
+                return MeetingMemoryGraphFact(
                 id: .commitment(commitmentID),
                 kind: .personCommittedTo,
                 subject: .person(subjectID ?? person.id),
@@ -461,7 +623,62 @@ private struct AskMemoryPresentationFixture {
                     endTime: 6,
                     text: "Ana will prepare the rollout.",
                     language: "en")],
-                primaryEvidenceSegmentID: segmentID)],
+                primaryEvidenceSegmentID: segmentID)
+            },
+            hasMore: false,
+            projectionGeneration: 1,
+            omittedStaleCount: 0,
+            omittedUnavailableCount: 0)
+    }
+}
+
+private struct AskTopicMemoryPresentationFixture {
+    let topic = Topic(preferredLabel: "Model rollout")
+    let decisionID = DecisionID()
+    let linkID = DecisionTopicLinkID()
+    let meetingID = MeetingID()
+    let segmentID = UUID()
+
+    var citation: AskCitation {
+        AskCitation(
+            segmentID: segmentID,
+            meetingID: meetingID,
+            meetingTitle: "Test meeting",
+            timestamp: 3,
+            transcriptRevision: 0,
+            text: "We ship the model on Friday.")
+    }
+
+    func page(
+        topicID: TopicID? = nil,
+        count: Int = 1
+    ) -> MeetingMemoryGraphFactPage {
+        MeetingMemoryGraphFactPage(
+            facts: (0..<count).map { index in
+                let linkID = index == 0 ? self.linkID : DecisionTopicLinkID()
+                let decisionID = index == 0 ? self.decisionID : DecisionID()
+                let segmentID = index == 0 ? self.segmentID : UUID()
+                return MeetingMemoryGraphFact(
+                id: .decisionAboutness(linkID),
+                kind: .decisionAboutTopic,
+                subject: .decision(decisionID),
+                object: .topic(topicID ?? topic.id),
+                subjectText: "Ship the model on Friday",
+                objectText: "Model rollout",
+                status: .confirmed,
+                occurredAt: Date(timeIntervalSince1970: 1_700_000_100),
+                evidence: [MeetingMemoryGraphEvidence(
+                    meetingID: meetingID,
+                    meetingTitle: "Test meeting",
+                    meetingStartedAt: Date(timeIntervalSince1970: 1_700_000_000),
+                    transcriptRevision: 0,
+                    segmentID: segmentID,
+                    startTime: 3,
+                    endTime: 6,
+                    text: "We ship the model on Friday.",
+                    language: "en")],
+                primaryEvidenceSegmentID: segmentID)
+            },
             hasMore: false,
             projectionGeneration: 1,
             omittedStaleCount: 0,
@@ -538,10 +755,18 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
     private(set) var peopleLimits: [Int] = []
     private(set) var commitmentRequests: [PersonID] = []
     private(set) var commitmentLimits: [Int] = []
+    private(set) var topicRequests: [String] = []
+    private(set) var topicLimits: [Int] = []
+    private(set) var decisionRequests: [TopicID] = []
+    private(set) var decisionLimits: [Int] = []
     private var peopleContinuations:
         [String: CheckedContinuation<[Person], Error>] = [:]
     private var commitmentContinuations:
         [PersonID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
+    private var topicContinuations:
+        [String: CheckedContinuation<[Topic], Error>] = [:]
+    private var decisionContinuations:
+        [TopicID: [CheckedContinuation<MeetingMemoryGraphQueryResult, Error>]] = [:]
 
     func searchAskMemoryPeople(
         _ query: String,
@@ -565,6 +790,28 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         }
     }
 
+    func searchAskMemoryTopics(
+        _ query: String,
+        limit: Int
+    ) async throws -> [Topic] {
+        topicRequests.append(query)
+        topicLimits.append(limit)
+        return try await withCheckedThrowingContinuation { continuation in
+            topicContinuations[query] = continuation
+        }
+    }
+
+    func loadAskMemoryDecisionHistory(
+        topicID: TopicID,
+        limit: Int
+    ) async throws -> MeetingMemoryGraphQueryResult {
+        decisionRequests.append(topicID)
+        decisionLimits.append(limit)
+        return try await withCheckedThrowingContinuation { continuation in
+            decisionContinuations[topicID, default: []].append(continuation)
+        }
+    }
+
     func completePeople(_ query: String, with people: [Person]) {
         peopleContinuations.removeValue(forKey: query)?.resume(returning: people)
     }
@@ -578,6 +825,22 @@ private final class ControlledAskMemoryModelClient: AskMemoryModelClient {
         else { return }
         let continuation = continuations.removeFirst()
         commitmentContinuations[personID] = continuations
+        continuation.resume(returning: result)
+    }
+
+    func completeTopics(_ query: String, with topics: [Topic]) {
+        topicContinuations.removeValue(forKey: query)?.resume(returning: topics)
+    }
+
+    func completeDecisions(
+        for topicID: TopicID,
+        with result: MeetingMemoryGraphQueryResult
+    ) {
+        guard var continuations = decisionContinuations[topicID],
+              !continuations.isEmpty
+        else { return }
+        let continuation = continuations.removeFirst()
+        decisionContinuations[topicID] = continuations
         continuation.resume(returning: result)
     }
 }

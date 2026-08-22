@@ -1344,6 +1344,25 @@ The existing free-form Ask, command palette, CLI, MCP, and meeting briefs do
 not inherit this query, and no Foundation Models capability is required on
 Sequoia or Tahoe.
 
+## Exact decisions by topic in Ask (D362)
+
+Full Ask adds **By topic** as a third segmented surface. Its subordinate
+`AskTopicMemoryModel` owns a 21-row confirmed-topic request, 20 visible choices,
+overflow disclosure, an exact selected `TopicID`, and a maximum 100-row current
+decision read. Topic search and decision loading have independent task and
+generation fences; surface changes and window teardown cancel hidden work, and
+late results must still match the selected identity before publication.
+
+The view renders only synthesis-validated confirmed decision-about-topic facts
+and exact evidence buttons. Typed abstention, malformed evidence, and an
+operational read failure remain distinct with retry; no state silently falls
+back to free-form Ask. Every interactive control has an `ask-topic-*`
+accessibility identifier, uses localized English/Spanish copy, and reuses the
+existing meeting-and-timestamp navigation. The surface needs neither
+Foundation Models nor Tahoe-only APIs, so the deployment floor and Sequoia
+behavior remain unchanged; physical VoiceOver and independent Sequoia/Tahoe
+validation are still external evidence.
+
 The hidden Ask resource mode installs one observer only around its disposable
 `AskMeetings.local` call (D193). `AskPipelineRunProbe` accepts exactly one
 answer trace, one completion for every declared stage, first evidence, first

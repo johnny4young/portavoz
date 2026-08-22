@@ -2066,10 +2066,11 @@ context both carry candidate, selected, additional-source, and selection-
 omission counts. Both layers validate those counts, the facts-to-transcript
 ratio, and exact source overlap before model execution. Selection makes only
 the provider input smaller: `AskEvidenceBundleAnswer` still returns the full
-unselected transcript and graph evidence to its caller. The released explorer
-covers only exact-person/current-commitments presentation; the other five graph
-jobs, natural-language query extraction, free-form graph-aware answers, private
-field evidence, and graph telemetry remain separate gates.
+unselected transcript and graph evidence to its caller. The released explorers
+cover exact-person/current-commitments and exact confirmed-topic/current-
+decisions presentation; the other four graph jobs, natural-language query
+extraction, free-form graph-aware answers, private field evidence, and graph
+telemetry remain separate gates.
 
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported

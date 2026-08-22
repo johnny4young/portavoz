@@ -13,7 +13,7 @@ struct AskView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if model.memory != nil {
+            if model.memory != nil || model.topicMemory != nil {
                 surfacePicker
                 Divider()
             }
@@ -26,6 +26,12 @@ struct AskView: View {
                         model: memory,
                         onOpenCitation: onOpenCitation)
                 }
+            case .topicDecisions:
+                if let topicMemory = model.topicMemory {
+                    AskTopicMemoryView(
+                        model: topicMemory,
+                        onOpenCitation: onOpenCitation)
+                }
             }
         }
         .navigationTitle("Ask your meetings")
@@ -33,6 +39,8 @@ struct AskView: View {
             questionFocused = model.state.surface == .conversation
             if model.state.surface == .personCommitments {
                 model.memory?.activate()
+            } else if model.state.surface == .topicDecisions {
+                model.topicMemory?.activate()
             }
         }
         .onChange(of: model.state.surface) { _, surface in
@@ -68,9 +76,12 @@ struct AskView: View {
             Text("By person")
                 .tag(AskModel.Surface.personCommitments)
                 .accessibilityIdentifier("ask-surface-person-commitments")
+            Text("By topic")
+                .tag(AskModel.Surface.topicDecisions)
+                .accessibilityIdentifier("ask-surface-topic-decisions")
         }
         .pickerStyle(.segmented)
-        .frame(maxWidth: 360)
+        .frame(maxWidth: 480)
         .padding(10)
         .accessibilityIdentifier("ask-surface")
     }

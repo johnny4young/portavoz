@@ -75,6 +75,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "LibraryUITests",
             "testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence",
         ),
+        test_id(
+            "LibraryUITests",
+            "testAskConfirmedMemoryLoadsExactTopicDecisionsAndEvidence",
+        ),
         test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
     ),
     "insights": (
@@ -584,6 +588,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "confirmedtopiccatalog" in lowered:
+        return {"ask"}
     if "semanticsearchassetpreparation" in lowered:
         return {"settings-intelligence"}
     if "automationentit" in lowered:

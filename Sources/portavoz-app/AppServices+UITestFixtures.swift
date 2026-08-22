@@ -47,8 +47,9 @@ extension AppServices {
         await seedCommitmentRadarIfRequested(
             meetingID: meeting.id,
             canonicalPersonID: canonicalPersonID)
-        await seedAskMemoryIfRequested(
-            canonicalPersonID: canonicalPersonID)
+        await seedAskGraphFixtures(
+            canonicalPersonID: canonicalPersonID,
+            meetingID: meeting.id, citedSegmentID: citedSegmentID)
         try? await store.save([
             ContextItem(meetingID: meeting.id, kind: .note, content: "revisar budget Q3", timestamp: 12)
         ])
@@ -217,6 +218,7 @@ extension AppServices {
                     kind: .overview,
                     evidenceSegmentIDs: [citedSegmentID])],
                 decisionEvidence: [SummaryDecisionEvidence(
+                    id: Self.seedDecisionObservationID,
                     sectionOrdinal: 0,
                     bulletOrdinal: 0,
                     evidenceSegmentIDs: [citedSegmentID])],
@@ -407,7 +409,6 @@ extension AppServices {
             return
         }
         let timestamp = Date(timeIntervalSince1970: 1_700_000_100)
-        let owner = "ui-test-ask-memory"
         do {
             _ = try await store.confirmCommitment(
                 CommitmentConfirmation(
@@ -418,31 +419,77 @@ extension AppServices {
                     assignee: .person(canonicalPersonID),
                     origin: .generatedActionItem(Self.seedActionItemID)),
                 at: timestamp)
-            _ = try await store.admitMeetingMemoryGraphMaintenance(at: timestamp)
-            guard let job = try await store.claimMeetingMemoryGraphMaintenance(
-                owner: owner,
-                leaseDuration: 120,
-                at: timestamp)
-            else {
-                assertionFailure("Could not claim Ask memory projection")
-                return
-            }
-            let result = try await ProjectMeetingMemoryGraph(
-                store: store,
-                now: { timestamp }).all(
-                job: job,
-                owner: owner)
-            guard !result.pausedByPolicy else {
-                assertionFailure("Ask memory projection unexpectedly paused")
-                return
-            }
-            _ = try await store.completeMeetingMemoryGraphMaintenance(
-                job.id,
-                owner: owner,
-                at: timestamp)
+            try await projectAskMemoryGraph(
+                at: timestamp,
+                owner: "ui-test-ask-memory")
         } catch {
             assertionFailure("Could not seed Ask memory: \(error)")
         }
+    }
+
+    private func seedAskGraphFixtures(
+        canonicalPersonID: PersonID?,
+        meetingID: MeetingID,
+        citedSegmentID: UUID
+    ) async {
+        await seedAskMemoryIfRequested(canonicalPersonID: canonicalPersonID)
+        await seedAskTopicMemoryIfRequested(
+            meetingID: meetingID,
+            citedSegmentID: citedSegmentID)
+    }
+
+    /// Real confirmation authority and the same disposable graph projection as
+    /// production. The generated observation is fixed by the summary fixture;
+    /// the user gesture creates one exact topic identity and decision link.
+    private func seedAskTopicMemoryIfRequested(
+        meetingID: MeetingID,
+        citedSegmentID: UUID
+    ) async {
+        guard ProcessInfo.processInfo.arguments.contains("-seed-ask-topic-memory") else {
+            return
+        }
+        let timestamp = Date(timeIntervalSince1970: 1_700_000_110)
+        do {
+            _ = try await ConfirmDecisionAboutTopic(store: store).execute(
+                ConfirmDecisionAboutTopicRequest(
+                    observationID: Self.seedDecisionObservationID,
+                    meetingID: meetingID,
+                    evidenceSegmentID: citedSegmentID,
+                    sourceTranscriptRevision: 0,
+                    topic: .labeled("model rollout"),
+                    confirmedAt: timestamp))
+            try await projectAskMemoryGraph(
+                at: timestamp,
+                owner: "ui-test-ask-topic-memory")
+        } catch {
+            assertionFailure("Could not seed Ask topic memory: \(error)")
+        }
+    }
+
+    private func projectAskMemoryGraph(
+        at timestamp: Date,
+        owner: String
+    ) async throws {
+        _ = try await store.admitMeetingMemoryGraphMaintenance(at: timestamp)
+        guard let job = try await store.claimMeetingMemoryGraphMaintenance(
+            owner: owner,
+            leaseDuration: 120,
+            at: timestamp)
+        else {
+            throw UITestFixtureError.couldNotClaimAskMemoryProjection
+        }
+        let result = try await ProjectMeetingMemoryGraph(
+            store: store,
+            now: { timestamp }).all(
+            job: job,
+            owner: owner)
+        guard !result.pausedByPolicy else {
+            throw UITestFixtureError.askMemoryProjectionPaused
+        }
+        _ = try await store.completeMeetingMemoryGraphMaintenance(
+            job.id,
+            owner: owner,
+            at: timestamp)
     }
 
     private func seedNewRadarCommitment(
@@ -529,6 +576,8 @@ extension AppServices {
 
     private static let seedActionItemID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000001")!
+    private static let seedDecisionObservationID = SummaryDecisionID(rawValue: UUID(
+        uuidString: "B5D40000-0000-4000-8000-000000000001")!)
     private static let seedReviewActionItemID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000002")!
     private static let seedWaitingSkillProposalID = UUID(
@@ -660,4 +709,9 @@ extension AppServices {
         guard ProcessInfo.processInfo.arguments.contains("-seed-just-recorded") else { return }
         justRecorded = meetingID
     }
+}
+
+private enum UITestFixtureError: Error {
+    case couldNotClaimAskMemoryProjection
+    case askMemoryProjectionPaused
 }
