@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,586 cases "
+            "package inventory contains 2,594 cases "
                 + "(15 environment-gated) + 101"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -3199,6 +3199,76 @@ final class ArchitectureDependencyTests: XCTestCase {
             "D367 adds content-free local timing spans"))
         XCTAssertFalse(gaps.contains("graph telemetry remain absent"))
         XCTAssertTrue(decisions.contains("## D367"))
+    }
+
+    func testGraphQueryProductTimingReceiptStaysIsolatedContentFreeAndReproducible() throws {
+        let probe = try Self.contents(
+            of: "Sources/portavoz-app/MeetingMemoryGraphQueryRunProbe.swift")
+        let runner = try Self.contents(
+            of: "Sources/portavoz-app/BenchMemoryGraphQueryRunner.swift")
+        let launch = try Self.contents(
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
+        let script = try Self.contents(
+            of: "scripts/run-meeting-memory-graph-query-receipt.sh")
+        let assembler = try Self.contents(
+            of: "scripts/meeting_memory_graph_query_receipt.py")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligence = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(probe.contains("iterationsPerJob: Int"))
+        XCTAssertTrue(probe.contains("p50Milliseconds"))
+        XCTAssertTrue(probe.contains("p95Milliseconds"))
+        XCTAssertTrue(probe.contains("maximumMilliseconds"))
+        XCTAssertTrue(probe.contains(".posixPermissions: 0o600"))
+        XCTAssertFalse(probe.contains("MeetingID"))
+        XCTAssertFalse(probe.contains("TopicID"))
+        XCTAssertFalse(probe.contains("PersonID"))
+        XCTAssertFalse(probe.contains("CommitmentID"))
+
+        XCTAssertTrue(runner.contains("usesTemporaryMeetingStore"))
+        XCTAssertTrue(runner.contains("-seed-demo"))
+        XCTAssertTrue(runner.contains("-seed-ask-memory"))
+        XCTAssertTrue(runner.contains("-seed-ask-topic-memory"))
+        XCTAssertTrue(runner.contains(
+            "reconcileSearchAfterSeed: false"))
+        XCTAssertTrue(runner.contains("telemetry: .disabled"))
+        XCTAssertTrue(runner.contains(
+            "AppMeetingMemoryGraphQueryTelemetry"))
+        XCTAssertTrue(runner.contains(".shared.telemetry"))
+        XCTAssertTrue(runner.contains("Task.sleep(for: .seconds(360))"))
+        XCTAssertTrue(launch.contains(
+            "runMemoryGraphQueryBenchIfRequested"))
+        XCTAssertTrue(launch.contains(
+            "guard !runsIsolatedBenchmark else { return }"))
+
+        XCTAssertTrue(script.contains(
+            "git status --porcelain --untracked-files=all"))
+        XCTAssertTrue(script.contains(
+            "app.portavoz.mac.graph-query-bench"))
+        XCTAssertTrue(script.contains("scripts/make-app.sh --release"))
+        XCTAssertTrue(script.contains("(( RUNS >= 3 && RUNS <= 100 ))"))
+        XCTAssertTrue(assembler.contains(
+            "meeting-memory-graph-query-product-timing"))
+        XCTAssertTrue(assembler.contains("reject_duplicate_keys"))
+        XCTAssertTrue(assembler.contains("os.link(temporary, output)"))
+
+        XCTAssertTrue(architecture.contains(
+            "Content-free graph query product timing receipts"))
+        XCTAssertTrue(intelligence.contains(
+            "## Product-path graph query timing receipts (D368)"))
+        XCTAssertTrue(appSpec.contains(
+            "## Isolated graph query timing runner (D368)"))
+        XCTAssertTrue(quality.contains(
+            "### Product-path graph query timing receipt (D368)"))
+        XCTAssertTrue(gaps.contains(
+            "D368 adds a reproducible content-free product-path collector"))
+        XCTAssertTrue(decisions.contains("## D368"))
     }
 
     func testAskGraphFiltersResolveExactIdentitiesBeforeBoundedQueries() throws {
@@ -4787,14 +4857,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(indexingBench.contains(
             "try await workload.run("))
         XCTAssertTrue(benchMode.contains(
-            "runsIsolatedResourceBenchmark"))
+            "runsIsolatedBenchmark"))
         let benchmarkExit = try XCTUnwrap(app.range(
-            of: "guard !runsIsolatedResourceBenchmark else { return }"))
+            of: "guard !runsIsolatedBenchmark else { return }"))
         let normalStartup = try XCTUnwrap(app.range(
             of: "await services.meetingSync.start"))
         XCTAssertLessThan(benchmarkExit.lowerBound, normalStartup.lowerBound)
         XCTAssertTrue(app.contains(
-            "if !runsIsolatedResourceBenchmark"))
+            "if !runsIsolatedBenchmark"))
         XCTAssertTrue(benchMode.contains(
             "forceVerification: true"))
         XCTAssertTrue(scenarioProbe.contains(

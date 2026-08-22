@@ -2116,6 +2116,23 @@ absent. The spans are neither persisted nor sent over a network and establish
 no performance baseline by themselves; accepted Sequoia/Tahoe receipts remain
 external evidence.
 
+Content-free graph query product timing receipts are collected only by a
+hidden isolated app mode over the disposable public fixture. One clean Release
+app executes the same six ApplicationKit use cases as the released surfaces,
+with the ordinary search, sync, recovery, provider-discovery, and maintenance
+workers absent. Fixture setup explicitly suppresses its normal search
+reconciliation before one unmeasured warmup and the measured rounds. A strict
+process-local observer accepts complete matched fact intervals only and emits
+per-job wall/CPU p50, p95, and maximum values; identities, text, evidence,
+counts from the domain, trace UUIDs, paths, and errors cannot enter the schema.
+Each fragment requires an arm64 host on AC power with nominal thermal state and
+Low Power Mode off, uses owner-only non-replacing output, and fails on lifecycle
+or sample-count drift. The canonical clean-worktree runner builds and signs one
+isolated Release app, collects at least three fresh processes, and assembles an
+exact-commit receipt with a strict duplicate-key-rejecting tool. A receipt is
+host evidence only: it does not select a latency budget or certify another macOS
+version, hardware profile, private corpus, or real user library.
+
 Commitment lifecycle events created before exact event evidence remain
 loadable, but a timeline reports their encountered fact kind as unsupported
 instead of borrowing the commitment's original source. Generated summary,

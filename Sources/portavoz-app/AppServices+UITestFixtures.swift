@@ -7,7 +7,9 @@ import PortavozCore
 extension AppServices {
     /// Seeds one deterministic meeting for `make test-ui`, including audio,
     /// summary, action-item, chapter, and Companion evidence.
-    func seedDemoIfRequested() async {
+    func seedDemoIfRequested(
+        reconcileSearchAfterSeed: Bool = true
+    ) async {
         guard ProcessInfo.processInfo.arguments.contains("-seed-demo") else { return }
         defer { markUITestSeedReady() }
         guard ((try? await store.meetings()) ?? []).isEmpty else { return }
@@ -68,7 +70,7 @@ extension AppServices {
         await seedFailedSkillExecutionIfRequested(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
-        requestSearchReconciliation()
+        if reconcileSearchAfterSeed { requestSearchReconciliation() }
     }
 
     private func seedDemoContext(for meetingID: MeetingID) async {

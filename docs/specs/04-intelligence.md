@@ -814,6 +814,29 @@ the spans do not establish a performance baseline. Accepted Sequoia and Tahoe
 latency receipts still require controlled runs on the supported physical
 hosts.
 
+## Product-path graph query timing receipts (D368)
+
+The six D367 spans now feed one benchmark-only collector through the same app
+telemetry adapter used by the released exact surfaces. The runner resolves exact
+identities from the disposable public fixture and invokes the six existing
+ApplicationKit use cases; it does not call StorageKit query methods directly or
+create a second graph workload. One unmeasured warmup precedes 5...1,000
+measured iterations per job.
+
+The collector requires a matched start and finish for every trace, a `facts`
+outcome for every sample, and the exact requested sample count for all six jobs.
+It aggregates monotonic wall and process CPU time as nearest-rank p50, p95, and
+maximum values. Its closed receipt contains only the stable job/outcome
+taxonomy, timing aggregates, iteration/run metadata, public fixture generation,
+and categorical host readiness. Trace UUIDs, graph identities, source counts,
+meeting text, evidence, abstention reasons, raw errors, and paths are absent.
+
+The canonical runner binds at least three isolated Release processes to one
+clean source commit, version, and build. These receipts measure existing reads;
+they change no graph authority, query limit, model, ranking, serving policy, or
+latency budget. A Tahoe receipt is not Sequoia evidence, and neither local host
+proves cross-hardware performance or private-library behavior.
+
 ## Human claim feedback is not model material (D88)
 
 `SummaryClaimFeedback` belongs to Core/Storage/UI, not an Intelligence provider.

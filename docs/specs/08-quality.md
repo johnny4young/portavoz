@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,586 cases (15 environment-gated) + 101
+Status: the package inventory contains 2,594 cases (15 environment-gated) + 101
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -81,6 +81,7 @@ local justification.
 | ExportLibraryMarkdownBackupUseCaseTests / BackupPublicationReconcileTests / RecoverLibraryMarkdownBackupTests / LibraryMarkdownBackupRecoveryStoreTests / LibraryMarkdownBackupStoreTests / LibraryMarkdownBackupFilesTests / LibraryMarkdownBackupModelTests | Portable canonical filename allocation, existing/concurrent collision retries, typed partial and fatal outcomes, bounded page-copy suspension with partial-stage cleanup, one immutable newest-first SQLite stage with corrupt-aggregate isolation and General-summary parity, one-at-a-time aggregate delivery, process-local suspension/resume without rerender or republish, atomic non-replacing file publication, cursor-bound reservations, no-follow exact-byte destination evidence, missing/matching/conflicting and cursor-less reconciliation, cancellation and destination-failure lease closure, publication-before-source-checkpoint ordering, idempotent and monotonic cursor persistence, checkpoint-only retry without destination inspection or republish, failure-frozen cursor advancement, catalog-before-cleanup stage preservation, ambiguous/conflicting launch fail-closed behavior, exact active continuation and completed-result reconstruction, retryable adopted-stage abandon after destination setup failure, terminal recovered-source cleanup without an implicit fresh export, and process-scoped progress/terminal state |
 | AskMeetingsUseCaseTests / AskPipelineTelemetryTests | Shared trimming/search/evidence/answer behavior; lexical evidence before generation; deterministic bilingual exact retrieval before bounded generative fallback; concurrent lexical/semantic work with partial-order telemetry invariants; no-evidence generation skip; evidence-preserving ordinary generation failure; an independent exact graph-fact bundle that cannot replace transcript evidence, distinguishes no request/domain abstention/operational unavailability, routes all three implemented fact adapters, and propagates cancellation; corpus-read-only product retrieval; cold/unavailable semantic fallback to lexical evidence; honest semantic and pipeline cancellation propagation; capability bypass for empty/invalid requests without trace creation; closed content-free Ask telemetry taxonomy; matched success/failure/cancellation intervals; and first-evidence/first-observable-token milestones |
 | MeetingMemoryGraphQueryTelemetryTests | Closed six-job/four-outcome exact-graph telemetry taxonomy; facts/abstention/cancellation/failure classification without payload material; all six use-case mappings; alias-resolution timing only after one exact identity; and explicit app-observer removal without callback accumulation |
+| MeetingMemoryGraphQueryRunProbeTests | Bounded explicit benchmark configuration; matched lifecycle and exact six-job sample counts; fact-only nearest-rank wall/CPU summaries; invalid host/fixture refusal; trace/content exclusion; private non-replacing JSON; and late-event failure |
 | AskPresentationModelTests | Full Ask progressive finding/refinement/generation state, early citations, evidence fallback, cancellation and stale-progress rejection, process-scoped palette search/answer ownership, stale completion rejection across reset/reopen, and Markdown answer receipts |
 | RetrievalChunkingTests | Deterministic single-actor turn grouping; confirmed-person continuity across observed labels; anonymous remote isolation and local-microphone continuity; mixed-language source preservation; character/duration/gap bounds; stable membership identity; representation-only retention; correction-local and per-source-text delta invalidation; source replacement; and fail-closed meeting, revision, identity, speaker, and timeline validation |
 | SuggestMeetingReviewMetadataTests / MeetingDetailModelTests | Title/structure/chapter eligibility, known-recipe and bounded-label admission, independent failure degradation, cancellation propagation, route-owned one-shot state, revision/request fencing, and suggestion preservation after failed title persistence |
@@ -1691,6 +1692,32 @@ English and Spanish 101-case XCUITest gates still qualify the existing product
 journeys after composition changes. Local signposts and synthetic relational
 budgets do not certify clean-install Sequoia, separate-hardware Tahoe, physical
 VoiceOver, private-corpus behavior, or accepted supported-host latency receipts.
+
+### Product-path graph query timing receipt (D368)
+
+Seven focused package tests pin explicit output/run/iteration bounds, stable
+six-job order, nearest-rank wall and CPU p50/p95/maximum arithmetic, and absence
+of trace UUIDs or fixture text. Duplicate, unmatched, incomplete, late,
+non-factful, missing, and incorrectly counted events fail closed. Unsupported
+host readiness and fixture generations are rejected, while output is mode 0600,
+atomic, and non-replacing.
+
+Seven deterministic tooling tests validate the assembled receipt and runner:
+bounded required shell arguments, exactly three or more contiguous runs,
+identical host and iteration evidence, exact closed
+objects, duplicate-key and non-finite rejection, monotonic summaries, fact-only
+jobs, lowercase full source SHA, and private non-replacing publication. One
+architecture ratchet binds process isolation, public fixture flags, disabled
+post-seed search reconciliation, production ApplicationKit use cases, the
+six-minute deadline, clean-worktree Release collection, separate bundle
+identity, strict assembler, documentation, and honest evidence limits.
+
+D368 changes no product UI, copy, localization, accessibility identity, schema,
+graph authority, or query behavior. The mandatory full English and Spanish
+101-case XCUITest gates therefore remain regression qualification rather than a
+new journey. A local Tahoe collection is only one-host evidence; accepted
+Sequoia plus Tahoe and cross-hardware receipts, physical VoiceOver, private
+owner-reviewed behavior, and any latency-policy decision remain external.
 
 Local: `swift build -Xswiftc -warnings-as-errors` then `swift test` (if it fails
 with "no such module": `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer

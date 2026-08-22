@@ -5,17 +5,19 @@ import XCTest
 
 final class ResourceRunProbeTests: XCTestCase {
     func testResourceBenchmarksOwnTheirProcessStartup() {
-        XCTAssertTrue(BenchMode.runsIsolatedResourceBenchmark(
+        XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-record", "30"]))
-        XCTAssertTrue(BenchMode.runsIsolatedResourceBenchmark(
+        XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-resource-refine", "fixture.aiff"]))
-        XCTAssertTrue(BenchMode.runsIsolatedResourceBenchmark(
+        XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-resource-summary"]))
-        XCTAssertTrue(BenchMode.runsIsolatedResourceBenchmark(
+        XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-resource-ask"]))
-        XCTAssertTrue(BenchMode.runsIsolatedResourceBenchmark(
+        XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-resource-indexing"]))
-        XCTAssertFalse(BenchMode.runsIsolatedResourceBenchmark(
+        XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
+            arguments: ["Portavoz", "--bench-graph-queries"]))
+        XCTAssertFalse(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "-use-temp-store", "-seed-demo"]))
     }
 

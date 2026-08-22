@@ -13,6 +13,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-ask-quality ask-quality-pair \
+	test-meeting-memory-graph-query-receipt meeting-memory-graph-query-receipt \
 	test-retrieval-chunk-evidence retrieval-chunk-evidence \
 	test-commitment-quality commitment-quality-deterministic \
 	commitment-quality-model commitment-quality-compare \
@@ -142,6 +143,32 @@ test-meeting-memory-graph-quality:
 	python3 -m unittest Tests.Tooling.test_meeting_memory_graph_quality
 	python3 scripts/meeting_memory_graph_quality.py verify-public \
 		--fixture Fixtures/MeetingMemoryGraph/public-synthetic-v1.json
+
+## Validate the strict product-path graph timing fragment and receipt boundary
+## without building or launching the Release benchmark app.
+test-meeting-memory-graph-query-receipt:
+	$(XCODE) swift test --filter MeetingMemoryGraphQueryRunProbeTests
+	python3 -m unittest \
+		Tests.Tooling.test_meeting_memory_graph_query_receipt
+
+## Build one clean isolated Release app and collect at least three content-free
+## runs over the public disposable fixture. This emits evidence, not a baseline.
+PORTAVOZ_GRAPH_QUERY_VERSION ?=
+PORTAVOZ_GRAPH_QUERY_BUILD ?=
+PORTAVOZ_GRAPH_QUERY_RUNS ?= 3
+PORTAVOZ_GRAPH_QUERY_ITERATIONS ?= 31
+PORTAVOZ_GRAPH_QUERY_OUTPUT ?=
+meeting-memory-graph-query-receipt:
+	@test -n "$(PORTAVOZ_GRAPH_QUERY_VERSION)" || \
+		(echo "PORTAVOZ_GRAPH_QUERY_VERSION is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_GRAPH_QUERY_BUILD)" || \
+		(echo "PORTAVOZ_GRAPH_QUERY_BUILD is required" >&2; exit 64)
+	scripts/run-meeting-memory-graph-query-receipt.sh \
+		--version "$(PORTAVOZ_GRAPH_QUERY_VERSION)" \
+		--build "$(PORTAVOZ_GRAPH_QUERY_BUILD)" \
+		--runs "$(PORTAVOZ_GRAPH_QUERY_RUNS)" \
+		--iterations "$(PORTAVOZ_GRAPH_QUERY_ITERATIONS)" \
+		--output "$(PORTAVOZ_GRAPH_QUERY_OUTPUT)"
 
 ## Emit the research-only deterministic control scorecard. It is a comparison
 ## anchor, not a product policy or an engine decision.

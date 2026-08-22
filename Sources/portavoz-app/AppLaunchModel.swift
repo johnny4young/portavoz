@@ -152,9 +152,9 @@ final class AppLaunchModel {
         guard !activatedServices, let services else { return }
         activatedServices = true
 
-        let runsIsolatedResourceBenchmark =
-            BenchMode.runsIsolatedResourceBenchmark(arguments: arguments)
-        if !runsIsolatedResourceBenchmark {
+        let runsIsolatedBenchmark =
+            BenchMode.runsIsolatedBenchmark(arguments: arguments)
+        if !runsIsolatedBenchmark {
             services.installAutomationEntityCatalog()
             PortavozAppDelegate.services = services
         }
@@ -166,11 +166,12 @@ final class AppLaunchModel {
         BenchMode.runSummaryResourceBenchIfRequested(services: services)
         BenchMode.runAskResourceBenchIfRequested(services: services)
         BenchMode.runIndexingResourceBenchIfRequested(services: services)
+        BenchMode.runMemoryGraphQueryBenchIfRequested(services: services)
 
         // Resource evidence owns this process. Do not start sync, recovery,
         // provider discovery, or dictation registrations beside a measured
         // window; temporary storage alone would not isolate their resource use.
-        guard !runsIsolatedResourceBenchmark else { return }
+        guard !runsIsolatedBenchmark else { return }
 
         services.startResourcePressureMonitoring()
         services.requestSearchReconciliation()

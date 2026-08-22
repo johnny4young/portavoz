@@ -13364,3 +13364,40 @@ network. This adds no UI, graph authority, schema, query semantics, model, or
 performance baseline; accepted Sequoia/Tahoe receipts and physical VoiceOver,
 private-corpus, sync/export, CLI/MCP, and broader graph-answer evidence remain
 external gates.
+
+## D368 — Collect exact graph product timing without user content (Aug 2026)
+
+**Context:** D367 created the only content-free timing seam for the six released
+exact graph reads, but signposts alone are not reproducible field evidence. A
+manual Instruments capture could mix background work, use a private library,
+omit build provenance, or silently compare different host conditions. The
+existing synthetic relational scale harness does not execute the composed app
+path.
+
+**Decision:** add one hidden process-owning app runner over the complete public
+disposable fixture. It must execute the existing six ApplicationKit use cases
+through `AppMeetingMemoryGraphQueryTelemetry`, suppress normal post-seed search
+reconciliation, perform one unmeasured warmup, and measure 5...1,000 iterations
+per job. A six-minute independent deadline prevents a hung app process.
+
+The process-local collector requires matched traces, exactly the requested
+factful samples for every closed job, arm64/AC/nominal/non-Low-Power host state,
+and the fixed public fixture generation. It emits only wall/process-CPU
+nearest-rank p50, p95, and maximum summaries plus categorical host/run metadata;
+trace and domain identities, text, evidence, domain counts, paths, and raw
+errors are structurally excluded. Files are owner-only, atomic, and
+non-replacing.
+
+The canonical script refuses a dirty worktree, builds and signs one isolated
+Release app with a separate bundle identity, then collects at least three fresh
+processes. A strict duplicate-key-rejecting assembler requires contiguous runs
+with identical host and iteration evidence and binds the final receipt to the
+exact source commit, version, and build.
+
+**Consequences:** Portavoz can now produce reproducible content-free timing
+input from the actual composed graph-query path without reading a user library
+or creating a second query implementation. The collector changes no UI,
+authority, schema, model, ranking, query limit, serving behavior, or budget. One
+Tahoe machine is not Sequoia or cross-hardware evidence, and the receipt itself
+accepts no latency policy; supported-host acceptance, private owner-reviewed
+behavior, physical VoiceOver, and broader graph adoption remain separate gates.

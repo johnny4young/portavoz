@@ -18,7 +18,7 @@ import TranscriptionKit
 /// The process exits when the bench finishes — it never touches the UI,
 /// the library or the database.
 enum BenchMode {
-    static func runsIsolatedResourceBenchmark(
+    static func runsIsolatedBenchmark(
         arguments: [String] = ProcessInfo.processInfo.arguments
     ) -> Bool {
         arguments.contains("--bench-record")
@@ -26,6 +26,7 @@ enum BenchMode {
             || arguments.contains("--bench-resource-summary")
             || arguments.contains("--bench-resource-ask")
             || arguments.contains("--bench-resource-indexing")
+            || arguments.contains("--bench-graph-queries")
     }
 
     static func runIfRequested() {

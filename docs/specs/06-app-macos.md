@@ -1496,6 +1496,33 @@ abstention reason, or error description reaches OSLog, persistence, or a
 network. The signposts make local Instruments runs possible; they are not an
 accepted Sequoia/Tahoe performance receipt by themselves.
 
+## Isolated graph query timing runner (D368)
+
+`--bench-graph-queries` owns the app process before normal background services
+start. It is admitted only with `-use-temp-store` plus the complete public
+`-seed-demo`, `-seed-ask-memory`, and `-seed-ask-topic-memory` fixture. Fixture
+seeding disables its normal search-reconciliation wake, so Spotlight, semantic
+indexing, graph maintenance, sync, recovery, provider discovery, and resource
+monitoring do not compete with the measured window. The runner waits for two
+nominal thermal observations, requires AC power and Low Power Mode off, performs
+one unmeasured warmup, and has a six-minute process deadline.
+
+One removable observer surrounds only the measured six-query rounds. Exact
+fixture lookup must resolve one person, commitment, topic, and baseline meeting;
+every use case must return a non-empty fact page. The strict probe rejects
+duplicate, unmatched, incomplete, late, failed, cancelled, abstaining, missing,
+or excess events. It writes one mode-0600 fragment without replacing an existing
+file and exits; it never opens the real library.
+
+`run-meeting-memory-graph-query-receipt.sh` refuses a dirty worktree, builds one
+isolated Release app, gives it a separate bundle identity, verifies its
+signature, and collects at least three fresh app processes. The Python assembler
+accepts only the exact fragment schema, rejects duplicate JSON keys and
+non-finite/non-monotonic durations, requires identical host/iteration evidence,
+and atomically publishes a content-free receipt bound to source commit, version,
+and build. This is a field-evidence input, not a product feature, UI control,
+latency threshold, or supported-host certification.
+
 The hidden Ask resource mode installs one observer only around its disposable
 `AskMeetings.local` call (D193). `AskPipelineRunProbe` accepts exactly one
 answer trace, one completion for every declared stage, first evidence, first
