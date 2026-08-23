@@ -17,12 +17,12 @@ final class SkillsControlCenterTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 41)
+            XCTAssertEqual(StorageSchema.version, 42)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v41")
+                "v42")
             XCTAssertEqual(
                 try Set(database.columns(in: "skillControl").map(\.name)),
                 ["id", "isPaused", "updatedAt"])
@@ -70,6 +70,46 @@ final class SkillsControlCenterTests: XCTestCase {
                 .contains("WHERE state NOT IN ('confirmed', 'succeeded', 'cancelled')") == true)
             XCTAssertTrue(indexSQL["skillExecutionState_on_completed"]?
                 .contains("WHERE state IN ('succeeded', 'cancelled')") == true)
+        }
+    }
+
+    func testV42AddsDirectionMatchedSkillFilterIndexes() throws {
+        let database = try DatabaseQueue()
+        let migrator = StorageSchema.migrator()
+        try migrator.migrate(database, upTo: "v41")
+
+        try migrator.migrate(database)
+
+        try database.read { database in
+            let indexSQL = try Row.fetchAll(
+                database,
+                sql: """
+                    SELECT name, sql FROM sqlite_master
+                    WHERE type = 'index'
+                      AND name LIKE 'skillExecutionState_on_%_skill'
+                    """).reduce(into: [String: String]()) { result, row in
+                        result[row["name"] as String] = row["sql"] as String
+                    }
+            XCTAssertEqual(indexSQL.count, 4)
+            XCTAssertTrue(indexSQL["skillExecutionState_on_waiting_skill"]?
+                .contains("WHERE state = 'confirmed'") == true)
+            XCTAssertTrue(indexSQL["skillExecutionState_on_attention_skill"]?
+                .contains(
+                    "WHERE state NOT IN ('confirmed', 'succeeded', 'cancelled')"
+                ) == true)
+            XCTAssertTrue(indexSQL["skillExecutionState_on_completed_skill"]?
+                .contains("WHERE state IN ('succeeded', 'cancelled')") == true)
+
+            let columns = try Row.fetchAll(
+                database,
+                sql: "PRAGMA index_xinfo(skillExecutionState_on_recent_skill)")
+                .filter { ($0["key"] as Int) == 1 }
+            XCTAssertEqual(
+                columns.map { $0["name"] as String },
+                ["skillID", "updatedAt", "proposalID"])
+            XCTAssertEqual(
+                columns.map { $0["desc"] as Int },
+                [0, 1, 0])
         }
     }
 
@@ -137,6 +177,16 @@ final class SkillsControlCenterTests: XCTestCase {
         let oversized = try await store.recentSkillExecutions(limit: 101)
         XCTAssertTrue(zero.isEmpty)
         XCTAssertTrue(oversized.isEmpty)
+
+        for skillID in ["", " recap-draft ", String(repeating: "s", count: 81)] {
+            let malformed = try await store.skillExecutions(
+                scope: .recent,
+                skillID: skillID,
+                limit: 20)
+            XCTAssertTrue(
+                malformed.isEmpty,
+                "malformed storage filters must fail closed: \(skillID)")
+        }
 
         do {
             try await store.setSkill(" recap-draft ", isEnabled: false)
@@ -311,6 +361,49 @@ final class SkillsControlCenterTests: XCTestCase {
         XCTAssertEqual(attentionRows.map(\.state), [.executing, .failed, .executing])
         XCTAssertEqual(completedRows.map(\.proposalID), [dismissed, succeeded])
         XCTAssertEqual(completedRows.map(\.state), [.dismissed, .succeeded])
+    }
+
+    func testReceiptSkillFilterStaysExactBoundedAndScopeAware() async throws {
+        let store = try MeetingStore.inMemory()
+        var recapIDs: [UUID] = []
+        var exportIDs: [UUID] = []
+        for index in 0..<8 {
+            let proposalID = UUID()
+            let isExport = index.isMultiple(of: 2)
+            try await makeExecution(
+                proposalID,
+                skillID: isExport
+                    ? MeetingPackageExportSkill.id
+                    : RecapDraftSkill.id,
+                skillVersion: isExport
+                    ? MeetingPackageExportSkill.version
+                    : RecapDraftSkill.version,
+                state: .succeeded,
+                timestamp: now.addingTimeInterval(TimeInterval(index)),
+                store: store)
+            if isExport {
+                exportIDs.insert(proposalID, at: 0)
+            } else {
+                recapIDs.insert(proposalID, at: 0)
+            }
+        }
+
+        let recap = try await store.skillExecutions(
+            scope: .completed,
+            skillID: RecapDraftSkill.id,
+            limit: 2)
+        let exports = try await store.skillExecutions(
+            scope: .completed,
+            skillID: MeetingPackageExportSkill.id,
+            limit: 20)
+        let waitingExports = try await store.skillExecutions(
+            scope: .waiting,
+            skillID: MeetingPackageExportSkill.id,
+            limit: 20)
+
+        XCTAssertEqual(recap.map(\.proposalID), Array(recapIDs.prefix(2)))
+        XCTAssertEqual(exports.map(\.proposalID), exportIDs)
+        XCTAssertTrue(waitingExports.isEmpty)
     }
 
     func testControlCenterDerivesDisclosureFromExecutableCapabilities() async throws {
@@ -994,20 +1087,46 @@ final class SkillsControlCenterTests: XCTestCase {
         }
     }
 
-    func testReceiptLimitIsClampedBeforeTheStoreRead() async throws {
+    func testReceiptFilterAndClampedLimitReachTheStoreExactly() async throws {
         let store = RecordingSkillControlStore()
 
-        _ = try await LoadSkillControlCenter(store: store).execute(
+        let snapshot = try await LoadSkillControlCenter(store: store).execute(
             LoadSkillControlCenterRequest(
                 receiptScope: .needsAttention,
+                receiptSkillID: MeetingPackageExportSkill.id,
                 receiptLimit: .max))
+
+        XCTAssertEqual(
+            snapshot.receiptSkillID,
+            MeetingPackageExportSkill.id)
 
         let requests = await store.requests
         XCTAssertEqual(
             requests,
             [SkillControlCenterStoreRequest(
                 scope: .needsAttention,
+                skillID: MeetingPackageExportSkill.id,
                 limit: SkillControlCenterSnapshot.maximumReceiptLimit)])
+    }
+
+    func testUnknownReceiptSkillFilterFailsBeforeAStoreRead() async {
+        let store = RecordingSkillControlStore()
+
+        do {
+            _ = try await LoadSkillControlCenter(store: store).execute(
+                LoadSkillControlCenterRequest(
+                    receiptSkillID: "not-in-the-catalogue"))
+            XCTFail("an unknown filter must not widen into all Skills")
+        } catch let error as LoadSkillControlCenterError {
+            XCTAssertEqual(error, .unknownReceiptSkillID)
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+
+        let requests = await store.requests
+        XCTAssertTrue(requests.isEmpty)
+        let policyReadCount = await store.policyReadCount
+        XCTAssertEqual(policyReadCount, 0)
     }
 
     func testOnlyKnownAvailableSkillsCanBeChanged() async throws {
@@ -1047,7 +1166,7 @@ final class SkillsControlCenterTests: XCTestCase {
             ])
     }
 
-    func testRecentReceiptQueryHasItsDedicatedIndex() async throws {
+    func testReceiptQueriesHaveDirectionMatchedIndexes() async throws {
         let store = try MeetingStore.inMemory()
         try await store.database.read { database in
             let cases = [
@@ -1081,19 +1200,52 @@ final class SkillsControlCenterTests: XCTestCase {
                     plan.contains(where: { $0.contains("TEMP B-TREE") }),
                     "the bounded receipt read must not sort full history: \(plan)")
             }
+
+            let filteredCases = cases.map { item in
+                let (predicate, index) = item
+                let filteredPredicate = predicate.isEmpty
+                    ? "WHERE skillID = 'recap-draft'"
+                    : predicate.replacingOccurrences(
+                        of: "WHERE ",
+                        with: "WHERE skillID = 'recap-draft' AND ")
+                return (filteredPredicate, "\(index)_skill")
+            }
+            for (predicate, expectedIndex) in filteredCases {
+                let plan = try Row.fetchAll(
+                    database,
+                    sql: """
+                    EXPLAIN QUERY PLAN
+                    SELECT proposalID, skillID, skillVersion, idempotencyKey,
+                           state, failureCategory, attempt, updatedAt
+                    FROM skillExecutionState INDEXED BY \(expectedIndex)
+                    \(predicate)
+                    ORDER BY updatedAt DESC, proposalID ASC
+                    LIMIT 20
+                    """).map { $0["detail"] as String }
+                XCTAssertTrue(
+                    plan.contains(where: {
+                        $0.contains("USING INDEX \(expectedIndex)")
+                    }),
+                    "the filtered receipt read must use \(expectedIndex): \(plan)")
+                XCTAssertFalse(
+                    plan.contains(where: { $0.contains("TEMP B-TREE") }),
+                    "the filtered receipt read must not sort history: \(plan)")
+            }
         }
     }
 
     private func makeExecution(
         _ proposalID: UUID,
+        skillID: String = RecapDraftSkill.id,
+        skillVersion: Int = RecapDraftSkill.version,
         state: SkillExecutionState,
         timestamp: Date,
         store: MeetingStore
     ) async throws {
         _ = try await store.confirmSkillExecution(SkillExecutionConfirmation(
             proposalID: proposalID,
-            skillID: RecapDraftSkill.id,
-            skillVersion: RecapDraftSkill.version,
+            skillID: skillID,
+            skillVersion: skillVersion,
             subject: .calendarEvent("control-center-test-subject"),
             offerKey: "scope-\(proposalID.uuidString)",
             idempotencyKey: "scope-\(proposalID.uuidString)",
@@ -1198,17 +1350,21 @@ final class SkillsControlCenterTests: XCTestCase {
 
 private actor RecordingSkillControlStore: SkillControlCenterStore {
     private(set) var requests: [SkillControlCenterStoreRequest] = []
+    private(set) var policyReadCount = 0
 
     func skillExecutionPolicy() -> SkillExecutionPolicy {
-        SkillExecutionPolicy()
+        policyReadCount += 1
+        return SkillExecutionPolicy()
     }
 
     func skillExecutions(
         scope: SkillExecutionReviewScope,
+        skillID: String?,
         limit: Int
     ) -> [SkillExecutionRecord] {
         requests.append(SkillControlCenterStoreRequest(
             scope: scope,
+            skillID: skillID,
             limit: limit))
         return []
     }
@@ -1246,6 +1402,7 @@ private actor FailingSkillControlStore: SkillControlCenterStore {
 
     func skillExecutions(
         scope: SkillExecutionReviewScope,
+        skillID: String?,
         limit: Int
     ) throws -> [SkillExecutionRecord] {
         if failure == .receipts {
@@ -1268,6 +1425,7 @@ private actor FailingSkillControlStore: SkillControlCenterStore {
 
 private struct SkillControlCenterStoreRequest: Equatable, Sendable {
     let scope: SkillExecutionReviewScope
+    let skillID: String?
     let limit: Int
 }
 

@@ -350,32 +350,47 @@ offers, and `ExecuteSkill` reads it again immediately before admission and the
 durable claim. The Settings snapshot combines the catalogue with exactly one
 requested content-free execution scope: recent, confirmed and waiting to begin,
 failed or executing runs that need attention, or terminal completed/cancelled
-runs. Application requests at most 50 receipts (20 by default); storage itself
-refuses reads above 100. Schema v39 supplies direction-matched newest-first
-partial indexes for the three state scopes, and the query pins the matching
-index so SQLite does not sort or scan unrelated execution history. The
-attention predicate is deliberately negative: an unknown future durable state
-stays visible for review rather than disappearing fail open. A scope response
-must match the current selection before Settings renders any receipt, and a
-scope-only read failure leaves already verified policy controls usable while
-showing no stale rows.
+runs. It may also carry one exact catalogue Skill filter. That filter is
+composed in the database query before ordering and limiting; filtering only an
+already-loaded page would invent false empty states. Application requests at
+most 50 receipts (20 by default); storage itself refuses reads above 100.
+Schema v39 supplies direction-matched newest-first partial indexes for the
+three state scopes. Schema v42 mirrors those read paths with one complete and
+three partial `(skillID, updatedAt DESC, proposalID ASC)` indexes for filtered
+reads, while unfiltered reads retain the v35/v39 indexes. Queries pin the
+matching index so SQLite does not sort or scan unrelated execution history.
+The attention predicate is deliberately negative: an unknown future durable
+state stays visible for review rather than disappearing fail open. A
+scope/filter response must match the current selection before Settings renders
+any receipt, and a receipt-only read failure leaves already verified policy
+controls usable while showing no stale rows.
 
 Settings starts each activity scope at the 20-receipt application default. An
 explicit **Show more runs** action appears only when that verified window is
 full; it performs one replacement read at the existing 50-receipt application
 ceiling. It is not cursor or infinite pagination, never appends into an
 unbounded view-owned collection, and disappears after that one expansion.
-Changing scopes resets the requested window to 20 before reading, while policy
-mutations and same-scope refreshes preserve the currently verified 20-or-50
-window. Scope, limit, and generation must all still match before Settings may
-adopt a result.
+Changing scopes or the exact Skill filter resets the requested window to 20
+before reading, while policy mutations and same-selection refreshes preserve
+the currently verified 20-or-50 window. Scope, Skill identity, limit, and
+generation must all still match before Settings may adopt a result. The menu
+offers only currently available catalogue Skills plus **All skills**; an empty
+filtered result names the localized Skill instead of implying that the whole
+lifecycle scope is empty.
 
 A verified empty or populated activity view exposes one explicit read-only
-refresh. It reuses the selected scope and its current 20-or-50 window, publishes
-the same loading state that hides stale rows, and adopts through the same
-scope/limit/generation fence. Loading and unavailable views do not expose a
-competing refresh action; unavailable retains its existing retry. No timer,
-polling owner, observer, receipt mutation, or execution authority is added.
+refresh. It reuses the selected scope, exact Skill filter, and current 20-or-50
+window, publishes the same loading state that hides stale rows, and adopts
+through the same scope/filter/limit/generation fence. Loading and unavailable
+views do not expose a competing refresh action; unavailable retains its
+existing retry. No timer, polling owner, observer, receipt mutation, or
+execution authority is added.
+
+The four v42 indexes deliberately add write and disk work. A receipt appears in
+one filtered complete index and one filtered state index in addition to its
+unfiltered v35/v39 entries. This is an explicit bounded-read tradeoff: migration
+and `EXPLAIN QUERY PLAN` tests require the intended index and reject a temporary
+sort, but the project does not infer a latency or storage budget from that plan.
 
 Policy and receipt history remain independently verified inside that snapshot.
 The application starts both bounded reads together, but only a policy failure
@@ -4519,12 +4534,12 @@ silently.
 
 ## Quality evidence
 
-The current 22 Aug 2026 local acceptance inventory, with longer-running
+The current 23 Aug 2026 local acceptance inventory, with longer-running
 reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,601 XCTest package cases are defined, with 15 real-model/environment cases
+- 2,605 XCTest package cases are defined, with 15 real-model/environment cases
   gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
@@ -4533,13 +4548,13 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 703
+- strict SwiftLint remains a blocking CI gate and is clean across all 704
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
 - 457 deterministic tooling cases and the 195-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
-- 104 XCUITest cases per locale define the 208-case bilingual release gate;
+- 105 XCUITest cases per locale define the 210-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

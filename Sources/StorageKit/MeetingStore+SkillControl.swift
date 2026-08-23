@@ -86,7 +86,7 @@ extension MeetingStore {
     public func recentSkillExecutions(
         limit: Int
     ) async throws -> [SkillExecutionRecord] {
-        try await skillExecutions(scope: .recent, limit: limit)
+        try await skillExecutions(scope: .recent, skillID: nil, limit: limit)
     }
 
     /// Newest content-free execution projections for one review scope.
@@ -96,46 +96,72 @@ extension MeetingStore {
     /// visible for review instead of disappearing fail-open.
     public func skillExecutions(
         scope: SkillExecutionReviewScope,
+        skillID: String? = nil,
         limit: Int
     ) async throws -> [SkillExecutionRecord] {
         guard (1...Self.maximumRecentSkillExecutionCount).contains(limit)
         else { return [] }
+        if let skillID {
+            guard skillID == skillID.trimmingCharacters(
+                in: .whitespacesAndNewlines),
+                !skillID.isEmpty,
+                skillID.count <= 80
+            else { return [] }
+        }
         return try await database.read { database in
-            try Row.fetchAll(
+            let arguments: StatementArguments = if let skillID {
+                [skillID, limit]
+            } else {
+                [limit]
+            }
+            return try Row.fetchAll(
                 database,
                 sql: """
                     SELECT proposalID, skillID, skillVersion, idempotencyKey,
                            state, failureCategory, attempt, updatedAt
                     FROM skillExecutionState INDEXED BY
-                         \(Self.skillExecutionReviewIndex(scope))
-                    \(Self.skillExecutionReviewPredicate(scope))
+                         \(Self.skillExecutionReviewIndex(
+                            scope,
+                            filteredBySkill: skillID != nil))
+                    \(Self.skillExecutionReviewPredicate(
+                        scope,
+                        filteredBySkill: skillID != nil))
                     ORDER BY updatedAt DESC, proposalID ASC
                     LIMIT ?
                     """,
-                arguments: [limit]
+                arguments: arguments
             ).map(Self.skillExecutionRecord(from:))
         }
     }
 
     private static func skillExecutionReviewPredicate(
-        _ scope: SkillExecutionReviewScope
+        _ scope: SkillExecutionReviewScope,
+        filteredBySkill: Bool
     ) -> String {
-        switch scope {
+        let skillPrefix = filteredBySkill ? "skillID = ?" : ""
+        return switch scope {
         case .recent:
-            ""
+            filteredBySkill ? "WHERE \(skillPrefix)" : ""
         case .waiting:
-            "WHERE state = 'confirmed'"
+            "WHERE \(skillPrefixWithAnd(skillPrefix))state = 'confirmed'"
         case .needsAttention:
-            "WHERE state NOT IN ('confirmed', 'succeeded', 'cancelled')"
+            "WHERE \(skillPrefixWithAnd(skillPrefix))"
+                + "state NOT IN ('confirmed', 'succeeded', 'cancelled')"
         case .completed:
-            "WHERE state IN ('succeeded', 'cancelled')"
+            "WHERE \(skillPrefixWithAnd(skillPrefix))"
+                + "state IN ('succeeded', 'cancelled')"
         }
     }
 
+    private static func skillPrefixWithAnd(_ skillPrefix: String) -> String {
+        skillPrefix.isEmpty ? "" : "\(skillPrefix) AND "
+    }
+
     private static func skillExecutionReviewIndex(
-        _ scope: SkillExecutionReviewScope
+        _ scope: SkillExecutionReviewScope,
+        filteredBySkill: Bool
     ) -> String {
-        switch scope {
+        let base = switch scope {
         case .recent:
             "skillExecutionState_on_recent"
         case .waiting:
@@ -145,5 +171,6 @@ extension MeetingStore {
         case .completed:
             "skillExecutionState_on_completed"
         }
+        return filteredBySkill ? "\(base)_skill" : base
     }
 }

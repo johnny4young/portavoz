@@ -277,6 +277,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "SkillsSettingsUITests",
+            "testSkillActivityFiltersExactSkillAndResetsExpansion",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
             "testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy",
         ),
         test_id(

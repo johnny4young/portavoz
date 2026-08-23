@@ -13552,3 +13552,42 @@ observer, background task, receipt mutation, execution authority, adapter,
 standing rule, egress consent, or deployment-floor change is introduced.
 Automation remains local Tahoe-family evidence; physical VoiceOver, Sequoia,
 separate-hardware Tahoe, and cross-process timing remain field evidence.
+
+## D373 — Skill activity filters one exact catalogue identity at query time (Aug 2026)
+
+**Context:** lifecycle scopes and bounded 20-to-50 expansion made the central
+activity history useful, but a mixed history still required users to scan every
+visible Skill. Filtering only the 20 or 50 rows already loaded by the view would
+be incorrect: a selected Skill could have older matching receipts beyond that
+window, producing a false empty result. Loading every receipt before filtering
+would violate the existing bounded query and memory contract.
+
+**Decision:** add an optional exact catalogue Skill identity to the
+control-center request and returned snapshot. Storage composes that identity
+with Recent, Waiting, Attention, or Completed before ordering and limiting, so
+the result remains a bounded database query rather than a view-owned subset.
+Schema v42 adds four `(skillID, updatedAt DESC, proposalID ASC)` indexes: one
+complete newest-first index and three state-scoped partial indexes mirroring
+v39. Unfiltered reads retain their v35/v39 indexes. The use case rejects a
+non-catalogue filter before starting either store read, and Storage rejects
+empty, padded, or oversized identities fail closed.
+
+Changing scope or Skill resets the requested window to 20. Same-selection
+refreshes and verified mutations preserve the current 20-or-50 window. Scope,
+Skill identity, limit, and load generation must all still match before Settings
+adopts a response; loading hides prior rows immediately. The accessible menu
+lists only currently available catalogue Skills plus **All skills**, and a
+verified empty state names the selected localized Skill. The real-app bilingual
+journey observes a delayed filter transition, exact empty and populated results,
+one 20-to-25 expansion, and reset from 50 back to 20.
+
+**Consequences:** users can inspect one Skill without false empty states,
+unbounded materialization, payload search, or background work. Each execution
+now occupies both an unfiltered and filtered complete index plus one unfiltered
+and filtered state index; the added write/disk cost is accepted for predictable
+ordered review reads and is guarded by migration and query-plan tests, not an
+unmeasured latency claim. No receipt payload, FTS lane, cursor, scheduler,
+standing rule, confirmation, execution authority, adapter, consent, or
+deployment-floor change is introduced. Automation remains local Tahoe-family
+evidence; physical VoiceOver, Sequoia, and separate-hardware Tahoe behavior
+remain field evidence.

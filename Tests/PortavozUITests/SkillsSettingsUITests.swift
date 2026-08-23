@@ -298,6 +298,97 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSkillActivityFiltersExactSkillAndResetsExpansion() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append(contentsOf: [
+            "-seed-skill-history",
+            "-simulate-skill-receipt-refresh-delay"
+        ])
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+
+        let waiting = app.control(
+            withIdentifier: "settings-skills-receipt-scope-waiting")
+        scrollToVisible(waiting, in: app, deltaY: -40)
+        XCTAssertTrue(waiting.waitForStableFrame(timeout: 5))
+        waiting.click()
+
+        let loading = app.control(
+            withIdentifier: "settings-skills-receipt-scope-loading")
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        let receiptRows = app.buttons.matching(
+            identifier: "settings-skill-receipt-meeting-package-export")
+        XCTAssertTrue(waitForCount(receiptRows, toEqual: 20, timeout: 10))
+
+        let filter = app.control(
+            withIdentifier: "settings-skills-receipt-skill-filter")
+        scrollToVisible(filter, in: app, deltaY: -80)
+        XCTAssertTrue(filter.waitForStableFrame(timeout: 5))
+        filter.click()
+        let recap = app.menuItems[
+            "settings-skills-receipt-skill-recap-draft"]
+        XCTAssertTrue(recap.waitForExistence(timeout: 5))
+        recap.click()
+
+        XCTAssertTrue(
+            loading.waitForExistence(timeout: 2),
+            "a filter change must hide rows from the previous query")
+        XCTAssertTrue(waitForCount(receiptRows, toEqual: 0, timeout: 2))
+        let empty = app.control(
+            withIdentifier: "settings-skills-empty-receipts-waiting")
+        XCTAssertTrue(empty.waitForExistence(timeout: 10))
+        let recapTitle = UITestLocale.environmentLocale == "es"
+            ? "Borrador de recap"
+            : "Recap draft"
+        let filteredEmpty = UITestLocale.environmentLocale == "es"
+            ? "No hay ejecuciones de \(recapTitle) que coincidan con esta vista de actividad."
+            : "No \(recapTitle) runs match this activity view."
+        XCTAssertTrue(waitForLabel(empty, toContain: filteredEmpty))
+        XCTAssertTrue(waitForLabel(filter, toContain: recapTitle))
+
+        filter.click()
+        let package = app.menuItems[
+            "settings-skills-receipt-skill-meeting-package-export"]
+        XCTAssertTrue(package.waitForExistence(timeout: 5))
+        package.click()
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        XCTAssertTrue(
+            waitForCount(receiptRows, toEqual: 20, timeout: 10),
+            "the exact package filter must query its own first bounded page")
+
+        let showMore = app.buttons[
+            "settings-skills-receipt-show-more"]
+        scrollToVisible(showMore, in: app, deltaY: -120)
+        XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
+        showMore.click()
+        XCTAssertTrue(waitForCount(receiptRows, toEqual: 25, timeout: 10))
+
+        scrollToVisible(filter, in: app, deltaY: 120)
+        XCTAssertTrue(filter.waitForStableFrame(timeout: 5))
+        filter.click()
+        let all = app.menuItems[
+            "settings-skills-receipt-skill-all"]
+        XCTAssertTrue(all.waitForExistence(timeout: 5))
+        all.click()
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        XCTAssertTrue(
+            waitForCount(receiptRows, toEqual: 20, timeout: 10),
+            "changing the Skill filter must reset the 50-row expansion")
+
+        let limit = app.control(
+            withIdentifier: "settings-skills-receipt-history-limit")
+        let initialLimit = UITestLocale.environmentLocale == "es"
+            ? "Cada vista muestra hasta 20 ejecuciones coincidentes en este Mac."
+            : "Each view shows up to 20 matching runs on this Mac."
+        XCTAssertTrue(waitForLabel(limit, toContain: initialLimit))
+        XCTAssertTrue(showMore.waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "skills-activity-skill-filter")
+    }
+
+    @MainActor
     func testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy() {
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-proposal-unavailable")

@@ -2214,7 +2214,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 41"))
+        XCTAssertTrue(schema.contains("public static let version = 42"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -3997,7 +3997,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 41"))
+        XCTAssertTrue(schema.contains("public static let version = 42"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -5164,6 +5164,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/Schema+SkillControl.swift")
         let executionReviewSchema = try Self.contents(
             of: "Sources/StorageKit/Schema+SkillExecutionReview.swift")
+        let executionFilterSchema = try Self.contents(
+            of: "Sources/StorageKit/Schema+SkillExecutionReviewFilter.swift")
         let offers = try Self.contents(
             of: "Sources/ApplicationKit/MeetingSkillOffers.swift")
         let settings = try Self.contents(
@@ -5204,6 +5206,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "WHERE state NOT IN ('confirmed', 'succeeded', 'cancelled')"))
         XCTAssertTrue(executionReviewSchema.contains(
             "WHERE state IN ('succeeded', 'cancelled')"))
+        XCTAssertTrue(executionFilterSchema.contains(
+            "registerMigration(\"v42\")"))
+        XCTAssertTrue(executionFilterSchema.contains(
+            "skillExecutionState_on_recent_skill"))
+        XCTAssertTrue(executionFilterSchema.contains(
+            "skillID, updatedAt DESC, proposalID ASC"))
         XCTAssertTrue(offers.contains("store.skillExecutionPolicy()"))
         XCTAssertTrue(offers.contains(
             "store.skillExecutions(\n            idempotencyKeys: oneShotKeys)"))
@@ -5230,6 +5238,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(activity.contains(
             "settings-skills-receipt-show-more"))
         XCTAssertTrue(activity.contains(
+            "settings-skills-receipt-skill-filter"))
+        XCTAssertTrue(activity.contains(
+            "settings-skills-receipt-skill-\\(skill.id)"))
+        XCTAssertTrue(activity.contains(
+            "snapshot.receiptSkillID == receiptSkillID"))
+        XCTAssertTrue(activity.contains(
             "if presentationState.allowsExplicitRefresh"))
         XCTAssertTrue(activity.contains(
             "settings-skills-receipt-refresh"))
@@ -5237,20 +5251,29 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(activity.contains("if isLoading"))
         XCTAssertTrue(activity.contains(
             "snapshot.receiptLoadState == .verified"))
-        XCTAssertTrue(settings.contains(".task(id: receiptScope)"))
+        XCTAssertTrue(settings.contains(".task(id: activitySelection)"))
         XCTAssertTrue(settings.contains(
             "receiptHistoryWindow.reset()\n            await load()"))
         XCTAssertTrue(settings.contains(
             "receiptLimit: requestedLimit"))
         XCTAssertTrue(settings.contains(
+            "receiptSkillID: requestedSkillID"))
+        XCTAssertTrue(settings.contains(
+            "receiptSkillID == requestedSkillID"))
+        XCTAssertTrue(settings.contains(
             "receiptHistoryWindow.requestedLimit == requestedLimit"))
+        XCTAssertTrue(decisions.contains("## D373"))
         XCTAssertTrue(settings.contains(
             "receiptHistoryWindow.expand()\n        await load()"))
         XCTAssertTrue(settings.contains(
             "refresh: { Task { await refreshActivity() } }"))
         let refreshActivityContract = [
             "private func refreshActivity() async {",
-            "        guard !isLoading,",
+            "        guard let snapshot,",
+            "              snapshot.receiptScope == receiptScope,",
+            "              snapshot.receiptSkillID == receiptSkillID,",
+            "              snapshot.receiptLoadState == .verified,",
+            "              !isLoading,",
             "              !isMutating,",
             "              !proposalMutationInFlight",
             "        else { return }",
@@ -9173,7 +9196,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 41"))
+        XCTAssertTrue(schema.contains("public static let version = 42"))
         XCTAssertTrue(schema.contains("registerTranscriptCorrectionSearchMigration"))
         XCTAssertTrue(correctionSchema.contains("transcriptCorrectionSearchState"))
         XCTAssertTrue(correctionSchema.contains("SELECT DISTINCT meetingID"))
@@ -9216,7 +9239,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let intelligenceSpec = try Self.contents(
             of: "docs/specs/04-intelligence.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 41"))
+        XCTAssertTrue(schema.contains("public static let version = 42"))
         XCTAssertTrue(schema.contains("registerSegmentCorrectedEmbeddingMigration"))
         XCTAssertTrue(correctedSchema.contains("registerMigration(\"v37\")"))
         XCTAssertTrue(correctedSchema.contains("table.add(column: \"embedding\", .blob)"))
@@ -9266,7 +9289,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 41"))
+        XCTAssertTrue(schema.contains("public static let version = 42"))
         XCTAssertTrue(schema.contains("registerTranscriptStructuralSearchMigration"))
         XCTAssertTrue(structuralSchema.contains("registerMigration(\"v38\")"))
         XCTAssertTrue(structuralSchema.contains("transcriptStructuralSearchRow"))

@@ -2840,37 +2840,50 @@ privacy statement.
 
 Every activity scope is bounded before materialization (20 by default, 50
 maximum through the application request, 100 at the storage boundary) and
-ordered by `(updatedAt DESC, proposalID ASC)`. Recent uses its full index;
-schema v39 adds one partial direction-matched index for each state scope, and
-the query explicitly pins that index so an empty or sparse scope cannot fall
-back to a state-leading index plus a temporary sort. The Attention predicate
-excludes only known waiting and terminal states, so a future state remains
-visible for review. Malformed durable proposal identities fail the projection
-instead of silently disappearing from the audit surface.
+ordered by `(updatedAt DESC, proposalID ASC)`. The user may additionally choose
+one exact available catalogue Skill or **All skills**. The optional identity is
+composed with the lifecycle predicate before `LIMIT`; the view never filters an
+already-loaded page and therefore cannot fabricate an empty result for older
+matching receipts. A non-catalogue identity fails before either control-center
+store read, and malformed storage identities return no rows.
+
+Recent uses its full v35 index; schema v39 adds one partial direction-matched
+index for each state scope. Schema v42 adds one full and three state-partial
+`(skillID, updatedAt DESC, proposalID ASC)` indexes for exact-Skill reads. The
+query explicitly pins the matching filtered or unfiltered index so an empty or
+sparse scope cannot fall back to a state-leading index plus a temporary sort.
+The Attention predicate excludes only known waiting and terminal states, so a
+future state remains visible for review. Malformed durable proposal identities
+fail the projection instead of silently disappearing from the audit surface.
 
 Each selected scope begins with the 20-row application window. When all 20
 positions are occupied, **Show more runs** performs one explicit replacement
 read at the existing 50-row ceiling. The control disappears after expansion;
 there is no infinite scroll, cursor accumulation, or background prefetch.
-Changing scopes resets to 20 before the next read, while same-scope refreshes
-and verified policy mutations retain the selected 20-or-50 limit. A returned
-snapshot is adopted only while its scope, limit, and generation still match.
+Changing scopes or the exact Skill filter resets to 20 before the next read,
+while same-selection refreshes and verified policy mutations retain the
+selected 20-or-50 limit. A returned snapshot is adopted only while its scope,
+Skill identity, limit, and generation still match. The accessible menu value
+names the current localized Skill, and a verified filtered empty state names
+that Skill rather than claiming that the whole lifecycle scope is empty.
 
 A verified empty or populated scope also exposes **Refresh activity**. It
-performs only the existing control-center read with the selected scope and
-current 20-or-50 limit, so an execution that changed outside Settings can be
-re-read without changing filters or reconstructing the window. Refresh uses the
-normal loading state, hides stale rows immediately, and keeps the same
-scope/limit/generation adoption fence. It is absent during loading and
-unavailability, where the existing retry remains authoritative. No timer,
-polling, observer, receipt mutation, or execution action is introduced.
+performs only the existing control-center read with the selected scope, exact
+Skill filter, and current 20-or-50 limit, so an execution that changed outside
+Settings can be re-read without changing selection or reconstructing the
+window. Refresh uses the normal loading state, hides stale rows immediately,
+and keeps the same scope/filter/limit/generation adoption fence. It is absent
+during loading and unavailability, where the existing retry remains
+authoritative. No timer, polling, observer, receipt mutation, or execution
+action is introduced.
 
-The request and returned snapshot both carry the selected scope. Settings does
-not show an older snapshot under a newly selected segment while its read is in
-flight or after it fails. A scope-only failure presents an explicit retry and
-no receipt rows, while keeping the independently verified pause and per-Skill
-controls usable. A failed control mutation still disables those controls until
-their durable policy can be verified again.
+The request and returned snapshot both carry the selected scope and optional
+Skill identity. Settings does not show an older snapshot under a newly selected
+scope or filter while its read is in flight or after it fails. A receipt-only
+failure presents an explicit retry and no receipt rows, while keeping the
+independently verified pause and per-Skill controls usable. A failed control
+mutation still disables those controls until their durable policy can be
+verified again.
 
 Each receipt row is an accessible button that opens the first AUTO-6 inspection
 slice. StorageKit reads the current projection and its oldest-first append-only

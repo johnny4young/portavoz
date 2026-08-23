@@ -11,6 +11,7 @@ enum SkillActivityPresentationState: Equatable {
 
     init(
         receiptScope: SkillExecutionReviewScope,
+        receiptSkillID: String? = nil,
         snapshot: SkillControlCenterSnapshot?,
         isLoading: Bool,
         loadFailed: Bool
@@ -19,7 +20,10 @@ enum SkillActivityPresentationState: Equatable {
             self = .loading
             return
         }
-        guard let snapshot, snapshot.receiptScope == receiptScope else {
+        guard let snapshot,
+              snapshot.receiptScope == receiptScope,
+              snapshot.receiptSkillID == receiptSkillID
+        else {
             self = loadFailed ? .unavailable : .loading
             return
         }
@@ -37,7 +41,7 @@ enum SkillActivityPresentationState: Equatable {
 
 /// Keeps receipt browsing explicit and bounded. The initial projection stays
 /// cheap; one user action may widen it only to ApplicationKit's existing hard
-/// ceiling, and changing scopes returns to the cheap window.
+/// ceiling, and changing scope or exact Skill returns to the cheap window.
 struct SkillActivityHistoryWindow: Equatable {
     private(set) var requestedLimit =
         SkillControlCenterSnapshot.defaultReceiptLimit
@@ -60,16 +64,18 @@ struct SkillActivityHistoryWindow: Equatable {
     }
 }
 
-/// D336 — one status-scoped, content-free execution review surface.
+/// D336/D373 — one status-scoped, optionally exact-Skill, content-free review.
 ///
-/// The returned snapshot must match the selected scope before this view shows
-/// any row. Loading and failures therefore cannot relabel stale evidence.
+/// The returned snapshot must match the selected scope and Skill before this
+/// view shows any row. Loading and failures cannot relabel stale evidence.
 struct SkillActivitySection: View {
     @Binding var receiptScope: SkillExecutionReviewScope
+    @Binding var receiptSkillID: String?
     @FocusState private var focusedReceiptID: UUID?
     @AccessibilityFocusState private var accessibilityFocusedReceiptID: UUID?
 
     let snapshot: SkillControlCenterSnapshot?
+    let skills: [SkillControlCenterItem]
     let isLoading: Bool
     let isMutating: Bool
     let loadFailed: Bool
@@ -83,6 +89,7 @@ struct SkillActivitySection: View {
     var body: some View {
         Group {
             scopePicker
+            skillFilter
 
             if presentationState.allowsExplicitRefresh {
                 Button(action: refresh) {
@@ -140,9 +147,51 @@ struct SkillActivitySection: View {
     private var presentationState: SkillActivityPresentationState {
         SkillActivityPresentationState(
             receiptScope: receiptScope,
+            receiptSkillID: receiptSkillID,
             snapshot: snapshot,
             isLoading: isLoading,
             loadFailed: loadFailed)
+    }
+
+    private var skillFilter: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("Skill")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Menu {
+                Button("All skills") {
+                    receiptSkillID = nil
+                }
+                .accessibilityIdentifier(
+                    "settings-skills-receipt-skill-all")
+
+                ForEach(
+                    skills.filter { $0.availability == .available }
+                ) { skill in
+                    Button {
+                        receiptSkillID = skill.id
+                    } label: {
+                        Text(SkillReceiptPresentation.skillTitle(skill.id))
+                    }
+                    .accessibilityIdentifier(
+                        "settings-skills-receipt-skill-\(skill.id)")
+                }
+            } label: {
+                Text(selectedSkillTitle)
+                    .lineLimit(1)
+                    .frame(minWidth: 180, alignment: .leading)
+            }
+            .accessibilityLabel("Filter activity by skill")
+            .accessibilityValue(selectedSkillTitle)
+            .accessibilityIdentifier(
+                "settings-skills-receipt-skill-filter")
+            .disabled(isLoading || isMutating || skills.isEmpty)
+        }
+    }
+
+    private var selectedSkillTitle: String {
+        guard let receiptSkillID else { return L10n.text("All skills") }
+        return SkillReceiptPresentation.skillTitle(receiptSkillID)
     }
 
     private var scopePicker: some View {
@@ -210,7 +259,7 @@ struct SkillActivitySection: View {
     }
 
     private var emptyTitle: String {
-        switch receiptScope {
+        return switch receiptScope {
         case .recent: L10n.text("No recent Skill runs")
         case .waiting: L10n.text("No waiting Skill runs")
         case .needsAttention: L10n.text("No Skill runs needing attention")
@@ -219,7 +268,12 @@ struct SkillActivitySection: View {
     }
 
     private var emptyDetail: String {
-        switch receiptScope {
+        if let receiptSkillID {
+            return L10n.format(
+                "No %@ runs match this activity view.",
+                SkillReceiptPresentation.skillTitle(receiptSkillID))
+        }
+        return switch receiptScope {
         case .recent:
             L10n.text("A receipt appears here only after you confirm a skill.")
         case .waiting:

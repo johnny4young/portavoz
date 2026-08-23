@@ -98,7 +98,7 @@ hidden stage. A main-file or WAL size/modification change across the private
 copy also fails closed rather than publishing a mixed point in time. The source is never opened through `MeetingStore`, so no
 migration/configuration write can occur, and it is never renamed or deleted.
 
-### Schema (`v1`–`v39` migrations registered in `Sources/StorageKit/Schema.swift`)
+### Schema (`v1`–`v42` migrations registered in `Sources/StorageKit/Schema.swift`)
 
 Singular camelCase tables, 1:1 with Codable records:
 
@@ -150,6 +150,8 @@ Singular camelCase tables, 1:1 with Codable records:
 | `skillExecutionState_on_waiting` (v39) | partial `(updatedAt DESC, proposalID ASC)` index where state is `confirmed`; serves only user-approved executions that have not begun (D336) |
 | `skillExecutionState_on_attention` (v39) | partial `(updatedAt DESC, proposalID ASC)` index where state is neither waiting nor terminal; the negative predicate admits unknown future states fail closed (D336) |
 | `skillExecutionState_on_completed` (v39) | partial `(updatedAt DESC, proposalID ASC)` index for `succeeded` and pre-handoff `cancelled` terminal executions (D336) |
+| `skillExecutionState_on_recent_skill` (v42) | complete `(skillID, updatedAt DESC, proposalID ASC)` index for exact-Skill newest-first review (D373) |
+| `skillExecutionState_on_waiting_skill` / `_attention_skill` / `_completed_skill` (v42) | partial `(skillID, updatedAt DESC, proposalID ASC)` indexes with the exact v39 lifecycle predicates; filtered queries pin the matching index and retain the same bounded order without a temporary sort (D373). Each receipt gains one complete plus one state-scoped filtered entry in addition to its v35/v39 entries, an explicit write/disk tradeoff guarded by migration and query-plan tests rather than an inferred latency claim |
 | `enhancedNote` (v15) | id, meetingID (UNIQUE, FK cascade), markdown, language, inputFingerprint (all checked non-empty), generationRunID (FK `setNull`, device-local), createdAt/updatedAt/deletedAt; ONE regenerable enhanced-notes document per meeting (D135), replaced in place preserving createdAt, portable via v15-registered `enhancedNote_sync_ai/au/ad` triggers over [markdown, language, inputFingerprint, deletedAt] |
 | `derivedMaintenanceSource` (v18) | kind (TEXT PK), sourceGeneration, updatedAt; content-free mutation identity for derived work, never a progress cursor |
 | `derivedMaintenanceJob` (v18) | content-free kind/profile/source operation identity, bounded attempts and scheduling time, lease owner/expiry, stable error code and timestamps; independent from meeting lifecycle |

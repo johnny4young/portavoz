@@ -13731,12 +13731,52 @@
         }
       }
     },
+    "All skills": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos los skills"
+          }
+        }
+      }
+    },
+    "Filter activity by skill": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrar actividad por skill"
+          }
+        }
+      }
+    },
+    "No %@ runs match this activity view.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ejecuciones de %@ que coincidan con esta vista de actividad."
+          }
+        }
+      }
+    },
     "Refresh activity": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Actualizar actividad"
+          }
+        }
+      }
+    },
+    "Skill": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skill"
           }
         }
       }

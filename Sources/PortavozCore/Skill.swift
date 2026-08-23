@@ -231,7 +231,7 @@ public enum SkillExecutionState: String, Codable, Sendable {
 /// deliberately absent: proposals do not yet have one central durable owner,
 /// so a control center must not fabricate that queue from whichever surface
 /// happens to be open.
-public enum SkillExecutionReviewScope: String, CaseIterable, Sendable {
+public enum SkillExecutionReviewScope: String, CaseIterable, Hashable, Sendable {
     /// Every newest durable execution projection.
     case recent
     /// Confirmed by the user but not yet begun.

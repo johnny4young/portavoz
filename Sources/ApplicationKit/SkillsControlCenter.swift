@@ -126,6 +126,7 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
     public let isPaused: Bool
     public let skills: [SkillControlCenterItem]
     public let receiptScope: SkillExecutionReviewScope
+    public let receiptSkillID: String?
     public let receipts: [SkillControlCenterReceipt]
     public let receiptLoadState: SkillControlCenterReceiptLoadState
 
@@ -134,11 +135,13 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
         skills: [SkillControlCenterItem],
         receiptScope: SkillExecutionReviewScope,
         receipts: [SkillControlCenterReceipt],
+        receiptSkillID: String? = nil,
         receiptLoadState: SkillControlCenterReceiptLoadState = .verified
     ) {
         self.isPaused = isPaused
         self.skills = skills
         self.receiptScope = receiptScope
+        self.receiptSkillID = receiptSkillID
         self.receipts = receipts
         self.receiptLoadState = receiptLoadState
     }
@@ -151,6 +154,7 @@ public protocol SkillExecutionPolicyReading: Sendable {
 public protocol SkillControlCenterStore: SkillExecutionPolicyReading, Sendable {
     func skillExecutions(
         scope: SkillExecutionReviewScope,
+        skillID: String?,
         limit: Int
     ) async throws -> [SkillExecutionRecord]
     func setAllSkillsPaused(_ isPaused: Bool, at timestamp: Date) async throws
@@ -165,17 +169,24 @@ extension MeetingStore: SkillControlCenterStore {}
 
 public struct LoadSkillControlCenterRequest: Equatable, Sendable {
     public let receiptScope: SkillExecutionReviewScope
+    public let receiptSkillID: String?
     public let receiptLimit: Int
 
     public init(
         receiptScope: SkillExecutionReviewScope = .recent,
+        receiptSkillID: String? = nil,
         receiptLimit: Int = SkillControlCenterSnapshot.defaultReceiptLimit
     ) {
         self.receiptScope = receiptScope
+        self.receiptSkillID = receiptSkillID
         self.receiptLimit = min(
             max(receiptLimit, 1),
             SkillControlCenterSnapshot.maximumReceiptLimit)
     }
+}
+
+public enum LoadSkillControlCenterError: Error, Equatable, Sendable {
+    case unknownReceiptSkillID
 }
 
 public struct LoadSkillControlCenter: ApplicationUseCase {
@@ -188,9 +199,14 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
     public func execute(
         _ request: LoadSkillControlCenterRequest
     ) async throws -> SkillControlCenterSnapshot {
+        if let receiptSkillID = request.receiptSkillID,
+           !SkillCatalogue.entries.contains(where: { $0.id == receiptSkillID }) {
+            throw LoadSkillControlCenterError.unknownReceiptSkillID
+        }
         async let policy = store.skillExecutionPolicy()
         async let records = store.skillExecutions(
             scope: request.receiptScope,
+            skillID: request.receiptSkillID,
             limit: request.receiptLimit)
         let resolvedPolicy = try await policy
         let resolvedRecords: [SkillExecutionRecord]
@@ -216,6 +232,7 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
             },
             receiptScope: request.receiptScope,
             receipts: resolvedRecords.map(SkillControlCenterReceipt.init(record:)),
+            receiptSkillID: request.receiptSkillID,
             receiptLoadState: receiptLoadState)
     }
 }

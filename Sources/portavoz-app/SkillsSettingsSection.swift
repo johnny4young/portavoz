@@ -3,6 +3,11 @@ import Foundation
 import PortavozCore
 import SwiftUI
 
+private struct SkillActivitySelection: Hashable {
+    let scope: SkillExecutionReviewScope
+    let skillID: String?
+}
+
 /// D317 — the Phase-2 Skills control plane. It projects the real catalogue,
 /// durable policy, and a bounded content-free receipt history; this view never
 /// executes a skill or invents an external consent rule.
@@ -21,6 +26,7 @@ struct SkillsSettingsSection: View {
     @State private var controlLoadFailed = false
     @State private var receiptScopeLoadFailed = false
     @State private var receiptScope: SkillExecutionReviewScope = .recent
+    @State private var receiptSkillID: String?
     @State private var receiptHistoryWindow = SkillActivityHistoryWindow()
     @State private var activeLoadID: UUID?
     @State private var proposalSnapshot: SkillOfferReviewSnapshot?
@@ -75,7 +81,9 @@ struct SkillsSettingsSection: View {
                 Section("Skill activity") {
                     SkillActivitySection(
                         receiptScope: $receiptScope,
+                        receiptSkillID: $receiptSkillID,
                         snapshot: snapshot,
+                        skills: snapshot?.skills ?? [],
                         isLoading: isLoading || isMutating,
                         isMutating: isMutating || proposalMutationInFlight,
                         loadFailed: receiptScopeLoadFailed,
@@ -88,7 +96,7 @@ struct SkillsSettingsSection: View {
                 }
             }
         }
-        .task(id: receiptScope) {
+        .task(id: activitySelection) {
             receiptHistoryWindow.reset()
             await load()
         }
@@ -236,16 +244,19 @@ struct SkillsSettingsSection: View {
     private func load() async {
         guard !isMutating, !proposalMutationInFlight else { return }
         let requestedScope = receiptScope
+        let requestedSkillID = receiptSkillID
         let requestedLimit = receiptHistoryWindow.requestedLimit
         let loadID = UUID()
         activeLoadID = loadID
-        if snapshot?.receiptScope != requestedScope {
+        if snapshot?.receiptScope != requestedScope
+            || snapshot?.receiptSkillID != requestedSkillID {
             receiptScopeLoadFailed = false
         }
         isLoading = true
         do {
             let loaded = try await services.loadSkillControlCenter(
                 receiptScope: requestedScope,
+                receiptSkillID: requestedSkillID,
                 receiptLimit: requestedLimit)
             guard !Task.isCancelled else {
                 finishLoad(loadID)
@@ -253,6 +264,7 @@ struct SkillsSettingsSection: View {
             }
             guard activeLoadID == loadID,
                   receiptScope == requestedScope,
+                  receiptSkillID == requestedSkillID,
                   receiptHistoryWindow.requestedLimit == requestedLimit
             else {
                 return
@@ -264,6 +276,7 @@ struct SkillsSettingsSection: View {
         } catch {
             guard activeLoadID == loadID,
                   receiptScope == requestedScope,
+                  receiptSkillID == requestedSkillID,
                   receiptHistoryWindow.requestedLimit == requestedLimit
             else {
                 return
@@ -314,6 +327,7 @@ struct SkillsSettingsSection: View {
             }
             let loaded = try await services.loadSkillControlCenter(
                 receiptScope: receiptScope,
+                receiptSkillID: receiptSkillID,
                 receiptLimit: receiptHistoryWindow.requestedLimit)
             adopt(loaded)
             await loadProposals()
@@ -326,6 +340,7 @@ struct SkillsSettingsSection: View {
     private func showMoreReceipts() async {
         guard let snapshot,
               snapshot.receiptScope == receiptScope,
+              snapshot.receiptSkillID == receiptSkillID,
               snapshot.receiptLoadState == .verified,
               receiptHistoryWindow.canExpand(
                   receiptCount: snapshot.receipts.count),
@@ -339,7 +354,11 @@ struct SkillsSettingsSection: View {
 
     @MainActor
     private func refreshActivity() async {
-        guard !isLoading,
+        guard let snapshot,
+              snapshot.receiptScope == receiptScope,
+              snapshot.receiptSkillID == receiptSkillID,
+              snapshot.receiptLoadState == .verified,
+              !isLoading,
               !isMutating,
               !proposalMutationInFlight
         else { return }
@@ -422,6 +441,10 @@ struct SkillsSettingsSection: View {
 }
 
 private extension SkillsSettingsSection {
+    var activitySelection: SkillActivitySelection {
+        SkillActivitySelection(scope: receiptScope, skillID: receiptSkillID)
+    }
+
     @ViewBuilder
     var controlContent: some View {
         if isLoading, snapshot == nil {
