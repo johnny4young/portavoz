@@ -134,6 +134,24 @@ final class SkillActivityPresentationStateTests: XCTestCase {
         XCTAssertTrue(SkillActivityPresentationState.receipts.allowsExplicitRefresh)
     }
 
+    func testOnlyVerifiedEmptyActivityWithActiveFiltersAllowsFilterReset() {
+        XCTAssertFalse(
+            SkillActivityPresentationState.loading.allowsFilterReset(
+                hasActiveFilters: true))
+        XCTAssertFalse(
+            SkillActivityPresentationState.unavailable.allowsFilterReset(
+                hasActiveFilters: true))
+        XCTAssertFalse(
+            SkillActivityPresentationState.receipts.allowsFilterReset(
+                hasActiveFilters: true))
+        XCTAssertFalse(
+            SkillActivityPresentationState.empty.allowsFilterReset(
+                hasActiveFilters: false))
+        XCTAssertTrue(
+            SkillActivityPresentationState.empty.allowsFilterReset(
+                hasActiveFilters: true))
+    }
+
     private func snapshot(
         scope: SkillExecutionReviewScope,
         skillID: String? = nil,

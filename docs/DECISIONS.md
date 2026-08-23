@@ -13669,3 +13669,41 @@ observer, scheduler, receipt mutation, execution authority, standing rule,
 adapter, egress, consent, or deployment-floor change is introduced. Automation
 remains local Tahoe-family evidence; physical VoiceOver, Sequoia, and
 separate-hardware Tahoe behavior remain field evidence.
+
+## D376 — Empty Skill activity clears only its narrowing filters (Aug 2026)
+
+**Context:** exact-Skill and update-period filters can truthfully produce an
+empty lifecycle scope. The localized empty state explained which lenses found
+nothing, but recovery required reopening one or two menus and reversing each
+selection manually. A generic retry would repeat the same empty query, while
+resetting the lifecycle scope would discard the user's actual review question.
+A permanent reset control would add noise when no narrowing filter is active.
+
+**Decision:** expose **Clear activity filters** only beside a verified empty
+result with an active exact-Skill or update-period filter. Keep it outside the
+combined empty explanation so assistive technology retains a distinct
+interactive element. Before changing state, Settings revalidates that the
+snapshot matches the selected scope, Skill, and period; has verified receipt
+authority; is empty; and has no competing load, policy mutation, or proposal
+mutation. The synchronous action clears only the exact Skill and period. It
+preserves Recent, Waiting, Attention, or Completed, and the existing
+selection-owned task resets the bounded window to 20 and performs the ordinary
+generation-fenced read. The action is absent for unfiltered empty results,
+receipt rows, loading, and unavailable history; individual menus remain
+available for changing one lens at a time.
+
+The existing bilingual composed-filter real-app journey reaches a deterministic
+empty Waiting result, activates the identified control, observes loading,
+requires the first 20 matching package runs, proves **All skills** and **Any
+time** were restored while Waiting stayed selected, and verifies the action
+disappears. It then reapplies the period and Skill filters so the prior
+composition and 20-row reset regression remain covered. Pure presentation and
+architecture tests pin the verified-empty visibility rule, exact parent guard,
+scope preservation, and localization/accessibility identifier.
+
+**Consequences:** no-match recovery is direct without turning empty state into
+a generic retry or erasing lifecycle intent. The slice adds no storage read
+shape, schema, index, clock, count, cursor, timer, observer, receipt mutation,
+execution authority, adapter, standing rule, egress consent, or deployment
+floor change. Automation remains local Tahoe-family evidence; physical
+VoiceOver, Sequoia, and separate-hardware Tahoe behavior remain field evidence.

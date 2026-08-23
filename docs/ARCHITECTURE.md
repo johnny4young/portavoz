@@ -391,7 +391,12 @@ Skill menu offers only currently available catalogue Skills plus **All
 skills**; the period menu exposes only the four fixed rolling choices. An empty
 filtered result names the localized Skill when selected and says that the
 selected time period matched no run instead of implying that the whole
-lifecycle scope is empty.
+lifecycle scope is empty. When that verified empty state still has an exact
+Skill or update-period filter, one sibling action clears both filters while
+preserving the selected lifecycle scope. The existing selection task resets
+the bounded window to 20 and performs the replacement read. The action is
+absent for an unfiltered empty result, receipt rows, loading, and
+unavailability; it is not a retry, query owner, or second state machine.
 
 A verified empty or populated activity view exposes one explicit read-only
 refresh. It reuses the selected scope, exact Skill filter, update period, and

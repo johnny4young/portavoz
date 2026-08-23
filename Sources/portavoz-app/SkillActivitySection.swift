@@ -39,6 +39,10 @@ enum SkillActivityPresentationState: Equatable {
     var allowsExplicitRefresh: Bool {
         self == .empty || self == .receipts
     }
+
+    func allowsFilterReset(hasActiveFilters: Bool) -> Bool {
+        self == .empty && hasActiveFilters
+    }
 }
 
 /// Keeps receipt browsing explicit and bounded. The initial projection stays
@@ -86,6 +90,7 @@ struct SkillActivitySection: View {
     let historyWindow: SkillActivityHistoryWindow
     let retry: () -> Void
     let refresh: () -> Void
+    let clearFilters: () -> Void
     let showMore: () -> Void
     let inspectReceipt: (SkillControlCenterReceipt) -> Void
 
@@ -113,6 +118,14 @@ struct SkillActivitySection: View {
                 unavailableContent
             case .empty:
                 emptyContent
+                if presentationState.allowsFilterReset(
+                    hasActiveFilters: hasActiveFilters
+                ) {
+                    Button("Clear activity filters", action: clearFilters)
+                        .accessibilityIdentifier(
+                            "settings-skills-receipt-clear-filters")
+                        .disabled(isLoading || isMutating)
+                }
             case .receipts:
                 ForEach(snapshot?.receipts ?? []) { receipt in
                     receiptRow(receipt)
@@ -199,6 +212,10 @@ struct SkillActivitySection: View {
     private var selectedSkillTitle: String {
         guard let receiptSkillID else { return L10n.text("All skills") }
         return SkillReceiptPresentation.skillTitle(receiptSkillID)
+    }
+
+    private var hasActiveFilters: Bool {
+        receiptSkillID != nil || receiptPeriod != .anytime
     }
 
     private var scopePicker: some View {

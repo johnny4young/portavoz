@@ -2705,7 +2705,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D375, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D376, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2881,6 +2881,13 @@ again. A returned snapshot is adopted only while its scope, Skill identity,
 period, limit, and generation still match. The accessible menu values name the
 current localized Skill and period. A verified period-filtered empty state says
 the time period matched no run and also names the exact Skill when selected.
+If that verified empty result still has an exact Skill or update-period filter,
+**Clear activity filters** removes both in one action without changing Recent,
+Waiting, Attention, or Completed. The ordinary selection task resets the
+history window to 20 and reloads; the action disappears for an unfiltered empty
+state, receipt rows, loading, and unavailable history. The empty explanation
+and the identified button remain separate accessibility elements so the
+control is not flattened into static copy.
 
 A verified empty or populated scope also exposes **Refresh activity**. It
 performs only the existing control-center read with the selected scope, exact

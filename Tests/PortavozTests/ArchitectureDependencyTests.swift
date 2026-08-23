@@ -5277,6 +5277,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "if presentationState.allowsExplicitRefresh"))
         XCTAssertTrue(activity.contains(
             "settings-skills-receipt-refresh"))
+        XCTAssertTrue(activity.contains(
+            "func allowsFilterReset(hasActiveFilters: Bool) -> Bool"))
+        XCTAssertTrue(activity.contains(
+            "settings-skills-receipt-clear-filters"))
+        XCTAssertTrue(settings.contains(
+            "clearFilters: clearActivityFilters"))
         XCTAssertFalse(activity.contains("Timer"))
         XCTAssertTrue(activity.contains("if isLoading"))
         XCTAssertTrue(activity.contains(
@@ -5316,6 +5322,25 @@ final class ArchitectureDependencyTests: XCTestCase {
             "    }"
         ].joined(separator: "\n")
         XCTAssertTrue(settings.contains(refreshActivityContract))
+        let clearActivityFiltersContract = [
+            "private func clearActivityFilters() {",
+            "        guard let snapshot,",
+            "              snapshot.receiptScope == receiptScope,",
+            "              snapshot.receiptSkillID == receiptSkillID,",
+            "              snapshot.receiptPeriod == receiptPeriod,",
+            "              snapshot.receiptLoadState == .verified,",
+            "              snapshot.receipts.isEmpty,",
+            "              receiptSkillID != nil || receiptPeriod != .anytime,",
+            "              !isLoading,",
+            "              !isMutating,",
+            "              !proposalMutationInFlight",
+            "        else { return }",
+            "        receiptSkillID = nil",
+            "        receiptPeriod = .anytime",
+            "    }"
+        ].joined(separator: "\n")
+        XCTAssertTrue(settings.contains(clearActivityFiltersContract))
+        XCTAssertTrue(decisions.contains("## D376"))
         XCTAssertTrue(settings.contains("invalidateActiveLoad()"))
         XCTAssertTrue(control.contains(
             "enum SkillControlCenterReceiptLoadState"))

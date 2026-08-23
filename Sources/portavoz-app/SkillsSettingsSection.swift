@@ -94,6 +94,7 @@ struct SkillsSettingsSection: View {
                         historyWindow: receiptHistoryWindow,
                         retry: { Task { await load() } },
                         refresh: { Task { await refreshActivity() } },
+                        clearFilters: clearActivityFilters,
                         showMore: { Task { await showMoreReceipts() } },
                         inspectReceipt: inspectReceipt)
                 }
@@ -374,6 +375,23 @@ struct SkillsSettingsSection: View {
               !proposalMutationInFlight
         else { return }
         await load()
+    }
+
+    @MainActor
+    private func clearActivityFilters() {
+        guard let snapshot,
+              snapshot.receiptScope == receiptScope,
+              snapshot.receiptSkillID == receiptSkillID,
+              snapshot.receiptPeriod == receiptPeriod,
+              snapshot.receiptLoadState == .verified,
+              snapshot.receipts.isEmpty,
+              receiptSkillID != nil || receiptPeriod != .anytime,
+              !isLoading,
+              !isMutating,
+              !proposalMutationInFlight
+        else { return }
+        receiptSkillID = nil
+        receiptPeriod = .anytime
     }
 
 }

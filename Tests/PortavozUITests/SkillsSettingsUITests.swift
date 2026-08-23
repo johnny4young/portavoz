@@ -491,6 +491,33 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             : "No \(recapTitle) runs match the selected time period."
         XCTAssertTrue(waitForLabel(empty, toContain: filteredEmpty))
 
+        let clearFilters = app.buttons[
+            "settings-skills-receipt-clear-filters"]
+        scrollToVisible(clearFilters, in: app, deltaY: -80)
+        XCTAssertTrue(clearFilters.waitForStableFrame(timeout: 5))
+        clearFilters.click()
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        XCTAssertTrue(
+            waitForCount(receiptRows, toEqual: 20, timeout: 10),
+            "clearing filters must preserve Waiting and reset to its first page")
+        let allSkillsTitle = UITestLocale.environmentLocale == "es"
+            ? "Todos los skills"
+            : "All skills"
+        XCTAssertTrue(waitForLabel(skillFilter, toContain: allSkillsTitle))
+        let anytimeTitle = UITestLocale.environmentLocale == "es"
+            ? "Cualquier momento"
+            : "Any time"
+        XCTAssertTrue(waitForLabel(periodFilter, toContain: anytimeTitle))
+        XCTAssertFalse(clearFilters.exists)
+
+        scrollToVisible(periodFilter, in: app, deltaY: 80)
+        XCTAssertTrue(periodFilter.waitForStableFrame(timeout: 5))
+        periodFilter.click()
+        XCTAssertTrue(pastDay.waitForExistence(timeout: 5))
+        pastDay.click()
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        XCTAssertTrue(waitForCount(receiptRows, toEqual: 5, timeout: 10))
+
         scrollToVisible(skillFilter, in: app, deltaY: 80)
         XCTAssertTrue(skillFilter.waitForStableFrame(timeout: 5))
         skillFilter.click()

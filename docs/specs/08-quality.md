@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,607 cases (15 environment-gated) + 107
+Status: the package inventory contains 2,608 cases (15 environment-gated) + 107
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -3771,6 +3771,53 @@ Developer ID. Packaging again lacked the optional Metal Toolchain's `metallib`,
 so the Dev bundle contains no MLX metallib. Sentinel and indexed-plan evidence
 prove bounded access shape, not a measured latency/disk budget. This remains
 local Tahoe-family automation, not physical Sequoia, separate Tahoe hardware,
+VoiceOver, real external-effect reconciliation, or MLX runtime evidence.
+
+**D376 verified-empty Skill-filter recovery gate.** SwiftUI offers one identified
+**Clear activity filters** action only when the selected lifecycle scope has a
+matching, verified, empty snapshot and an exact Skill and/or update-period
+filter is active. The parent revalidates that same scope, Skill, period,
+receipt authority, empty result, and absence of all control/proposal mutation
+before it clears only the Skill and period. The lifecycle scope stays intact;
+the existing selection task resets the bounded window to 20 and owns the
+replacement read. The action remains a sibling of the combined empty
+explanation and is absent from unfiltered empty, receipt, loading, and
+unavailable states. No query shape, store, schema, index, cursor, timer,
+observer, receipt mutation, execution authority, or second state machine was
+added.
+
+Focused presentation and architecture coverage passed 13/13 tests with zero
+failures in 0.188 seconds. The composed temporary-store journey starts from a
+Waiting-scope Skill/time no-match, clears the two narrowing filters, requires
+loading plus the first 20 matching rows, verifies localized **All skills** and
+**Any time**, requires the reset action to disappear, and then reapplies the
+existing composition regression. It passed 1/1 in English in 114.746 seconds
+and 1/1 in Spanish in 116.375 seconds.
+
+Final preflight passed `swift build` in 3.19 seconds, the current-SDK
+warnings-as-errors build in 21.26 seconds, and 2,608 package tests with 15
+explicit environment/model skips and zero failures in 118.939 seconds of
+XCTest execution. All 195 architecture ratchets, 457 tooling tests, repository
+hygiene and its embedded policy suites, both localization-catalog validations,
+the complete 107-case UI-catalog check, diff whitespace validation, and strict
+SwiftLint with zero violations across 705 production Swift files also passed.
+The read-only host preflight passed without reading or dismissing a prompt and
+left 24 stale LaunchServices claimants warning-only. Final macOS 26.5.2
+(25F84), arm64 result bundles passed 107/107 English plus 107/107 Spanish
+real-app XCUITest cases with zero failures, skips, or expected failures; their
+result intervals were 2,464.124 seconds and 2,479.835 seconds respectively.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was rebuilt, deeply
+verified, installed only at `/Applications/Portavoz Dev.app`, and observed at
+PID 87935 running from its exact executable. A deterministic before/after
+comparison kept the notarized `app.portavoz.mac` release bundle unchanged
+across its 184-entry no-symlink-traversal content/metadata/hex-xattr manifest
+at SHA-256
+`9f42e6c828e2330467c28539265df6aa2b46814df17f5cf0966e623501a4dfe2`;
+its deep signature remained valid and Gatekeeper still reported Notarized
+Developer ID. Packaging again lacked the optional Metal Toolchain's `metallib`,
+so the Dev bundle contains no MLX metallib. This is deterministic local
+Tahoe-family automation, not physical Sequoia, separate Tahoe hardware,
 VoiceOver, real external-effect reconciliation, or MLX runtime evidence.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player

@@ -13731,6 +13731,16 @@
         }
       }
     },
+    "Clear activity filters": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpiar filtros de actividad"
+          }
+        }
+      }
+    },
     "All skills": {
       "localizations": {
         "es": {
