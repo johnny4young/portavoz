@@ -175,11 +175,11 @@ struct SkillActivitySection: View {
 
     private var skillFilter: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("Skill")
+            Text("Action")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Menu {
-                Button("All skills") {
+                Button("All actions") {
                     receiptSkillID = nil
                 }
                 .accessibilityIdentifier(
@@ -201,7 +201,7 @@ struct SkillActivitySection: View {
                     .lineLimit(1)
                     .frame(minWidth: 180, alignment: .leading)
             }
-            .accessibilityLabel("Filter activity by skill")
+            .accessibilityLabel("Filter history by action")
             .accessibilityValue(selectedSkillTitle)
             .accessibilityIdentifier(
                 "settings-skills-receipt-skill-filter")
@@ -210,7 +210,7 @@ struct SkillActivitySection: View {
     }
 
     private var selectedSkillTitle: String {
-        guard let receiptSkillID else { return L10n.text("All skills") }
+        guard let receiptSkillID else { return L10n.text("All actions") }
         return SkillReceiptPresentation.skillTitle(receiptSkillID)
     }
 
@@ -284,10 +284,10 @@ struct SkillActivitySection: View {
 
     private var emptyTitle: String {
         return switch receiptScope {
-        case .recent: L10n.text("No recent Skill runs")
-        case .waiting: L10n.text("No waiting Skill runs")
-        case .needsAttention: L10n.text("No Skill runs needing attention")
-        case .completed: L10n.text("No completed Skill runs")
+        case .recent: L10n.text("No recent action runs")
+        case .waiting: L10n.text("No waiting action runs")
+        case .needsAttention: L10n.text("No action runs needing attention")
+        case .completed: L10n.text("No completed action runs")
         }
     }
 
@@ -308,7 +308,7 @@ struct SkillActivitySection: View {
         }
         return switch receiptScope {
         case .recent:
-            L10n.text("A receipt appears here only after you confirm a skill.")
+            L10n.text("A receipt appears here only after you confirm an action.")
         case .waiting:
             L10n.text("Confirmed runs appear here until execution begins.")
         case .needsAttention:

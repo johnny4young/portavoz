@@ -13787,3 +13787,59 @@ mutation, execution authority, adapter, standing rule, egress consent, or
 deployment-floor change. Automation remains local Tahoe-family evidence;
 physical VoiceOver, Voice Control, Sequoia, and separate-hardware Tahoe behavior
 remain field evidence.
+
+## D379 — Freeze 0.8.0 at a finite, understandable release candidate (Aug 2026)
+
+**Context:** the Skills and Meeting Memory Graph foundations had reached six
+fixed review-first actions and six exact source-backed Ask jobs, but the rolling
+AUTO-6 sequence still selected another optional improvement after every green
+slice. That process had no product-defined stop condition. The Settings UI also
+presented the internal term **Skills** unchanged in English and Spanish without
+explaining that these are concrete suggested actions which remain inert until
+review. A user could therefore see a mature safety/control plane and still not
+know what the feature was for. Expanding the catalogue, adding standing rules,
+or inventing a visual graph would increase release risk without repairing that
+comprehension problem.
+
+**Decision:** freeze the 0.8.0 product candidate at the six currently registered
+actions and the six currently released structured graph jobs. Public copy calls
+the former **Suggested actions** / **Acciones sugeridas** and gives the Settings
+pane one stable, localized explanation: Portavoz derives review-first actions
+from meeting evidence and nothing runs until the user reviews and confirms it.
+The related catalogue, proposal, history, receipt, and recovery copy uses
+**action** consistently. Internal Swift `Skill` types, identifiers, storage
+columns, migrations, telemetry, and accessibility identifiers remain unchanged;
+this is a presentation vocabulary boundary, not a risky domain rename.
+
+No additional action kind, user-authored action, AUTO-5 standing rule, free-form
+graph synthesis, visual graph, graph database, alternate search/model authority,
+Quick Look target, iOS surface, or new launch claim enters 0.8.0. A further code
+change is admissible only when an existing release gate exposes a reproducible
+blocker inside the frozen scope.
+
+The finite exit is one exact 0.8.0 Release Candidate whose source SHA has:
+
+1. integrated hosted-CI/review evidence rather than a local-only branch;
+2. the canonical deterministic reliability receipt, required local model gate,
+   and authoritative release-host performance ledger;
+3. a Developer-ID-signed, production-CloudKit-provisioned, notarized, stapled,
+   Gatekeeper-accepted DMG and exact distribution receipt;
+4. the eight D147 physical/field packages for built-in audio and AirPods on
+   Sequoia and Tahoe, callback recovery, long call, model cold start, and mixed
+   language; and
+5. one fail-closed release-readiness scorecard reporting `PASS` for that exact
+   version, build, commit, and artifact digest.
+
+Push, pull-request integration, tag, publication, Sparkle appcast, Homebrew cask,
+and release remain separate explicit-authority operations. Other unresolved
+GAPS are either accepted limitations that constrain 0.8.0 claims or post-release
+backlog; they do not silently become implementation work.
+
+**Consequences:** the current goal now terminates at a qualified Release
+Candidate instead of continuing through an unlimited feature queue. Users get
+plain bilingual vocabulary without losing stable domain/storage contracts or
+backward compatibility. The graph remains a relational implementation detail
+served through six explicit people/topic evidence views, not a promised visual
+map or autonomous knowledge engine. Deterministic automation still cannot
+substitute for physical Sequoia/Tahoe, VoiceOver/Voice Control, provisioned
+CloudKit, real external-effect reconciliation, or real-conversation evidence.

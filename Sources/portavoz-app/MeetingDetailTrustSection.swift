@@ -86,7 +86,7 @@ struct MeetingDetailTrustSection: View {
     private var skillReceiptSection: some View {
         if !values.skillReceipts.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Skill runs")
+                Text("Action history")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 ForEach(values.skillReceipts) { receipt in

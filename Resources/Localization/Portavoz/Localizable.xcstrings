@@ -4621,12 +4621,12 @@
         }
       }
     },
-    "Could not build this skill's preview.": {
+    "Could not build this action's preview.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo construir el preview del skill."
+            "value": "No se pudo generar la vista previa de esta acción."
           }
         }
       }
@@ -4731,12 +4731,12 @@
         }
       }
     },
-    "Skill runs": {
+    "Action history": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ejecuciones de skills"
+            "value": "Historial de acciones"
           }
         }
       }
@@ -4751,32 +4751,32 @@
         }
       }
     },
-    "The skill could not run. Nothing left Portavoz.": {
+    "The action could not run. Nothing left Portavoz.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El skill no pudo correr. Nada salió de Portavoz."
+            "value": "No se pudo ejecutar la acción. Nada salió de Portavoz."
           }
         }
       }
     },
-    "The skill ran and failed. Nothing left Portavoz.": {
+    "The action ran and failed. Nothing left Portavoz.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El skill corrió y falló. Nada salió de Portavoz."
+            "value": "La acción se ejecutó y falló. Nada salió de Portavoz."
           }
         }
       }
     },
-    "This skill run could not start. Its proposal may be stale.": {
+    "This action could not start. Its suggestion may be stale.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esta ejecución no pudo iniciar. Su propuesta puede haber caducado."
+            "value": "Esta acción no pudo iniciarse. Su sugerencia puede haber caducado."
           }
         }
       }
@@ -4881,12 +4881,12 @@
         }
       }
     },
-    "Skill suggestions": {
+    "Suggested actions": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sugerencias de skills"
+            "value": "Acciones sugeridas"
           }
         }
       }
@@ -11681,32 +11681,32 @@
         }
       }
     },
-    "A receipt appears here only after you confirm a skill.": {
+    "A receipt appears here only after you confirm an action.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aquí aparece un recibo solo después de que confirmes un skill."
+            "value": "Aquí solo aparece un recibo después de que confirmes una acción."
           }
         }
       }
     },
-    "All skills are paused": {
+    "All actions are paused": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todos los skills están en pausa"
+            "value": "Todas las acciones están en pausa"
           }
         }
       }
     },
-    "Available now": {
+    "Available actions": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Disponibles ahora"
+            "value": "Acciones disponibles"
           }
         }
       }
@@ -11761,12 +11761,12 @@
         }
       }
     },
-    "Loading skills…": {
+    "Loading actions…": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cargando skills…"
+            "value": "Cargando acciones…"
           }
         }
       }
@@ -11791,12 +11791,12 @@
         }
       }
     },
-    "No recent Skill runs": {
+    "No recent action runs": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay ejecuciones recientes de skills"
+            "value": "No hay ejecuciones recientes de acciones"
           }
         }
       }
@@ -11841,32 +11841,32 @@
         }
       }
     },
-    "Pause all skills": {
+    "Pause all actions": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausar todos los skills"
+            "value": "Pausar todas las acciones"
           }
         }
       }
     },
-    "Pause · enable · recent receipts": {
+    "Review · enable · history": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pausar · activar · recibos recientes"
+            "value": "Revisar · activar · historial"
           }
         }
       }
     },
-    "Paused skills disappear from proposal surfaces and are refused again immediately before execution. Your individual choices stay saved.": {
+    "Paused actions are no longer suggested and are blocked again immediately before they run. Your individual choices stay saved.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los skills en pausa desaparecen de las propuestas y se rechazan de nuevo justo antes de ejecutarse. Tus opciones individuales quedan guardadas."
+            "value": "Las acciones pausadas dejan de sugerirse y vuelven a bloquearse justo antes de ejecutarse. Tus preferencias individuales se mantienen guardadas."
           }
         }
       }
@@ -11951,32 +11951,22 @@
         }
       }
     },
-    "Skill controls are unavailable": {
+    "Action controls are unavailable": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los controles de Skills no están disponibles"
+            "value": "Los controles de acciones no están disponibles"
           }
         }
       }
     },
-    "Skills": {
+    "Actions are paused in Settings.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Skills"
-          }
-        }
-      }
-    },
-    "Skills are paused in Settings.": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Los skills están en pausa en Configuración."
+            "value": "Las acciones están en pausa en Configuración."
           }
         }
       }
@@ -12001,22 +11991,22 @@
         }
       }
     },
-    "This skill is disabled in Settings.": {
+    "This action is disabled in Settings.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Este skill está desactivado en Configuración."
+            "value": "Esta acción está desactivada en Configuración."
           }
         }
       }
     },
-    "Unknown skill": {
+    "Unknown action": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Skill desconocido"
+            "value": "Acción desconocida"
           }
         }
       }
@@ -12051,12 +12041,12 @@
         }
       }
     },
-    "skills automation pause enable receipts local drafts exports": {
+    "actions suggestions skills automation pause enable receipts local drafts exports": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "skills automatización pausar activar recibos local borradores exportaciones"
+            "value": "acciones sugerencias skills automatización pausar activar recibos borradores locales exportaciones"
           }
         }
       }
@@ -13521,12 +13511,12 @@
         }
       }
     },
-    "Portavoz could not verify this receipt. This inspector never executes or retries a Skill effect.": {
+    "Portavoz could not verify this receipt. This inspector never runs or retries an action.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Portavoz no pudo verificar este recibo. Este inspector nunca ejecuta ni reintenta el efecto de un Skill."
+            "value": "Portavoz no pudo verificar este recibo. Este inspector nunca ejecuta ni reintenta una acción."
           }
         }
       }
@@ -13691,16 +13681,6 @@
         }
       }
     },
-    "Skill activity": {
-      "localizations": {
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Actividad de skills"
-          }
-        }
-      }
-    },
     "The selected activity view could not be verified. No runs are shown.": {
       "localizations": {
         "es": {
@@ -13741,12 +13721,12 @@
         }
       }
     },
-    "All skills": {
+    "All actions": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todos los skills"
+            "value": "Todas las acciones"
           }
         }
       }
@@ -13761,12 +13741,12 @@
         }
       }
     },
-    "Filter activity by skill": {
+    "Filter history by action": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Filtrar actividad por skill"
+            "value": "Filtrar el historial por acción"
           }
         }
       }
@@ -13851,12 +13831,12 @@
         }
       }
     },
-    "Skill": {
+    "Action": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Skill"
+            "value": "Acción"
           }
         }
       }
@@ -13901,32 +13881,32 @@
         }
       }
     },
-    "No waiting Skill runs": {
+    "No waiting action runs": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay ejecuciones de skills en espera"
+            "value": "No hay ejecuciones de acciones en espera"
           }
         }
       }
     },
-    "No Skill runs needing attention": {
+    "No action runs needing attention": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay ejecuciones de skills que requieran atención"
+            "value": "No hay ejecuciones de acciones que requieran atención"
           }
         }
       }
     },
-    "No completed Skill runs": {
+    "No completed action runs": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay ejecuciones de skills completadas"
+            "value": "No hay ejecuciones de acciones completadas"
           }
         }
       }
@@ -13961,12 +13941,12 @@
         }
       }
     },
-    "Proposed": {
+    "Suggestions to review": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Propuestas"
+            "value": "Sugerencias por revisar"
           }
         }
       }
@@ -13981,72 +13961,72 @@
         }
       }
     },
-    "Loading proposed Skills…": {
+    "Loading suggested actions…": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cargando skills propuestas…"
+            "value": "Cargando acciones sugeridas…"
           }
         }
       }
     },
-    "Refresh proposed Skills": {
+    "Refresh suggested actions": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actualizar skills propuestas"
+            "value": "Actualizar acciones sugeridas"
           }
         }
       }
     },
-    "Refreshing proposed Skills…": {
+    "Refreshing suggested actions…": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actualizando skills propuestas…"
+            "value": "Actualizando acciones sugeridas…"
           }
         }
       }
     },
-    "Proposed Skills are unavailable": {
+    "Suggested actions are unavailable": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las skills propuestas no están disponibles"
+            "value": "Las acciones sugeridas no están disponibles"
           }
         }
       }
     },
-    "No proposal is shown until its durable explanation can be verified.": {
+    "No suggestion is shown until Portavoz verifies its saved explanation.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se muestra ninguna propuesta hasta poder verificar su explicación durable."
+            "value": "No se muestra ninguna sugerencia hasta que Portavoz verifica su explicación guardada."
           }
         }
       }
     },
-    "No proposed Skills": {
+    "No suggested actions": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay skills propuestas"
+            "value": "No hay acciones sugeridas"
           }
         }
       }
     },
-    "Offers appear here only after a real meeting, commitment, or calendar surface proposes them.": {
+    "Suggestions appear when a meeting, commitment, or calendar event provides enough evidence for an action.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las propuestas aparecen aquí solo después de que una superficie real de reunión, compromiso o calendario las proponga."
+            "value": "Las sugerencias aparecen cuando una reunión, un compromiso o un evento del calendario aporta suficiente evidencia para una acción."
           }
         }
       }
@@ -14291,22 +14271,22 @@
         }
       }
     },
-    "Source context could not be verified. This action did not start or change the Skill run.": {
+    "Source context could not be verified. This did not start or change the action run.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo verificar el contexto de origen. Esta acción no inició ni cambió la ejecución del Skill."
+            "value": "No se pudo verificar el contexto de origen. Esto no inició ni cambió la ejecución de la acción."
           }
         }
       }
     },
-    "Review the exact source for this receipt. This action does not start or change the Skill run.": {
+    "Review the exact source for this receipt. This does not start or change the action run.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Revisa la fuente exacta de este recibo. Esta acción no inicia ni cambia la ejecución del Skill."
+            "value": "Revisa el origen exacto de este recibo. Esto no inicia ni cambia la ejecución de la acción."
           }
         }
       }
@@ -14361,12 +14341,12 @@
         }
       }
     },
-    "Returns to the original subject without running the Skill": {
+    "Returns to the original subject without running the action": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vuelve al sujeto original sin ejecutar el Skill"
+            "value": "Vuelve al contexto original sin ejecutar la acción"
           }
         }
       }
@@ -14411,12 +14391,12 @@
         }
       }
     },
-    "Return to the original context and review a fresh proposal. This does not run the Skill.": {
+    "Return to the original context and review a fresh suggestion. This does not run the action.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vuelve al contexto original y revisa una propuesta nueva. Esto no ejecuta el Skill."
+            "value": "Vuelve al contexto original y revisa una sugerencia nueva. Esto no ejecuta la acción."
           }
         }
       }
@@ -14877,6 +14857,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Las decisiones coincidentes necesitan evidencia actual de la transcripción antes de que Portavoz pueda mostrarlas."
+          }
+        }
+      }
+    },
+    "Portavoz suggests actions based on evidence from your meetings. Nothing runs until you review and confirm it.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz sugiere acciones a partir de evidencia de tus reuniones. Nada se ejecuta hasta que revisas y confirmas cada acción."
           }
         }
       }

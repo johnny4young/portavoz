@@ -627,6 +627,15 @@ destination may still sync independently. Enablement remains visually separate
 from the definition's confirmation policy, so an enabled explicit-per-proposal
 Skill still says that every run requires approval.
 
+The 0.8.0 scope freeze keeps the catalogue at those six fixed definitions and draws an
+explicit presentation boundary around the internal domain term. Settings,
+proposal menus, history, receipts, and recovery call them **Suggested actions**
+in English and **Acciones sugeridas** in Spanish, and Settings explains that
+every action is derived from meeting evidence and remains inert until review
+and confirmation. Swift `Skill` symbols, catalogue IDs, persistence, telemetry,
+and stable accessibility identifiers remain unchanged. The release candidate
+adds no user-authored action, standing rule, or new execution authority.
+
 Application failures cross into presentation as bounded categories or stable
 workflow codes. Raw filesystem paths, localized dependency errors, model
 payloads, and storage implementation details do not form the UI contract.
@@ -2085,6 +2094,11 @@ confirmed decision conflicts, plus changes since one exact meeting for one
 user-selected canonical topic. They call the existing typed use cases directly
 and render source-backed facts; they do not derive a graph query from question
 prose or silently opt the answer provider into the bundle.
+
+The 0.8.0 scope freeze keeps those six explicit graph jobs. The relational graph
+continues to be a disposable internal projection behind people/topic evidence
+views; the release makes no visual-map, free-form graph-answer, graph-database,
+autonomous-memory, CLI/MCP graph, or implicit identity-inference promise.
 
 The graph lane also accepts an optional **caller-extracted exact filter**. A
 narrow ApplicationKit resolver normalizes a person or topic alias through the

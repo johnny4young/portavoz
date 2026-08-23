@@ -107,6 +107,23 @@ capabilities; current and deferred status is authoritative in
   distinct vertical use case.
 - **Synthesized voice**: Apple's Personal Voice (iOS 17+) to speak for the user; requires a virtual audio driver (virtual microphone) on macOS + mandatory disclosure to participants. Phase 4+.
 
+### 0.8.0 candidate boundary
+
+Portavoz presents its six fixed, review-first post-meeting workflows as
+**Suggested actions** / **Acciones sugeridas**. They prepare a recap, text-only
+package, local reminder, pre-meeting brief, email draft, or explicitly approved
+secret Gist; they are not user-authored plugins or autonomous agents, and none
+runs before exact review and confirmation.
+
+The Meeting Memory Graph is an internal disposable relational projection, not a
+visual graph. Its 0.8.0 product value is six source-backed Ask jobs: current
+commitments for one person, active blockers for one commitment, and current
+decisions, first confirmed discussion, decision changes, or changes since one
+meeting for one topic. Broader free-form synthesis, a visual map, implicit
+identity guessing, user-authored actions, and standing automation rules are
+post-release research. The candidate keeps both current surfaces, improves
+comprehension, and does not expand them before qualification.
+
 ## Standout UX (signature moments)
 
 The moments that make people say "no one else does this" — each maps to a milestone:

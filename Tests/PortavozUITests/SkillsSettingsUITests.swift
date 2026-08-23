@@ -5,6 +5,20 @@ import XCTest
 /// receipt projection without touching the user's real library.
 final class SkillsSettingsUITests: PortavozUITestCase {
     @MainActor
+    func testSuggestedActionsExplainReviewFirstSafety() {
+        let app = XCUIApplication.portavoz(openSettings: true)
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(
+            app.openSettingsCategory(
+                "settings-category-skills",
+                revealing: "settings-actions-explanation"))
+        assertSuggestedActionsComprehension(in: app)
+        attachScreenshot(of: app, named: "suggested-actions-overview")
+    }
+
+    @MainActor
     func testSkillsPaneFailsClosedWhenDurablePolicyCannotLoad() {
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-control-unavailable")
@@ -205,8 +219,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-skills-empty-receipts-waiting")
         XCTAssertTrue(empty.waitForExistence(timeout: 5))
         let expectedEmpty = UITestLocale.environmentLocale == "es"
-            ? "No hay ejecuciones de skills en espera"
-            : "No waiting Skill runs"
+            ? "No hay ejecuciones de acciones en espera"
+            : "No waiting action runs"
         XCTAssertTrue(
             waitForLabel(empty, toContain: expectedEmpty),
             "the verified empty state must name the selected scope")
@@ -539,8 +553,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             waitForCount(receiptRows, toEqual: 20, timeout: 10),
             "clearing filters must preserve Waiting and reset to its first page")
         let allSkillsTitle = UITestLocale.environmentLocale == "es"
-            ? "Todos los skills"
-            : "All skills"
+            ? "Todas las acciones"
+            : "All actions"
         XCTAssertTrue(waitForLabel(skillFilter, toContain: allSkillsTitle))
         let anytimeTitle = UITestLocale.environmentLocale == "es"
             ? "Cualquier momento"
@@ -1337,7 +1351,42 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             app.openSettingsCategory(
                 "settings-category-skills",
                 revealing: "settings-skills-pause-all"),
-            "the Skills category must reveal its durable controls")
+            "the suggested-actions category must reveal its durable controls")
+    }
+
+    @MainActor
+    private func assertSuggestedActionsComprehension(
+        in app: XCUIApplication
+    ) {
+        let category = app.control(
+            withIdentifier: "settings-category-skills")
+        let expectedTitle = UITestLocale.environmentLocale == "es"
+            ? "Acciones sugeridas"
+            : "Suggested actions"
+        XCTAssertTrue(
+            waitForLabel(category, toContain: expectedTitle),
+            "the stable internal Skills route needs a plain-language public title")
+
+        let explanation = app.control(
+            withIdentifier: "settings-actions-explanation")
+        XCTAssertTrue(explanation.waitForExistence(timeout: 5))
+        let expectedExplanation = UITestLocale.environmentLocale == "es"
+            ? "Nada se ejecuta hasta que revisas y confirmas cada acción."
+            : "Nothing runs until you review and confirm it."
+        XCTAssertTrue(
+            waitForLabel(explanation, toContain: expectedExplanation),
+            "the pane must explain the review-first safety contract")
+
+        let pause = app.control(
+            withIdentifier: "settings-skills-pause-all")
+        let expectedPause = UITestLocale.environmentLocale == "es"
+            ? "Pausar todas las acciones"
+            : "Pause all actions"
+        XCTAssertTrue(
+            waitForLabel(pause, toContain: expectedPause),
+            "the primary control must use the same public action vocabulary; "
+                + "label=\(pause.label) value=\(String(describing: pause.value)) "
+                + "title=\(pause.title)")
     }
 
     @MainActor
@@ -1673,6 +1722,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             if element.exists,
                element.label.contains(expectedText)
                 || value?.contains(expectedText) == true
+                || element.title.contains(expectedText)
             {
                 return true
             }

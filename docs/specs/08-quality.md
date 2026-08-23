@@ -3921,6 +3921,54 @@ no MLX metallib. This is deterministic local Tahoe-family automation, not
 physical Sequoia, separate Tahoe hardware, VoiceOver, real external-effect
 reconciliation, provisioned CloudKit, or MLX runtime evidence.
 
+**D379 finite Suggested-actions comprehension gate.** The 0.8.0 candidate
+keeps the six registered review-first actions and six structured graph Ask
+jobs, while the public presentation now calls the former **Suggested actions**
+or **Acciones sugeridas**. Settings explains that suggestions come from meeting
+evidence and that nothing runs until the user reviews and confirms it. Proposal,
+history, receipt, recovery, menu, and detail copy use the same action vocabulary.
+Internal `Skill` types, identifiers, persistence, migrations, telemetry, and
+stable accessibility identifiers remain unchanged. No action producer, action
+kind, standing rule, graph job, search/model authority, store, schema, query,
+timer, observer, mutation, execution authority, egress consent, or deployment
+floor changed.
+
+The dedicated comprehension journey initially found that the visible global
+pause `Toggle` exposed an empty accessibility label and title on the real app.
+The production control now supplies one explicit localized accessibility label;
+the regression requires the localized pane title, review-first safety sentence,
+and pause-control name. The strengthened focused case passed 1/1 English in
+15.632 seconds and 1/1 Spanish in 14.606 seconds. The new journey is registered
+in the fail-closed feature catalog, which now contains 109 tests.
+
+Final preflight passed both debug builds, including current-SDK first-party
+warnings-as-errors, and 2,611 package tests with 15 explicit environment/model
+skips and zero failures in 125.164 seconds of XCTest execution. All architecture
+ratchets, 457 tooling tests in 9.427 seconds, repository hygiene and its embedded
+policy suites, both localization-catalog validations, the complete 109-case UI
+catalog check, diff whitespace validation, and strict SwiftLint with zero
+violations across 706 production Swift files also passed. The read-only host
+preflight passed without reading or dismissing a prompt and left 24 stale
+LaunchServices claimants warning-only. Final macOS 26.5.2 (25F84), arm64 result
+bundles passed 109/109 English plus 109/109 Spanish real-app XCUITest cases with
+zero failures, skips, or expected failures; their result intervals were
+2,602.917 seconds and 2,618.289 seconds respectively.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was rebuilt, deeply
+verified, installed only at `/Applications/Portavoz Dev.app`, and observed at
+PID 23333 running from its exact executable. A deterministic before/after
+comparison kept the notarized `app.portavoz.mac` release bundle unchanged
+across its 184-entry no-symlink-traversal content/metadata/hex-xattr manifest
+at SHA-256
+`9f42e6c828e2330467c28539265df6aa2b46814df17f5cf0966e623501a4dfe2`;
+its bundle ID and designated requirement stayed unchanged, its deep signature
+remained valid, and Gatekeeper still reported Notarized Developer ID. The Dev
+build is local-only because no CloudKit profile was supplied, and packaging
+again lacked the optional Metal Toolchain's `metallib`, so the bundle contains
+no MLX metallib. This is deterministic local Tahoe-family automation, not
+physical Sequoia, separate Tahoe hardware, VoiceOver/Voice Control, provisioned
+CloudKit, real external-effect reconciliation, or MLX runtime evidence.
+
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch
 COPY of a real recording: point `PORTAVOZ_TEST_AUDIO_ROOT` at a folder shaped

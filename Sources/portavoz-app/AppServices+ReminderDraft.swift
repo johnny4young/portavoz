@@ -98,9 +98,9 @@ extension AppServices: ReminderDraftModelClient {
             return .failed(L10n.text(
                 "The reminder was not created. You can retry this exact draft."))
         case .refused(.allSkillsPaused):
-            return .failed(L10n.text("Skills are paused in Settings."))
+            return .failed(L10n.text("Actions are paused in Settings."))
         case .refused(.skillDisabled):
-            return .failed(L10n.text("This skill is disabled in Settings."))
+            return .failed(L10n.text("This action is disabled in Settings."))
         case .alreadySettled, .refused, .rejected:
             return .failed(staleReminderDraftFailure)
         }

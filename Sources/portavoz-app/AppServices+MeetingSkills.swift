@@ -368,10 +368,10 @@ extension AppServices {
                     "This Gist attempt may have reached GitHub. Check your Gists before publishing again."),
                 outputURL: outputURL)
         case .refused(.allSkillsPaused):
-            return .retryableFailure(L10n.text("Skills are paused in Settings."))
+            return .retryableFailure(L10n.text("Actions are paused in Settings."))
         case .refused(.skillDisabled):
             return .retryableFailure(L10n.text(
-                "This skill is disabled in Settings."))
+                "This action is disabled in Settings."))
         case .alreadySettled, .refused, .rejected:
             return .retryableFailure(staleSkillProposalFailure)
         case .failed where offer.kind == .emailRecapDraft:
@@ -379,7 +379,7 @@ extension AppServices {
                 "The email draft could not be opened. Portavoz did not send it."))
         case .failed:
             return .retryableFailure(L10n.text(
-                "The skill ran and failed. Nothing left Portavoz."))
+                "The action ran and failed. Nothing left Portavoz."))
         }
     }
 
@@ -394,7 +394,7 @@ extension AppServices {
 
     private var staleSkillProposalFailure: String {
         L10n.text(
-            "This skill run could not start. Its proposal may be stale.")
+            "This action could not start. Its suggestion may be stale.")
     }
 }
 

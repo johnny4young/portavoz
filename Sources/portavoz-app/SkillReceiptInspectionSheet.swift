@@ -100,7 +100,7 @@ struct SkillReceiptInspectionSheet: View {
             } else if contextFailed {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(
-                        "Source context could not be verified. This action did not start or change the Skill run.",
+                        "Source context could not be verified. This did not start or change the action run.",
                         systemImage: "exclamationmark.triangle")
                         .font(.callout)
                         .foregroundStyle(.orange)
@@ -114,14 +114,14 @@ struct SkillReceiptInspectionSheet: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(
-                        "Review the exact source for this receipt. This action does not start or change the Skill run.")
+                        "Review the exact source for this receipt. This does not start or change the action run.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button("Review source in context") {
                         Task { await resolveContext() }
                     }
                     .accessibilityHint(
-                        "Returns to the original subject without running the Skill")
+                        "Returns to the original subject without running the action")
                     .accessibilityIdentifier("skill-receipt-context-action")
                     .disabled(isRevoking || isResolvingRecovery)
                 }
@@ -164,14 +164,14 @@ struct SkillReceiptInspectionSheet: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(
-                        "Return to the original context and review a fresh proposal. This does not run the Skill.")
+                        "Return to the original context and review a fresh suggestion. This does not run the action.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button("Review recovery in context") {
                         Task { await resolveRecovery() }
                     }
                     .accessibilityHint(
-                        "Returns to the original subject without running the Skill")
+                        "Returns to the original subject without running the action")
                     .accessibilityIdentifier("skill-receipt-recovery-action")
                 }
             }
@@ -256,7 +256,7 @@ struct SkillReceiptInspectionSheet: View {
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("skill-receipt-inspection-error")
                 Text(
-                    "Portavoz could not verify this receipt. This inspector never executes or retries a Skill effect.")
+                    "Portavoz could not verify this receipt. This inspector never runs or retries an action.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Button("Try again") {

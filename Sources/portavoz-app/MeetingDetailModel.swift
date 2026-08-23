@@ -512,7 +512,7 @@ private extension MeetingDetailModel {
         } catch {
             state.lastActionError = offer.kind == .secretGistPublish
                 ? UseCaseErrorMessages.describe(error)
-                : L10n.text("The skill could not run. Nothing left Portavoz.")
+                : L10n.text("The action could not run. Nothing left Portavoz.")
             return nil
         }
     }
@@ -766,7 +766,7 @@ extension MeetingDetailModel {
                 destination: destination)
         } catch {
             state.lastActionError = L10n.text(
-                "Could not build this skill's preview.")
+                "Could not build this action's preview.")
             return nil
         }
     }

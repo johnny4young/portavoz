@@ -63,7 +63,7 @@ make release-reliability-deterministic
 
 This command runs hygiene, warnings-as-errors build, the complete package
 suite, strict SwiftLint, 25 recording/recovery stress iterations, the exact mixed-language
-policy corpus, and six focused XCUITest journeys in English and Spanish. It
+policy corpus, and seven focused XCUITest journeys in English and Spanish. It
 writes `dist/release-readiness/deterministic.json` only after every command
 passes. Do not reuse a receipt after the commit, version, or build changes.
 

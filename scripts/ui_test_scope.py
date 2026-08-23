@@ -249,6 +249,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
     "settings-skills": (
         test_id(
             "SkillsSettingsUITests",
+            "testSuggestedActionsExplainReviewFirstSafety",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
             "testSkillsPaneFailsClosedWhenDurablePolicyCannotLoad",
         ),
         test_id(

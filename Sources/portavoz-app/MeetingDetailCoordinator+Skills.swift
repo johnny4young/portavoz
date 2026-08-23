@@ -70,7 +70,7 @@ extension MeetingDetailCoordinator {
         default:
             return .failed(
                 model.state.lastActionError
-                    ?? L10n.text("The skill could not run. Nothing left Portavoz."))
+                    ?? L10n.text("The action could not run. Nothing left Portavoz."))
         }
     }
 

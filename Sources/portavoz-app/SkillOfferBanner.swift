@@ -59,7 +59,7 @@ struct SkillOfferMenu: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .accessibilityLabel(L10n.text("Skill suggestions"))
+            .accessibilityLabel(L10n.text("Suggested actions"))
             .accessibilityIdentifier("skill-offer-menu")
             .help(L10n.text(
                 // Keep the catalog key as one literal: LocalizationTests deliberately

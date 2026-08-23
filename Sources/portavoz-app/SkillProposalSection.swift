@@ -63,18 +63,18 @@ struct SkillProposalSection: View {
         if snapshot == nil, !loadFailed {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Loading proposed Skills…")
+                Text("Loading suggested actions…")
             }
             .accessibilityIdentifier("settings-skills-proposals-loading")
         } else if loadFailed {
             VStack(alignment: .leading, spacing: 8) {
                 Label(
-                    "Proposed Skills are unavailable",
+                    "Suggested actions are unavailable",
                     systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier(
                         "settings-skills-proposals-error")
-                Text("No proposal is shown until its durable explanation can be verified.")
+                Text("No suggestion is shown until Portavoz verifies its saved explanation.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Button("Try again", action: retry)
@@ -84,8 +84,12 @@ struct SkillProposalSection: View {
             }
         } else if let offers = snapshot?.offers, offers.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                Label("No proposed Skills", systemImage: "sparkles")
-                Text("Offers appear here only after a real meeting, commitment, or calendar surface proposes them.")
+                Label("No suggested actions", systemImage: "sparkles")
+                Text(
+                    // Keep this as one literal so localization validation sees it.
+                    // swiftlint:disable:next line_length
+                    "Suggestions appear when a meeting, commitment, or calendar event provides enough evidence for an action."
+                )
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -119,14 +123,14 @@ struct SkillProposalSection: View {
         if isLoading {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Refreshing proposed Skills…")
+                Text("Refreshing suggested actions…")
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier(
                 "settings-skills-proposals-refreshing")
         } else {
             Button(action: refresh) {
-                Label("Refresh proposed Skills", systemImage: "arrow.clockwise")
+                Label("Refresh suggested actions", systemImage: "arrow.clockwise")
             }
             .accessibilityIdentifier("settings-skills-proposals-refresh")
             .disabled(isMutating)

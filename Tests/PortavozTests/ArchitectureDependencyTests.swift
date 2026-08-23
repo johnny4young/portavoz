@@ -5400,7 +5400,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(receiptInspection.contains(".idempotencyKey"))
         XCTAssertTrue(receiptSheet.contains("skill-receipt-inspection-privacy"))
         XCTAssertTrue(receiptSheet.contains(
-            "never executes or retries a Skill effect"))
+            "never runs or retries an action"))
         XCTAssertTrue(decisions.contains("## D317"))
         XCTAssertTrue(decisions.contains("## D333"))
         XCTAssertTrue(decisions.contains("## D370"))
@@ -5576,6 +5576,89 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D338"))
         XCTAssertTrue(decisions.contains("## D377"))
         XCTAssertTrue(decisions.contains("## D378"))
+    }
+
+    func testSuggestedActionsVocabularyKeepsInternalSkillContractsStable() throws {
+        let categories = try Self.contents(
+            of: "Sources/portavoz-app/SettingsCategories.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/SkillsSettingsSection.swift")
+        let proposals = try Self.contents(
+            of: "Sources/portavoz-app/SkillProposalSection.swift")
+        let activity = try Self.contents(
+            of: "Sources/portavoz-app/SkillActivitySection.swift")
+        let offerBanner = try Self.contents(
+            of: "Sources/portavoz-app/SkillOfferBanner.swift")
+        let receiptSheet = try Self.contents(
+            of: "Sources/portavoz-app/SkillReceiptInspectionSheet.swift")
+        let receiptPresentation = try Self.contents(
+            of: "Sources/portavoz-app/SkillReceiptPresentation.swift")
+        let catalogue = try Self.contents(
+            of: "Resources/Localization/Portavoz/Localizable.xcstrings")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/SkillsSettingsUITests.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        let product = try Self.contents(of: "docs/PRODUCT.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+
+        XCTAssertTrue(categories.contains("case skills"))
+        XCTAssertTrue(categories.contains(
+            "case .skills: L10n.text(\"Suggested actions\")"))
+        XCTAssertTrue(categories.contains(
+            "actions suggestions skills automation pause enable receipts"))
+        XCTAssertFalse(categories.contains(
+            "case .skills: L10n.text(\"Skills\")"))
+
+        XCTAssertTrue(settings.contains("Section(\"Available actions\")"))
+        XCTAssertTrue(settings.contains("Section(\"Suggestions to review\")"))
+        XCTAssertTrue(settings.contains("Section(\"Action history\")"))
+        XCTAssertTrue(settings.contains(
+            "Portavoz suggests actions based on evidence from your meetings."))
+        XCTAssertTrue(settings.contains(
+            "Nothing runs until you review and confirm it."))
+        XCTAssertTrue(settings.contains("settings-actions-explanation"))
+        XCTAssertTrue(settings.contains(
+            ".accessibilityLabel(\"Pause all actions\")"))
+        XCTAssertTrue(settings.contains("settings-skills-pause-all"))
+        XCTAssertFalse(settings.contains("Section(\"Skill suggestions\")"))
+        XCTAssertFalse(settings.contains("Section(\"Skill activity\")"))
+
+        XCTAssertTrue(proposals.contains("Loading suggested actions…"))
+        XCTAssertTrue(proposals.contains("Suggested actions are unavailable"))
+        XCTAssertTrue(proposals.contains("No suggested actions"))
+        XCTAssertTrue(proposals.contains("Refresh suggested actions"))
+        XCTAssertTrue(activity.contains("Text(\"Action\")"))
+        XCTAssertTrue(activity.contains("Button(\"All actions\")"))
+        XCTAssertTrue(activity.contains("Filter history by action"))
+        XCTAssertFalse(activity.contains("Button(\"All skills\")"))
+        XCTAssertFalse(activity.contains("Text(\"Skill\")"))
+        XCTAssertTrue(offerBanner.contains(
+            ".accessibilityLabel(L10n.text(\"Suggested actions\"))"))
+        XCTAssertTrue(receiptSheet.contains("change the action run"))
+        XCTAssertFalse(receiptSheet.contains("change the Skill run"))
+        XCTAssertTrue(receiptPresentation.contains("Unknown action"))
+
+        XCTAssertTrue(catalogue.contains("\"Suggested actions\""))
+        XCTAssertTrue(catalogue.contains("\"Acciones sugeridas\""))
+        XCTAssertTrue(catalogue.contains("\"Pausar todas las acciones\""))
+        XCTAssertTrue(catalogue.contains(
+            "Nada se ejecuta hasta que revisas y confirmas cada acción."))
+        XCTAssertTrue(uiTest.contains("assertSuggestedActionsComprehension"))
+        XCTAssertTrue(uiTest.contains(
+            "testSuggestedActionsExplainReviewFirstSafety"))
+        XCTAssertTrue(uiTest.contains("settings-category-skills"))
+        XCTAssertTrue(uiTest.contains("settings-actions-explanation"))
+        XCTAssertTrue(uiTest.contains("Pause all actions"))
+
+        XCTAssertTrue(decisions.contains("## D379"))
+        XCTAssertTrue(gaps.contains("FROZEN FOR 0.8.0"))
+        XCTAssertTrue(gaps.contains("0.8.0 Release Candidate scope and exit gates"))
+        XCTAssertTrue(product.contains("### 0.8.0 candidate boundary"))
+        XCTAssertTrue(appSpec.contains(
+            "## Suggested-actions control center in Settings"))
+        XCTAssertTrue(appSpec.contains(
+            "Twenty bilingual XCUITest journeys cover the pane"))
     }
 
     func testSkillProposalReviewRoutingIsOpaqueInertAndValueScoped() throws {

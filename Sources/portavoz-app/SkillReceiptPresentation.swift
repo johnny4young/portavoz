@@ -10,7 +10,7 @@ enum SkillReceiptPresentation {
         case MeetingPackageExportSkill.id: L10n.text("Text-only meeting package")
         case ReminderDraftSkill.id: L10n.text("Reminder draft")
         case PreMeetingBriefSkill.id: L10n.text("Pre-meeting brief")
-        default: L10n.text("Unknown skill")
+        default: L10n.text("Unknown action")
         }
     }
 

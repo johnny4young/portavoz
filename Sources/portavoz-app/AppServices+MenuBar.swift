@@ -88,9 +88,9 @@ extension AppServices: MenuBarModelClient {
         case .performed, .alreadySettled(.succeeded):
             return nil
         case .refused(.allSkillsPaused):
-            return L10n.text("Skills are paused in Settings.")
+            return L10n.text("Actions are paused in Settings.")
         case .refused(.skillDisabled):
-            return L10n.text("This skill is disabled in Settings.")
+            return L10n.text("This action is disabled in Settings.")
         case .failed:
             return L10n.text("The brief could not be delivered. Nothing left Portavoz.")
         case .alreadySettled, .refused, .rejected:

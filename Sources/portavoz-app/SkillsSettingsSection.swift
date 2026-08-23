@@ -43,11 +43,19 @@ struct SkillsSettingsSection: View {
     var body: some View {
         Group {
             Section("Control") {
+                Text(
+                    // Keep this as one literal so localization validation sees it.
+                    // swiftlint:disable:next line_length
+                    "Portavoz suggests actions based on evidence from your meetings. Nothing runs until you review and confirm it."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("settings-actions-explanation")
                 controlContent
             }
 
             if snapshot != nil {
-                Section("Available now") {
+                Section("Available actions") {
                     ForEach(availableSkills) { skill in
                         availableSkillRow(skill)
                     }
@@ -61,7 +69,7 @@ struct SkillsSettingsSection: View {
                     }
                 }
 
-                Section("Proposed") {
+                Section("Suggestions to review") {
                     SkillProposalSection(
                         snapshot: proposalSnapshot,
                         isLoading: proposalsAreLoading,
@@ -81,7 +89,7 @@ struct SkillsSettingsSection: View {
                         refresh: { Task { await refreshProposals() } })
                 }
 
-                Section("Skill activity") {
+                Section("Action history") {
                     SkillActivitySection(
                         receiptScope: $receiptScope,
                         receiptSkillID: $receiptSkillID,
@@ -497,12 +505,12 @@ private extension SkillsSettingsSection {
         if isLoading, snapshot == nil {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Loading skills…")
+                Text("Loading actions…")
             }
             .accessibilityIdentifier("settings-skills-loading")
         } else if controlLoadFailed, snapshot == nil {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Skill controls are unavailable", systemImage: "exclamationmark.triangle")
+                Label("Action controls are unavailable", systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("settings-skills-load-error")
                 Text("Nothing can be changed until Portavoz reads the durable policy.")
@@ -514,7 +522,8 @@ private extension SkillsSettingsSection {
                 .accessibilityIdentifier("settings-skills-retry")
             }
         } else {
-            Toggle("Pause all skills", isOn: pauseBinding)
+            Toggle("Pause all actions", isOn: pauseBinding)
+                .accessibilityLabel("Pause all actions")
                 .accessibilityIdentifier("settings-skills-pause-all")
                 .disabled(
                     snapshot == nil || isMutating
@@ -522,12 +531,12 @@ private extension SkillsSettingsSection {
             Text(
                 // Keep this as one literal so localization validation sees it.
                 // swiftlint:disable:next line_length
-                "Paused skills disappear from proposal surfaces and are refused again immediately before execution. Your individual choices stay saved."
+                "Paused actions are no longer suggested and are blocked again immediately before they run. Your individual choices stay saved."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
             if snapshot?.isPaused == true {
-                Label("All skills are paused", systemImage: "pause.circle.fill")
+                Label("All actions are paused", systemImage: "pause.circle.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("settings-skills-paused-status")

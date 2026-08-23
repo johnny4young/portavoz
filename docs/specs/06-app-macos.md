@@ -2705,15 +2705,18 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D378, Aug 2026)
+## Suggested-actions control center in Settings (D317/D333/D335–D343/D359/D369–D379, Aug 2026)
 
-Settings now includes a dedicated Skills pane driven by
+Settings includes a dedicated **Suggested actions** / **Acciones sugeridas**
+pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
 catalogue marks recap draft, review-first email recap, secret Gist publication,
 text-only package export, resident pre-meeting brief, and confirmed-commitment
 reminder draft as available. The pane exposes an independent
 global pause, per-available-skill enablement, and a segmented content-free
-activity view. **Recent** contains every newest durable execution, **Waiting**
+history view. A localized explanation states that Portavoz derives these
+review-first actions from meeting evidence and that nothing runs before review
+and confirmation. **Recent** contains every newest durable execution, **Waiting**
 contains confirmed runs that have not begun, **Attention** contains executing,
 failed, and any unknown future state, and **Completed** contains succeeded and
 pre-handoff cancelled runs. It never executes a skill and does not invent egress
@@ -2721,7 +2724,7 @@ consent or standing rules; enabling an external row is not permission to hand
 off content, because that authority exists only on the exact confirmation
 sheet.
 
-A separate **Proposed** section now reviews offers that the real Meeting Detail,
+A separate **Suggestions to review** section reviews offers that the real Meeting Detail,
 resident calendar, and Commitment Radar producers successfully reconciled into
 schema v40. It is not reconstructed by scanning meeting, transcript, commitment,
 or calendar content. Each row receives only an unrelated review UUID, current
@@ -2759,8 +2762,8 @@ verified pause/enablement usable. No optimistic removal is accepted. A stale
 producer reconciliation skips already-dismissed active keys in the same write,
 so it cannot recreate the row after reading subject state earlier.
 
-A verified empty or populated Proposed projection exposes **Refresh proposed
-Skills**. The action performs only the existing bounded content-free review
+A verified empty or populated proposal projection exposes **Refresh suggested
+actions**. The action performs only the existing bounded content-free review
 read, so offers created, retired, paused, or disabled from another product
 surface can be reconciled without closing Settings. During that read, the last
 verified rows remain visible only as disabled evidence and an identified
@@ -2868,7 +2871,7 @@ maximum). ApplicationKit requests exactly one additional continuation sentinel,
 so the actual storage limits are 21 or 51 and remain below StorageKit's hard
 100-row boundary. The sentinel never enters the returned visible receipts.
 Results are ordered by `(updatedAt DESC, proposalID ASC)`. The user may choose
-one exact available catalogue Skill or **All skills**, plus **Any time**, the
+one exact available catalogue Skill or **All actions**, plus **Any time**, the
 past 24 hours, past seven days, or past 30 days. ApplicationKit resolves the
 rolling period from a fresh reference date for every explicit read, while
 StorageKit receives only an optional inclusive absolute `updatedAt` lower bound.
@@ -3012,7 +3015,14 @@ the route retry, and the independent Waiting revocation action. Both source and
 recovery navigation use the generic weak Settings-window bridge after the sheet
 dismisses; neither route carries content or effect authority into Settings.
 
-Nineteen bilingual XCUITest journeys cover the pane: fail-closed control
+D379 freezes the 0.8.0 public catalogue at these six actions. Public copy uses
+action vocabulary consistently while internal `Skill` types, IDs, migrations,
+telemetry, and accessibility identifiers stay stable. User-authored actions,
+standing rules, and additional workflow kinds are post-release scope rather
+than incomplete 0.8.0 behavior.
+
+Twenty bilingual XCUITest journeys cover the pane: plain-language review-first
+comprehension; fail-closed control
 loading; read-only recovery after an unverified control mutation; isolated
 scope failure; stale-row-free activity transitions; explicit bounded history
 expansion from 20 to 50; explicit same-scope refresh that preserves the expanded
