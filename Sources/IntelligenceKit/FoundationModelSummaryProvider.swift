@@ -243,17 +243,13 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             transcript, budget: TranscriptFormatter.onDeviceChunkBudget)
         var notes: [String] = []
         for (index, chunk) in chunks.enumerated() {
-            let session = LanguageModelSession(
-                instructions: PromptFactory.notesInstructions(
-                    targetLanguage: targetLanguage, glossary: glossary))
-            let note = try await IntelligenceScheduler.shared.run(priority) {
-                try await session.respond(
-                    to: PromptFactory.notesPrompt(
-                        chunk: chunk, index: index, total: chunks.count),
-                    options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 250)
-                ).content
-            }
-            notes.append(note)
+            notes.append(contentsOf: try await condenseMapChunk(
+                chunk,
+                index: index,
+                total: chunks.count,
+                targetLanguage: targetLanguage,
+                glossary: glossary,
+                priority: priority))
         }
         return notes.joined(separator: "\n")
     }
@@ -396,26 +392,72 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
             text, budget: TranscriptFormatter.onDeviceChunkBudget)
         var notes: [String] = []
         for (index, chunk) in chunks.enumerated() {
-            // Fresh session per chunk: sessions accumulate context and a
-            // shared one would overflow the window by the second chunk.
-            let session = LanguageModelSession(
-                instructions: PromptFactory.notesInstructions(
-                    targetLanguage: targetLanguage, glossary: glossary))
-            // 250 tokens (~1000 chars) per note from a 4500-char chunk ⇒
-            // ≥4× compression per level, so the recursion always converges.
-            let note = try await IntelligenceScheduler.shared.run(priority) {
-                try await session.respond(
-                    to: PromptFactory.notesPrompt(
-                        chunk: chunk, index: index, total: chunks.count),
-                    options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 250)
-                ).content
-            }
-            notes.append(note)
+            notes.append(contentsOf: try await condenseMapChunk(
+                chunk,
+                index: index,
+                total: chunks.count,
+                targetLanguage: targetLanguage,
+                glossary: glossary,
+                priority: priority))
         }
         return try await condense(
             notes.joined(separator: "\n"),
             targetLanguage: targetLanguage, glossary: glossary,
             priority: priority, reduceBudget: reduceBudget, depth: depth + 1)
+    }
+
+    /// A fresh session owns every map request. The measured 4,000-character
+    /// boundary is the normal path; if a future tokenizer or unusually dense
+    /// Unicode input still exceeds the session window, retry only that chunk
+    /// at successively smaller bounded sizes. Cancellation and every other
+    /// generation error propagate unchanged.
+    private func condenseMapChunk(
+        _ chunk: String,
+        index: Int,
+        total: Int,
+        targetLanguage: String,
+        glossary: [String],
+        priority: IntelligenceScheduler.Priority
+    ) async throws -> [String] {
+        do {
+            // Fresh sessions do not accumulate earlier map prompts.
+            let session = LanguageModelSession(
+                instructions: PromptFactory.notesInstructions(
+                    targetLanguage: targetLanguage, glossary: glossary))
+            // 250 tokens (~1000 chars) from a 4000-char normal chunk keeps
+            // recursive reduction convergent.
+            let note = try await IntelligenceScheduler.shared.run(priority) {
+                try await session.respond(
+                    to: PromptFactory.notesPrompt(
+                        chunk: chunk, index: index, total: total),
+                    options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 250)
+                ).content
+            }
+            return [note]
+        } catch let generationError as LanguageModelSession.GenerationError {
+            guard case .exceededContextWindowSize = generationError else {
+                throw generationError
+            }
+            guard let retryBudget = TranscriptFormatter.nextOnDeviceRetryBudget(
+                for: chunk.count)
+            else {
+                throw generationError
+            }
+            let retryChunks = TranscriptFormatter.chunk(chunk, budget: retryBudget)
+            guard retryChunks.count > 1 else { throw generationError }
+
+            var notes: [String] = []
+            for (retryIndex, retryChunk) in retryChunks.enumerated() {
+                notes.append(contentsOf: try await condenseMapChunk(
+                    retryChunk,
+                    index: retryIndex,
+                    total: retryChunks.count,
+                    targetLanguage: targetLanguage,
+                    glossary: glossary,
+                    priority: priority))
+            }
+            return notes
+        }
     }
 }
 

@@ -43,10 +43,13 @@ test:
 
 ## Q4/T7 compensating gate: hosted CI cannot provide Apple Intelligence, the
 ## sha256-pinned speech models, or real enrollment audio, so model-dependent
-## behavior is verified on the release Mac instead (docs/RELEASING.md). A
-## class that skips ENTIRELY means the capability under test is absent —
-## models not installed, Apple Intelligence off — and that fails the gate.
-## Individually skipped env-fixture tests are printed for owner review.
+## behavior is verified on the release Mac instead (docs/RELEASING.md). Run
+## the canonical lane in Release: FluidAudio mirrors transcript-bearing DEBUG
+## diagnostics to stderr and exposes no public log-level control. A class that
+## skips ENTIRELY means the capability under test is absent — models not
+## installed, Apple Intelligence off — and that fails the gate. Individually
+## skipped env-fixture tests are printed for owner review. Raw failure logs are
+## never echoed because PORTAVOZ_TEST_WAV may contain a private conversation.
 MODEL_GATED_TEST_CLASSES = DiarizationIntegrationTests \
 	FoundationModelIntegrationTests MeetingTypeDetectorIntegrationTests \
 	ParakeetIntegrationTests SentenceEmbedderIntegrationTests \
@@ -75,8 +78,16 @@ test-model-gated:
 	@set -u; status=0; \
 	for class in $(MODEL_GATED_TEST_CLASSES); do \
 		log=$$(mktemp); \
-		if ! $(XCODE) swift test --filter "$$class" >"$$log" 2>&1; then \
-			echo "FAIL $$class: test failure"; tail -20 "$$log"; status=1; \
+		chmod 600 "$$log"; \
+		trap 'rm -f "$$log"' EXIT; \
+		trap 'exit 129' HUP; \
+		trap 'exit 130' INT; \
+		trap 'exit 143' TERM; \
+		if ! $(XCODE) swift test --configuration release --filter "$$class" >"$$log" 2>&1; then \
+			echo "FAIL $$class: test/build failure (private log withheld)"; status=1; \
+		fi; \
+		if grep -Eq '\[DEBUG\] \[FluidAudio\.' "$$log"; then \
+			echo "FAIL $$class: FluidAudio DEBUG output reached the private release gate"; status=1; \
 		fi; \
 		summary=$$(grep -E "Executed [0-9]+ tests?," "$$log" | tail -1); \
 		executed=$$(printf '%s' "$$summary" | grep -Eo "Executed [0-9]+" | grep -Eo "[0-9]+" || echo 0); \
@@ -91,6 +102,7 @@ test-model-gated:
 			status=1; \
 		fi; \
 		rm -f "$$log"; \
+		trap - EXIT HUP INT TERM; \
 	done; \
 	exit $$status
 

@@ -101,7 +101,7 @@ Lightweight ADR format: each entry is a decision made, its context, and its rati
 ## D18 — M4 summaries: on-device Foundation Models with convergent map-reduce; explicit OpenAI-compatible BYOK
 
 **Context:** M4 requires structured summaries in < 30 s, bilingual ES/EN with the glossary intact. Apple's on-device model (Foundation Models, macOS 26+) has a window of **4096 tokens including instructions, guided-generation schema, and output**.
-**Decision:** (1) Absolute default: on-device `FoundationModelSummaryProvider` with guided generation (`@Generable`) into a neutral `StructuredSummary` shared by all providers (markdown + action-item owners are derived from it). (2) Long transcripts go through **recursive map-reduce**: 4500-character chunks → notes with a hard cap of 250 tokens (compression ≥4x per level — the cap is what guarantees convergence; without it the notes do not shrink and recursion does not terminate); the final structured pass requires material ≤ 3000 characters because its window also loads the schema and output. (3) **Greedy** decoding in every pass: with sampling, the 3B model invented action items. (4) The language directive uses a human-readable name ("Spanish (español)", not "es") and is REPEATED at the end of the user prompt — the model ignored it when it appeared only in instructions. Headings are translated; the glossary remains verbatim. (5) Action items exist only in the dedicated field (never as a section), and the guidance requires explicit commitments, with an empty array if there were none. (6) BYOK: `OpenAICompatibleSummaryProvider` (`/chat/completions`, JSON into `StructuredSummary`), always visibly opted in and labeled (D8); in the CLI, the key arrives through `PORTAVOZ_BYOK_API_KEY` (Keychain storage arrives with the app).
+**Decision:** (1) Absolute default: on-device `FoundationModelSummaryProvider` with guided generation (`@Generable`) into a neutral `StructuredSummary` shared by all providers (markdown + action-item owners are derived from it). (2) Long transcripts go through **recursive map-reduce**: 4,000-character chunks (D380 reduced the original 4,500 boundary) → notes with a hard cap of 250 tokens (compression ≥4x per level — the cap is what guarantees convergence; without it the notes do not shrink and recursion does not terminate); the final structured pass requires material ≤ 3000 characters because its window also loads the schema and output. (3) **Greedy** decoding in every pass: with sampling, the 3B model invented action items. (4) The language directive uses a human-readable name ("Spanish (español)", not "es") and is REPEATED at the end of the user prompt — the model ignored it when it appeared only in instructions. Headings are translated; the glossary remains verbatim. (5) Action items exist only in the dedicated field (never as a section), and the guidance requires explicit commitments, with an empty array if there were none. (6) BYOK: `OpenAICompatibleSummaryProvider` (`/chat/completions`, JSON into `StructuredSummary`), always visibly opted in and labeled (D8); in the CLI, the key arrives through `PORTAVOZ_BYOK_API_KEY` (Keychain storage arrives with the app).
 **Measured (M4 Max, 2026-07-07):** ES summary of an EN meeting with glossary intact in 3.8 s; 3-window transcript through the incremental path in ~11 s. < 30 s criterion with margin.
 **Rationale:** genuine privacy by default (nothing leaves the device), and the four prompting/budget lessons are locked in by tests (unit + gated integration).
 
@@ -13843,3 +13843,46 @@ served through six explicit people/topic evidence views, not a promised visual
 map or autonomous knowledge engine. Deterministic automation still cannot
 substitute for physical Sequoia/Tahoe, VoiceOver/Voice Control, provisioned
 CloudKit, real external-effect reconciliation, or real-conversation evidence.
+
+## D380 — Reserve model context and keep real-audio gates content-free (Aug 2026)
+
+**Context:** the candidate's real-model rehearsal exposed two release blockers.
+On macOS 26.5.2, a 4,500-character Foundation Models map chunk produced a final
+guided request containing 4,089 tokens against the 4,096-token maximum;
+OS-owned instructions, schema, output, and tokenization had consumed the
+historical margin. The Parakeet integration test also assumed that an arbitrary
+`PORTAVOZ_TEST_WAV` would contain one of two English words. When that assertion
+failed, it interpolated the complete recognized private conversation. Removing
+that interpolation was insufficient because FluidAudio 0.15.5's public
+`AppLogger` always mirrors DEBUG diagnostics—including partial transcript
+text—to stderr and exposes no log-level or sink configuration.
+
+**Decision:** cap each Foundation Models map chunk at 4,000 characters, retain
+the 3,000-character final structured-material cap and 250-token map output, and
+pin those boundaries in pure tests. An oversized single transcript line is
+split in one forward Character-boundary traversal instead of bypassing the cap
+or repeatedly rescanning each remainder. If a fresh map
+session still throws `exceededContextWindowSize`, only that chunk retries at
+successively halved budgets down to a 500-character floor; cancellation and
+every other generation error propagate unchanged. The canonical
+`make test-model-gated` lane runs all six classes in SwiftPM Release
+configuration. The Parakeet test skips before opening a fixture when compiled
+with `DEBUG`; the release runner rejects any FluidAudio DEBUG console line,
+assigns private permissions to captured logs, never echoes raw failure logs,
+and removes each log after class review or shell interruption. HUP, INT, and
+TERM handlers exit nonzero after the shared EXIT cleanup rather than being
+swallowed. The Parakeet
+assertion accepts a bounded spoken WAV only through valid PCM metadata,
+nonempty segments, at least eight lexical characters, and duration-bounded
+timestamps. It never expects vocabulary and no failure message contains
+recognized text.
+
+**Consequences:** current Apple Intelligence retains deterministic convergence
+with measured guided-generation headroom, while future OS tokenization drift
+recovers through a finite local retry or fails at the explicit 500-character
+floor rather than looping or publishing a partial result. Real-model release
+evidence is candidate-representative and content-free at the console boundary.
+Direct DEBUG Parakeet integration is intentionally unavailable until FluidAudio
+offers a configurable privacy-safe logger; production model selection,
+transcript persistence, user-visible UI, deployment floor, and the six-class
+model capability boundary do not change.

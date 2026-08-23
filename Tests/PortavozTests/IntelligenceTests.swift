@@ -337,6 +337,39 @@ final class TranscriptFormatterTests: XCTestCase {
         XCTAssertEqual(TranscriptFormatter.chunk("", budget: 100), [])
     }
 
+    func testOversizedSingleUtteranceCannotEscapeTheChunkBudget() {
+        let utterance = String(repeating: "á", count: 250)
+
+        let chunks = TranscriptFormatter.chunk(utterance, budget: 100)
+
+        XCTAssertEqual(chunks.map(\.count), [100, 100, 50])
+        XCTAssertEqual(chunks.joined(), utterance)
+        XCTAssertTrue(chunks.allSatisfy { $0.count <= 100 })
+        XCTAssertEqual(
+            TranscriptFormatter.chunk("abc", budget: 0),
+            ["a", "b", "c"])
+
+        let largeUtterance = String(repeating: "🧠", count: 10_050)
+        let largeChunks = TranscriptFormatter.chunk(largeUtterance, budget: 4_000)
+        XCTAssertEqual(largeChunks.map(\.count), [4_000, 4_000, 2_050])
+        XCTAssertEqual(largeChunks.joined(), largeUtterance)
+    }
+
+    func testOnDeviceBudgetsReserveGuidedGenerationHeadroom() {
+        XCTAssertEqual(TranscriptFormatter.onDeviceChunkBudget, 4_000)
+        XCTAssertEqual(TranscriptFormatter.onDeviceReduceBudget, 3_000)
+        XCTAssertEqual(TranscriptFormatter.onDeviceRetryFloor, 500)
+        XCTAssertLessThan(
+            TranscriptFormatter.onDeviceReduceBudget,
+            TranscriptFormatter.onDeviceChunkBudget)
+        XCTAssertEqual(
+            Array(sequence(first: 4_000) {
+                TranscriptFormatter.nextOnDeviceRetryBudget(for: $0)
+            }),
+            [4_000, 2_000, 1_000, 500])
+        XCTAssertNil(TranscriptFormatter.nextOnDeviceRetryBudget(for: 500))
+    }
+
     func testEvidenceFormatterMapsExactTagsAndRejectsUnknownReferences() {
         let segments = [
             TranscriptSegment(

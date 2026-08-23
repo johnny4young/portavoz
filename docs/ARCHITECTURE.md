@@ -1557,6 +1557,22 @@ the concrete `MLXSummaryRuntime` actor and container mechanics; AppServices
 owns its single process instance, active-use lifecycle, and idle-release
 boundary. The runtime remains separate from scheduling policy.
 
+Foundation Models map-reduce reserves headroom inside Apple's complete
+4096-token guided-generation context: map chunks are capped at 4,000
+characters, the final structured material at 3,000 characters, and every map
+response at 250 tokens. A single oversized transcript line is split in one
+forward Character-boundary traversal instead of bypassing the cap or rescanning
+each remainder. Every map request owns a
+fresh session; an actual context-window error retries only that chunk at
+successively smaller bounded sizes, while cancellation and every other model
+error propagate unchanged. The release-host model gate runs in SwiftPM Release
+configuration. This also keeps FluidAudio's transcript-bearing DEBUG console
+mirror out of the canonical lane; the Parakeet test refuses a DEBUG build,
+accepts a bounded spoken WAV through content-free structural assertions, and
+the runner rejects DEBUG output without echoing private failure logs or leaving
+its protected temporary log behind; HUP, INT, and TERM terminate nonzero after
+the EXIT cleanup rather than being swallowed.
+
 Resource measurement preserves those owners rather than introducing another
 queue. Core defines a closed content-free descriptor with five scheduling
 classes, eleven resource families, five operations, and three terminal

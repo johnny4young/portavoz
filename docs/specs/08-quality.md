@@ -144,7 +144,7 @@ local justification.
 | SupportDiagnosticsTests / LocalizationTests / EnglishSourceTests | Path/checksum/content-free support format v2 audio-channel health and transcript-count evidence plus one matched support-export workload; EN/ES String Catalogs, placeholders, `.lproj` export, public-source English hygiene (README/top-level tooling, scripts, `.github`, packaging, app source), and English explanatory prose throughout `docs/` |
 | SemanticCorpusIndexingTests / SemanticCorpusIndexingCoordinatorTests / SemanticCorpusIndexingSupervisorTests / AppResourceGovernorReleaseTests / RAGTests / MCPServerTests / VoiceIdentityTests / IntegrationsTests | Validated bounded/complete corpus persistence; admission pause without embedding; one-batch checkpoint commit, explicit policy suspension, durable missing-row resume, and protected-capture mapping across starting/active/stopping; one concurrent Library/background-maintenance flight, bounded coalescing, complete-demand precedence, last-waiter cancellation before persistence; serialized signal bursts with one rerun and no polling; disabled temporary-store ownership; capture-first runtime exclusion; installed-assets-only background preparation with no download; term-level lexical RRF, multi-term evidence, duplicate suppression, complete segment context, long-question broad-OR fallback, production-width semantic top-k, scalar-oracle equivalence, stable ties, safe limits, malformed/non-finite-vector exclusion, hybrid RAG fusion, MCP protocol, encrypted voiceprint/gallery round trips, missing/corrupt-key and unreadable-ciphertext preservation until explicit reset, and offline exporters |
 | ExactPathScaleBenchmarkTests / ExactPathMatrixTests / ExactPathCrossHostTests / ExactPathBaselineTests | Test-only Accelerate/sqlite-vec exact comparison at canonical scales; separated non-comparable build lifecycles; alternating query order; content-free schema-1 observation shape; sqlite-vec exact scan beyond the 4,096 KNN window; three-observation schema-2 host receipts with externally recomputable timing/agreement state; exact scalar/aggregate validation; duplicate-key, copied-observation, mixed-host, wrong-tier, non-finite, missing-scale, instability, top-hit/top-k-set disagreement, and visible non-blocking lower-rank drift; three-profile plus two-OS coverage; source/toolchain comparability; versioned within-host query ratios with zero denominators blocked as `not-comparable`; malformed versus blocked CLI outcomes; aggregate-only stdout scorecards; and digest/source-bound, clean-checkout, ignored-destination, owner-only, atomic, non-overwriting retention whose fixed research authority cannot select a product engine |
-| ParakeetIntegrationTests / NemotronLatin1120IntegrationTests + gated | Real models — Parakeet requires `PORTAVOZ_MODEL_TESTS=1`; the optional non-serving challenger requires `PORTAVOZ_NEMOTRON_MODEL_TESTS=1`; both require the relevant model to be installed and `PORTAVOZ_TEST_WAV` (conversation/enrollment gates retain their existing Parakeet variables) |
+| ParakeetIntegrationTests / NemotronLatin1120IntegrationTests + gated | Real models — Parakeet requires the canonical Release-configured `PORTAVOZ_MODEL_TESTS=1` lane; the optional non-serving challenger requires `PORTAVOZ_NEMOTRON_MODEL_TESTS=1`; both require the relevant model to be installed and `PORTAVOZ_TEST_WAV` (conversation/enrollment gates retain their existing Parakeet variables). Parakeet's arbitrary-WAV assertion and canonical runner output are content-free (D380) |
 
 The five concrete residency adapters add architecture coverage on top of the
 13 pure ledger cases. Every quality-speech, MLX-summary, live-speech,
@@ -3968,6 +3968,75 @@ again lacked the optional Metal Toolchain's `metallib`, so the bundle contains
 no MLX metallib. This is deterministic local Tahoe-family automation, not
 physical Sequoia, separate Tahoe hardware, VoiceOver/Voice Control, provisioned
 CloudKit, real external-effect reconciliation, or MLX runtime evidence.
+
+**D380 private real-model and context-headroom gate.** Foundation Models map
+chunks are capped at 4,000 characters while the final structured material
+remains capped at 3,000 characters and each map response at 250 tokens. The
+regression came from a real macOS 26.5.2 long-transcript request reaching
+4,089/4,096 tokens under the former 4,500-character boundary. Focused
+Foundation Models integration passed 4/4 twice after the correction, including
+the incremental long-transcript path. Pure coverage also proves that one
+10,050-character oversized utterance is preserved in bounded chunks through a
+single forward traversal and cannot bypass the character budget. The
+production map path retries only an actual `exceededContextWindowSize` chunk
+at successively smaller fresh-session budgets with a finite 500-character floor; cancellation
+and all other generation errors propagate unchanged.
+
+The canonical six-class model gate now compiles and runs in Release. Its
+Parakeet case accepts any spoken WAV through segment count, lexical-character
+count, and timestamp bounds only. DEBUG builds skip before opening that
+fixture because FluidAudio 0.15.5 has no public log-level control and mirrors
+partial transcript diagnostics to stderr. The runner assigns captured logs
+mode 0600, rejects any FluidAudio DEBUG line, withholds raw failure output, and
+removes each log after normal completion or shell interruption. Signal
+handlers exit nonzero after shared EXIT cleanup, so an interruption is
+never swallowed into a continuing green lane. The fixture
+must expose valid bounded PCM metadata, fit the 10-minute allocation ceiling,
+and its producer is canceled on every exit. A focused Release Parakeet rehearsal passed 1/1 over a
+160.683-second scratch-only 16 kHz mono fixture with zero FluidAudio console or
+transcript-bearing lines. The fixture and its transcript never enter tracked
+files. The complete canonical Release gate then executed all six declared
+classes—11 tests total—with zero skips and zero failures; any FluidAudio DEBUG
+line would have failed the run without being echoed.
+
+Final preflight passed both debug builds, including current-SDK first-party
+warnings-as-errors, and 2,614 package tests with 15 explicit environment/model
+skips and zero failures in 113.529 seconds of XCTest execution. All 197
+architecture ratchets and the six focused formatter cases passed after the
+final durable-vocabulary correction. All 457 tooling tests passed in 9.625
+seconds; repository hygiene
+and its embedded policy suites, both localization-catalog validations, the
+complete 109-case UI-catalog check, diff whitespace validation, and strict
+SwiftLint with zero violations across 706 production Swift files also passed.
+The read-only UI host preflight passed without reading or dismissing a prompt
+and left 24 stale LaunchServices claimants warning-only.
+
+The fail-safe changed-file selector chose 40 journeys because the two
+IntelligenceKit sources affect Ask, summary, evidence, correction, processing,
+library, brief, Insights, Settings, and public-showcase surfaces, while the
+Makefile is currently classified as shared UI harness. One build was reused and
+the locales ran sequentially. Final macOS 26.5.2 (25F84), arm64 result bundles
+passed 40/40 English in a 701.825-second interval plus 40/40 Spanish in a
+701.524-second interval, with zero failures, skips, or expected failures. This
+is the mandatory minimum safe D380 scope, not the complete 109-case bilingual
+integration/release gate. Each result bundle reports one duration outlier,
+which is retained as input to the next measured XCUITest-optimization band.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was rebuilt, deeply
+verified, installed only at `/Applications/Portavoz Dev.app`, and observed at
+PID 96283 running from its exact executable. A deterministic before/after
+comparison kept the notarized `app.portavoz.mac` release bundle unchanged
+across its 184-entry no-symlink-traversal content/metadata/hex-xattr manifest
+at SHA-256
+`9f42e6c828e2330467c28539265df6aa2b46814df17f5cf0966e623501a4dfe2`;
+its bundle ID and designated requirement stayed unchanged, its deep signature
+remained valid, and Gatekeeper still reported Notarized Developer ID. The Dev
+build is local-only because no CloudKit profile was supplied, and packaging
+again lacked the optional Metal Toolchain's `metallib`, so the bundle contains
+no MLX metallib. This deterministic local Tahoe-family automation does not
+certify physical Sequoia, separate Tahoe hardware, VoiceOver/Voice Control,
+provisioned CloudKit, real external-effect reconciliation, a private-meeting
+quality claim, or MLX runtime behavior.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

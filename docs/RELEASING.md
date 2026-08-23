@@ -37,7 +37,7 @@ git switch main && git pull --ff-only origin main
 git status --short          # must be empty — clean any stray *.d / *.dia / *.swiftdeps first
 swift test                  # green (DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test if "no such module")
 swift test --filter StorageUpgradeTests # clean install + v0.6.0 library upgrade/reopen
-make test-model-gated       # Q4/T7: the model/intelligence classes must RUN here — CI cannot; a fully skipped class fails
+make test-model-gated       # Q4/T7/D380: six model classes run in Release; full skip or FluidAudio DEBUG output fails
 swiftlint --strict          # 0 violations
 scripts/check-repository-hygiene.sh
 ```

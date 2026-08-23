@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 23, 2026
 
+- **🧠 Built-in summaries keep room to finish** — Long meetings now reserve guided-generation headroom instead of failing at Apple Intelligence's context limit.
 - **✨ Suggested actions explain themselves** — Settings now names suggested actions plainly in English and Spanish and makes clear that nothing runs before you review and confirm it.
 - **♿ Proposed Skills stay distinguishable** — Repeated offers for the same Skill now have unique English and Spanish assistive-control names without revealing their meeting.
 - **🔄 Proposed Skills stay current** — Refresh verified offers without reopening Settings or adding background polling.

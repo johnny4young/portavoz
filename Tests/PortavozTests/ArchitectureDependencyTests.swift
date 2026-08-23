@@ -9227,6 +9227,58 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D147"))
     }
 
+    func testRealModelGateReservesContextAndNeverEchoesTranscriptContent() throws {
+        let formatter = try Self.contents(
+            of: "Sources/IntelligenceKit/TranscriptFormatter.swift")
+        let provider = try Self.contents(
+            of: "Sources/IntelligenceKit/FoundationModelSummaryProvider.swift")
+        let intelligenceTests = try Self.contents(
+            of: "Tests/PortavozTests/IntelligenceTests.swift")
+        let parakeetTests = try Self.contents(
+            of: "Tests/PortavozTests/ParakeetIntegrationTests.swift")
+        let makefile = try Self.contents(of: "Makefile")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligenceSpec = try Self.contents(of: "docs/specs/04-intelligence.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(formatter.contains("onDeviceChunkBudget = 4000"))
+        XCTAssertTrue(formatter.contains("onDeviceReduceBudget = 3000"))
+        XCTAssertTrue(formatter.contains("onDeviceRetryFloor = 500"))
+        XCTAssertFalse(formatter.contains("from a 4500-char chunk"))
+        XCTAssertTrue(formatter.contains("line.count > effectiveBudget"))
+        XCTAssertTrue(formatter.contains("limitedBy: line.endIndex"))
+        XCTAssertTrue(provider.contains("exceededContextWindowSize"))
+        XCTAssertTrue(provider.contains("nextOnDeviceRetryBudget"))
+        XCTAssertTrue(intelligenceTests.contains(
+            "testOnDeviceBudgetsReserveGuidedGenerationHeadroom"))
+        XCTAssertTrue(intelligenceTests.contains(
+            "testOversizedSingleUtteranceCannotEscapeTheChunkBudget"))
+
+        XCTAssertTrue(parakeetTests.contains("#if DEBUG"))
+        XCTAssertTrue(parakeetTests.contains("lexicalCharacterCount"))
+        XCTAssertTrue(parakeetTests.contains("duration <= 600"))
+        XCTAssertTrue(parakeetTests.contains("producer.cancel()"))
+        XCTAssertFalse(parakeetTests.contains("wavPath!"))
+        XCTAssertFalse(parakeetTests.contains("floatChannelData!"))
+        XCTAssertFalse(parakeetTests.contains(#"fullText.contains("fox")"#))
+        XCTAssertFalse(parakeetTests.contains("unexpected live transcript"))
+
+        XCTAssertTrue(makefile.contains(
+            "swift test --configuration release --filter"))
+        XCTAssertTrue(makefile.contains(
+            #"grep -Eq '\[DEBUG\] \[FluidAudio\.'"#))
+        XCTAssertTrue(makefile.contains("private log withheld"))
+        XCTAssertTrue(makefile.contains(#"trap 'rm -f "$$log"' EXIT"#))
+        XCTAssertTrue(makefile.contains("trap 'exit 129' HUP"))
+        XCTAssertTrue(makefile.contains("trap 'exit 130' INT"))
+        XCTAssertTrue(makefile.contains("trap 'exit 143' TERM"))
+        XCTAssertFalse(makefile.contains(#"tail -20 "$$log""#))
+
+        XCTAssertTrue(architecture.contains("4096-token guided-generation context"))
+        XCTAssertTrue(intelligenceSpec.contains("FluidAudio 0.15.5"))
+        XCTAssertTrue(decisions.contains("## D380"))
+    }
+
     func testDevInstallVerifiesTheSignedBundleBeforeLaunchingIt() throws {
         let packager = try Self.contents(of: "scripts/make-app.sh")
         let makefile = try Self.contents(of: "Makefile")
