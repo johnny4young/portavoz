@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 23, 2026
 
+- **♿ Proposed Skills stay distinguishable** — Repeated offers for the same Skill now have unique English and Spanish assistive-control names without revealing their meeting.
 - **🔄 Proposed Skills stay current** — Refresh verified offers without reopening Settings or adding background polling.
 - **🧹 Empty Skill history recovers in one click** — Clear Skill and time filters from a no-match activity view without losing its lifecycle scope.
 - **📜 Skill history only promises what exists** — “Show more” now appears only when another matching run is really available, avoiding a pointless reload at exactly 20 results.

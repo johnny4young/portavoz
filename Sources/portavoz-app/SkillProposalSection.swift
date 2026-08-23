@@ -28,6 +28,17 @@ enum SkillProposalPresentationState: Equatable {
     }
 }
 
+struct SkillProposalAccessibilityPosition: Equatable, Sendable {
+    let ordinal: Int
+    let total: Int
+
+    init?(offset: Int, total: Int) {
+        guard total > 0, offset >= 0, offset < total else { return nil }
+        ordinal = offset + 1
+        self.total = total
+    }
+}
+
 /// D337/D338/D340 — content-free review, opaque dismissal, and inert return to
 /// the original subject surface. Confirmation remains on that subject.
 struct SkillProposalSection: View {
@@ -80,9 +91,14 @@ struct SkillProposalSection: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("settings-skills-proposals-empty")
-        } else {
-            ForEach(snapshot?.offers ?? []) { offer in
-                offerRow(offer)
+        } else if let offers = snapshot?.offers {
+            ForEach(Array(offers.enumerated()), id: \.element.id) { offset, offer in
+                if let position = SkillProposalAccessibilityPosition(
+                    offset: offset,
+                    total: offers.count
+                ) {
+                    offerRow(offer, position: position)
+                }
             }
             Text("This review stores no title, transcript, preview, destination, or recipient.")
                 .font(.caption)
@@ -124,7 +140,10 @@ struct SkillProposalSection: View {
             loadFailed: loadFailed)
     }
 
-    private func offerRow(_ offer: SkillOfferReviewItem) -> some View {
+    private func offerRow(
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
+    ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "sparkles.rectangle.stack.fill")
@@ -148,23 +167,27 @@ struct SkillProposalSection: View {
                             "settings-skill-proposal-data-\(offer.skillID)-\(offer.id.uuidString)")
                 }
                 Spacer(minLength: 8)
-                offerControls(offer)
+                offerControls(offer, position: position)
             }
             if reviewFailedOfferID == offer.id {
-                offerReviewFailure(offer)
+                offerReviewFailure(offer, position: position)
             }
             if dismissalFailedOfferID == offer.id {
-                offerDismissalFailure(offer)
+                offerDismissalFailure(offer, position: position)
             }
         }
         .padding(.vertical, 3)
         .accessibilityElement(children: .contain)
+        .accessibilityLabel(positionedAccessibilityLabel(
+            SkillReceiptPresentation.skillTitle(offer.skillID),
+            position: position))
         .accessibilityIdentifier(
             "settings-skill-proposal-\(offer.skillID)-\(offer.id.uuidString)")
     }
 
     private func offerControls(
-        _ offer: SkillOfferReviewItem
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
     ) -> some View {
         VStack(alignment: .trailing, spacing: 5) {
             Text(
@@ -173,20 +196,24 @@ struct SkillProposalSection: View {
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
             HStack(spacing: 8) {
-                offerReviewControl(offer)
-                offerDismissalControl(offer)
+                offerReviewControl(offer, position: position)
+                offerDismissalControl(offer, position: position)
             }
         }
     }
 
     @ViewBuilder
     private func offerReviewControl(
-        _ offer: SkillOfferReviewItem
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
     ) -> some View {
         if offer.reason == .upcomingCalendarEvent {
             Label("Review in menu bar", systemImage: "menubar.rectangle")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityLabel(positionedAccessibilityLabel(
+                    L10n.text("Review in menu bar"),
+                    position: position))
                 .accessibilityIdentifier(
                     reviewIdentifier("resident", offer: offer))
         } else if reviewingOfferID == offer.id {
@@ -200,9 +227,11 @@ struct SkillProposalSection: View {
         } else if reviewFailedOfferID != offer.id {
             Button("Review in context") { review(offer) }
                 .buttonStyle(.borderless)
-                .accessibilityLabel(L10n.format(
-                    "Review %@ in context",
-                    SkillReceiptPresentation.skillTitle(offer.skillID)))
+                .accessibilityLabel(positionedAccessibilityLabel(
+                    L10n.format(
+                        "Review %@ in context",
+                        SkillReceiptPresentation.skillTitle(offer.skillID)),
+                    position: position))
                 .accessibilityIdentifier(
                     reviewIdentifier("action", offer: offer))
                 .disabled(isLoading || isMutating)
@@ -211,7 +240,8 @@ struct SkillProposalSection: View {
 
     @ViewBuilder
     private func offerDismissalControl(
-        _ offer: SkillOfferReviewItem
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
     ) -> some View {
         if dismissingOfferID == offer.id {
             HStack(spacing: 5) {
@@ -224,9 +254,11 @@ struct SkillProposalSection: View {
         } else if dismissalFailedOfferID != offer.id {
             Button("Dismiss") { dismiss(offer) }
                 .buttonStyle(.borderless)
-                .accessibilityLabel(L10n.format(
-                    "Dismiss %@",
-                    SkillReceiptPresentation.skillTitle(offer.skillID)))
+                .accessibilityLabel(positionedAccessibilityLabel(
+                    L10n.format(
+                        "Dismiss %@",
+                        SkillReceiptPresentation.skillTitle(offer.skillID)),
+                    position: position))
                 .accessibilityIdentifier(
                     dismissalIdentifier("action", offer: offer))
                 .disabled(isLoading || isMutating)
@@ -234,7 +266,8 @@ struct SkillProposalSection: View {
     }
 
     private func offerReviewFailure(
-        _ offer: SkillOfferReviewItem
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Label(
@@ -246,6 +279,9 @@ struct SkillProposalSection: View {
                     reviewIdentifier("error", offer: offer))
             Button("Try again") { review(offer) }
                 .font(.caption)
+                .accessibilityLabel(positionedAccessibilityLabel(
+                    L10n.text("Try again"),
+                    position: position))
                 .accessibilityIdentifier(
                     reviewIdentifier("retry", offer: offer))
                 .disabled(isLoading || isMutating)
@@ -260,7 +296,8 @@ struct SkillProposalSection: View {
     }
 
     private func offerDismissalFailure(
-        _ offer: SkillOfferReviewItem
+        _ offer: SkillOfferReviewItem,
+        position: SkillProposalAccessibilityPosition
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Label(
@@ -272,6 +309,9 @@ struct SkillProposalSection: View {
                     dismissalIdentifier("error", offer: offer))
             Button("Try again") { dismiss(offer) }
                 .font(.caption)
+                .accessibilityLabel(positionedAccessibilityLabel(
+                    L10n.text("Try again"),
+                    position: position))
                 .accessibilityIdentifier(
                     dismissalIdentifier("retry", offer: offer))
                 .disabled(isLoading || isMutating)
@@ -283,6 +323,19 @@ struct SkillProposalSection: View {
         offer: SkillOfferReviewItem
     ) -> String {
         "settings-skill-proposal-dismiss-\(component)-\(offer.skillID)-\(offer.id.uuidString)"
+    }
+
+    private func positionedAccessibilityLabel(
+        _ label: String,
+        position: SkillProposalAccessibilityPosition
+    ) -> String {
+        [
+            label,
+            L10n.format(
+                "Proposal %d of %d",
+                position.ordinal,
+                position.total)
+        ].joined(separator: ". ")
     }
 
     private func reasonText(_ reason: SkillOfferReason) -> String {

@@ -214,6 +214,23 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSameSkillProposalsHaveDistinctAccessibleActions() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append("-seed-duplicate-skill-proposals")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSeededMeeting(in: app)
+        XCTAssertTrue(
+            app.control(withIdentifier: "skill-offer-menu")
+                .waitForExistence(timeout: 10),
+            "the current meeting must reconcile its real proposal set")
+        openSkillsSettings(in: app)
+        assertDuplicateProposalActionLabels(in: app)
+    }
+
+    @MainActor
     func testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append("-seed-skill-history")
@@ -1456,6 +1473,99 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             format: "identifier BEGINSWITH %@",
             "settings-skill-proposal-dismiss-\(component)-\(skillID)-"
         )).firstMatch
+    }
+
+    @MainActor
+    private func assertDuplicateProposalActionLabels(
+        in app: XCUIApplication
+    ) {
+        let rowLabels = proposalRowLabels(in: app)
+        let reviewLabels = proposalActionLabels(
+            component: "review",
+            in: app)
+        let dismissalLabels = proposalActionLabels(
+            component: "dismiss",
+            in: app)
+
+        assertDistinctProposalPositions(rowLabels)
+        assertDistinctProposalPositions(reviewLabels)
+        assertDistinctProposalPositions(dismissalLabels)
+        XCTAssertEqual(
+            Set([
+                proposalPositions(in: rowLabels),
+                proposalPositions(in: reviewLabels),
+                proposalPositions(in: dismissalLabels),
+            ]).count,
+            1,
+            "each same-Skill row and action must use the same position")
+    }
+
+    @MainActor
+    private func proposalRowLabels(in app: XCUIApplication) -> [String] {
+        let rows = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "settings-skill-proposal-email-recap-draft-"
+        ))
+        XCTAssertTrue(
+            waitForCount(rows, toEqual: 2, timeout: 10),
+            "two meetings must expose two independent same-Skill rows")
+        return rows.allElementsBoundByIndex.map(\.label).sorted()
+    }
+
+    @MainActor
+    private func proposalActionLabels(
+        component: String,
+        in app: XCUIApplication
+    ) -> [String] {
+        let actions = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "settings-skill-proposal-\(component)-action-email-recap-draft-"
+        ))
+        XCTAssertTrue(
+            waitForCount(actions, toEqual: 2, timeout: 10),
+            "two meetings must expose two independent \(component) actions")
+        return actions.allElementsBoundByIndex.map(\.label).sorted()
+    }
+
+    private func assertDistinctProposalPositions(_ labels: [String]) {
+        XCTAssertEqual(
+            Set(labels).count,
+            2,
+            "same-Skill proposal actions need distinct Voice Control names")
+        let positionPrefix = UITestLocale.environmentLocale == "es"
+            ? "Propuesta "
+            : "Proposal "
+        let expectedPositions = ["1", "5"].map {
+            positionPrefix + $0 + proposalPositionSuffix
+        }
+        XCTAssertEqual(
+            proposalPositions(in: labels),
+            expectedPositions.sorted(),
+            "same-Skill positions must come from the complete ordered snapshot")
+        for label in labels {
+            XCTAssertTrue(
+                label.contains(positionPrefix)
+                    && label.contains(proposalPositionSuffix),
+                "the content-free ordinal must describe the complete bounded list; "
+                    + "label=\(label)")
+        }
+    }
+
+    private var proposalPositionSuffix: String {
+        UITestLocale.environmentLocale == "es" ? " de 8" : " of 8"
+    }
+
+    private func proposalPositions(in labels: [String]) -> [String] {
+        let prefix = UITestLocale.environmentLocale == "es"
+            ? "Propuesta "
+            : "Proposal "
+        let expectedPositions = ["1", "5"].map {
+            prefix + $0 + proposalPositionSuffix
+        }
+        return labels.compactMap { label in
+            expectedPositions.first { label.contains($0) }
+        }
+            .sorted()
     }
 
     private func proposalReviewControl(

@@ -465,6 +465,21 @@ Initial loading and unavailable states expose no competing refresh. Proposal
 refresh stays independent from receipt loading but is fenced by policy and
 proposal mutations; it adds no timer, observer, polling owner, or second
 proposal store.
+
+The bounded verified order also supplies presentation-only accessibility
+positions. SwiftUI keeps the random review UUID as each row's identity and
+enumerates at most the existing 50-item application ceiling to append one
+localized, content-free ordinal such as **Proposal 2 of 8** to the row and each
+review, dismissal, retry, or resident action. Multiple offers for the same
+Skill therefore retain unique Voice Control and VoiceOver names without adding
+subject identity to presentation. Positions intentionally describe only the
+current verified snapshot and may change after refresh or mutation; they are
+never stored and expose no title, transcript, preview, destination, recipient,
+argument, stable offer key, or subject UUID. `ForEach` receives a bounded
+compatibility array because direct `EnumeratedSequence` collection conformance
+is available only on macOS 26 and cannot raise this Sequoia-capable view's
+deployment floor.
+
 Settings can dismiss one inert row using only its random review UUID. Storage
 resolves the stable intent, inserts the existing terminal dismissal, and
 deletes the authority row in one write; expired or already-retired review

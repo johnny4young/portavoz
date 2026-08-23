@@ -13971,6 +13971,16 @@
         }
       }
     },
+    "Proposal %d of %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Propuesta %d de %d"
+          }
+        }
+      }
+    },
     "Loading proposed Skills…": {
       "localizations": {
         "es": {

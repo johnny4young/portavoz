@@ -35,4 +35,21 @@ final class SkillProposalPresentationStateTests: XCTestCase {
         XCTAssertFalse(
             SkillProposalPresentationState.unavailable.allowsExplicitRefresh)
     }
+
+    func testAccessibilityPositionIsBoundedAndOneBased() throws {
+        XCTAssertNil(SkillProposalAccessibilityPosition(offset: -1, total: 2))
+        XCTAssertNil(SkillProposalAccessibilityPosition(offset: 0, total: 0))
+        XCTAssertNil(SkillProposalAccessibilityPosition(offset: 2, total: 2))
+
+        let first = try XCTUnwrap(
+            SkillProposalAccessibilityPosition(offset: 0, total: 2))
+        let second = try XCTUnwrap(
+            SkillProposalAccessibilityPosition(offset: 1, total: 2))
+
+        XCTAssertEqual(first.ordinal, 1)
+        XCTAssertEqual(first.total, 2)
+        XCTAssertEqual(second.ordinal, 2)
+        XCTAssertEqual(second.total, 2)
+        XCTAssertNotEqual(first, second)
+    }
 }

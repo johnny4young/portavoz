@@ -269,6 +269,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "SkillsSettingsUITests",
+            "testSameSkillProposalsHaveDistinctAccessibleActions",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
             "testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest",
         ),
         test_id(

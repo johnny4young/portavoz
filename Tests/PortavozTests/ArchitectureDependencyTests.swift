@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,609 cases "
-                + "(15 environment-gated) + 107"))
+            "package inventory contains 2,610 cases "
+                + "(15 environment-gated) + 108"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -5465,6 +5465,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/SkillProposalSection.swift")
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices+SkillsControl.swift")
+        let fixtures = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+SkillProposalUITestFixtures.swift")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/SkillsSettingsUITests.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(skill.contains("enum SkillInputDataClass"))
@@ -5516,8 +5520,17 @@ final class ArchitectureDependencyTests: XCTestCase {
             "settings-skills-proposals-refreshing"))
         XCTAssertTrue(proposalSection.contains(
             "settings-skills-proposals-refresh"))
+        XCTAssertTrue(proposalSection.contains(
+            "struct SkillProposalAccessibilityPosition"))
+        XCTAssertTrue(proposalSection.contains(
+            "ForEach(Array(offers.enumerated()), id: \\.element.id)"))
+        XCTAssertTrue(proposalSection.contains(
+            "Proposal %d of %d"))
         XCTAssertTrue(proposalSection.contains("Nothing runs here."))
         XCTAssertFalse(proposalSection.contains("offer.offerKey"))
+        XCTAssertFalse(proposalSection.contains("offer.subject"))
+        XCTAssertFalse(proposalSection.contains("offer.title"))
+        XCTAssertFalse(proposalSection.contains("offer.transcript"))
         XCTAssertFalse(proposalSection.contains("Timer"))
         XCTAssertTrue(settings.contains(
             "refresh: { Task { await refreshProposals() } }"))
@@ -5535,6 +5548,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(settings.contains(refreshProposalsContract))
         XCTAssertTrue(services.contains(
             "-simulate-skill-proposal-refresh-delay"))
+        XCTAssertTrue(fixtures.contains("guard usesTemporaryMeetingStore"))
+        XCTAssertTrue(fixtures.contains(
+            "-seed-duplicate-skill-proposals"))
+        XCTAssertTrue(fixtures.contains("LoadMeetingSkillOffers("))
+        XCTAssertTrue(uiTest.contains(
+            "testSameSkillProposalsHaveDistinctAccessibleActions"))
+        XCTAssertTrue(uiTest.contains(
+            "component: \"review\""))
+        XCTAssertTrue(uiTest.contains(
+            "component: \"dismiss\""))
+        XCTAssertTrue(uiTest.contains(
+            "settings-skill-proposal-\\(component)-action-email-recap-draft-"))
+        XCTAssertTrue(uiTest.contains(
+            "settings-skill-proposal-email-recap-draft-"))
 
         for producer in [
             "Sources/ApplicationKit/MeetingSkillOffers.swift",
@@ -5548,6 +5575,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D337"))
         XCTAssertTrue(decisions.contains("## D338"))
         XCTAssertTrue(decisions.contains("## D377"))
+        XCTAssertTrue(decisions.contains("## D378"))
     }
 
     func testSkillProposalReviewRoutingIsOpaqueInertAndValueScoped() throws {

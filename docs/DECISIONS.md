@@ -13746,3 +13746,44 @@ index, clock, cursor, timer, observer, proposal producer, mutation, effect
 authority, standing rule, adapter, egress consent, or deployment-floor change
 is introduced. Automation remains local Tahoe-family evidence; physical
 VoiceOver, Sequoia, and separate-hardware Tahoe behavior remain field evidence.
+
+## D378 — Same-Skill proposals use content-free accessible positions (Aug 2026)
+
+**Context:** the central Proposed authority is subject-scoped and can
+legitimately contain two offers for the same Skill, for example an email recap
+for each of two meetings. Review and dismissal controls previously named only
+their action and Skill. Their durable accessibility identifiers remained unique,
+but Voice Control and VoiceOver exposed duplicate human-facing action names.
+Adding a meeting title or opaque subject identity would fix the collision by
+breaking the queue's privacy contract. Persisting another label would duplicate
+presentation state, and giving Settings execution authority remains forbidden.
+
+**Decision:** derive one failable, one-based accessibility position from each
+offer's offset in the current verified Proposed snapshot and its complete count.
+Append the localized **Proposal n of total** phrase to the row and every review,
+dismissal, retry, or resident action. Keep the random review UUID as SwiftUI
+identity; the position is presentation metadata only. The existing 50-item
+ApplicationKit ceiling bounds the compatibility array passed to `ForEach`.
+Although the current SDK gives `EnumeratedSequence` direct collection
+conformance, that conformance is available only on macOS 26; using it would
+silently raise this view above the Sequoia floor. Invalid offsets or totals
+create no row instead of publishing a false position.
+
+The disposable-store fixture creates an older second meeting with a real
+summary and reconciles both meetings through `LoadMeetingSkillOffers`, rather
+than inserting authority rows directly. Its bilingual real-app journey requires
+two email-recap offers, two review names, and two dismissal names with the same
+distinct positions over the complete eight-offer snapshot. Pure coverage pins
+negative, empty, out-of-range, and valid one-based position construction.
+
+**Consequences:** repeated offers for one Skill are addressable by localized
+assistive control names without exposing a title, transcript, preview,
+destination, recipient, argument, stable offer key, subject UUID, or durable
+list position. Ordinals may change after a refresh, dismissal, policy change,
+expiry, or execution because they truthfully describe the current verified
+snapshot; no external reference may depend on them. This adds no storage read,
+schema, index, clock, query, timer, observer, task, lifecycle owner, proposal
+mutation, execution authority, adapter, standing rule, egress consent, or
+deployment-floor change. Automation remains local Tahoe-family evidence;
+physical VoiceOver, Voice Control, Sequoia, and separate-hardware Tahoe behavior
+remain field evidence.

@@ -46,6 +46,7 @@ extension AppServices {
             meetingID: meeting.id,
             ownerID: ana.id,
             citedSegmentID: citedSegmentID)
+        await seedDuplicateSkillProposalsIfRequested(for: meeting)
         await seedCommitmentRadarIfRequested(
             meetingID: meeting.id,
             canonicalPersonID: canonicalPersonID)
@@ -66,9 +67,7 @@ extension AppServices {
         await seedPrivacyReceipt(for: meeting.id)
         await seedProcessingFailureIfRequested(for: meeting.id)
         await seedAbandonedSummaryIfRequested(for: meeting.id)
-        await seedSkillHistoryIfRequested(for: meeting.id)
-        await seedWaitingSkillExecutionIfRequested(for: meeting.id)
-        await seedFailedSkillExecutionIfRequested(for: meeting.id)
+        await seedSkillExecutionFixturesIfRequested(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
         seedJustRecordedIfRequested(for: meeting.id)
         if reconcileSearchAfterSeed { requestSearchReconciliation() }
@@ -353,6 +352,14 @@ extension AppServices {
         } catch {
             assertionFailure("Could not seed Skill history: \(error)")
         }
+    }
+
+    private func seedSkillExecutionFixturesIfRequested(
+        for meetingID: MeetingID
+    ) async {
+        await seedSkillHistoryIfRequested(for: meetingID)
+        await seedWaitingSkillExecutionIfRequested(for: meetingID)
+        await seedFailedSkillExecutionIfRequested(for: meetingID)
     }
 
     /// A real failed local receipt with an exact meeting subject. It stops

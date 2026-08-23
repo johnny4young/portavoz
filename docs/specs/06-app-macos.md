@@ -2705,7 +2705,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D377, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D378, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2769,6 +2769,18 @@ to the existing unavailable **Try again** path. Initial loading and
 unavailability have no competing refresh; receipt loading remains independent,
 while control and proposal mutations fence the action. There is no timer,
 polling, observer, new store, proposal mutation, or execution authority.
+
+Every row and review, dismissal, retry, or resident action also receives a
+localized **Proposal n of total** accessibility suffix derived only from the
+current bounded verified order. The random review UUID remains SwiftUI identity
+and the existing 50-row application ceiling bounds enumeration. Two meetings
+that propose the same Skill therefore have distinct English and Spanish Voice
+Control/VoiceOver names without revealing either subject. The ordinal is not
+durable and may change when the verified list changes; no stable offer key,
+subject UUID, title, transcript, preview, argument, destination, or recipient
+enters the label. The enumerated rows use a bounded compatibility array because
+the SDK's direct `EnumeratedSequence` collection conformance is macOS 26-only;
+Sequoia support remains unchanged.
 
 An already-open exact confirmation is also fenced. `ExecuteSkillRequest`
 carries the reviewed offer key separately from the effect's idempotency key;
