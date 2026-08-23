@@ -6,6 +6,7 @@ import SwiftUI
 private struct SkillActivitySelection: Hashable {
     let scope: SkillExecutionReviewScope
     let skillID: String?
+    let period: SkillExecutionReviewPeriod
 }
 
 /// D317 — the Phase-2 Skills control plane. It projects the real catalogue,
@@ -27,6 +28,7 @@ struct SkillsSettingsSection: View {
     @State private var receiptScopeLoadFailed = false
     @State private var receiptScope: SkillExecutionReviewScope = .recent
     @State private var receiptSkillID: String?
+    @State private var receiptPeriod: SkillExecutionReviewPeriod = .anytime
     @State private var receiptHistoryWindow = SkillActivityHistoryWindow()
     @State private var activeLoadID: UUID?
     @State private var proposalSnapshot: SkillOfferReviewSnapshot?
@@ -82,6 +84,7 @@ struct SkillsSettingsSection: View {
                     SkillActivitySection(
                         receiptScope: $receiptScope,
                         receiptSkillID: $receiptSkillID,
+                        receiptPeriod: $receiptPeriod,
                         snapshot: snapshot,
                         skills: snapshot?.skills ?? [],
                         isLoading: isLoading || isMutating,
@@ -245,11 +248,13 @@ struct SkillsSettingsSection: View {
         guard !isMutating, !proposalMutationInFlight else { return }
         let requestedScope = receiptScope
         let requestedSkillID = receiptSkillID
+        let requestedPeriod = receiptPeriod
         let requestedLimit = receiptHistoryWindow.requestedLimit
         let loadID = UUID()
         activeLoadID = loadID
         if snapshot?.receiptScope != requestedScope
-            || snapshot?.receiptSkillID != requestedSkillID {
+            || snapshot?.receiptSkillID != requestedSkillID
+            || snapshot?.receiptPeriod != requestedPeriod {
             receiptScopeLoadFailed = false
         }
         isLoading = true
@@ -257,6 +262,7 @@ struct SkillsSettingsSection: View {
             let loaded = try await services.loadSkillControlCenter(
                 receiptScope: requestedScope,
                 receiptSkillID: requestedSkillID,
+                receiptPeriod: requestedPeriod,
                 receiptLimit: requestedLimit)
             guard !Task.isCancelled else {
                 finishLoad(loadID)
@@ -265,6 +271,7 @@ struct SkillsSettingsSection: View {
             guard activeLoadID == loadID,
                   receiptScope == requestedScope,
                   receiptSkillID == requestedSkillID,
+                  receiptPeriod == requestedPeriod,
                   receiptHistoryWindow.requestedLimit == requestedLimit
             else {
                 return
@@ -277,6 +284,7 @@ struct SkillsSettingsSection: View {
             guard activeLoadID == loadID,
                   receiptScope == requestedScope,
                   receiptSkillID == requestedSkillID,
+                  receiptPeriod == requestedPeriod,
                   receiptHistoryWindow.requestedLimit == requestedLimit
             else {
                 return
@@ -328,6 +336,7 @@ struct SkillsSettingsSection: View {
             let loaded = try await services.loadSkillControlCenter(
                 receiptScope: receiptScope,
                 receiptSkillID: receiptSkillID,
+                receiptPeriod: receiptPeriod,
                 receiptLimit: receiptHistoryWindow.requestedLimit)
             adopt(loaded)
             await loadProposals()
@@ -341,6 +350,7 @@ struct SkillsSettingsSection: View {
         guard let snapshot,
               snapshot.receiptScope == receiptScope,
               snapshot.receiptSkillID == receiptSkillID,
+              snapshot.receiptPeriod == receiptPeriod,
               snapshot.receiptLoadState == .verified,
               receiptHistoryWindow.canExpand(
                   receiptCount: snapshot.receipts.count),
@@ -357,6 +367,7 @@ struct SkillsSettingsSection: View {
         guard let snapshot,
               snapshot.receiptScope == receiptScope,
               snapshot.receiptSkillID == receiptSkillID,
+              snapshot.receiptPeriod == receiptPeriod,
               snapshot.receiptLoadState == .verified,
               !isLoading,
               !isMutating,
@@ -365,8 +376,11 @@ struct SkillsSettingsSection: View {
         await load()
     }
 
+}
+
+private extension SkillsSettingsSection {
     @MainActor
-    private func loadProposals() async {
+    func loadProposals() async {
         let loadID = UUID()
         activeProposalLoadID = loadID
         proposalsAreLoading = true
@@ -399,14 +413,14 @@ struct SkillsSettingsSection: View {
     }
 
     @MainActor
-    private func finishProposalLoad(_ loadID: UUID) {
+    func finishProposalLoad(_ loadID: UUID) {
         guard activeProposalLoadID == loadID else { return }
         activeProposalLoadID = nil
         proposalsAreLoading = false
     }
 
     @MainActor
-    private func dismissProposal(_ offer: SkillOfferReviewItem) async {
+    func dismissProposal(_ offer: SkillOfferReviewItem) async {
         guard proposalSnapshot?.offers.contains(where: { $0.id == offer.id }) == true,
               !proposalsAreLoading,
               !isMutating,
@@ -442,7 +456,10 @@ struct SkillsSettingsSection: View {
 
 private extension SkillsSettingsSection {
     var activitySelection: SkillActivitySelection {
-        SkillActivitySelection(scope: receiptScope, skillID: receiptSkillID)
+        SkillActivitySelection(
+            scope: receiptScope,
+            skillID: receiptSkillID,
+            period: receiptPeriod)
     }
 
     @ViewBuilder

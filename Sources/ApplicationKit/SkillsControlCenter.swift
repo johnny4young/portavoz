@@ -127,6 +127,7 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
     public let skills: [SkillControlCenterItem]
     public let receiptScope: SkillExecutionReviewScope
     public let receiptSkillID: String?
+    public let receiptPeriod: SkillExecutionReviewPeriod
     public let receipts: [SkillControlCenterReceipt]
     public let receiptLoadState: SkillControlCenterReceiptLoadState
 
@@ -136,12 +137,14 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
         receiptScope: SkillExecutionReviewScope,
         receipts: [SkillControlCenterReceipt],
         receiptSkillID: String? = nil,
+        receiptPeriod: SkillExecutionReviewPeriod = .anytime,
         receiptLoadState: SkillControlCenterReceiptLoadState = .verified
     ) {
         self.isPaused = isPaused
         self.skills = skills
         self.receiptScope = receiptScope
         self.receiptSkillID = receiptSkillID
+        self.receiptPeriod = receiptPeriod
         self.receipts = receipts
         self.receiptLoadState = receiptLoadState
     }
@@ -155,6 +158,7 @@ public protocol SkillControlCenterStore: SkillExecutionPolicyReading, Sendable {
     func skillExecutions(
         scope: SkillExecutionReviewScope,
         skillID: String?,
+        updatedAfter: Date?,
         limit: Int
     ) async throws -> [SkillExecutionRecord]
     func setAllSkillsPaused(_ isPaused: Bool, at timestamp: Date) async throws
@@ -170,15 +174,21 @@ extension MeetingStore: SkillControlCenterStore {}
 public struct LoadSkillControlCenterRequest: Equatable, Sendable {
     public let receiptScope: SkillExecutionReviewScope
     public let receiptSkillID: String?
+    public let receiptPeriod: SkillExecutionReviewPeriod
+    public let receiptReferenceDate: Date
     public let receiptLimit: Int
 
     public init(
         receiptScope: SkillExecutionReviewScope = .recent,
         receiptSkillID: String? = nil,
+        receiptPeriod: SkillExecutionReviewPeriod = .anytime,
+        receiptReferenceDate: Date = .now,
         receiptLimit: Int = SkillControlCenterSnapshot.defaultReceiptLimit
     ) {
         self.receiptScope = receiptScope
         self.receiptSkillID = receiptSkillID
+        self.receiptPeriod = receiptPeriod
+        self.receiptReferenceDate = receiptReferenceDate
         self.receiptLimit = min(
             max(receiptLimit, 1),
             SkillControlCenterSnapshot.maximumReceiptLimit)
@@ -187,6 +197,7 @@ public struct LoadSkillControlCenterRequest: Equatable, Sendable {
 
 public enum LoadSkillControlCenterError: Error, Equatable, Sendable {
     case unknownReceiptSkillID
+    case invalidReceiptReferenceDate
 }
 
 public struct LoadSkillControlCenter: ApplicationUseCase {
@@ -203,10 +214,12 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
            !SkillCatalogue.entries.contains(where: { $0.id == receiptSkillID }) {
             throw LoadSkillControlCenterError.unknownReceiptSkillID
         }
+        let receiptUpdatedAfter = try Self.receiptUpdatedAfter(for: request)
         async let policy = store.skillExecutionPolicy()
         async let records = store.skillExecutions(
             scope: request.receiptScope,
             skillID: request.receiptSkillID,
+            updatedAfter: receiptUpdatedAfter,
             limit: request.receiptLimit)
         let resolvedPolicy = try await policy
         let resolvedRecords: [SkillExecutionRecord]
@@ -233,7 +246,31 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
             receiptScope: request.receiptScope,
             receipts: resolvedRecords.map(SkillControlCenterReceipt.init(record:)),
             receiptSkillID: request.receiptSkillID,
+            receiptPeriod: request.receiptPeriod,
             receiptLoadState: receiptLoadState)
+    }
+
+    private static func receiptUpdatedAfter(
+        for request: LoadSkillControlCenterRequest
+    ) throws -> Date? {
+        let reference = request.receiptReferenceDate
+            .timeIntervalSinceReferenceDate
+        guard reference.isFinite else {
+            throw LoadSkillControlCenterError.invalidReceiptReferenceDate
+        }
+        let seconds: TimeInterval? = switch request.receiptPeriod {
+        case .anytime: nil
+        case .pastDay: 24 * 60 * 60
+        case .pastWeek: 7 * 24 * 60 * 60
+        case .pastMonth: 30 * 24 * 60 * 60
+        }
+        guard let seconds else { return nil }
+        let lowerBound = request.receiptReferenceDate
+            .addingTimeInterval(-seconds)
+        guard lowerBound.timeIntervalSinceReferenceDate.isFinite else {
+            throw LoadSkillControlCenterError.invalidReceiptReferenceDate
+        }
+        return lowerBound
     }
 }
 

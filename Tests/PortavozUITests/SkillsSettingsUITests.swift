@@ -389,6 +389,116 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSkillActivityFiltersByUpdatePeriodAndResetsExpansion() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append(contentsOf: [
+            "-seed-skill-history",
+            "-seed-skill-recent-history",
+            "-simulate-skill-receipt-refresh-delay"
+        ])
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+
+        let waiting = app.control(
+            withIdentifier: "settings-skills-receipt-scope-waiting")
+        scrollToVisible(waiting, in: app, deltaY: -40)
+        XCTAssertTrue(waiting.waitForStableFrame(timeout: 5))
+        waiting.click()
+
+        let loading = app.control(
+            withIdentifier: "settings-skills-receipt-scope-loading")
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        let receiptRows = app.buttons.matching(
+            identifier: "settings-skill-receipt-meeting-package-export")
+        XCTAssertTrue(waitForCount(receiptRows, toEqual: 20, timeout: 10))
+
+        let showMore = app.buttons[
+            "settings-skills-receipt-show-more"]
+        scrollToVisible(showMore, in: app, deltaY: -120)
+        XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
+        showMore.click()
+        XCTAssertTrue(waitForCount(receiptRows, toEqual: 25, timeout: 10))
+
+        let periodFilter = app.control(
+            withIdentifier: "settings-skills-receipt-period-filter")
+        scrollToVisible(periodFilter, in: app, deltaY: 120)
+        XCTAssertTrue(periodFilter.waitForStableFrame(timeout: 5))
+        periodFilter.click()
+        let pastDay = app.menuItems[
+            "settings-skills-receipt-period-past-day"]
+        XCTAssertTrue(pastDay.waitForExistence(timeout: 5))
+        pastDay.click()
+
+        XCTAssertTrue(
+            loading.waitForExistence(timeout: 2),
+            "a period change must hide rows from the previous query")
+        XCTAssertTrue(waitForCount(receiptRows, toEqual: 0, timeout: 2))
+        XCTAssertTrue(
+            waitForCount(receiptRows, toEqual: 5, timeout: 10),
+            "the rolling 24-hour query must return only the five recent rows")
+        let pastDayTitle = UITestLocale.environmentLocale == "es"
+            ? "Últimas 24 horas"
+            : "Past 24 hours"
+        XCTAssertTrue(waitForLabel(periodFilter, toContain: pastDayTitle))
+        XCTAssertFalse(showMore.exists)
+
+        let skillFilter = app.control(
+            withIdentifier: "settings-skills-receipt-skill-filter")
+        scrollToVisible(skillFilter, in: app, deltaY: 80)
+        XCTAssertTrue(skillFilter.waitForStableFrame(timeout: 5))
+        skillFilter.click()
+        let recap = app.menuItems[
+            "settings-skills-receipt-skill-recap-draft"]
+        XCTAssertTrue(recap.waitForExistence(timeout: 5))
+        recap.click()
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        let empty = app.control(
+            withIdentifier: "settings-skills-empty-receipts-waiting")
+        XCTAssertTrue(empty.waitForExistence(timeout: 10))
+        let recapTitle = UITestLocale.environmentLocale == "es"
+            ? "Borrador de recap"
+            : "Recap draft"
+        let filteredEmpty = UITestLocale.environmentLocale == "es"
+            ? "No hay ejecuciones de \(recapTitle) que coincidan con el período seleccionado."
+            : "No \(recapTitle) runs match the selected time period."
+        XCTAssertTrue(waitForLabel(empty, toContain: filteredEmpty))
+
+        scrollToVisible(skillFilter, in: app, deltaY: 80)
+        XCTAssertTrue(skillFilter.waitForStableFrame(timeout: 5))
+        skillFilter.click()
+        let package = app.menuItems[
+            "settings-skills-receipt-skill-meeting-package-export"]
+        XCTAssertTrue(package.waitForExistence(timeout: 5))
+        package.click()
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        XCTAssertTrue(waitForCount(receiptRows, toEqual: 5, timeout: 10))
+
+        scrollToVisible(periodFilter, in: app, deltaY: 80)
+        XCTAssertTrue(periodFilter.waitForStableFrame(timeout: 5))
+        periodFilter.click()
+        let anytime = app.menuItems[
+            "settings-skills-receipt-period-anytime"]
+        XCTAssertTrue(anytime.waitForExistence(timeout: 5))
+        anytime.click()
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        XCTAssertTrue(
+            waitForCount(receiptRows, toEqual: 20, timeout: 10),
+            "changing the period must reset the 50-row expansion")
+
+        let limit = app.control(
+            withIdentifier: "settings-skills-receipt-history-limit")
+        let initialLimit = UITestLocale.environmentLocale == "es"
+            ? "Cada vista muestra hasta 20 ejecuciones coincidentes en este Mac."
+            : "Each view shows up to 20 matching runs on this Mac."
+        XCTAssertTrue(waitForLabel(limit, toContain: initialLimit))
+        XCTAssertTrue(showMore.waitForExistence(timeout: 5))
+        attachScreenshot(of: app, named: "skills-activity-period-filter")
+    }
+
+    @MainActor
     func testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy() {
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-proposal-unavailable")

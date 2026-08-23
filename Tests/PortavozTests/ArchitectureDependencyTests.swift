@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,601 cases "
-                + "(15 environment-gated) + 104"))
+            "package inventory contains 2,607 cases "
+                + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -5172,6 +5172,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/SkillsSettingsSection.swift")
         let activity = try Self.contents(
             of: "Sources/portavoz-app/SkillActivitySection.swift")
+        let activityPeriod = try Self.contents(
+            of: "Sources/portavoz-app/SkillActivityPeriodFilter.swift")
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices+SkillsControl.swift")
         let uiFixtures = try Self.contents(
@@ -5194,9 +5196,20 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(schema.contains("updatedAt DESC, proposalID ASC"))
         XCTAssertTrue(skill.contains("enum SkillExecutionReviewScope"))
         XCTAssertTrue(skill.contains("case needsAttention = \"needs-attention\""))
+        XCTAssertTrue(skill.contains("enum SkillExecutionReviewPeriod"))
+        XCTAssertTrue(skill.contains("case pastMonth = \"past-month\""))
         XCTAssertTrue(control.contains("receiptScope: SkillExecutionReviewScope"))
+        XCTAssertTrue(control.contains(
+            "receiptPeriod: SkillExecutionReviewPeriod"))
+        XCTAssertTrue(control.contains(
+            "receiptReferenceDate: Date = .now"))
+        XCTAssertTrue(control.contains(
+            "let receiptUpdatedAfter = try Self.receiptUpdatedAfter(for: request)"))
+        XCTAssertTrue(control.contains(
+            "updatedAfter: receiptUpdatedAfter"))
         XCTAssertTrue(control.contains("scope: request.receiptScope"))
         XCTAssertTrue(store.contains("FROM skillExecutionState INDEXED BY"))
+        XCTAssertTrue(store.contains("updatedAt >= ?"))
         XCTAssertTrue(store.contains("skillExecutionState_on_waiting"))
         XCTAssertTrue(store.contains("skillExecutionState_on_attention"))
         XCTAssertTrue(store.contains("skillExecutionState_on_completed"))
@@ -5244,6 +5257,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(activity.contains(
             "snapshot.receiptSkillID == receiptSkillID"))
         XCTAssertTrue(activity.contains(
+            "snapshot.receiptPeriod == receiptPeriod"))
+        XCTAssertTrue(activityPeriod.contains(
+            "settings-skills-receipt-period-filter"))
+        XCTAssertTrue(activityPeriod.contains(
+            "settings-skills-receipt-period-\\(identifier)"))
+        XCTAssertTrue(activityPeriod.contains(
+            ".accessibilityLabel(\"Filter activity by update time\")"))
+        XCTAssertTrue(activity.contains(
             "if presentationState.allowsExplicitRefresh"))
         XCTAssertTrue(activity.contains(
             "settings-skills-receipt-refresh"))
@@ -5259,7 +5280,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(settings.contains(
             "receiptSkillID: requestedSkillID"))
         XCTAssertTrue(settings.contains(
+            "receiptPeriod: requestedPeriod"))
+        XCTAssertTrue(settings.contains(
             "receiptSkillID == requestedSkillID"))
+        XCTAssertTrue(settings.contains(
+            "receiptPeriod == requestedPeriod"))
         XCTAssertTrue(settings.contains(
             "receiptHistoryWindow.requestedLimit == requestedLimit"))
         XCTAssertTrue(decisions.contains("## D373"))
@@ -5272,6 +5297,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "        guard let snapshot,",
             "              snapshot.receiptScope == receiptScope,",
             "              snapshot.receiptSkillID == receiptSkillID,",
+            "              snapshot.receiptPeriod == receiptPeriod,",
             "              snapshot.receiptLoadState == .verified,",
             "              !isLoading,",
             "              !isMutating,",
@@ -5309,6 +5335,8 @@ final class ArchitectureDependencyTests: XCTestCase {
                 + "\"-seed-skill-history\")"))
         XCTAssertTrue(uiFixtures.contains("for ordinal in 1...25"))
         XCTAssertTrue(uiFixtures.contains(
+            "-seed-skill-recent-history"))
+        XCTAssertTrue(uiFixtures.contains(
             "let offerKey = \"\\(MeetingPackageExportSkill.id):\""))
         XCTAssertTrue(uiFixtures.contains(
             "idempotencyKey: effectKey"))
@@ -5343,6 +5371,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D370"))
         XCTAssertTrue(decisions.contains("## D371"))
         XCTAssertTrue(decisions.contains("## D372"))
+        XCTAssertTrue(decisions.contains("## D374"))
         XCTAssertTrue(decisions.contains("## D335"))
         XCTAssertTrue(decisions.contains("## D336"))
         XCTAssertTrue(decisions.contains("## D343"))

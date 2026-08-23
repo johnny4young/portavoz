@@ -350,41 +350,50 @@ offers, and `ExecuteSkill` reads it again immediately before admission and the
 durable claim. The Settings snapshot combines the catalogue with exactly one
 requested content-free execution scope: recent, confirmed and waiting to begin,
 failed or executing runs that need attention, or terminal completed/cancelled
-runs. It may also carry one exact catalogue Skill filter. That filter is
-composed in the database query before ordering and limiting; filtering only an
-already-loaded page would invent false empty states. Application requests at
-most 50 receipts (20 by default); storage itself refuses reads above 100.
+runs. It may also carry one exact catalogue Skill filter and one update period:
+Any time, the past 24 hours, the past seven days, or the past 30 days. Both
+lenses are composed in the database query before ordering and limiting;
+filtering only an already-loaded page would invent false empty states.
+ApplicationKit resolves each relative period from the explicit read's reference
+date and gives StorageKit only an inclusive absolute
+`updatedAt >= lowerBound` predicate. A malformed non-finite reference or cutoff
+fails closed before a read. Application requests at most 50 receipts (20 by
+default); storage itself refuses reads above 100.
 Schema v39 supplies direction-matched newest-first partial indexes for the
 three state scopes. Schema v42 mirrors those read paths with one complete and
 three partial `(skillID, updatedAt DESC, proposalID ASC)` indexes for filtered
-reads, while unfiltered reads retain the v35/v39 indexes. Queries pin the
-matching index so SQLite does not sort or scan unrelated execution history.
+reads, while unfiltered reads retain the v35/v39 indexes. Period ranges reuse
+those direction-matched indexes and add no schema. Queries pin the matching
+index so SQLite does not sort or scan unrelated execution history.
 The attention predicate is deliberately negative: an unknown future durable
 state stays visible for review rather than disappearing fail open. A
-scope/filter response must match the current selection before Settings renders
-any receipt, and a receipt-only read failure leaves already verified policy
-controls usable while showing no stale rows.
+scope/Skill/period response must match the current selection before Settings
+renders any receipt, and a receipt-only read failure leaves already verified
+policy controls usable while showing no stale rows.
 
 Settings starts each activity scope at the 20-receipt application default. An
 explicit **Show more runs** action appears only when that verified window is
 full; it performs one replacement read at the existing 50-receipt application
 ceiling. It is not cursor or infinite pagination, never appends into an
 unbounded view-owned collection, and disappears after that one expansion.
-Changing scopes or the exact Skill filter resets the requested window to 20
-before reading, while policy mutations and same-selection refreshes preserve
-the currently verified 20-or-50 window. Scope, Skill identity, limit, and
-generation must all still match before Settings may adopt a result. The menu
-offers only currently available catalogue Skills plus **All skills**; an empty
-filtered result names the localized Skill instead of implying that the whole
+Changing scopes, the exact Skill filter, or the update period resets the
+requested window to 20 before reading, while policy mutations and
+same-selection refreshes preserve the currently verified 20-or-50 window and
+resolve a fresh rolling reference date. Scope, Skill identity, period, limit,
+and generation must all still match before Settings may adopt a result. The
+Skill menu offers only currently available catalogue Skills plus **All
+skills**; the period menu exposes only the four fixed rolling choices. An empty
+filtered result names the localized Skill when selected and says that the
+selected time period matched no run instead of implying that the whole
 lifecycle scope is empty.
 
 A verified empty or populated activity view exposes one explicit read-only
-refresh. It reuses the selected scope, exact Skill filter, and current 20-or-50
-window, publishes the same loading state that hides stale rows, and adopts
-through the same scope/filter/limit/generation fence. Loading and unavailable
-views do not expose a competing refresh action; unavailable retains its
-existing retry. No timer, polling owner, observer, receipt mutation, or
-execution authority is added.
+refresh. It reuses the selected scope, exact Skill filter, update period, and
+current 20-or-50 window, publishes the same loading state that hides stale
+rows, and adopts through the same scope/Skill/period/limit/generation fence.
+Loading and unavailable views do not expose a competing refresh action;
+unavailable retains its existing retry. No timer, polling owner, observer,
+receipt mutation, or execution authority is added.
 
 The four v42 indexes deliberately add write and disk work. A receipt appears in
 one filtered complete index and one filtered state index in addition to its

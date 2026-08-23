@@ -12,6 +12,7 @@ enum SkillActivityPresentationState: Equatable {
     init(
         receiptScope: SkillExecutionReviewScope,
         receiptSkillID: String? = nil,
+        receiptPeriod: SkillExecutionReviewPeriod = .anytime,
         snapshot: SkillControlCenterSnapshot?,
         isLoading: Bool,
         loadFailed: Bool
@@ -22,7 +23,8 @@ enum SkillActivityPresentationState: Equatable {
         }
         guard let snapshot,
               snapshot.receiptScope == receiptScope,
-              snapshot.receiptSkillID == receiptSkillID
+              snapshot.receiptSkillID == receiptSkillID,
+              snapshot.receiptPeriod == receiptPeriod
         else {
             self = loadFailed ? .unavailable : .loading
             return
@@ -64,13 +66,14 @@ struct SkillActivityHistoryWindow: Equatable {
     }
 }
 
-/// D336/D373 — one status-scoped, optionally exact-Skill, content-free review.
+/// D336/D373/D374 — one status-, exact-Skill-, and update-period-scoped review.
 ///
-/// The returned snapshot must match the selected scope and Skill before this
-/// view shows any row. Loading and failures cannot relabel stale evidence.
+/// The returned snapshot must match every selected lens before this view shows
+/// any row. Loading and failures cannot relabel stale evidence.
 struct SkillActivitySection: View {
     @Binding var receiptScope: SkillExecutionReviewScope
     @Binding var receiptSkillID: String?
+    @Binding var receiptPeriod: SkillExecutionReviewPeriod
     @FocusState private var focusedReceiptID: UUID?
     @AccessibilityFocusState private var accessibilityFocusedReceiptID: UUID?
 
@@ -90,6 +93,9 @@ struct SkillActivitySection: View {
         Group {
             scopePicker
             skillFilter
+            SkillActivityPeriodFilter(
+                receiptPeriod: $receiptPeriod,
+                isDisabled: isLoading || isMutating)
 
             if presentationState.allowsExplicitRefresh {
                 Button(action: refresh) {
@@ -148,6 +154,7 @@ struct SkillActivitySection: View {
         SkillActivityPresentationState(
             receiptScope: receiptScope,
             receiptSkillID: receiptSkillID,
+            receiptPeriod: receiptPeriod,
             snapshot: snapshot,
             isLoading: isLoading,
             loadFailed: loadFailed)
@@ -268,6 +275,15 @@ struct SkillActivitySection: View {
     }
 
     private var emptyDetail: String {
+        if receiptPeriod != .anytime {
+            if let receiptSkillID {
+                return L10n.format(
+                    "No %@ runs match the selected time period.",
+                    SkillReceiptPresentation.skillTitle(receiptSkillID))
+            }
+            return L10n.text(
+                "No runs match the selected time period.")
+        }
         if let receiptSkillID {
             return L10n.format(
                 "No %@ runs match this activity view.",

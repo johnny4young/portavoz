@@ -13741,6 +13741,16 @@
         }
       }
     },
+    "Any time": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cualquier momento"
+          }
+        }
+      }
+    },
     "Filter activity by skill": {
       "localizations": {
         "es": {
@@ -13751,12 +13761,72 @@
         }
       }
     },
+    "Filter activity by update time": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrar actividad por hora de actualización"
+          }
+        }
+      }
+    },
+    "No %@ runs match the selected time period.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ejecuciones de %@ que coincidan con el período seleccionado."
+          }
+        }
+      }
+    },
     "No %@ runs match this activity view.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
             "value": "No hay ejecuciones de %@ que coincidan con esta vista de actividad."
+          }
+        }
+      }
+    },
+    "No runs match the selected time period.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ejecuciones que coincidan con el período seleccionado."
+          }
+        }
+      }
+    },
+    "Past 24 hours": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Últimas 24 horas"
+          }
+        }
+      }
+    },
+    "Past 30 days": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Últimos 30 días"
+          }
+        }
+      }
+    },
+    "Past 7 days": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Últimos 7 días"
           }
         }
       }
@@ -13777,6 +13847,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Skill"
+          }
+        }
+      }
+    },
+    "Updated": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualización"
           }
         }
       }

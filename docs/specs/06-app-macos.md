@@ -12,6 +12,8 @@ protected Spotlight generation).
 D327 adds a review-first system email-composer handoff; D328 adds exact
 one-shot secret-Gist publication with a pre-transport duplicate fence; D333
 derives Skills privacy disclosure from the executable capability contract.
+D373/D374 compose exact-Skill and rolling update-time activity filters at query
+time while keeping the Settings window bounded and generation-fenced.
 D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
 D193 lets only the resource-benchmark process observe that same closed stream
@@ -2703,7 +2705,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D372, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D374, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2841,17 +2843,23 @@ privacy statement.
 Every activity scope is bounded before materialization (20 by default, 50
 maximum through the application request, 100 at the storage boundary) and
 ordered by `(updatedAt DESC, proposalID ASC)`. The user may additionally choose
-one exact available catalogue Skill or **All skills**. The optional identity is
-composed with the lifecycle predicate before `LIMIT`; the view never filters an
-already-loaded page and therefore cannot fabricate an empty result for older
-matching receipts. A non-catalogue identity fails before either control-center
-store read, and malformed storage identities return no rows.
+one exact available catalogue Skill or **All skills**, plus **Any time**, the
+past 24 hours, past seven days, or past 30 days. ApplicationKit resolves the
+rolling period from a fresh reference date for every explicit read, while
+StorageKit receives only an optional inclusive absolute `updatedAt` lower bound.
+The optional identity and time predicate are composed with the lifecycle
+predicate before `LIMIT`; the view never filters an already-loaded page and
+therefore cannot fabricate an empty result for older matching receipts. A
+non-catalogue identity or non-finite reference fails before either
+control-center store read, while malformed storage identities or cutoffs return
+no rows.
 
 Recent uses its full v35 index; schema v39 adds one partial direction-matched
 index for each state scope. Schema v42 adds one full and three state-partial
 `(skillID, updatedAt DESC, proposalID ASC)` indexes for exact-Skill reads. The
-query explicitly pins the matching filtered or unfiltered index so an empty or
-sparse scope cannot fall back to a state-leading index plus a temporary sort.
+period predicates reuse the same filtered or unfiltered indexes and add no
+schema. The query explicitly pins the matching index so an empty or sparse
+scope cannot fall back to a state-leading index plus a temporary sort.
 The Attention predicate excludes only known waiting and terminal states, so a
 future state remains visible for review. Malformed durable proposal identities
 fail the projection instead of silently disappearing from the audit surface.
@@ -2860,26 +2868,28 @@ Each selected scope begins with the 20-row application window. When all 20
 positions are occupied, **Show more runs** performs one explicit replacement
 read at the existing 50-row ceiling. The control disappears after expansion;
 there is no infinite scroll, cursor accumulation, or background prefetch.
-Changing scopes or the exact Skill filter resets to 20 before the next read,
-while same-selection refreshes and verified policy mutations retain the
-selected 20-or-50 limit. A returned snapshot is adopted only while its scope,
-Skill identity, limit, and generation still match. The accessible menu value
-names the current localized Skill, and a verified filtered empty state names
-that Skill rather than claiming that the whole lifecycle scope is empty.
+Changing scopes, the exact Skill filter, or the update period resets to 20
+before the next read, while same-selection refreshes and verified policy
+mutations retain the selected 20-or-50 limit and compute the rolling boundary
+again. A returned snapshot is adopted only while its scope, Skill identity,
+period, limit, and generation still match. The accessible menu values name the
+current localized Skill and period. A verified period-filtered empty state says
+the time period matched no run and also names the exact Skill when selected.
 
 A verified empty or populated scope also exposes **Refresh activity**. It
 performs only the existing control-center read with the selected scope, exact
-Skill filter, and current 20-or-50 limit, so an execution that changed outside
-Settings can be re-read without changing selection or reconstructing the
-window. Refresh uses the normal loading state, hides stale rows immediately,
-and keeps the same scope/filter/limit/generation adoption fence. It is absent
+Skill filter, update period, and current 20-or-50 limit, so an execution that
+changed outside Settings can be re-read without changing selection or
+reconstructing the window. Refresh uses the normal loading state, hides stale
+rows immediately, and keeps the same scope/Skill/period/limit/generation
+adoption fence. It is absent
 during loading and unavailability, where the existing retry remains
 authoritative. No timer, polling, observer, receipt mutation, or execution
 action is introduced.
 
-The request and returned snapshot both carry the selected scope and optional
-Skill identity. Settings does not show an older snapshot under a newly selected
-scope or filter while its read is in flight or after it fails. A receipt-only
+The request and returned snapshot carry the selected scope, optional Skill
+identity, and update period. Settings does not show an older snapshot under a
+new selection while its read is in flight or after it fails. A receipt-only
 failure presents an explicit retry and no receipt rows, while keeping the
 independently verified pause and per-Skill controls usable. A failed control
 mutation still disables those controls until their durable policy can be

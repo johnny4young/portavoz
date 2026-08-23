@@ -86,7 +86,11 @@ extension MeetingStore {
     public func recentSkillExecutions(
         limit: Int
     ) async throws -> [SkillExecutionRecord] {
-        try await skillExecutions(scope: .recent, skillID: nil, limit: limit)
+        try await skillExecutions(
+            scope: .recent,
+            skillID: nil,
+            updatedAfter: nil,
+            limit: limit)
     }
 
     /// Newest content-free execution projections for one review scope.
@@ -97,6 +101,7 @@ extension MeetingStore {
     public func skillExecutions(
         scope: SkillExecutionReviewScope,
         skillID: String? = nil,
+        updatedAfter: Date? = nil,
         limit: Int
     ) async throws -> [SkillExecutionRecord] {
         guard (1...Self.maximumRecentSkillExecutionCount).contains(limit)
@@ -108,10 +113,22 @@ extension MeetingStore {
                 skillID.count <= 80
             else { return [] }
         }
+        if let updatedAfter,
+           !updatedAfter.timeIntervalSinceReferenceDate.isFinite {
+            return []
+        }
         return try await database.read { database in
-            let arguments: StatementArguments = if let skillID {
+            let arguments: StatementArguments = switch (
+                skillID,
+                updatedAfter
+            ) {
+            case (.some(let skillID), .some(let updatedAfter)):
+                [skillID, updatedAfter, limit]
+            case (.some(let skillID), .none):
                 [skillID, limit]
-            } else {
+            case (.none, .some(let updatedAfter)):
+                [updatedAfter, limit]
+            case (.none, .none):
                 [limit]
             }
             return try Row.fetchAll(
@@ -125,7 +142,8 @@ extension MeetingStore {
                             filteredBySkill: skillID != nil))
                     \(Self.skillExecutionReviewPredicate(
                         scope,
-                        filteredBySkill: skillID != nil))
+                        filteredBySkill: skillID != nil,
+                        filteredByTime: updatedAfter != nil))
                     ORDER BY updatedAt DESC, proposalID ASC
                     LIMIT ?
                     """,
@@ -136,25 +154,29 @@ extension MeetingStore {
 
     private static func skillExecutionReviewPredicate(
         _ scope: SkillExecutionReviewScope,
-        filteredBySkill: Bool
+        filteredBySkill: Bool,
+        filteredByTime: Bool
     ) -> String {
-        let skillPrefix = filteredBySkill ? "skillID = ?" : ""
-        return switch scope {
-        case .recent:
-            filteredBySkill ? "WHERE \(skillPrefix)" : ""
-        case .waiting:
-            "WHERE \(skillPrefixWithAnd(skillPrefix))state = 'confirmed'"
-        case .needsAttention:
-            "WHERE \(skillPrefixWithAnd(skillPrefix))"
-                + "state NOT IN ('confirmed', 'succeeded', 'cancelled')"
-        case .completed:
-            "WHERE \(skillPrefixWithAnd(skillPrefix))"
-                + "state IN ('succeeded', 'cancelled')"
+        var predicates: [String] = []
+        if filteredBySkill {
+            predicates.append("skillID = ?")
         }
-    }
-
-    private static func skillPrefixWithAnd(_ skillPrefix: String) -> String {
-        skillPrefix.isEmpty ? "" : "\(skillPrefix) AND "
+        if filteredByTime {
+            predicates.append("updatedAt >= ?")
+        }
+        switch scope {
+        case .recent:
+            break
+        case .waiting:
+            predicates.append("state = 'confirmed'")
+        case .needsAttention:
+            predicates.append(
+                "state NOT IN ('confirmed', 'succeeded', 'cancelled')")
+        case .completed:
+            predicates.append("state IN ('succeeded', 'cancelled')")
+        }
+        guard !predicates.isEmpty else { return "" }
+        return "WHERE \(predicates.joined(separator: " AND "))"
     }
 
     private static func skillExecutionReviewIndex(

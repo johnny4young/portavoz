@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 23, 2026
 
+- **🕒 Skill history stays time-focused** — Limit activity to the past day, week, or month without loading unrelated runs.
 - **🔎 One Skill, exact history** — Filter activity by an available Skill without losing lifecycle scope, bounded expansion, or truthful empty results.
 - **🔄 Skill activity refreshes without losing your place** — Re-read the selected activity view on demand while keeping its current 20- or 50-run window.
 

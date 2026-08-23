@@ -7,6 +7,7 @@ extension AppServices {
     func loadSkillControlCenter(
         receiptScope: SkillExecutionReviewScope = .recent,
         receiptSkillID: String? = nil,
+        receiptPeriod: SkillExecutionReviewPeriod = .anytime,
         receiptLimit: Int = SkillControlCenterSnapshot.defaultReceiptLimit
     ) async throws -> SkillControlCenterSnapshot {
         if usesTemporaryMeetingStore,
@@ -25,6 +26,7 @@ extension AppServices {
             LoadSkillControlCenterRequest(
                 receiptScope: receiptScope,
                 receiptSkillID: receiptSkillID,
+                receiptPeriod: receiptPeriod,
                 receiptLimit: receiptLimit))
         guard usesTemporaryMeetingStore,
               receiptScope != .recent,
@@ -39,6 +41,7 @@ extension AppServices {
             receiptScope: snapshot.receiptScope,
             receipts: [],
             receiptSkillID: snapshot.receiptSkillID,
+            receiptPeriod: snapshot.receiptPeriod,
             receiptLoadState: .unavailable)
     }
 

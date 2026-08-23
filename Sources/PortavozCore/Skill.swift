@@ -242,6 +242,20 @@ public enum SkillExecutionReviewScope: String, CaseIterable, Hashable, Sendable 
     case completed
 }
 
+/// A rolling, content-free update-time lens over durable execution state.
+/// ApplicationKit resolves the relative lower bound for each explicit read;
+/// StorageKit receives only that absolute date and never owns wall-clock policy.
+public enum SkillExecutionReviewPeriod: String, CaseIterable, Hashable, Sendable {
+    /// No update-time predicate.
+    case anytime
+    /// Updated during the preceding 24 hours.
+    case pastDay = "past-day"
+    /// Updated during the preceding seven 24-hour periods.
+    case pastWeek = "past-week"
+    /// Updated during the preceding thirty 24-hour periods.
+    case pastMonth = "past-month"
+}
+
 public struct SkillExecution: Equatable, Sendable {
     public let proposalID: UUID
     public let state: SkillExecutionState

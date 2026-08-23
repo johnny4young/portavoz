@@ -187,6 +187,11 @@ final class SkillsControlCenterTests: XCTestCase {
                 malformed.isEmpty,
                 "malformed storage filters must fail closed: \(skillID)")
         }
+        let invalidDate = try await store.skillExecutions(
+            scope: .recent,
+            updatedAfter: Date(timeIntervalSinceReferenceDate: .infinity),
+            limit: 20)
+        XCTAssertTrue(invalidDate.isEmpty)
 
         do {
             try await store.setSkill(" recap-draft ", isEnabled: false)
@@ -400,10 +405,23 @@ final class SkillsControlCenterTests: XCTestCase {
             scope: .waiting,
             skillID: MeetingPackageExportSkill.id,
             limit: 20)
+        let recentExports = try await store.skillExecutions(
+            scope: .completed,
+            skillID: MeetingPackageExportSkill.id,
+            updatedAfter: now.addingTimeInterval(5),
+            limit: 20)
+        let recentAcrossSkills = try await store.skillExecutions(
+            scope: .completed,
+            updatedAfter: now.addingTimeInterval(5),
+            limit: 20)
 
         XCTAssertEqual(recap.map(\.proposalID), Array(recapIDs.prefix(2)))
         XCTAssertEqual(exports.map(\.proposalID), exportIDs)
         XCTAssertTrue(waitingExports.isEmpty)
+        XCTAssertEqual(recentExports.map(\.proposalID), Array(exportIDs.prefix(1)))
+        XCTAssertEqual(
+            recentAcrossSkills.map(\.proposalID),
+            [recapIDs[0], exportIDs[0], recapIDs[1]])
     }
 
     func testControlCenterDerivesDisclosureFromExecutableCapabilities() async throws {
@@ -1087,26 +1105,41 @@ final class SkillsControlCenterTests: XCTestCase {
         }
     }
 
-    func testReceiptFilterAndClampedLimitReachTheStoreExactly() async throws {
+    func testReceiptFilterPeriodsAndClampedLimitReachTheStoreExactly() async throws {
         let store = RecordingSkillControlStore()
+        let referenceDate = now
+        let cases: [(SkillExecutionReviewPeriod, TimeInterval?)] = [
+            (.anytime, nil),
+            (.pastDay, 24 * 60 * 60),
+            (.pastWeek, 7 * 24 * 60 * 60),
+            (.pastMonth, 30 * 24 * 60 * 60)
+        ]
 
-        let snapshot = try await LoadSkillControlCenter(store: store).execute(
-            LoadSkillControlCenterRequest(
-                receiptScope: .needsAttention,
-                receiptSkillID: MeetingPackageExportSkill.id,
-                receiptLimit: .max))
-
-        XCTAssertEqual(
-            snapshot.receiptSkillID,
-            MeetingPackageExportSkill.id)
+        for (period, _) in cases {
+            let snapshot = try await LoadSkillControlCenter(store: store).execute(
+                LoadSkillControlCenterRequest(
+                    receiptScope: .needsAttention,
+                    receiptSkillID: MeetingPackageExportSkill.id,
+                    receiptPeriod: period,
+                    receiptReferenceDate: referenceDate,
+                    receiptLimit: .max))
+            XCTAssertEqual(
+                snapshot.receiptSkillID,
+                MeetingPackageExportSkill.id)
+            XCTAssertEqual(snapshot.receiptPeriod, period)
+        }
 
         let requests = await store.requests
         XCTAssertEqual(
             requests,
-            [SkillControlCenterStoreRequest(
+            cases.map { _, seconds in SkillControlCenterStoreRequest(
                 scope: .needsAttention,
                 skillID: MeetingPackageExportSkill.id,
-                limit: SkillControlCenterSnapshot.maximumReceiptLimit)])
+                updatedAfter: seconds.map {
+                    referenceDate.addingTimeInterval(-$0)
+                },
+                limit: SkillControlCenterSnapshot.maximumReceiptLimit)
+            })
     }
 
     func testUnknownReceiptSkillFilterFailsBeforeAStoreRead() async {
@@ -1121,6 +1154,30 @@ final class SkillsControlCenterTests: XCTestCase {
             XCTAssertEqual(error, .unknownReceiptSkillID)
         } catch {
             XCTFail("unexpected error: \(error)")
+        }
+
+        let requests = await store.requests
+        XCTAssertTrue(requests.isEmpty)
+        let policyReadCount = await store.policyReadCount
+        XCTAssertEqual(policyReadCount, 0)
+    }
+
+    func testInvalidReceiptReferenceDateFailsBeforeAnyStoreRead() async {
+        let store = RecordingSkillControlStore()
+
+        for period in SkillExecutionReviewPeriod.allCases {
+            do {
+                _ = try await LoadSkillControlCenter(store: store).execute(
+                    LoadSkillControlCenterRequest(
+                        receiptPeriod: period,
+                        receiptReferenceDate: Date(
+                            timeIntervalSinceReferenceDate: .infinity)))
+                XCTFail("an invalid reference must fail closed for \(period)")
+            } catch let error as LoadSkillControlCenterError {
+                XCTAssertEqual(error, .invalidReceiptReferenceDate)
+            } catch {
+                XCTFail("unexpected error for \(period): \(error)")
+            }
         }
 
         let requests = await store.requests
@@ -1201,6 +1258,33 @@ final class SkillsControlCenterTests: XCTestCase {
                     "the bounded receipt read must not sort full history: \(plan)")
             }
 
+            for (predicate, expectedIndex) in cases {
+                let timedPredicate = predicate.isEmpty
+                    ? "WHERE updatedAt >= 1700000000"
+                    : predicate.replacingOccurrences(
+                        of: "WHERE ",
+                        with: "WHERE updatedAt >= 1700000000 AND ")
+                let plan = try Row.fetchAll(
+                    database,
+                    sql: """
+                    EXPLAIN QUERY PLAN
+                    SELECT proposalID, skillID, skillVersion, idempotencyKey,
+                           state, failureCategory, attempt, updatedAt
+                    FROM skillExecutionState INDEXED BY \(expectedIndex)
+                    \(timedPredicate)
+                    ORDER BY updatedAt DESC, proposalID ASC
+                    LIMIT 20
+                    """).map { $0["detail"] as String }
+                XCTAssertTrue(
+                    plan.contains(where: {
+                        $0.contains("USING INDEX \(expectedIndex)")
+                    }),
+                    "the timed receipt read must use \(expectedIndex): \(plan)")
+                XCTAssertFalse(
+                    plan.contains(where: { $0.contains("TEMP B-TREE") }),
+                    "the timed receipt read must not sort history: \(plan)")
+            }
+
             let filteredCases = cases.map { item in
                 let (predicate, index) = item
                 let filteredPredicate = predicate.isEmpty
@@ -1230,6 +1314,31 @@ final class SkillsControlCenterTests: XCTestCase {
                 XCTAssertFalse(
                     plan.contains(where: { $0.contains("TEMP B-TREE") }),
                     "the filtered receipt read must not sort history: \(plan)")
+            }
+
+            for (predicate, expectedIndex) in filteredCases {
+                let timedPredicate = predicate.replacingOccurrences(
+                    of: "WHERE ",
+                    with: "WHERE updatedAt >= 1700000000 AND ")
+                let plan = try Row.fetchAll(
+                    database,
+                    sql: """
+                    EXPLAIN QUERY PLAN
+                    SELECT proposalID, skillID, skillVersion, idempotencyKey,
+                           state, failureCategory, attempt, updatedAt
+                    FROM skillExecutionState INDEXED BY \(expectedIndex)
+                    \(timedPredicate)
+                    ORDER BY updatedAt DESC, proposalID ASC
+                    LIMIT 20
+                    """).map { $0["detail"] as String }
+                XCTAssertTrue(
+                    plan.contains(where: {
+                        $0.contains("USING INDEX \(expectedIndex)")
+                    }),
+                    "the combined filters must use \(expectedIndex): \(plan)")
+                XCTAssertFalse(
+                    plan.contains(where: { $0.contains("TEMP B-TREE") }),
+                    "the combined filters must not sort history: \(plan)")
             }
         }
     }
@@ -1360,11 +1469,13 @@ private actor RecordingSkillControlStore: SkillControlCenterStore {
     func skillExecutions(
         scope: SkillExecutionReviewScope,
         skillID: String?,
+        updatedAfter: Date?,
         limit: Int
     ) -> [SkillExecutionRecord] {
         requests.append(SkillControlCenterStoreRequest(
             scope: scope,
             skillID: skillID,
+            updatedAfter: updatedAfter,
             limit: limit))
         return []
     }
@@ -1403,6 +1514,7 @@ private actor FailingSkillControlStore: SkillControlCenterStore {
     func skillExecutions(
         scope: SkillExecutionReviewScope,
         skillID: String?,
+        updatedAfter: Date?,
         limit: Int
     ) throws -> [SkillExecutionRecord] {
         if failure == .receipts {
@@ -1426,6 +1538,7 @@ private actor FailingSkillControlStore: SkillControlCenterStore {
 private struct SkillControlCenterStoreRequest: Equatable, Sendable {
     let scope: SkillExecutionReviewScope
     let skillID: String?
+    let updatedAfter: Date?
     let limit: Int
 }
 

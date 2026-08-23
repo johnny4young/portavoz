@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,601 cases (15 environment-gated) + 104
+Status: the package inventory contains 2,607 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 104
+Meeting Detail tests. The English and Spanish release gates each cover all 106
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -3679,6 +3679,54 @@ its bundle ID and designated requirement stayed unchanged, its deep signature
 remained valid, and Gatekeeper still reported Notarized Developer ID. This is
 local Tahoe-family automation, not physical Sequoia, separate Tahoe hardware,
 VoiceOver, real external-effect reconciliation, or MLX runtime evidence.
+
+**D374 rolling Skill-activity update-period gate.** The control-center request
+and snapshot carry one explicit update period plus an injected reference date.
+Application regressions pin all four mappings: **Any time** has no cutoff,
+while the other choices resolve to the preceding 24 hours, 7 days, or 30 days.
+Every explicit reference must be finite before either the policy or receipt
+store is read, including **Any time**. Storage applies the absolute cutoff as an
+inclusive `updatedAt >= ?` predicate and remains clock-free. Exact boundary
+tests and `EXPLAIN QUERY PLAN` coverage compose the cutoff with every lifecycle
+scope and the optional exact Skill, require the intended existing indexes, and
+reject temporary ordering B-trees. Presentation tests reject a snapshot whose
+period no longer matches the selection.
+
+The temporary-store journey makes exactly five of 25 Waiting package-export
+receipts recent. It verifies the initial 20-row page and explicit 25-row
+expansion, hides every old row under **Past 24 hours**, composes that period with
+an exact Skill and an empty Skill result, and proves that changing scope, Skill,
+or period resets 50 to 20. The focused case passed 1/1 in English in 93.948
+seconds and 1/1 in Spanish in 93.800 seconds. It also pins the localized menu,
+value, and empty-state accessibility surface rather than relying only on source
+or pure state tests.
+
+The final D374 gate passed `swift build` in 13.43 seconds, the current-SDK
+warnings-as-errors build in 22.45 seconds, and 2,607 package tests with 15
+explicit environment/model skips and zero failures in 119.541 seconds of
+XCTest execution. All 195 architecture ratchets, 457 tooling tests, repository
+hygiene, localization JSON validation, UI-catalog validation, diff whitespace
+validation, and strict SwiftLint across 705 production Swift files also passed.
+The read-only host preflight passed without reading or dismissing a prompt and
+left 24 stale LaunchServices claimants warning-only. Final macOS 26.5.2 (25F84)
+result bundles passed 106/106 English plus 106/106 Spanish real-app XCUITest
+cases, with zero failures, skips, or expected failures; their result intervals
+were 2,441.170 seconds and 2,449.264 seconds respectively.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was rebuilt, deeply
+verified, installed only at `/Applications/Portavoz Dev.app`, and observed
+running from its exact executable. A fresh deterministic before/after check
+kept the notarized `app.portavoz.mac` release bundle unchanged across its
+184-entry no-symlink-traversal content/metadata/hex-xattr manifest at SHA-256
+`9f42e6c828e2330467c28539265df6aa2b46814df17f5cf0966e623501a4dfe2`;
+its bundle ID and designated requirement stayed unchanged, its deep signature
+remained valid, and Gatekeeper still reported Notarized Developer ID. The host
+can resolve a `metal` compiler from a MobileAsset cryptex, but the packaging
+gate still cannot resolve the optional Metal Toolchain's `metallib`; the Dev
+bundle therefore contains no MLX metallib. Query-plan evidence proves bounded
+access strategy, not a latency or disk budget. This remains local Tahoe-family
+automation, not physical Sequoia, separate Tahoe hardware, VoiceOver, real
+external-effect reconciliation, or MLX runtime evidence.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

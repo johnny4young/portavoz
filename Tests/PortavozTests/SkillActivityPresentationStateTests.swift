@@ -51,6 +51,20 @@ final class SkillActivityPresentationStateTests: XCTestCase {
         XCTAssertEqual(state, .loading)
     }
 
+    func testMismatchedUpdatePeriodNeverRelabelsCachedRows() {
+        let state = SkillActivityPresentationState(
+            receiptScope: .waiting,
+            receiptPeriod: .pastDay,
+            snapshot: snapshot(
+                scope: .waiting,
+                period: .pastWeek,
+                hasReceipt: true),
+            isLoading: false,
+            loadFailed: false)
+
+        XCTAssertEqual(state, .loading)
+    }
+
     func testReceiptOnlyFailureShowsUnavailableForTheMatchingScope() {
         let state = SkillActivityPresentationState(
             receiptScope: .completed,
@@ -123,6 +137,7 @@ final class SkillActivityPresentationStateTests: XCTestCase {
     private func snapshot(
         scope: SkillExecutionReviewScope,
         skillID: String? = nil,
+        period: SkillExecutionReviewPeriod = .anytime,
         hasReceipt: Bool = false,
         receiptLoadState: SkillControlCenterReceiptLoadState = .verified
     ) -> SkillControlCenterSnapshot {
@@ -146,6 +161,7 @@ final class SkillActivityPresentationStateTests: XCTestCase {
             receiptScope: scope,
             receipts: receipts,
             receiptSkillID: skillID,
+            receiptPeriod: period,
             receiptLoadState: receiptLoadState)
     }
 }

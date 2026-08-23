@@ -13591,3 +13591,44 @@ standing rule, confirmation, execution authority, adapter, consent, or
 deployment-floor change is introduced. Automation remains local Tahoe-family
 evidence; physical VoiceOver, Sequoia, and separate-hardware Tahoe behavior
 remain field evidence.
+
+## D374 — Skill activity filters durable updates through one rolling query (Aug 2026)
+
+**Context:** lifecycle and exact-Skill filters made the bounded activity history
+useful, but users could not focus on runs that changed recently. Filtering the
+20 or 50 rows already loaded by the view would produce false empty states and
+miss older rows inside the requested period. Loading all receipts into memory
+would violate the existing bounded review contract. Current n8n and Zapier
+history surfaces also treat date filtering as a first-class review lens, while
+their replay/delete actions are not safe analogies for Portavoz's durable audit
+receipts.
+
+**Decision:** add four explicit update periods: **Any time**, **Past 24 hours**,
+**Past 7 days**, and **Past 30 days**. The application resolves the rolling
+period from an injected reference date on each explicit read and passes Storage
+only an optional inclusive absolute `updatedAt` lower bound. Storage composes
+that predicate with lifecycle scope and optional exact Skill before newest-first
+ordering and `LIMIT`. Non-finite references and cutoffs fail closed before
+materialization. The v35/v39 indexes serve time-only reads and the v42 indexes
+serve combined Skill/time reads, so the slice adds no migration.
+
+Changing scope, Skill, or period resets the requested window to 20. A refresh
+or verified mutation under the same selection preserves 20 or 50 but resolves a
+fresh rolling boundary. Scope, Skill, period, limit, and load generation must
+all still match before Settings adopts a response; loading hides stale rows.
+The accessible localized period menu and empty-state copy make the selected
+lens explicit. Pure tests cover all four period-to-cutoff mappings, inclusive
+boundary semantics, invalid-date pre-read rejection, index plans, and stale
+presentation fencing. A deterministic bilingual real-app journey covers
+20-to-25 expansion, delayed period transitions, exactly five recent rows,
+Skill/period composition, localized empty state, and reset back to 20.
+
+**Consequences:** users can narrow activity by durable last update without
+page-local filtering, unbounded materialization, or a second clock owner. The
+meaning is deliberately update time, not original execution start: a waiting,
+started, retried, settled, or revoked run belongs to the period of its latest
+durable state. No payload search, FTS lane, cursor, timer, observer, scheduler,
+replay, delete, confirmation, execution authority, standing rule, adapter,
+egress, schema, or deployment-floor change is introduced. Automation remains
+local Tahoe-family evidence; physical VoiceOver, Sequoia, and
+separate-hardware Tahoe behavior remain field evidence.

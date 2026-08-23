@@ -307,6 +307,9 @@ extension AppServices {
         guard usesTemporaryMeetingStore,
               ProcessInfo.processInfo.arguments.contains("-seed-skill-history")
         else { return }
+        let seedsRecentTail = ProcessInfo.processInfo.arguments.contains(
+            "-seed-skill-recent-history")
+        let referenceDate = Date.now
         do {
             for ordinal in 1...25 {
                 let offerKey = "\(MeetingPackageExportSkill.id):"
@@ -321,9 +324,13 @@ extension AppServices {
                         subject: .meeting(meetingID),
                         offerKey: offerKey,
                         idempotencyKey: effectKey,
-                        occurredAt: Date(
-                            timeIntervalSince1970:
-                                1_700_000_600 + TimeInterval(ordinal))))
+                        occurredAt: seedsRecentTail && ordinal > 20
+                            ? referenceDate.addingTimeInterval(
+                                -TimeInterval(25 - ordinal) * 60)
+                            : Date(
+                                timeIntervalSince1970:
+                                    1_700_000_600
+                                        + TimeInterval(ordinal))))
                 switch outcome {
                 case .admitted(let record), .alreadySettled(let record):
                     guard record.state == .confirmed else {
