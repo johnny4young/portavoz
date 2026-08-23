@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## August 23, 2026
+
+- **🔄 Skill activity refreshes without losing your place** — Re-read the selected activity view on demand while keeping its current 20- or 50-run window.
+
 ## August 22, 2026
 
 - **📜 Older Skill runs stay within reach** — Expand any activity view from the newest 20 receipts to a safe 50-run window only when you ask.

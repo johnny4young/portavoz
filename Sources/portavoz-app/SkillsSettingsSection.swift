@@ -82,6 +82,7 @@ struct SkillsSettingsSection: View {
                         focusRequestID: receiptFocusRequestID,
                         historyWindow: receiptHistoryWindow,
                         retry: { Task { await load() } },
+                        refresh: { Task { await refreshActivity() } },
                         showMore: { Task { await showMoreReceipts() } },
                         inspectReceipt: inspectReceipt)
                 }
@@ -333,6 +334,15 @@ struct SkillsSettingsSection: View {
               !proposalMutationInFlight
         else { return }
         receiptHistoryWindow.expand()
+        await load()
+    }
+
+    @MainActor
+    private func refreshActivity() async {
+        guard !isLoading,
+              !isMutating,
+              !proposalMutationInFlight
+        else { return }
         await load()
     }
 

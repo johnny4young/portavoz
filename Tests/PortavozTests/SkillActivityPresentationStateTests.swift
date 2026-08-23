@@ -99,6 +99,13 @@ final class SkillActivityPresentationStateTests: XCTestCase {
         XCTAssertFalse(window.isExpanded)
     }
 
+    func testOnlyVerifiedTerminalActivityStatesAllowExplicitRefresh() {
+        XCTAssertFalse(SkillActivityPresentationState.loading.allowsExplicitRefresh)
+        XCTAssertFalse(SkillActivityPresentationState.unavailable.allowsExplicitRefresh)
+        XCTAssertTrue(SkillActivityPresentationState.empty.allowsExplicitRefresh)
+        XCTAssertTrue(SkillActivityPresentationState.receipts.allowsExplicitRefresh)
+    }
+
     private func snapshot(
         scope: SkillExecutionReviewScope,
         hasReceipt: Bool = false,

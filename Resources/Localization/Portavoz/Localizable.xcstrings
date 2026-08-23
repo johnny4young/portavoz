@@ -13731,6 +13731,16 @@
         }
       }
     },
+    "Refresh activity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar actividad"
+          }
+        }
+      }
+    },
     "Activity view": {
       "localizations": {
         "es": {

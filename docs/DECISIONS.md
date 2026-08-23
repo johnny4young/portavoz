@@ -13517,3 +13517,38 @@ collection. No schema, index, execution authority, proposal content, standing
 rule, adapter, egress consent, or platform API changes. Automation remains
 local Tahoe-family evidence; physical VoiceOver, Sequoia, and separate-hardware
 Tahoe behavior remain field evidence.
+
+## D372 — Verified Skill activity refreshes only on explicit request (Aug 2026)
+
+**Context:** receipt state can change after the Skills pane loads because an
+already confirmed execution may begin or settle outside the Settings-owned
+mutation path. The pane refreshed after its own receipt mutation and whenever
+the user changed scope, but a verified empty or populated scope had no direct
+way to re-read durable truth. Closing Settings or changing filters is hidden
+refresh behavior; adding a timer, observer, or automatic polling owner would
+increase database work and introduce a lifetime that the read-only panel does
+not otherwise need.
+
+**Decision:** expose **Refresh activity** only for a verified empty or populated
+scope. The action invokes the existing generation-fenced control-center read
+with the current scope and current 20-or-50 requested limit. It publishes the
+ordinary loading state, which hides the old rows immediately, and adopts a
+response only while scope, limit, and generation still match. Loading and
+unavailable states expose no competing refresh; unavailable retains its
+existing exact retry. The action does not reload proposals, mutate a receipt,
+confirm or execute a Skill, install a timer, or observe the database.
+
+The bilingual real-app fixture reuses the 25 confirmed package-export receipts
+and the established delayed non-Recent read. It selects Waiting, expands from
+20 to all 25 rows, activates the identified refresh, observes the loading state
+with no stale rows, and verifies that all 25 return under the retained 50-row
+window. Pure presentation tests admit refresh only for verified empty/receipt
+states, and source ratchets keep the action read-only and timer-free.
+
+**Consequences:** users can reconcile a long-lived Skills pane with current
+durable execution state without changing filters, losing their bounded history
+position, or paying an automatic polling cost. No schema, index, scheduler,
+observer, background task, receipt mutation, execution authority, adapter,
+standing rule, egress consent, or deployment-floor change is introduced.
+Automation remains local Tahoe-family evidence; physical VoiceOver, Sequoia,
+separate-hardware Tahoe, and cross-process timing remain field evidence.

@@ -29,6 +29,10 @@ enum SkillActivityPresentationState: Equatable {
         }
         self = snapshot.receipts.isEmpty ? .empty : .receipts
     }
+
+    var allowsExplicitRefresh: Bool {
+        self == .empty || self == .receipts
+    }
 }
 
 /// Keeps receipt browsing explicit and bounded. The initial projection stays
@@ -72,12 +76,22 @@ struct SkillActivitySection: View {
     let focusRequestID: UUID?
     let historyWindow: SkillActivityHistoryWindow
     let retry: () -> Void
+    let refresh: () -> Void
     let showMore: () -> Void
     let inspectReceipt: (SkillControlCenterReceipt) -> Void
 
     var body: some View {
         Group {
             scopePicker
+
+            if presentationState.allowsExplicitRefresh {
+                Button(action: refresh) {
+                    Label("Refresh activity", systemImage: "arrow.clockwise")
+                }
+                .accessibilityIdentifier(
+                    "settings-skills-receipt-refresh")
+                .disabled(isLoading || isMutating)
+            }
 
             switch presentationState {
             case .loading:

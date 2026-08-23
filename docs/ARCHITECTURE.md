@@ -370,6 +370,13 @@ mutations and same-scope refreshes preserve the currently verified 20-or-50
 window. Scope, limit, and generation must all still match before Settings may
 adopt a result.
 
+A verified empty or populated activity view exposes one explicit read-only
+refresh. It reuses the selected scope and its current 20-or-50 window, publishes
+the same loading state that hides stale rows, and adopts through the same
+scope/limit/generation fence. Loading and unavailable views do not expose a
+competing refresh action; unavailable retains its existing retry. No timer,
+polling owner, observer, receipt mutation, or execution authority is added.
+
 Policy and receipt history remain independently verified inside that snapshot.
 The application starts both bounded reads together, but only a policy failure
 fails the entire control projection; a receipt failure returns the verified
@@ -4517,7 +4524,7 @@ reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,600 XCTest package cases are defined, with 15 real-model/environment cases
+- 2,601 XCTest package cases are defined, with 15 real-model/environment cases
   gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
@@ -4532,7 +4539,7 @@ reliability evidence retained from 9 Aug, is:
 - 457 deterministic tooling cases and the 195-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
-- 103 XCUITest cases per locale define the 206-case bilingual release gate;
+- 104 XCUITest cases per locale define the 208-case bilingual release gate;
 - pull requests run only their selected feature-level UI evidence, while shared
   localization/harness changes and release closure expand to bilingual gates;
 - deterministic UI runs use the real application with disposable storage and

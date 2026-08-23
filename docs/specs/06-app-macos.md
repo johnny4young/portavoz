@@ -2703,7 +2703,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D371, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D372, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2856,6 +2856,15 @@ Changing scopes resets to 20 before the next read, while same-scope refreshes
 and verified policy mutations retain the selected 20-or-50 limit. A returned
 snapshot is adopted only while its scope, limit, and generation still match.
 
+A verified empty or populated scope also exposes **Refresh activity**. It
+performs only the existing control-center read with the selected scope and
+current 20-or-50 limit, so an execution that changed outside Settings can be
+re-read without changing filters or reconstructing the window. Refresh uses the
+normal loading state, hides stale rows immediately, and keeps the same
+scope/limit/generation adoption fence. It is absent during loading and
+unavailability, where the existing retry remains authoritative. No timer,
+polling, observer, receipt mutation, or execution action is introduced.
+
 The request and returned snapshot both carry the selected scope. Settings does
 not show an older snapshot under a newly selected segment while its read is in
 flight or after it fails. A scope-only failure presents an explicit retry and
@@ -2944,10 +2953,11 @@ the route retry, and the independent Waiting revocation action. Both source and
 recovery navigation use the generic weak Settings-window bridge after the sheet
 dismisses; neither route carries content or effect authority into Settings.
 
-Eighteen bilingual XCUITest journeys cover the pane: fail-closed control
+Nineteen bilingual XCUITest journeys cover the pane: fail-closed control
 loading; read-only recovery after an unverified control mutation; isolated
 scope failure; stale-row-free activity transitions; explicit bounded history
-expansion from 20 to 50; isolated proposal failure;
+expansion from 20 to 50; explicit same-scope refresh that preserves the expanded
+window; isolated proposal failure;
 successful and failed Proposed review routing; successful and failed Proposed
 dismissal; successful and failed Waiting revocation; successful and failed
 failed-run recovery routing; successful and failed non-failed receipt source
@@ -2960,6 +2970,10 @@ its exact Meeting Detail without a confirmation sheet or duplicate main window.
 The history case seeds 25 content-free destination-scoped approvals, proves
 exactly 20 rows appear initially, then reveals all 25 through one explicit
 expansion whose control does not become unbounded pagination.
+The refresh case selects that 25-row Waiting projection, expands it, triggers
+the delayed production read through the identified refresh action, observes the
+ordinary stale-row-free loading state, and verifies the 50-row window remains
+selected when all 25 rows return.
 The source failure preserves its causal event, receipt row, independent revoke
 action, Settings window, and route-only retry. The main journey disables export,
 pauses all Skills, proves offers stay absent, resumes without losing the

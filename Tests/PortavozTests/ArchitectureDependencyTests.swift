@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,600 cases "
-                + "(15 environment-gated) + 103"))
+            "package inventory contains 2,601 cases "
+                + "(15 environment-gated) + 104"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -5229,6 +5229,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             "requestedLimit = SkillControlCenterSnapshot.maximumReceiptLimit"))
         XCTAssertTrue(activity.contains(
             "settings-skills-receipt-show-more"))
+        XCTAssertTrue(activity.contains(
+            "if presentationState.allowsExplicitRefresh"))
+        XCTAssertTrue(activity.contains(
+            "settings-skills-receipt-refresh"))
+        XCTAssertFalse(activity.contains("Timer"))
         XCTAssertTrue(activity.contains("if isLoading"))
         XCTAssertTrue(activity.contains(
             "snapshot.receiptLoadState == .verified"))
@@ -5241,6 +5246,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             "receiptHistoryWindow.requestedLimit == requestedLimit"))
         XCTAssertTrue(settings.contains(
             "receiptHistoryWindow.expand()\n        await load()"))
+        XCTAssertTrue(settings.contains(
+            "refresh: { Task { await refreshActivity() } }"))
+        let refreshActivityContract = [
+            "private func refreshActivity() async {",
+            "        guard !isLoading,",
+            "              !isMutating,",
+            "              !proposalMutationInFlight",
+            "        else { return }",
+            "        await load()",
+            "    }"
+        ].joined(separator: "\n")
+        XCTAssertTrue(settings.contains(refreshActivityContract))
         XCTAssertTrue(settings.contains("invalidateActiveLoad()"))
         XCTAssertTrue(control.contains(
             "enum SkillControlCenterReceiptLoadState"))
@@ -5302,6 +5319,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D333"))
         XCTAssertTrue(decisions.contains("## D370"))
         XCTAssertTrue(decisions.contains("## D371"))
+        XCTAssertTrue(decisions.contains("## D372"))
         XCTAssertTrue(decisions.contains("## D335"))
         XCTAssertTrue(decisions.contains("## D336"))
         XCTAssertTrue(decisions.contains("## D343"))

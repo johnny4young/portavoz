@@ -241,6 +241,63 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSkillActivityRefreshPreservesTheExpandedCurrentScope() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append(contentsOf: [
+            "-seed-skill-history",
+            "-simulate-skill-receipt-refresh-delay"
+        ])
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+
+        let waiting = app.control(
+            withIdentifier: "settings-skills-receipt-scope-waiting")
+        scrollToVisible(waiting, in: app, deltaY: -40)
+        XCTAssertTrue(waiting.waitForStableFrame(timeout: 5))
+        waiting.click()
+
+        let loading = app.control(
+            withIdentifier: "settings-skills-receipt-scope-loading")
+        XCTAssertTrue(loading.waitForExistence(timeout: 2))
+        let receiptRows = app.buttons.matching(
+            identifier: "settings-skill-receipt-meeting-package-export")
+        XCTAssertTrue(waitForCount(receiptRows, toEqual: 20, timeout: 10))
+
+        let showMore = app.buttons[
+            "settings-skills-receipt-show-more"]
+        scrollToVisible(showMore, in: app, deltaY: -120)
+        XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
+        showMore.click()
+        XCTAssertTrue(waitForCount(receiptRows, toEqual: 25, timeout: 10))
+
+        let refresh = app.buttons["settings-skills-receipt-refresh"]
+        scrollToVisible(refresh, in: app, deltaY: 120)
+        XCTAssertTrue(refresh.waitForStableFrame(timeout: 5))
+        refresh.click()
+
+        XCTAssertTrue(
+            loading.waitForExistence(timeout: 2),
+            "explicit refresh must publish the normal loading state")
+        XCTAssertTrue(
+            waitForCount(receiptRows, toEqual: 0, timeout: 2),
+            "refresh must hide the stale same-scope rows while reading")
+        XCTAssertTrue(
+            waitForCount(receiptRows, toEqual: 25, timeout: 10),
+            "refresh must preserve the expanded bounded window")
+
+        let expandedLimit = app.control(
+            withIdentifier: "settings-skills-receipt-history-limit")
+        let maximumLimit = UITestLocale.environmentLocale == "es"
+            ? "Cada vista muestra hasta 50 ejecuciones coincidentes en este Mac."
+            : "Each view shows up to 50 matching runs on this Mac."
+        XCTAssertTrue(waitForLabel(expandedLimit, toContain: maximumLimit))
+        attachScreenshot(of: app, named: "skills-activity-explicit-refresh")
+    }
+
+    @MainActor
     func testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy() {
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-proposal-unavailable")
