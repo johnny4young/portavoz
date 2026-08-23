@@ -353,7 +353,7 @@ struct SkillsSettingsSection: View {
               snapshot.receiptPeriod == receiptPeriod,
               snapshot.receiptLoadState == .verified,
               receiptHistoryWindow.canExpand(
-                  receiptCount: snapshot.receipts.count),
+                  hasMoreReceipts: snapshot.hasMoreReceipts),
               !isLoading,
               !isMutating,
               !proposalMutationInFlight

@@ -297,21 +297,27 @@ extension AppServices {
         }
     }
 
-    /// Twenty-five content-free approvals prove that Settings initially reads
-    /// only twenty rows and performs one explicit, bounded expansion to fifty.
-    /// Every row is a separate destination-scoped package export approval, so
-    /// the fixture preserves the production offer/effect-key relationship.
+    /// Twenty-five content-free approvals prove bounded expansion; the exact
+    /// page variant stops at twenty to prove that a full visible window does
+    /// not invent continuation. Every row is a separate destination-scoped
+    /// package export approval, preserving the production offer/effect key.
     private func seedSkillHistoryIfRequested(
         for meetingID: MeetingID
     ) async {
+        let arguments = ProcessInfo.processInfo.arguments
+        let seedsExactPage = arguments.contains(
+            "-seed-skill-exact-page-history")
         guard usesTemporaryMeetingStore,
-              ProcessInfo.processInfo.arguments.contains("-seed-skill-history")
+              arguments.contains("-seed-skill-history") || seedsExactPage
         else { return }
-        let seedsRecentTail = ProcessInfo.processInfo.arguments.contains(
+        let seedsRecentTail = arguments.contains(
             "-seed-skill-recent-history")
+        let receiptCount = seedsExactPage
+            ? SkillControlCenterSnapshot.defaultReceiptLimit
+            : 25
         let referenceDate = Date.now
         do {
-            for ordinal in 1...25 {
+            for ordinal in 1...receiptCount {
                 let offerKey = "\(MeetingPackageExportSkill.id):"
                     + meetingID.rawValue.uuidString
                 let effectKey = offerKey

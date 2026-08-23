@@ -273,6 +273,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "SkillsSettingsUITests",
+            "testSkillActivityHidesExpansionWhenExactlyOnePageExists",
+        ),
+        test_id(
+            "SkillsSettingsUITests",
             "testSkillActivityRefreshPreservesTheExpandedCurrentScope",
         ),
         test_id(

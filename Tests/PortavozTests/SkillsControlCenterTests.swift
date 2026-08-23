@@ -232,13 +232,17 @@ final class SkillsControlCenterTests: XCTestCase {
         }
 
         let snapshot = try await LoadSkillControlCenter(store: store).execute(
-            LoadSkillControlCenterRequest(receiptLimit: 3))
+            LoadSkillControlCenterRequest())
 
         XCTAssertFalse(snapshot.isPaused)
         XCTAssertEqual(snapshot.receiptScope, .recent)
         XCTAssertEqual(snapshot.receiptLoadState, .verified)
-        XCTAssertEqual(snapshot.receipts.map(\.proposalID), Array(newestProposalIDs.prefix(3)))
-        XCTAssertEqual(snapshot.receipts.map(\.state), [.succeeded, .succeeded, .succeeded])
+        XCTAssertEqual(
+            snapshot.receipts.map(\.proposalID),
+            Array(newestProposalIDs.prefix(
+                SkillControlCenterSnapshot.defaultReceiptLimit)))
+        XCTAssertTrue(snapshot.hasMoreReceipts)
+        XCTAssertTrue(snapshot.receipts.allSatisfy { $0.state == .succeeded })
         XCTAssertTrue(snapshot.receipts.allSatisfy {
             $0.failureCategory == nil
         })
@@ -256,6 +260,15 @@ final class SkillsControlCenterTests: XCTestCase {
             snapshot.skills.filter { $0.availability == .planned }.map(\.id),
             [])
         XCTAssertTrue(snapshot.skills.allSatisfy(\.isEnabled))
+
+        let exactSnapshot = try await LoadSkillControlCenter(store: store).execute(
+            LoadSkillControlCenterRequest(receiptLimit: newestProposalIDs.count))
+        XCTAssertEqual(
+            exactSnapshot.receipts.map(\.proposalID),
+            newestProposalIDs)
+        XCTAssertFalse(
+            exactSnapshot.hasMoreReceipts,
+            "an exactly full visible window must not imply a successor row")
     }
 
     func testReceiptReadFailurePreservesVerifiedPolicyAndHidesReceipts() async throws {
@@ -268,6 +281,7 @@ final class SkillsControlCenterTests: XCTestCase {
         XCTAssertEqual(snapshot.receiptScope, .completed)
         XCTAssertEqual(snapshot.receiptLoadState, .unavailable)
         XCTAssertTrue(snapshot.receipts.isEmpty)
+        XCTAssertFalse(snapshot.hasMoreReceipts)
         XCTAssertFalse(
             try XCTUnwrap(snapshot.skills.first { $0.id == RecapDraftSkill.id })
                 .isEnabled)
@@ -1138,7 +1152,7 @@ final class SkillsControlCenterTests: XCTestCase {
                 updatedAfter: seconds.map {
                     referenceDate.addingTimeInterval(-$0)
                 },
-                limit: SkillControlCenterSnapshot.maximumReceiptLimit)
+                limit: SkillControlCenterSnapshot.maximumReceiptLimit + 1)
             })
     }
 

@@ -357,8 +357,10 @@ filtering only an already-loaded page would invent false empty states.
 ApplicationKit resolves each relative period from the explicit read's reference
 date and gives StorageKit only an inclusive absolute
 `updatedAt >= lowerBound` predicate. A malformed non-finite reference or cutoff
-fails closed before a read. Application requests at most 50 receipts (20 by
-default); storage itself refuses reads above 100.
+fails closed before a read. Application publishes at most 50 receipts (20 by
+default) and asks Storage for exactly one additional continuation sentinel;
+the largest query is therefore 51, while storage itself refuses reads above
+100. The sentinel never enters the snapshot's visible receipts.
 Schema v39 supplies direction-matched newest-first partial indexes for the
 three state scopes. Schema v42 mirrors those read paths with one complete and
 three partial `(skillID, updatedAt DESC, proposalID ASC)` indexes for filtered
@@ -372,10 +374,14 @@ renders any receipt, and a receipt-only read failure leaves already verified
 policy controls usable while showing no stale rows.
 
 Settings starts each activity scope at the 20-receipt application default. An
-explicit **Show more runs** action appears only when that verified window is
-full; it performs one replacement read at the existing 50-receipt application
-ceiling. It is not cursor or infinite pagination, never appends into an
-unbounded view-owned collection, and disappears after that one expansion.
+explicit **Show more runs** action appears only when the verified snapshot
+contains a successor sentinel beyond those 20 visible receipts; an exactly
+full 20-row result therefore does not promise unavailable history or perform a
+redundant replacement read. Activation performs one replacement read at the
+existing 50-receipt application ceiling. It is not cursor or infinite
+pagination, never appends into an unbounded view-owned collection, and
+disappears after that one expansion even when a 51st row proves that still
+older history exists beyond the product ceiling.
 Changing scopes, the exact Skill filter, or the update period resets the
 requested window to 20 before reading, while policy mutations and
 same-selection refreshes preserve the currently verified 20-or-50 window and

@@ -2614,7 +2614,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
             "package inventory contains 2,607 cases "
-                + "(15 environment-gated) + 106"))
+                + "(15 environment-gated) + 107"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -5208,6 +5208,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(control.contains(
             "updatedAfter: receiptUpdatedAfter"))
         XCTAssertTrue(control.contains("scope: request.receiptScope"))
+        XCTAssertTrue(control.contains(
+            "let receiptProbeLimit = request.receiptLimit + 1"))
+        XCTAssertTrue(control.contains(
+            "resolvedRecords.prefix(request.receiptLimit)"))
+        XCTAssertTrue(control.contains("hasMoreReceipts:"))
         XCTAssertTrue(store.contains("FROM skillExecutionState INDEXED BY"))
         XCTAssertTrue(store.contains("updatedAt >= ?"))
         XCTAssertTrue(store.contains("skillExecutionState_on_waiting"))
@@ -5250,6 +5255,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "requestedLimit = SkillControlCenterSnapshot.maximumReceiptLimit"))
         XCTAssertTrue(activity.contains(
             "settings-skills-receipt-show-more"))
+        XCTAssertTrue(activity.contains(
+            "hasMoreReceipts: snapshot?.hasMoreReceipts ?? false"))
+        XCTAssertTrue(settings.contains(
+            "hasMoreReceipts: snapshot.hasMoreReceipts"))
         XCTAssertTrue(activity.contains(
             "settings-skills-receipt-skill-filter"))
         XCTAssertTrue(activity.contains(
@@ -5330,10 +5339,11 @@ final class ArchitectureDependencyTests: XCTestCase {
                 + "           ProcessInfo.processInfo.arguments.contains(\n"
                 + "               \"-simulate-skill-proposal-unavailable\")"))
         XCTAssertTrue(uiFixtures.contains(
-            "guard usesTemporaryMeetingStore,\n"
-                + "              ProcessInfo.processInfo.arguments.contains("
-                + "\"-seed-skill-history\")"))
-        XCTAssertTrue(uiFixtures.contains("for ordinal in 1...25"))
+            "-seed-skill-exact-page-history"))
+        XCTAssertTrue(uiFixtures.contains(
+            "? SkillControlCenterSnapshot.defaultReceiptLimit\n"
+                + "            : 25"))
+        XCTAssertTrue(uiFixtures.contains("for ordinal in 1...receiptCount"))
         XCTAssertTrue(uiFixtures.contains(
             "-seed-skill-recent-history"))
         XCTAssertTrue(uiFixtures.contains(
@@ -5372,6 +5382,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D371"))
         XCTAssertTrue(decisions.contains("## D372"))
         XCTAssertTrue(decisions.contains("## D374"))
+        XCTAssertTrue(decisions.contains("## D375"))
         XCTAssertTrue(decisions.contains("## D335"))
         XCTAssertTrue(decisions.contains("## D336"))
         XCTAssertTrue(decisions.contains("## D343"))

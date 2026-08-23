@@ -52,9 +52,9 @@ struct SkillActivityHistoryWindow: Equatable {
         requestedLimit == SkillControlCenterSnapshot.maximumReceiptLimit
     }
 
-    func canExpand(receiptCount: Int) -> Bool {
+    func canExpand(hasMoreReceipts: Bool) -> Bool {
         requestedLimit < SkillControlCenterSnapshot.maximumReceiptLimit
-            && receiptCount >= requestedLimit
+            && hasMoreReceipts
     }
 
     mutating func expand() {
@@ -118,7 +118,7 @@ struct SkillActivitySection: View {
                     receiptRow(receipt)
                 }
                 if historyWindow.canExpand(
-                    receiptCount: snapshot?.receipts.count ?? 0
+                    hasMoreReceipts: snapshot?.hasMoreReceipts ?? false
                 ) {
                     Button("Show more runs", action: showMore)
                         .accessibilityIdentifier(

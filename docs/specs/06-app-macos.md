@@ -2705,7 +2705,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D374, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D375, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2840,9 +2840,11 @@ Skills therefore disclose that approval is required for every run even while
 their enable switch is on. Titles and skill identifiers never select either
 privacy statement.
 
-Every activity scope is bounded before materialization (20 by default, 50
-maximum through the application request, 100 at the storage boundary) and
-ordered by `(updatedAt DESC, proposalID ASC)`. The user may additionally choose
+Every activity scope is bounded before presentation (20 by default and 50
+maximum). ApplicationKit requests exactly one additional continuation sentinel,
+so the actual storage limits are 21 or 51 and remain below StorageKit's hard
+100-row boundary. The sentinel never enters the returned visible receipts.
+Results are ordered by `(updatedAt DESC, proposalID ASC)`. The user may choose
 one exact available catalogue Skill or **All skills**, plus **Any time**, the
 past 24 hours, past seven days, or past 30 days. ApplicationKit resolves the
 rolling period from a fresh reference date for every explicit read, while
@@ -2864,10 +2866,14 @@ The Attention predicate excludes only known waiting and terminal states, so a
 future state remains visible for review. Malformed durable proposal identities
 fail the projection instead of silently disappearing from the audit surface.
 
-Each selected scope begins with the 20-row application window. When all 20
-positions are occupied, **Show more runs** performs one explicit replacement
-read at the existing 50-row ceiling. The control disappears after expansion;
-there is no infinite scroll, cursor accumulation, or background prefetch.
+Each selected scope begins with the 20-row application window. **Show more
+runs** appears only when the verified 21st row proves that more matching history
+exists. Exactly 20 matches therefore render all 20 without a false expansion
+action or redundant 50-row read. Activation performs one explicit replacement
+read at the existing 50-row ceiling. The control disappears after expansion,
+even when a 51st sentinel proves that the product ceiling hides older history;
+there is no infinite scroll, cursor accumulation, count query, or background
+prefetch.
 Changing scopes, the exact Skill filter, or the update period resets to 20
 before the next read, while same-selection refreshes and verified policy
 mutations retain the selected 20-or-50 limit and compute the rolling boundary

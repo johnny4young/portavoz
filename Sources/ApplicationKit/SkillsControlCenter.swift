@@ -129,6 +129,9 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
     public let receiptSkillID: String?
     public let receiptPeriod: SkillExecutionReviewPeriod
     public let receipts: [SkillControlCenterReceipt]
+    /// Verified continuation evidence from one bounded sentinel row. The
+    /// sentinel itself is never projected into `receipts`.
+    public let hasMoreReceipts: Bool
     public let receiptLoadState: SkillControlCenterReceiptLoadState
 
     public init(
@@ -138,6 +141,7 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
         receipts: [SkillControlCenterReceipt],
         receiptSkillID: String? = nil,
         receiptPeriod: SkillExecutionReviewPeriod = .anytime,
+        hasMoreReceipts: Bool = false,
         receiptLoadState: SkillControlCenterReceiptLoadState = .verified
     ) {
         self.isPaused = isPaused
@@ -146,6 +150,7 @@ public struct SkillControlCenterSnapshot: Equatable, Sendable {
         self.receiptSkillID = receiptSkillID
         self.receiptPeriod = receiptPeriod
         self.receipts = receipts
+        self.hasMoreReceipts = hasMoreReceipts
         self.receiptLoadState = receiptLoadState
     }
 }
@@ -215,12 +220,13 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
             throw LoadSkillControlCenterError.unknownReceiptSkillID
         }
         let receiptUpdatedAfter = try Self.receiptUpdatedAfter(for: request)
+        let receiptProbeLimit = request.receiptLimit + 1
         async let policy = store.skillExecutionPolicy()
         async let records = store.skillExecutions(
             scope: request.receiptScope,
             skillID: request.receiptSkillID,
             updatedAfter: receiptUpdatedAfter,
-            limit: request.receiptLimit)
+            limit: receiptProbeLimit)
         let resolvedPolicy = try await policy
         let resolvedRecords: [SkillExecutionRecord]
         let receiptLoadState: SkillControlCenterReceiptLoadState
@@ -244,9 +250,13 @@ public struct LoadSkillControlCenter: ApplicationUseCase {
                         skillID: entry.id))
             },
             receiptScope: request.receiptScope,
-            receipts: resolvedRecords.map(SkillControlCenterReceipt.init(record:)),
+            receipts: resolvedRecords.prefix(request.receiptLimit).map(
+                SkillControlCenterReceipt.init(record:)),
             receiptSkillID: request.receiptSkillID,
             receiptPeriod: request.receiptPeriod,
+            hasMoreReceipts:
+                receiptLoadState == .verified
+                    && resolvedRecords.count > request.receiptLimit,
             receiptLoadState: receiptLoadState)
     }
 

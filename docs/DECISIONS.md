@@ -13632,3 +13632,40 @@ replay, delete, confirmation, execution authority, standing rule, adapter,
 egress, schema, or deployment-floor change is introduced. Automation remains
 local Tahoe-family evidence; physical VoiceOver, Sequoia, and
 separate-hardware Tahoe behavior remain field evidence.
+
+## D375 — Skill activity proves continuation with one sentinel row (Aug 2026)
+
+**Context:** D371 exposed **Show more runs** whenever the initial projection
+contained 20 receipts. A full visible window did not prove that a 21st matching
+receipt existed. Exactly 20 matches therefore produced a false continuation
+promise and a redundant replacement read at 50 that returned the same rows.
+Running a separate `COUNT`, accumulating cursors, or loading all history would
+add work or weaken the bounded review contract merely to decide one affordance.
+
+**Decision:** every control-center receipt read requests exactly one row beyond
+its clamped visible limit. ApplicationKit publishes only the first 20 or 50
+receipts and records whether the bounded result contained that successor
+sentinel. Settings offers expansion only while the current window is below 50
+and the verified snapshot carries that evidence. Receipt-read failure clears
+both rows and continuation; an exactly full 20-row result has no action. The
+50-row product ceiling remains absolute even when a 51st result exists. Scope,
+exact Skill, rolling period, visible limit, and generation continue to fence
+adoption.
+
+The temporary-store boundary has a dedicated exact-20 fixture and bilingual
+real-app journey that requires 20 visible rows with no expansion action. Unit
+coverage distinguishes a full window with a successor from an exactly full
+window, proves the sentinel never becomes visible, verifies failure has no
+continuation authority, and pins the maximum StorageKit request to 51.
+Architecture ratchets require the sentinel derivation and UI consumption rather
+than the old visible-count heuristic.
+
+**Consequences:** the common query reads at most 21 rows instead of 20 and an
+expanded query at most 51 instead of 50, still through one existing indexed
+bounded read and well below StorageKit's hard limit of 100. The one-row cost
+removes a misleading control and avoids the much larger redundant reload at the
+exact-page boundary. No schema, index, `COUNT`, cursor, prefetch, timer,
+observer, scheduler, receipt mutation, execution authority, standing rule,
+adapter, egress, consent, or deployment-floor change is introduced. Automation
+remains local Tahoe-family evidence; physical VoiceOver, Sequoia, and
+separate-hardware Tahoe behavior remain field evidence.

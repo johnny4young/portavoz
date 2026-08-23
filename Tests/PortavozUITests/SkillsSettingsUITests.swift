@@ -241,6 +241,31 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSkillActivityHidesExpansionWhenExactlyOnePageExists() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append("-seed-skill-exact-page-history")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+
+        let receiptRows = app.buttons.matching(
+            identifier: "settings-skill-receipt-meeting-package-export")
+        XCTAssertTrue(
+            waitForCount(receiptRows, toEqual: 20, timeout: 10),
+            "the exact-page fixture must expose all twenty matching receipts")
+
+        let limit = app.control(
+            withIdentifier: "settings-skills-receipt-history-limit")
+        XCTAssertTrue(limit.waitForExistence(timeout: 5))
+        XCTAssertFalse(
+            app.buttons["settings-skills-receipt-show-more"].exists,
+            "an exact 20-row result must not promise a nonexistent successor")
+        attachScreenshot(of: app, named: "skills-activity-exact-page")
+    }
+
+    @MainActor
     func testSkillActivityRefreshPreservesTheExpandedCurrentScope() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
