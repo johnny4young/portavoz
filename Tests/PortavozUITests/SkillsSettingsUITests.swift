@@ -114,7 +114,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-waiting",
-            "-simulate-skill-receipt-refresh-delay"
+            "-simulate-skill-receipt-refresh-delay",
+            "-simulate-skill-proposal-refresh-delay"
         ])
         app.launchPortavoz()
         defer { app.terminate() }
@@ -134,8 +135,28 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "action",
             skillID: "email-recap-draft",
             in: app)
+        XCTAssertTrue(proposal.waitForExistence(timeout: 10))
         scrollToVisible(proposal, in: app, deltaY: -40)
         XCTAssertTrue(proposal.waitForStableFrame(timeout: 5))
+
+        let proposalRefresh = app.buttons[
+            "settings-skills-proposals-refresh"]
+        scrollToVisible(proposalRefresh, in: app, deltaY: 40)
+        XCTAssertTrue(proposalRefresh.waitForStableFrame(timeout: 5))
+        proposalRefresh.click()
+        let proposalRefreshing = app.control(
+            withIdentifier: "settings-skills-proposals-refreshing")
+        XCTAssertTrue(
+            proposalRefreshing.waitForExistence(timeout: 2),
+            "explicit refresh must expose its bounded read")
+        XCTAssertTrue(
+            proposal.exists,
+            "refresh may retain only the last verified proposal snapshot")
+        XCTAssertFalse(
+            proposal.isEnabled,
+            "retained proposal actions must stay inert until refresh verifies them")
+        XCTAssertTrue(proposalRefresh.waitForStableFrame(timeout: 10))
+        XCTAssertTrue(proposal.isEnabled)
 
         let waiting = app.control(
             withIdentifier: "settings-skills-receipt-scope-waiting")

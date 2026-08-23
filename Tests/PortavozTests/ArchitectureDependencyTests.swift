@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,607 cases "
+            "package inventory contains 2,609 cases "
                 + "(15 environment-gated) + 107"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -5463,6 +5463,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/SkillsSettingsSection.swift")
         let proposalSection = try Self.contents(
             of: "Sources/portavoz-app/SkillProposalSection.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+SkillsControl.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(skill.contains("enum SkillInputDataClass"))
@@ -5506,8 +5508,33 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(proposalSection.contains("settings-skills-proposals-privacy"))
         XCTAssertTrue(proposalSection.contains(
             "settings-skill-proposal-dismiss-"))
+        XCTAssertTrue(proposalSection.contains(
+            "enum SkillProposalPresentationState"))
+        XCTAssertTrue(proposalSection.contains(
+            "if presentationState.allowsExplicitRefresh"))
+        XCTAssertTrue(proposalSection.contains(
+            "settings-skills-proposals-refreshing"))
+        XCTAssertTrue(proposalSection.contains(
+            "settings-skills-proposals-refresh"))
         XCTAssertTrue(proposalSection.contains("Nothing runs here."))
         XCTAssertFalse(proposalSection.contains("offer.offerKey"))
+        XCTAssertFalse(proposalSection.contains("Timer"))
+        XCTAssertTrue(settings.contains(
+            "refresh: { Task { await refreshProposals() } }"))
+        let refreshProposalsContract = [
+            "func refreshProposals() async {",
+            "        guard proposalSnapshot != nil,",
+            "              !proposalLoadFailed,",
+            "              !proposalsAreLoading,",
+            "              !isMutating,",
+            "              !proposalMutationInFlight",
+            "        else { return }",
+            "        await loadProposals()",
+            "    }"
+        ].joined(separator: "\n")
+        XCTAssertTrue(settings.contains(refreshProposalsContract))
+        XCTAssertTrue(services.contains(
+            "-simulate-skill-proposal-refresh-delay"))
 
         for producer in [
             "Sources/ApplicationKit/MeetingSkillOffers.swift",
@@ -5520,6 +5547,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
         XCTAssertTrue(decisions.contains("## D337"))
         XCTAssertTrue(decisions.contains("## D338"))
+        XCTAssertTrue(decisions.contains("## D377"))
     }
 
     func testSkillProposalReviewRoutingIsOpaqueInertAndValueScoped() throws {

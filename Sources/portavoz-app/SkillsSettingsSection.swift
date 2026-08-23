@@ -77,7 +77,8 @@ struct SkillsSettingsSection: View {
                         dismiss: { offer in
                             Task { await dismissProposal(offer) }
                         },
-                        retry: { Task { await loadProposals() } })
+                        retry: { Task { await loadProposals() } },
+                        refresh: { Task { await refreshProposals() } })
                 }
 
                 Section("Skill activity") {
@@ -435,6 +436,17 @@ private extension SkillsSettingsSection {
         guard activeProposalLoadID == loadID else { return }
         activeProposalLoadID = nil
         proposalsAreLoading = false
+    }
+
+    @MainActor
+    func refreshProposals() async {
+        guard proposalSnapshot != nil,
+              !proposalLoadFailed,
+              !proposalsAreLoading,
+              !isMutating,
+              !proposalMutationInFlight
+        else { return }
+        await loadProposals()
     }
 
     @MainActor

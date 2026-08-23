@@ -60,6 +60,11 @@ extension AppServices {
     func loadSkillOfferReview() async throws -> SkillOfferReviewSnapshot {
         if usesTemporaryMeetingStore,
            ProcessInfo.processInfo.arguments.contains(
+               "-simulate-skill-proposal-refresh-delay") {
+            try await Task.sleep(for: .seconds(4))
+        }
+        if usesTemporaryMeetingStore,
+           ProcessInfo.processInfo.arguments.contains(
                "-simulate-skill-proposal-unavailable") {
             throw SimulatedSkillProposalFailure()
         }

@@ -2705,7 +2705,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D376, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D377, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2758,6 +2758,17 @@ storage failure retains the original row, shows an inline retry, and leaves
 verified pause/enablement usable. No optimistic removal is accepted. A stale
 producer reconciliation skips already-dismissed active keys in the same write,
 so it cannot recreate the row after reading subject state earlier.
+
+A verified empty or populated Proposed projection exposes **Refresh proposed
+Skills**. The action performs only the existing bounded content-free review
+read, so offers created, retired, paused, or disabled from another product
+surface can be reconciled without closing Settings. During that read, the last
+verified rows remain visible only as disabled evidence and an identified
+refreshing state replaces the action. Failure removes those rows and returns
+to the existing unavailable **Try again** path. Initial loading and
+unavailability have no competing refresh; receipt loading remains independent,
+while control and proposal mutations fence the action. There is no timer,
+polling, observer, new store, proposal mutation, or execution authority.
 
 An already-open exact confirmation is also fenced. `ExecuteSkillRequest`
 carries the reviewed offer key separately from the effect's idempotency key;

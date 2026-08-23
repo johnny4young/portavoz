@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,608 cases (15 environment-gated) + 107
+Status: the package inventory contains 2,609 cases (15 environment-gated) + 107
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -74,6 +74,7 @@ local justification.
 | PrepareMeetingBriefTests | Shared Ask evidence ranking, batched current-summary admission, related-only bounded commitments, source-indexed navigable synthesis, weak/missing evidence, independent failure degradation, and cancellation propagation |
 | SkillsControlCenterTests | Capability-derived catalogue disclosure, durable pause and per-Skill policy, independently typed policy/receipt read failures plus receipt cancellation, bounded Recent/Waiting/Attention/Completed receipts over exact v39 unfiltered and v42 exact-Skill index plans without a temporary sort, exact filter composition/order/limits, one-row continuation probing with sentinel trimming and fail-closed `hasMoreReceipts`, pre-read rejection of unknown catalogue filters, malformed storage-filter rejection, future unknown-state attention, malformed identity and policy rejection, one read-consistent receipt audit, strict retry-state replay, unknown failure-category rejection, predecessor/tail integrity, a 256-event materialization ceiling enforced with a 257-row probe, D341 recovery classification/routing that remains inert for local subjects and verification-only for external outcomes, D369 exact policy-read laziness that preserves audit-only evidence while local recovery fails closed, and D370 read-only Settings recovery after an unverified control mutation |
 | SkillActivityPresentationStateTests | Matching- and mismatched-scope/filter loading, same-selection stale-row suppression, receipt-only unavailability, mutually exclusive verified empty/receipt presentation, explicit refresh only for verified empty/receipt states, verified continuation rather than visible-count inference, the bounded 20-to-50 history-window transition, and selection reset |
+| SkillProposalPresentationStateTests | Initial loading and unavailable retry isolation, verified empty/populated explicit refresh eligibility, and retained verified projection during an in-flight refresh |
 | SkillOfferAuthorityTests / SkillExecutionStoreTests | Content-free v40 review authority, bounded reconciliation and newest-first plan, opaque review-UUID dismissal, expired/repeated unavailable outcomes, tombstone-wins stale reconciliation, exact one-shot and reusable-offer claim relationships, claim-time dismissal fencing, byte-preserving opaque EventKit execution identity, and v41 exact execution-subject/failure-category persistence with cascade cleanup and no legacy subject inference |
 | MeetingLibraryQueryTests / ManageSecretsTests | Empty and invalid request short circuits, normalized bounded list/search/open-item delegation, and async secret round-trip/delete behavior over deterministic injected ports |
 | AnalyzeAudioFileUseCaseTests / ManageLocalVoiceAndModelsUseCaseTests / PublishMeetingContentUseCaseTests | File admission and policy forwarding; deterministic transcription metrics; diarization threshold/timing/optional attribution; meeting-before-provider summary persistence; file, supplied-sample, and recorded local-voice enrollment with duration/sample validation, ordered progress, status/delete isolation, and capture-mode forwarding; catalog-order verification and sequential model installation; coherent Markdown/PDF/SRT/WebVTT/Gist export, canonical format/extension parsing, subtitle rendering without a Markdown prerequisite, pending-only owner-resolved action publication, typed missing/empty states, and zero concrete model, Keychain, filesystem, or network dependency |
@@ -3819,6 +3820,53 @@ Developer ID. Packaging again lacked the optional Metal Toolchain's `metallib`,
 so the Dev bundle contains no MLX metallib. This is deterministic local
 Tahoe-family automation, not physical Sequoia, separate Tahoe hardware,
 VoiceOver, real external-effect reconciliation, or MLX runtime evidence.
+
+**D377 explicit Proposed Skills refresh gate.** A verified empty or populated
+proposal projection exposes one identified **Refresh proposed Skills** action.
+Settings revalidates the verified snapshot and every proposal/policy mutation
+fence before reusing the existing bounded `LoadSkillOfferReview` read. During
+that read, an identified progress state replaces refresh; the last verified
+rows remain visible but inert. Initial loading and unavailable states retain
+their existing loading or retry authority, and receipt loading stays
+independent. The existing proposal load UUID still owns adoption. No polling,
+timer, observer, new store, proposal producer, mutation, execution authority,
+query shape, schema, index, cursor, clock, adapter, egress consent, or
+deployment-floor change was added.
+
+Focused presentation and architecture coverage passed 3/3 tests with zero
+failures in 0.062 seconds. The existing temporary-store transition journey adds
+a four-second proposal-read delay and verifies the localized refresh action,
+identified progress, retained verified row, inert row action, and successful
+re-enablement before continuing through the existing activity transitions. It
+passed 1/1 in English in 74.654 seconds and 1/1 in Spanish in 74.753 seconds.
+
+Final preflight passed `swift build` in 4.49 seconds, the current-SDK
+warnings-as-errors build in 21.60 seconds, and 2,609 package tests with 15
+explicit environment/model skips and zero failures in 124.988 seconds of
+XCTest execution. All 195 architecture ratchets, 457 tooling tests in 9.006
+seconds, repository hygiene and its embedded policy suites, both localization-
+catalog validations, the complete 107-case UI-catalog check, diff whitespace
+validation, and strict SwiftLint with zero violations across 705 production
+Swift files also passed. The read-only host preflight passed without reading or
+dismissing a prompt and left 24 stale LaunchServices claimants warning-only.
+Final macOS 26.5.2 (25F84), arm64 result bundles passed 107/107 English plus
+107/107 Spanish real-app XCUITest cases with zero failures, skips, or expected
+failures; their result intervals were 2,495.248 seconds and 2,509.207 seconds
+respectively.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was rebuilt, deeply
+verified, installed only at `/Applications/Portavoz Dev.app`, and observed at
+PID 21021 running from its exact executable. A deterministic before/after
+comparison kept the notarized `app.portavoz.mac` release bundle unchanged
+across its 184-entry no-symlink-traversal content/metadata/hex-xattr manifest
+at SHA-256
+`9f42e6c828e2330467c28539265df6aa2b46814df17f5cf0966e623501a4dfe2`;
+its deep signature and designated requirement remained valid, and Gatekeeper
+still reported Notarized Developer ID. Packaging again lacked the optional
+Metal Toolchain's `metallib`, so the Dev bundle contains no MLX metallib. This
+is deterministic local Tahoe-family automation, not physical Sequoia,
+separate Tahoe hardware, VoiceOver, real external-effect reconciliation, or
+MLX runtime evidence.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

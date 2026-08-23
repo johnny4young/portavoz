@@ -3,6 +3,31 @@ import Foundation
 import PortavozCore
 import SwiftUI
 
+enum SkillProposalPresentationState: Equatable {
+    case loading
+    case unavailable
+    case empty
+    case offers
+
+    init(
+        hasVerifiedSnapshot: Bool,
+        hasOffers: Bool,
+        loadFailed: Bool
+    ) {
+        if loadFailed {
+            self = .unavailable
+        } else if !hasVerifiedSnapshot {
+            self = .loading
+        } else {
+            self = hasOffers ? .offers : .empty
+        }
+    }
+
+    var allowsExplicitRefresh: Bool {
+        self == .empty || self == .offers
+    }
+}
+
 /// D337/D338/D340 — content-free review, opaque dismissal, and inert return to
 /// the original subject surface. Confirmation remains on that subject.
 struct SkillProposalSection: View {
@@ -17,8 +42,13 @@ struct SkillProposalSection: View {
     let review: (SkillOfferReviewItem) -> Void
     let dismiss: (SkillOfferReviewItem) -> Void
     let retry: () -> Void
+    let refresh: () -> Void
 
     var body: some View {
+        if presentationState.allowsExplicitRefresh {
+            proposalRefreshControl
+        }
+
         if snapshot == nil, !loadFailed {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
@@ -66,6 +96,32 @@ struct SkillProposalSection: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    @ViewBuilder
+    private var proposalRefreshControl: some View {
+        if isLoading {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Refreshing proposed Skills…")
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier(
+                "settings-skills-proposals-refreshing")
+        } else {
+            Button(action: refresh) {
+                Label("Refresh proposed Skills", systemImage: "arrow.clockwise")
+            }
+            .accessibilityIdentifier("settings-skills-proposals-refresh")
+            .disabled(isMutating)
+        }
+    }
+
+    private var presentationState: SkillProposalPresentationState {
+        SkillProposalPresentationState(
+            hasVerifiedSnapshot: snapshot != nil,
+            hasOffers: snapshot?.offers.isEmpty == false,
+            loadFailed: loadFailed)
     }
 
     private func offerRow(_ offer: SkillOfferReviewItem) -> some View {

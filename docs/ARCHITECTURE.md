@@ -456,6 +456,15 @@ materializes at most 100 rows in StorageKit and 50 in ApplicationKit, and then
 revalidates every row against the current catalogue version, reason, input
 declaration, durable pause, and per-Skill policy. A proposal-only failure shows
 no rows but does not disable independently verified execution controls.
+Verified empty and populated proposal projections expose one explicit
+read-only refresh that reuses this same bounded use case and its existing load
+generation. While that read is in flight, the last verified rows may remain
+visible only with every row action disabled and one identified progress state;
+a failure clears them and returns to the existing unavailable/retry authority.
+Initial loading and unavailable states expose no competing refresh. Proposal
+refresh stays independent from receipt loading but is fenced by policy and
+proposal mutations; it adds no timer, observer, polling owner, or second
+proposal store.
 Settings can dismiss one inert row using only its random review UUID. Storage
 resolves the stable intent, inserts the existing terminal dismissal, and
 deletes the authority row in one write; expired or already-retired review

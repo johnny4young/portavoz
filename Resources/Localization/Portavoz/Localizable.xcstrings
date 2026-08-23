@@ -13981,6 +13981,26 @@
         }
       }
     },
+    "Refresh proposed Skills": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar skills propuestas"
+          }
+        }
+      }
+    },
+    "Refreshing proposed Skills…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizando skills propuestas…"
+          }
+        }
+      }
+    },
     "Proposed Skills are unavailable": {
       "localizations": {
         "es": {

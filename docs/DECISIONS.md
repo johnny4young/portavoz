@@ -13707,3 +13707,42 @@ shape, schema, index, clock, count, cursor, timer, observer, receipt mutation,
 execution authority, adapter, standing rule, egress consent, or deployment
 floor change. Automation remains local Tahoe-family evidence; physical
 VoiceOver, Sequoia, and separate-hardware Tahoe behavior remain field evidence.
+
+## D377 — Proposed Skills refresh only through explicit bounded review (Aug 2026)
+
+**Context:** the central Proposed projection loads when the Skills pane appears
+and after mutations the pane itself owns. A meeting, commitment, calendar, or
+policy surface can create, retire, pause, or disable an offer while a long-lived
+Settings window remains open. Reconstructing Settings reconciles the rows but
+is unnecessary friction. Polling, a timer, or another observer would add hidden
+work and a second lifecycle owner to a deliberately bounded review surface.
+Reusing the failure retry while the current snapshot is verified would falsely
+label an ordinary reconciliation as recovery from an unavailable authority.
+
+**Decision:** a verified empty or populated Proposed projection exposes one
+identified **Refresh proposed Skills** action. Settings revalidates that a
+verified proposal snapshot exists, no proposal read failed, and no proposal
+read, policy mutation, review navigation, or dismissal is in flight before it
+calls the existing `LoadSkillOfferReview` path. Receipt loading remains
+independent because it has separate authority. The existing proposal load UUID
+fences adoption and the use case retains its 100-row StorageKit/50-row
+ApplicationKit ceilings, expiry pruning, catalogue validation, and policy
+filtering.
+
+While refresh is in flight, the last verified empty or populated snapshot may
+remain visible, but one identified progress state replaces the refresh action
+and every offer action is disabled. A successful read atomically replaces the
+projection. Failure clears it and exposes only the existing unavailable **Try
+again** path; initial loading and unavailability never expose competing refresh
+authority. A temporary-store-only four-second delay makes that inert retained
+state observable in the existing bilingual real-app transition journey. Pure
+presentation and architecture tests pin visibility, fencing, identifiers, and
+reuse of the existing load.
+
+**Consequences:** users can reconcile offer truth without closing Settings or
+accepting hidden background work. This is a read-only control: it cannot create,
+dismiss, confirm, execute, or retry a Skill. No storage read shape, schema,
+index, clock, cursor, timer, observer, proposal producer, mutation, effect
+authority, standing rule, adapter, egress consent, or deployment-floor change
+is introduced. Automation remains local Tahoe-family evidence; physical
+VoiceOver, Sequoia, and separate-hardware Tahoe behavior remain field evidence.
