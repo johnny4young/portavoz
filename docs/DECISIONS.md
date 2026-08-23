@@ -13484,3 +13484,36 @@ a write. This adds no schema, optimistic state, background retry, confirmation,
 effect authority, adapter, consent, or standing rule. Automation exercises the
 public SwiftUI/AppKit path on the local Tahoe-family host; physical VoiceOver,
 Sequoia, and separate-hardware Tahoe behavior remain field evidence.
+
+## D371 — Skill activity expands through one bounded replacement read (Aug 2026)
+
+**Context:** every Skills activity scope used the 20-receipt application
+default even though the established request contract already clamps reads to a
+50-receipt maximum and StorageKit refuses more than 100. The pane disclosed the
+20-row window but provided no way to reach an older receipt. Loading 50 by
+default would make every scope change more expensive, while infinite scroll or
+view-owned accumulation would weaken the bounded memory and query contract.
+
+**Decision:** start every selected scope at 20. Show **Show more runs** only
+when that verified page is full, and let it replace the projection through one
+request at the existing 50-row application ceiling. The action disappears
+after expansion. Scope changes reset to 20 before loading; same-scope refreshes
+and verified policy mutations retain the selected 20-or-50 limit. Scope,
+requested limit, and load generation must all match before the view adopts a
+response. Do not add cursors, automatic prefetch, background polling, appended
+view state, receipt mutation, or a larger storage query.
+
+A temporary-store-only fixture creates 25 content-free confirmed package-export
+executions under one reusable offer with 25 distinct destination-scoped effect
+slots. The bilingual real-app test proves exactly 20 rows appear initially,
+all 25 appear only after the identified expansion action, and the action does
+not turn into repeated pagination. Pure tests pin the 20/50 transition and
+reset behavior, while the diff-to-XCUITest catalogue keeps the journey attached
+to Skills sources.
+
+**Consequences:** the panel can inspect older durable evidence without paying
+the maximum read cost for its common path or holding an unbounded receipt
+collection. No schema, index, execution authority, proposal content, standing
+rule, adapter, egress consent, or platform API changes. Automation remains
+local Tahoe-family evidence; physical VoiceOver, Sequoia, and separate-hardware
+Tahoe behavior remain field evidence.

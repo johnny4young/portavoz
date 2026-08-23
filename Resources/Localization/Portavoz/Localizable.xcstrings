@@ -13711,12 +13711,22 @@
         }
       }
     },
-    "Each view shows up to 20 matching runs on this Mac.": {
+    "Each view shows up to %d matching runs on this Mac.": {
       "localizations": {
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cada vista muestra hasta 20 ejecuciones coincidentes en este Mac."
+            "value": "Cada vista muestra hasta %d ejecuciones coincidentes en este Mac."
+          }
+        }
+      }
+    },
+    "Show more runs": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar más ejecuciones"
           }
         }
       }

@@ -2703,7 +2703,7 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
-## Skills control center in Settings (D317/D333/D335–D343/D359/D369/D370, Aug 2026)
+## Skills control center in Settings (D317/D333/D335–D343/D359/D369–D371, Aug 2026)
 
 Settings now includes a dedicated Skills pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
@@ -2848,6 +2848,14 @@ excludes only known waiting and terminal states, so a future state remains
 visible for review. Malformed durable proposal identities fail the projection
 instead of silently disappearing from the audit surface.
 
+Each selected scope begins with the 20-row application window. When all 20
+positions are occupied, **Show more runs** performs one explicit replacement
+read at the existing 50-row ceiling. The control disappears after expansion;
+there is no infinite scroll, cursor accumulation, or background prefetch.
+Changing scopes resets to 20 before the next read, while same-scope refreshes
+and verified policy mutations retain the selected 20-or-50 limit. A returned
+snapshot is adopted only while its scope, limit, and generation still match.
+
 The request and returned snapshot both carry the selected scope. Settings does
 not show an older snapshot under a newly selected segment while its read is in
 flight or after it fails. A scope-only failure presents an explicit retry and
@@ -2936,9 +2944,10 @@ the route retry, and the independent Waiting revocation action. Both source and
 recovery navigation use the generic weak Settings-window bridge after the sheet
 dismisses; neither route carries content or effect authority into Settings.
 
-Seventeen bilingual XCUITest journeys cover the pane: fail-closed control
+Eighteen bilingual XCUITest journeys cover the pane: fail-closed control
 loading; read-only recovery after an unverified control mutation; isolated
-scope failure; stale-row-free activity transitions; isolated proposal failure;
+scope failure; stale-row-free activity transitions; explicit bounded history
+expansion from 20 to 50; isolated proposal failure;
 successful and failed Proposed review routing; successful and failed Proposed
 dismissal; successful and failed Waiting revocation; successful and failed
 failed-run recovery routing; successful and failed non-failed receipt source
@@ -2948,6 +2957,9 @@ looks committed before verification, controls stay disabled until a verified
 read adopts the already committed durable value, and reload neither repeats the
 write nor closes Settings. The source success returns a real Waiting fixture to
 its exact Meeting Detail without a confirmation sheet or duplicate main window.
+The history case seeds 25 content-free destination-scoped approvals, proves
+exactly 20 rows appear initially, then reveals all 25 through one explicit
+expansion whose control does not become unbounded pagination.
 The source failure preserves its causal event, receipt row, independent revoke
 action, Settings window, and route-only retry. The main journey disables export,
 pauses all Skills, proves offers stay absent, resumes without losing the

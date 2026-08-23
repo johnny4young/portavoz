@@ -69,6 +69,36 @@ final class SkillActivityPresentationStateTests: XCTestCase {
         XCTAssertEqual(state, .receipts)
     }
 
+    func testHistoryWindowExpandsOnlyAfterAFullInitialPage() {
+        var window = SkillActivityHistoryWindow()
+
+        XCTAssertEqual(
+            window.requestedLimit,
+            SkillControlCenterSnapshot.defaultReceiptLimit)
+        XCTAssertFalse(window.canExpand(receiptCount: 19))
+        XCTAssertTrue(window.canExpand(receiptCount: 20))
+
+        window.expand()
+
+        XCTAssertEqual(
+            window.requestedLimit,
+            SkillControlCenterSnapshot.maximumReceiptLimit)
+        XCTAssertTrue(window.isExpanded)
+        XCTAssertFalse(window.canExpand(receiptCount: 50))
+    }
+
+    func testHistoryWindowResetRestoresTheCheapScopeDefault() {
+        var window = SkillActivityHistoryWindow()
+        window.expand()
+
+        window.reset()
+
+        XCTAssertEqual(
+            window.requestedLimit,
+            SkillControlCenterSnapshot.defaultReceiptLimit)
+        XCTAssertFalse(window.isExpanded)
+    }
+
     private func snapshot(
         scope: SkillExecutionReviewScope,
         hasReceipt: Bool = false,

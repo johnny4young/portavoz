@@ -31,6 +31,31 @@ enum SkillActivityPresentationState: Equatable {
     }
 }
 
+/// Keeps receipt browsing explicit and bounded. The initial projection stays
+/// cheap; one user action may widen it only to ApplicationKit's existing hard
+/// ceiling, and changing scopes returns to the cheap window.
+struct SkillActivityHistoryWindow: Equatable {
+    private(set) var requestedLimit =
+        SkillControlCenterSnapshot.defaultReceiptLimit
+
+    var isExpanded: Bool {
+        requestedLimit == SkillControlCenterSnapshot.maximumReceiptLimit
+    }
+
+    func canExpand(receiptCount: Int) -> Bool {
+        requestedLimit < SkillControlCenterSnapshot.maximumReceiptLimit
+            && receiptCount >= requestedLimit
+    }
+
+    mutating func expand() {
+        requestedLimit = SkillControlCenterSnapshot.maximumReceiptLimit
+    }
+
+    mutating func reset() {
+        requestedLimit = SkillControlCenterSnapshot.defaultReceiptLimit
+    }
+}
+
 /// D336 — one status-scoped, content-free execution review surface.
 ///
 /// The returned snapshot must match the selected scope before this view shows
@@ -45,7 +70,9 @@ struct SkillActivitySection: View {
     let isMutating: Bool
     let loadFailed: Bool
     let focusRequestID: UUID?
+    let historyWindow: SkillActivityHistoryWindow
     let retry: () -> Void
+    let showMore: () -> Void
     let inspectReceipt: (SkillControlCenterReceipt) -> Void
 
     var body: some View {
@@ -63,9 +90,21 @@ struct SkillActivitySection: View {
                 ForEach(snapshot?.receipts ?? []) { receipt in
                     receiptRow(receipt)
                 }
-                Text("Each view shows up to 20 matching runs on this Mac.")
+                if historyWindow.canExpand(
+                    receiptCount: snapshot?.receipts.count ?? 0
+                ) {
+                    Button("Show more runs", action: showMore)
+                        .accessibilityIdentifier(
+                            "settings-skills-receipt-show-more")
+                        .disabled(isLoading || isMutating)
+                }
+                Text(L10n.format(
+                    "Each view shows up to %d matching runs on this Mac.",
+                    historyWindow.requestedLimit))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(
+                        "settings-skills-receipt-history-limit")
             }
         }
         .onChange(of: focusRequestID, initial: true) {

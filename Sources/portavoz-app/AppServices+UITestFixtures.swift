@@ -66,6 +66,7 @@ extension AppServices {
         await seedPrivacyReceipt(for: meeting.id)
         await seedProcessingFailureIfRequested(for: meeting.id)
         await seedAbandonedSummaryIfRequested(for: meeting.id)
+        await seedSkillHistoryIfRequested(for: meeting.id)
         await seedWaitingSkillExecutionIfRequested(for: meeting.id)
         await seedFailedSkillExecutionIfRequested(for: meeting.id)
         seedRunningRefineIfRequested(for: meeting.id)
@@ -293,6 +294,51 @@ extension AppServices {
             }
         } catch {
             assertionFailure("Could not seed Waiting Skill: \(error)")
+        }
+    }
+
+    /// Twenty-five content-free approvals prove that Settings initially reads
+    /// only twenty rows and performs one explicit, bounded expansion to fifty.
+    /// Every row is a separate destination-scoped package export approval, so
+    /// the fixture preserves the production offer/effect-key relationship.
+    private func seedSkillHistoryIfRequested(
+        for meetingID: MeetingID
+    ) async {
+        guard usesTemporaryMeetingStore,
+              ProcessInfo.processInfo.arguments.contains("-seed-skill-history")
+        else { return }
+        do {
+            for ordinal in 1...25 {
+                let offerKey = "\(MeetingPackageExportSkill.id):"
+                    + meetingID.rawValue.uuidString
+                let effectKey = offerKey
+                    + ":/tmp/ui-test-skill-history-\(ordinal).portavoz"
+                let outcome = try await store.confirmSkillExecution(
+                    SkillExecutionConfirmation(
+                        proposalID: Self.skillHistoryProposalID(ordinal),
+                        skillID: MeetingPackageExportSkill.id,
+                        skillVersion: MeetingPackageExportSkill.version,
+                        subject: .meeting(meetingID),
+                        offerKey: offerKey,
+                        idempotencyKey: effectKey,
+                        occurredAt: Date(
+                            timeIntervalSince1970:
+                                1_700_000_600 + TimeInterval(ordinal))))
+                switch outcome {
+                case .admitted(let record), .alreadySettled(let record):
+                    guard record.state == .confirmed else {
+                        assertionFailure(
+                            "Skill history fixture was already settled")
+                        return
+                    }
+                case .rejected(let rejection):
+                    assertionFailure(
+                        "Could not seed Skill history: \(rejection)")
+                    return
+                }
+            }
+        } catch {
+            assertionFailure("Could not seed Skill history: \(error)")
         }
     }
 
@@ -537,6 +583,11 @@ extension AppServices {
         uuidString: "B5E00000-0000-4000-8000-000000000003")!
     private static let seedFailedSkillProposalID = UUID(
         uuidString: "B5E00000-0000-4000-8000-000000000004")!
+    private static func skillHistoryProposalID(_ ordinal: Int) -> UUID {
+        UUID(uuidString: String(
+            format: "B5E10000-0000-4000-8000-%012d",
+            ordinal))!
+    }
     private static func radarCommitmentID(_ ordinal: Int) -> CommitmentID {
         CommitmentID(rawValue: UUID(uuidString: String(
             format: "B5D10000-0000-4000-8000-%012d",

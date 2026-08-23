@@ -21,6 +21,7 @@ struct SkillsSettingsSection: View {
     @State private var controlLoadFailed = false
     @State private var receiptScopeLoadFailed = false
     @State private var receiptScope: SkillExecutionReviewScope = .recent
+    @State private var receiptHistoryWindow = SkillActivityHistoryWindow()
     @State private var activeLoadID: UUID?
     @State private var proposalSnapshot: SkillOfferReviewSnapshot?
     @State private var proposalsAreLoading = false
@@ -79,12 +80,15 @@ struct SkillsSettingsSection: View {
                         isMutating: isMutating || proposalMutationInFlight,
                         loadFailed: receiptScopeLoadFailed,
                         focusRequestID: receiptFocusRequestID,
+                        historyWindow: receiptHistoryWindow,
                         retry: { Task { await load() } },
+                        showMore: { Task { await showMoreReceipts() } },
                         inspectReceipt: inspectReceipt)
                 }
             }
         }
         .task(id: receiptScope) {
+            receiptHistoryWindow.reset()
             await load()
         }
         .task {
@@ -231,6 +235,7 @@ struct SkillsSettingsSection: View {
     private func load() async {
         guard !isMutating, !proposalMutationInFlight else { return }
         let requestedScope = receiptScope
+        let requestedLimit = receiptHistoryWindow.requestedLimit
         let loadID = UUID()
         activeLoadID = loadID
         if snapshot?.receiptScope != requestedScope {
@@ -239,12 +244,16 @@ struct SkillsSettingsSection: View {
         isLoading = true
         do {
             let loaded = try await services.loadSkillControlCenter(
-                receiptScope: requestedScope)
+                receiptScope: requestedScope,
+                receiptLimit: requestedLimit)
             guard !Task.isCancelled else {
                 finishLoad(loadID)
                 return
             }
-            guard activeLoadID == loadID, receiptScope == requestedScope else {
+            guard activeLoadID == loadID,
+                  receiptScope == requestedScope,
+                  receiptHistoryWindow.requestedLimit == requestedLimit
+            else {
                 return
             }
             adopt(loaded)
@@ -252,7 +261,10 @@ struct SkillsSettingsSection: View {
         } catch is CancellationError {
             finishLoad(loadID)
         } catch {
-            guard activeLoadID == loadID, receiptScope == requestedScope else {
+            guard activeLoadID == loadID,
+                  receiptScope == requestedScope,
+                  receiptHistoryWindow.requestedLimit == requestedLimit
+            else {
                 return
             }
             controlLoadFailed = true
@@ -300,12 +312,28 @@ struct SkillsSettingsSection: View {
                 return
             }
             let loaded = try await services.loadSkillControlCenter(
-                receiptScope: receiptScope)
+                receiptScope: receiptScope,
+                receiptLimit: receiptHistoryWindow.requestedLimit)
             adopt(loaded)
             await loadProposals()
         } catch {
             controlLoadFailed = true
         }
+    }
+
+    @MainActor
+    private func showMoreReceipts() async {
+        guard let snapshot,
+              snapshot.receiptScope == receiptScope,
+              snapshot.receiptLoadState == .verified,
+              receiptHistoryWindow.canExpand(
+                  receiptCount: snapshot.receipts.count),
+              !isLoading,
+              !isMutating,
+              !proposalMutationInFlight
+        else { return }
+        receiptHistoryWindow.expand()
+        await load()
     }
 
     @MainActor

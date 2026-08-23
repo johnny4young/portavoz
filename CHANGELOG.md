@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 22, 2026
 
+- **📜 Older Skill runs stay within reach** — Expand any activity view from the newest 20 receipts to a safe 50-run window only when you ask.
 - **🔄 Skill controls recover in place** — If a control change cannot be verified, reload durable policy without closing Settings or repeating a change that may already have committed.
 - **🧭 Skill receipt evidence survives unrelated policy trouble** — Historical source review and outside-outcome guidance stay available when execution policy cannot be read, while local recovery still waits for verified current controls.
 - **📅 Changes since a meeting stay exact** — Choose one confirmed topic and one exact meeting in Ask to see every later confirmed decision replacement, with both sides and their original proof.

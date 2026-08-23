@@ -193,6 +193,54 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     }
 
     @MainActor
+    func testSkillActivityExpandsOlderRunsOnlyAfterExplicitRequest() {
+        let app = XCUIApplication.portavoz(seedDemo: true)
+        app.launchArguments.append("-seed-skill-history")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+
+        let limit = app.control(
+            withIdentifier: "settings-skills-receipt-history-limit")
+        XCTAssertTrue(limit.waitForExistence(timeout: 5))
+        let initialLimit = UITestLocale.environmentLocale == "es"
+            ? "Cada vista muestra hasta 20 ejecuciones coincidentes en este Mac."
+            : "Each view shows up to 20 matching runs on this Mac."
+        XCTAssertTrue(waitForLabel(limit, toContain: initialLimit))
+
+        let receiptRows = app.buttons.matching(
+            identifier: "settings-skill-receipt-meeting-package-export")
+        XCTAssertEqual(
+            receiptRows.count,
+            20,
+            "the initial query must expose only the default receipt window")
+
+        let showMore = app.buttons[
+            "settings-skills-receipt-show-more"]
+        scrollToVisible(showMore, in: app, deltaY: -120)
+        XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
+        showMore.click()
+
+        XCTAssertTrue(
+            waitForCount(receiptRows, toEqual: 25, timeout: 10),
+            "one explicit expansion must reveal all 25 bounded receipts")
+        XCTAssertFalse(
+            showMore.exists,
+            "the activity view must not become unbounded pagination")
+
+        let expandedLimit = app.control(
+            withIdentifier: "settings-skills-receipt-history-limit")
+        scrollToVisible(expandedLimit, in: app, deltaY: -120)
+        let maximumLimit = UITestLocale.environmentLocale == "es"
+            ? "Cada vista muestra hasta 50 ejecuciones coincidentes en este Mac."
+            : "Each view shows up to 50 matching runs on this Mac."
+        XCTAssertTrue(waitForLabel(expandedLimit, toContain: maximumLimit))
+        attachScreenshot(of: app, named: "skills-activity-expanded-history")
+    }
+
+    @MainActor
     func testSkillProposalFailureDoesNotInventOffersOrDisableVerifiedPolicy() {
         let app = XCUIApplication.portavoz(openSettings: true)
         app.launchArguments.append("-simulate-skill-proposal-unavailable")
@@ -1187,6 +1235,20 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             {
                 return true
             }
+            Thread.sleep(forTimeInterval: 0.1)
+        } while Date() < deadline
+        return false
+    }
+
+    @MainActor
+    private func waitForCount(
+        _ query: XCUIElementQuery,
+        toEqual expectedCount: Int,
+        timeout: TimeInterval
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if query.count == expectedCount { return true }
             Thread.sleep(forTimeInterval: 0.1)
         } while Date() < deadline
         return false

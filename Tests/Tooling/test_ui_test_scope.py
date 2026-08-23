@@ -482,6 +482,7 @@ class UITestScopeTests(unittest.TestCase):
             "Sources/ApplicationKit/SkillsControlCenter.swift",
             "Sources/StorageKit/MeetingStore+SkillControl.swift",
             "Sources/portavoz-app/AppServices+MeetingSkills.swift",
+            "Sources/portavoz-app/SkillActivitySection.swift",
             "Sources/portavoz-app/SkillsSettingsSection.swift",
         ]:
             selection = select_paths([path])

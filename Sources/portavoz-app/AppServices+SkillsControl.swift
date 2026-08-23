@@ -5,7 +5,8 @@ import StorageKit
 
 extension AppServices {
     func loadSkillControlCenter(
-        receiptScope: SkillExecutionReviewScope = .recent
+        receiptScope: SkillExecutionReviewScope = .recent,
+        receiptLimit: Int = SkillControlCenterSnapshot.defaultReceiptLimit
     ) async throws -> SkillControlCenterSnapshot {
         if usesTemporaryMeetingStore,
            ProcessInfo.processInfo.arguments.contains(
@@ -20,7 +21,9 @@ extension AppServices {
             try await Task.sleep(for: .seconds(4))
         }
         let snapshot = try await LoadSkillControlCenter(store: store).execute(
-            LoadSkillControlCenterRequest(receiptScope: receiptScope))
+            LoadSkillControlCenterRequest(
+                receiptScope: receiptScope,
+                receiptLimit: receiptLimit))
         guard usesTemporaryMeetingStore,
               receiptScope != .recent,
            ProcessInfo.processInfo.arguments.contains(

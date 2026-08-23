@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,598 cases "
-                + "(15 environment-gated) + 102"))
+            "package inventory contains 2,600 cases "
+                + "(15 environment-gated) + 103"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -5172,6 +5172,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/SkillActivitySection.swift")
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices+SkillsControl.swift")
+        let uiFixtures = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+UITestFixtures.swift")
         let receiptInspection = try Self.contents(
             of: "Sources/ApplicationKit/SkillReceiptInspection.swift")
         let receiptSheet = try Self.contents(
@@ -5182,6 +5184,7 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         XCTAssertTrue(control.contains("enum SkillCatalogue"))
         XCTAssertFalse(control.contains("availability: .planned"))
+        XCTAssertTrue(control.contains("defaultReceiptLimit = 20"))
         XCTAssertTrue(control.contains("maximumReceiptLimit = 50"))
         XCTAssertTrue(store.contains("maximumRecentSkillExecutionCount = 100"))
         XCTAssertTrue(store.contains("ORDER BY updatedAt DESC, proposalID ASC"))
@@ -5219,12 +5222,25 @@ final class ArchitectureDependencyTests: XCTestCase {
             "settings-skills-receipt-scope-needs-attention"))
         XCTAssertTrue(activity.contains("settings-skills-receipt-scope-completed"))
         XCTAssertTrue(activity.contains("enum SkillActivityPresentationState"))
+        XCTAssertTrue(activity.contains("struct SkillActivityHistoryWindow"))
+        XCTAssertTrue(activity.contains(
+            "requestedLimit =\n        SkillControlCenterSnapshot.defaultReceiptLimit"))
+        XCTAssertTrue(activity.contains(
+            "requestedLimit = SkillControlCenterSnapshot.maximumReceiptLimit"))
+        XCTAssertTrue(activity.contains(
+            "settings-skills-receipt-show-more"))
         XCTAssertTrue(activity.contains("if isLoading"))
         XCTAssertTrue(activity.contains(
             "snapshot.receiptLoadState == .verified"))
         XCTAssertTrue(settings.contains(".task(id: receiptScope)"))
         XCTAssertTrue(settings.contains(
-            "activeLoadID == loadID, receiptScope == requestedScope"))
+            "receiptHistoryWindow.reset()\n            await load()"))
+        XCTAssertTrue(settings.contains(
+            "receiptLimit: requestedLimit"))
+        XCTAssertTrue(settings.contains(
+            "receiptHistoryWindow.requestedLimit == requestedLimit"))
+        XCTAssertTrue(settings.contains(
+            "receiptHistoryWindow.expand()\n        await load()"))
         XCTAssertTrue(settings.contains("invalidateActiveLoad()"))
         XCTAssertTrue(control.contains(
             "enum SkillControlCenterReceiptLoadState"))
@@ -5247,6 +5263,15 @@ final class ArchitectureDependencyTests: XCTestCase {
             "if usesTemporaryMeetingStore,\n"
                 + "           ProcessInfo.processInfo.arguments.contains(\n"
                 + "               \"-simulate-skill-proposal-unavailable\")"))
+        XCTAssertTrue(uiFixtures.contains(
+            "guard usesTemporaryMeetingStore,\n"
+                + "              ProcessInfo.processInfo.arguments.contains("
+                + "\"-seed-skill-history\")"))
+        XCTAssertTrue(uiFixtures.contains("for ordinal in 1...25"))
+        XCTAssertTrue(uiFixtures.contains(
+            "let offerKey = \"\\(MeetingPackageExportSkill.id):\""))
+        XCTAssertTrue(uiFixtures.contains(
+            "idempotencyKey: effectKey"))
         XCTAssertTrue(activity.contains(
             "notification: .announcementRequested"))
         XCTAssertTrue(control.contains("definition.declaresExternalEffect"))
@@ -5276,6 +5301,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D317"))
         XCTAssertTrue(decisions.contains("## D333"))
         XCTAssertTrue(decisions.contains("## D370"))
+        XCTAssertTrue(decisions.contains("## D371"))
         XCTAssertTrue(decisions.contains("## D335"))
         XCTAssertTrue(decisions.contains("## D336"))
         XCTAssertTrue(decisions.contains("## D343"))
