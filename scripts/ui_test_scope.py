@@ -11,6 +11,7 @@ changes do not spend a macOS UI runner.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shlex
 import subprocess
@@ -98,8 +99,7 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testCommandPaletteSearchAnswerAndCitationSurviveNoStaleState"),
     ),
     "insights": (
-        test_id("InsightsUITests", "testInsightsRendersHeatmap"),
-        test_id("InsightsUITests", "testInsightsShowsWhoYouTalkWith"),
+        test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
     ),
     "commitment-radar": (
         test_id(
@@ -130,18 +130,16 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
         test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
-        test_id("InsightsUITests", "testInsightsRendersHeatmap"),
+        test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
         test_id("MeetingDetailUITests", "testRightRailShowsHealthAndChapters"),
-        test_id("OnboardingUITests", "testOpensOnTheFirstListenStep"),
+        test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
         test_id(
             "CommitmentRadarUITests",
             "testRadarFiltersConfirmedWorkAndOpensItsExactSourceMeeting",
         ),
     ),
     "onboarding": (
-        test_id("OnboardingUITests", "testOpensOnTheFirstListenStep"),
-        test_id("OnboardingUITests", "testContinueAdvancesPastTheFirstListen"),
-        test_id("OnboardingUITests", "testVoiceStepOffersLocalEnrollmentWithoutStartingCapture"),
+        test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
     ),
     "meeting-performance": (
         test_id("MeetingDetailUITests", "testFiveThousandSegmentDetailRendersFromDisposableScaleFixture"),
@@ -289,10 +287,6 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
         test_id(
             "SkillsSettingsUITests",
-            "testSkillActivityFiltersExactSkillAndResetsExpansion",
-        ),
-        test_id(
-            "SkillsSettingsUITests",
             "testSkillActivityFiltersByUpdatePeriodAndResetsExpansion",
         ),
         test_id(
@@ -383,14 +377,59 @@ MEETING_FEATURES = frozenset(
     if feature.startswith("meeting-") and feature != "meeting-brief"
 )
 SETTINGS_FEATURES = frozenset(feature for feature in ALL_FEATURES if feature.startswith("settings-"))
-HARNESS_TESTS = (
+# Copy/localization and shared-harness changes can alter every accessibility
+# query or localized assertion. They are integration changes, so the safe
+# expansion is the complete bilingual catalog rather than a small canary set.
+HARNESS_TESTS = ALL_TESTS
+
+RETIRED_DUPLICATE_TESTS = frozenset({
+    test_id("InsightsUITests", "testInsightsRendersHeatmap"),
+    test_id("InsightsUITests", "testInsightsShowsWhoYouTalkWith"),
+    test_id("OnboardingUITests", "testOpensOnTheFirstListenStep"),
+    test_id("OnboardingUITests", "testContinueAdvancesPastTheFirstListen"),
+    test_id("OnboardingUITests", "testVoiceStepOffersLocalEnrollmentWithoutStartingCapture"),
     test_id(
-        "AutomationUITests",
-        "testRecordingAutomationRoutesStartAndStopThroughVisibleApp",
+        "SkillsSettingsUITests",
+        "testSkillActivityFiltersExactSkillAndResetsExpansion",
     ),
-    test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
-    test_id("SettingsUITests", "testCategoryNavigationRevealsEachPane"),
-)
+})
+
+# One checked-in production owner per scope makes feature-to-test and
+# changed-file-to-feature ownership executable. A new scope without a live
+# owner is an orphan; a renamed owner that falls through to the broad default
+# no longer silently validates the catalog.
+FEATURE_SOURCE_SENTINELS: dict[str, str] = {
+    "launch-recovery": "Sources/portavoz-app/AppLaunchRecoveryView.swift",
+    "automation-entry": "Sources/portavoz-app/PortavozAppIntents.swift",
+    "library": "Sources/portavoz-app/LibraryView.swift",
+    "meeting-brief": "Sources/portavoz-app/MeetingBriefView.swift",
+    "menu-bar-brief": "Sources/portavoz-app/MenuBarView.swift",
+    "recording-recovery": "Sources/portavoz-app/RecordingView.swift",
+    "ask": "Sources/portavoz-app/AskView.swift",
+    "insights": "Sources/portavoz-app/InsightsView.swift",
+    "commitment-radar": "Sources/portavoz-app/CommitmentRadarView.swift",
+    "main-shell": "Sources/portavoz-app/ContentView.swift",
+    "onboarding": "Sources/portavoz-app/OnboardingView.swift",
+    "meeting-performance": "Sources/portavoz-app/MeetingDetailPerformanceTrace.swift",
+    "meeting-export": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+    "meeting-recap": "Sources/portavoz-app/MeetingDetailActionSection.swift",
+    "meeting-naming": "Sources/portavoz-app/MeetingDetailHeaderSection.swift",
+    "meeting-processing": "Sources/portavoz-app/MeetingDetailRefineReviewSheet.swift",
+    "meeting-summary": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+    "meeting-evidence": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+    "meeting-commitments": "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
+    "meeting-skills": "Sources/portavoz-app/SkillOfferBanner.swift",
+    "meeting-health": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
+    "meeting-audio": "Sources/portavoz-app/MeetingPlayerBar.swift",
+    "meeting-correction": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
+    "settings-navigation": "Sources/portavoz-app/SettingsView.swift",
+    "settings-skills": "Sources/portavoz-app/SkillsSettingsSection.swift",
+    "settings-data": "Sources/portavoz-app/AppServices+MeetingSync.swift",
+    "settings-intelligence": "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
+    "settings-audio": "Sources/portavoz-app/AudioSection.swift",
+    "settings-voice": "Sources/portavoz-app/SettingsVoiceSection.swift",
+    "public-showcase": "Sources/portavoz-app/AppServices+Showcase.swift",
+}
 
 NO_UI_PREFIXES = (
     ".design-sync/",
@@ -752,7 +791,7 @@ def select_paths(paths: Iterable[str]) -> Selection:
         if path == "Resources/Localization/Portavoz/Localizable.xcstrings":
             selected.update(HARNESS_TESTS)
             locales.add("es")
-            reasons.append(f"{path}: bilingual localization canaries")
+            reasons.append(f"{path}: complete bilingual localization fallback")
             continue
 
         if path in {
@@ -764,7 +803,7 @@ def select_paths(paths: Iterable[str]) -> Selection:
         }:
             selected.update(HARNESS_TESTS)
             locales.add("es")
-            reasons.append(f"{path}: shared UI harness")
+            reasons.append(f"{path}: complete bilingual shared-harness fallback")
             continue
 
         changed_ui_tests = tests_for_ui_test_file(path)
@@ -775,6 +814,17 @@ def select_paths(paths: Iterable[str]) -> Selection:
 
         if path.startswith("Sources/portavoz-app/") and path.endswith(".swift"):
             file_name = Path(path).name
+            if file_name in {
+                "AppServices+UITestFixtures.swift",
+                "AppServices+AskTopicMemoryUITestFixture.swift",
+                "UITestDefaults.swift",
+            }:
+                selected.update(HARNESS_TESTS)
+                locales.add("es")
+                reasons.append(
+                    f"{path}: complete bilingual seed-fixture fallback"
+                )
+                continue
             features = app_features(file_name)
             selected.update(feature_tests(features))
             if file_name == "PortavozAppIntents.swift":
@@ -848,17 +898,85 @@ def discovered_test_catalog(root: Path) -> set[str]:
     return discovered
 
 
-def validate_catalog(root: Path) -> None:
+def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> None:
     expected = set(ALL_TESTS)
     discovered = discovered_test_catalog(root)
     missing = sorted(discovered - expected)
     stale = sorted(expected - discovered)
-    if missing or stale:
+    duplicates = sorted(
+        feature
+        for feature, tests in FEATURE_TESTS.items()
+        if len(tests) != len(set(tests))
+    )
+    empty_scopes = sorted(
+        feature for feature, tests in FEATURE_TESTS.items() if not tests
+    )
+    retired = sorted(discovered & RETIRED_DUPLICATE_TESTS)
+    sentinel_mismatch = sorted(ALL_FEATURES ^ FEATURE_SOURCE_SENTINELS.keys())
+    orphan_scopes: list[str] = []
+    for feature, path in FEATURE_SOURCE_SENTINELS.items():
+        source = root / path
+        if not source.is_file():
+            orphan_scopes.append(f"{feature} (missing {path})")
+            continue
+        mapped = app_features(source.name)
+        if feature not in mapped or mapped == set(ALL_FEATURES):
+            orphan_scopes.append(f"{feature} ({path})")
+
+    runtime_budget_errors: list[str] = []
+    if runtime_budget_required:
+        budget_path = root / "docs/evidence/ui-test-runtime-budget.json"
+        if not budget_path.is_file():
+            runtime_budget_errors.append(f"missing {budget_path.relative_to(root)}")
+        else:
+            budget = json.loads(budget_path.read_text(encoding="utf-8"))
+            runtime_ids = set(budget.get("testBudgetsSeconds", {}))
+            expected_runtime_ids = {
+                "/".join(selector.split("/")[1:]) + "()"
+                for selector in ALL_TESTS
+            }
+            missing_budgets = sorted(expected_runtime_ids - runtime_ids)
+            stale_budgets = sorted(runtime_ids - expected_runtime_ids)
+            budget_count = budget.get("catalog", {}).get("expectedCaseCount")
+            if missing_budgets:
+                runtime_budget_errors.append(
+                    "tests without runtime budget: " + ", ".join(missing_budgets)
+                )
+            if stale_budgets:
+                runtime_budget_errors.append(
+                    "stale runtime budgets: " + ", ".join(stale_budgets)
+                )
+            if budget_count != len(ALL_TESTS):
+                runtime_budget_errors.append(
+                    f"runtime budget count {budget_count!r} != {len(ALL_TESTS)}"
+                )
+
+    if (
+        missing
+        or stale
+        or duplicates
+        or empty_scopes
+        or retired
+        or sentinel_mismatch
+        or orphan_scopes
+        or runtime_budget_errors
+    ):
         details = []
         if missing:
             details.append("unscoped tests: " + ", ".join(missing))
         if stale:
             details.append("stale selectors: " + ", ".join(stale))
+        if duplicates:
+            details.append("duplicate selectors inside scopes: " + ", ".join(duplicates))
+        if empty_scopes:
+            details.append("empty feature scopes: " + ", ".join(empty_scopes))
+        if retired:
+            details.append("known duplicate tests returned: " + ", ".join(retired))
+        if sentinel_mismatch:
+            details.append("feature/source sentinel mismatch: " + ", ".join(sentinel_mismatch))
+        if orphan_scopes:
+            details.append("orphan feature scopes: " + ", ".join(orphan_scopes))
+        details.extend(runtime_budget_errors)
         raise RuntimeError("UI-test scope catalog is stale; " + "; ".join(details))
 
 

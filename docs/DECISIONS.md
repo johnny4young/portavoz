@@ -13886,3 +13886,118 @@ Direct DEBUG Parakeet integration is intentionally unavailable until FluidAudio
 offers a configurable privacy-safe logger; production model selection,
 transcript persistence, user-visible UI, deployment floor, and the six-class
 model capability boundary do not change.
+
+## D381 — Move the finite release target to an evidence-backed Apuntador 1.0 (Aug 2026)
+
+**Context:** D379 deliberately stopped an unbounded Skills sequence at a safe
+six-action and six-graph release candidate. That baseline remains valuable, but
+the user explicitly chose to complete a materially stronger Apuntador before
+the next public release and to make that release Portavoz 1.0.0. Treating this
+as permission for another rolling feature queue would recreate the problem
+D379 solved. Depending on private meetings or asking the user to perform routine
+QA would also leave the expanded assistant unrepeatable and under-tested.
+
+**Decision:** retain D379's six-action/six-graph behavior as the compatibility
+and safety baseline, and replace only its release target with one finite ordered
+sequence: UI-test runtime qualification; reliability/streaming/cancellation/
+latency; manual Ask on every supported macOS version; explicit meeting,
+library, and web source policy; cited, freshness-aware, consented, bounded, and
+prompt-injection-resistant web answers; interview assistance; separately typed
+local notes; and bounded opt-in proactive assistance. No slice may silently
+widen sources, perform an autonomous external mutation, hide an unavailable or
+insufficient-evidence state, or start the next optional workflow.
+
+Autonomous validation is a cross-cutting product requirement rather than a
+late release rehearsal. Checked-in public or synthetic bilingual meeting,
+interview, and note corpora carry exact ground truth. A deterministic local web
+fixture covers citations, freshness, slow/offline/provider-failure behavior,
+hostile content, and prompt injection. Real installed Foundation Models, ASR,
+and embeddings may run through explicit capability-gated lanes whose receipts
+are content-free. Cancellation, timeout, partial-response, corruption,
+relaunch, performance, memory, concurrency, stress, and no-crash behavior are
+automated wherever the platform permits. Each product slice closes through
+adversarial preflight, deterministic tests, the minimum-safe real-app XCUITest
+scope, one local Conventional Commit, and updated durable truth.
+
+Portavoz 1.0.0 admission still requires the exact integrated SHA, complete
+bilingual XCUITest, release model/performance/reliability gates, a verified
+Developer ID distribution artifact, production CloudKit truth when claimed,
+and the existing physical/field matrix. Interactive permissions and Apple
+Intelligence setup, real accounts and external effects, notarization,
+production CloudKit, physical Sequoia/Tahoe hardware, VoiceOver/Voice Control,
+and real-field evidence remain irreducible; deterministic fixtures must never
+report those cells as passed. Push, pull request, merge, signing/notarization,
+tag, publication, and remote changes retain their separate explicit-authority
+boundary.
+
+**Consequences:** the active goal has a stronger but bounded product outcome:
+an exact Portavoz 1.0.0 candidate rather than the earlier 0.8.0 candidate. The
+sequence improves useful assistant breadth without weakening local-first
+privacy, source provenance, review-first effects, supported macOS behavior, or
+the release stop rule. Quick Look, iOS, user-authored standing rules, visual
+graph work, broader graph sync/export/CLI/MCP, commerce, and alternate serving
+retrieval or ASR authorities remain outside this finite scope unless a current
+release gate exposes a reproducible blocker.
+
+## D382 — Scope and budget state-driven XCUITest evidence (Aug 2026)
+
+**Context:** the D379 complete bilingual gate contained 109 cases and consumed
+about 43 minutes of summed XCTest duration per locale on the local host. The
+suite paid XCTest's roughly one-second first-poll floor across hundreds of
+existence waits, repeated fixed scroll gestures in Skills Settings, and three
+sets of overlapping microjourneys. Running that complete gate for every narrow
+feature would make mandatory UI validation prohibitively slow; removing
+assertions, parallelizing two host-contending macOS automation sessions, or
+accepting an unchanged green retry would make the evidence weaker instead.
+
+**Decision:** keep XCUITest mandatory but select the smallest fail-safe tier.
+Known production owners map to explicit feature scopes and English evidence;
+unknown production Swift paths fall back to the complete English catalogue.
+Copy, localization, seed, routing, shared harness, catalogue, and release-
+boundary changes expand to the complete bilingual catalogue. Integration,
+release-candidate, and release qualification always run complete bilingual
+evidence. One `build-for-testing` result is reused and locales run sequentially
+through `test-without-building`.
+
+The shared test support uses one main-actor RunLoop-driven bounded predicate
+loop. Existence, value, selection, disappearance, enabled/hittable state, label,
+and stable-frame waits check immediately and then poll only until their explicit
+deadline; negative and inequality predicates require the element to exist.
+Skills scrolling is geometry-aware and bounded by the target and viewport
+instead of replaying a fixed gesture count. Two Insights checks, three
+onboarding checks, and the exact-Skill activity-filter microtest are consolidated
+into three bounded journeys that retain the original assertions, reducing the
+catalogue from 109 to 105 cases. An atomic seed snapshot is not adopted: the
+measured dominant costs are accessibility waits and navigation, while freezing
+a persisted database would couple UI evidence to schema migration and stale
+derived-state hazards without removing the required real-app relaunches.
+
+Every real run retains its xcresult and emits a content-free JSON receipt with
+locale, case identities, results, per-case durations, aggregate duration,
+distribution, one-build and test-wall durations, and a budget verdict. Full
+runs require exact catalogue cardinality and full-suite total/p95 budgets;
+scoped runs require exact selector cardinality. A versioned per-journey budget
+prevents a faster aggregate from hiding one severe regression. Executable
+policy tests reject undeclared cases, empty or orphaned scopes, duplicate
+selectors, known retired overlaps, unsafe source mappings, budget/catalogue
+drift, blind sleeps, and native first-poll existence waits. A failing pass is
+diagnostic evidence; it is never erased by an unchanged retry.
+
+**Consequences:** feature bands can retain real-app crash/navigation/assertion
+coverage without paying the complete bilingual integration cost each time,
+while localization, shared-harness, unknown-source, and release changes still
+fail safe. The policy intentionally trades naive parallel wall-clock gains for
+stable host-isolated measurements. On the local macOS 26.5.2 (25F84), arm64,
+Xcode 26.6 host, like-for-like candidate duration fell from 2,591.999 to
+1,108.209 seconds in English and from 2,607.498 to 1,114.714 seconds in Spanish
+(57.2% in each locale); p95 fell from 51.218/50.210 to 20.265/20.678 seconds.
+The complete English catalogue passed 105/105. The first complete Spanish pass
+finished all 105 cases but exposed one asynchronous stale-card assertion; that
+red result was retained, diagnosed, changed to a bounded disappearance
+predicate, and the exact four changed journeys then passed 4/4 in both locales
+without an unchanged retry. Final budgets are 1,300 seconds per locale, 30
+seconds p95, and a measured per-journey threshold; the sequential CI timeout is
+60 minutes. The local Tahoe-family runtime comparison
+qualifies only this host and toolchain; it cannot certify physical Sequoia,
+separate Tahoe hardware, VoiceOver/Voice Control, permissions, signing,
+notarization, CloudKit, accounts, external effects, or field behavior.

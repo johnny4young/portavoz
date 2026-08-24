@@ -24,7 +24,7 @@ final class AutomationUITests: PortavozUITestCase {
     private func assertMeetingEntityRoute(in app: XCUIApplication) {
         XCTAssertTrue(
             app.control(withIdentifier: "detail-header-section")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "the Meeting entity must open its exact visible detail")
         XCTAssertTrue(app.staticTexts["Test meeting"].exists)
     }
@@ -33,11 +33,11 @@ final class AutomationUITests: PortavozUITestCase {
     private func assertPersonEntityRoute(in app: XCUIApplication) {
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-app-entity-focus")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "the Person entity must expose a visible, clearable focus")
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-item-\(personCommitmentID)")
-                .waitForExistence(timeout: 10))
+                .waitForExistenceFast(timeout: 10))
         XCTAssertFalse(
             app.control(withIdentifier: "commitment-radar-item-\(otherCommitmentID)")
                 .exists,
@@ -49,7 +49,7 @@ final class AutomationUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(
                 withIdentifier: "commitment-radar-item-\(personCommitmentID)")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "the Commitment entity must open its exact Radar item")
         XCTAssertFalse(
             app.control(
@@ -57,12 +57,12 @@ final class AutomationUITests: PortavozUITestCase {
             "an exact Commitment route must not hydrate unrelated items")
         let showAll = app.control(
             withIdentifier: "commitment-radar-clear-app-entity-focus")
-        XCTAssertTrue(showAll.waitForExistence(timeout: 5) && showAll.isHittable)
+        XCTAssertTrue(showAll.waitForExistenceFast(timeout: 5) && showAll.isHittable)
         showAll.click()
         XCTAssertTrue(
             app.control(
                 withIdentifier: "commitment-radar-item-\(otherCommitmentID)")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "Show all must clear the system focus without losing Radar state")
     }
 
@@ -133,7 +133,7 @@ final class AutomationUITests: PortavozUITestCase {
 
         XCTAssertTrue(
             stopIntentApp.control(withIdentifier: "recording-failure")
-                .waitForExistence(timeout: 15),
+                .waitForExistenceFast(timeout: 15),
             "the native Stop handoff must leave active capture and surface the deterministic no-audio recovery")
         XCTAssertFalse(
             stopIntentApp.control(withIdentifier: "recording-stop").exists,
@@ -142,7 +142,7 @@ final class AutomationUITests: PortavozUITestCase {
             ? "Referencia del error: recording.stop.no-audio"
             : "Error reference: recording.stop.no-audio"
         XCTAssertTrue(
-            stopIntentApp.staticTexts[expectedReference].waitForExistence(timeout: 5),
+            stopIntentApp.staticTexts[expectedReference].waitForExistenceFast(timeout: 5),
             "the Stop action must preserve the recording controller's typed recovery")
         attachScreenshot(of: stopIntentApp, named: "native-intent-stop-recovery")
     }
@@ -172,7 +172,7 @@ final class AutomationUITests: PortavozUITestCase {
     ) {
         XCTAssertTrue(
             app.control(withIdentifier: "recording-catch-up")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "the \(route) route must enter a visible, active recording",
             file: file,
             line: line)
@@ -183,7 +183,7 @@ final class AutomationUITests: PortavozUITestCase {
             line: line)
         let elapsedTime = app.control(withIdentifier: "recording-elapsed-time")
         XCTAssertTrue(
-            elapsedTime.waitForExistence(timeout: 5),
+            elapsedTime.waitForExistenceFast(timeout: 5),
             "the \(route)-started recording must expose its elapsed time",
             file: file,
             line: line)
@@ -195,7 +195,7 @@ final class AutomationUITests: PortavozUITestCase {
             line: line)
         let stop = app.control(withIdentifier: "recording-stop")
         XCTAssertTrue(
-            stop.waitForExistence(timeout: 5) && stop.isHittable,
+            stop.waitForExistenceFast(timeout: 5) && stop.isHittable,
             "Stop must remain visible and interactive in the minimum-width recording layout",
             file: file,
             line: line)

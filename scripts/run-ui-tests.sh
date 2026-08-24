@@ -7,6 +7,9 @@ cd "$ROOT"
 locales="${UI_TEST_LOCALES:-default}"
 tests="${UI_TESTS:-}"
 results_root="${UI_TEST_RESULTS_DIR:-$ROOT/dist/ui-test-results}"
+runtime_budget="${UI_TEST_RUNTIME_BUDGET:-$ROOT/docs/evidence/ui-test-runtime-budget.json}"
+require_runtime_receipt="${UI_TEST_REQUIRE_RUNTIME_RECEIPT:-true}"
+enforce_runtime_budget="${UI_TEST_ENFORCE_RUNTIME_BUDGET:-true}"
 arch="$(uname -m)"
 
 common=(
@@ -73,7 +76,9 @@ fi
 
 # Compile the app and UI bundle once. English and Spanish then reuse the same
 # products through test-without-building instead of paying the build cost twice.
+build_started=$SECONDS
 xcodebuild build-for-testing "${common[@]}"
+build_duration=$((SECONDS - build_started))
 
 for locale in $locales; do
   test_args=("${common[@]}")
@@ -103,7 +108,46 @@ for locale in $locales; do
     test_args+=("${only_testing[@]}")
   fi
   echo "Running $selector_label in locale: $locale"
+  test_started=$SECONDS
+  set +e
   xcodebuild test-without-building \
     "${test_args[@]}" \
     -resultBundlePath "$result_bundle"
+  test_status=$?
+  set -e
+  test_wall_duration=$((SECONDS - test_started))
+
+  receipt_status=0
+  if [[ "$require_runtime_receipt" == true ]]; then
+    if [[ ! -d "$result_bundle" ]]; then
+      echo "Missing XCUITest result bundle for runtime receipt: $result_bundle" >&2
+      receipt_status=2
+    else
+      runtime_args=(
+        --result "$result_bundle"
+        --budget "$runtime_budget"
+        --output "$results_root/$locale-runtime.json"
+        --locale "$locale"
+        --selector-count "$selector_count"
+        --build-duration "$build_duration"
+        --wall-duration "$test_wall_duration"
+      )
+      if [[ "$enforce_runtime_budget" == true ]]; then
+        runtime_args+=(--enforce)
+      fi
+      set +e
+      scripts/ui_test_runtime.py "${runtime_args[@]}"
+      receipt_status=$?
+      set -e
+    fi
+  fi
+
+  # Preserve the real XCTest failure as the primary signal while still
+  # attempting a content-free receipt for diagnosis and trend evidence.
+  if (( test_status != 0 )); then
+    exit "$test_status"
+  fi
+  if (( receipt_status != 0 )); then
+    exit "$receipt_status"
+  fi
 done

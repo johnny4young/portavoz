@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 /// Shared base for Portavoz UI journeys.
@@ -6,6 +7,26 @@ import XCTest
 /// privacy or authentication prompts require a user's decision; the read-only
 /// host preflight reports them instead of allowing tests to answer them.
 class PortavozUITestCase: XCTestCase {}
+
+/// Evaluate an explicit state predicate without XCTest's one-second polling
+/// floor. The run loop stays live between probes, so asynchronous app and
+/// accessibility updates continue to arrive; there is no blind fixed delay.
+@MainActor
+@discardableResult
+func waitForUITestCondition(
+    timeout: TimeInterval,
+    pollInterval: TimeInterval = 0.05,
+    _ condition: () -> Bool
+) -> Bool {
+    if condition() { return true }
+    let deadline = Date().addingTimeInterval(timeout)
+    while Date() < deadline {
+        let nextProbe = min(deadline, Date().addingTimeInterval(pollInterval))
+        _ = RunLoop.current.run(mode: .default, before: nextProbe)
+        if condition() { return true }
+    }
+    return condition()
+}
 
 enum UITestLocale {
     static var environmentLocale: String? {
@@ -192,10 +213,9 @@ extension XCUIApplication {
                 wait(for: .notRunning, timeout: 10),
                 "the preceding Portavoz process must terminate before relaunch")
         }
-        // LaunchServices can report Not Running before its prior launch token
-        // is fully retired. This small boundary avoids an ephemeral duplicate
-        // process during fast full-suite transitions.
-        Thread.sleep(forTimeInterval: 0.35)
+        XCTAssertTrue(
+            waitForPortavozProcessExit(),
+            "the preceding Portavoz process must leave the running-app inventory")
         launch()
         XCTAssertTrue(
             wait(for: .runningForeground, timeout: 15),
@@ -203,11 +223,11 @@ extension XCUIApplication {
         activate()
         let mainWindow = windows["main-AppWindow-1"]
         XCTAssertTrue(
-            mainWindow.waitForExistence(timeout: 15),
+            mainWindow.waitForExistenceFast(timeout: 15),
             "the disposable main window must exist before UI assertions")
-        // ContentView positions only disposable test windows. Let that
-        // first-frame adjustment finish before a test caches a control.
-        Thread.sleep(forTimeInterval: 0.2)
+        XCTAssertTrue(
+            mainWindow.waitForStableFrame(timeout: 5, stableFor: 0.1),
+            "the disposable main window must finish its first-frame placement")
         if shouldOpenSettings {
             XCTAssertTrue(
                 buttons["library-new-recording-button"]
@@ -228,6 +248,18 @@ extension XCUIApplication {
                 general.frame.minY,
                 0,
                 "temporary Settings must stay inside the zero screen's visible frame")
+        }
+    }
+
+    /// XCUITest can report `.notRunning` before LaunchServices removes the
+    /// process from its inventory. Observe the real host state instead of
+    /// sleeping on every launch; an already-clear host returns immediately.
+    @MainActor
+    private func waitForPortavozProcessExit(timeout: TimeInterval = 10) -> Bool {
+        waitForUITestCondition(timeout: timeout) {
+            NSRunningApplication.runningApplications(
+                withBundleIdentifier: "app.portavoz.mac.uitest-host"
+            ).isEmpty
         }
     }
 
@@ -262,7 +294,7 @@ extension XCUIApplication {
         for attempt in 0..<2 {
             guard prepareForInteraction(timeout: timeout) else { continue }
             typeKey(",", modifierFlags: .command)
-            if general.waitForExistence(timeout: attempt == 0 ? 2 : timeout) {
+            if general.waitForExistenceFast(timeout: attempt == 0 ? 2 : timeout) {
                 return true
             }
         }
@@ -284,7 +316,7 @@ extension XCUIApplication {
             guard prepareForInteraction(timeout: timeout) else { continue }
             guard category.waitForStableFrame(timeout: timeout) else { continue }
             category.click()
-            if expectedControl.waitForExistence(timeout: attempt == 0 ? 2 : 5) {
+            if expectedControl.waitForExistenceFast(timeout: attempt == 0 ? 2 : 5) {
                 return true
             }
         }
@@ -302,11 +334,8 @@ extension XCUIApplication {
         let meeting = descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
-        guard meeting.waitForExistence(timeout: timeout) else { return false }
-        let hittable = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "isHittable == true"),
-            object: meeting)
-        return XCTWaiter.wait(for: [hittable], timeout: timeout) == .completed
+        guard meeting.waitForExistenceFast(timeout: timeout) else { return false }
+        return waitForUITestCondition(timeout: timeout) { meeting.isHittable }
     }
 
     /// Waits only for the disposable seed transaction. Menu-bar UI tests mount
@@ -317,12 +346,7 @@ extension XCUIApplication {
         guard let readyPath = launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] else {
             return false
         }
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline,
-              !FileManager.default.fileExists(atPath: readyPath) {
-            Thread.sleep(forTimeInterval: 0.1)
-        }
-        guard FileManager.default.fileExists(atPath: readyPath) else { return false }
+        guard waitForFile(atPath: readyPath, timeout: timeout) else { return false }
         try? FileManager.default.removeItem(atPath: readyPath)
         return true
     }
@@ -368,18 +392,111 @@ extension XCUIApplication {
         timeout: TimeInterval
     ) -> Bool {
         guard let path = launchEnvironment[environmentKey] else { return false }
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if FileManager.default.fileExists(atPath: path) {
-                return true
-            }
-            Thread.sleep(forTimeInterval: 0.05)
+        return waitForFile(atPath: path, timeout: timeout)
+    }
+
+    private func waitForFile(
+        atPath path: String,
+        timeout: TimeInterval
+    ) -> Bool {
+        waitForUITestCondition(timeout: timeout, pollInterval: 0.02) {
+            FileManager.default.fileExists(atPath: path)
         }
-        return false
     }
 }
 
 extension XCUIElement {
+    /// Avoid XCTest's one-second first poll when the element is already in the
+    /// accessibility tree. Asynchronous states retain the same bounded wait.
+    @MainActor
+    func waitForExistenceFast(timeout: TimeInterval) -> Bool {
+        waitForUITestCondition(timeout: timeout) { self.exists }
+    }
+
+    @MainActor
+    func waitForValueChange(
+        from initialValue: String,
+        timeout: TimeInterval
+    ) -> Bool {
+        let changed = {
+            self.exists && String(describing: self.value) != initialValue
+        }
+        return waitForUITestCondition(timeout: timeout, changed)
+    }
+
+    @MainActor
+    func waitForSelection(timeout: TimeInterval) -> Bool {
+        waitForUITestCondition(timeout: timeout) {
+            self.exists && self.isSelected
+        }
+    }
+
+    @MainActor
+    func waitForDisappearance(timeout: TimeInterval) -> Bool {
+        waitForUITestCondition(timeout: timeout) { !self.exists }
+    }
+
+    /// Prove that a control stays absent for a bounded observation window.
+    /// Unlike an inverted XCTest predicate, this uses the same short,
+    /// run-loop-driven probes as positive state waits.
+    @MainActor
+    func remainsAbsent(for duration: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(duration)
+        while Date() < deadline {
+            if exists { return false }
+            let nextProbe = min(deadline, Date().addingTimeInterval(0.05))
+            _ = RunLoop.current.run(mode: .default, before: nextProbe)
+        }
+        return !exists
+    }
+
+    @MainActor
+    func waitForHittable(timeout: TimeInterval) -> Bool {
+        waitForUITestCondition(timeout: timeout) { self.isHittable }
+    }
+
+    @MainActor
+    func waitForEnabled(timeout: TimeInterval) -> Bool {
+        waitForUITestCondition(timeout: timeout) {
+            self.exists && self.isEnabled
+        }
+    }
+
+    @MainActor
+    func waitForValue(_ expectedValue: String, timeout: TimeInterval) -> Bool {
+        waitForUITestCondition(timeout: timeout) {
+            self.value as? String == expectedValue
+        }
+    }
+
+    @MainActor
+    func waitForValueOtherThan(_ value: String, timeout: TimeInterval) -> Bool {
+        waitForUITestCondition(timeout: timeout) {
+            self.exists && self.value as? String != value
+        }
+    }
+
+    @MainActor
+    func waitForLabelContaining(_ text: String, timeout: TimeInterval) -> Bool {
+        waitForUITestCondition(timeout: timeout) {
+            self.label.contains(text)
+        }
+    }
+
+    @MainActor
+    func waitForLabelNotContaining(_ text: String, timeout: TimeInterval) -> Bool {
+        waitForUITestCondition(timeout: timeout) {
+            self.exists && !self.label.contains(text)
+        }
+    }
+
+    @MainActor
+    func waitForLabelOrValue(_ text: String, timeout: TimeInterval) -> Bool {
+        waitForUITestCondition(timeout: timeout) {
+            self.exists && (self.label == text || self.value as? String == text)
+        }
+    }
+
     /// Localized and asynchronously populated SwiftUI content can expose a
     /// hittable accessibility element one frame before its final layout.
     /// Wait for the hit target itself to stop moving so `click()` cannot use a
@@ -389,26 +506,22 @@ extension XCUIElement {
         timeout: TimeInterval = 5,
         stableFor stableInterval: TimeInterval = 0.25
     ) -> Bool {
-        guard waitForExistence(timeout: timeout) else { return false }
-        let deadline = Date().addingTimeInterval(timeout)
+        guard waitForExistenceFast(timeout: timeout) else { return false }
         var previousFrame: CGRect?
         var stableSince: Date?
-
-        while Date() < deadline {
-            let currentFrame = frame
-            if isHittable, currentFrame == previousFrame {
-                if let stableSince,
-                   Date().timeIntervalSince(stableSince) >= stableInterval {
-                    return true
+        return waitForUITestCondition(timeout: timeout) {
+            let currentFrame = self.frame
+            if self.isHittable, currentFrame == previousFrame {
+                if let stableSince {
+                    return Date().timeIntervalSince(stableSince) >= stableInterval
                 }
-                if stableSince == nil { stableSince = Date() }
+                stableSince = Date()
             } else {
                 previousFrame = currentFrame
                 stableSince = nil
             }
-            Thread.sleep(forTimeInterval: 0.05)
+            return false
         }
-        return false
     }
 }
 

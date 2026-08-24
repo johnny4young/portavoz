@@ -659,8 +659,10 @@ build:
 project:
 	xcodegen generate
 
-## UI smoke tests launch the real app against disposable state. The runner
-## builds once and reuses those products for every requested locale.
+## UI tests launch the real app against disposable state. Feature work should
+## use test-ui-changed or an explicit minimum-safe scope. The runner builds
+## once and reuses those products sequentially for every requested locale;
+## the complete bilingual suite is an integration/RC/release gate.
 test-ui: UI_TEST_LOCALES = default
 test-ui: test-ui-scoped
 
@@ -681,7 +683,8 @@ test-ui-scoped: project
 
 ## Select UI evidence from committed, staged, unstaged, and untracked changes
 ## against UI_BASE. Known views map to feature-level tests;
-## shared/localization changes expand conservatively; docs-only changes skip
+## shared/localization changes expand to the complete bilingual gate; unknown
+## production paths fail safe to complete English; docs-only changes skip
 ## XCUITest. Set UI_HEAD explicitly to inspect a committed Git range instead.
 UI_BASE ?= origin/main
 UI_HEAD ?=

@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import tempfile
@@ -18,6 +19,7 @@ class RunUITestsTests(unittest.TestCase):
         selected_developer_dir: str = "/Applications/Xcode_26.0.app/Contents/Developer",
         test_exit_code: int = 0,
         initial_keyboard_mode: str | None = "0",
+        require_runtime_receipt: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -33,6 +35,13 @@ class RunUITestsTests(unittest.TestCase):
                 "\"${PORTAVOZ_UI_TEST_LOCALE:-unset}\" "
                 "\"${TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE:-unset}\" "
                 ">> \"$XCODEBUILD_LOG\"\n"
+                "previous=''\n"
+                "for argument in \"$@\"; do\n"
+                "  if [ \"$previous\" = '-resultBundlePath' ]; then\n"
+                "    mkdir -p \"$argument\"\n"
+                "  fi\n"
+                "  previous=\"$argument\"\n"
+                "done\n"
                 "case \"$*\" in *test-without-building*) "
                 "exit \"$XCODEBUILD_TEST_EXIT_CODE\" ;; esac\n",
                 encoding="utf-8",
@@ -58,6 +67,26 @@ class RunUITestsTests(unittest.TestCase):
                 encoding="utf-8",
             )
             fake_defaults.chmod(0o755)
+            fake_xcrun = binary / "xcrun"
+            fake_xcrun.write_text(
+                "#!/bin/sh\n"
+                "cat <<'JSON'\n"
+                '{"nodes":[{"nodeType":"Test Case",'
+                '"nodeIdentifier":"LibraryUITests/testLibrary()",'
+                '"name":"testLibrary()","durationInSeconds":1.0,'
+                '"result":"Passed"}]}\n'
+                "JSON\n",
+                encoding="utf-8",
+            )
+            fake_xcrun.chmod(0o755)
+            runtime_budget = root / "runtime-budget.json"
+            runtime_budget.write_text(
+                '{"catalog":{"expectedCaseCount":1},'
+                '"fullSuite":{"maximumTestDurationSecondsPerLocale":10.0,'
+                '"maximumP95Seconds":10.0},'
+                '"testBudgetsSeconds":{"LibraryUITests/testLibrary()":10.0}}',
+                encoding="utf-8",
+            )
 
             environment = os.environ.copy()
             environment.pop("DEVELOPER_DIR", None)
@@ -77,6 +106,10 @@ class RunUITestsTests(unittest.TestCase):
                     "DEFAULTS_MODE_PRESENT": str(
                         initial_keyboard_mode is not None
                     ).lower(),
+                    "UI_TEST_REQUIRE_RUNTIME_RECEIPT": str(
+                        require_runtime_receipt
+                    ).lower(),
+                    "UI_TEST_RUNTIME_BUDGET": str(runtime_budget),
                 }
             )
             if developer_dir is not None:
@@ -95,6 +128,10 @@ class RunUITestsTests(unittest.TestCase):
                 if defaults_log.exists()
                 else []
             )
+            self.runtime_receipts = {
+                path.name: path.read_text(encoding="utf-8")
+                for path in (root / "results").glob("*-runtime.json")
+            }
             return result, calls
 
     def test_empty_selector_runs_the_complete_suite(self):
@@ -220,6 +257,30 @@ class RunUITestsTests(unittest.TestCase):
                 )
                 for call in calls
             )
+        )
+
+    def test_real_runner_reuses_one_build_and_requires_runtime_receipts(self):
+        source = RUNNER.read_text(encoding="utf-8")
+
+        self.assertEqual(source.count("xcodebuild build-for-testing"), 1)
+        self.assertIn("xcodebuild test-without-building", source)
+        self.assertIn("UI_TEST_REQUIRE_RUNTIME_RECEIPT:-true", source)
+        self.assertIn("scripts/ui_test_runtime.py", source)
+        self.assertIn("-resultBundlePath", source)
+
+    def test_failed_xctest_still_emits_receipt_and_preserves_exit_code(self):
+        selector = "PortavozUITests/LibraryUITests/testLibrary"
+        result, _ = self.run_runner(
+            selector,
+            test_exit_code=65,
+            require_runtime_receipt=True,
+        )
+
+        self.assertEqual(result.returncode, 65)
+        self.assertIn("en-runtime.json", self.runtime_receipts)
+        self.assertEqual(
+            json.loads(self.runtime_receipts["en-runtime.json"])["budgetStatus"],
+            "passed",
         )
 
 

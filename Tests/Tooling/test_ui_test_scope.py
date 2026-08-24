@@ -3,11 +3,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
+import ui_test_scope as ui_scope  # noqa: E402
 from ui_test_scope import (  # noqa: E402
     ALL_TESTS,
     FEATURE_TESTS,
@@ -20,6 +22,24 @@ from ui_test_scope import (  # noqa: E402
 
 
 class UITestScopeTests(unittest.TestCase):
+    def minimal_catalog_root(self, *methods: str, with_owner: bool = True):
+        temporary = tempfile.TemporaryDirectory()
+        root = Path(temporary.name)
+        tests = root / "Tests" / "PortavozUITests"
+        tests.mkdir(parents=True)
+        declarations = "\n".join(f"    func {method}() {{}}" for method in methods)
+        (tests / "InsightsUITests.swift").write_text(
+            "final class InsightsUITests: PortavozUITestCase {\n"
+            f"{declarations}\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        if with_owner:
+            owner = root / "Sources" / "portavoz-app" / "InsightsView.swift"
+            owner.parent.mkdir(parents=True)
+            owner.write_text("// production owner\n", encoding="utf-8")
+        return temporary, root
+
     def test_empty_change_set_requires_no_ui_runner(self):
         self.assertFalse(select_paths([]).required)
 
@@ -154,7 +174,7 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertEqual(set(selection.tests), owned_tests, path)
 
-    def test_localization_selects_bilingual_canaries_at_the_real_catalog_path(self):
+    def test_localization_expands_to_the_complete_bilingual_catalog(self):
         selection = select_paths(["Resources/Localization/Portavoz/Localizable.xcstrings"])
         self.assertEqual(selection.tests, HARNESS_TESTS)
         self.assertEqual(selection.locales, ("en", "es"))
@@ -431,12 +451,24 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.locales, ("en",))
         self.assertLess(len(selection.tests), len(ALL_TESTS))
 
-    def test_window_placement_selects_bilingual_shared_harness_canaries(self):
+    def test_window_placement_expands_to_the_complete_bilingual_catalog(self):
         selection = select_paths(
             ["Sources/portavoz-app/UITestWindowPlacement.swift"]
         )
         self.assertEqual(selection.tests, HARNESS_TESTS)
         self.assertEqual(selection.locales, ("en", "es"))
+
+    def test_seed_fixtures_expand_to_the_complete_bilingual_catalog(self):
+        for path in (
+            "Sources/portavoz-app/AppServices+UITestFixtures.swift",
+            "Sources/portavoz-app/AppServices+AskTopicMemoryUITestFixture.swift",
+            "Sources/portavoz-app/UITestDefaults.swift",
+        ):
+            with self.subTest(path=path):
+                selection = select_paths([path])
+                self.assertEqual(selection.tests, HARNESS_TESTS)
+                self.assertEqual(selection.locales, ("en", "es"))
+                self.assertIn("seed-fixture fallback", selection.reasons[0])
 
     def test_subtitle_export_selects_only_its_meeting_export_smoke(self):
         selection = select_paths(["Sources/IntegrationsKit/SubtitleExport.swift"])
@@ -489,7 +521,7 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
-    def test_harness_change_selects_three_bilingual_canaries(self):
+    def test_harness_change_expands_to_the_complete_bilingual_catalog(self):
         selection = select_paths(["Makefile"])
         self.assertEqual(selection.tests, HARNESS_TESTS)
         self.assertEqual(selection.locales, ("en", "es"))
@@ -541,7 +573,7 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_changed_ui_test_file_selects_only_its_class(self):
         selection = select_paths(["Tests/PortavozUITests/InsightsUITests.swift"])
-        self.assertEqual(len(selection.tests), 2)
+        self.assertEqual(selection.tests, FEATURE_TESTS["insights"])
         self.assertTrue(all("InsightsUITests" in test for test in selection.tests))
 
     def test_unknown_production_source_falls_back_to_full_english(self):
@@ -584,6 +616,86 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_catalog_covers_every_declared_ui_test(self):
         validate_catalog(ROOT)
+
+    def test_ui_harness_forbids_blind_sleeps_and_native_existence_polling(self):
+        sources = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted((ROOT / "Tests" / "PortavozUITests").glob("*.swift"))
+        )
+        support = (ROOT / "Tests" / "PortavozUITests" / "UITestSupport.swift")
+        support_source = support.read_text(encoding="utf-8")
+
+        self.assertNotIn("Thread.sleep", sources)
+        self.assertNotIn(".waitForExistence(", sources)
+        self.assertNotIn(".waitForNonExistence(", sources)
+        self.assertIn("func waitForUITestCondition(", support_source)
+        self.assertIn("func waitForExistenceFast(", support_source)
+        self.assertIn("func waitForDisappearance(", support_source)
+        self.assertIn("RunLoop.current.run", support_source)
+
+    def test_catalog_policy_rejects_an_unscoped_test(self):
+        scoped = ui_scope.test_id("InsightsUITests", "testScoped")
+        temporary, root = self.minimal_catalog_root("testScoped", "testUnscoped")
+        with temporary, mock.patch.multiple(
+            ui_scope,
+            FEATURE_TESTS={"insights": (scoped,)},
+            ALL_TESTS=(scoped,),
+            ALL_FEATURES=frozenset({"insights"}),
+            FEATURE_SOURCE_SENTINELS={
+                "insights": "Sources/portavoz-app/InsightsView.swift"
+            },
+            RETIRED_DUPLICATE_TESTS=frozenset(),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "unscoped tests"):
+                ui_scope.validate_catalog(root, runtime_budget_required=False)
+
+    def test_catalog_policy_rejects_an_orphan_scope(self):
+        scoped = ui_scope.test_id("InsightsUITests", "testScoped")
+        temporary, root = self.minimal_catalog_root("testScoped", with_owner=False)
+        with temporary, mock.patch.multiple(
+            ui_scope,
+            FEATURE_TESTS={"insights": (scoped,)},
+            ALL_TESTS=(scoped,),
+            ALL_FEATURES=frozenset({"insights"}),
+            FEATURE_SOURCE_SENTINELS={
+                "insights": "Sources/portavoz-app/InsightsView.swift"
+            },
+            RETIRED_DUPLICATE_TESTS=frozenset(),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "orphan feature scopes"):
+                ui_scope.validate_catalog(root, runtime_budget_required=False)
+
+    def test_catalog_policy_rejects_a_known_duplicate_journey(self):
+        retired = ui_scope.test_id("InsightsUITests", "testRetiredDuplicate")
+        temporary, root = self.minimal_catalog_root("testRetiredDuplicate")
+        with temporary, mock.patch.multiple(
+            ui_scope,
+            FEATURE_TESTS={"insights": (retired,)},
+            ALL_TESTS=(retired,),
+            ALL_FEATURES=frozenset({"insights"}),
+            FEATURE_SOURCE_SENTINELS={
+                "insights": "Sources/portavoz-app/InsightsView.swift"
+            },
+            RETIRED_DUPLICATE_TESTS=frozenset({retired}),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "known duplicate tests returned"):
+                ui_scope.validate_catalog(root, runtime_budget_required=False)
+
+    def test_catalog_policy_rejects_duplicate_selectors_inside_scope(self):
+        scoped = ui_scope.test_id("InsightsUITests", "testScoped")
+        temporary, root = self.minimal_catalog_root("testScoped")
+        with temporary, mock.patch.multiple(
+            ui_scope,
+            FEATURE_TESTS={"insights": (scoped, scoped)},
+            ALL_TESTS=(scoped,),
+            ALL_FEATURES=frozenset({"insights"}),
+            FEATURE_SOURCE_SENTINELS={
+                "insights": "Sources/portavoz-app/InsightsView.swift"
+            },
+            RETIRED_DUPLICATE_TESTS=frozenset(),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "duplicate selectors"):
+                ui_scope.validate_catalog(root, runtime_budget_required=False)
 
 
 if __name__ == "__main__":

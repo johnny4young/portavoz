@@ -4286,9 +4286,12 @@ human-readable versions in comments; repository hygiene rejects mutable tags.
 
 Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
-selectors; localization and shared-harness changes expand to bilingual
-canaries; unknown production Swift paths fall back to the complete English
-suite. `RecordingToolbar` maps specifically to the external-recording geometry
+selectors; localization and shared-harness changes expand to the complete
+bilingual catalogue; unknown production Swift paths fall back to the complete
+English suite. Every feature scope names a checked-in production owner, and
+catalog validation rejects unscoped tests, empty or orphaned scopes, duplicate
+selectors, retired overlapping journeys, and missing or stale runtime budgets.
+`RecordingToolbar` maps specifically to the external-recording geometry
 case plus the live recording-control/recovery cases, without paying for
 unrelated Library grouping or Meeting Detail. The local selector compares the
 base with committed, staged, unstaged, and untracked paths by default,
@@ -4296,6 +4299,35 @@ preventing an uncommitted pre-commit smoke from becoming an accidental no-op.
 An empty selector explicitly means every test; optional selector and locale
 arguments are assembled without empty-array expansion on the system Bash
 runtime. One `build-for-testing` result is reused across selected locales.
+Locales run sequentially because macOS XCUITest shares host services and a
+parallel pass would measure contention rather than product behavior. Every real
+run retains an xcresult plus a content-free receipt containing only test
+identity, result, duration distribution, build/wall duration, and budget
+verdict. Full runs must contain the complete catalogue; scoped runs must contain
+exactly their requested selectors. Passing every catalogue selector explicitly
+is still a full run and therefore cannot evade aggregate budgets. The runner
+attempts the receipt after a failed XCTest pass but preserves XCTest's original
+exit status; malformed, non-finite, negative, missing, or unreadable runtime
+input fails closed into a content-free error receipt. Per-journey and full-suite
+budgets are versioned in `docs/evidence/ui-test-runtime-budget.json`.
+
+The UI bundle uses one main-actor, run-loop-driven bounded predicate helper for
+accessibility state instead of XCTest's one-second first-poll floor or fixed
+sleeps. Negative and inequality waits require element existence so absence
+cannot become a false pass. Localized moving controls stabilize their hit frame
+before activation. The Skills Settings form reveals targets with a bounded
+geometry-aware scroll over the real viewport rather than a fixed sequence of
+small wheel gestures. Proven overlapping Insights, onboarding, and Skills
+microtests share one journey each while retaining their assertions; unrelated
+behavior remains independently scoped. A failed first pass is evidence to
+diagnose, never authorization for an unchanged green retry.
+The accepted local candidate on macOS 26.5.2 (25F84), arm64, and Xcode 26.6
+measures 1,108.209 seconds English and 1,114.714 seconds Spanish across the
+105-case catalogue, down 57.2% from the prior 109-case like-for-like baseline;
+p95 is 20.265/20.678 seconds. The versioned gates cap each locale at 1,300
+seconds and p95 at 30 seconds, with independent per-journey ceilings. These are
+one-host performance measurements, not physical Sequoia or separate-hardware
+Tahoe evidence.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
 `xcode-select` toolchain chosen by CI, and falls back to the conventional local
 Xcode path only when Command Line Tools is active. Before that runner builds,
@@ -4613,7 +4645,7 @@ reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,605 XCTest package cases are defined, with 15 real-model/environment cases
+- 2,614 XCTest package cases are defined, with 15 real-model/environment cases
   gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
@@ -4622,15 +4654,19 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 704
+- strict SwiftLint remains a blocking CI gate and is clean across all 706
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 457 deterministic tooling cases and the 195-case architecture subset pass;
+- 478 deterministic tooling cases and the 197-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
 - 105 XCUITest cases per locale define the 210-case bilingual release gate;
-- pull requests run only their selected feature-level UI evidence, while shared
-  localization/harness changes and release closure expand to bilingual gates;
+- pull requests run only their minimum-safe selected feature evidence; shared
+  localization/harness changes and release closure expand to the complete
+  bilingual gate, while unknown production paths fail safe to complete English;
+- every UI run emits a content-free runtime receipt and enforces per-journey
+  budgets; complete runs additionally enforce exact catalogue count, total
+  duration, and p95;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;
 - measured scale fixtures cover 5,000-segment detail, 100,000-segment search,

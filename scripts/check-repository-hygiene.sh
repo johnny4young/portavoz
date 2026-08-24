@@ -116,6 +116,7 @@ python3 scripts/ask_quality.py verify-public \
 python3 scripts/retrieval_chunk_resource_fixture.py verify-public \
   --fixture Fixtures/RetrievalChunkResource/public-bilingual-homogeneous-v1.json
 python3 -m unittest Tests.Tooling.test_ui_test_scope
+python3 -m unittest Tests.Tooling.test_ui_test_runtime
 python3 -m unittest Tests.Tooling.test_run_ui_tests
 python3 -m unittest Tests.Tooling.test_ui_test_host_preflight
 python3 -m unittest Tests.Tooling.test_meeting_detail_contract

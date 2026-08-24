@@ -107,22 +107,33 @@ capabilities; current and deferred status is authoritative in
   distinct vertical use case.
 - **Synthesized voice**: Apple's Personal Voice (iOS 17+) to speak for the user; requires a virtual audio driver (virtual microphone) on macOS + mandatory disclosure to participants. Phase 4+.
 
-### 0.8.0 candidate boundary
+### 1.0.0 candidate boundary
 
-Portavoz presents its six fixed, review-first post-meeting workflows as
+The D379 six-action/six-graph freeze remains Portavoz's safety baseline, not
+the final release target. Portavoz presents its six fixed, review-first
+post-meeting workflows as
 **Suggested actions** / **Acciones sugeridas**. They prepare a recap, text-only
 package, local reminder, pre-meeting brief, email draft, or explicitly approved
 secret Gist; they are not user-authored plugins or autonomous agents, and none
 runs before exact review and confirmation.
 
 The Meeting Memory Graph is an internal disposable relational projection, not a
-visual graph. Its 0.8.0 product value is six source-backed Ask jobs: current
+visual graph. Its baseline product value is six source-backed Ask jobs: current
 commitments for one person, active blockers for one commitment, and current
 decisions, first confirmed discussion, decision changes, or changes since one
-meeting for one topic. Broader free-form synthesis, a visual map, implicit
-identity guessing, user-authored actions, and standing automation rules are
-post-release research. The candidate keeps both current surfaces, improves
-comprehension, and does not expand them before qualification.
+meeting for one topic.
+
+The finite 1.0.0 expansion strengthens Apuntador through reliable streaming and
+cancellation, explicit manual Ask, a visible meeting/library/web source policy,
+consented cited web research, interview assistance, typed user-authored notes,
+and bounded opt-in proactive help. Every answer or suggestion must preserve
+exact source provenance, honest unavailable/insufficient states, supported-
+macOS degradation, and review-first external effects. A visual graph, implicit
+identity guessing, user-authored actions, standing automation rules, broader
+graph sync/export/CLI/MCP, alternate search/ASR authority, and autonomous
+external mutation remain outside this finite candidate. Current implemented
+truth and exit evidence remain authoritative in `GAPS.md` and the as-built
+specs; this boundary is not a claim that APT-1…APT-7 are already shipped.
 
 ## Standout UX (signature moments)
 

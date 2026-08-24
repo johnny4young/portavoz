@@ -246,7 +246,7 @@ class UITestHostPreflightTests(unittest.TestCase):
         command = "python3 -m unittest Tests.Tooling.test_ui_test_host_preflight"
         self.assertIn(command, workflow)
         self.assertIn(command, hygiene)
-        self.assertIn("timeout-minutes: 85", workflow)
+        self.assertIn("timeout-minutes: 60", workflow)
 
 
 if __name__ == "__main__":

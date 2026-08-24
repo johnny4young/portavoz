@@ -29,6 +29,7 @@ jobs:
         run: |
           python3 scripts/ui_test_scope.py --validate-catalog
           python3 -m unittest Tests.Tooling.test_ui_test_scope
+          python3 -m unittest Tests.Tooling.test_ui_test_runtime
           python3 -m unittest Tests.Tooling.test_run_ui_tests
           python3 -m unittest Tests.Tooling.test_ui_test_host_preflight
 
@@ -60,10 +61,10 @@ jobs:
     needs: scope
     if: needs.scope.outputs.required == 'true'
     runs-on: macos-latest
-    # A release-boundary diff can legitimately select all 92 tests in both
-    # locales. Preserve that evidence and leave enough time to upload both
-    # result bundles instead of weakening the selector.
-    timeout-minutes: 85
+    # Localization/shared-harness and manual integration runs legitimately
+    # select all 105 tests in both locales. Preserve that sequential evidence
+    # and leave time to upload both result bundles instead of weakening it.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 

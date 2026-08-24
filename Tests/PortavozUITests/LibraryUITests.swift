@@ -31,7 +31,7 @@ final class LibraryUITests: PortavozUITestCase {
 
         let title = app.staticTexts["launch-recovery-title"]
         XCTAssertTrue(
-            title.waitForExistence(timeout: 15),
+            title.waitForExistenceFast(timeout: 15),
             "a database-open failure must render recovery instead of terminating")
         let expectedTitle = UITestLocale.environmentLocale == "es"
             ? "No se pudo abrir tu biblioteca"
@@ -44,17 +44,12 @@ final class LibraryUITests: PortavozUITestCase {
         let originalDatabase = try Data(contentsOf: databaseURL)
         app.buttons["launch-recovery-save-copy"].click()
         let copyStatus = app.control(withIdentifier: "launch-recovery-copy-status")
-        XCTAssertTrue(copyStatus.waitForExistence(timeout: 15))
+        XCTAssertTrue(copyStatus.waitForExistenceFast(timeout: 15))
         let expectedCopyStatus = UITestLocale.environmentLocale == "es"
             ? "Copia de recuperación guardada"
             : "Recovery copy saved"
-        let copyFinished = expectation(
-            for: NSPredicate(
-                format: "label == %@ OR value == %@",
-                expectedCopyStatus,
-                expectedCopyStatus),
-            evaluatedWith: copyStatus)
-        wait(for: [copyFinished], timeout: 15)
+        XCTAssertTrue(
+            copyStatus.waitForLabelOrValue(expectedCopyStatus, timeout: 15))
         let copies = try FileManager.default.contentsOfDirectory(
             at: recoveryRoot,
             includingPropertiesForKeys: nil)
@@ -66,17 +61,14 @@ final class LibraryUITests: PortavozUITestCase {
         app.buttons["launch-recovery-export-diagnostics"].click()
         let diagnosticsStatus = app.control(
             withIdentifier: "launch-recovery-diagnostics-status")
-        XCTAssertTrue(diagnosticsStatus.waitForExistence(timeout: 15))
+        XCTAssertTrue(diagnosticsStatus.waitForExistenceFast(timeout: 15))
         let expectedDiagnosticsStatus = UITestLocale.environmentLocale == "es"
             ? "Diagnósticos de inicio guardados"
             : "Launch diagnostics saved"
-        let diagnosticsFinished = expectation(
-            for: NSPredicate(
-                format: "label == %@ OR value == %@",
+        XCTAssertTrue(
+            diagnosticsStatus.waitForLabelOrValue(
                 expectedDiagnosticsStatus,
-                expectedDiagnosticsStatus),
-            evaluatedWith: diagnosticsStatus)
-        wait(for: [diagnosticsFinished], timeout: 15)
+                timeout: 15))
         let diagnostics = try String(contentsOf: diagnosticsURL, encoding: .utf8)
         XCTAssertFalse(diagnostics.contains(databaseURL.path))
         XCTAssertFalse(diagnostics.contains(databaseURL.lastPathComponent))
@@ -84,7 +76,7 @@ final class LibraryUITests: PortavozUITestCase {
 
         app.buttons["launch-recovery-retry"].click()
         XCTAssertTrue(
-            title.waitForExistence(timeout: 15),
+            title.waitForExistenceFast(timeout: 15),
             "a repeated failure must return to the bounded recovery state")
         XCTAssertFalse(app.buttons["library-new-recording-button"].exists)
         attachScreenshot(of: app, named: "database-launch-recovery")
@@ -108,22 +100,22 @@ final class LibraryUITests: PortavozUITestCase {
         let upcoming = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-upcoming-'"))
             .firstMatch
-        XCTAssertTrue(upcoming.waitForExistence(timeout: 10))
+        XCTAssertTrue(upcoming.waitForExistenceFast(timeout: 10))
         upcoming.click()
 
-        XCTAssertTrue(app.control(withIdentifier: "brief-title").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.control(withIdentifier: "brief-title").waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
         let related = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'brief-related-'"))
             .firstMatch
         XCTAssertTrue(
-            related.waitForExistence(timeout: 10),
+            related.waitForExistenceFast(timeout: 10),
             "the brief must surface the related seeded meeting")
         XCTAssertTrue(app.staticTexts["Test meeting"].exists)
         let commitment = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'brief-open-'"))
             .firstMatch
-        XCTAssertTrue(commitment.waitForExistence(timeout: 5))
+        XCTAssertTrue(commitment.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.staticTexts["Prepare the rollout"].exists)
         XCTAssertTrue(app.buttons["brief-record-button"].exists)
         attachScreenshot(of: app, named: "meeting-preparation-brief")
@@ -137,7 +129,7 @@ final class LibraryUITests: PortavozUITestCase {
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(
-            record.waitForExistence(timeout: 15),
+            record.waitForExistenceFast(timeout: 15),
             "the library window must render its primary action on launch")
 
         if let locale = UITestLocale.environmentLocale {
@@ -158,12 +150,12 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
         XCTAssertTrue(
-            app.control(withIdentifier: "recording-failure").waitForExistence(timeout: 10),
+            app.control(withIdentifier: "recording-failure").waitForExistenceFast(timeout: 10),
             "a deterministic start failure must become an actionable error state")
         let expected = isSpanish
             ? "Portavoz no pudo preparar los dispositivos de grabación. Revisa los permisos y vuelve a intentarlo."
@@ -190,17 +182,17 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
         let warning = app.control(withIdentifier: "recording-system-capture-health")
         XCTAssertTrue(
-            warning.waitForExistence(timeout: 10),
+            warning.waitForExistenceFast(timeout: 10),
             "callback death must become visible while microphone capture continues")
         let stop = app.buttons["recording-stop-after-remote-outage"]
         XCTAssertTrue(
-            stop.waitForExistence(timeout: 5),
+            stop.waitForExistenceFast(timeout: 5),
             "a prolonged outage must make Stop explicit without ending capture automatically")
         let expected = isSpanish
             ? "El audio remoto no está disponible desde hace dos minutos. Si la llamada terminó, detén esta grabación."
@@ -210,11 +202,11 @@ final class LibraryUITests: PortavozUITestCase {
 
         stop.click()
         XCTAssertTrue(
-            app.control(withIdentifier: "recording-failure").waitForExistence(timeout: 10),
+            app.control(withIdentifier: "recording-failure").waitForExistenceFast(timeout: 10),
             "Stop must leave active capture and surface the fixture's explicit no-audio outcome")
         XCTAssertFalse(stop.exists, "Stop must not remain actionable after capture closes")
         let reference = app.control(withIdentifier: "recording-failure-reference")
-        XCTAssertTrue(reference.waitForExistence(timeout: 3))
+        XCTAssertTrue(reference.waitForExistenceFast(timeout: 3))
         let expectedFailure = isSpanish
             ? "No se capturó audio. Revisa los permisos de micrófono y grabación de audio del sistema de Portavoz."
             : "No audio was captured. Check Portavoz microphone and system audio recording permissions."
@@ -236,13 +228,13 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
         let warning = app.control(withIdentifier: "recording-system-audio-clipping")
         XCTAssertTrue(
-            warning.waitForExistence(timeout: 10),
+            warning.waitForExistenceFast(timeout: 10),
             "sustained incoming full-scale audio must expose its transcript-quality risk")
         let expected = isSpanish
             ? "El audio de los demás se está saturando — la transcripción puede ser menos precisa."
@@ -263,7 +255,7 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
@@ -271,7 +263,7 @@ final class LibraryUITests: PortavozUITestCase {
             app.waitForLiveTranscriptionAttachPreparing(),
             "the fixture must enter the model-preparing state")
         let preparing = app.control(withIdentifier: "recording-transcript-deferred")
-        XCTAssertTrue(preparing.waitForExistence(timeout: 20))
+        XCTAssertTrue(preparing.waitForExistenceFast(timeout: 20))
         let preparingPrefix = isSpanish
             ? "El audio sigue guardándose correctamente."
             : "Audio is safe."
@@ -282,7 +274,7 @@ final class LibraryUITests: PortavozUITestCase {
             app.continueLiveTranscriptionAttachFixture(),
             "the fixture must release the model-ready transition")
         XCTAssertTrue(
-            app.staticTexts["Live captions are available now."].waitForExistence(
+            app.staticTexts["Live captions are available now."].waitForExistenceFast(
                 timeout: 8))
         XCTAssertFalse(preparing.exists)
         // "Catch me up" is a standing recording control on EVERY platform:
@@ -290,7 +282,7 @@ final class LibraryUITests: PortavozUITestCase {
         // so presence is deterministic even where generation is not.
         XCTAssertTrue(
             app.control(withIdentifier: "recording-catch-up")
-                .waitForExistence(timeout: 5),
+                .waitForExistenceFast(timeout: 5),
             "the recording bar must offer the catch-up action")
         attachScreenshot(of: app, named: "recording-live-transcript-hot-attach")
     }
@@ -302,7 +294,7 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
@@ -310,10 +302,10 @@ final class LibraryUITests: PortavozUITestCase {
             app.waitForLiveTranscriptFrontier(),
             "the fixture must publish a stable 18-row reading frontier")
         let transcript = app.control(withIdentifier: "recording-live-transcript")
-        XCTAssertTrue(transcript.waitForExistence(timeout: 8))
+        XCTAssertTrue(transcript.waitForExistenceFast(timeout: 8))
         XCTAssertTrue(
             app.staticTexts["History row 18 remains readable during live updates."]
-                .waitForExistence(timeout: 8))
+                .waitForExistenceFast(timeout: 8))
 
         let jumpToLive = app.buttons["recording-jump-to-live"]
         // Hosted runners occasionally coalesce the first synthetic wheel
@@ -323,7 +315,7 @@ final class LibraryUITests: PortavozUITestCase {
             transcript.scroll(byDeltaX: 0, deltaY: 8)
         }
         XCTAssertTrue(
-            jumpToLive.waitForExistence(timeout: 5),
+            jumpToLive.waitForExistenceFast(timeout: 5),
             "manual history browsing must pause automatic follow")
         let earlierRow = app.staticTexts[
             "History row 02 remains readable during live updates."
@@ -362,14 +354,8 @@ final class LibraryUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "recording-live-transcript-history-paused")
 
         jumpToLive.click()
-        let resumed = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == false"),
-            object: jumpToLive)
-        XCTAssertEqual(XCTWaiter.wait(for: [resumed], timeout: 5), .completed)
-        let latestVisible = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "isHittable == true"),
-            object: newestRow)
-        XCTAssertEqual(XCTWaiter.wait(for: [latestVisible], timeout: 5), .completed)
+        XCTAssertTrue(jumpToLive.waitForDisappearance(timeout: 5))
+        XCTAssertTrue(newestRow.waitForHittable(timeout: 5))
     }
 
     /// The live assist surface (APUN-003/004): objectives with manual
@@ -382,27 +368,27 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         record.click()
 
         XCTAssertTrue(
             app.waitForLiveTranscriptFrontier(),
             "the live-assist assertions require closed captions")
         let transcript = app.control(withIdentifier: "recording-live-transcript")
-        XCTAssertTrue(transcript.waitForExistence(timeout: 8))
+        XCTAssertTrue(transcript.waitForExistenceFast(timeout: 8))
 
         let panel = app.control(withIdentifier: "recording-objectives-panel")
         XCTAssertTrue(
-            panel.waitForExistence(timeout: 8),
+            panel.waitForExistenceFast(timeout: 8),
             "the recording surface must offer the objectives panel")
         let field = app.control(withIdentifier: "recording-objective-field")
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        XCTAssertTrue(field.waitForExistenceFast(timeout: 5))
         field.click()
         app.typeText("Cerrar el presupuesto del trimestre")
         app.control(withIdentifier: "recording-objective-add").click()
         XCTAssertTrue(
             app.staticTexts["Cerrar el presupuesto del trimestre"]
-                .waitForExistence(timeout: 5),
+                .waitForExistenceFast(timeout: 5),
             "an added objective must appear in the checklist")
 
         XCTAssertTrue(
@@ -412,7 +398,7 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(app.control(withIdentifier: "recording-hud").exists)
         XCTAssertTrue(
             app.control(withIdentifier: "recording-talk-balance")
-                .waitForExistence(timeout: 8),
+                .waitForExistenceFast(timeout: 8),
             "closed captions must surface the talk-balance cue")
     }
 
@@ -424,7 +410,7 @@ final class LibraryUITests: PortavozUITestCase {
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
-        XCTAssertTrue(record.waitForExistence(timeout: 15))
+        XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
         let isSpanish = record.label == "Nueva grabación"
         record.click()
 
@@ -436,7 +422,7 @@ final class LibraryUITests: PortavozUITestCase {
                 format: "identifier BEGINSWITH 'recording-live-translation-'"))
             .firstMatch
         XCTAssertTrue(
-            translation.waitForExistence(timeout: 10),
+            translation.waitForExistenceFast(timeout: 10),
             "a translated row must expose its own labeled visual boundary")
         let targetLanguageLabel =
             isSpanish ? "Traducción al inglés" : "English translation"
@@ -458,7 +444,7 @@ final class LibraryUITests: PortavozUITestCase {
         app.buttons["library-new-recording-button"].click()
         XCTAssertTrue(
             app.control(withIdentifier: "recording-live-transcript")
-                .waitForExistence(timeout: 8))
+                .waitForExistenceFast(timeout: 8))
 
         let meeting = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
@@ -470,16 +456,16 @@ final class LibraryUITests: PortavozUITestCase {
         meeting.click()
         XCTAssertTrue(
             app.control(withIdentifier: "detail-transcript-title")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "the historical meeting must replace the live route before returning")
 
         let returnToRecording = app.buttons["library-return-to-recording"]
         XCTAssertTrue(
-            returnToRecording.waitForExistence(timeout: 5),
+            returnToRecording.waitForExistenceFast(timeout: 5),
             "an active capture must remain reachable from every library route")
         returnToRecording.click()
         XCTAssertTrue(
-            app.control(withIdentifier: "recording-stop").waitForExistence(timeout: 8))
+            app.control(withIdentifier: "recording-stop").waitForExistenceFast(timeout: 8))
         XCTAssertTrue(app.control(withIdentifier: "recording-elapsed-time").exists)
         attachScreenshot(of: app, named: "recording-return-to-live")
     }
@@ -493,7 +479,7 @@ final class LibraryUITests: PortavozUITestCase {
         // The seeded meeting appears under a time-bucket section header, not
         // one flat "Meetings" list (design system timeline).
         XCTAssertTrue(
-            app.staticTexts["Test meeting"].firstMatch.waitForExistence(timeout: 15),
+            app.staticTexts["Test meeting"].firstMatch.waitForExistenceFast(timeout: 15),
             "the seeded meeting must appear in the grouped library")
         // Its timestamp (Nov 2023) is old, so it lands under "Earlier".
         XCTAssertTrue(
@@ -505,25 +491,22 @@ final class LibraryUITests: PortavozUITestCase {
         // Search crosses the SwiftUI binding, feature-model debounce, and
         // real FTS projection before publishing a new Library snapshot.
         let search = app.textFields["library-search-field"]
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.waitForExistenceFast(timeout: 5))
         search.click()
         search.typeText("viernes")
         let hit = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-search-hit-'"))
             .firstMatch
         XCTAssertTrue(
-            hit.waitForExistence(timeout: 10),
+            hit.waitForExistenceFast(timeout: 10),
             "the feature model must publish the seeded transcript search hit")
         XCTAssertTrue(
             hit.label.contains("Test meeting · 00:03"),
             "the search result must expose the meeting and exact hit timestamp")
         hit.click()
         let currentTime = app.staticTexts["player-current-time"]
-        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        let seeked = expectation(
-            for: NSPredicate(format: "value == '0:03'"),
-            evaluatedWith: currentTime)
-        wait(for: [seeked], timeout: 10)
+        XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
         attachScreenshot(of: app, named: "band-4c-fast-local-search")
     }
 
@@ -536,7 +519,7 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         app.buttons["library-ask-button"].click()
         let field = app.textFields["ask-question-field"]
-        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        XCTAssertTrue(field.waitForExistenceFast(timeout: 10))
         field.click()
         field.typeText("viernes")
         app.buttons["ask-submit"].click()
@@ -545,37 +528,34 @@ final class LibraryUITests: PortavozUITestCase {
             NSPredicate(format: "identifier BEGINSWITH 'ask-pending-citation-'"))
             .firstMatch
         XCTAssertTrue(
-            progressiveEvidence.waitForExistence(timeout: 10),
+            progressiveEvidence.waitForExistenceFast(timeout: 10),
             "exact evidence must appear before local answer generation finishes")
         XCTAssertTrue(progressiveEvidence.label.contains("Test meeting · 00:03"))
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-progress-refining"]
-                .waitForExistence(timeout: 5),
+                .waitForExistenceFast(timeout: 5),
             "Ask must distinguish lexical evidence from semantic refinement")
         attachScreenshot(of: app, named: "ask-progressive-evidence")
 
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-progress-generating"]
-                .waitForExistence(timeout: 5),
+                .waitForExistenceFast(timeout: 5),
             "Ask must expose answer generation after the evidence set is fenced")
         XCTAssertTrue(
             app.staticTexts["El presupuesto se revisó y el rollout quedó para el viernes."]
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "the full Ask model must publish the seeded local answer")
         let citation = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-citation-'"))
             .firstMatch
-        XCTAssertTrue(citation.waitForExistence(timeout: 5))
+        XCTAssertTrue(citation.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(citation.label.contains("Test meeting · 00:03"))
         attachScreenshot(of: app, named: "band-6c5-full-ask-answer")
 
         citation.click()
         let currentTime = app.staticTexts["player-current-time"]
-        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        let seeked = expectation(
-            for: NSPredicate(format: "value == '0:03'"),
-            evaluatedWith: currentTime)
-        wait(for: [seeked], timeout: 10)
+        XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
 
     @MainActor
@@ -591,11 +571,11 @@ final class LibraryUITests: PortavozUITestCase {
 
         let memorySurface = app.descendants(matching: .any)[
             "ask-surface-person-commitments"]
-        XCTAssertTrue(memorySurface.waitForExistence(timeout: 10))
+        XCTAssertTrue(memorySurface.waitForExistenceFast(timeout: 10))
         memorySurface.click()
 
         let title = app.descendants(matching: .any)["ask-memory-title"]
-        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertTrue(title.waitForExistenceFast(timeout: 5))
         XCTAssertEqual(
             renderedText(of: title),
             UITestLocale.environmentLocale == "es"
@@ -605,33 +585,30 @@ final class LibraryUITests: PortavozUITestCase {
         let person = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-memory-person-'"))
             .firstMatch
-        XCTAssertTrue(person.waitForExistence(timeout: 10))
+        XCTAssertTrue(person.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(person.label.contains("Ana"))
         person.click()
 
         let selected = app.descendants(matching: .any)[
             "ask-memory-selected-person"]
-        XCTAssertTrue(selected.waitForExistence(timeout: 5))
+        XCTAssertTrue(selected.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: selected).contains("Ana"))
         app.buttons["ask-memory-load"].click()
 
         let commitment = app.descendants(matching: .any)[
             "ask-memory-commitment-B5D10000-0000-4000-8000-000000000005"]
-        XCTAssertTrue(commitment.waitForExistence(timeout: 10))
+        XCTAssertTrue(commitment.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(app.staticTexts["Prepare the rollout"].exists)
         let evidence = app.buttons[
             "ask-memory-evidence-B5D10000-0000-4000-8000-000000000005-0"]
-        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(evidence.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(evidence.label.contains("Test meeting · 00:03"))
         attachScreenshot(of: app, named: "ask-confirmed-person-commitments")
 
         evidence.click()
         let currentTime = app.staticTexts["player-current-time"]
-        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        let seeked = expectation(
-            for: NSPredicate(format: "value == '0:03'"),
-            evaluatedWith: currentTime)
-        wait(for: [seeked], timeout: 10)
+        XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
 
     @MainActor
@@ -646,30 +623,30 @@ final class LibraryUITests: PortavozUITestCase {
         app.buttons["library-ask-button"].click()
         let memorySurface = app.descendants(matching: .any)[
             "ask-surface-person-commitments"]
-        XCTAssertTrue(memorySurface.waitForExistence(timeout: 10))
+        XCTAssertTrue(memorySurface.waitForExistenceFast(timeout: 10))
         memorySurface.click()
 
         let person = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-memory-person-'"))
             .firstMatch
-        XCTAssertTrue(person.waitForExistence(timeout: 10))
+        XCTAssertTrue(person.waitForExistenceFast(timeout: 10))
         person.click()
         app.buttons["ask-memory-load"].click()
 
         let loadBlockers = app.buttons[
             "ask-memory-blockers-load-B5D10000-0000-4000-8000-000000000005"]
-        XCTAssertTrue(loadBlockers.waitForExistence(timeout: 10))
+        XCTAssertTrue(loadBlockers.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(loadBlockers.label.contains("Prepare the rollout"))
         loadBlockers.click()
 
         let blocker = app.descendants(matching: .any)[
             "ask-memory-blocker-B5D50000-0000-4000-8000-000000000007"]
-        XCTAssertTrue(blocker.waitForExistence(timeout: 10))
+        XCTAssertTrue(blocker.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(renderedText(of: blocker).contains(
             "La revisión de seguridad debe aprobarse antes del rollout."))
         let blockedCommitment = app.descendants(matching: .any)[
             "ask-memory-blocker-commitment-B5D50000-0000-4000-8000-000000000007"]
-        XCTAssertTrue(blockedCommitment.waitForExistence(timeout: 5))
+        XCTAssertTrue(blockedCommitment.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: blockedCommitment).contains(
             "Prepare the rollout"))
 
@@ -677,19 +654,16 @@ final class LibraryUITests: PortavozUITestCase {
             "ask-memory-blocker-evidence-B5D50000-0000-4000-8000-000000000007-0"]
         let commitmentEvidence = app.buttons[
             "ask-memory-blocker-evidence-B5D50000-0000-4000-8000-000000000007-1"]
-        XCTAssertTrue(primaryEvidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(primaryEvidence.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(primaryEvidence.label.contains("Security review · 00:04"))
-        XCTAssertTrue(commitmentEvidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(commitmentEvidence.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(commitmentEvidence.label.contains("Test meeting · 00:03"))
         attachScreenshot(of: app, named: "ask-confirmed-commitment-blockers")
 
         primaryEvidence.click()
         let currentTime = app.staticTexts["player-current-time"]
-        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        let seeked = expectation(
-            for: NSPredicate(format: "value == '0:04'"),
-            evaluatedWith: currentTime)
-        wait(for: [seeked], timeout: 10)
+        XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(currentTime.waitForValue("0:04", timeout: 10))
     }
 
     @MainActor
@@ -705,11 +679,11 @@ final class LibraryUITests: PortavozUITestCase {
 
         let topicSurface = app.descendants(matching: .any)[
             "ask-surface-topic-decisions"]
-        XCTAssertTrue(topicSurface.waitForExistence(timeout: 10))
+        XCTAssertTrue(topicSurface.waitForExistenceFast(timeout: 10))
         topicSurface.click()
 
         let title = app.descendants(matching: .any)["ask-topic-title"]
-        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        XCTAssertTrue(title.waitForExistenceFast(timeout: 5))
         XCTAssertEqual(
             renderedText(of: title),
             UITestLocale.environmentLocale == "es"
@@ -719,36 +693,33 @@ final class LibraryUITests: PortavozUITestCase {
         let topic = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
             .firstMatch
-        XCTAssertTrue(topic.waitForExistence(timeout: 10))
+        XCTAssertTrue(topic.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(topic.label.contains("model rollout"))
         topic.click()
 
         let selected = app.descendants(matching: .any)["ask-topic-selected"]
-        XCTAssertTrue(selected.waitForExistence(timeout: 5))
+        XCTAssertTrue(selected.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: selected).contains("model rollout"))
         app.buttons["ask-topic-load"].click()
 
         let decision = app.descendants(matching: .any).matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-topic-decision-'"))
             .firstMatch
-        XCTAssertTrue(decision.waitForExistence(timeout: 10))
+        XCTAssertTrue(decision.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
             renderedText(of: decision).contains(
                 "El rollout del modelo queda para el viernes."))
         let evidence = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-topic-evidence-'"))
             .firstMatch
-        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(evidence.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(evidence.label.contains("Test meeting · 00:03"))
         attachScreenshot(of: app, named: "ask-confirmed-topic-decisions")
 
         evidence.click()
         let currentTime = app.staticTexts["player-current-time"]
-        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        let seeked = expectation(
-            for: NSPredicate(format: "value == '0:03'"),
-            evaluatedWith: currentTime)
-        wait(for: [seeked], timeout: 10)
+        XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
 
     @MainActor
@@ -764,19 +735,19 @@ final class LibraryUITests: PortavozUITestCase {
 
         let topicSurface = app.descendants(matching: .any)[
             "ask-surface-topic-decisions"]
-        XCTAssertTrue(topicSurface.waitForExistence(timeout: 10))
+        XCTAssertTrue(topicSurface.waitForExistenceFast(timeout: 10))
         topicSurface.click()
 
         let topic = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
             .firstMatch
-        XCTAssertTrue(topic.waitForExistence(timeout: 10))
+        XCTAssertTrue(topic.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(topic.label.contains("model rollout"))
         topic.click()
 
         let firstDiscussionJob = app.descendants(matching: .any)[
             "ask-topic-job-first-discussion"]
-        XCTAssertTrue(firstDiscussionJob.waitForExistence(timeout: 5))
+        XCTAssertTrue(firstDiscussionJob.waitForExistenceFast(timeout: 5))
         firstDiscussionJob.click()
         app.buttons["ask-topic-load"].click()
 
@@ -786,23 +757,20 @@ final class LibraryUITests: PortavozUITestCase {
                     + "AND NOT identifier BEGINSWITH "
                     + "'ask-topic-first-discussion-evidence-'"))
             .firstMatch
-        XCTAssertTrue(discussion.waitForExistence(timeout: 10))
+        XCTAssertTrue(discussion.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(renderedText(of: discussion).contains("Test meeting"))
         let evidence = app.buttons.matching(
             NSPredicate(
                 format: "identifier BEGINSWITH 'ask-topic-first-discussion-evidence-'"))
             .firstMatch
-        XCTAssertTrue(evidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(evidence.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(evidence.label.contains("Test meeting · 00:03"))
         attachScreenshot(of: app, named: "ask-confirmed-topic-first-discussion")
 
         evidence.click()
         let currentTime = app.staticTexts["player-current-time"]
-        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        let seeked = expectation(
-            for: NSPredicate(format: "value == '0:03'"),
-            evaluatedWith: currentTime)
-        wait(for: [seeked], timeout: 10)
+        XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
 
     @MainActor
@@ -818,31 +786,31 @@ final class LibraryUITests: PortavozUITestCase {
 
         let topicSurface = app.descendants(matching: .any)[
             "ask-surface-topic-decisions"]
-        XCTAssertTrue(topicSurface.waitForExistence(timeout: 10))
+        XCTAssertTrue(topicSurface.waitForExistenceFast(timeout: 10))
         topicSurface.click()
 
         let topic = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
             .firstMatch
-        XCTAssertTrue(topic.waitForExistence(timeout: 10))
+        XCTAssertTrue(topic.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(topic.label.contains("model rollout"))
         topic.click()
 
         let conflictJob = app.descendants(matching: .any)[
             "ask-topic-job-decision-conflicts"]
-        XCTAssertTrue(conflictJob.waitForExistence(timeout: 5))
+        XCTAssertTrue(conflictJob.waitForExistenceFast(timeout: 5))
         conflictJob.click()
         app.buttons["ask-topic-load"].click()
 
         let conflict = app.descendants(matching: .any)[
             "ask-topic-conflict-B5D40000-0000-4000-8000-000000000005"]
-        XCTAssertTrue(conflict.waitForExistence(timeout: 10))
+        XCTAssertTrue(conflict.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
             renderedText(of: conflict).contains(
                 "El rollout del modelo queda para el viernes."))
         let replaced = app.descendants(matching: .any)[
             "ask-topic-conflict-replaced-B5D40000-0000-4000-8000-000000000005"]
-        XCTAssertTrue(replaced.waitForExistence(timeout: 5))
+        XCTAssertTrue(replaced.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(
             renderedText(of: replaced).contains(
                 "El rollout del modelo quedaba para el jueves."))
@@ -850,19 +818,16 @@ final class LibraryUITests: PortavozUITestCase {
             "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-0"]
         let replacedEvidence = app.buttons[
             "ask-topic-conflict-evidence-B5D40000-0000-4000-8000-000000000005-1"]
-        XCTAssertTrue(currentEvidence.waitForExistence(timeout: 5))
-        XCTAssertTrue(replacedEvidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(currentEvidence.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(replacedEvidence.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(currentEvidence.label.contains("Test meeting · 00:03"))
         XCTAssertTrue(replacedEvidence.label.contains("Planning baseline · 00:04"))
         attachScreenshot(of: app, named: "ask-confirmed-topic-decision-conflicts")
 
         currentEvidence.click()
         let currentTime = app.staticTexts["player-current-time"]
-        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        let seeked = expectation(
-            for: NSPredicate(format: "value == '0:03'"),
-            evaluatedWith: currentTime)
-        wait(for: [seeked], timeout: 10)
+        XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
 
     @MainActor
@@ -878,35 +843,35 @@ final class LibraryUITests: PortavozUITestCase {
 
         let topicSurface = app.descendants(matching: .any)[
             "ask-surface-topic-decisions"]
-        XCTAssertTrue(topicSurface.waitForExistence(timeout: 10))
+        XCTAssertTrue(topicSurface.waitForExistenceFast(timeout: 10))
         topicSurface.click()
 
         let topic = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-topic-option-'"))
             .firstMatch
-        XCTAssertTrue(topic.waitForExistence(timeout: 10))
+        XCTAssertTrue(topic.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(topic.label.contains("model rollout"))
         topic.click()
 
         let changesSinceJob = app.descendants(matching: .any)[
             "ask-topic-job-changes-since"]
-        XCTAssertTrue(changesSinceJob.waitForExistence(timeout: 5))
+        XCTAssertTrue(changesSinceJob.waitForExistenceFast(timeout: 5))
         changesSinceJob.click()
 
         let anchorSearch = app.textFields["ask-topic-anchor-search"]
-        XCTAssertTrue(anchorSearch.waitForExistence(timeout: 5))
+        XCTAssertTrue(anchorSearch.waitForExistenceFast(timeout: 5))
         anchorSearch.click()
         anchorSearch.typeText("Planning")
 
         let anchor = app.buttons[
             "ask-topic-anchor-option-B5D40000-0000-4000-8000-000000000003"]
-        XCTAssertTrue(anchor.waitForExistence(timeout: 10))
+        XCTAssertTrue(anchor.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(anchor.label.contains("Planning baseline"))
         anchor.click()
 
         let selectedAnchor = app.descendants(matching: .any)[
             "ask-topic-anchor-selected"]
-        XCTAssertTrue(selectedAnchor.waitForExistence(timeout: 5))
+        XCTAssertTrue(selectedAnchor.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: selectedAnchor).contains(
             "Planning baseline"))
         let load = app.buttons["ask-topic-load"]
@@ -915,18 +880,18 @@ final class LibraryUITests: PortavozUITestCase {
 
         let change = app.descendants(matching: .any)[
             "ask-topic-change-since-B5D40000-0000-4000-8000-000000000005"]
-        XCTAssertTrue(change.waitForExistence(timeout: 10))
+        XCTAssertTrue(change.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(renderedText(of: change).contains(
             "El rollout del modelo queda para el viernes."))
         let replaced = app.descendants(matching: .any)[
             "ask-topic-change-since-replaced-"
                 + "B5D40000-0000-4000-8000-000000000005"]
-        XCTAssertTrue(replaced.waitForExistence(timeout: 5))
+        XCTAssertTrue(replaced.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: replaced).contains(
             "El rollout del modelo quedaba para el jueves."))
         let anchorSummary = app.descendants(matching: .any)[
             "ask-topic-change-since-anchor"]
-        XCTAssertTrue(anchorSummary.waitForExistence(timeout: 5))
+        XCTAssertTrue(anchorSummary.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(renderedText(of: anchorSummary).contains(
             "Planning baseline"))
 
@@ -936,8 +901,8 @@ final class LibraryUITests: PortavozUITestCase {
         let replacedEvidence = app.buttons[
             "ask-topic-change-since-evidence-"
                 + "B5D40000-0000-4000-8000-000000000005-1"]
-        XCTAssertTrue(currentEvidence.waitForExistence(timeout: 5))
-        XCTAssertTrue(replacedEvidence.waitForExistence(timeout: 5))
+        XCTAssertTrue(currentEvidence.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(replacedEvidence.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(currentEvidence.label.contains("Test meeting · 00:03"))
         XCTAssertTrue(replacedEvidence.label.contains(
             "Planning baseline · 00:04"))
@@ -945,11 +910,8 @@ final class LibraryUITests: PortavozUITestCase {
 
         currentEvidence.click()
         let currentTime = app.staticTexts["player-current-time"]
-        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        let seeked = expectation(
-            for: NSPredicate(format: "value == '0:03'"),
-            evaluatedWith: currentTime)
-        wait(for: [seeked], timeout: 10)
+        XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
 
     @MainActor
@@ -967,14 +929,14 @@ final class LibraryUITests: PortavozUITestCase {
             .firstMatch
         meeting.click()
         XCTAssertTrue(
-            app.control(withIdentifier: "player-current-time").waitForExistence(timeout: 10))
+            app.control(withIdentifier: "player-current-time").waitForExistenceFast(timeout: 10))
         app.typeKey("k", modifierFlags: .command)
         let field = app.textFields["palette-query-field"]
-        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        XCTAssertTrue(field.waitForExistenceFast(timeout: 10))
         field.click()
         field.typeText("viernes")
         XCTAssertTrue(
-            app.buttons["palette-hit-0"].waitForExistence(timeout: 10),
+            app.buttons["palette-hit-0"].waitForExistenceFast(timeout: 10),
             "the palette must publish instant local FTS results")
         field.typeKey(.return, modifierFlags: [])
         // `palette-answer` renders only from `state.answer`, which nothing but
@@ -988,7 +950,7 @@ final class LibraryUITests: PortavozUITestCase {
         // Pinning the generated sentence made this gate fail about half the
         // time for a reason that was never a regression.
         XCTAssertTrue(
-            app.staticTexts["palette-answer"].waitForExistence(timeout: 20),
+            app.staticTexts["palette-answer"].waitForExistenceFast(timeout: 20),
             "Enter must use the same full Ask workflow")
         XCTAssertTrue(app.buttons["palette-copy-answer"].exists)
         let citation = app.buttons["palette-citation-0"]
@@ -996,17 +958,14 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(citation.label.contains("Test meeting · 00:03"))
         let paletteWindow = app.windows["command-palette-window"]
         XCTAssertTrue(
-            paletteWindow.waitForExistence(timeout: 5),
+            paletteWindow.waitForExistenceFast(timeout: 5),
             "the palette window must remain visible while showing its answer")
         attachElementScreenshot(of: paletteWindow, named: "band-6c5-command-palette-answer")
 
         citation.click()
         let currentTime = app.staticTexts["player-current-time"]
-        XCTAssertTrue(currentTime.waitForExistence(timeout: 10))
-        let seeked = expectation(
-            for: NSPredicate(format: "value == '0:03'"),
-            evaluatedWith: currentTime)
-        wait(for: [seeked], timeout: 10)
+        XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
     }
 
     @MainActor
@@ -1024,7 +983,7 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(meeting.exists, "launch recovery must return interrupted audio")
         meeting.click()
         XCTAssertTrue(
-            app.control(withIdentifier: "player-play-pause").waitForExistence(timeout: 10),
+            app.control(withIdentifier: "player-play-pause").waitForExistenceFast(timeout: 10),
             "the recovered CAF must be playable without loading an ML model")
         XCTAssertTrue(
             app.control(withIdentifier: "detail-refine").exists,
@@ -1039,24 +998,22 @@ final class LibraryUITests: PortavozUITestCase {
 
         XCTAssertTrue(
             app.staticTexts["Durable processing recovery"]
-                .firstMatch.waitForExistence(timeout: 15),
+                .firstMatch.waitForExistenceFast(timeout: 15),
             "the durable processing fixture must remain discoverable while work resumes")
         let meeting = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
-        XCTAssertTrue(meeting.waitForExistence(timeout: 5))
-        let settled = expectation(
-            for: NSPredicate(format: "isHittable == true"), evaluatedWith: meeting)
-        wait(for: [settled], timeout: 10)
+        XCTAssertTrue(meeting.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(meeting.waitForHittable(timeout: 10))
         meeting.click()
 
         XCTAssertTrue(
             app.staticTexts["El procesamiento durable conserva este texto."]
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "diarization completion must atomically preserve the original transcript")
         XCTAssertTrue(
             app.staticTexts["Durable processing finished."]
-                .waitForExistence(timeout: 15),
+                .waitForExistenceFast(timeout: 15),
             "the resumed worker must publish its dependent summary and refresh the detail")
         attachScreenshot(of: app, named: "durable-post-capture-recovery")
     }

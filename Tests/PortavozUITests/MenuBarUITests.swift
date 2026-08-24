@@ -17,7 +17,7 @@ final class MenuBarUITests: PortavozUITestCase {
         XCTAssertTrue(app.prepareForInteraction())
         let card = app.control(withIdentifier: "menu-bar-next-meeting")
         let prepare = app.buttons["menu-bar-brief-prepare"]
-        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        XCTAssertTrue(card.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(prepare.waitForStableFrame(timeout: 10))
         XCTAssertTrue(app.buttons["menu-bar-brief-dismiss"].exists)
         XCTAssertTrue(app.buttons["menu-bar-record-next"].exists)
@@ -25,7 +25,7 @@ final class MenuBarUITests: PortavozUITestCase {
 
         let confirmation = app.control(
             withIdentifier: "menu-bar-brief-confirm-sheet")
-        XCTAssertTrue(confirmation.waitForExistence(timeout: 15))
+        XCTAssertTrue(confirmation.waitForExistenceFast(timeout: 15))
         XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
         XCTAssertTrue(
             app.control(withIdentifier: "menu-bar-brief-capability-local").exists)
@@ -38,9 +38,9 @@ final class MenuBarUITests: PortavozUITestCase {
                 format: "identifier BEGINSWITH 'brief-open-'"))
             .firstMatch
         XCTAssertTrue(
-            related.waitForExistence(timeout: 10),
+            related.waitForExistenceFast(timeout: 10),
             "the exact preview must carry its related meeting evidence")
-        XCTAssertTrue(openItem.waitForExistence(timeout: 10))
+        XCTAssertTrue(openItem.waitForExistenceFast(timeout: 10))
         let relatedIdentifier = related.identifier
         let openItemIdentifier = openItem.identifier
         XCTAssertTrue(app.staticTexts["Test meeting"].exists)
@@ -53,7 +53,7 @@ final class MenuBarUITests: PortavozUITestCase {
         confirm.click()
         let result = app.control(withIdentifier: "menu-bar-brief-result")
         XCTAssertTrue(
-            result.waitForExistence(timeout: 15),
+            result.waitForExistenceFast(timeout: 15),
             "successful execution must reveal the same approved artifact")
         XCTAssertTrue(app.staticTexts["Presupuesto rollout"].exists)
         XCTAssertTrue(app.control(withIdentifier: relatedIdentifier).exists)
@@ -62,7 +62,7 @@ final class MenuBarUITests: PortavozUITestCase {
         app.buttons["menu-bar-brief-result-close"].click()
         XCTAssertTrue(
             app.control(withIdentifier: "menu-bar-brief-prepared")
-                .waitForExistence(timeout: 5))
+                .waitForExistenceFast(timeout: 5))
         XCTAssertFalse(prepare.exists)
 
         XCTAssertTrue(

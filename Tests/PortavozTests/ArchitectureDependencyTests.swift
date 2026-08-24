@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,610 cases "
-                + "(15 environment-gated) + 108"))
+            "package inventory contains 2,614 cases "
+                + "(15 environment-gated) + 105"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -2976,7 +2976,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "ask-memory-blocker-B5D50000-0000-4000-8000-000000000007"))
         XCTAssertTrue(uiTest.contains(
             "loadBlockers.label.contains(\"Prepare the rollout\")"))
-        XCTAssertTrue(uiTest.contains("value == '0:04'"))
+        XCTAssertTrue(uiTest.contains("waitForValue(\"0:04\", timeout: 10)"))
         XCTAssertTrue(scope.contains("loadcommitmentblockers"))
 
         XCTAssertTrue(architecture.contains(
@@ -3075,7 +3075,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"))
         XCTAssertTrue(uiTest.contains(
             "ask-topic-anchor-option-B5D40000-0000-4000-8000-000000000003"))
-        XCTAssertTrue(uiTest.contains("value == '0:03'"))
+        XCTAssertTrue(uiTest.contains("waitForValue(\"0:03\", timeout: 10)"))
         XCTAssertTrue(scope.contains(
             "testAskConfirmedMemoryLoadsExactTopicChangesSinceMeetingAndEvidence"))
 
@@ -5652,9 +5652,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(uiTest.contains("Pause all actions"))
 
         XCTAssertTrue(decisions.contains("## D379"))
-        XCTAssertTrue(gaps.contains("FROZEN FOR 0.8.0"))
-        XCTAssertTrue(gaps.contains("0.8.0 Release Candidate scope and exit gates"))
-        XCTAssertTrue(product.contains("### 0.8.0 candidate boundary"))
+        XCTAssertTrue(gaps.contains("SIX-ACTION BASELINE FROZEN"))
+        XCTAssertTrue(gaps.contains("Portavoz 1.0.0 candidate scope and exit gates"))
+        XCTAssertTrue(product.contains("### 1.0.0 candidate boundary"))
         XCTAssertTrue(appSpec.contains(
             "## Suggested-actions control center in Settings"))
         XCTAssertTrue(appSpec.contains(

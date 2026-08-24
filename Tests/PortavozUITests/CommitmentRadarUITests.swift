@@ -13,7 +13,7 @@ final class CommitmentRadarUITests: PortavozUITestCase {
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-title")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "opening a commitment reminder must route to the private Radar")
         attachScreenshot(of: app, named: "commitment-reminder-open-radar")
     }
@@ -28,21 +28,21 @@ final class CommitmentRadarUITests: PortavozUITestCase {
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let radar = app.buttons["library-commitment-radar-button"]
-        XCTAssertTrue(radar.waitForExistence(timeout: 10))
+        XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
         radar.click()
 
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-title")
-                .waitForExistence(timeout: 10))
+                .waitForExistenceFast(timeout: 10))
         let enableReminders = app.control(
             withIdentifier: "commitment-reminder-enable")
         XCTAssertTrue(
-            enableReminders.waitForExistence(timeout: 10),
+            enableReminders.waitForExistenceFast(timeout: 10),
             "launch inspection must not prompt before the explicit Radar action")
         enableReminders.click()
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-reminder-enabled")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "explicit permission should reconcile confirmed due work")
         XCTAssertFalse(enableReminders.exists)
         attachScreenshot(of: app, named: "commitment-radar-reminders-enabled")
@@ -51,58 +51,58 @@ final class CommitmentRadarUITests: PortavozUITestCase {
         let otherID = "B5D10000-0000-4000-8000-000000000001"
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-item-\(mineID)")
-                .waitForExistence(timeout: 10))
+                .waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-item-\(otherID)").exists)
 
         let owner = app.control(withIdentifier: "commitment-radar-owner-filter")
-        XCTAssertTrue(owner.waitForExistence(timeout: 5))
+        XCTAssertTrue(owner.waitForExistenceFast(timeout: 5))
         owner.click()
         let mine = app.menuItems["commitment-radar-owner-mine"]
-        XCTAssertTrue(mine.waitForExistence(timeout: 5))
+        XCTAssertTrue(mine.waitForExistenceFast(timeout: 5))
         mine.click()
 
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-item-\(mineID)")
-                .waitForExistence(timeout: 10))
+                .waitForExistenceFast(timeout: 10))
         XCTAssertFalse(
             app.control(withIdentifier: "commitment-radar-item-\(otherID)").exists,
             "the owner filter must not mix another person's confirmed work")
         attachScreenshot(of: app, named: "commitment-radar")
 
         let due = app.control(withIdentifier: "commitment-radar-due-\(mineID)")
-        XCTAssertTrue(due.waitForExistence(timeout: 5))
+        XCTAssertTrue(due.waitForExistenceFast(timeout: 5))
         due.click()
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-due-editor")
-                .waitForExistence(timeout: 5))
+                .waitForExistenceFast(timeout: 5))
         attachScreenshot(of: app, named: "commitment-radar-due-date")
         app.control(withIdentifier: "commitment-radar-due-toggle").click()
         app.control(withIdentifier: "commitment-radar-due-save").click()
         XCTAssertTrue(
             app.control(
                 withIdentifier: "commitment-radar-due-value-\(mineID)-none")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "rescheduling must persist and reload the exact Radar item")
         attachScreenshot(of: app, named: "commitment-radar-rescheduled")
 
         let complete = app.control(
             withIdentifier: "commitment-radar-complete-\(mineID)")
-        XCTAssertTrue(complete.waitForExistence(timeout: 5))
+        XCTAssertTrue(complete.waitForExistenceFast(timeout: 5))
         complete.click()
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-radar-reopen-\(mineID)")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "completion must persist and return as a durable Radar action")
         attachScreenshot(of: app, named: "commitment-radar-completed")
 
         let source = app.control(
             withIdentifier: "commitment-radar-source-B5D20000-0000-4000-8000-000000000002")
-        XCTAssertTrue(source.waitForExistence(timeout: 5))
+        XCTAssertTrue(source.waitForExistenceFast(timeout: 5))
         source.click()
         XCTAssertTrue(
             app.control(withIdentifier: "detail-header-section")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "a Radar source must open its exact durable meeting")
         XCTAssertTrue(app.staticTexts["Test meeting"].exists)
     }
@@ -117,29 +117,29 @@ final class CommitmentRadarUITests: PortavozUITestCase {
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let radar = app.buttons["library-commitment-radar-button"]
-        XCTAssertTrue(radar.waitForExistence(timeout: 10))
+        XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
         radar.click()
 
         let mineID = "B5D10000-0000-4000-8000-000000000002"
         let create = app.control(
             withIdentifier: "commitment-radar-reminder-create-\(mineID)")
         XCTAssertTrue(
-            create.waitForExistence(timeout: 10),
+            create.waitForExistenceFast(timeout: 10),
             "a confirmed commitment must expose its local reminder proposal")
         create.click()
 
         let sheet = app.control(withIdentifier: "reminder-draft-sheet")
-        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        XCTAssertTrue(sheet.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(
             app.control(withIdentifier: "reminder-draft-preview-title").exists)
         XCTAssertTrue(
             sheet.staticTexts["Recheck the launch checklist"]
-                .waitForExistence(timeout: 5),
+                .waitForExistenceFast(timeout: 5),
             "the permission sheet must expose the exact commitment title")
         let allow = app.control(
             withIdentifier: "reminder-draft-allow-access")
         XCTAssertTrue(
-            allow.waitForExistence(timeout: 5),
+            allow.waitForExistenceFast(timeout: 5),
             "opening a proposal must inspect permission without prompting")
         XCTAssertFalse(
             app.control(withIdentifier: "reminder-draft-confirm").exists,
@@ -149,25 +149,25 @@ final class CommitmentRadarUITests: PortavozUITestCase {
         XCTAssertTrue(app.prepareForInteraction())
         allow.click()
         let target = app.control(withIdentifier: "reminder-draft-target-list")
-        XCTAssertTrue(target.waitForExistence(timeout: 10))
+        XCTAssertTrue(target.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
-            sheet.staticTexts["Reminders"].waitForExistence(timeout: 5),
+            sheet.staticTexts["Reminders"].waitForExistenceFast(timeout: 5),
             "the exact fake destination must be visible before confirmation")
         let refresh = app.control(withIdentifier: "reminder-draft-refresh-list")
-        XCTAssertTrue(refresh.waitForExistence(timeout: 5))
+        XCTAssertTrue(refresh.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.prepareForInteraction())
         refresh.click()
-        XCTAssertTrue(target.waitForExistence(timeout: 10))
+        XCTAssertTrue(target.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(sheet.staticTexts["Reminders"].exists)
         let confirm = app.control(withIdentifier: "reminder-draft-confirm")
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirm.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(app.prepareForInteraction())
         confirm.click()
 
         let created = app.control(
             withIdentifier: "commitment-radar-reminder-created-\(mineID)")
         XCTAssertTrue(
-            created.waitForExistence(timeout: 10),
+            created.waitForExistenceFast(timeout: 10),
             "the subject surface must rehydrate the durable succeeded receipt")
         XCTAssertFalse(create.exists)
 
@@ -192,18 +192,18 @@ final class CommitmentRadarUITests: PortavozUITestCase {
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let radar = app.buttons["library-commitment-radar-button"]
-        XCTAssertTrue(radar.waitForExistence(timeout: 10))
+        XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
         radar.click()
 
         let reviewMode = app.control(
             withIdentifier: "commitment-radar-mode-review")
-        XCTAssertTrue(reviewMode.waitForExistence(timeout: 10))
+        XCTAssertTrue(reviewMode.waitForExistenceFast(timeout: 10))
         reviewMode.click()
 
         let reviewID = "B5E00000-0000-4000-8000-000000000002"
         let reviewPage = app.control(withIdentifier: "commitment-review-page")
         XCTAssertTrue(
-            reviewPage.waitForExistence(timeout: 10),
+            reviewPage.waitForExistenceFast(timeout: 10),
             "generated work must appear in the separate review mode")
         XCTAssertFalse(
             app.control(withIdentifier: "commitment-radar-owner-filter").exists,
@@ -211,7 +211,7 @@ final class CommitmentRadarUITests: PortavozUITestCase {
         let open = app.control(
             withIdentifier: "commitment-review-open-\(reviewID)")
         XCTAssertTrue(
-            open.waitForExistence(timeout: 5),
+            open.waitForExistenceFast(timeout: 5),
             "a suggestion must offer complete evidence review, not confirmation")
         attachScreenshot(of: app, named: "commitment-review-queue")
 
@@ -219,17 +219,18 @@ final class CommitmentRadarUITests: PortavozUITestCase {
 
         XCTAssertTrue(
             app.control(withIdentifier: "detail-header-section")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "review must reopen the complete source meeting")
         let citedSegment = app.control(
             withIdentifier: "transcript-segment-B5B00000-0000-4000-8000-000000000002")
-        XCTAssertTrue(citedSegment.waitForExistence(timeout: 10))
+        XCTAssertTrue(citedSegment.waitForExistenceFast(timeout: 10))
         XCTAssertTrue(
-            citedSegment.isSelected,
+            citedSegment.waitForSelection(timeout: 10),
             "current evidence must focus the exact transcript source")
-        XCTAssertEqual(
-            app.control(withIdentifier: "player-current-time").value as? String,
-            "0:03")
+        let currentTime = app.control(withIdentifier: "player-current-time")
+        XCTAssertTrue(
+            currentTime.waitForValue("0:03", timeout: 10),
+            "evidence review must seek to the persisted citation timestamp")
         attachScreenshot(of: app, named: "commitment-review-exact-source")
     }
 
@@ -243,34 +244,34 @@ final class CommitmentRadarUITests: PortavozUITestCase {
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         let radar = app.buttons["library-commitment-radar-button"]
-        XCTAssertTrue(radar.waitForExistence(timeout: 10))
+        XCTAssertTrue(radar.waitForExistenceFast(timeout: 10))
         radar.click()
 
         let reviewMode = app.control(
             withIdentifier: "commitment-radar-mode-review")
-        XCTAssertTrue(reviewMode.waitForExistence(timeout: 10))
+        XCTAssertTrue(reviewMode.waitForExistenceFast(timeout: 10))
         reviewMode.click()
 
         let reviewID = "B5E00000-0000-4000-8000-000000000002"
         let dismiss = app.control(
             withIdentifier: "commitment-review-dismiss-\(reviewID)")
         XCTAssertTrue(
-            dismiss.waitForExistence(timeout: 10),
+            dismiss.waitForExistenceFast(timeout: 10),
             "the card must be visibly presented before field evidence is recorded")
         dismiss.click()
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-review-empty")
-                .waitForExistence(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "review remains the user's explicit decision")
 
         let qualityMode = app.control(
             withIdentifier: "commitment-radar-mode-quality")
-        XCTAssertTrue(qualityMode.waitForExistence(timeout: 5))
+        XCTAssertTrue(qualityMode.waitForExistenceFast(timeout: 5))
         qualityMode.click()
 
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-quality-scorecard")
-                .waitForExistence(timeout: 10))
+                .waitForExistenceFast(timeout: 10))
         let keptValue = app.control(withIdentifier: "commitment-quality-kept").value
             as? String
         XCTAssertTrue(
