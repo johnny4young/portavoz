@@ -53,7 +53,7 @@ receipt, release artifact, developer build used for field evidence, and final
 scorecard:
 
 ```sh
-export PORTAVOZ_RELEASE_VERSION=0.8.0
+export PORTAVOZ_RELEASE_VERSION=1.0.0
 export PORTAVOZ_RELEASE_BUILD="$(date +%Y%m%d%H%M)"
 export PORTAVOZ_RELEASE_COMMIT="$(git rev-parse HEAD)"
 export PORTAVOZ_VERSION="$PORTAVOZ_RELEASE_VERSION"
@@ -66,6 +66,15 @@ suite, strict SwiftLint, 25 recording/recovery stress iterations, the exact mixe
 policy corpus, and seven focused XCUITest journeys in English and Spanish. It
 writes `dist/release-readiness/deterministic.json` only after every command
 passes. Do not reuse a receipt after the commit, version, or build changes.
+
+D391 keeps this original deterministic receipt as one input rather than
+pretending it covers all of 1.0. The final schema-2 scorecard also requires four
+strict qualification receipts: complete candidate automation, reviewed source
+integration/hosted CI, production-sync admission, and physical VoiceOver/Voice
+Control on Sequoia and Tahoe. A missing receipt is a normal release-blocking
+state; do not hand-author or copy one from a neighboring commit. Pass each
+receipt explicitly to the evaluator only after its owning gate or field
+workflow has produced it.
 
 ### Performance gate (PERF-001/PERF-008)
 
@@ -138,7 +147,7 @@ scripts/make-release.sh "$PORTAVOZ_RELEASE_VERSION"
 ```
 
 `scripts/make-release.sh` (see its header) does, in order:
-1. `make-app.sh --release --version <v> --build <YYYYMMDDHHMM>` — version-stamps, embeds the supplied Developer ID profile, signs the `.app` with the exact production CloudKit/APNs entitlements, and rejects a missing, expired, or mismatched profile.
+1. `make-app.sh --release --version <v> --build <YYYYMMDDHHMM>` — requires the exported release commit to match a clean `HEAD` before and after the app build, stamps it as `PortavozSourceCommit`, version-stamps, embeds the supplied Developer ID profile, signs the `.app` with the exact production CloudKit/APNs entitlements, and rejects a missing, expired, or mismatched profile.
 2. `make-dmg.sh --skip-build` — archives and notarizes the signed app, staples
    and verifies it, packages that app into the DMG, then independently
    notarizes/staples the DMG. It mounts the result and verifies a copied-out
@@ -166,8 +175,11 @@ stapled outer image can open while a cask-extracted app has no embedded ticket
 and must reach Apple's service at first launch. Never publish unless both
 boundaries pass. It also decodes the app copied from the DMG and requires its
 signed container/service/production/push values to match the unexpired embedded
-profile exactly; this catches a restricted-capability app that notarizes but
-would fail at launch or never reach the intended container.
+profile exactly, reads the embedded `PortavozSourceCommit`, and requires that
+commit to match `PORTAVOZ_RELEASE_COMMIT` before writing the distribution
+receipt. This catches a restricted-capability app that notarizes but would fail
+at launch, never reach the intended container, or be attributed to adjacent
+source.
 
 ### Local-only versus provisioned development builds
 
@@ -200,6 +212,11 @@ make release-reliability \
   PORTAVOZ_RELEASE_VERSION="$PORTAVOZ_RELEASE_VERSION" \
   PORTAVOZ_RELEASE_BUILD="$PORTAVOZ_RELEASE_BUILD" \
   PORTAVOZ_RELEASE_COMMIT="$PORTAVOZ_RELEASE_COMMIT" \
+  PORTAVOZ_QUALIFICATION_RECEIPT_ARGS='\
+    --qualification-receipt /path/to/candidate-automation.json
+    --qualification-receipt /path/to/source-integration.json
+    --qualification-receipt /path/to/production-sync.json
+    --qualification-receipt /path/to/assistive-technology.json' \
   PORTAVOZ_FIELD_EVIDENCE_ARGS='
     --field-evidence /path/to/built-in-sequoia
     --field-evidence /path/to/built-in-tahoe
@@ -211,7 +228,8 @@ make release-reliability \
     --field-evidence /path/to/mixed-language'
 ```
 
-Review `dist/release-readiness/scorecard/readiness.md`. It must say **PASS**.
+Review `dist/release-readiness/scorecard/readiness.md`. It must contain all 29
+schema-2 cells, name the exact artifact digest, and say **PASS**.
 Missing, failed, incomplete, not-observed, stale-version, stale-build, and
 stale-commit evidence blocks publication. The scorecard is content-free and
 owner-only; it is ignored release evidence, not a tracked substitute for

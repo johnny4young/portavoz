@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,707 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,747 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2359,18 +2359,32 @@ and Git commit. `verify-distribution.sh --receipt` writes the signed-build
 receipt only after the DMG and independently extracted app pass signature,
 notarization, stapling, Gatekeeper, and production CloudKit capability checks.
 
-`docs/evidence/reliability-gates.json` then requires 14 proofs across four
-classes: deterministic automation, signed build, real hardware, and user
-field. `scripts/release_reliability.py evaluate` accepts only exact receipts
-and protocol-2 field manifests for the same release identity. Missing,
-failed, incomplete, or not-observed evidence produces a blocking scorecard;
-only all-pass evidence exits successfully. The owner-only JSON/Markdown output
-contains no meeting reference or support payload. Ten tooling tests cover
-complete, omitted/missing-path, failed, incomplete, mismatched-commit,
-duplicate-platform, content-bearing-input, and invalid-contract behavior, and
-the repository-hygiene gate always runs them. An architecture ratchet pins the
-contract, proof classes, fail-closed predicate, distribution receipt ordering,
-and D147.
+`docs/evidence/reliability-gates.json` now requires 29 proofs across eight
+classes. The original deterministic, signed-build, real-hardware, and user-field
+cells remain. Schema 2 adds complete candidate automation, reviewed source
+integration plus hosted CI, production-sync admission, and physical
+assistive-technology cells for VoiceOver and Voice Control on Sequoia and
+Tahoe. Candidate automation explicitly separates frozen scope, autonomous
+Apuntador validation, installed-model coverage, authoritative performance,
+resource/memory, synthetic long capture, upgrade/recovery, and complete
+bilingual XCUITest.
+
+`scripts/release_reliability.py evaluate` accepts only exact receipts and
+protocol-2 field manifests for the same release identity. A qualification
+receipt has one closed scope, every proof for that scope exactly once, no extra
+keys, and the exact version/build/commit. Missing, failed, incomplete, or
+not-observed evidence produces a blocking scorecard; only all-pass evidence
+exits successfully. The distribution receipt additionally requires the commit
+stamped into the app copied from the DMG, with a clean exact-source recheck
+after the app build, and exposes that exact artifact digest on the final
+scorecard. The owner-only JSON/Markdown output contains no meeting
+reference or support payload. Twenty tooling tests cover complete,
+omitted/missing-path, failed, incomplete, stale deterministic or qualification
+commit, duplicate qualification scope/platform, content-bearing input,
+distribution commit, and invalid-contract behavior. The repository-hygiene
+gate always runs them. An architecture ratchet pins the schema, 29 proofs,
+eight classes, fail-closed predicate, exact artifact stamp, distribution
+receipt ordering, D147, and D391.
 
 The 11 Aug 2026 development inventory is 2,377 XCTest package cases (14
 environment-gated), zero strict-lint violations across 656 production Swift

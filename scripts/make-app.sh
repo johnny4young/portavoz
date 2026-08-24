@@ -14,6 +14,12 @@ cd "$(dirname "$0")/.."
 CONFIG=debug
 VERSION="${PORTAVOZ_VERSION:-0.1.0}"
 BUILD="${PORTAVOZ_BUILD:-1}"
+SOURCE_COMMIT="${PORTAVOZ_RELEASE_COMMIT:-}"
+
+if [[ -n "$SOURCE_COMMIT" && ! "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "PORTAVOZ_RELEASE_COMMIT must be one full lowercase Git SHA." >&2
+  exit 64
+fi
 
 usage() {
   echo "usage: scripts/make-app.sh [--release] [--version <version>] [--build <build>]" >&2
@@ -242,6 +248,10 @@ PLIST
 
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$BUILD" "$APP/Contents/Info.plist"
+if [[ -n "$SOURCE_COMMIT" ]]; then
+  plutil -insert PortavozSourceCommit -string "$SOURCE_COMMIT" \
+    "$APP/Contents/Info.plist"
+fi
 python3 scripts/export-localizations.py "$APP/Contents/Resources"
 
 # Sparkle update feed + signing key. Without assets/sparkle-public-key

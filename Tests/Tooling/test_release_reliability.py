@@ -15,7 +15,7 @@ SPEC.loader.exec_module(reliability)
 
 
 class ReleaseReliabilityTests(unittest.TestCase):
-    version = "0.8.0"
+    version = "1.0.0"
     build = "202607280001"
     commit = "a" * 40
 
@@ -24,11 +24,18 @@ class ReleaseReliabilityTests(unittest.TestCase):
             root = Path(directory)
             deterministic = self.write_deterministic(root)
             distribution = self.write_distribution(root)
+            qualification = self.write_complete_qualification(root)
             field = self.write_complete_field_evidence(root)
             output = root / "scorecard"
 
             result = reliability.main_from_args(
-                self.evaluate_args(deterministic, distribution, field, output)
+                self.evaluate_args(
+                    deterministic,
+                    distribution,
+                    field,
+                    output,
+                    qualification,
+                )
             )
 
             self.assertEqual(result, 0)
@@ -38,11 +45,16 @@ class ReleaseReliabilityTests(unittest.TestCase):
                 {proof["class"] for proof in scorecard["proofs"]},
                 {
                     "deterministic-automated",
+                    "candidate-automated",
+                    "source-integration",
                     "signed-build",
+                    "production-sync",
                     "real-hardware",
+                    "assistive-technology",
                     "user-field",
                 },
             )
+            self.assertEqual(scorecard["artifact"]["sha256"], "c" * 64)
             rendered = (output / "readiness.md").read_text()
             self.assertNotIn("meeting-0123456789ab", rendered)
             self.assertEqual(os.stat(output / "readiness.json").st_mode & 0o777, 0o600)
@@ -143,6 +155,173 @@ class ReleaseReliabilityTests(unittest.TestCase):
                     )
                 )
 
+    def test_mismatched_qualification_commit_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            qualification = self.write_qualification(
+                root,
+                "candidate-automation",
+                commit="b" * 40,
+            )
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "does not match requested release",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(
+                        None,
+                        None,
+                        [],
+                        root / "scorecard",
+                        [qualification],
+                    )
+                )
+
+    def test_repeated_qualification_scope_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = self.write_qualification(
+                root,
+                "candidate-automation",
+                name="candidate-a",
+            )
+            second = self.write_qualification(
+                root,
+                "candidate-automation",
+                name="candidate-b",
+            )
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "repeat scope: candidate-automation",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(
+                        None,
+                        None,
+                        [],
+                        root / "scorecard",
+                        [first, second],
+                    )
+                )
+
+    def test_qualification_receipt_rejects_content_bearing_additions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_qualification(root, "candidate-automation")
+            document = json.loads(receipt.read_text())
+            document["transcript"] = "private"
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "forbidden keys: transcript",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(
+                        None,
+                        None,
+                        [],
+                        root / "scorecard",
+                        [receipt],
+                    )
+                )
+
+    def test_failed_qualification_proof_remains_release_blocking(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_qualification(root, "candidate-automation")
+            document = json.loads(receipt.read_text())
+            next(
+                proof
+                for proof in document["proofs"]
+                if proof["id"] == "model-gated"
+            )["state"] = "fail"
+            receipt.write_text(json.dumps(document))
+            output = root / "scorecard"
+
+            result = reliability.main_from_args(
+                self.evaluate_args(None, None, [], output, [receipt])
+            )
+
+            self.assertEqual(result, 1)
+            scorecard = json.loads((output / "readiness.json").read_text())
+            proof = next(
+                item
+                for item in scorecard["proofs"]
+                if item["id"] == "candidate.model-gated"
+            )
+            self.assertEqual(proof["state"], "fail")
+
+    def test_incomplete_qualification_receipt_is_malformed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_qualification(root, "candidate-automation")
+            document = json.loads(receipt.read_text())
+            document["proofs"].pop()
+            receipt.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "is missing proofs: complete-bilingual-ui",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(
+                        None,
+                        None,
+                        [],
+                        root / "scorecard",
+                        [receipt],
+                    )
+                )
+
+    def test_distribution_receipt_requires_exact_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            distribution = self.write_distribution(root)
+            document = json.loads(distribution.read_text())
+            del document["release"]["commit"]
+            distribution.write_text(json.dumps(document))
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "release.commit is required",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(
+                        None,
+                        distribution,
+                        [],
+                        root / "scorecard",
+                    )
+                )
+
+    def test_record_distribution_binds_commit_and_owner_permissions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "distribution.json"
+
+            result = reliability.main_from_args(
+                [
+                    "record-distribution",
+                    "--version",
+                    self.version,
+                    "--build",
+                    self.build,
+                    "--commit",
+                    self.commit,
+                    "--sha256",
+                    "c" * 64,
+                    "--output",
+                    str(output),
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            document = json.loads(output.read_text())
+            self.assertEqual(document["release"]["commit"], self.commit)
+            self.assertEqual(os.stat(output).st_mode & 0o777, 0o600)
+
     def test_repeated_fixture_and_platform_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -228,7 +407,76 @@ class ReleaseReliabilityTests(unittest.TestCase):
             ):
                 reliability.evaluate_namespace(args)
 
-    def evaluate_args(self, deterministic, distribution, field, output):
+    def test_contract_rejects_qualification_class_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            contract = json.loads(reliability.DEFAULT_CONTRACT.read_text())
+            proof = next(
+                item
+                for item in contract["proofs"]
+                if item["id"] == "candidate.model-gated"
+            )
+            proof["class"] = "source-integration"
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract))
+            args = self.evaluate_args(None, None, [], root / "scorecard")
+            args += ["--contract", str(contract_path)]
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "candidate-automation requires 'candidate-automated'",
+            ):
+                reliability.evaluate_namespace(args)
+
+    def test_contract_rejects_a_missing_release_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            contract = json.loads(reliability.DEFAULT_CONTRACT.read_text())
+            contract["proofs"] = [
+                proof
+                for proof in contract["proofs"]
+                if proof["id"] != "candidate.upgrade-recovery"
+            ]
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract))
+            args = self.evaluate_args(None, None, [], root / "scorecard")
+            args += ["--contract", str(contract_path)]
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "missing candidate.upgrade-recovery",
+            ):
+                reliability.evaluate_namespace(args)
+
+    def test_contract_rejects_reused_evidence_authority(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            contract = json.loads(reliability.DEFAULT_CONTRACT.read_text())
+            proof = next(
+                item
+                for item in contract["proofs"]
+                if item["id"] == "candidate.upgrade-recovery"
+            )
+            proof["source"]["proof"] = "long-capture"
+            contract_path = root / "contract.json"
+            contract_path.write_text(json.dumps(contract))
+            args = self.evaluate_args(None, None, [], root / "scorecard")
+            args += ["--contract", str(contract_path)]
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "reuses one evidence authority",
+            ):
+                reliability.evaluate_namespace(args)
+
+    def evaluate_args(
+        self,
+        deterministic,
+        distribution,
+        field,
+        output,
+        qualification=(),
+    ):
         args = [
             "evaluate",
             "--version",
@@ -244,6 +492,8 @@ class ReleaseReliabilityTests(unittest.TestCase):
             args += ["--deterministic-receipt", str(deterministic)]
         if distribution is not None:
             args += ["--distribution-receipt", str(distribution)]
+        for receipt in qualification:
+            args += ["--qualification-receipt", str(receipt)]
         for evidence in field:
             args += ["--field-evidence", str(evidence)]
         return args
@@ -273,9 +523,39 @@ class ReleaseReliabilityTests(unittest.TestCase):
             "schemaVersion": 1,
             "kind": "distribution",
             "collectedAt": "2026-07-28T12:05:00Z",
-            "release": {"version": self.version, "build": self.build},
+            "release": {
+                "version": self.version,
+                "build": self.build,
+                "commit": self.commit,
+            },
             "artifact": {"sha256": "c" * 64},
             "proofs": [{"id": "distribution", "state": "pass"}],
+        }
+        path.write_text(json.dumps(payload))
+        return path
+
+    def write_complete_qualification(self, root):
+        return [
+            self.write_qualification(root, scope)
+            for scope in reliability.QUALIFICATION_RECEIPTS
+        ]
+
+    def write_qualification(self, root, scope, commit=None, name=None):
+        path = root / f"{name or scope}.json"
+        payload = {
+            "schemaVersion": 1,
+            "kind": "qualification",
+            "scope": scope,
+            "collectedAt": "2026-07-28T12:07:00Z",
+            "release": {
+                "version": self.version,
+                "build": self.build,
+                "commit": commit or self.commit,
+            },
+            "proofs": [
+                {"id": identifier, "state": "pass"}
+                for identifier in reliability.QUALIFICATION_RECEIPTS[scope]["proofs"]
+            ],
         }
         path.write_text(json.dumps(payload))
         return path

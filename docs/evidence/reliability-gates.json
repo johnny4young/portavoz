@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "proofs": [
     {
       "id": "deterministic.repository-hygiene",
@@ -42,11 +42,110 @@
       }
     },
     {
+      "id": "candidate.finite-scope",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "finite-scope"
+      }
+    },
+    {
+      "id": "candidate.autonomous-validation",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "autonomous-validation"
+      }
+    },
+    {
+      "id": "candidate.model-gated",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "model-gated"
+      }
+    },
+    {
+      "id": "candidate.performance-ledger",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "performance-ledger"
+      }
+    },
+    {
+      "id": "candidate.resource-baseline",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "resource-baseline"
+      }
+    },
+    {
+      "id": "candidate.long-capture",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "long-capture"
+      }
+    },
+    {
+      "id": "candidate.upgrade-recovery",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "upgrade-recovery"
+      }
+    },
+    {
+      "id": "candidate.complete-bilingual-ui",
+      "class": "candidate-automated",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "candidate-automation",
+        "proof": "complete-bilingual-ui"
+      }
+    },
+    {
+      "id": "integration.reviewed",
+      "class": "source-integration",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "source-integration",
+        "proof": "reviewed"
+      }
+    },
+    {
+      "id": "integration.hosted-ci",
+      "class": "source-integration",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "source-integration",
+        "proof": "hosted-ci"
+      }
+    },
+    {
       "id": "signed.distribution",
       "class": "signed-build",
       "source": {
         "kind": "distribution-receipt",
         "proof": "distribution"
+      }
+    },
+    {
+      "id": "sync.production-admission",
+      "class": "production-sync",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "production-sync",
+        "proof": "admission"
       }
     },
     {
@@ -107,6 +206,42 @@
       "source": {
         "kind": "field-fixture",
         "fixture": "model-cold-start"
+      }
+    },
+    {
+      "id": "assistive.voiceover.sequoia",
+      "class": "assistive-technology",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "assistive-technology",
+        "proof": "voiceover-sequoia"
+      }
+    },
+    {
+      "id": "assistive.voiceover.tahoe",
+      "class": "assistive-technology",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "assistive-technology",
+        "proof": "voiceover-tahoe"
+      }
+    },
+    {
+      "id": "assistive.voice-control.sequoia",
+      "class": "assistive-technology",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "assistive-technology",
+        "proof": "voice-control-sequoia"
+      }
+    },
+    {
+      "id": "assistive.voice-control.tahoe",
+      "class": "assistive-technology",
+      "source": {
+        "kind": "qualification-receipt",
+        "scope": "assistive-technology",
+        "proof": "voice-control-tahoe"
       }
     },
     {

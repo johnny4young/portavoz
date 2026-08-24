@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,707 cases "
+            "package inventory contains 2,747 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -9743,13 +9743,18 @@ final class ArchitectureDependencyTests: XCTestCase {
         let contract = try Self.jsonObject(
             at: "docs/evidence/reliability-gates.json")
         let proofs = try XCTUnwrap(contract["proofs"] as? [[String: Any]])
-        XCTAssertEqual(proofs.count, 14)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 2)
+        XCTAssertEqual(proofs.count, 29)
         XCTAssertEqual(
             Set(proofs.compactMap { $0["class"] as? String }),
             Set([
                 "deterministic-automated",
+                "candidate-automated",
+                "source-integration",
                 "signed-build",
+                "production-sync",
                 "real-hardware",
+                "assistive-technology",
                 "user-field",
             ]))
 
@@ -9757,6 +9762,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let runner = try Self.contents(
             of: "scripts/run-release-reliability-gates.sh")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")
+        let packager = try Self.contents(of: "scripts/make-app.sh")
+        let releaseScript = try Self.contents(of: "scripts/make-release.sh")
         let hygiene = try Self.contents(
             of: "scripts/check-repository-hygiene.sh")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
@@ -9767,14 +9774,32 @@ final class ArchitectureDependencyTests: XCTestCase {
             #""not-observed" if root["outcome"] == "incomplete""#))
         XCTAssertTrue(evaluator.contains(
             #""The scorecard contains no meeting content.""#))
+        XCTAssertTrue(evaluator.contains("QUALIFICATION_RECEIPTS"))
+        XCTAssertTrue(evaluator.contains(
+            #""artifact": ("#))
         XCTAssertTrue(runner.contains("PORTAVOZ_RELEASE_VERSION"))
         XCTAssertTrue(runner.contains("make test-recording-stress"))
         XCTAssertTrue(runner.contains("make test-ui-scoped"))
         XCTAssertTrue(verifier.contains("record-distribution"))
+        XCTAssertTrue(verifier.contains("PortavozSourceCommit"))
+        XCTAssertTrue(verifier.contains("--commit \"$SOURCE_COMMIT\""))
+        XCTAssertTrue(packager.contains(
+            "plutil -insert PortavozSourceCommit -string \"$SOURCE_COMMIT\""))
+        XCTAssertTrue(releaseScript.contains(
+            "SOURCE_COMMIT=\"${PORTAVOZ_RELEASE_COMMIT:?"))
+        XCTAssertTrue(releaseScript.contains(
+            "git status --porcelain --untracked-files=no"))
+        XCTAssertTrue(releaseScript.contains(
+            "PORTAVOZ_RELEASE_COMMIT=\"$SOURCE_COMMIT\""))
+        XCTAssertEqual(
+            releaseScript.components(
+                separatedBy: "require_exact_source_checkout").count,
+            4)
         XCTAssertTrue(verifier.contains("--receipt"))
         XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_release_reliability"))
         XCTAssertTrue(decisions.contains("## D147"))
+        XCTAssertTrue(decisions.contains("## D391"))
     }
 
     func testRealModelGateReservesContextAndNeverEchoesTranscriptContent() throws {

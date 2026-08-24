@@ -20,6 +20,25 @@ cd "$(dirname "$0")/.."
 VERSION="${1:?usage: scripts/make-release.sh <version>}"
 BUILD="${PORTAVOZ_BUILD:-$(date +%Y%m%d%H%M)}"
 GENERATE_APPCAST="${GENERATE_APPCAST:-$HOME/.local/bin/generate_appcast}"
+SOURCE_COMMIT="${PORTAVOZ_RELEASE_COMMIT:?A release requires PORTAVOZ_RELEASE_COMMIT}"
+
+if [[ ! "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "PORTAVOZ_RELEASE_COMMIT must be one full lowercase Git SHA." >&2
+  exit 64
+fi
+require_exact_source_checkout() {
+  local phase="$1"
+  if [[ "$(git rev-parse HEAD)" != "$SOURCE_COMMIT" ]]; then
+    echo "PORTAVOZ_RELEASE_COMMIT does not match HEAD at $phase." >&2
+    exit 64
+  fi
+  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+    echo "A release requires a clean tracked worktree at $phase." >&2
+    exit 64
+  fi
+}
+
+require_exact_source_checkout "preflight"
 
 : "${PORTAVOZ_PROVISIONING_PROFILE:?A release requires the Developer ID CloudKit provisioning profile}"
 : "${PORTAVOZ_SIGN_IDENTITY:?A release requires a Developer ID Application identity}"
@@ -29,8 +48,11 @@ if [[ "$PORTAVOZ_SIGN_IDENTITY" == "-" ]]; then
   exit 64
 fi
 
-PORTAVOZ_REQUIRE_CLOUDKIT_PROFILE=1 \
+PORTAVOZ_RELEASE_COMMIT="$SOURCE_COMMIT" PORTAVOZ_REQUIRE_CLOUDKIT_PROFILE=1 \
   scripts/make-app.sh --release --version "$VERSION" --build "$BUILD"
+# Refuse notarization if the long app build observed or ended beside a changed
+# tracked checkout. Otherwise the stamped commit could name adjacent source.
+require_exact_source_checkout "post-build verification"
 scripts/make-dmg.sh --skip-build
 
 RELEASE_DIR=dist/release

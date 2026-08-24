@@ -71,7 +71,26 @@ xcrun stapler validate "$APP_COPY"
 spctl -a -vvv -t exec "$APP_COPY"
 scripts/verify-cloudkit-capabilities.sh "$APP_COPY"
 
+SOURCE_COMMIT="$({
+  /usr/libexec/PlistBuddy \
+    -c 'Print :PortavozSourceCommit' \
+    "$APP_COPY/Contents/Info.plist"
+} 2>/dev/null || true)"
+if [[ ! "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "The extracted app is missing its exact PortavozSourceCommit." >&2
+  exit 65
+fi
+
 if [[ -n "$RECEIPT" ]]; then
+  EXPECTED_COMMIT="${PORTAVOZ_RELEASE_COMMIT:-}"
+  if [[ ! "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "PORTAVOZ_RELEASE_COMMIT is required to write a distribution receipt." >&2
+    exit 64
+  fi
+  if [[ "$SOURCE_COMMIT" != "$EXPECTED_COMMIT" ]]; then
+    echo "The extracted app source commit does not match PORTAVOZ_RELEASE_COMMIT." >&2
+    exit 65
+  fi
   VERSION="$(
     /usr/libexec/PlistBuddy \
       -c 'Print :CFBundleShortVersionString' \
@@ -86,6 +105,7 @@ if [[ -n "$RECEIPT" ]]; then
   python3 scripts/release_reliability.py record-distribution \
     --version "$VERSION" \
     --build "$BUILD" \
+    --commit "$SOURCE_COMMIT" \
     --sha256 "$DIGEST" \
     --output "$RECEIPT"
 fi

@@ -14462,3 +14462,58 @@ mutation. Installed-model and ASR quality, memory/leak/stress measurements,
 physical Sequoia/Tahoe, VoiceOver/Voice Control, production CloudKit,
 signed/notarized distribution, hosted integration, and real-meeting behavior
 remain separate 1.0 admission evidence.
+
+## D391 — Make exact 1.0 admission one expanded fail-closed ledger (Aug 2026)
+
+**Context:** D147's original ledger predates the finite Apuntador 1.0 scope. It
+could report PASS after five deterministic proofs, one distribution proof, and
+eight hardware/field packages even though D381 now also requires autonomous
+validation, installed-model coverage, performance and resource evidence,
+upgrade/recovery, complete bilingual UI, reviewed integration and hosted CI,
+production-sync truth, and physical assistive-technology review. The
+distribution receipt joined the artifact to version/build and digest but did
+not carry the Git commit, so the final scorecard's exact source identity still
+depended on an operator assumption.
+
+**Decision:** evolve only the tracked contract and scorecard to schema 2 while
+retaining schema-1 input receipts and protocol-2 field manifests. The contract
+contains exactly 29 release-blocking proofs across eight closed classes:
+deterministic automation, complete candidate automation, reviewed source
+integration, signed build, production sync, real hardware, physical assistive
+technology, and user field. The candidate receipt separately names frozen
+scope, autonomous validation, installed-model coverage, authoritative
+performance, resource/memory, synthetic long capture, upgrade/recovery, and
+complete bilingual XCUITest. Other strict qualification scopes name reviewed
+integration plus hosted CI, production-sync admission, and VoiceOver/Voice
+Control on both Sequoia and Tahoe.
+
+A qualification receipt is exact-shaped, content-free, bound to
+version/build/full commit, and contains every proof for one known scope exactly
+once. Unknown scopes, proof IDs, classes, extra keys, incomplete receipts,
+duplicate scopes, stale identities, and non-finite or unsafe values are
+malformed rather than missing evidence. A missing receipt remains a normal
+blocking state so the evaluator can always produce an actionable scorecard.
+Only the verified gate runner, reviewed integration workflow, sync field
+workflow, or assistive field workflow may create its corresponding receipt;
+the evaluator does not convert adjacent commands or prose into proof.
+
+Production packaging accepts an optional `PORTAVOZ_RELEASE_COMMIT` only when it
+is one full lowercase SHA and stamps it as `PortavozSourceCommit`. The release
+wrapper makes that value mandatory, requires it to equal `HEAD`, and rejects a
+dirty tracked worktree both before and after the long app build. Distribution
+verification reads the stamp from the independently extracted DMG app,
+requires it to match the expected commit before writing evidence, and records
+version, build, commit, and DMG SHA-256. The schema-2 scorecard exposes the
+exact digest only when a distribution receipt exists; therefore PASS
+necessarily identifies one exact artifact.
+
+**Consequences:** the former 14-cell evidence set can no longer bless a 1.0
+candidate while newer release requirements remain outside the ledger. Missing
+candidate, integration, sync, assistive, distribution, physical, or field
+evidence now stays explicitly BLOCKED. This decision does not run, invent, or
+weaken any gate; later qualification bands still have to produce each
+automated receipt and collect irreducible evidence. It adds no push, pull
+request, signing,
+notarization, CloudKit mutation, field collection, or publication authority,
+and it stores no meeting, transcript, note, prompt, answer, account, path, or
+support payload.

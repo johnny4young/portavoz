@@ -4262,18 +4262,30 @@ application schema or invalidating existing evidence.
 
 Release admission consumes this evidence through a separate, fail-closed
 ledger. `docs/evidence/reliability-gates.json` declares every required proof
-and classifies it as deterministic automation, signed-build verification,
-real-hardware validation, or user-field validation. Deterministic gates write
-one receipt bound to the exact version, build, and Git commit; distribution
-verification writes one receipt bound to the extracted app identity and DMG
-SHA-256; protocol-2 field packages remain the only source for real-device and
-conversation claims. `scripts/release_reliability.py` validates those inputs
-against the contract and writes an owner-only JSON/Markdown scorecard. A gate
-passes only when every declared proof is `pass`; missing, failed, incomplete,
-or not-observed evidence blocks release. The scorecard projects only proof
-IDs, classes, states, artifact digest prefix, macOS version, fixture, and
-collection time. It never copies meeting references, support reports, paths,
-audio, transcripts, or generated content.
+and its schema-2 Portavoz 1.0 contract classifies 29 proofs as deterministic
+automation, candidate automation, reviewed source integration, signed-build
+verification, production-sync admission, real-hardware validation, physical
+assistive-technology validation, or user-field validation. Deterministic gates
+write one receipt bound to the exact version, build, and Git commit. Strict
+qualification receipts use one closed scope vocabulary for the eight complete
+candidate gates, reviewed integration plus hosted CI, production sync, and
+physical VoiceOver/Voice Control on Sequoia and Tahoe. Protocol-2 field
+packages remain the only source for the eight real-device/conversation cells.
+
+The production packager stamps `PortavozSourceCommit` only from an explicitly
+supplied full Git SHA. The release wrapper requires that SHA to equal a clean
+tracked checkout before and after the app build, and distribution verification
+reads it back from the app copied out of the DMG before writing a receipt bound
+to version, build, commit, and DMG SHA-256. `scripts/release_reliability.py`
+validates every input against
+the contract and writes an owner-only JSON/Markdown scorecard. A gate passes
+only when every declared proof is `pass`; missing, failed, incomplete, or
+not-observed evidence blocks release. A blocked scorecard may have no artifact;
+a passing scorecard necessarily carries the exact distribution digest. The
+projection contains only proof IDs, classes, states, aggregate evidence labels,
+artifact digest, macOS version, fixture, and collection time. It never copies
+meeting references, support reports, paths, audio, transcripts, or generated
+content.
 
 `PortavozCore` defines stable secret identifiers and the `SecretStoring` port.
 `PlatformKit.KeychainSecretStore` is the concrete device-only adapter and is

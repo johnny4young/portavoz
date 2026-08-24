@@ -636,14 +636,21 @@ long-capture-baseline:
 release-reliability-deterministic:
 	scripts/run-release-reliability-gates.sh
 
-## Evaluate deterministic, signed-distribution, real-hardware, and user-field
-## evidence. Pass field packages as repeated arguments, for example:
-##   make release-reliability PORTAVOZ_RELEASE_VERSION=0.8.0 \
-##     PORTAVOZ_RELEASE_BUILD=800 PORTAVOZ_FIELD_EVIDENCE_ARGS='\
+## Evaluate the exact 1.0 candidate, integration, distribution, sync,
+## hardware, assistive-technology, and field evidence. Pass receipts and field
+## packages as repeated arguments, for example:
+##   make release-reliability PORTAVOZ_RELEASE_VERSION=1.0.0 \
+##     PORTAVOZ_RELEASE_BUILD=1000 PORTAVOZ_QUALIFICATION_RECEIPT_ARGS='\
+##       --qualification-receipt evidence/candidate-automation.json \
+##       --qualification-receipt evidence/source-integration.json \
+##       --qualification-receipt evidence/production-sync.json \
+##       --qualification-receipt evidence/assistive-technology.json' \
+##     PORTAVOZ_FIELD_EVIDENCE_ARGS='\
 ##       --field-evidence evidence/built-in-15 \
 ##       --field-evidence evidence/built-in-26'
 PORTAVOZ_RELIABILITY_ROOT ?= dist/release-readiness
 PORTAVOZ_RELEASE_COMMIT ?= $(shell git rev-parse HEAD)
+PORTAVOZ_QUALIFICATION_RECEIPT_ARGS ?=
 PORTAVOZ_FIELD_EVIDENCE_ARGS ?=
 release-reliability:
 	@test -n "$(PORTAVOZ_RELEASE_VERSION)" || \
@@ -656,6 +663,7 @@ release-reliability:
 		--commit "$(PORTAVOZ_RELEASE_COMMIT)" \
 		--deterministic-receipt "$(PORTAVOZ_RELIABILITY_ROOT)/deterministic.json" \
 		--distribution-receipt "$(PORTAVOZ_RELIABILITY_ROOT)/distribution.json" \
+		$(PORTAVOZ_QUALIFICATION_RECEIPT_ARGS) \
 		$(PORTAVOZ_FIELD_EVIDENCE_ARGS) --output "$(PORTAVOZ_RELIABILITY_ROOT)/scorecard"
 
 ## Repeat the focused recording/recovery corpus without rebuilding between

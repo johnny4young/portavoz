@@ -13,7 +13,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-SCHEMA_VERSION = 1
+RECEIPT_SCHEMA_VERSION = 1
+CONTRACT_SCHEMA_VERSION = 2
+SCORECARD_SCHEMA_VERSION = 2
 DEFAULT_CONTRACT = (
     Path(__file__).resolve().parents[1]
     / "docs"
@@ -22,8 +24,12 @@ DEFAULT_CONTRACT = (
 )
 PROOF_CLASSES = {
     "deterministic-automated",
+    "candidate-automated",
+    "source-integration",
     "signed-build",
+    "production-sync",
     "real-hardware",
+    "assistive-technology",
     "user-field",
 }
 DETERMINISTIC_PROOFS = (
@@ -34,6 +40,69 @@ DETERMINISTIC_PROOFS = (
     "reliability-ui",
 )
 DISTRIBUTION_PROOFS = ("distribution",)
+QUALIFICATION_RECEIPTS = {
+    "candidate-automation": {
+        "class": "candidate-automated",
+        "proofs": (
+            "finite-scope",
+            "autonomous-validation",
+            "model-gated",
+            "performance-ledger",
+            "resource-baseline",
+            "long-capture",
+            "upgrade-recovery",
+            "complete-bilingual-ui",
+        ),
+    },
+    "source-integration": {
+        "class": "source-integration",
+        "proofs": ("reviewed", "hosted-ci"),
+    },
+    "production-sync": {
+        "class": "production-sync",
+        "proofs": ("admission",),
+    },
+    "assistive-technology": {
+        "class": "assistive-technology",
+        "proofs": (
+            "voiceover-sequoia",
+            "voiceover-tahoe",
+            "voice-control-sequoia",
+            "voice-control-tahoe",
+        ),
+    },
+}
+CONTRACT_PROOF_IDS = (
+    "deterministic.repository-hygiene",
+    "deterministic.swift-gates",
+    "deterministic.recording-stress",
+    "deterministic.language-corpus",
+    "deterministic.reliability-ui",
+    "candidate.finite-scope",
+    "candidate.autonomous-validation",
+    "candidate.model-gated",
+    "candidate.performance-ledger",
+    "candidate.resource-baseline",
+    "candidate.long-capture",
+    "candidate.upgrade-recovery",
+    "candidate.complete-bilingual-ui",
+    "integration.reviewed",
+    "integration.hosted-ci",
+    "signed.distribution",
+    "sync.production-admission",
+    "hardware.built-in.sequoia",
+    "hardware.built-in.tahoe",
+    "hardware.airpods.sequoia",
+    "hardware.airpods.tahoe",
+    "hardware.callback-recovery",
+    "hardware.long-call",
+    "hardware.model-cold-start",
+    "assistive.voiceover.sequoia",
+    "assistive.voiceover.tahoe",
+    "assistive.voice-control.sequoia",
+    "assistive.voice-control.tahoe",
+    "field.mixed-language",
+)
 FIXTURES = {
     "built-in-speaker-mic",
     "airpods",
@@ -197,8 +266,13 @@ def receipt_identity(document, label):
         label,
         ("schemaVersion", "kind", "collectedAt", "release", "proofs"),
     )
-    if integer(identity["schemaVersion"], f"{label}.schemaVersion") != SCHEMA_VERSION:
-        raise ReliabilityError(f"{label}.schemaVersion must be {SCHEMA_VERSION}")
+    if (
+        integer(identity["schemaVersion"], f"{label}.schemaVersion")
+        != RECEIPT_SCHEMA_VERSION
+    ):
+        raise ReliabilityError(
+            f"{label}.schemaVersion must be {RECEIPT_SCHEMA_VERSION}"
+        )
     timestamp(identity["collectedAt"], f"{label}.collectedAt")
     release = object_shape(
         identity["release"],
@@ -215,7 +289,7 @@ def receipt_identity(document, label):
     return identity, release
 
 
-def validate_proofs(raw_proofs, expected, label):
+def validate_proofs(raw_proofs, expected, label, require_complete=False):
     proofs = {}
     for index, raw in enumerate(raw_proofs):
         proof = object_shape(
@@ -238,6 +312,11 @@ def validate_proofs(raw_proofs, expected, label):
     unknown = set(proofs) - set(expected)
     if unknown:
         raise ReliabilityError(f"{label} has unknown proofs: {', '.join(sorted(unknown))}")
+    if require_complete and set(proofs) != set(expected):
+        missing = set(expected) - set(proofs)
+        raise ReliabilityError(
+            f"{label} is missing proofs: {', '.join(sorted(missing))}"
+        )
     return proofs
 
 
@@ -251,6 +330,7 @@ def validate_deterministic_receipt(document):
         receipt["proofs"],
         DETERMINISTIC_PROOFS,
         "deterministic receipt",
+        require_complete=True,
     )
     return receipt, release, proofs
 
@@ -277,6 +357,8 @@ def validate_distribution_receipt(document):
     )
     if identity["kind"] != "distribution":
         raise ReliabilityError("distribution receipt.kind must be distribution")
+    if "commit" not in release:
+        raise ReliabilityError("distribution receipt.release.commit is required")
     artifact = object_shape(
         receipt["artifact"],
         "distribution receipt.artifact",
@@ -291,18 +373,62 @@ def validate_distribution_receipt(document):
         receipt["proofs"],
         DISTRIBUTION_PROOFS,
         "distribution receipt",
+        require_complete=True,
     )
     return receipt, release, proofs
 
 
+def validate_qualification_receipt(document, label):
+    receipt = object_shape(
+        document,
+        label,
+        (
+            "schemaVersion",
+            "kind",
+            "scope",
+            "collectedAt",
+            "release",
+            "proofs",
+        ),
+    )
+    identity, release = receipt_identity(
+        {
+            key: receipt[key]
+            for key in ("schemaVersion", "kind", "collectedAt", "release", "proofs")
+        },
+        label,
+    )
+    if identity["kind"] != "qualification":
+        raise ReliabilityError(f"{label}.kind must be qualification")
+    if "commit" not in release:
+        raise ReliabilityError(f"{label}.release.commit is required")
+    scope = safe_string(receipt["scope"], f"{label}.scope", BUILD_PATTERN)
+    descriptor = QUALIFICATION_RECEIPTS.get(scope)
+    if descriptor is None:
+        raise ReliabilityError(f"{label}.scope is unknown")
+    proofs = validate_proofs(
+        receipt["proofs"],
+        descriptor["proofs"],
+        label,
+        require_complete=True,
+    )
+    return receipt, release, scope, proofs
+
+
 def validate_contract(document):
     root = object_shape(document, "contract", ("schemaVersion", "proofs"))
-    if integer(root["schemaVersion"], "contract.schemaVersion") != SCHEMA_VERSION:
-        raise ReliabilityError(f"contract.schemaVersion must be {SCHEMA_VERSION}")
+    if (
+        integer(root["schemaVersion"], "contract.schemaVersion")
+        != CONTRACT_SCHEMA_VERSION
+    ):
+        raise ReliabilityError(
+            f"contract.schemaVersion must be {CONTRACT_SCHEMA_VERSION}"
+        )
     if not isinstance(root["proofs"], list) or not root["proofs"]:
         raise ReliabilityError("contract.proofs must be a non-empty array")
     proofs = []
     identifiers = set()
+    source_authorities = set()
     for index, raw in enumerate(root["proofs"]):
         proof = object_shape(
             raw,
@@ -340,6 +466,50 @@ def validate_contract(document):
                     f"contract proof {identifier} references unknown "
                     f"{kind} proof: {source_proof}"
                 )
+            expected_class = (
+                "deterministic-automated"
+                if kind == "deterministic-receipt"
+                else "signed-build"
+            )
+            if proof["class"] != expected_class:
+                raise ReliabilityError(
+                    f"contract proof {identifier} has class {proof['class']!r}; "
+                    f"{kind} requires {expected_class!r}"
+                )
+            source_authority = (kind, source_proof)
+        elif kind == "qualification-receipt":
+            object_shape(
+                source,
+                f"contract proof {identifier}.source",
+                ("kind", "scope", "proof"),
+            )
+            scope = safe_string(
+                source["scope"],
+                f"contract proof {identifier}.source.scope",
+                BUILD_PATTERN,
+            )
+            descriptor = QUALIFICATION_RECEIPTS.get(scope)
+            if descriptor is None:
+                raise ReliabilityError(
+                    f"contract proof {identifier} references unknown "
+                    f"qualification scope: {scope}"
+                )
+            source_proof = safe_string(
+                source["proof"],
+                f"contract proof {identifier}.source.proof",
+                BUILD_PATTERN,
+            )
+            if source_proof not in descriptor["proofs"]:
+                raise ReliabilityError(
+                    f"contract proof {identifier} references unknown "
+                    f"{scope} proof: {source_proof}"
+                )
+            if proof["class"] != descriptor["class"]:
+                raise ReliabilityError(
+                    f"contract proof {identifier} has class {proof['class']!r}; "
+                    f"{scope} requires {descriptor['class']!r}"
+                )
+            source_authority = (kind, scope, source_proof)
         elif kind == "field-fixture":
             object_shape(
                 source,
@@ -355,9 +525,41 @@ def validate_contract(document):
                     f"contract proof {identifier}.source.macOSMajor",
                     1,
                 )
+            expected_class = (
+                "user-field"
+                if source["fixture"] == "mixed-language"
+                else "real-hardware"
+            )
+            if proof["class"] != expected_class:
+                raise ReliabilityError(
+                    f"contract proof {identifier} has class {proof['class']!r}; "
+                    f"field fixture {source['fixture']} requires {expected_class!r}"
+                )
+            source_authority = (
+                kind,
+                source["fixture"],
+                source.get("macOSMajor"),
+            )
         else:
             raise ReliabilityError(f"contract proof {identifier} has unknown source kind")
+        if source_authority in source_authorities:
+            raise ReliabilityError(
+                f"contract reuses one evidence authority for proof {identifier}"
+            )
+        source_authorities.add(source_authority)
         proofs.append(proof)
+    expected_identifiers = set(CONTRACT_PROOF_IDS)
+    if identifiers != expected_identifiers:
+        missing = expected_identifiers - identifiers
+        extra = identifiers - expected_identifiers
+        details = []
+        if missing:
+            details.append(f"missing {', '.join(sorted(missing))}")
+        if extra:
+            details.append(f"unknown {', '.join(sorted(extra))}")
+        raise ReliabilityError(
+            f"contract proof inventory is invalid: {'; '.join(details)}"
+        )
     return proofs
 
 
@@ -568,8 +770,30 @@ def evaluate(args):
         receipt, release, distribution_proofs = validate_distribution_receipt(
             load_json(args.distribution_receipt, "distribution receipt")
         )
-        release_matches(release, expected_release, "distribution receipt")
+        release_matches(
+            release,
+            expected_release,
+            "distribution receipt",
+            include_commit=True,
+        )
         distribution_digest = receipt["artifact"]["sha256"]
+
+    qualification_proofs = {}
+    qualification_sources = {}
+    for index, raw_path in enumerate(args.qualification_receipt):
+        path = Path(raw_path).expanduser()
+        if not path.is_file():
+            continue
+        label = f"qualification receipt {index + 1}"
+        _, release, scope, proofs = validate_qualification_receipt(
+            load_json(path, label),
+            label,
+        )
+        release_matches(release, expected_release, label, include_commit=True)
+        if scope in qualification_proofs:
+            raise ReliabilityError(f"qualification receipts repeat scope: {scope}")
+        qualification_proofs[scope] = proofs
+        qualification_sources[scope] = label
 
     field_manifests = []
     seen = set()
@@ -598,6 +822,15 @@ def evaluate(args):
         if source["kind"] == "deterministic-receipt":
             state = deterministic_proofs.get(source["proof"], "missing")
             evidence = "deterministic receipt" if state != "missing" else evidence
+        elif source["kind"] == "qualification-receipt":
+            state = qualification_proofs.get(source["scope"], {}).get(
+                source["proof"], "missing"
+            )
+            evidence = (
+                qualification_sources[source["scope"]]
+                if state != "missing"
+                else evidence
+            )
         elif source["kind"] == "distribution-receipt":
             state = distribution_proofs.get(source["proof"], "missing")
             evidence = (
@@ -637,9 +870,12 @@ def evaluate(args):
 
     outcome = "pass" if all(row["state"] == "pass" for row in rows) else "blocked"
     scorecard = {
-        "schemaVersion": SCHEMA_VERSION,
+        "schemaVersion": SCORECARD_SCHEMA_VERSION,
         "generatedAt": utc_now(),
         "release": expected_release,
+        "artifact": (
+            {"sha256": distribution_digest} if distribution_digest else None
+        ),
         "outcome": outcome,
         "proofs": rows,
     }
@@ -651,6 +887,8 @@ def evaluate(args):
 
 
 def markdown(scorecard):
+    artifact = scorecard["artifact"]
+    artifact_label = artifact["sha256"][:12] if artifact else "not provided"
     lines = [
         "# Portavoz release reliability",
         "",
@@ -660,6 +898,7 @@ def markdown(scorecard):
             f"commit `{scorecard['release']['commit'][:12]}`): "
             f"**{scorecard['outcome'].upper()}**"
         ),
+        f"Artifact SHA-256: `{artifact_label}`",
         "",
         "| Proof class | Gate | State | Evidence |",
         "|---|---|---:|---|",
@@ -687,7 +926,7 @@ def record_deterministic(args):
         "commit": safe_string(args.commit, "release.commit", COMMIT_PATTERN),
     }
     receipt = {
-        "schemaVersion": SCHEMA_VERSION,
+        "schemaVersion": RECEIPT_SCHEMA_VERSION,
         "kind": "deterministic",
         "collectedAt": utc_now(),
         "release": release,
@@ -705,10 +944,11 @@ def record_distribution(args):
     release = {
         "version": safe_string(args.version, "release.version", VERSION_PATTERN),
         "build": safe_string(args.build, "release.build", BUILD_PATTERN),
+        "commit": safe_string(args.commit, "release.commit", COMMIT_PATTERN),
     }
     digest = safe_string(args.sha256, "artifact.sha256", DIGEST_PATTERN)
     receipt = {
-        "schemaVersion": SCHEMA_VERSION,
+        "schemaVersion": RECEIPT_SCHEMA_VERSION,
         "kind": "distribution",
         "collectedAt": utc_now(),
         "release": release,
@@ -736,6 +976,7 @@ def parser():
     distribution = commands.add_parser("record-distribution")
     distribution.add_argument("--version", required=True)
     distribution.add_argument("--build", required=True)
+    distribution.add_argument("--commit", required=True)
     distribution.add_argument("--sha256", required=True)
     distribution.add_argument("--output", required=True)
     distribution.set_defaults(action=record_distribution)
@@ -747,6 +988,11 @@ def parser():
     evaluation.add_argument("--contract", default=str(DEFAULT_CONTRACT))
     evaluation.add_argument("--deterministic-receipt")
     evaluation.add_argument("--distribution-receipt")
+    evaluation.add_argument(
+        "--qualification-receipt",
+        action="append",
+        default=[],
+    )
     evaluation.add_argument("--field-evidence", action="append", default=[])
     evaluation.add_argument("--output", required=True)
     evaluation.set_defaults(action=evaluate)
