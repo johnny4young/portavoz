@@ -95,17 +95,9 @@ struct AskView: View {
                     ForEach(model.state.exchanges) { exchange in
                         exchangeView(exchange)
                     }
-                    if model.state.isAsking,
-                       let question = model.state.pendingQuestion,
-                       let source = model.state.pendingSource,
-                       let phase = model.state.pendingPhase {
-                        pendingExchange(
-                            question: question,
-                            source: source,
-                            citations: model.state.pendingCitations,
-                            answerText: model.state.pendingAnswerText,
-                            phase: phase)
-                        .id("asking")
+                    if model.state.isAsking {
+                        pendingExchange
+                            .id("asking")
                     }
                 }
                 .padding(16)
@@ -119,47 +111,55 @@ struct AskView: View {
         }
     }
 
-    private func pendingExchange(
-        question: String,
-        source: AskModel.ExchangeSource,
-        citations: [AskCitation],
-        answerText: String?,
-        phase: AskModel.PendingPhase
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(question)
-                .font(.callout.weight(.semibold))
-                .padding(10)
-                .background(
-                    PVDesign.accent.opacity(0.12),
-                    in: RoundedRectangle(cornerRadius: 8))
-                .accessibilityIdentifier("ask-pending-question")
-            sourceBadge(source, identifier: "ask-pending-source")
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text(progressText(for: phase))
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier(progressIdentifier(for: phase))
-                Spacer()
-                Button("Cancel") {
-                    model.cancelPendingAnswer()
+    @ViewBuilder
+    private var pendingExchange: some View {
+        if let question = model.state.pendingQuestion,
+           let source = model.state.pendingSource,
+           let phase = model.state.pendingPhase {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(question)
+                    .font(.callout.weight(.semibold))
+                    .padding(10)
+                    .background(
+                        PVDesign.accent.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityIdentifier("ask-pending-question")
+                sourceBadge(source, identifier: "ask-pending-source")
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(progressText(for: phase))
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier(progressIdentifier(for: phase))
+                    Spacer()
+                    Button("Cancel") {
+                        model.cancelPendingAnswer()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(PVDesign.accent)
+                    .accessibilityIdentifier("ask-cancel")
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(PVDesign.accent)
-                .accessibilityIdentifier("ask-cancel")
-            }
-            if !citations.isEmpty {
-                Text("Evidence available now")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                citationButtons(
-                    citations,
-                    identifierPrefix: "ask-pending-citation")
-            }
-            if let answerText {
-                Text(answerText)
-                    .textSelection(.enabled)
-                    .accessibilityIdentifier("ask-pending-answer")
+                if !model.state.pendingCitations.isEmpty {
+                    Text("Evidence available now")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    citationButtons(
+                        model.state.pendingCitations,
+                        identifierPrefix: "ask-pending-citation")
+                }
+                if !model.state.pendingWebCitations.isEmpty {
+                    Text("Web sources available now")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    webCitationLinks(
+                        model.state.pendingWebCitations,
+                        identifierPrefix: "ask-pending-web-citation")
+                }
+                webFailureNotice(model.state.pendingWebSourceFailures)
+                if let answerText = model.state.pendingAnswerText {
+                    Text(answerText)
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("ask-pending-answer")
+                }
             }
         }
     }
@@ -192,6 +192,16 @@ struct AskView: View {
                     exchange.citations,
                     identifierPrefix: "ask-citation-\(exchange.id.uuidString)")
             }
+            if !exchange.webCitations.isEmpty {
+                Text("Web sources")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                webCitationLinks(
+                    exchange.webCitations,
+                    identifierPrefix:
+                        "ask-web-citation-\(exchange.id.uuidString)")
+            }
+            webFailureNotice(exchange.webSourceFailures)
         }
         .id(exchange.id)
     }
@@ -244,7 +254,7 @@ struct AskView: View {
     private var inputBar: some View {
         HStack(spacing: 8) {
             TextField(
-                "Ask about your meetings…",
+                questionPlaceholder,
                 text: Binding(
                     get: { model.state.draft },
                     set: { model.updateDraft($0) }))
@@ -304,10 +314,7 @@ struct AskView: View {
         case .meeting:
             meetingSourceStatus
         case .web:
-            Label(
-                "Web answers are not available yet. Nothing else will be searched.",
-                systemImage: "network.slash")
-                .accessibilityIdentifier("ask-source-status-web-unavailable")
+            webSourceStatus
         }
     }
 
@@ -369,6 +376,11 @@ struct AskView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("\(identifier)-meeting")
+        case .web(let host):
+            Label("Source: \(host)", systemImage: "globe")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("\(identifier)-web")
         }
     }
 
@@ -391,7 +403,8 @@ struct AskView: View {
         case .meeting:
             selectedMeetingTitle != nil
         case .web:
-            false
+            model.state.webConsentApproved && model.canApproveWebConsent
         }
     }
+
 }

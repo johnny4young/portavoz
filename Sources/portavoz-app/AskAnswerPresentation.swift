@@ -28,4 +28,12 @@ enum AskAnswerPresentation {
                 "Your selected local answer engine took too long. Exact passages are still shown.")
         }
     }
+
+    static func text(for result: AskWebAnswer) -> String {
+        guard !result.citations.isEmpty else {
+            return L10n.text("No readable evidence was found at that web source.")
+        }
+        return result.generatedText
+            ?? L10n.text("Closest passages from the selected web source:")
+    }
 }

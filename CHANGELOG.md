@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 24, 2026
 
+- **🌐 Ask reads the public page you choose** — Approve one direct web request, get a locally generated answer with clickable citations and freshness, and keep your question and meetings away from the page.
 - **🔎 Ask searches exactly where you choose** — Keep a question inside your Library or one selected meeting, while Web stays visibly unavailable instead of silently searching somewhere else.
 
 ## August 23, 2026

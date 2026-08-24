@@ -1,11 +1,13 @@
 import ApplicationKit
 import Foundation
+import IntegrationsKit
 import PortavozCore
 import StorageKit
 
 @MainActor
 final class AppAskModelClient: AskModelClient {
     private let useCase: AskMeetings
+    private let webUseCase: AskWeb
     private let memoryEntities: LoadAutomationEntities
     private let memoryCommitments: LoadPersonCommitments
     private let memoryCommitmentBlockers: LoadCommitmentBlockers
@@ -17,11 +19,13 @@ final class AppAskModelClient: AskModelClient {
 
     init(
         useCase: AskMeetings,
+        webUseCase: AskWeb,
         store: MeetingStore,
         graphTelemetry: MeetingMemoryGraphQueryTelemetry =
             AppMeetingMemoryGraphQueryTelemetry.shared.telemetry
     ) {
         self.useCase = useCase
+        self.webUseCase = webUseCase
         memoryEntities = LoadAutomationEntities(catalog: store)
         memoryCommitments = LoadPersonCommitments(
             repository: store,
@@ -98,6 +102,17 @@ final class AppAskModelClient: AskModelClient {
                     title: $0.title,
                     startedAt: $0.startedAt)
             }
+    }
+
+    func answerAskWeb(
+        _ request: AskWebRequest,
+        onEvidence: @escaping AskWebEvidenceReceiver,
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> AskWebAnswer {
+        try await webUseCase.answer(
+            request,
+            onEvidence: onEvidence,
+            onAnswer: onAnswer)
     }
 }
 
@@ -187,6 +202,7 @@ extension AppAskModelClient: AskMemoryModelClient {
 struct AppSemanticSearchComposition {
     let coordinator: SemanticCorpusIndexingCoordinator
     let ask: AskMeetings
+    let webAsk: AskWeb
     let library: LocalLibrarySemanticSearch
     let background: SemanticCorpusIndexingSupervisor
     let memoryGraphBackground: MeetingMemoryGraphProjectionSupervisor
@@ -194,14 +210,19 @@ struct AppSemanticSearchComposition {
 
 extension AppServices {
     func makeAskModel() -> AskModel {
-        AskModel(client: askClient, memoryClient: askClient)
+        AskModel(
+            client: askClient,
+            memoryClient: askClient,
+            webSourcePolicy: usesTemporaryMeetingStore
+                ? .loopbackFixture
+                : .publicHTTPS)
     }
 
     static func makeSemanticSearchComposition(
         store: MeetingStore,
         usesTemporaryStore: Bool,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
-        selectedAnswering: any AskMeetingAnswering,
+        selectedAnswering: any AskMeetingAnswering & AskWebAnswering,
         telemetry: ResourceWorkloadTelemetry,
         pipelineTelemetry: AskPipelineTelemetry = AppAskPipelineTelemetry.shared.telemetry,
         captureState: AppResourceCaptureState
@@ -218,48 +239,132 @@ extension AppServices {
             store: store,
             runtime: semanticRuntime,
             maintenanceState: maintenanceState)
-        let ask: AskMeetings
-        if usesTemporaryStore {
-            ask = AskMeetings(
-                retrieval: UITestAskMeetingRetrieval(store: store),
-                answering: UITestAskMeetingAnswering())
-        } else {
-            ask = .local(
-                store: store,
-                semanticRuntime: semanticRuntime,
-                semanticReadiness: readiness,
-                pipelineTelemetry: pipelineTelemetry,
-                answering: selectedAnswering)
-        }
+        let (ask, webAnswering) = makeAskUseCases(
+            store: store,
+            usesTemporaryStore: usesTemporaryStore,
+            semanticRuntime: semanticRuntime,
+            readiness: readiness,
+            pipelineTelemetry: pipelineTelemetry,
+            selectedAnswering: selectedAnswering)
+        let webAsk = makeWebAsk(
+            store: store,
+            usesTemporaryStore: usesTemporaryStore,
+            answering: webAnswering)
         let library = LocalLibrarySemanticSearch(
             store: store,
             runtime: semanticRuntime,
             semanticReadiness: readiness)
-        let backgroundIndexer = AppSemanticCorpusBackgroundIndexer(
+        let background = makeSemanticBackground(
             store: store,
+            usesTemporaryStore: usesTemporaryStore,
             runtime: semanticRuntime,
             coordinator: coordinator,
+            maintenanceState: maintenanceState,
             captureState: captureState)
-        let background = SemanticCorpusIndexingSupervisor(
+        let memoryGraphBackground = makeMemoryGraphBackground(
+            store: store,
+            usesTemporaryStore: usesTemporaryStore,
+            telemetry: telemetry,
+            maintenanceGate: maintenanceGate,
+            captureState: captureState)
+        return AppSemanticSearchComposition(
+            coordinator: coordinator,
+            ask: ask,
+            webAsk: webAsk,
+            library: library,
+            background: background,
+            memoryGraphBackground: memoryGraphBackground)
+    }
+
+    private static func makeAskUseCases(
+        store: MeetingStore,
+        usesTemporaryStore: Bool,
+        semanticRuntime: any SemanticEmbeddingRuntimeClient,
+        readiness: ResolveSemanticCorpusReadiness,
+        pipelineTelemetry: AskPipelineTelemetry,
+        selectedAnswering: any AskMeetingAnswering & AskWebAnswering
+    ) -> (AskMeetings, any AskWebAnswering) {
+        if usesTemporaryStore {
+            return (
+                AskMeetings(
+                    retrieval: UITestAskMeetingRetrieval(store: store),
+                    answering: UITestAskMeetingAnswering()),
+                UITestAskWebAnswering())
+        }
+        return (
+            .local(
+                store: store,
+                semanticRuntime: semanticRuntime,
+                semanticReadiness: readiness,
+                pipelineTelemetry: pipelineTelemetry,
+                answering: selectedAnswering),
+            selectedAnswering)
+    }
+
+    private static func makeWebAsk(
+        store: MeetingStore,
+        usesTemporaryStore: Bool,
+        answering: any AskWebAnswering
+    ) -> AskWeb {
+        AskWeb(
+            retrieval: URLSessionAskWebSourceRetrieval(
+                gateway: URLSessionDataEgressGateway(
+                    session: makeAskWebSession(),
+                    receiptRecorder: store),
+                policy: usesTemporaryStore
+                    ? .loopbackFixture
+                    : .publicHTTPS),
+            answering: answering)
+    }
+
+    private static func makeSemanticBackground(
+        store: MeetingStore,
+        usesTemporaryStore: Bool,
+        runtime: any SemanticEmbeddingRuntimeClient,
+        coordinator: SemanticCorpusIndexingCoordinator,
+        maintenanceState: SemanticCorpusMaintenanceState,
+        captureState: AppResourceCaptureState
+    ) -> SemanticCorpusIndexingSupervisor {
+        let indexer = AppSemanticCorpusBackgroundIndexer(
+            store: store,
+            runtime: runtime,
+            coordinator: coordinator,
+            captureState: captureState)
+        return SemanticCorpusIndexingSupervisor(
             isEnabled: !usesTemporaryStore,
             maintenanceState: maintenanceState,
-            drain: backgroundIndexer.drain(owner:))
-        let graphProjector = AppMeetingMemoryGraphBackgroundProjector(
+            drain: indexer.drain(owner:))
+    }
+
+    private static func makeMemoryGraphBackground(
+        store: MeetingStore,
+        usesTemporaryStore: Bool,
+        telemetry: ResourceWorkloadTelemetry,
+        maintenanceGate: DurableMaintenanceGate,
+        captureState: AppResourceCaptureState
+    ) -> MeetingMemoryGraphProjectionSupervisor {
+        let projector = AppMeetingMemoryGraphBackgroundProjector(
             store: store,
             projector: ProjectMeetingMemoryGraph(
                 store: store,
                 telemetry: telemetry,
                 maintenanceGate: maintenanceGate),
             captureState: captureState)
-        let memoryGraphBackground = MeetingMemoryGraphProjectionSupervisor(
+        return MeetingMemoryGraphProjectionSupervisor(
             isEnabled: !usesTemporaryStore,
-            drain: graphProjector.drain(owner:))
-        return AppSemanticSearchComposition(
-            coordinator: coordinator,
-            ask: ask,
-            library: library,
-            background: background,
-            memoryGraphBackground: memoryGraphBackground)
+            drain: projector.drain(owner:))
+    }
+
+    private static func makeAskWebSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        configuration.urlCache = nil
+        configuration.httpCookieStorage = nil
+        configuration.httpMaximumConnectionsPerHost = AskWeb.maximumSources
+        configuration.timeoutIntervalForRequest = 8
+        configuration.timeoutIntervalForResource = 10
+        configuration.waitsForConnectivity = false
+        return URLSession(configuration: configuration)
     }
 }
 
@@ -391,5 +496,30 @@ private struct UITestAskMeetingAnswering: AskMeetingAnswering {
         let final = "El presupuesto se revisó y el rollout quedó para el viernes."
         await onAnswer(AskAnswerUpdate(text: final))
         return final
+    }
+}
+
+private struct UITestAskWebAnswering: AskWebAnswering {
+    func answer(
+        question: String,
+        citations _: [AskWebCitation]
+    ) async throws -> String? {
+        Self.answer(for: question)
+    }
+
+    func answer(
+        question: String,
+        citations _: [AskWebCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> String? {
+        let answer = Self.answer(for: question)
+        await onAnswer(AskAnswerUpdate(text: answer))
+        return answer
+    }
+
+    private static func answer(for question: String) -> String {
+        question.localizedCaseInsensitiveContains("Harbor")
+            ? "Harbor launches September 14 at 09:00 UTC [1]."
+            : "Costa se lanza el 18 de septiembre a las 10:00 UTC [1]."
     }
 }

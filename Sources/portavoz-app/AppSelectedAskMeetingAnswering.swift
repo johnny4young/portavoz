@@ -1,6 +1,7 @@
 import ApplicationKit
 import Foundation
 import IntelligenceKit
+import PortavozCore
 
 enum AppAskAnswerProviderResolution: Sendable {
     case available(any RAGTextAnswering)
@@ -13,6 +14,7 @@ enum AppAskAnswerProviderResolution: Sendable {
 /// partially initialized service graph.
 final class AppSelectedAskMeetingAnswering:
     AskMeetingAnswering,
+    AskWebAnswering,
     @unchecked Sendable {
     typealias Resolver = @MainActor @Sendable () async
         -> AppAskAnswerProviderResolution
@@ -71,6 +73,44 @@ final class AppSelectedAskMeetingAnswering:
             timestamp: citation.timestamp,
             transcriptRevision: citation.transcriptRevision,
             text: citation.text)
+    }
+
+    func answer(
+        question: String,
+        citations: [AskWebCitation]
+    ) async throws -> String? {
+        try await answer(
+            question: question,
+            citations: citations,
+            onAnswer: { _ in })
+    }
+
+    func answer(
+        question: String,
+        citations: [AskWebCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> String? {
+        guard let resolver = currentResolver() else { return nil }
+        switch await resolver() {
+        case .unavailable:
+            return nil
+        case .available(let provider):
+            return try await provider.streamAnswer(
+                question: question,
+                webPassages: citations.map(Self.webPassage),
+                onSnapshot: { text in
+                    await onAnswer(AskAnswerUpdate(text: text))
+                })
+        }
+    }
+
+    private static func webPassage(_ citation: AskWebCitation) -> RAGWebPassage {
+        RAGWebPassage(
+            url: citation.url,
+            title: citation.title,
+            observedDate: citation.observedDate,
+            text: citation.text,
+            isExcerptTruncated: citation.isExcerptTruncated)
     }
 }
 

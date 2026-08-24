@@ -331,6 +331,58 @@ public struct RAGAnswerer: RAGTextAnswering {
         }
     }
 
+    public func answer(
+        question: String,
+        webPassages: [RAGWebPassage]
+    ) async throws -> String {
+        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        let prompt = try RAGWebAnswerPrompt.make(
+            question: question,
+            passages: webPassages)
+        let session = LanguageModelSession(
+            instructions: RAGWebAnswerPrompt.instructions)
+        return try await IntelligenceScheduler.shared.run(.interactive) {
+            try await session.respond(
+                to: prompt.user,
+                options: GenerationOptions(
+                    sampling: .greedy,
+                    maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens)
+            ).content
+        }
+    }
+
+    public func streamAnswer(
+        question: String,
+        webPassages: [RAGWebPassage],
+        onSnapshot: @escaping @Sendable (String) async -> Void
+    ) async throws -> String {
+        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        let prompt = try RAGWebAnswerPrompt.make(
+            question: question,
+            passages: webPassages)
+        let session = LanguageModelSession(
+            instructions: RAGWebAnswerPrompt.instructions)
+        return try await IntelligenceScheduler.shared.run(.interactive) {
+            let stream = session.streamResponse(
+                to: prompt.user,
+                options: GenerationOptions(
+                    sampling: .greedy,
+                    maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens))
+            var finalText = ""
+            for try await snapshot in stream {
+                try Task.checkCancellation()
+                finalText = snapshot.content
+                await onSnapshot(finalText)
+            }
+            try Task.checkCancellation()
+            return finalText
+        }
+    }
+
     /// Answers from separately typed transcript and graph lanes. Fact markers
     /// expose structure to the model, while only exact transcript/source
     /// markers are valid citations in generated prose.

@@ -133,9 +133,10 @@ identity guessing, user-authored actions, standing automation rules, broader
 graph sync/export/CLI/MCP, alternate search/ASR authority, and autonomous
 external mutation remain outside this finite candidate. Current implemented
 truth and exit evidence remain authoritative in `GAPS.md` and the as-built
-specs. APT-1 progressive reliability, APT-2 selected-engine manual Ask, and APT-3
-explicit fail-closed source policy are implemented; cited Web, interviews,
-notes, proactive help, and final admission remain open.
+specs. APT-1 progressive reliability, APT-2 selected-engine manual Ask, APT-3
+explicit fail-closed source policy, and APT-4 consented cited direct-Web pages
+are implemented. Portavoz does not yet provide broad Web search discovery;
+interviews, notes, proactive help, and final admission remain open.
 
 ## Standout UX (signature moments)
 

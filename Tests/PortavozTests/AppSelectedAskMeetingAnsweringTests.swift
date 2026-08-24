@@ -71,6 +71,39 @@ final class AppSelectedAskMeetingAnsweringTests: XCTestCase {
         XCTAssertEqual(captured.passages[0].text, citation.text)
     }
 
+    func testWebRouterForwardsOnlyTypedPublicEvidence() async throws {
+        let provider = CapturingRAGProvider(answer: "Harbor launches [1].")
+        let router = AppSelectedAskMeetingAnswering()
+        router.install { .available(provider) }
+        let url = try XCTUnwrap(URL(string: "https://example.com/harbor"))
+        let citation = AskWebCitation(
+            url: url,
+            title: "Harbor",
+            observedDate: Date(timeIntervalSince1970: 1_787_529_600),
+            observedDateKind: .published,
+            retrievedAt: Date(timeIntervalSince1970: 1_787_529_700),
+            freshness: .recent,
+            text: "Harbor launches September 14.",
+            isExcerptTruncated: false)
+
+        let answer = try await router.answer(
+            question: "When does Harbor launch?",
+            citations: [citation])
+        let meetingCapture = await provider.snapshot()
+        let webCapture = await provider.webSnapshot()
+
+        XCTAssertEqual(answer, "Harbor launches [1].")
+        XCTAssertNil(meetingCapture)
+        let captured = try XCTUnwrap(webCapture)
+        XCTAssertEqual(captured.question, "When does Harbor launch?")
+        XCTAssertEqual(captured.passages, [RAGWebPassage(
+            url: url,
+            title: "Harbor",
+            observedDate: citation.observedDate,
+            text: citation.text,
+            isExcerptTruncated: false)])
+    }
+
     private func fixtureCitation() -> AskCitation {
         let segmentID = UUID()
         return AskCitation(
@@ -105,8 +138,14 @@ private actor CapturingRAGProvider: RAGTextAnswering {
         let passages: [RAGPassage]
     }
 
+    struct WebRequest: Sendable {
+        let question: String
+        let passages: [RAGWebPassage]
+    }
+
     let answer: String
     private var request: Request?
+    private var webRequest: WebRequest?
 
     init(answer: String) {
         self.answer = answer
@@ -120,7 +159,16 @@ private actor CapturingRAGProvider: RAGTextAnswering {
         return answer
     }
 
+    func answer(
+        question: String,
+        webPassages: [RAGWebPassage]
+    ) async throws -> String {
+        webRequest = WebRequest(question: question, passages: webPassages)
+        return answer
+    }
+
     func snapshot() -> Request? { request }
+    func webSnapshot() -> WebRequest? { webRequest }
 }
 
 private actor AskRouterSnapshotProbe {

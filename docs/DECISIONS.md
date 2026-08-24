@@ -14207,3 +14207,70 @@ this fail-closed contract. D386 adds no Web transport, consent, citations, or
 freshness policy; those remain APT-4. Installed-model quality/performance,
 physical Sequoia/Tahoe, VoiceOver/Voice Control, CloudKit, distribution, and
 real-field evidence remain external gates.
+
+## D387 — Serve consented direct Web pages as cited untrusted evidence (Aug 2026)
+
+**Context:** D386 separated Web from Library and Meeting authority but left it
+unavailable. APT-4 needs useful current public evidence without uploading a
+meeting, inventing a search-provider contract, depending on an account, or
+allowing arbitrary page instructions to influence product policy. Broad Web
+discovery and search-result scraping would add unstable provider, consent,
+ranking, freshness, and abuse contracts that this candidate cannot qualify
+honestly.
+
+**Decision:** Web Ask accepts one directly pasted public page in the macOS UI
+(the application contract remains bounded to three explicit URLs). Consent is
+approved for one exact question/source request and is invalidated by editing
+either value, consumed on submit, and never reused. Production admits only
+remote named-host HTTPS URLs on the default port, without credentials or
+fragments; deterministic UI tests admit loopback HTTP/HTTPS. Redirects are
+never followed, so the disclosed address remains the only transport
+destination. URL syntax rejects literal IP and common private-name forms in
+production, but this is not complete DNS-rebinding or Internet-host trust
+protection.
+
+The HTTP GET contains no body, question, meeting identity, transcript, model,
+or local evidence. It crosses the receipt-before-transport gateway as
+`public-web-source-request` with `explicit-web-ask` consent. Schema v44 rebuilds
+the global content-free journal so Web attempts record only operation, scope,
+host/provider, consent, and time with a nil model. URL path/query, page,
+question, prompt, citation, and answer are absent. Responses stream to 512 KiB,
+redirects fail, and only UTF-8 HTML/XHTML/plain text is parsed into at most
+16,000 visible Unicode characters / 64 KiB. Script, style, template, SVG, and
+noscript content—including hidden dates—is excluded. Observed freshness uses
+the deterministic fixture header, visible `time[datetime]`, then
+`Last-Modified`; unknown/future dates stay unknown and an observed source older
+than 90 days is stale.
+
+`PortavozCore` owns the storage-independent Web citation and retrieval-port
+contracts so the concrete integration does not depend back on ApplicationKit.
+`ApplicationKit.AskWeb` owns cancellation, an eight-second answer timeout,
+ordered concurrent retrieval, partial failures, and progressive publication.
+Web citations are a separate type with direct URL, title, excerpt bounds,
+observed/retrieved dates, and freshness; they cannot enter meeting navigation.
+The selected local answer engine receives only the question plus bounded Web
+excerpts through a provider-neutral prompt. Every page is untrusted data, XML
+boundaries are escaped, and generated output is discarded unless it contains
+only in-range `[n]` citation markers and no raw HTTP URL. Direct source links
+and freshness remain visible when generation fails or times out. A loopback
+Ollama attempt remains receipt-before-transport but is classified as
+`public-web-answer-material`, never as meeting-answer material.
+
+The existing bilingual full-Ask XCUITest journey starts the canonical
+loopback-only fixture, proves submit is blocked before consent, answers in EN
+or ES through the real app/gateway/parser, exposes a direct citation and
+freshness, consumes consent, and then continues the exact-meeting journey.
+Package integration uses real URLSession and SQLite receipts for bilingual,
+stale, undated, hostile, redirect, partial, disconnected, provider-down, slow-
+cancel, cap, and migration cases. No user meeting, Internet, provider account,
+or private transcript is required.
+
+**Consequences:** APT-4 provides cited, freshness-aware public-page answers
+without mixing Web and meeting evidence or pretending that Portavoz offers
+broad search discovery. Explicit direct URLs can be less convenient than a
+search engine, and syntax policy cannot certify DNS resolution or page safety;
+those are stated limitations, not hidden fallbacks. Physical Sequoia/Tahoe,
+installed-model quality/latency/memory, VoiceOver/Voice Control, production
+CloudKit, signed/notarized distribution, Internet variability, third-party
+terms, and real-field behavior remain external 1.0 gates. Interviews, notes,
+and bounded proactive assistance remain APT-5 through APT-7.

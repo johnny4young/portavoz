@@ -430,6 +430,7 @@ struct MeetingDetailTrustSection: View {
         switch operation {
         case .companionKnowledgeAnswer: L10n.text("Apuntador question only")
         case .askAnswerGeneration: L10n.text("Ask answer material")
+        case .webSourceRetrieval: L10n.text("Web source request")
         case .summaryGeneration: L10n.text("Summary material")
         case .publishGitHubGist: L10n.text("Meeting export")
         case .createGitHubIssue: L10n.text("GitHub action item")

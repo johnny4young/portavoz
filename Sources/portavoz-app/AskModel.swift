@@ -3,164 +3,18 @@ import Foundation
 import Observation
 import PortavozCore
 
-/// Narrow, storage-independent contract shared by the full Ask surface and
-/// the process-scoped command palette.
-@MainActor
-protocol AskModelClient: AnyObject {
-    func searchAskMeetings(
-        _ query: String,
-        source: AskSourceScope,
-        limit: Int
-    ) async throws -> [AskSearchResult]
-    func answerAskMeetings(
-        _ question: String,
-        source: AskSourceScope,
-        limit: Int
-    ) async throws -> AskMeetingAnswer
-    func answerAskMeetings(
-        _ question: String,
-        source: AskSourceScope,
-        limit: Int,
-        onEvidence: @escaping AskEvidenceReceiver
-    ) async throws -> AskMeetingAnswer
-    func answerAskMeetings(
-        _ question: String,
-        source: AskSourceScope,
-        limit: Int,
-        onEvidence: @escaping AskEvidenceReceiver,
-        onAnswer: @escaping AskAnswerReceiver
-    ) async throws -> AskMeetingAnswer
-    func loadAskSourceMeetings(limit: Int) async throws -> [AskSourceMeetingOption]
-}
-
-extension AskModelClient {
-    func loadAskSourceMeetings(limit _: Int) async throws -> [AskSourceMeetingOption] {
-        []
-    }
-
-    func answerAskMeetings(
-        _ question: String,
-        source: AskSourceScope,
-        limit: Int,
-        onEvidence: @escaping AskEvidenceReceiver
-    ) async throws -> AskMeetingAnswer {
-        let answer = try await answerAskMeetings(
-            question,
-            source: source,
-            limit: limit)
-        await onEvidence(AskEvidenceUpdate(
-            phase: .fused,
-            citations: answer.citations))
-        return answer
-    }
-
-    func answerAskMeetings(
-        _ question: String,
-        source: AskSourceScope,
-        limit: Int,
-        onEvidence: @escaping AskEvidenceReceiver,
-        onAnswer: @escaping AskAnswerReceiver
-    ) async throws -> AskMeetingAnswer {
-        let answer = try await answerAskMeetings(
-            question,
-            source: source,
-            limit: limit,
-            onEvidence: onEvidence)
-        if let text = answer.generatedText {
-            await onAnswer(AskAnswerUpdate(text: text))
-        }
-        return answer
-    }
-}
-
-struct AskSourceMeetingOption: Identifiable, Equatable, Sendable {
-    let id: MeetingID
-    let title: String
-    let startedAt: Date
-}
-
 /// Per-window presentation owner for the full Ask conversation.
 @MainActor
 @Observable
 final class AskModel {
     private static let sourceMeetingLimit = 20
 
-    enum Surface: Equatable {
-        case conversation
-        case personCommitments
-        case topicDecisions
-    }
-
-    enum PendingPhase: Equatable {
-        case findingEvidence
-        case refiningEvidence
-        case generatingAnswer
-    }
-
-    enum SourceMode: String, CaseIterable, Equatable {
-        case library
-        case meeting
-        case web
-    }
-
-    enum SourceCatalogState: Equatable {
-        case idle
-        case loading
-        case loaded
-        case failed
-    }
-
-    enum ExchangeSource: Equatable {
-        case library
-        case meeting(id: MeetingID, title: String)
-    }
-
-    struct Exchange: Identifiable, Equatable {
-        let id: UUID
-        let question: String
-        let answer: String
-        let citations: [AskCitation]
-        let generationOutcome: AskGenerationOutcome
-        let source: ExchangeSource
-
-        init(
-            id: UUID = UUID(),
-            question: String,
-            answer: String,
-            citations: [AskCitation],
-            generationOutcome: AskGenerationOutcome,
-            source: ExchangeSource = .library
-        ) {
-            self.id = id
-            self.question = question
-            self.answer = answer
-            self.citations = citations
-            self.generationOutcome = generationOutcome
-            self.source = source
-        }
-    }
-
-    struct State {
-        fileprivate(set) var surface = Surface.conversation
-        fileprivate(set) var draft = ""
-        fileprivate(set) var exchanges: [Exchange] = []
-        fileprivate(set) var isAsking = false
-        fileprivate(set) var pendingQuestion: String?
-        fileprivate(set) var pendingCitations: [AskCitation] = []
-        fileprivate(set) var pendingAnswerText: String?
-        fileprivate(set) var pendingPhase: PendingPhase?
-        fileprivate(set) var pendingSource: ExchangeSource?
-        fileprivate(set) var sourceMode = SourceMode.library
-        fileprivate(set) var sourceMeetings: [AskSourceMeetingOption] = []
-        fileprivate(set) var selectedSourceMeetingID: MeetingID?
-        fileprivate(set) var sourceCatalogState = SourceCatalogState.idle
-    }
-
     private(set) var state = State()
     let memory: AskMemoryModel?
     let topicMemory: AskTopicMemoryModel?
 
     private let client: any AskModelClient
+    private let webSourcePolicy: AskWebURLPolicy
     private var answerTask: Task<Void, Never>?
     private var sourceLoadTask: Task<Void, Never>?
     private var generation = 0
@@ -169,9 +23,11 @@ final class AskModel {
     init(
         client: any AskModelClient,
         memoryClient: (any AskMemoryModelClient)? = nil,
-        memorySearchDelay: Duration = .milliseconds(200)
+        memorySearchDelay: Duration = .milliseconds(200),
+        webSourcePolicy: AskWebURLPolicy = .publicHTTPS
     ) {
         self.client = client
+        self.webSourcePolicy = webSourcePolicy
         memory = memoryClient.map {
             AskMemoryModel(client: $0, searchDelay: memorySearchDelay)
         }
@@ -206,7 +62,33 @@ final class AskModel {
     }
 
     func updateDraft(_ value: String) {
+        if value != state.draft {
+            state.webConsentApproved = false
+        }
         state.draft = value
+    }
+
+    func updateWebSourceDraft(_ value: String) {
+        if value != state.webSourceDraft {
+            state.webConsentApproved = false
+            if case .web = state.pendingSource {
+                cancelPendingAnswer()
+            }
+        }
+        state.webSourceDraft = value
+    }
+
+    func setWebConsentApproved(_ isApproved: Bool) {
+        state.webConsentApproved = isApproved
+            && resolvedWebSourceURL() != nil
+            && !state.draft.trimmingCharacters(
+                in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var canApproveWebConsent: Bool {
+        resolvedWebSourceURL() != nil
+            && !state.draft.trimmingCharacters(
+                in: .whitespacesAndNewlines).isEmpty
     }
 
     func selectSourceMode(_ mode: SourceMode) {
@@ -238,20 +120,17 @@ final class AskModel {
 
     func submit() {
         let question = state.draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty,
-              let source = resolvedSource(),
+        guard !question.isEmpty else { return }
+        if state.sourceMode == .web {
+            submitWeb(question)
+            return
+        }
+        guard let source = resolvedSource(),
               let exchangeSource = exchangeSource(for: source)
         else { return }
-        state.draft = ""
-        generation += 1
-        answerTask?.cancel()
-        state.isAsking = true
-        state.pendingQuestion = question
-        state.pendingCitations = []
-        state.pendingAnswerText = nil
-        state.pendingPhase = .findingEvidence
-        state.pendingSource = exchangeSource
-        let requestGeneration = generation
+        let requestGeneration = beginRequest(
+            question: question,
+            source: exchangeSource)
         let client = client
         answerTask = Task { [weak self, client] in
             let exchange: Exchange
@@ -346,6 +225,21 @@ final class AskModel {
     }
 
     private func publish(
+        _ update: AskWebEvidenceUpdate,
+        generation requestGeneration: Int
+    ) {
+        guard !Task.isCancelled,
+              generation == requestGeneration,
+              state.isAsking
+        else { return }
+        state.pendingWebCitations = update.citations
+        state.pendingWebSourceFailures = update.sourceFailures
+        state.pendingPhase = update.citations.isEmpty
+            ? .findingEvidence
+            : .generatingAnswer
+    }
+
+    private func publish(
         _ update: AskAnswerUpdate,
         generation requestGeneration: Int
     ) {
@@ -361,6 +255,8 @@ final class AskModel {
         state.isAsking = false
         state.pendingQuestion = nil
         state.pendingCitations = []
+        state.pendingWebCitations = []
+        state.pendingWebSourceFailures = []
         state.pendingAnswerText = nil
         state.pendingPhase = nil
         state.pendingSource = nil
@@ -409,7 +305,7 @@ final class AskModel {
         case .meeting:
             state.selectedSourceMeetingID.map(AskSourceScope.meeting)
         case .web:
-            nil
+            .web
         }
     }
 
@@ -424,8 +320,97 @@ final class AskModel {
                 .meeting(id: $0.id, title: $0.title)
             }
         case .web:
-            nil
+            resolvedWebSourceURL()?.host.map { .web(host: $0) }
         }
+    }
+
+    private func submitWeb(_ question: String) {
+        guard state.webConsentApproved,
+              let url = resolvedWebSourceURL(),
+              let host = url.host
+        else { return }
+        state.webConsentApproved = false
+        let requestGeneration = beginRequest(
+            question: question,
+            source: .web(host: host))
+        let request = AskWebRequest(
+            question: question,
+            sourceURLs: [url],
+            consent: .approvedForSingleRequest)
+        let client = client
+        answerTask = Task { [weak self, client] in
+            let exchange: Exchange
+            do {
+                let result = try await client.answerAskWeb(
+                    request,
+                    onEvidence: { [weak self] update in
+                        await self?.publish(
+                            update,
+                            generation: requestGeneration)
+                    },
+                    onAnswer: { [weak self] update in
+                        await self?.publish(
+                            update,
+                            generation: requestGeneration)
+                    })
+                guard !Task.isCancelled else { return }
+                exchange = Exchange(
+                    question: question,
+                    answer: AskAnswerPresentation.text(for: result),
+                    citations: [],
+                    webCitations: result.citations,
+                    webSourceFailures: result.sourceFailures,
+                    generationOutcome: result.generationOutcome,
+                    source: .web(host: host))
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                exchange = Exchange(
+                    question: question,
+                    answer: L10n.format(
+                        "Search failed: %@",
+                        error.localizedDescription),
+                    citations: [],
+                    generationOutcome: .failed,
+                    source: .web(host: host))
+            }
+            self?.complete(exchange, generation: requestGeneration)
+        }
+    }
+
+    private func beginRequest(
+        question: String,
+        source: ExchangeSource
+    ) -> Int {
+        state.draft = ""
+        generation += 1
+        answerTask?.cancel()
+        state.isAsking = true
+        state.pendingQuestion = question
+        state.pendingCitations = []
+        state.pendingWebCitations = []
+        state.pendingWebSourceFailures = []
+        state.pendingAnswerText = nil
+        state.pendingPhase = .findingEvidence
+        state.pendingSource = source
+        return generation
+    }
+
+    private func resolvedWebSourceURL() -> URL? {
+        let value = state.webSourceDraft.trimmingCharacters(
+            in: .whitespacesAndNewlines)
+        guard let url = URL(string: value),
+              let host = url.host,
+              url.user == nil,
+              url.password == nil,
+              url.fragment == nil,
+              !host.isEmpty
+        else { return nil }
+        guard AskWebURLValidator.admits(url, policy: webSourcePolicy) else {
+            return nil
+        }
+        return url
     }
 
     private static func isValidSourceMeetingCatalog(

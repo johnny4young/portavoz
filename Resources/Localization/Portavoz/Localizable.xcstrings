@@ -15030,6 +15030,176 @@
           }
         }
       }
+    },
+    "Web sources available now": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuentes web disponibles ahora"
+          }
+        }
+      }
+    },
+    "Web sources": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuentes web"
+          }
+        }
+      }
+    },
+    "No readable evidence was found at that web source.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró evidencia legible en esa fuente web."
+          }
+        }
+      }
+    },
+    "Closest passages from the selected web source:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasajes más cercanos de la fuente web seleccionada:"
+          }
+        }
+      }
+    },
+    "One web source could not be read.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo leer una fuente web."
+          }
+        }
+      }
+    },
+    "Paste one public page. Portavoz will fetch only that address.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pega una página pública. Portavoz obtendrá solo esa dirección."
+          }
+        }
+      }
+    },
+    "Allow this one web request": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir esta única solicitud web"
+          }
+        }
+      }
+    },
+    "Ask about this page…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregunta sobre esta página…"
+          }
+        }
+      }
+    },
+    "Your question and meetings are not sent to the page. The selected local answer engine receives only the downloaded excerpt.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu pregunta y tus reuniones no se envían a la página. El motor local seleccionado recibe solo el fragmento descargado."
+          }
+        }
+      }
+    },
+    "Fresh source": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente reciente"
+          }
+        }
+      }
+    },
+    "Older source": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente antigua"
+          }
+        }
+      }
+    },
+    "Source date unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fecha de la fuente no disponible"
+          }
+        }
+      }
+    },
+    "Last modified": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Última modificación"
+          }
+        }
+      }
+    },
+    "Published": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Publicado"
+          }
+        }
+      }
+    },
+    "Excerpt limited": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fragmento limitado"
+          }
+        }
+      }
+    },
+    "Web source request": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicitud de fuente web"
+          }
+        }
+      }
+    },
+    "https://example.com/article": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "https://example.com/article"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

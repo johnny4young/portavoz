@@ -114,7 +114,7 @@ self-contained over system frameworks and carries no module dependency.
 
 | Module | Implemented responsibility |
 |---|---|
-| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, language, privacy, sync, immutable transcript-correction, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
+| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, direct-Web citation/retrieval, language, privacy, sync, immutable transcript-correction, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
 | `ApplicationKit` | Delete, restore, purge, summary and explicit Apuntador regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, focused text/speaker correction, and accepted-snapshot structural correction commands, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
@@ -124,7 +124,7 @@ self-contained over system frameworks and carries no module dependency.
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing validated on the timescale it is delivered on, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
-| `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
+| `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport and direct public-page Web retrieval; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
@@ -683,9 +683,11 @@ verified embedded MLX model answer on Sequoia or Tahoe through the same bounded
 grounding contract. Missing selected-engine readiness never falls through to a
 different provider, and exact evidence remains usable without generation.
 Every manual Ask request also carries one explicit source authority. The full
-Ask window can search the complete local Library or one exact selected meeting;
-Web is present as a separate, visibly unavailable choice until its consented
-adapter exists. There is no default source on the public application workflow.
+Ask window can search the complete local Library, one exact selected meeting,
+or one directly pasted public page. Web consumes an approval bound to the exact
+question and URL for one request, fetches only that URL, and never sends the
+question or meeting material to the page. There is no default source on the
+public application workflow.
 Meeting scope is pushed into every exact FTS lane and filters a bounded semantic
 candidate set before any citation is published. The application boundary also
 revalidates returned search results plus progressive/final citations against
@@ -694,6 +696,16 @@ meeting scope fail closed rather than widening. The resident command palette,
 CLI, MCP, resource probe, and meeting briefs remain explicitly Library-only.
 Graph-fact Ask remains Library-only because its current relationship authority
 is cross-meeting; it rejects narrower or Web scope before either evidence lane.
+Direct Web retrieval has a separate `AskWeb` application workflow and typed citation
+identity, so a page can never masquerade as a meeting citation. It admits at
+most three explicit URLs, preserves caller order across concurrent retrieval,
+publishes partial source failures, and closes answer publication on
+cancellation or an eight-second timeout. The selected local engine receives
+only the question and bounded page excerpts. Its provider-neutral prompt treats
+all page text as untrusted data; generated output is admitted only when it uses
+in-range `[n]` citations and contains no raw HTTP URL. Direct source links,
+observed dates, freshness, and truncation remain deterministic presentation
+data even when generation fails.
 
 Library combines independently observed meeting rows, open commitments, trash,
 and active FTS results. Insights combines chronology, participants,
@@ -4158,13 +4170,22 @@ transport:
 - meeting identity for meeting-scoped work, plus provider identity.
 
 The immutable attempt is persisted before URLSession runs. Persistence failure
-fails closed, redirects are rejected, and transport failure remains visible in
-the meeting privacy receipt. Cross-library manual Ask is the narrow exception
+fails closed, redirects are rejected, and transport failure remains durably
+recorded. Cross-library manual Ask is the narrow exception
 to meeting ownership: schema v43 persists its fixed-loopback attempt in a
 separate content-free global journal with no meeting identity or payload, so a
 multi-meeting request is never falsely attributed to its first citation. That
 journal accepts only local `ask-answer-generation` metadata selected through
-the local-engine setting; per-meeting receipt projection remains unchanged.
+the local-engine setting. Schema v44 additionally distinguishes bounded public
+Web excerpts as `public-web-answer-material` instead of misclassifying them as
+meeting evidence, and extends that journal with direct Web retrieval attempts.
+It admits only `web-source-retrieval`, explicit one-request Web
+consent, no model or meeting identity, and a destination scope consistent with
+the host. It stores the host but never URL path/query, question, page text,
+prompt, answer, or citation. The Web gateway accepts only body-free GET,
+requires HTTPS for remote destinations, blocks redirects, normalizes response
+headers, and streams to a 512 KiB ceiling; all other current gateway responses
+retain a 2 MiB ceiling. Per-meeting receipt projection remains unchanged.
 The meeting receipt also reports the meeting's
 private-sync standing, so an unqualified all-local claim can never coexist
 with an acknowledged iCloud copy (see Private text sync). The gateway requires its recorder by type — a
@@ -4392,9 +4413,12 @@ truncated, unavailable, disconnected, and offline transport; and English/
 Spanish prompt-injection content that is always marked untrusted. Unknown
 paths return a fixed non-reflecting 404, responses are no-store, hostile trust
 and freshness are explicit headers, and the server never opens an Internet
-listener. This infrastructure does not add web retrieval to the product or
-qualify any provider; serving composition requires its own product decision
-and exact real-app evidence.
+listener. The product composes this fixture only under the disposable
+temporary-store UI-test identity. Production uses the public-HTTPS URL policy,
+while both paths cross the real receipt-backed gateway and direct-page parser.
+The fixture does not qualify Internet availability, DNS behavior, a search
+provider, or any third-party page; it proves only the deterministic
+direct-source product path.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
 `xcode-select` toolchain chosen by CI, and falls back to the conventional local
 Xcode path only when Command Line Tools is active. Before that runner builds,

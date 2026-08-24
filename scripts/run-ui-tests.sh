@@ -35,24 +35,52 @@ done
 
 mkdir -p "$results_root"
 
+keyboard_ui_mode_should_restore=false
+keyboard_ui_mode_was_set=false
+keyboard_ui_mode=""
+web_fixture_pid=""
+web_fixture_ready=""
+
+restore_keyboard_ui_mode() {
+  [[ "$keyboard_ui_mode_should_restore" == true ]] || return 0
+  if [[ "$keyboard_ui_mode_was_set" == true ]]; then
+    defaults write -g AppleKeyboardUIMode -int "$keyboard_ui_mode" >/dev/null
+  else
+    defaults delete -g AppleKeyboardUIMode >/dev/null 2>&1 || true
+  fi
+}
+
+stop_web_fixture() {
+  [[ -n "$web_fixture_pid" ]] || return 0
+  if kill -0 "$web_fixture_pid" 2>/dev/null; then
+    kill -TERM "$web_fixture_pid" 2>/dev/null || true
+    for _attempt in {1..250}; do
+      kill -0 "$web_fixture_pid" 2>/dev/null || break
+      sleep 0.02
+    done
+    if kill -0 "$web_fixture_pid" 2>/dev/null; then
+      kill -INT "$web_fixture_pid" 2>/dev/null || true
+    fi
+  fi
+  wait "$web_fixture_pid" 2>/dev/null || true
+  [[ -z "$web_fixture_ready" ]] || rm -f "$web_fixture_ready"
+}
+
+cleanup_ui_test_runner() {
+  stop_web_fixture
+  restore_keyboard_ui_mode
+}
+trap cleanup_ui_test_runner EXIT HUP INT TERM
+
 keyboard_navigation_selector="PortavozUITests/SkillsSettingsUITests/testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit"
 if [[ -z "$tests" || " $tests " == *" $keyboard_navigation_selector "* ]]; then
   # Keyboard Navigation is a system preference, not an app launch argument.
   # Snapshot it before mutation and restore it even when xcodebuild is
   # interrupted. Unrelated scoped suites never touch the preference.
-  keyboard_ui_mode_was_set=false
-  keyboard_ui_mode=""
+  keyboard_ui_mode_should_restore=true
   if keyboard_ui_mode="$(defaults read -g AppleKeyboardUIMode 2>/dev/null)"; then
     keyboard_ui_mode_was_set=true
   fi
-  restore_keyboard_ui_mode() {
-    if [[ "$keyboard_ui_mode_was_set" == true ]]; then
-      defaults write -g AppleKeyboardUIMode -int "$keyboard_ui_mode" >/dev/null
-    else
-      defaults delete -g AppleKeyboardUIMode >/dev/null 2>&1 || true
-    fi
-  }
-  trap restore_keyboard_ui_mode EXIT HUP INT TERM
   defaults write -g AppleKeyboardUIMode -int 3 >/dev/null
 fi
 
@@ -79,6 +107,47 @@ fi
 build_started=$SECONDS
 xcodebuild build-for-testing "${common[@]}"
 build_duration=$((SECONDS - build_started))
+
+# XCUITest runners are App Sandbox processes, so they cannot launch the Xcode
+# Python shim themselves. Own the deterministic loopback fixture here, outside
+# the runner, and forward only its atomic content-free descriptor. One process
+# is reused by every requested locale and is terminated by the runner trap.
+web_fixture_selector="PortavozUITests/LibraryUITests/testAskConversationAnswersAndSeeksToExactCitation"
+needs_web_fixture=false
+if [[ -z "$tests" ]]; then
+  needs_web_fixture=true
+else
+  for test in $tests; do
+    if [[ "$web_fixture_selector" == "$test"* ]]; then
+      needs_web_fixture=true
+      break
+    fi
+  done
+fi
+
+if [[ "$needs_web_fixture" == true ]]; then
+  web_fixture_ready="$results_root/apuntador-web-fixture.json"
+  web_fixture_log="$results_root/apuntador-web-fixture.log"
+  rm -f "$web_fixture_ready" "$web_fixture_log"
+  python3 scripts/apuntador_web_fixture.py serve \
+    --fixture Fixtures/ApuntadorWeb/public-local-v1.json \
+    --ready-file "$web_fixture_ready" \
+    >"$web_fixture_log" 2>&1 &
+  web_fixture_pid=$!
+  for _attempt in {1..500}; do
+    [[ -f "$web_fixture_ready" ]] && break
+    kill -0 "$web_fixture_pid" 2>/dev/null || break
+    sleep 0.02
+  done
+  if [[ ! -f "$web_fixture_ready" ]] \
+      || ! kill -0 "$web_fixture_pid" 2>/dev/null; then
+    echo "Deterministic Apuntador Web fixture did not start." >&2
+    cat "$web_fixture_log" >&2 || true
+    exit 2
+  fi
+  export PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR="$web_fixture_ready"
+  export TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR="$web_fixture_ready"
+fi
 
 for locale in $locales; do
   test_args=("${common[@]}")

@@ -24,10 +24,15 @@ extension MeetingStore: DataEgressEventRecorder {
     /// like the sole material sent to the selected local engine.
     public func globalDataEgressEvents() async throws -> [DataEgressEvent] {
         try await database.read { database in
-            try GlobalDataEgressEventRecord
+            let events = try GlobalDataEgressEventRecord
                 .order(Column("attemptedAt"), Column("rowid"))
                 .fetchAll(database)
                 .map { try $0.event }
+            for event in events {
+                try Self.validateDataEgressEvent(event)
+                _ = try Self.globalModelID(for: event)
+            }
+            return events
         }
     }
 
@@ -115,9 +120,9 @@ extension MeetingStore: DataEgressEventRecorder {
         let required = [event.destinationHost, event.providerID]
         guard required.allSatisfy({
             !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }) else {
+        }), event.attemptedAt.timeIntervalSinceReferenceDate.isFinite else {
             throw StorageError.invalidDataEgressEvent(
-                "destination or provider identity is blank")
+                "destination, provider, or attempt time is invalid")
         }
         guard event.destinationHost.caseInsensitiveCompare(event.providerID) == .orderedSame else {
             throw StorageError.invalidDataEgressEvent(
@@ -135,18 +140,47 @@ extension MeetingStore: DataEgressEventRecorder {
         _ event: DataEgressEvent,
         in database: Database
     ) throws {
-        guard event.operation == .askAnswerGeneration,
-              event.destinationScope == .localDevice,
-              event.dataClassification == .meetingAnswerMaterial,
-              event.consentSource == .summaryEngineSettings,
-              let modelID = event.modelID?.trimmingCharacters(
-                  in: .whitespacesAndNewlines),
-              !modelID.isEmpty
-        else {
+        try GlobalDataEgressEventRecord(
+            event,
+            modelID: globalModelID(for: event)
+        ).insert(database)
+    }
+
+    private static func globalModelID(
+        for event: DataEgressEvent
+    ) throws -> String? {
+        let modelID: String?
+        switch event.operation {
+        case .askAnswerGeneration:
+            guard event.destinationScope == .localDevice,
+                  event.dataClassification == .meetingAnswerMaterial
+                    || event.dataClassification == .publicWebAnswerMaterial,
+                  event.consentSource == .summaryEngineSettings,
+                  let value = event.modelID?.trimmingCharacters(
+                      in: .whitespacesAndNewlines),
+                  !value.isEmpty
+            else {
+                throw StorageError.invalidDataEgressEvent(
+                    "global receipts require bounded local Ask metadata")
+            }
+            modelID = value
+        case .webSourceRetrieval:
+            guard event.dataClassification == .publicWebSourceRequest,
+                  event.consentSource == .explicitWebAsk,
+                  event.modelID == nil
+            else {
+                throw StorageError.invalidDataEgressEvent(
+                    "web receipts require explicit content-free metadata")
+            }
+            modelID = nil
+        case .companionKnowledgeAnswer,
+             .summaryGeneration,
+             .publishGitHubGist,
+             .createGitHubIssue,
+             .createLinearIssue:
             throw StorageError.invalidDataEgressEvent(
-                "global receipts require bounded local Ask metadata")
+                "global receipts reject meeting-owned operations")
         }
-        try GlobalDataEgressEventRecord(event, modelID: modelID)
-            .insert(database)
+        return modelID
     }
 }

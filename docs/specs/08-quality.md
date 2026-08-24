@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,627 cases (15 environment-gated) + 105
+Status: the package inventory contains 2,693 cases (15 environment-gated) + 105
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -1630,6 +1630,88 @@ remained valid, and Gatekeeper still accepted it as Notarized Developer ID.
 Packaging again had no production CloudKit profile and no optional Metal
 Toolchain `metallib`, so the installed Dev bundle supplies neither production
 CloudKit nor real embedded-MLX evidence.
+
+### Consented direct-Web Ask qualification (D387)
+
+Package tests separate policy, orchestration, transport, parsing, persistence,
+provider prompting, and presentation. Pure tests cover one-request consent
+binding/consumption, source-change cancellation, maximum/duplicate/blank input,
+ordered partial evidence, cumulative citation admission, raw-URL rejection,
+timeout closure, late-output rejection, public-HTTPS versus loopback policy,
+UTF-8/Unicode bounds, hidden-date exclusion, hostile boundary escaping, typed
+HTTP/content/size failure mapping, and selected-engine isolation from meeting
+identity. Gateway regressions prove exact body-free GET metadata, lowercase
+headers, the 512 KiB boundary and first excess byte, while storage tests prove
+content-free local/remote Web receipts, forged-metadata rejection, and v43 Ask
+row preservation through v44. Router and Ollama-adapter cases additionally
+prove Web evidence never enters a meeting passage call and uses the distinct
+`public-web-answer-material` loopback classification. Corrupt provider identity
+and non-finite receipt time fail closed rather than surfacing as privacy truth.
+
+One autonomous integration case launches the canonical Python server on an
+ephemeral IPv4-loopback port and runs the real `URLSessionDataEgressGateway`,
+`MeetingStore`, direct-page adapter, and parser. It covers fresh EN/ES, stale,
+undated, hostile prompt injection, blocked redirect, 503, partial response,
+disconnect, and slow cancellation. Every attempt—including failures and
+cancellation—leaves only content-free host/policy receipt evidence. It needs no
+Internet, provider account, user meeting, or private transcript.
+
+The existing Ask XCUITest journey is extended rather than duplicated. The
+shell runner starts one atomic loopback fixture after its shared build and only
+when the selected scope contains the Web journey. This ownership is outside the
+App-Sandbox-signed XCUITest process, which cannot launch the Xcode Python shim.
+The test bundle accepts only a 4 KiB canonical checksum-validated descriptor,
+then enters a localized EN/ES question and page, proves submit is disabled
+before consent, runs through the real app, asserts the cited deterministic
+answer plus 2026 freshness and Web source badge, proves consent was consumed,
+and continues exact-meeting answer/citation/seek. The direct Link is asserted
+but not opened, so the test never launches a browser or leaves the controlled
+fixture. One fixture is reused across sequential locales and the combined
+signal/exit trap stops it before restoring the host keyboard-navigation value.
+
+The finalized tree passed the current-SDK first-party warnings-as-errors build,
+69/69 focused D387 tests, and the complete 2,693-test Swift package with 15
+explicit environment/model skips and zero failures in 129.579 seconds of XCTest
+execution. All 214 architecture/commitment-source-link tests passed after
+the combined cleanup literal was updated to retain the historical keyboard-
+restoration invariant. All 501 tooling tests passed in 23.811 seconds, including
+fixture start/no-start scope, descriptor forwarding, cleanup, UI catalog,
+duplicate/orphan/unscoped selector, blind-sleep, and runtime-budget policy.
+Repository hygiene, both localization catalog parses, diff whitespace checks,
+and strict SwiftLint across 720 Swift files also passed.
+
+Because localization, shared harness, and otherwise unknown production paths
+changed, `make test-ui-changed UI_BASE=HEAD` expanded fail-safe to the complete
+catalogue in both locales. One 12-second build was reused and the locales ran
+sequentially without retries. Final macOS 26.5.2 (25F84), arm64 result bundles
+passed 105/105 English plus 105/105 Spanish real-app cases. English recorded
+1,103.318 seconds of test duration, 1,126 seconds wall time, 20.698 seconds p95,
+and a 89.546-second maximum; Spanish recorded 1,100.502 seconds of test
+duration, 1,126 seconds wall time, 20.695 seconds p95, and a 90.874-second
+maximum. Both content-free receipts passed every aggregate and per-case budget,
+and the fixture descriptor was absent after runner cleanup.
+After the final source-change cancellation and exact-date-attribute fixes, the
+minimum-safe Web journey was rerun from one shared build without retries: 1/1
+English in 18.715 seconds and 1/1 Spanish in 16.523 seconds, with both runtime
+budgets passing.
+
+The Release bundle completed one clean 93.59-second build and a final
+15.16-second incremental rebuild, was deeply verified, re-identified as
+`app.portavoz.mac.dev`, installed only at `/Applications/Portavoz Dev.app`, and
+observed at PID 25956 running from its exact executable. The notarized
+`app.portavoz.mac` release remained byte-for-byte unchanged across its 184-entry
+no-symlink-traversal content/metadata/hex-xattr manifest at SHA-256
+`b9ee907d04eb473d803574ca4af87cc64014fc95305d3231a30ba3b0ab67a20d`;
+its designated requirement stayed valid and Gatekeeper still accepted it as
+Notarized Developer ID. Packaging again had no production CloudKit profile and
+no optional Metal Toolchain `metallib`, so this installed Dev bundle does not
+provide production CloudKit or embedded-MLX runtime evidence.
+
+Scoped changed-file evidence remains mandatory per band; complete bilingual
+XCUITest remains the integration/RC gate. Automation does not certify DNS
+behavior, arbitrary Internet pages, installed-model quality, physical
+Sequoia/Tahoe, VoiceOver/Voice Control, CloudKit, distribution, or field
+behavior.
 
 ### Bounded post-RRF fact-aware selection (D286)
 

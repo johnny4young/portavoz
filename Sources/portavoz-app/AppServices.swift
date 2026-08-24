@@ -311,11 +311,10 @@ final class AppServices {
         let askUseCase = semanticSearch.ask
         firstRun = Self.makeFirstRunModel(store: store)
         localDataLedger = Self.makeLocalDataLedgerModel(
-            store: store,
-            usesTemporaryStore: usesTemporaryStore,
-            voiceGallery: voiceGallery,
-            voiceprintStore: voiceprintStore)
-        askClient = AppAskModelClient(useCase: askUseCase, store: store)
+            store: store, usesTemporaryStore: usesTemporaryStore,
+            voiceGallery: voiceGallery, voiceprintStore: voiceprintStore)
+        askClient = AppAskModelClient(
+            useCase: askUseCase, webUseCase: semanticSearch.webAsk, store: store)
         recapSkillDelivery = Self.makeRecapSkillDelivery(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         emailRecapDraftDelivery = Self.makeEmailRecapDraftDelivery(usesTemporaryStore: usesTemporaryStore)
         upcomingEventSource = AppUpcomingEventSource(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
@@ -327,8 +326,7 @@ final class AppServices {
             synthesizer: AppOnDeviceMeetingBriefSynthesizer())
         palette = CommandPaletteController(model: CommandPaletteModel(client: askClient))
         meetingSync = Self.makeMeetingSyncModel(
-            store: store,
-            usesTemporaryStore: usesTemporaryStore,
+            store: store, usesTemporaryStore: usesTemporaryStore,
             telemetry: workloadTelemetry, captureState: resourceCaptureState)
         libraryMarkdownBackup = Self.makeLibraryMarkdownBackupModel(
             store: store, captureState: resourceCaptureState, usesTemporaryStore: usesTemporaryStore)

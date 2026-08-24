@@ -100,6 +100,35 @@ final class RAGTextAnsweringTests: XCTestCase {
             metadata: captured.metadata))
     }
 
+    func testOllamaWebAnswerUsesPublicWebSpecificLoopbackMetadata() async throws {
+        let gateway = CapturingDataEgressGateway()
+        let answerer = OllamaService.askAnswerer(
+            model: "qwen-local",
+            gateway: gateway)
+        let url = try XCTUnwrap(URL(string: "https://example.com/harbor"))
+
+        _ = try await answerer.answer(
+            question: "When?",
+            webPassages: [RAGWebPassage(
+                url: url,
+                title: "Harbor",
+                observedDate: nil,
+                text: "Harbor launches Friday.",
+                isExcerptTruncated: false)])
+
+        let snapshot = await gateway.snapshot()
+        let captured = try XCTUnwrap(snapshot)
+        XCTAssertEqual(captured.metadata.operation, .askAnswerGeneration)
+        XCTAssertEqual(
+            captured.metadata.dataClassification,
+            .publicWebAnswerMaterial)
+        XCTAssertEqual(captured.metadata.destination.scope, .localDevice)
+        XCTAssertNil(captured.metadata.meetingID)
+        XCTAssertNoThrow(try URLSessionDataEgressGateway.validate(
+            captured.request,
+            metadata: captured.metadata))
+    }
+
     func testGatewayRejectsAskMaterialToRemoteOrWithWrongConsent() throws {
         let endpoint = URL(string: "https://api.example.com/v1")!
         let request = try OpenAICompatibleChatCodec.urlRequest(

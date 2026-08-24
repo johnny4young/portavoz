@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -29,9 +30,12 @@ class RunUITestsTests(unittest.TestCase):
             fake = binary / "xcodebuild"
             fake.write_text(
                 "#!/bin/sh\n"
-                "printf 'DEVELOPER_DIR=%s | %s | PORTAVOZ_UI_TEST_LOCALE=%s "
+                "printf 'DEVELOPER_DIR=%s | %s | WEB_FIXTURE=%s "
+                "| TEST_RUNNER_WEB_FIXTURE=%s | PORTAVOZ_UI_TEST_LOCALE=%s "
                 "| TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE=%s\\n' "
                 "\"${DEVELOPER_DIR:-unset}\" \"$*\" "
+                "\"${PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR:-unset}\" "
+                "\"${TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR:-unset}\" "
                 "\"${PORTAVOZ_UI_TEST_LOCALE:-unset}\" "
                 "\"${TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE:-unset}\" "
                 ">> \"$XCODEBUILD_LOG\"\n"
@@ -79,6 +83,31 @@ class RunUITestsTests(unittest.TestCase):
                 encoding="utf-8",
             )
             fake_xcrun.chmod(0o755)
+            fake_python = binary / "python3"
+            fake_python.write_text(
+                "#!/bin/sh\n"
+                "case \"${1:-}\" in\n"
+                "  *scripts/apuntador_web_fixture.py) ;;\n"
+                "  *) exec \"$REAL_PYTHON\" \"$@\" ;;\n"
+                "esac\n"
+                "ready=''\n"
+                "while [ \"$#\" -gt 0 ]; do\n"
+                "  if [ \"$1\" = '--ready-file' ]; then\n"
+                "    shift\n"
+                "    ready=$1\n"
+                "  fi\n"
+                "  shift\n"
+                "done\n"
+                "[ -n \"$ready\" ] || exit 2\n"
+                "printf '{\"schemaVersion\":1,\"generation\":\"public-local-v1\","
+                "\"fixtureChecksum\":\"cf351b78d939998c421aa7e72981ca7ae357dcd51860499027245cb824fb2897\","
+                "\"baseURL\":\"http://127.0.0.1:54321\",\"processID\":%s}\\n' "
+                "\"$$\" > \"$ready\"\n"
+                "trap 'exit 0' TERM INT\n"
+                "while :; do sleep 1; done\n",
+                encoding="utf-8",
+            )
+            fake_python.chmod(0o755)
             runtime_budget = root / "runtime-budget.json"
             runtime_budget.write_text(
                 '{"catalog":{"expectedCaseCount":1},'
@@ -92,6 +121,10 @@ class RunUITestsTests(unittest.TestCase):
             environment.pop("DEVELOPER_DIR", None)
             environment.pop("PORTAVOZ_UI_TEST_LOCALE", None)
             environment.pop("TEST_RUNNER_PORTAVOZ_UI_TEST_LOCALE", None)
+            environment.pop("PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR", None)
+            environment.pop(
+                "TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR", None
+            )
             environment.update(
                 {
                     "PATH": f"{binary}:{environment['PATH']}",
@@ -110,6 +143,7 @@ class RunUITestsTests(unittest.TestCase):
                         require_runtime_receipt
                     ).lower(),
                     "UI_TEST_RUNTIME_BUDGET": str(runtime_budget),
+                    "REAL_PYTHON": sys.executable,
                 }
             )
             if developer_dir is not None:
@@ -153,6 +187,33 @@ class RunUITestsTests(unittest.TestCase):
         self.assertIn(f"-only-testing:{selector}", calls[1])
         self.assertIn("Running 1 scoped selectors in locale: en", result.stdout)
         self.assertEqual(self.defaults_calls, [])
+
+    def test_web_journey_uses_one_external_fixture_after_the_shared_build(self):
+        selector = (
+            "PortavozUITests/LibraryUITests/"
+            "testAskConversationAnswersAndSeeksToExactCitation"
+        )
+        result, calls = self.run_runner(selector, locales="en es")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 3)
+        self.assertIn("WEB_FIXTURE=unset", calls[0])
+        for call in calls[1:]:
+            self.assertRegex(
+                call,
+                r"WEB_FIXTURE=.+/apuntador-web-fixture.json",
+            )
+            self.assertRegex(
+                call,
+                r"TEST_RUNNER_WEB_FIXTURE=.+/apuntador-web-fixture.json",
+            )
+
+    def test_unrelated_scope_does_not_start_the_web_fixture(self):
+        selector = "PortavozUITests/LibraryUITests/testSeededMeetingsGroupByRecency"
+        result, calls = self.run_runner(selector)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(all("WEB_FIXTURE=unset" in call for call in calls))
 
     def test_complete_suite_restores_keyboard_navigation(self):
         result, _ = self.run_runner("")

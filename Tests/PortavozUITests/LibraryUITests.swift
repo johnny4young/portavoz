@@ -511,7 +511,9 @@ final class LibraryUITests: PortavozUITestCase {
     }
 
     @MainActor
-    func testAskConversationAnswersAndSeeksToExactCitation() {
+    func testAskConversationAnswersAndSeeksToExactCitation() throws {
+        let webFixture = try ApuntadorWebFixtureDescriptor
+            .loadFromRunnerEnvironment()
         let app = XCUIApplication.portavoz(
             seedDemo: true,
             simulateSequoiaCapabilities: true)
@@ -529,14 +531,65 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(webSource.waitForExistenceFast(timeout: 5))
         webSource.click()
         XCTAssertTrue(
-            app.descendants(matching: .any)["ask-source-status-web-unavailable"]
+            app.descendants(matching: .any)["ask-source-status-web"]
                 .waitForExistenceFast(timeout: 5),
-            "Web must be visibly unavailable instead of widening to local meetings")
+            "Web must disclose its direct-source boundary")
+        let webQuestion = UITestLocale.environmentLocale == "es"
+            ? "¿Cuándo se lanza Costa?"
+            : "When does Harbor launch?"
+        let webPath = UITestLocale.environmentLocale == "es"
+            ? "/source/fresh-es"
+            : "/source/fresh-en"
         field.click()
-        field.typeText("sinresultado")
+        field.typeText(webQuestion)
+        let webSourceField = app.textFields["ask-web-source-field"]
+        XCTAssertTrue(webSourceField.waitForExistenceFast(timeout: 5))
+        webSourceField.click()
+        let webURL = try XCTUnwrap(
+            URL(string: webPath, relativeTo: webFixture.baseURL)?.absoluteURL)
+        webSourceField.typeText(webURL.absoluteString)
+        let consent = app.checkBoxes["ask-web-consent"]
+        XCTAssertTrue(consent.waitForEnabled(timeout: 5))
         XCTAssertFalse(
             app.buttons["ask-submit"].isEnabled,
-            "an unavailable Web source must block submission")
+            "Web must remain blocked before one-request consent")
+        consent.click()
+        XCTAssertTrue(app.buttons["ask-submit"].waitForEnabled(timeout: 5))
+        app.buttons["ask-submit"].click()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-pending-source-web"]
+                .waitForExistenceFast(timeout: 5))
+        let webAnswer = UITestLocale.environmentLocale == "es"
+            ? "Costa se lanza el 18 de septiembre a las 10:00 UTC [1]."
+            : "Harbor launches September 14 at 09:00 UTC [1]."
+        XCTAssertTrue(
+            app.staticTexts[webAnswer].waitForExistenceFast(timeout: 10),
+            "the real app must answer from the deterministic loopback page")
+        let webCitation = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-web-citation-' "
+                + "AND NOT identifier ENDSWITH '-freshness'"))
+            .firstMatch
+        XCTAssertTrue(webCitation.waitForExistenceFast(timeout: 5))
+        let freshness = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-web-citation-' "
+                + "AND identifier ENDSWITH '-freshness'"))
+            .firstMatch
+        XCTAssertTrue(
+            freshness.waitForExistenceFast(timeout: 5),
+            "the citation must disclose its observed source date and freshness")
+        let freshnessText = renderedText(of: freshness)
+        let expectedFreshness = UITestLocale.environmentLocale == "es"
+            ? "Fuente reciente"
+            : "Fresh source"
+        XCTAssertTrue(freshnessText.contains(expectedFreshness), freshnessText)
+        XCTAssertTrue(freshnessText.contains("2026"), freshnessText)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-exchange-source-web"]
+                .waitForExistenceFast(timeout: 5))
+        XCTAssertFalse(
+            consent.isSelected,
+            "one-request Web consent must be consumed after submission")
+        attachScreenshot(of: app, named: "ask-consented-cited-web-answer")
 
         let meetingSource = app.descendants(matching: .any)["ask-source-meeting"]
         XCTAssertTrue(meetingSource.waitForExistenceFast(timeout: 5))
@@ -553,6 +606,8 @@ final class LibraryUITests: PortavozUITestCase {
             meetingOption.waitForExistenceFast(timeout: 5),
             "the exact seeded meeting must be exposed as an identified menu item")
         meetingOption.click()
+        field.click()
+        field.typeText("sinresultado")
         XCTAssertTrue(app.buttons["ask-submit"].isEnabled)
         app.buttons["ask-submit"].click()
         let pendingQuestion = app.staticTexts["ask-pending-question"]

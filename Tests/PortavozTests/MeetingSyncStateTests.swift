@@ -21,7 +21,7 @@ final class MeetingSyncStateTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.write { db in
-            XCTAssertEqual(StorageSchema.version, 43)
+            XCTAssertEqual(StorageSchema.version, 44)
             XCTAssertEqual(
                 try Set(db.columns(in: "meetingSyncState").map(\.name)),
                 [

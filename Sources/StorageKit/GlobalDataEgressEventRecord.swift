@@ -15,10 +15,10 @@ struct GlobalDataEgressEventRecord:
     var dataClassification: String
     var consentSource: String
     var providerID: String
-    var modelID: String
+    var modelID: String?
     var attemptedAt: Date
 
-    init(_ event: DataEgressEvent, modelID: String) {
+    init(_ event: DataEgressEvent, modelID: String?) {
         id = event.id.rawValue.uuidString
         operation = event.operation.rawValue
         destinationScope = event.destinationScope.rawValue

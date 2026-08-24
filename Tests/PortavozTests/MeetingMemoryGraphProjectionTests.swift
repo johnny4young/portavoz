@@ -66,12 +66,12 @@ final class MeetingMemoryGraphProjectionTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 43)
+            XCTAssertEqual(StorageSchema.version, 44)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v43")
+                "v44")
             XCTAssertEqual(
                 try Set(database.columns(in: "meetingMemoryGraphProjectionState").map(\.name)),
                 ["id", "profileFingerprint", "sourceGeneration", "updatedAt"])
