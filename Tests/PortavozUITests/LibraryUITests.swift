@@ -512,7 +512,9 @@ final class LibraryUITests: PortavozUITestCase {
 
     @MainActor
     func testAskConversationAnswersAndSeeksToExactCitation() {
-        let app = XCUIApplication.portavoz(seedDemo: true)
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            simulateSequoiaCapabilities: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -558,7 +560,10 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.staticTexts["El presupuesto se revisó y el rollout quedó para el viernes."]
                 .waitForExistenceFast(timeout: 10),
-            "the full Ask model must publish the seeded local answer")
+            "manual Ask must publish the seeded local answer even when Apple Foundation Models are unavailable")
+        XCTAssertFalse(
+            app.descendants(matching: .any)["ask-generation-unavailable"].exists,
+            "the explicit manual Ask route must not be gated by Sequoia capabilities")
         let citation = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-citation-'"))
             .firstMatch

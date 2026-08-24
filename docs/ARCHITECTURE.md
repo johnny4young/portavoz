@@ -675,10 +675,13 @@ snapshots under finite count/text limits, closes publication on cancellation or
 timeout, and preserves citations when optional generation is unavailable or
 fails. The per-window model retains at most 20 completed exchanges, weakly
 bridges its task so a non-cooperative provider cannot retain a closed window,
-and lets a new submitted draft cancel and replace pending work. On macOS 26 the
-Foundation Models adapter streams cumulative `String` snapshots through the
-shared interactive scheduler; on Sequoia the same UI remains evidence-capable
-without entering that unavailable API.
+and lets a new submitted draft cancel and replace pending work. Manual Ask
+samples the explicitly selected local summary engine for every request. On
+macOS 26 the Foundation Models adapter streams cumulative `String` snapshots
+through the shared interactive scheduler; configured loopback Ollama and a
+verified embedded MLX model answer on Sequoia or Tahoe through the same bounded
+grounding contract. Missing selected-engine readiness never falls through to a
+different provider, and exact evidence remains usable without generation.
 
 Library combines independently observed meeting rows, open commitments, trash,
 and active FTS results. Insights combines chronology, participants,
@@ -2167,9 +2170,15 @@ an incomplete read cannot silently authorize an exhaustive claim. Typed
 abstention, operational unavailability, and malformed provenance stay distinct
 instead of becoming empty prose context.
 
-The existing released Ask workflow and `AskMeetingAnswering` port remain
-unchanged and continue to generate from transcript citations with the original
-numeric-citation prompt. One separate opt-in `AskEvidenceBundleAnswering` port
+The released Ask workflow and `AskMeetingAnswering` port remain stable and
+continue to generate from transcript citations with the numeric-citation
+contract. Application composition late-binds one selected-engine router only
+after the service graph is initialized; it samples Apple Foundation Models,
+fixed-loopback Ollama, or the existing process-owned MLX runtime per request.
+All three receive one provider-neutral prompt bounded to 12,000 characters and
+48,000 UTF-8 bytes, including the shared quoted-source injection guard. A
+selected but unavailable engine returns evidence-only state rather than
+falling through. One separate opt-in `AskEvidenceBundleAnswering` port
 accepts the typed input. `answerBundle` invokes it only when both independently
 ranked exact transcript citations and a valid non-empty graph page are present;
 facts never replace an empty or failed transcript lane, and abstained,
@@ -3512,11 +3521,11 @@ lexical completion, and fusion begins only after both candidate paths settle.
 The trace admits only operation,
 stage, milestone, outcome, and random process-local correlation values. The
 macOS adapter converts them into Points of Interest intervals without logging a
-question, meeting, citation, path, model, or error. The current answer provider
-returns one complete string, so first-token observation currently coincides
-with that string crossing the ApplicationKit boundary. CLI distribution and
-quality aggregation remain separate benchmark work; this trace changes no
-storage persistence or model preparation. The late evidence-empty generative
+question, meeting, citation, path, model, or error. Foundation Models publishes
+cumulative snapshots; Ollama and MLX currently publish one final cumulative
+snapshot. The first-token milestone therefore means the first nonempty value
+admitted by ApplicationKit, not model-internal token timing. CLI distribution
+and quality aggregation remain separate benchmark work. The late evidence-empty generative
 fallback contributes to total operation duration but does not create a second
 primary expansion interval; a dedicated stage requires a versioned receipt.
 
@@ -4132,11 +4141,17 @@ transport:
 - destination host and scope;
 - local-device or remote classification;
 - consent source;
-- meeting and provider identity.
+- meeting identity for meeting-scoped work, plus provider identity.
 
 The immutable attempt is persisted before URLSession runs. Persistence failure
 fails closed, redirects are rejected, and transport failure remains visible in
-the meeting privacy receipt. The receipt also reports the meeting's
+the meeting privacy receipt. Cross-library manual Ask is the narrow exception
+to meeting ownership: schema v43 persists its fixed-loopback attempt in a
+separate content-free global journal with no meeting identity or payload, so a
+multi-meeting request is never falsely attributed to its first citation. That
+journal accepts only local `ask-answer-generation` metadata selected through
+the local-engine setting; per-meeting receipt projection remains unchanged.
+The meeting receipt also reports the meeting's
 private-sync standing, so an unqualified all-local claim can never coexist
 with an acknowledged iCloud copy (see Private text sync). The gateway requires its recorder by type — a
 gateway that cannot record an attempt cannot be constructed. One scoped

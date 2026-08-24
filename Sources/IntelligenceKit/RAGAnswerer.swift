@@ -253,14 +253,8 @@ import FoundationModels
 /// model may ONLY use the provided context and must cite it — anything
 /// not in the passages is "no lo encuentro".
 @available(macOS 26.0, iOS 26.0, *)
-public struct RAGAnswerer: Sendable {
-    static let answerInstructions = """
-        You answer questions about the user's own meetings using ONLY the numbered context passages.
-        \(PromptFactory.sourceMaterialGuard())
-        Write a direct answer of one to three full sentences — never output a bare citation.
-        After each claim, add the marker of the passage that supports it, e.g. "… media hora de latencia [2]."
-        If the context does not contain the answer, say so plainly — never guess.
-        """
+public struct RAGAnswerer: RAGTextAnswering {
+    static let answerInstructions = RAGAnswerPrompt.instructions
 
     static let factAnswerInstructions = """
         You answer questions about the user's own meetings using ONLY the numbered
@@ -287,16 +281,17 @@ public struct RAGAnswerer: Sendable {
             return "No encuentro nada relacionado en tus reuniones."
         }
 
-        let context = passages.enumerated().map { index, passage in
-            "[\(index + 1)] (\(passage.meetingTitle), \(Self.timestamp(passage.timestamp))) \(passage.text)"
-        }.joined(separator: "\n")
+        let prompt = try RAGAnswerPrompt.make(
+            question: question,
+            passages: passages)
 
         let session = LanguageModelSession(instructions: Self.answerInstructions)
         return try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(
-                to: "Context:\n\(context)\n\nQuestion: \(question)\n\n"
-                    + "Answer with full sentences, in the same language as the question.",
-                options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 500)
+                to: prompt.user,
+                options: GenerationOptions(
+                    sampling: .greedy,
+                    maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens)
             ).content
         }
     }
@@ -315,18 +310,16 @@ public struct RAGAnswerer: Sendable {
             return "No encuentro nada relacionado en tus reuniones."
         }
 
-        let context = passages.enumerated().map { index, passage in
-            "[\(index + 1)] (\(passage.meetingTitle), "
-                + "\(Self.timestamp(passage.timestamp))) \(passage.text)"
-        }.joined(separator: "\n")
+        let prompt = try RAGAnswerPrompt.make(
+            question: question,
+            passages: passages)
         let session = LanguageModelSession(instructions: Self.answerInstructions)
         return try await IntelligenceScheduler.shared.run(.interactive) {
             let stream = session.streamResponse(
-                to: "Context:\n\(context)\n\nQuestion: \(question)\n\n"
-                    + "Answer with full sentences, in the same language as the question.",
+                to: prompt.user,
                 options: GenerationOptions(
                     sampling: .greedy,
-                    maximumResponseTokens: 500))
+                    maximumResponseTokens: RAGAnswerPrompt.maximumResponseTokens))
             var finalText = ""
             for try await snapshot in stream {
                 try Task.checkCancellation()

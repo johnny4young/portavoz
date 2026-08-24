@@ -133,7 +133,9 @@ identity guessing, user-authored actions, standing automation rules, broader
 graph sync/export/CLI/MCP, alternate search/ASR authority, and autonomous
 external mutation remain outside this finite candidate. Current implemented
 truth and exit evidence remain authoritative in `GAPS.md` and the as-built
-specs; this boundary is not a claim that APT-1…APT-7 are already shipped.
+specs. APT-1 progressive reliability and APT-2 selected-engine manual Ask are
+implemented; source policy, web, interviews, notes, proactive help, and final
+admission remain open.
 
 ## Standout UX (signature moments)
 

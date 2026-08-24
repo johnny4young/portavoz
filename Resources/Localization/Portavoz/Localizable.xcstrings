@@ -1611,6 +1611,36 @@
         }
       }
     },
+    "Your selected local answer engine is unavailable. Exact passages are still shown.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El motor local seleccionado no está disponible. Aun así, se muestran los pasajes exactos."
+          }
+        }
+      }
+    },
+    "Your selected local answer engine could not finish. Exact passages are still shown.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El motor local seleccionado no pudo terminar. Aun así, se muestran los pasajes exactos."
+          }
+        }
+      }
+    },
+    "Your selected local answer engine took too long. Exact passages are still shown.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El motor local seleccionado tardó demasiado. Aun así, se muestran los pasajes exactos."
+          }
+        }
+      }
+    },
     "Closing the recording…": {
       "localizations": {
         "es": {
@@ -7237,6 +7267,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Solo la pregunta para Apuntador"
+          }
+        }
+      }
+    },
+    "Ask answer material": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Material para la respuesta de Ask"
           }
         }
       }

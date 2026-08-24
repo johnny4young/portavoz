@@ -167,6 +167,16 @@ struct AskView: View {
             Text(exchange.answer)
                 .textSelection(.enabled)
                 .accessibilityIdentifier("ask-answer-\(exchange.id.uuidString)")
+            if let status = AskAnswerPresentation.statusText(
+                for: exchange.generationOutcome,
+                hasCitations: !exchange.citations.isEmpty
+            ) {
+                Label(status, systemImage: "cpu")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(
+                        "ask-generation-\(exchange.generationOutcome.rawValue)")
+            }
             if !exchange.citations.isEmpty {
                 Text("Sources")
                     .font(.caption.weight(.semibold))

@@ -183,6 +183,7 @@ extension AppServices {
         store: MeetingStore,
         usesTemporaryStore: Bool,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
+        selectedAnswering: any AskMeetingAnswering,
         telemetry: ResourceWorkloadTelemetry,
         pipelineTelemetry: AskPipelineTelemetry = AppAskPipelineTelemetry.shared.telemetry,
         captureState: AppResourceCaptureState
@@ -209,7 +210,8 @@ extension AppServices {
                 store: store,
                 semanticRuntime: semanticRuntime,
                 semanticReadiness: readiness,
-                pipelineTelemetry: pipelineTelemetry)
+                pipelineTelemetry: pipelineTelemetry,
+                answering: selectedAnswering)
         }
         let library = LocalLibrarySemanticSearch(
             store: store,

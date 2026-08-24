@@ -44,6 +44,28 @@ extension AppServices {
             runtime: client)
     }
 
+    /// Reuses the exact process-owned MLX runtime and residency policy for
+    /// grounded Ask. A second provider value is cheap; a second runtime is
+    /// deliberately impossible from application composition.
+    func makeMLXRAGAnswerer(
+        modelDirectory: URL,
+        priority: IntelligenceScheduler.Priority = .interactive,
+        workloadClass: ResourceWorkloadClass = .userInitiated
+    ) -> MLXRAGAnswerer {
+        let client = AppMLXSummaryRuntimeClient { [weak self] system, user, directory in
+            guard let self else { throw MLXRuntimeError.servicesUnavailable }
+            return try await self.respondWithMLXRuntime(
+                system: system,
+                user: user,
+                directory: directory,
+                workloadClass: workloadClass)
+        }
+        return MLXRAGAnswerer(
+            modelDirectory: modelDirectory,
+            priority: priority,
+            runtime: client)
+    }
+
     /// Acquires the exact runtime, generates while its active-use token is
     /// held, and arms the existing idle policy on every terminal outcome.
     private func respondWithMLXRuntime(

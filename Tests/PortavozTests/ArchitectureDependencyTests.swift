@@ -2214,7 +2214,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 42"))
+        XCTAssertTrue(schema.contains("public static let version = 43"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -3333,6 +3333,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/ApplicationKit/AskMeetings.swift")
         let answerer = try Self.contents(
             of: "Sources/IntelligenceKit/RAGAnswerer.swift")
+        let sharedAnswering = try Self.contents(
+            of: "Sources/IntelligenceKit/RAGTextAnswering.swift")
         let presentation = try Self.contents(
             of: "Sources/portavoz-app/AskModel.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
@@ -3379,9 +3381,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
         XCTAssertFalse(answerer.contains("import StorageKit"))
         XCTAssertFalse(answerer.contains("import ApplicationKit"))
-        XCTAssertTrue(answerer.contains(
+        XCTAssertTrue(sharedAnswering.contains(
             "numbered context passages"))
-        XCTAssertTrue(answerer.contains(
+        XCTAssertTrue(sharedAnswering.contains(
             "marker of the passage that supports it"))
         XCTAssertTrue(decisions.contains("## D285"))
     }
@@ -3997,7 +3999,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 42"))
+        XCTAssertTrue(schema.contains("public static let version = 43"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -7988,6 +7990,67 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D384"))
     }
 
+    func testManualAskSelectedEnginePolicyRemainsGroundedAndFailClosed() throws {
+        let answering = try Self.contents(
+            of: "Sources/IntelligenceKit/RAGTextAnswering.swift")
+        let resolver = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Application.swift")
+        let router = try Self.contents(
+            of: "Sources/portavoz-app/AppSelectedAskMeetingAnswering.swift")
+        let services = try Self.contents(
+            of: "Sources/portavoz-app/AppServices.swift")
+        let mlx = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+MLXModels.swift")
+        let gateway = try Self.contents(
+            of: "Sources/IntegrationsKit/URLSessionDataEgressGateway.swift")
+        let receipt = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+PrivacyReceipt.swift")
+        let schema = try Self.contents(
+            of: "Sources/StorageKit/Schema+GlobalDataEgress.swift")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(answering.contains("protocol RAGTextAnswering"))
+        XCTAssertTrue(answering.contains("maximumCharacters = 12_000"))
+        XCTAssertTrue(answering.contains("maximumUTF8Bytes = 48_000"))
+        XCTAssertTrue(answering.contains("maximumResponseTokens = 500"))
+        XCTAssertTrue(answering.contains("PromptFactory.sourceMaterialGuard()"))
+        XCTAssertTrue(answering.contains("func appendAdmitted"))
+        XCTAssertTrue(answering.contains("operation: .askAnswerGeneration"))
+        XCTAssertTrue(answering.contains("meetingID: nil"))
+
+        XCTAssertTrue(resolver.contains("switch defaultEngine"))
+        XCTAssertTrue(resolver.contains("OllamaService.askAnswerer"))
+        XCTAssertTrue(resolver.contains("return .unavailable(.mlxModelNotDownloaded)"))
+        XCTAssertTrue(router.contains("private let lock = NSLock()"))
+        XCTAssertTrue(router.contains("guard self.resolver == nil"))
+        XCTAssertFalse(router.contains("precondition"))
+        XCTAssertFalse(router.contains("fatalError"))
+        XCTAssertTrue(services.contains(
+            "installSelectedAskResolver(on: selectedAskAnswering)"))
+        XCTAssertTrue(router.contains("selectedAskAnswering.install"))
+        XCTAssertFalse(resolver.contains("AppUnavailableRAGAnswerer"))
+        XCTAssertTrue(mlx.contains("respondWithMLXRuntime"))
+        XCTAssertFalse(mlx.contains("MLXSummaryRuntime()"))
+
+        XCTAssertTrue(gateway.contains(
+            "Ask answer generation requires a loopback destination"))
+        XCTAssertTrue(gateway.contains(
+            "Ask answer generation requires local-engine consent"))
+        XCTAssertTrue(receipt.contains("insertGlobalDataEgressEvent"))
+        XCTAssertTrue(schema.contains("registerMigration(\"v43\")"))
+        XCTAssertTrue(schema.contains(
+            "operation = 'ask-answer-generation'"))
+        XCTAssertFalse(schema.contains("meetingID"))
+        XCTAssertTrue(uiTest.contains("simulateSequoiaCapabilities: true"))
+
+        XCTAssertTrue(architecture.contains(
+            "schema v43 persists its fixed-loopback attempt"))
+        XCTAssertTrue(decisions.contains("## D385"))
+    }
+
     func testFirstRunLedgerAndBriefStayBehindApplicationOwners() throws {
         let firstRun = try Self.contents(
             of: "Sources/ApplicationKit/FirstRunExperience.swift")
@@ -9521,7 +9584,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 42"))
+        XCTAssertTrue(schema.contains("public static let version = 43"))
         XCTAssertTrue(schema.contains("registerTranscriptCorrectionSearchMigration"))
         XCTAssertTrue(correctionSchema.contains("transcriptCorrectionSearchState"))
         XCTAssertTrue(correctionSchema.contains("SELECT DISTINCT meetingID"))
@@ -9564,7 +9627,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let intelligenceSpec = try Self.contents(
             of: "docs/specs/04-intelligence.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 42"))
+        XCTAssertTrue(schema.contains("public static let version = 43"))
         XCTAssertTrue(schema.contains("registerSegmentCorrectedEmbeddingMigration"))
         XCTAssertTrue(correctedSchema.contains("registerMigration(\"v37\")"))
         XCTAssertTrue(correctedSchema.contains("table.add(column: \"embedding\", .blob)"))
@@ -9614,7 +9677,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 42"))
+        XCTAssertTrue(schema.contains("public static let version = 43"))
         XCTAssertTrue(schema.contains("registerTranscriptStructuralSearchMigration"))
         XCTAssertTrue(structuralSchema.contains("registerMigration(\"v38\")"))
         XCTAssertTrue(structuralSchema.contains("transcriptStructuralSearchRow"))

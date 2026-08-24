@@ -218,6 +218,16 @@ private struct CommandPaletteView: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("palette-answer")
+            if let status = AskAnswerPresentation.statusText(
+                for: answer.generationOutcome,
+                hasCitations: !answer.citations.isEmpty
+            ) {
+                Label(status, systemImage: "cpu")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(
+                        "palette-generation-\(answer.generationOutcome.rawValue)")
+            }
             if !answer.citations.isEmpty {
                 FlowCitations(citations: answer.citations) { citation in
                     controller.navigate(to: citation)

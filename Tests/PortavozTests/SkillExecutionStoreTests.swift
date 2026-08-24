@@ -572,12 +572,12 @@ final class SkillExecutionStoreTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 42)
+            XCTAssertEqual(StorageSchema.version, 43)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v42")
+                "v43")
             XCTAssertEqual(
                 try Set(database.columns(in: "skillExecutionEvent").map(\.name)),
                 [

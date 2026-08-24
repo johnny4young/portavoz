@@ -7,15 +7,27 @@ extension MeetingStore: DataEgressEventRecorder {
     /// material to URLSession. Missing or unknown meetings fail closed.
     public func recordDataEgressEvent(_ event: DataEgressEvent) async throws {
         try await database.write { db in
+            try Self.validateDataEgressEvent(event)
             guard let meetingID = event.meetingID else {
-                throw StorageError.invalidDataEgressEvent(
-                    "a durable receipt requires a meeting identity")
+                try Self.insertGlobalDataEgressEvent(event, in: db)
+                return
             }
             guard try MeetingRecord.exists(
                 db, key: meetingID.rawValue.uuidString)
             else { throw StorageError.meetingNotFound(meetingID) }
-            try Self.validateDataEgressEvent(event)
             try DataEgressEventRecord(event, meetingID: meetingID).insert(db)
+        }
+    }
+
+    /// Cross-library receipts are intentionally separate from per-meeting
+    /// receipts: one multi-meeting Ask must not make the first citation look
+    /// like the sole material sent to the selected local engine.
+    public func globalDataEgressEvents() async throws -> [DataEgressEvent] {
+        try await database.read { database in
+            try GlobalDataEgressEventRecord
+                .order(Column("attemptedAt"), Column("rowid"))
+                .fetchAll(database)
+                .map { try $0.event }
         }
     }
 
@@ -117,5 +129,24 @@ extension MeetingStore: DataEgressEventRecorder {
             throw StorageError.invalidDataEgressEvent(
                 "destination scope does not match the destination host")
         }
+    }
+
+    private static func insertGlobalDataEgressEvent(
+        _ event: DataEgressEvent,
+        in database: Database
+    ) throws {
+        guard event.operation == .askAnswerGeneration,
+              event.destinationScope == .localDevice,
+              event.dataClassification == .meetingAnswerMaterial,
+              event.consentSource == .summaryEngineSettings,
+              let modelID = event.modelID?.trimmingCharacters(
+                  in: .whitespacesAndNewlines),
+              !modelID.isEmpty
+        else {
+            throw StorageError.invalidDataEgressEvent(
+                "global receipts require bounded local Ask metadata")
+        }
+        try GlobalDataEgressEventRecord(event, modelID: modelID)
+            .insert(database)
     }
 }

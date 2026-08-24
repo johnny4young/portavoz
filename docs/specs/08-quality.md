@@ -1515,6 +1515,61 @@ exact final answer, and exact citation seek. Those scoped bilingual runs are
 D384 feature evidence, not a substitute for the complete bilingual
 integration/release-candidate gate.
 
+### Selected local-engine manual Ask qualification (D385)
+
+Focused provider-neutral answer tests prove final-only compatibility streaming,
+bounded character and UTF-8 prompt admission before aggregate allocation,
+source-injection framing, exact evidence retention, cancellation, timeout, and
+typed provider failure. Composition tests sample the selected summary engine on
+every request, preserve Foundation Models capability checks, require explicit
+loopback Ollama configuration and consent, reuse the process-owned bounded MLX
+runtime, reject duplicate resolver installation without terminating the app,
+and never silently fall back to another provider. Presentation tests keep exact
+citations visible when local generation is unavailable, failed, or timed out.
+The durable privacy tests require a content-free receipt to finish SQLite
+persistence before an Ollama request begins; cross-library Ask uses the separate
+global journal rather than falsely assigning several meetings to one source.
+
+The real-app Ask journey launches the disposable bilingual seed with simulated
+Sequoia capabilities, completes the existing lexical/fused progressive journey,
+retains the exact generated answer and citation seek, and rejects an unavailable
+generation status. This proves that explicit manual Ask is not gated by Apple
+Foundation Models on Sequoia; package tests, rather than a fake provider chooser
+in the app, bind that same route to the selected Foundation Models, Ollama, or
+MLX adapter. It does not claim that any real model asset was installed or that a
+network provider answered.
+
+The exact D385 candidate passed a current-SDK first-party warnings-as-errors
+build, 46/46 focused D385 tests in 0.874 seconds, nine post-review migration and
+architecture regressions in 0.697 seconds, and the complete 2,646-test Swift
+package with 15 explicit environment/model skips and zero failures in 114.556
+seconds of XCTest execution. The architecture and commitment-source-link
+ratchets passed 208/208 in 4.588 seconds; all 499 deterministic tooling tests
+passed in 12.750 seconds; repository hygiene retained the 105-case UI catalogue;
+both localization catalogues, diff whitespace checks, and strict SwiftLint over
+712 Swift files passed with zero violations.
+
+Because localized status copy changed, the changed-file selector expanded
+fail-safe to the complete catalogue in both locales instead of treating the Ask
+journey alone as sufficient. One 25-second build was reused and locales ran
+sequentially. Final macOS 26.5.2 (25F84), arm64 result bundles passed 105/105
+English in a 1,105.167-second result interval and 105/105 Spanish in a
+1,104.740-second interval, with zero failures, skips, or expected failures.
+Content-free receipts also passed their budgets: English wall 1,116 seconds,
+p50 7.060, p95 21.398, maximum 90.747; Spanish wall 1,118 seconds, p50 7.242,
+p95 19.466, maximum 91.366.
+
+The Release bundle was rebuilt in 92.76 seconds, deeply verified, re-identified
+as `app.portavoz.mac.dev`, installed only at `/Applications/Portavoz Dev.app`,
+and observed at PID 12457 running from its exact executable. The stable
+`/Applications/Portavoz.app` retained its `app.portavoz.mac` identity and was
+not an install target. Packaging had no production CloudKit profile and no
+optional Metal Toolchain metallib, so this host supplies neither production
+CloudKit nor real embedded-MLX evidence. These results are deterministic local
+Tahoe-family automation, not physical Sequoia or separate Tahoe hardware,
+Foundation Models/Ollama/MLX installed-asset quality, VoiceOver/Voice Control,
+signing/notarization/distribution qualification, or private field evidence.
+
 ### Bounded post-RRF fact-aware selection (D286)
 
 Seven pure selector cases prove the fixed 6-transcript/4-fact/8-additional-

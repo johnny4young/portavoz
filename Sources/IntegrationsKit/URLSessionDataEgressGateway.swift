@@ -108,6 +108,20 @@ public struct URLSessionDataEgressGateway: DataEgressGateway {
                 throw DataEgressGatewayError.invalidMetadata(
                     "Settings-approved Companion egress requires a meeting identity")
             }
+        case .askAnswerGeneration:
+            try validateChatRequest(
+                networkRequest,
+                metadata: metadata,
+                classification: .meetingAnswerMaterial,
+                label: "Ask")
+            guard metadata.destination.scope == .localDevice else {
+                throw DataEgressGatewayError.invalidMetadata(
+                    "Ask answer generation requires a loopback destination")
+            }
+            guard metadata.consentSource == .summaryEngineSettings else {
+                throw DataEgressGatewayError.invalidMetadata(
+                    "Ask answer generation requires local-engine consent")
+            }
         case .summaryGeneration:
             try validateChatRequest(
                 networkRequest,

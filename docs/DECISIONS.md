@@ -14100,3 +14100,56 @@ closed window from being retained. Installed-model quality/performance, physical
 Sequoia/Tahoe, VoiceOver/Voice Control, distribution, CloudKit, and real-field
 behavior remain separate release evidence. This closes APT-1 code scope, not the
 later manual-source, web, interview, note, proactive, or 1.0.0 admission bands.
+
+## D385 — Route explicit manual Ask through the selected local engine (Aug 2026)
+
+**Context:** the released Library and command-palette Ask route already worked
+on every supported macOS as exact evidence retrieval, but answer generation was
+hard-wired to Foundation Models. A Sequoia user could configure local Ollama or
+download the verified embedded MLX model for summaries and still receive only
+evidence from manual Ask. Reusing summary generation directly would mix output
+contracts, while attributing cross-library Ollama material to the first cited
+meeting would create a false privacy receipt.
+
+**Decision:** manual Ask samples the existing explicit `summaryEngine` choice
+for every request. Apple Foundation Models answers only when its macOS-26
+capability is available; configured fixed-loopback Ollama and verified embedded
+MLX answer on Sequoia or Tahoe. A selected but unready engine returns typed
+unavailable state and exact citations; it never falls through to another
+provider. Automatic live Apuntador, query expansion, graph-bundle synthesis,
+web sources, and source-selection policy do not inherit this route.
+
+IntelligenceKit owns a provider-neutral `RAGTextAnswering` contract and one
+grounded prompt builder. All providers receive numbered exact passages, the
+shared quoted-source prompt-injection guard, a 500-token output request, and an
+aggregate ceiling of 12,000 characters plus 48,000 UTF-8 bytes. Oversize input
+fails before provider invocation and is never truncated. Foundation Models
+retains cumulative streaming through the interactive scheduler. Ollama and MLX
+use the protocol's one-final-snapshot compatibility path; ApplicationKit still
+admits and bounds every observable and final answer.
+
+The app installs a lock-protected selected-engine router only after
+`AppServices` is fully initialized, avoiding a closure over a partial service
+graph. Duplicate installation is inert, not process-fatal. MLX provider values
+cross the existing process-owned runtime, residency ledger, and idle-release
+policy; no second runtime or download authority exists. Ollama is pinned to the
+existing localhost endpoint and crosses a distinct `ask-answer-generation` /
+`meeting-answer-material` gateway contract requiring local-engine consent and
+a provable loopback destination.
+
+Schema v43 adds a separate global content-free egress receipt table for that
+cross-library operation. It has no meeting identity or payload fields and
+accepts only the narrow local Ask metadata. Receipt persistence still precedes
+transport and fails closed. Per-meeting privacy receipts remain unchanged.
+Presentation shares one localized mapping across Ask and the command palette:
+unavailable, failed, and timed-out generation are distinct, while exact
+citations remain readable and navigable.
+
+**Consequences:** explicit manual Ask now uses the local engine the user chose,
+including Ollama or embedded MLX on Sequoia, without weakening grounding,
+privacy receipts, model residency, or cancellation. The existing real-app Ask
+journey runs with simulated Sequoia capabilities rather than adding a duplicate
+microtest. Installed-model quality/latency/memory, physical Sequoia and Tahoe,
+VoiceOver/Voice Control, CloudKit, distribution, and real-meeting behavior
+remain external evidence. This closes APT-2 code scope; APT-3 source policy and
+later web, interview, note, proactive, and 1.0.0 admission bands remain open.

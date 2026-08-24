@@ -13,6 +13,7 @@ final class CommandPaletteModel {
         let question: String
         let text: String
         let citations: [AskCitation]
+        let generationOutcome: AskGenerationOutcome
     }
 
     struct State {
@@ -116,14 +117,11 @@ final class CommandPaletteModel {
         do {
             let result = try await client.answerAskMeetings(question, limit: 6)
             guard !Task.isCancelled, generation == requestGeneration else { return }
-            let text = result.citations.isEmpty
-                ? L10n.text("Nothing related in your meetings yet.")
-                : result.generatedText
-                    ?? L10n.text("Closest passages from your meetings:")
             answer = PaletteAnswer(
                 question: question,
-                text: text,
-                citations: result.citations)
+                text: AskAnswerPresentation.text(for: result),
+                citations: result.citations,
+                generationOutcome: result.generationOutcome)
         } catch is CancellationError {
             return
         } catch {
@@ -131,7 +129,8 @@ final class CommandPaletteModel {
             answer = PaletteAnswer(
                 question: question,
                 text: L10n.format("Search failed: %@", error.localizedDescription),
-                citations: [])
+                citations: [],
+                generationOutcome: .failed)
         }
         guard generation == requestGeneration else { return }
         state.answer = answer

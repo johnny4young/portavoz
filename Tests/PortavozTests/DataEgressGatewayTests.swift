@@ -500,6 +500,47 @@ final class DataEgressGatewayTests: XCTestCase {
         XCTAssertFalse(event.destinationHost.contains("/v1"))
     }
 
+    func testGatewayPersistsGlobalAskReceiptBeforeLoopbackTransport() async throws {
+        let state = ReceiptTransportState.shared
+        state.reset()
+        let store = try MeetingStore.inMemory()
+        let recorder = GlobalAskReceiptRecorderProbe(
+            state: state,
+            store: store)
+        let session = receiptSession()
+        defer { session.invalidateAndCancel(); state.reset() }
+        let gateway = URLSessionDataEgressGateway(
+            session: session,
+            receiptRecorder: recorder)
+        let endpoint = OllamaService.openAIEndpoint
+        let request = try OpenAICompatibleChatCodec.urlRequest(
+            endpoint: endpoint,
+            model: "qwen-local",
+            apiKey: "ollama",
+            system: "grounded",
+            user: "bounded meeting evidence",
+            temperature: 0,
+            maxTokens: 500)
+        let metadata = DataEgressRequest(
+            operation: .askAnswerGeneration,
+            destination: DataEgressDestination(
+                url: try XCTUnwrap(request.url)),
+            dataClassification: .meetingAnswerMaterial,
+            meetingID: nil,
+            consentSource: .summaryEngineSettings,
+            providerDisclosure: DataEgressProviderDisclosure(
+                providerID: "localhost",
+                modelID: "qwen-local"))
+
+        _ = try await gateway.perform(request, metadata: metadata)
+
+        XCTAssertEqual(state.snapshot().timeline, ["receipt", "transport"])
+        let events = try await store.globalDataEgressEvents()
+        XCTAssertEqual(events.count, 1)
+        XCTAssertNil(events.first?.meetingID)
+        XCTAssertEqual(events.first?.operation, .askAnswerGeneration)
+    }
+
     func testReceiptFailurePreventsTransport() async throws {
         let state = ReceiptTransportState.shared
         state.reset()
@@ -848,6 +889,21 @@ private actor ReceiptRecorderProbe: DataEgressEventRecorder {
     }
 
     func snapshot() -> [DataEgressEvent] { events }
+}
+
+private actor GlobalAskReceiptRecorderProbe: DataEgressEventRecorder {
+    let state: ReceiptTransportState
+    let store: MeetingStore
+
+    init(state: ReceiptTransportState, store: MeetingStore) {
+        self.state = state
+        self.store = store
+    }
+
+    func recordDataEgressEvent(_ event: DataEgressEvent) async throws {
+        try await store.recordDataEgressEvent(event)
+        state.appendReceipt()
+    }
 }
 
 struct TestDataEgressGateway: DataEgressGateway {

@@ -42,6 +42,7 @@ public struct DataEgressDestination: Equatable, Sendable {
 
 public enum DataEgressOperation: String, Codable, Sendable {
     case companionKnowledgeAnswer = "companion-knowledge-answer"
+    case askAnswerGeneration = "ask-answer-generation"
     case summaryGeneration = "summary-generation"
     case publishGitHubGist = "publish-github-gist"
     case createGitHubIssue = "create-github-issue"
@@ -51,6 +52,9 @@ public enum DataEgressOperation: String, Codable, Sendable {
 public enum DataEgressClassification: String, Codable, Sendable {
     /// Only the classified participant question, never transcript context.
     case meetingQuestionOnly = "meeting-question-only"
+    /// Bounded retrieved passages plus the explicit question required to
+    /// answer across the user's local meeting library.
+    case meetingAnswerMaterial = "meeting-answer-material"
     /// Formatted transcript, speaker labels, user notes, glossary, and recipe
     /// instructions required to generate one summary.
     case meetingSummaryMaterial = "meeting-summary-material"

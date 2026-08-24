@@ -51,7 +51,7 @@ final class PrivacyReceiptTests: XCTestCase {
         XCTAssertEqual(receipt.status, .noRemoteTransferRecorded)
 
         try await store.database.read { db in
-            XCTAssertEqual(StorageSchema.version, 42)
+            XCTAssertEqual(StorageSchema.version, 43)
             XCTAssertEqual(
                 try String.fetchAll(
                     db, sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"),
@@ -60,7 +60,7 @@ final class PrivacyReceiptTests: XCTestCase {
                     "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18",
                     "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28",
                     "v29", "v30", "v31", "v32", "v33", "v34", "v35", "v36", "v37", "v38", "v39", "v40",
-                    "v41", "v42",
+                    "v41", "v42", "v43",
                 ])
             XCTAssertEqual(
                 try Set(db.columns(in: "dataEgressEvent").map(\.name)),
@@ -132,6 +132,59 @@ final class PrivacyReceiptTests: XCTestCase {
         ] {
             XCTAssertFalse(persistedColumns.contains(forbidden), forbidden)
         }
+    }
+
+    func testGlobalAskReceiptRoundTripsWithoutFalseMeetingAttribution() async throws {
+        let store = try MeetingStore.inMemory()
+        let attemptedAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let event = DataEgressEvent(
+            meetingID: nil,
+            operation: .askAnswerGeneration,
+            destinationScope: .localDevice,
+            destinationHost: "localhost",
+            dataClassification: .meetingAnswerMaterial,
+            consentSource: .summaryEngineSettings,
+            providerID: "localhost",
+            modelID: "qwen-local",
+            attemptedAt: attemptedAt)
+
+        try await store.recordDataEgressEvent(event)
+
+        let events = try await store.globalDataEgressEvents()
+        XCTAssertEqual(events, [event])
+        let columns = try await store.database.read { database in
+            try Set(database.columns(in: "globalDataEgressEvent").map(\.name))
+        }
+        XCTAssertFalse(columns.contains("meetingID"))
+        for forbidden in [
+            "payload", "body", "url", "path", "transcript", "prompt",
+            "summary", "notes", "content",
+        ] {
+            XCTAssertFalse(columns.contains(forbidden), forbidden)
+        }
+    }
+
+    func testGlobalReceiptRejectsMetadataOutsideLocalAskContract() async throws {
+        let store = try MeetingStore.inMemory()
+        let invalid: [DataEgressEvent] = [
+            globalAskEvent(operation: .summaryGeneration),
+            globalAskEvent(classification: .meetingSummaryMaterial),
+            globalAskEvent(consent: .explicitSummaryProvider),
+            globalAskEvent(modelID: " "),
+        ]
+
+        for event in invalid {
+            do {
+                try await store.recordDataEgressEvent(event)
+                XCTFail("out-of-contract global receipt must fail: \(event)")
+            } catch {
+                guard case StorageError.invalidDataEgressEvent = error else {
+                    return XCTFail("unexpected error: \(error)")
+                }
+            }
+        }
+        let persisted = try await store.globalDataEgressEvents()
+        XCTAssertTrue(persisted.isEmpty)
     }
 
     func testReceiptDisclosesAnAcknowledgedPrivateCloudCopyForever() async throws {
@@ -239,5 +292,23 @@ final class PrivacyReceiptTests: XCTestCase {
             providerID: host,
             modelID: modelID,
             attemptedAt: attemptedAt)
+    }
+
+    private func globalAskEvent(
+        operation: DataEgressOperation = .askAnswerGeneration,
+        classification: DataEgressClassification = .meetingAnswerMaterial,
+        consent: DataEgressConsentSource = .summaryEngineSettings,
+        modelID: String = "qwen-local"
+    ) -> DataEgressEvent {
+        DataEgressEvent(
+            meetingID: nil,
+            operation: operation,
+            destinationScope: .localDevice,
+            destinationHost: "localhost",
+            dataClassification: classification,
+            consentSource: consent,
+            providerID: "localhost",
+            modelID: modelID,
+            attemptedAt: Date())
     }
 }

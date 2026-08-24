@@ -79,17 +79,20 @@ final class AskModel {
         let question: String
         let answer: String
         let citations: [AskCitation]
+        let generationOutcome: AskGenerationOutcome
 
         init(
             id: UUID = UUID(),
             question: String,
             answer: String,
-            citations: [AskCitation]
+            citations: [AskCitation],
+            generationOutcome: AskGenerationOutcome
         ) {
             self.id = id
             self.question = question
             self.answer = answer
             self.citations = citations
+            self.generationOutcome = generationOutcome
         }
     }
 
@@ -186,8 +189,9 @@ final class AskModel {
                 guard !Task.isCancelled else { return }
                 exchange = Exchange(
                     question: question,
-                    answer: Self.presentationText(for: result),
-                    citations: result.citations)
+                    answer: AskAnswerPresentation.text(for: result),
+                    citations: result.citations,
+                    generationOutcome: result.generationOutcome)
             } catch is CancellationError {
                 return
             } catch {
@@ -197,7 +201,8 @@ final class AskModel {
                     answer: L10n.format(
                         "Search failed: %@",
                         error.localizedDescription),
-                    citations: [])
+                    citations: [],
+                    generationOutcome: .failed)
             }
             self?.complete(exchange, generation: requestGeneration)
         }
@@ -268,11 +273,4 @@ final class AskModel {
         state.pendingPhase = nil
     }
 
-    private static func presentationText(for result: AskMeetingAnswer) -> String {
-        guard !result.citations.isEmpty else {
-            return L10n.text("Nothing related in your meetings yet.")
-        }
-        return result.generatedText
-            ?? L10n.text("Closest passages from your meetings:")
-    }
 }

@@ -225,7 +225,8 @@ public struct AskMeetings: ApplicationUseCase {
         store: MeetingStore,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
         semanticReadiness: ResolveSemanticCorpusReadiness? = nil,
-        pipelineTelemetry: AskPipelineTelemetry = .disabled
+        pipelineTelemetry: AskPipelineTelemetry = .disabled,
+        answering: any AskMeetingAnswering = OnDeviceAskMeetingIntelligence()
     ) -> Self {
         let intelligence = OnDeviceAskMeetingIntelligence()
         return Self(
@@ -234,7 +235,7 @@ public struct AskMeetings: ApplicationUseCase {
                 queryExpander: intelligence,
                 runtime: semanticRuntime,
                 semanticReadiness: semanticReadiness),
-            answering: intelligence,
+            answering: answering,
             bundleAnswering: intelligence,
             graphFacts: LocalAskGraphFactRetrieval(store: store),
             graphFilterResolver: LocalAskGraphFactFilterResolver(store: store),

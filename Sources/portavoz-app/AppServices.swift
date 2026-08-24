@@ -299,11 +299,11 @@ final class AppServices {
         voiceprintStore = sensitiveStorage.voiceprintStore
         voiceGallery = sensitiveStorage.voiceGallery
         commitmentReminders = Self.makeCommitmentReminderModel(
-            store: store,
-            usesTemporaryStore: usesTemporaryMeetingStore)
+            store: store, usesTemporaryStore: usesTemporaryMeetingStore)
+        let selectedAskAnswering = AppSelectedAskMeetingAnswering()
         let semanticSearch = Self.makeSemanticSearchComposition(
-            store: store, usesTemporaryStore: usesTemporaryMeetingStore,
-            semanticRuntime: semanticEmbeddingRuntime, telemetry: workloadTelemetry, captureState: resourceCaptureState)
+            store: store, usesTemporaryStore: usesTemporaryMeetingStore, semanticRuntime: semanticEmbeddingRuntime,
+            selectedAnswering: selectedAskAnswering, telemetry: workloadTelemetry, captureState: resourceCaptureState)
         semanticIndexingCoordinator = semanticSearch.coordinator
         semanticIndexingSupervisor = semanticSearch.background
         memoryGraphProjectionSupervisor = semanticSearch.memoryGraphBackground
@@ -325,8 +325,7 @@ final class AppServices {
             ask: askUseCase,
             library: AppMeetingBriefLibraryReader(store: store),
             synthesizer: AppOnDeviceMeetingBriefSynthesizer())
-        palette = CommandPaletteController(
-            model: CommandPaletteModel(client: askClient))
+        palette = CommandPaletteController(model: CommandPaletteModel(client: askClient))
         meetingSync = Self.makeMeetingSyncModel(
             store: store,
             usesTemporaryStore: usesTemporaryStore,
@@ -337,6 +336,7 @@ final class AppServices {
             store: store,
             enabled: !usesTemporaryStore && SpotlightIndexer.indexingAvailable,
             telemetry: workloadTelemetry)
+        installSelectedAskResolver(on: selectedAskAnswering)
         scheduleInitialReadinessRefresh()
     }
 

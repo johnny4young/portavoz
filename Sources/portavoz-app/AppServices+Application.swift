@@ -134,6 +134,46 @@ struct AppSummaryRegenerationProviderResolver: SummaryRegenerationProviderResolv
         }
         return .available(AppFoundationSummaryRegenerationProvider())
     }
+
+    /// Samples the same explicit engine choice for manual Ask without
+    /// borrowing summary output contracts or silently falling through to a
+    /// different provider when the selected engine is unavailable.
+    func resolveAsk(
+        mlxProvider: @MainActor @Sendable (
+            _ directory: URL,
+            _ priority: IntelligenceScheduler.Priority
+        ) -> any RAGTextAnswering
+    ) async -> AppAskAnswerProviderResolution {
+        switch defaultEngine {
+        case .ollama:
+            guard let ollamaModel else {
+                return .unavailable(.ollamaModelNotSelected)
+            }
+            return .available(OllamaService.askAnswerer(
+                model: ollamaModel,
+                gateway: gateway))
+        case .mlx:
+            guard let directory = await mlxModelDirectory() else {
+                return .unavailable(.mlxModelNotDownloaded)
+            }
+            return .available(await mlxProvider(directory, .interactive))
+        case .appleOnDevice:
+            break
+        }
+
+        switch foundationModelsCapability {
+        case .requiresMacOS26:
+            return .unavailable(.requiresMacOS26)
+        case .unavailable(let reason):
+            return .unavailable(.appleOnDevice(reason: reason))
+        case .available:
+            break
+        }
+        guard #available(macOS 26.0, *) else {
+            return .unavailable(.requiresMacOS26)
+        }
+        return .available(RAGAnswerer())
+    }
 }
 
 private enum AppSummaryRegenerationProviderError: Error {
