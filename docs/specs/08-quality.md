@@ -1570,6 +1570,67 @@ Tahoe-family automation, not physical Sequoia or separate Tahoe hardware,
 Foundation Models/Ollama/MLX installed-asset quality, VoiceOver/Voice Control,
 signing/notarization/distribution qualification, or private field evidence.
 
+### Explicit manual Ask source qualification (D386)
+
+Package regressions require Web to fail before retrieval or generation, an
+unscoped adapter to reject exact-meeting requests, an explicitly scoped adapter
+to receive only the selected identity, and graph facts to reject non-Library
+authority before either evidence lane. The application boundary also rejects a
+scoped adapter that returns a foreign search hit or progressive/final citation
+before that material can reach presentation. Real storage coverage seeds
+accepted, corrected, and structural FTS results in one meeting plus a foreign accepted
+result and proves both meeting scopes remain disjoint. Lexical and semantic
+retrieval separately prove that foreign hits never publish; meeting semantic
+requests retain the fixed 256-candidate ceiling. Presentation coverage proves
+default Library authority, Web no-fallback cancellation, exact selection before
+submit, malformed/oversized catalog rejection plus bounded failure/retry,
+source capture on pending/completed exchanges, and stale-publication fencing.
+
+The existing real-app Ask journey is extended rather than duplicated. It opens
+Library, proves Web visibly unavailable with submit disabled, selects one exact
+seeded meeting, replaces pending work, observes meeting-scoped progressive
+evidence and answer source, and follows the exact citation. The command-palette
+journey also proves its visible fixed Library authority. Localization/shared
+catalog changes expand the changed-file selector fail-safe; scoped journey
+evidence does not replace the complete bilingual integration/release gate.
+
+The finalized D386 tree passed the Swift 6 warnings-as-errors build in 21.50
+seconds; 118/118 focused source-policy regressions in 3.606 seconds; the full
+2,659-test package suite with 15 explicit environment/model skips and zero
+failures in 110.364 seconds; 209 architecture/commitment-source-link ratchets;
+499 tooling tests; repository hygiene; both localization catalog parses; the
+complete 105-test UI catalog; exact diff checks; and strict SwiftLint across
+713 Swift files with zero violations. The corrected command-palette journey
+then passed one focused real-app run per locale from one build: English in
+8.887 seconds and Spanish in 8.724 seconds.
+
+The final changed-file gate reused one six-second build and passed 105/105
+English plus 105/105 Spanish real-app cases on macOS 26.5.2 (25F84), with no
+failures, skips, expected failures, or retries. English recorded 1,095.719
+seconds of test duration, 1,112 seconds wall time, and 20.864 seconds p95;
+Spanish recorded 1,101.940 seconds of test duration, 1,120 seconds wall time,
+and 20.544 seconds p95. An earlier complete Spanish run exposed one incorrect
+test literal—`Fuente de respuesta` did not match the catalog's `Fuente de la
+respuesta`—while the rest of that answer/citation/seek journey succeeded. The
+fixture was corrected, proved in both focused locales, and only then was the
+complete bilingual gate rerun; a green retry did not substitute for a root
+cause. This is deterministic local Tahoe-family automation, not installed-
+model quality, physical Sequoia or separate Tahoe hardware, VoiceOver/Voice
+Control, production CloudKit, signed/notarized distribution, or private field
+evidence.
+
+The Release bundle was rebuilt in 87.29 seconds, deeply verified, re-identified
+as `app.portavoz.mac.dev`, installed only at `/Applications/Portavoz Dev.app`,
+and observed at PID 59919 running from its exact executable. The notarized
+`app.portavoz.mac` release remained byte-for-byte unchanged across its 184-entry
+no-symlink-traversal content/metadata/hex-xattr manifest at SHA-256
+`b9ee907d04eb473d803574ca4af87cc64014fc95305d3231a30ba3b0ab67a20d`;
+its designated requirement and bundle ID stayed unchanged, its deep signature
+remained valid, and Gatekeeper still accepted it as Notarized Developer ID.
+Packaging again had no production CloudKit profile and no optional Metal
+Toolchain `metallib`, so the installed Dev bundle supplies neither production
+CloudKit nor real embedded-MLX evidence.
+
 ### Bounded post-RRF fact-aware selection (D286)
 
 Seven pure selector cases prove the fixed 6-transcript/4-fact/8-additional-

@@ -98,6 +98,40 @@ final class LexicalRAGCandidateTests: XCTestCase {
 
         XCTAssertEqual(hits.map(\.segmentID), [segment.id])
     }
+
+    func testMeetingScopeNeverPublishesLexicalHitsFromAnotherMeeting() async throws {
+        let store = try MeetingStore.inMemory()
+        let targetMeeting = Meeting(title: "Target", startedAt: Date())
+        let otherMeeting = Meeting(
+            title: "Outside scope",
+            startedAt: Date().addingTimeInterval(1))
+        let target = TranscriptSegment(
+            meetingID: targetMeeting.id,
+            channel: .system,
+            text: "The rollout budget is approved.",
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
+        let foreign = TranscriptSegment(
+            meetingID: otherMeeting.id,
+            channel: .system,
+            text: "The rollout budget is rejected.",
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
+        try await store.save(targetMeeting)
+        try await store.save(otherMeeting)
+        try await store.save([target, foreign])
+
+        let hits = try await LocalAskMeetingRetrieval.retrieveLexical(
+            queries: ["rollout budget"],
+            store: store,
+            source: .meeting(targetMeeting.id),
+            limit: 6)
+
+        XCTAssertEqual(hits.map(\.segmentID), [target.id])
+        XCTAssertEqual(Set(hits.map(\.meetingID)), [targetMeeting.id])
+    }
 }
 
 final class SemanticStoreTests: XCTestCase {

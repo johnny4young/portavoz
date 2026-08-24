@@ -1,6 +1,126 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biblioteca"
+          }
+        }
+      }
+    },
+    "Web": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        }
+      }
+    },
+    "Only your local meeting library will be searched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo se buscará en tu biblioteca local de reuniones."
+          }
+        }
+      }
+    },
+    "Web answers are not available yet. Nothing else will be searched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las respuestas web aún no están disponibles. No se buscará en ninguna otra fuente."
+          }
+        }
+      }
+    },
+    "Loading local meetings…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando reuniones locales…"
+          }
+        }
+      }
+    },
+    "Meeting list unavailable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La lista de reuniones no está disponible."
+          }
+        }
+      }
+    },
+    "No local meetings are available.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay reuniones locales disponibles."
+          }
+        }
+      }
+    },
+    "Choose a meeting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir una reunión"
+          }
+        }
+      }
+    },
+    "Source: Library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente: Biblioteca"
+          }
+        }
+      }
+    },
+    "Source: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente: %@"
+          }
+        }
+      }
+    },
+    "The command palette searches only your local meeting library.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La paleta de comandos solo busca en tu biblioteca local de reuniones."
+          }
+        }
+      }
+    },
+    "Answer source: Library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente de la respuesta: Biblioteca"
+          }
+        }
+      }
+    },
     "Change meeting anchor from %@": {
       "localizations": {
         "es": {

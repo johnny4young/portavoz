@@ -182,6 +182,7 @@ enum MeetingToolbox {
                 let args = try JSONDecoder().decode(Args.self, from: data)
                 let result = try await ask.answer(
                     args.question,
+                    source: .library,
                     limit: 6)
                 guard !result.citations.isEmpty else {
                     return "Nothing related found in the meeting library."

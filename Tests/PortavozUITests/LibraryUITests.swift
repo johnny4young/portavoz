@@ -522,11 +522,44 @@ final class LibraryUITests: PortavozUITestCase {
         app.buttons["library-ask-button"].click()
         let field = app.textFields["ask-question-field"]
         XCTAssertTrue(field.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-source-status-library"]
+                .waitForExistenceFast(timeout: 5))
+        let webSource = app.descendants(matching: .any)["ask-source-web"]
+        XCTAssertTrue(webSource.waitForExistenceFast(timeout: 5))
+        webSource.click()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-source-status-web-unavailable"]
+                .waitForExistenceFast(timeout: 5),
+            "Web must be visibly unavailable instead of widening to local meetings")
         field.click()
         field.typeText("sinresultado")
+        XCTAssertFalse(
+            app.buttons["ask-submit"].isEnabled,
+            "an unavailable Web source must block submission")
+
+        let meetingSource = app.descendants(matching: .any)["ask-source-meeting"]
+        XCTAssertTrue(meetingSource.waitForExistenceFast(timeout: 5))
+        meetingSource.click()
+        let meetingPicker = app.descendants(matching: .any)[
+            "ask-source-meeting-picker"]
+        XCTAssertTrue(meetingPicker.waitForExistenceFast(timeout: 10))
+        meetingPicker.click()
+        let meetingOption = app.menuItems.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH 'ask-source-meeting-option-'"))
+            .firstMatch
+        XCTAssertTrue(
+            meetingOption.waitForExistenceFast(timeout: 5),
+            "the exact seeded meeting must be exposed as an identified menu item")
+        meetingOption.click()
+        XCTAssertTrue(app.buttons["ask-submit"].isEnabled)
         app.buttons["ask-submit"].click()
         let pendingQuestion = app.staticTexts["ask-pending-question"]
         XCTAssertTrue(pendingQuestion.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-pending-source-meeting"]
+                .waitForExistenceFast(timeout: 5))
 
         field.click()
         field.typeText("viernes")
@@ -569,6 +602,9 @@ final class LibraryUITests: PortavozUITestCase {
             .firstMatch
         XCTAssertTrue(citation.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(citation.label.contains("Test meeting · 00:03"))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-exchange-source-meeting"]
+                .waitForExistenceFast(timeout: 5))
         attachScreenshot(of: app, named: "band-6c5-full-ask-answer")
 
         citation.click()
@@ -952,6 +988,12 @@ final class LibraryUITests: PortavozUITestCase {
         app.typeKey("k", modifierFlags: .command)
         let field = app.textFields["palette-query-field"]
         XCTAssertTrue(field.waitForExistenceFast(timeout: 10))
+        let source = app.descendants(matching: .any)["palette-source-library"]
+        XCTAssertTrue(source.waitForExistenceFast(timeout: 5))
+        let expectedSource = UITestLocale.environmentLocale == "es"
+            ? "Fuente de la respuesta: Biblioteca"
+            : "Answer source: Library"
+        XCTAssertTrue(source.waitForLabelOrValue(expectedSource, timeout: 5))
         field.click()
         field.typeText("viernes")
         XCTAssertTrue(

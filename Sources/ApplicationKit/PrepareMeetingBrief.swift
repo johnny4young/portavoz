@@ -145,7 +145,10 @@ public struct PrepareMeetingBrief: ApplicationUseCase {
             attendees: event.attendees)
         let query = ([event.title] + event.attendees).joined(separator: " ")
         let citations = try await degrade(to: []) {
-            try await ask.evidence(query, limit: 12)
+            try await ask.evidence(
+                query,
+                source: .library,
+                limit: 12)
         }
         let ranked = BriefRelevance.rank(passages: citations, terms: terms)
         async let summaryMarkdowns = degrade(to: [MeetingID: String]()) {

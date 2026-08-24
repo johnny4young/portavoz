@@ -7,6 +7,9 @@ import StorageKit
 /// Exact FTS is always authoritative; semantic evidence is opportunistic and
 /// reads only embeddings already published by the maintenance owner.
 public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
+    static let librarySemanticCandidateLimit = 12
+    static let meetingSemanticCandidateLimit = 256
+
     private let store: MeetingStore
     private let lexicalExpander: BilingualSearchQueryExpander
     private let queryExpander: any AskQueryExpanding
@@ -33,7 +36,9 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         self.semanticIndex = semanticIndex
             ?? AccelerateExactSemanticIndex(store: store)
     }
+}
 
+extension LocalAskMeetingRetrieval {
     public func search(
         query: String,
         limit: Int
@@ -49,10 +54,27 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         limit: Int,
         trace: AskPipelineTrace
     ) async throws -> [AskSearchResult] {
+        try await search(
+            query: query,
+            source: .library,
+            limit: limit,
+            trace: trace)
+    }
+
+    public func search(
+        query: String,
+        source: AskSourceScope,
+        limit: Int,
+        trace: AskPipelineTrace
+    ) async throws -> [AskSearchResult] {
         guard limit > 0 else { return [] }
+        let meetingID = try Self.meetingID(for: source)
         try Task.checkCancellation()
         let hits = try await trace.measure(.lexicalQuery) { [store] in
-            try await store.search(query, limit: limit)
+            try await store.search(
+                query,
+                meetingID: meetingID,
+                limit: limit)
         }
         try Task.checkCancellation()
         return await trace.measure(.citationFetch) {
@@ -88,10 +110,26 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         trace: AskPipelineTrace,
         onEvidence: @escaping AskEvidenceReceiver
     ) async throws -> [AskCitation] {
+        try await retrieve(
+            question: question,
+            source: .library,
+            limit: limit,
+            trace: trace,
+            onEvidence: onEvidence)
+    }
+
+    public func retrieve(
+        question: String,
+        source: AskSourceScope,
+        limit: Int,
+        trace: AskPipelineTrace,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> [AskCitation] {
         guard limit > 0 else {
             await onEvidence(AskEvidenceUpdate(phase: .fused, citations: []))
             return []
         }
+        _ = try Self.meetingID(for: source)
         try Task.checkCancellation()
         let queries = await trace.measure(.expansion) { [lexicalExpander] in
             lexicalExpander.expand(question)
@@ -99,11 +137,13 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         try Task.checkCancellation()
         async let semanticResult = semanticCandidates(
             queries: queries,
+            source: source,
             trace: trace)
         let lexical = try await trace.measure(.lexicalQuery) { [store] in
             try await Self.retrieveLexical(
                 queries: queries,
                 store: store,
+                source: source,
                 limit: Self.candidateLimit(for: queries))
         }
         try Task.checkCancellation()
@@ -123,6 +163,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             citations = try await lateFallback(
                 question: question,
                 excluding: queries,
+                source: source,
                 limit: limit,
                 onEvidence: onEvidence)
         }
@@ -166,6 +207,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private func lateFallback(
         question: String,
         excluding initialQueries: [String],
+        source: AskSourceScope,
         limit: Int,
         onEvidence: @escaping AskEvidenceReceiver
     ) async throws -> [AskCitation] {
@@ -178,10 +220,12 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         try Task.checkCancellation()
         async let semanticResult = semanticCandidates(
             queries: queries,
+            source: source,
             trace: trace)
         let lexical = try await Self.retrieveLexical(
             queries: queries,
             store: store,
+            source: source,
             limit: Self.candidateLimit(for: queries))
         try Task.checkCancellation()
         if !lexical.isEmpty {
@@ -199,6 +243,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
 
     private func semanticCandidates(
         queries: [String],
+        source: AskSourceScope,
         trace: AskPipelineTrace
     ) async throws -> SemanticCandidates {
         do {
@@ -217,6 +262,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
                     try await Self.searchSemantic(
                         vectors: vectors,
                         profile: profile,
+                        source: source,
                         semanticIndex: semanticIndex)
                 }
             }
@@ -255,22 +301,28 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private static func searchSemantic(
         vectors: [[Float]],
         profile: SemanticEmbeddingProfile,
+        source: AskSourceScope,
         semanticIndex: any SemanticIndexSearching
     ) async throws -> SemanticCandidates {
         var result = SemanticCandidates.empty
+        let meetingID = try Self.meetingID(for: source)
+        let candidateLimit = meetingID == nil
+            ? librarySemanticCandidateLimit
+            : meetingSemanticCandidateLimit
         // One traversal scores every variant; the fold keeps each segment's
         // best rank across variants, earliest variant winning a tie.
         try Task.checkCancellation()
         for (variant, variantHits) in try await semanticIndex.search(
             vectors,
             profile: profile,
-            limit: 12
+            limit: candidateLimit
         ).enumerated() {
             try Task.checkCancellation()
             for (rank, hit) in variantHits.enumerated()
-            where result.bestRank[hit.segmentID].map({
-                SemanticCandidateRank(rank: rank, variant: variant) < $0
-            }) ?? true {
+            where (meetingID.map { hit.meetingID == $0 } ?? true)
+                && (result.bestRank[hit.segmentID].map({
+                    SemanticCandidateRank(rank: rank, variant: variant) < $0
+                }) ?? true) {
                 result.bestRank[hit.segmentID] = SemanticCandidateRank(
                     rank: rank,
                     variant: variant)
@@ -332,9 +384,11 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     public static func retrieveLexical(
         queries: [String],
         store: MeetingStore,
+        source: AskSourceScope = .library,
         limit: Int
     ) async throws -> [SearchHit] {
         guard limit > 0 else { return [] }
+        let meetingID = try meetingID(for: source)
         try Task.checkCancellation()
         let queryTerms = queries.map(Self.contentTerms)
         let terms = Self.uniqueTerms(queryTerms.flatMap { $0 })
@@ -347,6 +401,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             return try await retrieveBroadFallback(
                 queryTerms: queryTerms,
                 store: store,
+                meetingID: meetingID,
                 limit: limit)
         }
 
@@ -356,7 +411,10 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         var bestRanks: [UUID: Int] = [:]
         for term in terms {
             try Task.checkCancellation()
-            let termHits = try await store.search(term, limit: perTermLimit)
+            let termHits = try await store.search(
+                term,
+                meetingID: meetingID,
+                limit: perTermLimit)
             try Task.checkCancellation()
             for (rank, hit) in termHits.enumerated() {
                 scores[hit.segmentID, default: 0] += 1.0 / Double(60 + rank)
@@ -381,6 +439,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
     private static func retrieveBroadFallback(
         queryTerms: [[String]],
         store: MeetingStore,
+        meetingID: MeetingID?,
         limit: Int
     ) async throws -> [SearchHit] {
         var hits: [SearchHit] = []
@@ -390,6 +449,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             let query = terms.joined(separator: " ")
             let queryHits = try await store.search(
                 query,
+                meetingID: meetingID,
                 limit: min(12, limit),
                 requireAll: false)
             try Task.checkCancellation()
@@ -414,6 +474,19 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
                 options: [.caseInsensitive, .diacriticInsensitive],
                 locale: Locale(identifier: "en_US_POSIX"))
             return seen.insert(key).inserted
+        }
+    }
+
+    private static func meetingID(
+        for source: AskSourceScope
+    ) throws -> MeetingID? {
+        switch source {
+        case .library:
+            nil
+        case .meeting(let meetingID):
+            meetingID
+        case .web:
+            throw AskSourcePolicyError.webUnavailable
         }
     }
 }

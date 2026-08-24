@@ -93,7 +93,7 @@ final class AskPipelineTelemetryTests: XCTestCase {
             telemetry: AskPipelineTelemetry(receiver: recorder.receive))
 
         do {
-            _ = try await useCase.evidence("status")
+            _ = try await useCase.evidence("status", source: .library)
             XCTFail("Expected retrieval failure")
         } catch is AskPipelineTestError {
             // Expected.
@@ -118,9 +118,9 @@ final class AskPipelineTelemetryTests: XCTestCase {
             answering: FixedAskAnswerer(),
             telemetry: AskPipelineTelemetry(receiver: recorder.receive))
 
-        let searchResults = try await useCase.search(" \n")
-        let evidence = try await useCase.evidence("status", limit: 0)
-        let answer = try await useCase.answer("\t")
+        let searchResults = try await useCase.search(" \n", source: .library)
+        let evidence = try await useCase.evidence("status", source: .library, limit: 0)
+        let answer = try await useCase.answer("\t", source: .library)
 
         XCTAssertEqual(searchResults, [])
         XCTAssertEqual(evidence, [])
@@ -154,7 +154,7 @@ final class AskPipelineTelemetryTests: XCTestCase {
             answering: FixedAskAnswerer(),
             telemetry: telemetry)
 
-        let answer = try await useCase.answer("When is the budget rollout?")
+        let answer = try await useCase.answer("When is the budget rollout?", source: .library)
 
         XCTAssertEqual(answer.citations.map(\.segmentID), [segment.id])
         XCTAssertEqual(answer.generatedText, "Friday.")
@@ -419,7 +419,7 @@ final class AskPipelineTelemetryTests: XCTestCase {
             answering: WhitespaceAskAnswerer(),
             telemetry: AskPipelineTelemetry(receiver: recorder.receive))
 
-        let answer = try await useCase.answer("status")
+        let answer = try await useCase.answer("status", source: .library)
 
         XCTAssertNil(answer.generatedText)
         XCTAssertEqual(answer.generationOutcome, .failed)

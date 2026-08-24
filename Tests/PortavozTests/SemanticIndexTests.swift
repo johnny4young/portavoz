@@ -144,6 +144,51 @@ final class SemanticIndexTests: XCTestCase {
         XCTAssertTrue(requests.allSatisfy { $0.limit == 12 })
     }
 
+    func testMeetingAskFiltersSemanticCandidatesBeforePublication() async throws {
+        let fixture = try await Self.fixture()
+        let targetHits = try await fixture.store.search("launch")
+        let targetHit = try XCTUnwrap(targetHits.first)
+        let otherMeeting = Meeting(
+            title: "Outside scope",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_100))
+        let otherSegment = TranscriptSegment(
+            meetingID: otherMeeting.id,
+            channel: .system,
+            text: "An opaque but higher-ranked foreign semantic candidate.",
+            startTime: 0,
+            endTime: 4,
+            isFinal: true)
+        try await fixture.store.save(otherMeeting)
+        try await fixture.store.save([otherSegment])
+        let otherHits = try await fixture.store.search("foreign")
+        let otherHit = try XCTUnwrap(otherHits.first)
+        let index = RecordingSemanticIndex(hits: [otherHit, targetHit])
+        let retrieval = LocalAskMeetingRetrieval(
+            store: fixture.store,
+            queryExpander: NoAskQueryExpansion(),
+            runtime: SemanticIndexRuntime(profile: fixture.profile),
+            semanticIndex: index)
+
+        let citations = try await AskPipelineTelemetry.disabled.measure(
+            .evidence
+        ) { trace in
+            try await retrieval.retrieve(
+                question: "opaque wording",
+                source: .meeting(fixture.meeting.id),
+                limit: 6,
+                trace: trace,
+                onEvidence: { _ in })
+        }
+        let requests = await index.requests
+
+        XCTAssertEqual(citations.map(\.segmentID), [targetHit.segmentID])
+        XCTAssertEqual(Set(citations.map(\.meetingID)), [fixture.meeting.id])
+        XCTAssertFalse(requests.isEmpty)
+        XCTAssertTrue(requests.allSatisfy {
+            $0.limit == LocalAskMeetingRetrieval.meetingSemanticCandidateLimit
+        })
+    }
+
     /// Bilingual expansion asks several variants of one question. They must
     /// reach the index as one traversal, not one traversal per variant.
     func testAskScansTheCorpusOnceForEveryQueryVariant() async throws {

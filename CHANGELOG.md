@@ -16,6 +16,10 @@ catchy entry for every user-visible change — feature name + what it gives you.
 - **Native Mac workflows** — Shortcuts, Spotlight, Siri, the menu bar, global dictation, mouse push-to-talk, calendar briefs, and meeting-end automations bring Portavoz into the rest of macOS.
 - **Measured local performance** — scoped reads, bounded observation, background model preparation, and release benchmarks keep large libraries and active recordings responsive.
 
+## August 24, 2026
+
+- **🔎 Ask searches exactly where you choose** — Keep a question inside your Library or one selected meeting, while Web stays visibly unavailable instead of silently searching somewhere else.
+
 ## August 23, 2026
 
 - **💬 Ask uses the local engine you chose** — Get grounded manual answers from Apple Intelligence, Ollama, or the built-in MLX model, including on Sequoia, while exact passages remain available when generation cannot finish.

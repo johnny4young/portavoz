@@ -4851,7 +4851,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "allowAssetDownload: false"))
         XCTAssertTrue(benchMode.contains("pendingAtSeed"))
         XCTAssertTrue(benchMode.contains(
-            "try await useCase.answer(question, limit: 6)"))
+            "source: .library"))
         XCTAssertTrue(indexingBench.contains(
             "runIndexingResourceBenchIfRequested"))
         XCTAssertTrue(indexingBench.contains(
@@ -7828,6 +7828,8 @@ final class ArchitectureDependencyTests: XCTestCase {
 
     func testAskSurfacesUseOneStorageIndependentApplicationWorkflow() throws {
         let workflow = try Self.contents(of: "Sources/ApplicationKit/AskMeetings.swift")
+        let contracts = try Self.contents(
+            of: "Sources/ApplicationKit/AskRetrievalContracts.swift")
         let retrieval = try Self.contents(
             of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
         let indexer = try Self.contents(
@@ -7857,9 +7859,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/06-app-macos.md")
 
         XCTAssertTrue(workflow.contains("struct AskMeetings: ApplicationUseCase"))
-        XCTAssertTrue(workflow.contains("struct AskSearchResult"))
-        XCTAssertTrue(workflow.contains("struct AskCitation"))
-        XCTAssertTrue(workflow.contains("struct AskMeetingAnswer"))
+        XCTAssertTrue(contracts.contains("struct AskSearchResult"))
+        XCTAssertTrue(contracts.contains("struct AskCitation"))
+        XCTAssertTrue(contracts.contains("struct AskMeetingAnswer"))
+        XCTAssertFalse(contracts.contains("import IntelligenceKit"))
+        XCTAssertFalse(contracts.contains("import StorageKit"))
         XCTAssertTrue(retrieval.contains("struct LocalAskMeetingRetrieval"))
         XCTAssertTrue(indexer.contains("struct IndexSemanticCorpus"))
         XCTAssertTrue(indexer.contains("workloadClass: .maintenance"))
@@ -7907,7 +7911,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(mcp.contains("ask.answer"))
         XCTAssertTrue(cli.contains("CLIComposition.open"))
         XCTAssertTrue(mcp.contains("library: application.library"))
-        XCTAssertTrue(brief.contains("ask.evidence(query, limit: 12)"))
+        XCTAssertTrue(brief.contains("source: .library"))
         XCTAssertFalse(briefView.contains("AskMeetings.local"))
         XCTAssertTrue(askView.contains("onOpenCitation(citation)"))
         XCTAssertTrue(palette.contains("onOpenCitation?(citation)"))
@@ -8049,6 +8053,87 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(architecture.contains(
             "schema v43 persists its fixed-loopback attempt"))
         XCTAssertTrue(decisions.contains("## D385"))
+    }
+
+    func testManualAskSourcePolicyRemainsExplicitScopedAndFailClosed() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/AskMeetings.swift")
+        let contracts = try Self.contents(
+            of: "Sources/ApplicationKit/AskRetrievalContracts.swift")
+        let retrieval = try Self.contents(
+            of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
+        let search = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Search.swift")
+        let model = try Self.contents(of: "Sources/portavoz-app/AskModel.swift")
+        let view = try Self.contents(of: "Sources/portavoz-app/AskView.swift")
+        let palette = try Self.contents(
+            of: "Sources/portavoz-app/CommandPalette.swift")
+        let paletteModel = try Self.contents(
+            of: "Sources/portavoz-app/CommandPaletteModel.swift")
+        let cli = try Self.contents(of: "Sources/portavoz-cli/CLIAsk.swift")
+        let mcp = try Self.contents(of: "Sources/portavoz-cli/CLIMcp.swift")
+        let brief = try Self.contents(
+            of: "Sources/ApplicationKit/PrepareMeetingBrief.swift")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligence = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let storage = try Self.contents(of: "docs/specs/05-storage.md")
+        let app = try Self.contents(of: "docs/specs/06-app-macos.md")
+        let interfaces = try Self.contents(of: "docs/specs/07-interfaces.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+
+        XCTAssertTrue(contracts.contains("enum AskSourceScope"))
+        XCTAssertTrue(contracts.contains("case meeting(MeetingID)"))
+        XCTAssertTrue(contracts.contains("case web"))
+        XCTAssertTrue(contracts.contains("case meetingScopeUnavailable"))
+        XCTAssertTrue(contracts.contains("case graphFactsRequireLibrary"))
+        XCTAssertTrue(contracts.contains("case sourceEvidenceMismatch"))
+        XCTAssertFalse(contracts.contains("source: AskSourceScope ="))
+        XCTAssertTrue(contracts.contains("guard source == .library"))
+        XCTAssertTrue(workflow.contains("try Self.validate(retrieved, for: source)"))
+
+        XCTAssertTrue(retrieval.contains(
+            "meetingSemanticCandidateLimit = 256"))
+        XCTAssertTrue(retrieval.contains("meetingID: meetingID"))
+        XCTAssertTrue(retrieval.contains("hit.meetingID == $0"))
+        XCTAssertTrue(retrieval.contains("source: source"))
+        XCTAssertTrue(search.contains("acceptedScope: \"AND segment.meetingID = ?\""))
+        XCTAssertTrue(search.contains("correctedScope: \"AND corrected.meetingID = ?\""))
+        XCTAssertTrue(search.contains("structuralScope: \"AND structural.meetingID = ?\""))
+
+        XCTAssertTrue(model.contains("case library"))
+        XCTAssertTrue(model.contains("case meeting"))
+        XCTAssertTrue(model.contains("case web"))
+        XCTAssertTrue(model.contains("limit: Self.sourceMeetingLimit"))
+        XCTAssertTrue(model.contains("sourceMeetingLimit = 20"))
+        XCTAssertTrue(model.contains("isValidSourceMeetingCatalog"))
+        XCTAssertTrue(model.contains("cancelPendingAnswer()"))
+        XCTAssertTrue(model.contains("selectedSourceMeetingID"))
+        for identifier in [
+            "ask-source-picker",
+            "ask-source-library",
+            "ask-source-meeting",
+            "ask-source-web",
+            "ask-source-status-web-unavailable",
+            "ask-source-meeting-picker",
+        ] {
+            XCTAssertTrue(view.contains(identifier), "missing \(identifier)")
+        }
+        XCTAssertTrue(palette.contains("palette-source-library"))
+        for libraryOnly in [paletteModel, cli, mcp, brief] {
+            XCTAssertTrue(libraryOnly.contains("source: .library"))
+        }
+
+        XCTAssertTrue(architecture.contains(
+            "Every manual Ask request also carries one explicit source authority"))
+        XCTAssertTrue(decisions.contains("## D386"))
+        XCTAssertTrue(intelligence.contains("D384–D386"))
+        XCTAssertTrue(storage.contains("meeting-scoped three-lane FTS"))
+        XCTAssertTrue(app.contains("explicit Library / one Meeting / Web"))
+        XCTAssertTrue(interfaces.contains("explicitly Library-wide"))
+        XCTAssertTrue(quality.contains(
+            "### Explicit manual Ask source qualification (D386)"))
     }
 
     func testFirstRunLedgerAndBriefStayBehindApplicationOwners() throws {

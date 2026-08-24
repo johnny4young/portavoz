@@ -3,146 +3,6 @@ import IntelligenceKit
 import PortavozCore
 import StorageKit
 
-/// A storage-independent instant result for Ask surfaces.
-public struct AskSearchResult: Equatable, Sendable {
-    public let meetingID: MeetingID
-    public let meetingTitle: String
-    public let segmentID: UUID
-    public let sourceSegmentIDs: [UUID]
-    public let snippet: String
-    public let timestamp: TimeInterval
-
-    public init(
-        meetingID: MeetingID,
-        meetingTitle: String,
-        segmentID: UUID,
-        sourceSegmentIDs: [UUID]? = nil,
-        snippet: String,
-        timestamp: TimeInterval
-    ) {
-        self.meetingID = meetingID
-        self.meetingTitle = meetingTitle
-        self.segmentID = segmentID
-        self.sourceSegmentIDs = sourceSegmentIDs ?? [segmentID]
-        self.snippet = snippet
-        self.timestamp = timestamp
-    }
-}
-
-/// One exact piece of meeting evidence. Presentation can navigate with the
-/// aggregate identity and timestamp without receiving a storage record or an
-/// IntelligenceKit passage.
-public struct AskCitation: Equatable, Sendable {
-    /// Stable visible retrieval-unit identity. It may be a split part or merge
-    /// correction rather than an accepted segment.
-    public let segmentID: UUID?
-    public let sourceSegmentIDs: [UUID]
-    public let meetingID: MeetingID
-    public let meetingTitle: String
-    public let timestamp: TimeInterval
-    public let transcriptRevision: Int
-    public let text: String
-
-    public init(
-        segmentID: UUID? = nil,
-        sourceSegmentIDs: [UUID]? = nil,
-        meetingID: MeetingID,
-        meetingTitle: String,
-        timestamp: TimeInterval,
-        transcriptRevision: Int = 0,
-        text: String
-    ) {
-        self.segmentID = segmentID
-        self.sourceSegmentIDs = sourceSegmentIDs ?? segmentID.map { [$0] } ?? []
-        self.meetingID = meetingID
-        self.meetingTitle = meetingTitle
-        self.timestamp = timestamp
-        self.transcriptRevision = transcriptRevision
-        self.text = text
-    }
-}
-
-/// Answer text is optional by design: evidence remains useful when the local
-/// generative model is unavailable or fails, and callers choose localized copy.
-public struct AskMeetingAnswer: Equatable, Sendable {
-    public let question: String
-    public let generatedText: String?
-    public let citations: [AskCitation]
-    public let generationOutcome: AskGenerationOutcome
-
-    public init(
-        question: String,
-        generatedText: String?,
-        citations: [AskCitation],
-        generationOutcome: AskGenerationOutcome? = nil
-    ) {
-        self.question = question
-        self.generatedText = generatedText
-        self.citations = citations
-        self.generationOutcome = generationOutcome
-            ?? (generatedText == nil ? .unavailable : .generated)
-    }
-}
-
-/// Retrieval is an internal capability of the application workflow. Real
-/// composition uses the hybrid local adapter; tests can inject deterministic
-/// evidence without downloading model assets.
-public protocol AskMeetingRetrieving: Sendable {
-    func search(query: String, limit: Int) async throws -> [AskSearchResult]
-    func retrieve(question: String, limit: Int) async throws -> [AskCitation]
-
-    func search(
-        query: String,
-        limit: Int,
-        trace: AskPipelineTrace
-    ) async throws -> [AskSearchResult]
-    func retrieve(
-        question: String,
-        limit: Int,
-        trace: AskPipelineTrace
-    ) async throws -> [AskCitation]
-    func retrieve(
-        question: String,
-        limit: Int,
-        trace: AskPipelineTrace,
-        onEvidence: @escaping AskEvidenceReceiver
-    ) async throws -> [AskCitation]
-}
-
-public extension AskMeetingRetrieving {
-    func search(
-        query: String,
-        limit: Int,
-        trace _: AskPipelineTrace
-    ) async throws -> [AskSearchResult] {
-        try await search(query: query, limit: limit)
-    }
-
-    func retrieve(
-        question: String,
-        limit: Int,
-        trace _: AskPipelineTrace
-    ) async throws -> [AskCitation] {
-        try await retrieve(question: question, limit: limit)
-    }
-
-    func retrieve(
-        question: String,
-        limit: Int,
-        trace: AskPipelineTrace,
-        onEvidence: @escaping AskEvidenceReceiver
-    ) async throws -> [AskCitation] {
-        let citations = try await retrieve(
-            question: question,
-            limit: limit,
-            trace: trace)
-        await onEvidence(AskEvidenceUpdate(
-            phase: .fused,
-            citations: citations))
-        return citations
-    }
-}
-
 /// Optional local generation. Throwing or returning nil degrades to evidence;
 /// retrieval success is never discarded because an answer model is absent.
 public protocol AskMeetingAnswering: Sendable {
@@ -179,9 +39,9 @@ public protocol AskEvidenceBundleAnswering: Sendable {
 }
 
 public enum AskMeetingsRequest: Sendable {
-    case search(query: String, limit: Int)
-    case evidence(question: String, limit: Int)
-    case answer(question: String, limit: Int)
+    case search(query: String, source: AskSourceScope, limit: Int)
+    case evidence(question: String, source: AskSourceScope, limit: Int)
+    case answer(question: String, source: AskSourceScope, limit: Int)
 }
 
 public enum AskMeetingsResponse: Equatable, Sendable {
@@ -246,27 +106,37 @@ public struct AskMeetings: ApplicationUseCase {
         _ request: AskMeetingsRequest
     ) async throws -> AskMeetingsResponse {
         switch request {
-        case .search(let query, let limit):
-            return .search(try await search(query, limit: limit))
-        case .evidence(let question, let limit):
-            return .evidence(try await evidence(question, limit: limit))
-        case .answer(let question, let limit):
-            return .answer(try await answer(question, limit: limit))
+        case .search(let query, let source, let limit):
+            return .search(try await search(query, source: source, limit: limit))
+        case .evidence(let question, let source, let limit):
+            return .evidence(try await evidence(
+                question,
+                source: source,
+                limit: limit))
+        case .answer(let question, let source, let limit):
+            return .answer(try await answer(
+                question,
+                source: source,
+                limit: limit))
         }
     }
 
     public func search(
         _ query: String,
+        source: AskSourceScope,
         limit: Int = 6
     ) async throws -> [AskSearchResult] {
+        try Self.validateLocalSource(source)
         guard let query = try Self.validatedRequest(query, limit: limit) else {
             return []
         }
         return try await telemetry.measure(.search) { trace in
             let results = try await retrieval.search(
                 query: query,
+                source: source,
                 limit: limit,
                 trace: trace)
+            try Self.validate(results, for: source)
             if !results.isEmpty {
                 trace.reach(.firstEvidence)
             }
@@ -276,16 +146,21 @@ public struct AskMeetings: ApplicationUseCase {
 
     public func evidence(
         _ question: String,
+        source: AskSourceScope,
         limit: Int = 6
     ) async throws -> [AskCitation] {
+        try Self.validateLocalSource(source)
         guard let question = try Self.validatedRequest(question, limit: limit) else {
             return []
         }
         return try await telemetry.measure(.evidence) { trace in
             let citations = try await retrieval.retrieve(
                 question: question,
+                source: source,
                 limit: limit,
-                trace: trace)
+                trace: trace,
+                onEvidence: { _ in })
+            try Self.validate(citations, for: source)
             if !citations.isEmpty {
                 trace.reach(.firstEvidence)
             }
@@ -298,10 +173,15 @@ public struct AskMeetings: ApplicationUseCase {
     /// transcript evidence; cancellation still cancels the complete request.
     public func evidenceBundle(
         _ question: String,
+        source: AskSourceScope,
         limit: Int = 6,
         graphQuery: AskGraphFactQuery? = nil,
         graphFilter: AskGraphFactFilterRequest? = nil
     ) async throws -> AskEvidenceBundle {
+        try Self.validateLocalSource(source)
+        if graphQuery != nil || graphFilter != nil {
+            try Self.validateGraphSource(source)
+        }
         guard let question = try Self.validatedRequest(question, limit: limit) else {
             return AskEvidenceBundle(
                 transcriptCitations: [],
@@ -311,6 +191,7 @@ public struct AskMeetings: ApplicationUseCase {
         return try await telemetry.measure(.evidence) { trace in
             try await retrieveEvidenceBundle(
                 question: question,
+                source: source,
                 limit: limit,
                 graphQuery: graphQuery,
                 graphFilter: graphFilter,
@@ -323,10 +204,13 @@ public struct AskMeetings: ApplicationUseCase {
     /// using transcript-only `answer`; callers must opt into a graph job.
     public func answerBundle(
         _ question: String,
+        source: AskSourceScope,
         limit: Int = 6,
         graphQuery: AskGraphFactQuery,
         graphFilter: AskGraphFactFilterRequest? = nil
     ) async throws -> AskEvidenceBundleAnswer {
+        try Self.validateLocalSource(source)
+        try Self.validateGraphSource(source)
         guard let question = try Self.validatedRequest(question, limit: limit) else {
             return AskEvidenceBundleAnswer(
                 question: question,
@@ -338,6 +222,7 @@ public struct AskMeetings: ApplicationUseCase {
         return try await telemetry.measure(.answer) { trace in
             let bundle = try await retrieveEvidenceBundle(
                 question: question,
+                source: source,
                 limit: limit,
                 graphQuery: graphQuery,
                 graphFilter: graphFilter,
@@ -360,21 +245,25 @@ public struct AskMeetings: ApplicationUseCase {
 
     public func answer(
         _ question: String,
+        source: AskSourceScope,
         limit: Int = 6
     ) async throws -> AskMeetingAnswer {
         try await answer(
             question,
+            source: source,
             limit: limit,
             onEvidence: { _ in })
     }
 
     public func answer(
         _ question: String,
+        source: AskSourceScope,
         limit: Int = 6,
         onEvidence: @escaping AskEvidenceReceiver
     ) async throws -> AskMeetingAnswer {
         try await answer(
             question,
+            source: source,
             limit: limit,
             onEvidence: onEvidence,
             onAnswer: { _ in })
@@ -382,10 +271,12 @@ public struct AskMeetings: ApplicationUseCase {
 
     public func answer(
         _ question: String,
+        source: AskSourceScope,
         limit: Int = 6,
         onEvidence: @escaping AskEvidenceReceiver,
         onAnswer: @escaping AskAnswerReceiver
     ) async throws -> AskMeetingAnswer {
+        try Self.validateLocalSource(source)
         guard let question = try Self.validatedRequest(question, limit: limit) else {
             return AskMeetingAnswer(
                 question: question.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -396,6 +287,7 @@ public struct AskMeetings: ApplicationUseCase {
         return try await telemetry.measure(.answer) { trace in
             try await answerProgressively(
                 question: question,
+                source: source,
                 limit: limit,
                 trace: trace,
                 onEvidence: onEvidence,
@@ -439,6 +331,7 @@ public struct AskMeetings: ApplicationUseCase {
 
     private func retrieveEvidenceBundle(
         question: String,
+        source: AskSourceScope,
         limit: Int,
         graphQuery: AskGraphFactQuery?,
         graphFilter: AskGraphFactFilterRequest?,
@@ -449,8 +342,11 @@ public struct AskMeetings: ApplicationUseCase {
             filter: graphFilter)
         let citations = try await retrieval.retrieve(
             question: question,
+            source: source,
             limit: limit,
-            trace: trace)
+            trace: trace,
+            onEvidence: { _ in })
+        try Self.validate(citations, for: source)
         if !citations.isEmpty {
             trace.reach(.firstEvidence)
         }
@@ -525,6 +421,40 @@ public struct AskMeetings: ApplicationUseCase {
         }
         try Task.checkCancellation()
         return value
+    }
+
+    private static func validateLocalSource(
+        _ source: AskSourceScope
+    ) throws {
+        if source == .web { throw AskSourcePolicyError.webUnavailable }
+    }
+
+    private static func validateGraphSource(
+        _ source: AskSourceScope
+    ) throws {
+        guard source == .library else {
+            throw AskSourcePolicyError.graphFactsRequireLibrary
+        }
+    }
+
+    private static func validate(
+        _ results: [AskSearchResult],
+        for source: AskSourceScope
+    ) throws {
+        guard case .meeting(let meetingID) = source else { return }
+        guard results.allSatisfy({ $0.meetingID == meetingID }) else {
+            throw AskSourcePolicyError.sourceEvidenceMismatch
+        }
+    }
+
+    private static func validate(
+        _ citations: [AskCitation],
+        for source: AskSourceScope
+    ) throws {
+        guard case .meeting(let meetingID) = source else { return }
+        guard citations.allSatisfy({ $0.meetingID == meetingID }) else {
+            throw AskSourcePolicyError.sourceEvidenceMismatch
+        }
     }
 }
 
@@ -638,25 +568,36 @@ public struct OnDeviceAskMeetingIntelligence:
     }
 }
 
+private struct AskProgressiveEvidenceContext {
+    let trace: AskPipelineTrace
+    let updates: AskProgressiveUpdateGate
+    let milestone: AskFirstEvidenceMilestone
+    let receiver: AskEvidenceReceiver
+}
+
 private extension AskMeetings {
     func answerProgressively(
         question: String,
+        source: AskSourceScope,
         limit: Int,
         trace: AskPipelineTrace,
         onEvidence: @escaping AskEvidenceReceiver,
         onAnswer: @escaping AskAnswerReceiver
     ) async throws -> AskMeetingAnswer {
-        let updates = AskProgressiveUpdateGate(limit: limit)
+        let updates = AskProgressiveUpdateGate(limit: limit, source: source)
         let evidenceMilestone = AskFirstEvidenceMilestone()
         let answerMilestone = AskFirstAnswerMilestone(trace: trace)
+        let evidenceContext = AskProgressiveEvidenceContext(
+            trace: trace,
+            updates: updates,
+            milestone: evidenceMilestone,
+            receiver: onEvidence)
         do {
             let citations = try await retrieveProgressiveCitations(
                 question: question,
+                source: source,
                 limit: limit,
-                trace: trace,
-                updates: updates,
-                milestone: evidenceMilestone,
-                receiver: onEvidence)
+                context: evidenceContext)
             guard !citations.isEmpty else {
                 await updates.close()
                 return AskMeetingAnswer(
@@ -692,38 +633,38 @@ private extension AskMeetings {
 
     func retrieveProgressiveCitations(
         question: String,
+        source: AskSourceScope,
         limit: Int,
-        trace: AskPipelineTrace,
-        updates: AskProgressiveUpdateGate,
-        milestone: AskFirstEvidenceMilestone,
-        receiver: @escaping AskEvidenceReceiver
+        context: AskProgressiveEvidenceContext
     ) async throws -> [AskCitation] {
         let retrieved = try await retrieval.retrieve(
             question: question,
+            source: source,
             limit: limit,
-            trace: trace,
+            trace: context.trace,
             onEvidence: { update in
                 guard !Task.isCancelled,
-                      let update = await updates.admitEvidence(update),
+                      let update = await context.updates.admitEvidence(update),
                       !Task.isCancelled
                 else { return }
-                await milestone.reachIfNeeded(
+                await context.milestone.reachIfNeeded(
                     for: update.citations,
-                    trace: trace)
-                await receiver(update)
+                    trace: context.trace)
+                await context.receiver(update)
             })
         try Task.checkCancellation()
-        let finalEvidence = try await updates.finalizeEvidence(retrieved)
+        try Self.validate(retrieved, for: source)
+        let finalEvidence = try await context.updates.finalizeEvidence(retrieved)
         if let update = finalEvidence.update {
             try Task.checkCancellation()
-            await milestone.reachIfNeeded(
+            await context.milestone.reachIfNeeded(
                 for: update.citations,
-                trace: trace)
-            await receiver(update)
+                trace: context.trace)
+            await context.receiver(update)
         }
-        await milestone.reachIfNeeded(
+        await context.milestone.reachIfNeeded(
             for: finalEvidence.citations,
-            trace: trace)
+            trace: context.trace)
         return finalEvidence.citations
     }
 

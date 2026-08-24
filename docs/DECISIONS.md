@@ -14153,3 +14153,57 @@ microtest. Installed-model quality/latency/memory, physical Sequoia and Tahoe,
 VoiceOver/Voice Control, CloudKit, distribution, and real-meeting behavior
 remain external evidence. This closes APT-2 code scope; APT-3 source policy and
 later web, interview, note, proactive, and 1.0.0 admission bands remain open.
+
+## D386 — Require an explicit fail-closed source for manual Ask (Aug 2026)
+
+**Context:** after D384 made Ask cancellation-safe and D385 made generation use
+the selected local engine, every public call still implied the complete local
+Library. The 1.0 plan needs Library, one meeting, and later Web to be different
+authorities. Adding a UI-only filter would allow injected adapters, corrected
+text, semantic fallback, graph facts, CLI, or MCP to widen a request silently.
+The current semantic index is library-wide, and Web has no consented serving
+adapter yet.
+
+**Decision:** every public `AskMeetings` search, evidence, and answer call must
+carry an `AskSourceScope` with no default: `.library`, one exact
+`.meeting(MeetingID)`, or `.web`. Local retrieval implements Library and exact
+meeting scope. A legacy or injected retriever that does not implement meeting
+scope throws a typed policy error; Web throws before any local capability runs.
+Graph-fact bundles accept only Library because the released graph authority is
+cross-meeting. The command palette, CLI, MCP, resource benchmark, and meeting
+brief explicitly pass Library rather than inheriting mutable UI state.
+
+Exact meeting scope is enforced in both retrieval lanes. Storage binds the
+meeting identity separately inside accepted, corrected, and structural FTS
+subqueries before their rank limits. Semantic retrieval keeps the released
+12-candidate Library request; a meeting request asks the current exact index for
+at most 256 candidates and removes foreign meetings before rank admission or
+publication. The application boundary revalidates scoped search results and
+progressive/final citations before any caller receives them, so an injected or
+faulty adapter cannot bypass the policy. This is a bounded compatibility step
+over today's library-wide vector authority, not a sublinear-search claim. Late
+expansion and fallback
+retain the same source.
+
+The full Ask model owns a bounded 20-row, identity-unique local meeting
+catalogue and requires an explicit selection; oversized, duplicate-identity,
+or blank-title responses fail closed, and it never auto-selects or guesses.
+Changing source or exact meeting cancels and generation-fences pending work.
+Pending and completed
+exchanges retain the chosen source. The UI presents Library, Meeting, and Web;
+Web is visibly unavailable and disables submit without falling back. Meeting
+choices include a localized start date so duplicate titles remain usable. The
+resident command palette displays its fixed Library authority. All new controls
+have stable accessibility identifiers, and the existing bilingual Ask journey
+is extended rather than duplicated.
+
+**Consequences:** a question cannot cross from one meeting into the Library or
+from unavailable Web into local data without an explicit caller change. Search,
+corrected/structural transcript serving, progressive evidence, generation, and
+presentation share one source contract. The 256-candidate meeting semantic
+ceiling may trade recall for bounded work on very large libraries; current exact
+FTS remains authoritative and future search-engine optimization must preserve
+this fail-closed contract. D386 adds no Web transport, consent, citations, or
+freshness policy; those remain APT-4. Installed-model quality/performance,
+physical Sequoia/Tahoe, VoiceOver/Voice Control, CloudKit, distribution, and
+real-field evidence remain external gates.

@@ -163,7 +163,9 @@ actor AskFirstAnswerMilestone {
 /// duplicated, or late callbacks from reaching presentation.
 actor AskProgressiveUpdateGate {
     private let limit: Int
+    private let source: AskSourceScope
     private var isClosed = false
+    private var sourceProtocolFailed = false
     private var fusedCitations: [AskCitation]?
     private var lastLexicalCitations: [AskCitation]?
     private var latestAnswerText: String?
@@ -171,14 +173,20 @@ actor AskProgressiveUpdateGate {
     private var answerSnapshotCount = 0
     private var answerProtocolFailed = false
 
-    init(limit: Int) {
+    init(limit: Int, source: AskSourceScope) {
         self.limit = limit
+        self.source = source
     }
 
     func admitEvidence(_ update: AskEvidenceUpdate) -> AskEvidenceUpdate? {
-        guard !isClosed,
-              let citations = validatedCitations(update.citations)
-        else { return nil }
+        guard !isClosed else { return nil }
+        guard sourceAdmits(update.citations) else {
+            sourceProtocolFailed = true
+            return nil
+        }
+        guard let citations = validatedCitations(update.citations) else {
+            return nil
+        }
         switch update.phase {
         case .lexical:
             guard fusedCitations == nil,
@@ -197,6 +205,8 @@ actor AskProgressiveUpdateGate {
         _ returned: [AskCitation]
     ) throws -> (citations: [AskCitation], update: AskEvidenceUpdate?) {
         guard !isClosed,
+              !sourceProtocolFailed,
+              sourceAdmits(returned),
               let citations = validatedCitations(returned)
         else { throw AskProgressiveStreamError.invalidEvidence }
         if let fusedCitations {
@@ -299,6 +309,17 @@ actor AskProgressiveUpdateGate {
             else { return nil }
         }
         return citations
+    }
+
+    private func sourceAdmits(_ citations: [AskCitation]) -> Bool {
+        switch source {
+        case .library:
+            true
+        case .meeting(let meetingID):
+            citations.allSatisfy { $0.meetingID == meetingID }
+        case .web:
+            false
+        }
     }
 
     private func validatedAnswer(_ value: String) -> String? {

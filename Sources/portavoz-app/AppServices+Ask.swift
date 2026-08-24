@@ -46,40 +46,58 @@ final class AppAskModelClient: AskModelClient {
 
     func searchAskMeetings(
         _ query: String,
+        source: AskSourceScope,
         limit: Int
     ) async throws -> [AskSearchResult] {
-        try await useCase.search(query, limit: limit)
+        try await useCase.search(query, source: source, limit: limit)
     }
 
     func answerAskMeetings(
         _ question: String,
+        source: AskSourceScope,
         limit: Int
     ) async throws -> AskMeetingAnswer {
-        try await useCase.answer(question, limit: limit)
+        try await useCase.answer(question, source: source, limit: limit)
     }
 
     func answerAskMeetings(
         _ question: String,
+        source: AskSourceScope,
         limit: Int,
         onEvidence: @escaping AskEvidenceReceiver
     ) async throws -> AskMeetingAnswer {
         try await useCase.answer(
             question,
+            source: source,
             limit: limit,
             onEvidence: onEvidence)
     }
 
     func answerAskMeetings(
         _ question: String,
+        source: AskSourceScope,
         limit: Int,
         onEvidence: @escaping AskEvidenceReceiver,
         onAnswer: @escaping AskAnswerReceiver
     ) async throws -> AskMeetingAnswer {
         try await useCase.answer(
             question,
+            source: source,
             limit: limit,
             onEvidence: onEvidence,
             onAnswer: onAnswer)
+    }
+
+    func loadAskSourceMeetings(
+        limit: Int
+    ) async throws -> [AskSourceMeetingOption] {
+        try await memoryEntities.meetings(AutomationEntityLookup(limit: limit))
+            .map {
+                AskSourceMeetingOption(
+                    id: $0.id,
+                    title: $0.title,
+                    startedAt: $0.startedAt)
+            }
     }
 }
 
@@ -287,6 +305,50 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
         return citations
     }
 
+    func search(
+        query: String,
+        source: AskSourceScope,
+        limit: Int,
+        trace _: AskPipelineTrace
+    ) async throws -> [AskSearchResult] {
+        try await store.search(
+            query,
+            meetingID: try Self.meetingID(for: source),
+            limit: limit)
+            .map(Self.searchResult)
+    }
+
+    func retrieve(
+        question: String,
+        source: AskSourceScope,
+        limit: Int,
+        trace _: AskPipelineTrace,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async throws -> [AskCitation] {
+        let citations = try await store.search(
+            question,
+            meetingID: try Self.meetingID(for: source),
+            limit: limit,
+            requireAll: false
+        ).map { hit in
+            AskCitation(
+                segmentID: hit.segmentID,
+                meetingID: hit.meetingID,
+                meetingTitle: hit.meetingTitle,
+                timestamp: hit.startTime,
+                transcriptRevision: hit.transcriptRevision,
+                text: hit.text)
+        }
+        await onEvidence(AskEvidenceUpdate(
+            phase: .lexical,
+            citations: citations))
+        try await Task.sleep(for: .milliseconds(500))
+        await onEvidence(AskEvidenceUpdate(
+            phase: .fused,
+            citations: citations))
+        return citations
+    }
+
     private static func searchResult(_ hit: SearchHit) -> AskSearchResult {
         AskSearchResult(
             meetingID: hit.meetingID,
@@ -294,6 +356,19 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
             segmentID: hit.segmentID,
             snippet: hit.snippet,
             timestamp: hit.startTime)
+    }
+
+    private static func meetingID(
+        for source: AskSourceScope
+    ) throws -> MeetingID? {
+        switch source {
+        case .library:
+            nil
+        case .meeting(let meetingID):
+            meetingID
+        case .web:
+            throw AskSourcePolicyError.webUnavailable
+        }
     }
 }
 

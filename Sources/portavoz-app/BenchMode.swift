@@ -662,7 +662,10 @@ extension BenchMode {
             return try await BenchResourceTimedOperation.run(
                 timeout: .seconds(timeoutSeconds)
             ) {
-                try await useCase.answer(question, limit: 6)
+                try await useCase.answer(
+                    question,
+                    source: .library,
+                    limit: 6)
             }
         } catch BenchResourceTimedOperationError.operationFailed(let message) {
             throw BenchAskResourceError.operationFailed(message)

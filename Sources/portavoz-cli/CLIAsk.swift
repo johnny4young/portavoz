@@ -55,6 +55,7 @@ enum AskCommand {
                 platform: platform)
             let result = try await application.ask.answer(
                 question,
+                source: .library,
                 limit: limit)
             guard !result.citations.isEmpty else {
                 print("No encuentro nada relacionado en tus reuniones.")

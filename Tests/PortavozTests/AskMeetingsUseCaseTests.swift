@@ -4,6 +4,121 @@ import PortavozCore
 import XCTest
 
 final class AskMeetingsUseCaseTests: XCTestCase {
+    func testWebScopeFailsClosedBeforeAnyMeetingCapabilityRuns() async throws {
+        let retrieval = AskMeetingRetrievalFake(searches: [], citations: [])
+        let answering = AskMeetingAnsweringFake(text: "must not run")
+        let useCase = AskMeetings(retrieval: retrieval, answering: answering)
+
+        do {
+            _ = try await useCase.answer("rollout", source: .web)
+            XCTFail("web must remain unavailable until its explicit adapter exists")
+        } catch let error as AskSourcePolicyError {
+            XCTAssertEqual(error, .webUnavailable)
+        }
+
+        let retrievalCalls = await retrieval.calls
+        let answerCallCount = await answering.callCount
+        XCTAssertTrue(retrievalCalls.isEmpty)
+        XCTAssertEqual(answerCallCount, 0)
+    }
+
+    func testMeetingScopeCannotFallBackToAnUnscopedRetriever() async throws {
+        let retrieval = AskMeetingRetrievalFake(searches: [], citations: [])
+        let useCase = AskMeetings(
+            retrieval: retrieval,
+            answering: AskMeetingAnsweringFake(text: "must not run"))
+
+        do {
+            _ = try await useCase.answer(
+                "rollout",
+                source: .meeting(MeetingID()))
+            XCTFail("an adapter without exact meeting authority must fail closed")
+        } catch let error as AskSourcePolicyError {
+            XCTAssertEqual(error, .meetingScopeUnavailable)
+        }
+
+        let retrievalCalls = await retrieval.calls
+        XCTAssertTrue(retrievalCalls.isEmpty)
+    }
+
+    func testExactMeetingScopeReachesOnlyTheScopedRetriever() async throws {
+        let fixture = AskWorkflowFixture()
+        let retrieval = ScopedAskMeetingRetrievalFake(citations: fixture.citations)
+        let useCase = AskMeetings(
+            retrieval: retrieval,
+            answering: AskMeetingAnsweringFake(text: "El viernes."))
+        let source = AskSourceScope.meeting(fixture.meetingID)
+
+        let result = try await useCase.answer("rollout", source: source)
+
+        XCTAssertEqual(result.citations, fixture.citations)
+        let sources = await retrieval.sources
+        let unscopedCallCount = await retrieval.unscopedCallCount
+        XCTAssertEqual(sources, [source])
+        XCTAssertEqual(unscopedCallCount, 0)
+    }
+
+    func testMeetingScopeRejectsForeignSearchAndProgressiveEvidence() async throws {
+        let foreign = AskWorkflowFixture()
+        let target = MeetingID()
+        let retrieval = ScopedAskMeetingRetrievalFake(
+            searches: foreign.searches,
+            citations: foreign.citations)
+        let answering = AskMeetingAnsweringFake(text: "must not run")
+        let updates = AskEvidenceUpdateRecorder()
+        let useCase = AskMeetings(retrieval: retrieval, answering: answering)
+
+        do {
+            _ = try await useCase.search(
+                "rollout",
+                source: .meeting(target))
+            XCTFail("foreign scoped search results must fail closed")
+        } catch let error as AskSourcePolicyError {
+            XCTAssertEqual(error, .sourceEvidenceMismatch)
+        }
+
+        do {
+            _ = try await useCase.answer(
+                "rollout",
+                source: .meeting(target),
+                onEvidence: { update in await updates.receive(update) })
+            XCTFail("foreign progressive evidence must fail closed")
+        } catch let error as AskSourcePolicyError {
+            XCTAssertEqual(error, .sourceEvidenceMismatch)
+        }
+
+        let published = await updates.values
+        let answerCallCount = await answering.callCount
+        XCTAssertTrue(published.isEmpty)
+        XCTAssertEqual(answerCallCount, 0)
+    }
+
+    func testGraphFactsRejectMeetingScopeBeforeEitherLaneRuns() async throws {
+        let fixture = AskWorkflowFixture()
+        let retrieval = ScopedAskMeetingRetrievalFake(citations: fixture.citations)
+        let graph = AskGraphFactRetrievalFake(result: .abstained(.noMatchingFacts))
+        let useCase = AskMeetings(
+            retrieval: retrieval,
+            answering: AskMeetingAnsweringFake(text: nil),
+            graphFacts: graph)
+
+        do {
+            _ = try await useCase.evidenceBundle(
+                "rollout",
+                source: .meeting(fixture.meetingID),
+                graphQuery: .personCommitments(PersonCommitmentsQuery(
+                    personID: PersonID())))
+            XCTFail("library graph facts must not widen one-meeting scope")
+        } catch let error as AskSourcePolicyError {
+            XCTAssertEqual(error, .graphFactsRequireLibrary)
+        }
+
+        let sources = await retrieval.sources
+        let graphCalls = await graph.calls
+        XCTAssertTrue(sources.isEmpty)
+        XCTAssertTrue(graphCalls.isEmpty)
+    }
+
     func testSearchEvidenceAndAnswerShareOneTrimmedWorkflow() async throws {
         let fixture = AskWorkflowFixture()
         let retrieval = AskMeetingRetrievalFake(
@@ -12,9 +127,9 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         let answering = AskMeetingAnsweringFake(text: "El viernes.")
         let useCase = AskMeetings(retrieval: retrieval, answering: answering)
 
-        let searches = try await useCase.search("  rollout  ", limit: 4)
-        let citations = try await useCase.evidence("  rollout  ", limit: 5)
-        let answer = try await useCase.answer("  rollout  ", limit: 6)
+        let searches = try await useCase.search("  rollout  ", source: .library, limit: 4)
+        let citations = try await useCase.evidence("  rollout  ", source: .library, limit: 5)
+        let answer = try await useCase.answer("  rollout  ", source: .library, limit: 6)
 
         XCTAssertEqual(searches, fixture.searches)
         XCTAssertEqual(citations, fixture.citations)
@@ -38,7 +153,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         let answering = AskMeetingAnsweringFake(text: "must not be used")
         let useCase = AskMeetings(retrieval: retrieval, answering: answering)
 
-        let result = try await useCase.answer("unknown")
+        let result = try await useCase.answer("unknown", source: .library)
 
         XCTAssertEqual(result.question, "unknown")
         XCTAssertNil(result.generatedText)
@@ -55,7 +170,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         let answering = AskMeetingAnsweringFake(error: AskWorkflowError.generation)
         let useCase = AskMeetings(retrieval: retrieval, answering: answering)
 
-        let result = try await useCase.answer("rollout")
+        let result = try await useCase.answer("rollout", source: .library)
 
         XCTAssertNil(result.generatedText)
         XCTAssertEqual(result.citations, fixture.citations)
@@ -70,7 +185,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         let useCase = AskMeetings(retrieval: retrieval, answering: answering)
 
         do {
-            _ = try await useCase.answer("rollout")
+            _ = try await useCase.answer("rollout", source: .library)
             XCTFail("cancellation must leave the application workflow")
         } catch is CancellationError {
             // Expected: presentation owners discard cancelled work by generation.
@@ -89,6 +204,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         let task = Task {
             try await useCase.answer(
                 "rollout",
+                source: .library,
                 onEvidence: { update in
                     await updates.receive(update)
                 })
@@ -136,6 +252,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.answer(
             "rollout",
+            source: .library,
             onEvidence: { _ in },
             onAnswer: { update in await updates.receive(update) })
         let values = await updates.values.map(\.text)
@@ -161,6 +278,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.answer(
             "rollout",
+            source: .library,
             onEvidence: { _ in },
             onAnswer: { update in await updates.receive(update) })
 
@@ -179,7 +297,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
                 citations: fixture.citations),
             answering: NonMonotonicAskAnswerer())
 
-        let result = try await useCase.answer("rollout")
+        let result = try await useCase.answer("rollout", source: .library)
 
         XCTAssertEqual(result.citations, fixture.citations)
         XCTAssertNil(result.generatedText)
@@ -197,6 +315,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.answer(
             "rollout",
+            source: .library,
             onEvidence: { _ in },
             onAnswer: { update in await updates.receive(update) })
 
@@ -224,7 +343,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             answering: answering)
 
         do {
-            _ = try await useCase.answer("rollout")
+            _ = try await useCase.answer("rollout", source: .library)
             XCTFail("oversized citation provenance must fail closed")
         } catch {
             // The evidence cannot cross the bounded application contract.
@@ -248,7 +367,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             answering: answering)
 
         do {
-            _ = try await useCase.answer("rollout")
+            _ = try await useCase.answer("rollout", source: .library)
             XCTFail("mismatched fused evidence must fail closed")
         } catch {
             // The progressive provider violated its application contract.
@@ -266,12 +385,13 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             count: AskRequestLimits.maximumQuestionCharacters + 1)
 
         do {
-            _ = try await useCase.search(oversized)
+            _ = try await useCase.search(oversized, source: .library)
             XCTFail("oversized question must be rejected")
         } catch AskRequestError.questionTooLong {}
         do {
             _ = try await useCase.evidence(
                 "valid",
+                source: .library,
                 limit: AskRequestLimits.maximumResultCount + 1)
             XCTFail("oversized limit must be rejected")
         } catch AskRequestError.resultLimitExceeded {}
@@ -299,6 +419,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.evidenceBundle(
             "rollout",
+            source: .library,
             limit: 5,
             graphQuery: query)
 
@@ -329,6 +450,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.answerBundle(
             "rollout",
+            source: .library,
             graphQuery: .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID())))
 
@@ -392,6 +514,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.answerBundle(
             "rollout",
+            source: .library,
             graphQuery: .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID())))
 
@@ -439,6 +562,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.answerBundle(
             "rollout",
+            source: .library,
             graphQuery: .topicFirstDiscussion(TopicFirstDiscussionQuery(
                 topicID: TopicID())))
 
@@ -464,6 +588,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.answerBundle(
             "when",
+            source: .library,
             graphQuery: .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID())))
 
@@ -488,6 +613,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.answerBundle(
             "when",
+            source: .library,
             graphQuery: .topicFirstDiscussion(TopicFirstDiscussionQuery(
                 topicID: TopicID())))
 
@@ -515,6 +641,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.answerBundle(
             "when",
+            source: .library,
             graphQuery: .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID())))
 
@@ -540,6 +667,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         do {
             _ = try await useCase.answerBundle(
                 "when",
+                source: .library,
                 graphQuery: .personCommitments(PersonCommitmentsQuery(
                     personID: PersonID())))
             XCTFail("fact-aware generation cancellation must propagate")
@@ -564,6 +692,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         let task = Task {
             try await useCase.answerBundle(
                 "when",
+                source: .library,
                 graphQuery: .personCommitments(PersonCommitmentsQuery(
                     personID: PersonID())))
         }
@@ -592,6 +721,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
 
         let result = try await useCase.evidenceBundle(
             "rollout",
+            source: .library,
             graphQuery: .topicFirstDiscussion(
                 TopicFirstDiscussionQuery(topicID: TopicID())))
 
@@ -610,7 +740,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             answering: AskMeetingAnsweringFake(text: nil),
             graphFacts: graph)
 
-        let result = try await useCase.evidenceBundle("rollout")
+        let result = try await useCase.evidenceBundle("rollout", source: .library)
 
         XCTAssertEqual(result.transcriptCitations, fixture.citations)
         XCTAssertEqual(result.graphFacts, .notRequested)
@@ -629,6 +759,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         do {
             _ = try await useCase.evidenceBundle(
                 "rollout",
+                source: .library,
                 graphQuery: .topicFirstDiscussion(
                     TopicFirstDiscussionQuery(topicID: TopicID())))
             XCTFail("graph facts cannot replace failed transcript retrieval")
@@ -648,7 +779,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
             answering: AskMeetingAnsweringFake(text: nil),
             graphFacts: graph)
 
-        let citations = try await useCase.evidence("rollout")
+        let citations = try await useCase.evidence("rollout", source: .library)
 
         XCTAssertEqual(citations, fixture.citations)
         let graphCalls = await graph.calls
@@ -667,6 +798,7 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         do {
             _ = try await useCase.evidenceBundle(
                 "rollout",
+                source: .library,
                 graphQuery: .commitmentBlockers(
                     CommitmentBlockerQuery(commitmentID: CommitmentID())))
             XCTFail("graph cancellation must cancel the evidence request")
@@ -719,11 +851,11 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         let answering = AskMeetingAnsweringFake(text: "unused")
         let useCase = AskMeetings(retrieval: retrieval, answering: answering)
 
-        let searches = try await useCase.search("   ")
-        let citations = try await useCase.evidence("question", limit: 0)
+        let searches = try await useCase.search("   ", source: .library)
+        let citations = try await useCase.evidence("question", source: .library, limit: 0)
         XCTAssertTrue(searches.isEmpty)
         XCTAssertTrue(citations.isEmpty)
-        let answer = try await useCase.answer("\n")
+        let answer = try await useCase.answer("\n", source: .library)
 
         XCTAssertTrue(answer.citations.isEmpty)
         let retrievalCalls = await retrieval.calls
@@ -821,6 +953,53 @@ private actor AskMeetingRetrievalFake: AskMeetingRetrieving {
 
     func retrieve(question: String, limit: Int) -> [AskCitation] {
         calls.append(.retrieve(question, limit))
+        return citations
+    }
+}
+
+private actor ScopedAskMeetingRetrievalFake: AskMeetingRetrieving {
+    let searches: [AskSearchResult]
+    let citations: [AskCitation]
+    private(set) var sources: [AskSourceScope] = []
+    private(set) var unscopedCallCount = 0
+
+    init(
+        searches: [AskSearchResult] = [],
+        citations: [AskCitation]
+    ) {
+        self.searches = searches
+        self.citations = citations
+    }
+
+    func search(query _: String, limit _: Int) -> [AskSearchResult] {
+        unscopedCallCount += 1
+        return []
+    }
+
+    func retrieve(question _: String, limit _: Int) -> [AskCitation] {
+        unscopedCallCount += 1
+        return []
+    }
+
+    func search(
+        query _: String,
+        source: AskSourceScope,
+        limit _: Int,
+        trace _: AskPipelineTrace
+    ) -> [AskSearchResult] {
+        sources.append(source)
+        return searches
+    }
+
+    func retrieve(
+        question _: String,
+        source: AskSourceScope,
+        limit _: Int,
+        trace _: AskPipelineTrace,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async -> [AskCitation] {
+        sources.append(source)
+        await onEvidence(AskEvidenceUpdate(phase: .fused, citations: citations))
         return citations
     }
 }

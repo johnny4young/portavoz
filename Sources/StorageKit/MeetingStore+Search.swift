@@ -10,18 +10,26 @@ extension MeetingStore {
     /// natural-language QUESTION needs (AND of every question word almost
     /// never matches a transcript).
     public func search(
-        _ query: String, limit: Int = 20, requireAll: Bool = true
+        _ query: String,
+        meetingID: MeetingID? = nil,
+        limit: Int = 20,
+        requireAll: Bool = true
     ) async throws -> [SearchHit] {
         let match = Self.ftsQuery(from: query, requireAll: requireAll)
         guard !match.isEmpty else { return [] }
         return try await database.read { db in
-            try Self.fetchSearch(in: db, match: match, limit: limit)
+            try Self.fetchSearch(
+                in: db,
+                match: match,
+                meetingID: meetingID,
+                limit: limit)
         }
     }
 
     static func fetchSearch(
         in database: Database,
         match: String,
+        meetingID: MeetingID? = nil,
         limit: Int
     ) throws -> [SearchHit] {
         guard limit > 0 else { return [] }
@@ -30,10 +38,24 @@ extension MeetingStore {
         // (T28b/D313) under accepted identity, and structural split/merge text
         // (T28/D334) under stable result identity with accepted provenance.
         // Active targets can never also serve from the accepted lane.
-        let rows = try Row.fetchAll(
-            database,
-            sql: CorrectionAwareSearchSQL.query,
-            arguments: [match, limit, match, limit, match, limit, limit])
+        let rows: [Row]
+        if let meetingID {
+            let key = meetingID.rawValue.uuidString
+            rows = try Row.fetchAll(
+                database,
+                sql: CorrectionAwareSearchSQL.meetingQuery,
+                arguments: [
+                    match, key, limit,
+                    match, key, limit,
+                    match, key, limit,
+                    limit
+                ])
+        } else {
+            rows = try Row.fetchAll(
+                database,
+                sql: CorrectionAwareSearchSQL.libraryQuery,
+                arguments: [match, limit, match, limit, match, limit, limit])
+        }
         return try Self.searchHits(from: rows)
     }
 
@@ -94,7 +116,34 @@ extension MeetingStore {
 }
 
 private enum CorrectionAwareSearchSQL {
-    static let query = """
+    static let libraryQuery = query(
+        acceptedScope: "",
+        correctedScope: "",
+        structuralScope: "")
+
+    static let meetingQuery = query(
+        acceptedScope: "AND segment.meetingID = ?",
+        correctedScope: "AND corrected.meetingID = ?",
+        structuralScope: "AND structural.meetingID = ?")
+
+    private static func query(
+        acceptedScope: String,
+        correctedScope: String,
+        structuralScope: String
+    ) -> String {
+        """
+        \(acceptedQuery(scope: acceptedScope))
+        UNION ALL
+        \(correctedQuery(scope: correctedScope))
+        UNION ALL
+        \(structuralQuery(scope: structuralScope))
+        ORDER BY searchRank
+        LIMIT ?
+        """
+    }
+
+    private static func acceptedQuery(scope: String) -> String {
+        """
         SELECT * FROM (
             SELECT segment.id AS segmentID,
                    segment.meetingID AS meetingID,
@@ -109,6 +158,7 @@ private enum CorrectionAwareSearchSQL {
             JOIN segment ON segment.rowid = segmentSearch.rowid
             JOIN meeting ON meeting.id = segment.meetingID
             WHERE segmentSearch MATCH ?
+              \(scope)
               AND segment.deletedAt IS NULL
               AND meeting.deletedAt IS NULL
               AND \(MeetingStore.acceptedSegmentHasNoActiveTextCorrectionSQL)
@@ -117,7 +167,11 @@ private enum CorrectionAwareSearchSQL {
             ORDER BY rank
             LIMIT ?
         )
-        UNION ALL
+        """
+    }
+
+    private static func correctedQuery(scope: String) -> String {
+        """
         SELECT * FROM (
             SELECT segment.id AS segmentID,
                    segment.meetingID AS meetingID,
@@ -134,13 +188,18 @@ private enum CorrectionAwareSearchSQL {
             JOIN segment ON segment.id = corrected.segmentID
             JOIN meeting ON meeting.id = corrected.meetingID
             WHERE segmentCorrectedSearch MATCH ?
+              \(scope)
               AND corrected.baseTranscriptRevision = meeting.transcriptRevision
               AND segment.deletedAt IS NULL
               AND meeting.deletedAt IS NULL
             ORDER BY rank
             LIMIT ?
         )
-        UNION ALL
+        """
+    }
+
+    private static func structuralQuery(scope: String) -> String {
+        """
         SELECT * FROM (
             SELECT structural.resultID AS segmentID,
                    structural.meetingID AS meetingID,
@@ -170,12 +229,12 @@ private enum CorrectionAwareSearchSQL {
             JOIN transcriptCorrection AS correction
               ON correction.id = structural.correctionID
             WHERE transcriptStructuralSearch MATCH ?
+              \(scope)
               AND meeting.deletedAt IS NULL
               AND \(MeetingStore.currentStructuralTextSourceSQL)
             ORDER BY rank
             LIMIT ?
         )
-        ORDER BY searchRank
-        LIMIT ?
         """
+    }
 }

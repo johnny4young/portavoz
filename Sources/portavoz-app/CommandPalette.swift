@@ -166,6 +166,13 @@ private struct CommandPaletteView: View {
                 }
                 .onSubmit { model.submit() }
                 .accessibilityIdentifier("palette-query-field")
+            Label("Library", systemImage: "books.vertical")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .help(L10n.text(
+                    "The command palette searches only your local meeting library."))
+                .accessibilityLabel(L10n.text("Answer source: Library"))
+                .accessibilityIdentifier("palette-source-library")
             if model.state.answer != nil {
                 Button {
                     controller.copyAnswer()

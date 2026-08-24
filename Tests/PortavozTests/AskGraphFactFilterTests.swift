@@ -280,6 +280,7 @@ final class AskGraphFactFilterTests: XCTestCase {
 
         let bundle = try await useCase.evidenceBundle(
             "commitments",
+            source: .library,
             graphQuery: query,
             graphFilter: AskGraphFactFilterRequest(
                 personAlias: "Mara",
@@ -309,6 +310,7 @@ final class AskGraphFactFilterTests: XCTestCase {
 
         let bundle = try await useCase.evidenceBundle(
             "commitments",
+            source: .library,
             graphQuery: .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID())),
             graphFilter: AskGraphFactFilterRequest(personAlias: "Alex"))
@@ -330,6 +332,7 @@ final class AskGraphFactFilterTests: XCTestCase {
 
         let bundle = try await useCase.evidenceBundle(
             "commitments",
+            source: .library,
             graphQuery: .personCommitments(PersonCommitmentsQuery(
                 personID: PersonID())),
             graphFilter: AskGraphFactFilterRequest(personAlias: "Mara"))
@@ -351,6 +354,7 @@ final class AskGraphFactFilterTests: XCTestCase {
 
         let bundle = try await useCase.evidenceBundle(
             "blockers",
+            source: .library,
             graphQuery: .commitmentBlockers(CommitmentBlockerQuery(
                 commitmentID: CommitmentID())),
             graphFilter: AskGraphFactFilterRequest(topicAlias: "Atlas"))
@@ -373,6 +377,7 @@ final class AskGraphFactFilterTests: XCTestCase {
 
         let bundle = try await useCase.evidenceBundle(
             "commitments",
+            source: .library,
             graphFilter: AskGraphFactFilterRequest(status: .active))
 
         XCTAssertEqual(bundle.graphFacts, .result(.abstained(.invalidQuery)))

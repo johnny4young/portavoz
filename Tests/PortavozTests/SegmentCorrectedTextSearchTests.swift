@@ -134,6 +134,73 @@ final class SegmentCorrectedTextSearchTests: XCTestCase {
             "the atlas rollout starts Monday an unrelated planning line")
     }
 
+    func testMeetingScopeAppliesToAcceptedCorrectedAndStructuralLanes() async throws {
+        let fixture = try await makeFixture(texts: [
+            "original replacement wording",
+            "first structural fragment",
+            "scoped-token accepted wording"
+        ])
+        _ = try await fixture.store.appendTranscriptCorrection(event(
+            217,
+            fixture: fixture,
+            targets: [fixture.segments[0].id],
+            kind: .replaceText(
+                text: "scoped-token corrected wording",
+                language: "en")))
+        let structuralResultID = id(519)
+        let structural = event(
+            218,
+            fixture: fixture,
+            targets: [fixture.segments[1].id],
+            kind: .split([
+                TranscriptCorrectionPart(
+                    id: structuralResultID,
+                    text: "scoped-token structural wording",
+                    speakerID: fixture.firstSpeaker.id,
+                    language: "en",
+                    startTime: fixture.segments[1].startTime,
+                    endTime: fixture.segments[1].startTime + 1),
+                TranscriptCorrectionPart(
+                    id: id(520),
+                    text: "remaining fragment",
+                    speakerID: fixture.firstSpeaker.id,
+                    language: "en",
+                    startTime: fixture.segments[1].startTime + 1,
+                    endTime: fixture.segments[1].endTime)
+            ]))
+        _ = try await fixture.store.appendTranscriptCorrection(structural)
+
+        let otherMeeting = Meeting(
+            title: "Other meeting",
+            startedAt: date(500),
+            language: "en")
+        let otherSegment = TranscriptSegment(
+            meetingID: otherMeeting.id,
+            channel: .system,
+            text: "scoped-token foreign accepted wording",
+            language: "en",
+            startTime: 0,
+            endTime: 2,
+            isFinal: true)
+        try await fixture.store.save(otherMeeting)
+        try await fixture.store.save([otherSegment])
+
+        let library = try await fixture.store.search("scoped-token")
+        let scoped = try await fixture.store.search(
+            "scoped-token",
+            meetingID: fixture.meeting.id)
+        let other = try await fixture.store.search(
+            "scoped-token",
+            meetingID: otherMeeting.id)
+
+        XCTAssertEqual(library.count, 4)
+        XCTAssertEqual(Set(scoped.map(\.meetingID)), [fixture.meeting.id])
+        XCTAssertEqual(
+            Set(scoped.map(\.resultID)),
+            [fixture.segments[0].id, fixture.segments[2].id, structuralResultID])
+        XCTAssertEqual(other.map(\.segmentID), [otherSegment.id])
+    }
+
     func testRestoreAfterMergeRemovesStructuralIdentityAndReactivatesSources() async throws {
         let fixture = try await makeFixture(texts: ["alpha launch", "beta review"])
         let merge = event(

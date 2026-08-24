@@ -51,6 +51,8 @@ struct AskView: View {
 
     @ViewBuilder
     private var conversation: some View {
+        sourcePolicy
+        Divider()
         if model.state.exchanges.isEmpty && !model.state.isAsking {
             ContentUnavailableView(
                 "Ask your meetings",
@@ -95,9 +97,11 @@ struct AskView: View {
                     }
                     if model.state.isAsking,
                        let question = model.state.pendingQuestion,
+                       let source = model.state.pendingSource,
                        let phase = model.state.pendingPhase {
                         pendingExchange(
                             question: question,
+                            source: source,
                             citations: model.state.pendingCitations,
                             answerText: model.state.pendingAnswerText,
                             phase: phase)
@@ -117,6 +121,7 @@ struct AskView: View {
 
     private func pendingExchange(
         question: String,
+        source: AskModel.ExchangeSource,
         citations: [AskCitation],
         answerText: String?,
         phase: AskModel.PendingPhase
@@ -129,6 +134,7 @@ struct AskView: View {
                     PVDesign.accent.opacity(0.12),
                     in: RoundedRectangle(cornerRadius: 8))
                 .accessibilityIdentifier("ask-pending-question")
+            sourceBadge(source, identifier: "ask-pending-source")
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
                 Text(progressText(for: phase))
@@ -164,6 +170,7 @@ struct AskView: View {
                 .font(.callout.weight(.semibold))
                 .padding(10)
                 .background(PVDesign.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            sourceBadge(exchange.source, identifier: "ask-exchange-source")
             Text(exchange.answer)
                 .textSelection(.enabled)
                 .accessibilityIdentifier("ask-answer-\(exchange.id.uuidString)")
@@ -252,9 +259,139 @@ struct AskView: View {
             }
             .disabled(
                 model.state.draft.trimmingCharacters(
-                    in: .whitespacesAndNewlines).isEmpty)
+                    in: .whitespacesAndNewlines).isEmpty
+                    || !hasResolvedSource)
             .accessibilityIdentifier("ask-submit")
         }
         .padding(12)
+    }
+
+    private var sourcePolicy: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Picker(
+                "Answer sources",
+                selection: Binding(
+                    get: { model.state.sourceMode },
+                    set: { model.selectSourceMode($0) })) {
+                Label("Library", systemImage: "books.vertical")
+                    .tag(AskModel.SourceMode.library)
+                    .accessibilityIdentifier("ask-source-library")
+                Label("Meeting", systemImage: "person.2")
+                    .tag(AskModel.SourceMode.meeting)
+                    .accessibilityIdentifier("ask-source-meeting")
+                Label("Web", systemImage: "globe")
+                    .tag(AskModel.SourceMode.web)
+                    .accessibilityIdentifier("ask-source-web")
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 420)
+            .accessibilityIdentifier("ask-source-picker")
+
+            sourcePolicyStatus
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+    }
+
+    @ViewBuilder
+    private var sourcePolicyStatus: some View {
+        switch model.state.sourceMode {
+        case .library:
+            Label(
+                "Only your local meeting library will be searched.",
+                systemImage: "lock")
+                .accessibilityIdentifier("ask-source-status-library")
+        case .meeting:
+            meetingSourceStatus
+        case .web:
+            Label(
+                "Web answers are not available yet. Nothing else will be searched.",
+                systemImage: "network.slash")
+                .accessibilityIdentifier("ask-source-status-web-unavailable")
+        }
+    }
+
+    @ViewBuilder
+    private var meetingSourceStatus: some View {
+        switch model.state.sourceCatalogState {
+        case .idle:
+            ProgressView()
+                .controlSize(.small)
+                .task { model.loadSourceMeetingsIfNeeded() }
+                .accessibilityIdentifier("ask-source-meetings-loading")
+        case .loading:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Loading local meetings…")
+            }
+            .accessibilityIdentifier("ask-source-meetings-loading")
+        case .failed:
+            HStack(spacing: 8) {
+                Label("Meeting list unavailable.", systemImage: "exclamationmark.triangle")
+                Button("Try again") { model.retrySourceMeetings() }
+                    .accessibilityIdentifier("ask-source-meetings-retry")
+            }
+            .accessibilityIdentifier("ask-source-meetings-failed")
+        case .loaded:
+            if model.state.sourceMeetings.isEmpty {
+                Label("No local meetings are available.", systemImage: "tray")
+                    .accessibilityIdentifier("ask-source-meetings-empty")
+            } else {
+                Menu {
+                    ForEach(model.state.sourceMeetings) { meeting in
+                        Button(meetingLabel(meeting)) {
+                            model.selectSourceMeeting(meeting.id)
+                        }
+                        .accessibilityIdentifier(
+                            "ask-source-meeting-option-\(meeting.id.rawValue.uuidString)")
+                    }
+                } label: {
+                    Label(selectedMeetingTitle ?? "Choose a meeting", systemImage: "calendar")
+                }
+                .accessibilityIdentifier("ask-source-meeting-picker")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sourceBadge(
+        _ source: AskModel.ExchangeSource,
+        identifier: String
+    ) -> some View {
+        switch source {
+        case .library:
+            Label("Source: Library", systemImage: "books.vertical")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("\(identifier)-library")
+        case .meeting(_, let title):
+            Label("Source: \(title)", systemImage: "person.2")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("\(identifier)-meeting")
+        }
+    }
+
+    private var selectedMeetingTitle: String? {
+        guard let selected = model.state.selectedSourceMeetingID else {
+            return nil
+        }
+        return model.state.sourceMeetings.first(where: { $0.id == selected }).map(
+            meetingLabel)
+    }
+
+    private func meetingLabel(_ meeting: AskSourceMeetingOption) -> String {
+        "\(meeting.title) · \(meeting.startedAt.formatted(date: .abbreviated, time: .shortened))"
+    }
+
+    private var hasResolvedSource: Bool {
+        switch model.state.sourceMode {
+        case .library:
+            true
+        case .meeting:
+            selectedMeetingTitle != nil
+        case .web:
+            false
+        }
     }
 }

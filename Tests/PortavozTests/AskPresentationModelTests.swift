@@ -15,6 +15,7 @@ final class AskPresentationModelTests: XCTestCase {
         model.updateDraft("  presupuesto  ")
         model.submit()
         try await waitUntil { client.answerRequests == ["presupuesto"] }
+        XCTAssertEqual(client.answerSources, [.library])
         client.completeAnswer(
             "presupuesto",
             with: AskMeetingAnswer(
@@ -30,6 +31,135 @@ final class AskPresentationModelTests: XCTestCase {
             model.state.exchanges.first?.answer,
             L10n.text("Closest passages from your meetings:"))
         XCTAssertEqual(model.state.exchanges.first?.citations, [fixture.citation])
+    }
+
+    func testWebSourceIsExplicitlyUnavailableAndNeverFallsBackToLibrary() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        let model = AskModel(client: client)
+
+        model.updateDraft("pending library question")
+        model.submit()
+        try await waitUntil { client.answerRequests == ["pending library question"] }
+        model.selectSourceMode(.web)
+
+        XCTAssertEqual(model.state.sourceMode, .web)
+        XCTAssertFalse(model.state.isAsking)
+        XCTAssertNil(model.state.pendingQuestion)
+        model.updateDraft("must not widen")
+        model.submit()
+        await Task.yield()
+        XCTAssertEqual(client.answerRequests, ["pending library question"])
+        XCTAssertEqual(model.state.draft, "must not widen")
+
+        client.completeAnswer(
+            "pending library question",
+            with: AskMeetingAnswer(
+                question: "pending library question",
+                generatedText: "stale",
+                citations: [fixture.citation]))
+        await Task.yield()
+        XCTAssertTrue(model.state.exchanges.isEmpty)
+    }
+
+    func testMeetingSourceRequiresAnExactBoundedSelection() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        let meeting = AskSourceMeetingOption(
+            id: fixture.meetingID,
+            title: "Test meeting",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000))
+        client.sourceMeetings = [meeting]
+        let model = AskModel(client: client)
+
+        model.selectSourceMode(.meeting)
+        try await waitUntil { model.state.sourceCatalogState == .loaded }
+        XCTAssertEqual(client.sourceMeetingLimits, [20])
+        XCTAssertEqual(model.state.sourceMeetings, [meeting])
+
+        model.updateDraft("viernes")
+        model.submit()
+        await Task.yield()
+        XCTAssertTrue(client.answerRequests.isEmpty)
+        XCTAssertEqual(model.state.draft, "viernes")
+
+        model.selectSourceMeeting(meeting.id)
+        model.submit()
+        try await waitUntil { client.answerRequests == ["viernes"] }
+        XCTAssertEqual(client.answerSources, [.meeting(meeting.id)])
+        XCTAssertEqual(
+            model.state.pendingSource,
+            .meeting(id: meeting.id, title: meeting.title))
+
+        client.completeAnswer(
+            "viernes",
+            with: AskMeetingAnswer(
+                question: "viernes",
+                generatedText: "El viernes.",
+                citations: [fixture.citation]))
+        try await waitUntil { model.state.exchanges.count == 1 }
+        XCTAssertEqual(
+            model.state.exchanges.first?.source,
+            .meeting(id: meeting.id, title: meeting.title))
+    }
+
+    func testMeetingCatalogFailureRetriesWithoutInventingASelection() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        client.sourceMeetingsShouldFail = true
+        let model = AskModel(client: client)
+
+        model.selectSourceMode(.meeting)
+        try await waitUntil { model.state.sourceCatalogState == .failed }
+        XCTAssertTrue(model.state.sourceMeetings.isEmpty)
+        XCTAssertNil(model.state.selectedSourceMeetingID)
+
+        client.sourceMeetingsShouldFail = false
+        client.sourceMeetings = [AskSourceMeetingOption(
+            id: fixture.meetingID,
+            title: "Recovered meeting",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000))]
+        model.retrySourceMeetings()
+        try await waitUntil { model.state.sourceCatalogState == .loaded }
+
+        XCTAssertEqual(client.sourceMeetingLimits, [20, 20])
+        XCTAssertEqual(model.state.sourceMeetings.map(\.id), [fixture.meetingID])
+        XCTAssertNil(model.state.selectedSourceMeetingID)
+    }
+
+    func testMeetingCatalogFailsClosedForOversizeOrDuplicateIdentity() async throws {
+        let client = ControlledAskModelClient()
+        client.sourceMeetings = (0..<21).map { index in
+            AskSourceMeetingOption(
+                id: MeetingID(),
+                title: "Meeting \(index)",
+                startedAt: Date(timeIntervalSince1970: Double(index)))
+        }
+        client.sourceMeetingsIgnoresLimit = true
+        let model = AskModel(client: client)
+
+        model.selectSourceMode(.meeting)
+        try await waitUntil { model.state.sourceCatalogState == .failed }
+        XCTAssertTrue(model.state.sourceMeetings.isEmpty)
+
+        let duplicate = MeetingID()
+        client.sourceMeetings = [
+            AskSourceMeetingOption(
+                id: duplicate,
+                title: "First",
+                startedAt: Date(timeIntervalSince1970: 1)),
+            AskSourceMeetingOption(
+                id: duplicate,
+                title: "Second",
+                startedAt: Date(timeIntervalSince1970: 2)),
+        ]
+        client.sourceMeetingsIgnoresLimit = false
+        model.retrySourceMeetings()
+        try await waitUntil { client.sourceMeetingLimits.count == 2 }
+        try await waitUntil { model.state.sourceCatalogState == .failed }
+
+        XCTAssertTrue(model.state.sourceMeetings.isEmpty)
+        XCTAssertNil(model.state.selectedSourceMeetingID)
     }
 
     func testFullAskPublishesProgressiveEvidenceThenFencesFinalAnswer() async throws {
@@ -1562,7 +1692,13 @@ private struct AskTopicMemoryPresentationFixture {
 @MainActor
 private final class ControlledAskModelClient: AskModelClient {
     private(set) var searchRequests: [String] = []
+    private(set) var searchSources: [AskSourceScope] = []
     private(set) var answerRequests: [String] = []
+    private(set) var answerSources: [AskSourceScope] = []
+    private(set) var sourceMeetingLimits: [Int] = []
+    var sourceMeetings: [AskSourceMeetingOption] = []
+    var sourceMeetingsShouldFail = false
+    var sourceMeetingsIgnoresLimit = false
     private var searchContinuations: [String: CheckedContinuation<[AskSearchResult], Error>] = [:]
     private var answerContinuations: [String: CheckedContinuation<AskMeetingAnswer, Error>] = [:]
     private var evidenceReceivers: [String: AskEvidenceReceiver] = [:]
@@ -1570,9 +1706,11 @@ private final class ControlledAskModelClient: AskModelClient {
 
     func searchAskMeetings(
         _ query: String,
+        source: AskSourceScope,
         limit _: Int
     ) async throws -> [AskSearchResult] {
         searchRequests.append(query)
+        searchSources.append(source)
         return try await withCheckedThrowingContinuation { continuation in
             searchContinuations[query] = continuation
         }
@@ -1580,9 +1718,11 @@ private final class ControlledAskModelClient: AskModelClient {
 
     func answerAskMeetings(
         _ question: String,
+        source: AskSourceScope,
         limit _: Int
     ) async throws -> AskMeetingAnswer {
         answerRequests.append(question)
+        answerSources.append(source)
         return try await withCheckedThrowingContinuation { continuation in
             answerContinuations[question] = continuation
         }
@@ -1590,10 +1730,12 @@ private final class ControlledAskModelClient: AskModelClient {
 
     func answerAskMeetings(
         _ question: String,
+        source: AskSourceScope,
         limit _: Int,
         onEvidence: @escaping AskEvidenceReceiver
     ) async throws -> AskMeetingAnswer {
         answerRequests.append(question)
+        answerSources.append(source)
         evidenceReceivers[question] = onEvidence
         return try await withCheckedThrowingContinuation { continuation in
             answerContinuations[question] = continuation
@@ -1602,16 +1744,30 @@ private final class ControlledAskModelClient: AskModelClient {
 
     func answerAskMeetings(
         _ question: String,
+        source: AskSourceScope,
         limit _: Int,
         onEvidence: @escaping AskEvidenceReceiver,
         onAnswer: @escaping AskAnswerReceiver
     ) async throws -> AskMeetingAnswer {
         answerRequests.append(question)
+        answerSources.append(source)
         evidenceReceivers[question] = onEvidence
         answerReceivers[question] = onAnswer
         return try await withCheckedThrowingContinuation { continuation in
             answerContinuations[question] = continuation
         }
+    }
+
+    func loadAskSourceMeetings(
+        limit: Int
+    ) async throws -> [AskSourceMeetingOption] {
+        sourceMeetingLimits.append(limit)
+        if sourceMeetingsShouldFail {
+            throw AskPresentationTestError.refused
+        }
+        return sourceMeetingsIgnoresLimit
+            ? sourceMeetings
+            : Array(sourceMeetings.prefix(limit))
     }
 
     func completeSearch(_ query: String, with hits: [AskSearchResult]) {

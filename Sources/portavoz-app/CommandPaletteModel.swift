@@ -93,7 +93,10 @@ final class CommandPaletteModel {
     }
 
     private func search(_ query: String, generation requestGeneration: Int) async {
-        let hits = (try? await client.searchAskMeetings(query, limit: 6)) ?? []
+        let hits = (try? await client.searchAskMeetings(
+            query,
+            source: .library,
+            limit: 6)) ?? []
         guard !Task.isCancelled, generation == requestGeneration else { return }
         state.hits = hits
         searchTask = nil
@@ -115,7 +118,10 @@ final class CommandPaletteModel {
         }
         let answer: PaletteAnswer
         do {
-            let result = try await client.answerAskMeetings(question, limit: 6)
+            let result = try await client.answerAskMeetings(
+                question,
+                source: .library,
+                limit: 6)
             guard !Task.isCancelled, generation == requestGeneration else { return }
             answer = PaletteAnswer(
                 question: question,

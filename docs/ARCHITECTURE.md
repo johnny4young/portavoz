@@ -682,6 +682,18 @@ through the shared interactive scheduler; configured loopback Ollama and a
 verified embedded MLX model answer on Sequoia or Tahoe through the same bounded
 grounding contract. Missing selected-engine readiness never falls through to a
 different provider, and exact evidence remains usable without generation.
+Every manual Ask request also carries one explicit source authority. The full
+Ask window can search the complete local Library or one exact selected meeting;
+Web is present as a separate, visibly unavailable choice until its consented
+adapter exists. There is no default source on the public application workflow.
+Meeting scope is pushed into every exact FTS lane and filters a bounded semantic
+candidate set before any citation is published. The application boundary also
+revalidates returned search results plus progressive/final citations against
+the chosen meeting before any receiver runs. Adapters that cannot prove
+meeting scope fail closed rather than widening. The resident command palette,
+CLI, MCP, resource probe, and meeting briefs remain explicitly Library-only.
+Graph-fact Ask remains Library-only because its current relationship authority
+is cross-meeting; it rejects narrower or Web scope before either evidence lane.
 
 Library combines independently observed meeting rows, open commitments, trash,
 and active FTS results. Insights combines chronology, participants,
@@ -837,7 +849,9 @@ source order and uses the same sampled time for admission and displayed
 minutes.
 
 The full Ask route and the command palette share one `AskMeetings` application
-workflow. Its public request and response values carry meeting identity,
+workflow. `AskRetrievalContracts.swift` owns its storage-independent retrieval,
+source-policy, citation, and answer contracts separately from orchestration.
+Those public request and response values carry meeting identity,
 timestamps, snippets, complete evidence, and optional generated text without
 exposing StorageKit records or IntelligenceKit passages to presentation.
 The same boundary can emit lexical and final fused evidence while preserving
