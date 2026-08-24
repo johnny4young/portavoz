@@ -3,8 +3,8 @@
   "modelFixture": {
     "conversationText": "Fixtures/CandidateAutomation/public-diarization-en-es-v1.txt",
     "conversationVoices": [
-      "Paulina",
-      "Samantha"
+      "Daniel",
+      "Paulina"
     ],
     "rateWordsPerMinute": 170,
     "systemVoice": "Samantha",

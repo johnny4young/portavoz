@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+import wave
 from pathlib import Path
 from unittest import mock
 
@@ -47,6 +48,17 @@ class CandidateAutomationTests(unittest.TestCase):
         self.assertEqual(
             self.contract["modelFixture"]["conversationTextPath"],
             ROOT / "Fixtures" / "CandidateAutomation" / "public-diarization-en-es-v1.txt",
+        )
+        self.assertEqual(
+            self.contract["modelFixture"]["conversationVoices"],
+            candidate.EXPECTED_CONVERSATION_VOICES,
+        )
+        self.assertEqual(
+            tuple(
+                voice
+                for voice, _ in self.contract["modelFixture"]["conversationTurns"]
+            ),
+            candidate.EXPECTED_CONVERSATION_SEQUENCE,
         )
         self.assertEqual(
             self.contract["upgradeRecoveryClasses"],
@@ -373,6 +385,19 @@ class CandidateAutomationTests(unittest.TestCase):
             ):
                 candidate.validate_public_model_fixture(path)
 
+            with mock.patch.object(
+                candidate.subprocess,
+                "run",
+                return_value=completed,
+            ), self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "empty or unbounded PCM metadata",
+            ):
+                candidate.validate_public_model_fixture(
+                    path,
+                    minimum_duration_seconds=60,
+                )
+
             empty = metadata.replace("220500", "0").replace("5.0", "0.0")
             with mock.patch.object(
                 candidate.subprocess,
@@ -383,6 +408,140 @@ class CandidateAutomationTests(unittest.TestCase):
                 "empty or unbounded PCM metadata",
             ):
                 candidate.validate_public_model_fixture(path)
+
+    def test_public_conversation_requires_long_distinct_alternating_turns(self):
+        fixture = (
+            ROOT
+            / "Fixtures"
+            / "CandidateAutomation"
+            / "public-diarization-en-es-v1.txt"
+        ).read_text()
+        turns = candidate.parse_public_conversation(fixture)
+        self.assertEqual(
+            tuple(voice for voice, _ in turns),
+            candidate.EXPECTED_CONVERSATION_SEQUENCE,
+        )
+        self.assertTrue(
+            all(
+                len(text.split()) >= candidate.MINIMUM_CONVERSATION_TURN_WORDS
+                for _, text in turns
+            )
+        )
+
+        same_voice = fixture.replace("[[voice Daniel]]", "[[voice Paulina]]")
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "alternating Daniel/Paulina",
+        ):
+            candidate.parse_public_conversation(same_voice)
+
+        short_turn = fixture.replace(
+            turns[0][1],
+            "This public turn is intentionally too short.",
+        )
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "bounded, long",
+        ):
+            candidate.parse_public_conversation(short_turn)
+
+    def test_public_conversation_wave_join_is_exact_and_owner_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            segments = []
+            frames_per_turn = 16_000
+            for index in range(4):
+                path = root / f"turn-{index}.wav"
+                with wave.open(str(path), "wb") as writer:
+                    writer.setnchannels(1)
+                    writer.setsampwidth(2)
+                    writer.setframerate(16_000)
+                    writer.writeframes(b"\0\1" * frames_per_turn)
+                segments.append(path)
+
+            output = root / "conversation.wav"
+            candidate.concatenate_public_wave_segments(
+                segments,
+                output,
+                silence_milliseconds=(
+                    candidate.EXPECTED_CONVERSATION_SILENCE_MILLISECONDS
+                ),
+            )
+
+            with wave.open(str(output), "rb") as reader:
+                expected_silence_frames = round(16_000 * 0.7) * 3
+                self.assertEqual(
+                    reader.getnframes(),
+                    frames_per_turn * 4 + expected_silence_frames,
+                )
+                self.assertEqual(reader.getnchannels(), 1)
+                self.assertEqual(reader.getsampwidth(), 2)
+                self.assertEqual(reader.getframerate(), 16_000)
+            self.assertEqual(os.stat(output).st_mode & 0o777, 0o600)
+            original = output.read_bytes()
+            with self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "output already exists",
+            ):
+                candidate.concatenate_public_wave_segments(
+                    segments,
+                    output,
+                    silence_milliseconds=(
+                        candidate.EXPECTED_CONVERSATION_SILENCE_MILLISECONDS
+                    ),
+                )
+            self.assertEqual(output.read_bytes(), original)
+
+    def test_public_conversation_renderer_owns_distinct_voice_processes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "conversation.wav"
+            commands = []
+
+            def render_side_effect(_, __, ___, command, **____):
+                commands.append(command)
+                segment = Path(command[command.index("-o") + 1])
+                with wave.open(str(segment), "wb") as writer:
+                    writer.setnchannels(1)
+                    writer.setsampwidth(2)
+                    writer.setframerate(16_000)
+                    writer.writeframes(b"\0\1" * 16_000)
+
+            with mock.patch.object(
+                candidate,
+                "exact_checkout",
+                return_value=self.commit,
+            ), mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=render_side_effect,
+            ), mock.patch.object(
+                candidate,
+                "validate_public_model_fixture",
+            ):
+                candidate.render_public_conversation(
+                    ROOT,
+                    self.commit,
+                    self.contract["modelFixture"],
+                    output,
+                    environment={},
+                )
+
+            self.assertEqual(
+                tuple(command[command.index("-v") + 1] for command in commands),
+                candidate.EXPECTED_CONVERSATION_SEQUENCE,
+            )
+            self.assertTrue(
+                all("--data-format=LEI16@16000" in command for command in commands)
+            )
+            self.assertTrue(
+                all(
+                    "[[" not in command[-1] and "]]" not in command[-1]
+                    for command in commands
+                )
+            )
+            self.assertTrue(output.is_file())
+            self.assertEqual(os.stat(output).st_mode & 0o777, 0o600)
+            self.assertFalse(any(output.parent.glob(".*-turn-*.wav")))
 
     def test_profile_detection_is_exact_and_rejects_contract_gaps(self):
         self.assertEqual(
@@ -465,6 +624,9 @@ class CandidateAutomationTests(unittest.TestCase):
                 "run_command",
             ) as commands, mock.patch.object(
                 candidate,
+                "render_public_conversation",
+            ) as conversation, mock.patch.object(
+                candidate,
                 "run_swift_test_classes",
             ) as swift_classes, mock.patch.object(
                 candidate,
@@ -495,7 +657,8 @@ class CandidateAutomationTests(unittest.TestCase):
             receipt = json.loads(receipt_path.read_text())
             self.assertEqual(receipt["release"]["commit"], self.commit)
             self.assertEqual(len(receipt["proofs"]), 8)
-            self.assertEqual(commands.call_count, 8)
+            self.assertEqual(commands.call_count, 7)
+            conversation.assert_called_once()
             self.assertEqual(swift_classes.call_count, 2)
             self.assertEqual(model_fixture.call_count, 2)
             command_by_label = {
@@ -525,7 +688,7 @@ class CandidateAutomationTests(unittest.TestCase):
             self.assertEqual(model_environment["PORTAVOZ_MODEL_TESTS"], "1")
             self.assertIn("public-model-lane.aiff", model_environment["PORTAVOZ_TEST_WAV"])
             self.assertIn(
-                "public-diarization-lane.aiff",
+                "public-diarization-lane.wav",
                 model_environment["PORTAVOZ_TEST_CONVERSATION_WAV"],
             )
             deterministic.assert_called_once()
@@ -540,11 +703,12 @@ class CandidateAutomationTests(unittest.TestCase):
             output = Path(directory) / "candidate"
 
             def command_side_effect(_, __, label, command, **___):
-                if label.startswith("Public synthetic spoken") or label.startswith(
-                    "Public bilingual two-voice"
-                ):
+                if label.startswith("Public synthetic spoken"):
                     target = Path(command[command.index("-o") + 1])
                     target.write_bytes(b"public synthetic audio")
+
+            def conversation_side_effect(_, __, ___, target, **____):
+                target.write_bytes(b"public synthetic conversation")
 
             with mock.patch.object(
                 candidate,
@@ -558,6 +722,10 @@ class CandidateAutomationTests(unittest.TestCase):
                 candidate,
                 "run_command",
                 side_effect=command_side_effect,
+            ), mock.patch.object(
+                candidate,
+                "render_public_conversation",
+                side_effect=conversation_side_effect,
             ), mock.patch.object(
                 candidate,
                 "validate_public_model_fixture",
@@ -579,7 +747,7 @@ class CandidateAutomationTests(unittest.TestCase):
                 )
 
             self.assertFalse((output / "public-model-lane.aiff").exists())
-            self.assertFalse((output / "public-diarization-lane.aiff").exists())
+            self.assertFalse((output / "public-diarization-lane.wav").exists())
             self.assertFalse((output / "qualification.json").exists())
 
     def test_invalid_release_identity_fails_before_creating_output(self):

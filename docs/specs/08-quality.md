@@ -2386,7 +2386,7 @@ gate always runs them. An architecture ratchet pins the schema, 29 proofs,
 eight classes, fail-closed predicate, exact artifact stamp, distribution
 receipt ordering, D147, and D391.
 
-**Candidate automation owner (D392).**
+**Candidate automation owner (D392/D393).**
 `docs/evidence/candidate-automation.json` is the finite executable contract for
 the eight candidate proofs. `scripts/candidate_automation.py` runs every gate
 sequentially on one completely clean full commit and rechecks the source before
@@ -2399,17 +2399,22 @@ recorder; only the successful in-process sequence writes the schema-1
 `candidate-automation` qualification receipt with mode 0600.
 
 The model lane renders
-`Fixtures/CandidateAutomation/public-model-lane-en-v1.txt` and the alternating
-Samantha/Paulina
-`Fixtures/CandidateAutomation/public-diarization-en-es-v1.txt` into scratch
-AIFF files, then checks with `afinfo` that each process produced bounded mono
-PCM frames rather than trusting `say`'s exit status or a file header. It sets
-the real-model opt-in and both fixture paths explicitly, withholds captured
-model logs, and deletes both files in a `finally` boundary. Diarization tests
-verify installed files and cannot download during this lane. Inherited private
-ASR, real-UI-audio, and waveform paths are removed; resource collection forces
-ad-hoc scratch signing. This is autonomous public-fixture evidence, not a read
-of the user's library, network, or distribution identity.
+`Fixtures/CandidateAutomation/public-model-lane-en-v1.txt` as one Samantha
+scratch AIFF. It separately renders the four long alternating Daniel/Paulina
+turns in
+`Fixtures/CandidateAutomation/public-diarization-en-es-v1.txt` through four
+explicit `say -v` processes, validates every segment, and deterministically
+joins mono 16 kHz Int16 PCM with three exact 700 ms silence intervals into one
+owner-only scratch WAV. Embedded voice markup is never trusted as audio
+identity. `afinfo` must prove bounded PCM frames and at least 60 seconds in the
+joined conversation rather than merely trusting `say`'s exit status or a file
+header. The lane sets the real-model opt-in and both fixture paths explicitly,
+withholds captured model logs, and deletes the final audio plus every segment
+in `finally` boundaries. Diarization tests verify installed files and cannot
+download during this lane. Inherited private ASR, real-UI-audio, and waveform
+paths are removed; resource collection forces ad-hoc scratch signing. This is
+autonomous public-fixture evidence, not a read of the user's library, network,
+or distribution identity.
 
 Specialized validation is fail closed. The performance ledger must be
 authoritative, contain its exact 25-metric inventory, measure all twelve
@@ -2424,12 +2429,14 @@ zero budget violations, only passed cases, EN and ES, selector count zero, and
 one shared build duration. Runtime UI receipts are now published atomically as
 owner-only files so interruption cannot leave a partially accepted JSON file.
 
-Twenty-one adversarial tooling cases cover contract/order drift, content-bearing
+Twenty-four adversarial tooling cases cover contract/order drift, content-bearing
 or duplicate keys, incomplete performance partitions, non-authoritative and
 regressed ledgers, silent omissions, resource identity/sample/Ask failures,
 stale long-capture commits, incomplete or over-budget bilingual UI receipts,
 profile gaps, non-empty bounded public speech audio, scratch-audio cleanup,
-XCTest discovery, owner-only output, process-umask restoration, and the rule
+long distinct alternating conversation turns, exact private PCM joining,
+explicit per-turn voice processes, XCTest discovery, owner-only output,
+process-umask restoration, and the rule
 that a failed gate cannot emit qualification.
 The repository-hygiene suite runs them, and an
 architecture ratchet pins D392, the exact eight proofs, 12/13 performance
@@ -2451,6 +2458,32 @@ build observation, a passing runtime budget, and mode-0600 atomic receipt in a
 mode-0700 directory. No production UI changed, so this scoped harness proof
 does not replace the complete bilingual candidate gate and did not require a
 Dev-app reinstall.
+
+The first clean candidate after the package-inventory ratchet repair, source
+`97e0339792ea27fce19f50920b4558b6fc2766d8`, completed deterministic and
+public-Apuntador validation but stopped at the first installed-model class.
+Both real `DiarizationIntegrationTests` executed with zero skips and failed
+because the former Samantha/Paulina fixture produced only `S1` in batch and
+live paths; no `qualification.json` was written. A controlled reproduction
+showed that longer separately rendered Samantha/Paulina audio still formed one
+cluster, while explicit Daniel/Paulina PCM passed both paths. This is retained
+as candidate-discovered red evidence rather than hidden by an unchanged retry.
+
+D393 preflight then rendered the tracked four-turn fixture through the new
+owner into a 101.420-second, mono 16 kHz Int16 WAV with mode 0600. The installed
+model passed both batch and live integration cases 2/2 in 0.945 seconds. All 24
+focused candidate tooling cases passed, followed by all 542 tooling cases in
+24.107 seconds outside the filesystem sandbox; the sandboxed run's only six
+errors were denied loopback binds. The full package passed 2,748 cases with 15
+explicit environment/model skips and zero failures in 133.806 seconds. The
+current-SDK warnings-as-errors build passed in 21.54 seconds, strict SwiftLint
+remained clean across 731 files, repository hygiene passed, and the focused
+architecture ratchet passed 1/1. Mandatory minimum-safe real-app XCUITest
+passed the Settings navigation journey 1/1 in English in 16.619 seconds with a
+7-second build observation, a passing budget, and a mode-0600 atomic receipt
+inside its mode-0700 directory. No production UI changed, so this scoped proof
+does not replace the candidate's complete bilingual gate and no Dev-app
+reinstall was required.
 
 The 11 Aug 2026 development inventory is 2,377 XCTest package cases (14
 environment-gated), zero strict-lint violations across 656 production Swift

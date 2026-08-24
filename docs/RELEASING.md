@@ -76,7 +76,7 @@ state; do not hand-author or copy one from a neighboring commit. Pass each
 receipt explicitly to the evaluator only after its owning gate or field
 workflow has produced it.
 
-### Candidate-automation receipt (D392)
+### Candidate-automation receipt (D392/D393)
 
 Run this only from the clean commit intended to become the candidate. It is a
 long sequential gate by design: benchmark, model, resource, and UI processes
@@ -94,11 +94,14 @@ deterministic receipt and specialized content-free artifacts. It contains
 `qualification.json` only if all eight gates pass against the same full Git
 commit. Do not copy that file to a new commit or edit it by hand.
 
-The installed-model lane generates its own short spoken fixture plus an
-alternating Samantha/Paulina EN/ES conversation from tracked public text. It
-validates real audio frames, uses already installed assets without downloading,
-withholds raw model output, and removes both scratch files afterward. Exported
-private `PORTAVOZ_TEST_WAV`, conversation, real-UI-audio, waveform, or signing
+The installed-model lane generates its own short spoken fixture plus four long
+alternating Daniel/Paulina EN/ES turns from tracked public text. Each turn uses
+an explicit voice process; the runner never treats embedded voice markup as
+audio identity. It validates every mono PCM segment, joins them with exact
+700 ms gaps into an owner-only 16 kHz WAV of at least 60 seconds, uses already
+installed assets without downloading, withholds raw model output, and removes
+all final and intermediate scratch audio afterward. Exported private
+`PORTAVOZ_TEST_WAV`, conversation, real-UI-audio, waveform, or signing
 variables are deliberately not inherited into candidate proof; routine
 qualification never needs one of your meetings.
 

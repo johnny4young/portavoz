@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import sys
+import wave
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,6 +56,12 @@ EXPECTED_RESOURCE_SCENARIOS = (
     "summary",
 )
 EXPECTED_UI_LOCALES = ("en", "es")
+EXPECTED_CONVERSATION_VOICES = ("Daniel", "Paulina")
+EXPECTED_CONVERSATION_SEQUENCE = ("Daniel", "Paulina", "Daniel", "Paulina")
+EXPECTED_CONVERSATION_SILENCE_MILLISECONDS = 700
+MINIMUM_CONVERSATION_TURN_WORDS = 50
+MAXIMUM_CONVERSATION_TURN_WORDS = 90
+MINIMUM_CONVERSATION_DURATION_SECONDS = 60
 EXPECTED_CONTRACT_PATHS = {
     "modelFixture": "Fixtures/CandidateAutomation/public-model-lane-en-v1.txt",
     "modelConversation": (
@@ -121,6 +128,48 @@ def finite_nonnegative(value: Any, label: str) -> float:
     if not math.isfinite(number) or number < 0:
         raise CandidateAutomationError(f"{label} must be finite and non-negative")
     return number
+
+
+def parse_public_conversation(text: str) -> tuple[tuple[str, str], ...]:
+    if not 160 <= len(text) <= 3_000:
+        raise CandidateAutomationError(
+            "candidate conversation fixture must be bounded"
+        )
+    pattern = re.compile(
+        r"\A\s*\[\[voice Daniel\]\]\s*(.*?)\s*"
+        r"\[\[slnc 700\]\]\s*"
+        r"\[\[voice Paulina\]\]\s*(.*?)\s*"
+        r"\[\[slnc 700\]\]\s*"
+        r"\[\[voice Daniel\]\]\s*(.*?)\s*"
+        r"\[\[slnc 700\]\]\s*"
+        r"\[\[voice Paulina\]\]\s*(.*?)\s*\Z",
+        re.DOTALL,
+    )
+    match = pattern.fullmatch(text)
+    if match is None:
+        raise CandidateAutomationError(
+            "candidate conversation fixture must have four bounded, "
+            "long, alternating Daniel/Paulina turns"
+        )
+    turns = tuple(
+        (voice, match.group(index + 1).strip())
+        for index, voice in enumerate(EXPECTED_CONVERSATION_SEQUENCE)
+    )
+    word_counts = tuple(len(turn.split()) for _, turn in turns)
+    if (
+        any("[[" in turn or "]]" in turn for _, turn in turns)
+        or any(
+            not MINIMUM_CONVERSATION_TURN_WORDS
+            <= count
+            <= MAXIMUM_CONVERSATION_TURN_WORDS
+            for count in word_counts
+        )
+    ):
+        raise CandidateAutomationError(
+            "candidate conversation fixture must have four bounded, "
+            "long, alternating Daniel/Paulina turns"
+        )
+    return turns
 
 
 def load_json(path: Path, label: str, maximum_bytes: int = 2 * 1024 * 1024) -> Any:
@@ -211,7 +260,7 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
     if string_list(
         model_fixture["conversationVoices"],
         "candidate contract.modelFixture.conversationVoices",
-    ) != ("Paulina", "Samantha"):
+    ) != EXPECTED_CONVERSATION_VOICES:
         raise CandidateAutomationError(
             "candidate contract.modelFixture.conversationVoices drifted"
         )
@@ -224,25 +273,7 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         raise CandidateAutomationError(
             "candidate spoken fixture text is empty, unbounded, or directive-bearing"
         )
-    voice_sequence = re.findall(
-        r"\[\[voice (Samantha|Paulina)\]\]", conversation_text
-    )
-    silence_sequence = re.findall(r"\[\[slnc ([0-9]+)\]\]", conversation_text)
-    stripped_directives = re.sub(
-        r"\[\[(?:voice (?:Samantha|Paulina)|slnc [0-9]+)\]\]",
-        "",
-        conversation_text,
-    )
-    if (
-        not 160 <= len(conversation_text) <= 3_000
-        or voice_sequence != ["Samantha", "Paulina", "Samantha", "Paulina"]
-        or silence_sequence != ["700", "700", "700"]
-        or "[[" in stripped_directives
-        or "]]" in stripped_directives
-    ):
-        raise CandidateAutomationError(
-            "candidate conversation fixture must have four bounded alternating turns"
-        )
+    conversation_turns = parse_public_conversation(conversation_text)
     if model_fixture["systemVoice"] != "Samantha":
         raise CandidateAutomationError(
             "candidate contract.modelFixture.systemVoice must be Samantha"
@@ -412,7 +443,11 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         "modelFixture": {
             "textPath": model_fixture_path,
             "conversationTextPath": conversation_fixture_path,
-            "conversationVoices": ("Paulina", "Samantha"),
+            "conversationVoices": EXPECTED_CONVERSATION_VOICES,
+            "conversationTurns": conversation_turns,
+            "conversationSilenceMilliseconds": (
+                EXPECTED_CONVERSATION_SILENCE_MILLISECONDS
+            ),
             "systemVoice": "Samantha",
             "rateWordsPerMinute": fixture_rate,
         },
@@ -1006,7 +1041,22 @@ def run_swift_test_classes(
         exact_checkout(root, expected_commit)
 
 
-def validate_public_model_fixture(path: Path) -> None:
+def validate_public_model_fixture(
+    path: Path,
+    *,
+    minimum_duration_seconds: float = 1,
+    maximum_duration_seconds: float = 600,
+) -> None:
+    if (
+        not math.isfinite(minimum_duration_seconds)
+        or not math.isfinite(maximum_duration_seconds)
+        or minimum_duration_seconds <= 0
+        or maximum_duration_seconds < minimum_duration_seconds
+        or maximum_duration_seconds > 600
+    ):
+        raise CandidateAutomationError(
+            "public model audio fixture duration bounds are invalid"
+        )
     if not path.is_file():
         raise CandidateAutomationError("public model audio fixture was not produced")
     size = path.stat().st_size
@@ -1046,11 +1096,158 @@ def validate_public_model_fixture(path: Path) -> None:
         or sample_rate < 10
         or audio_bytes <= 4_096
         or not math.isfinite(duration)
-        or not 1 <= duration <= 600
+        or not minimum_duration_seconds
+        <= duration
+        <= maximum_duration_seconds
     ):
         raise CandidateAutomationError(
             "public model audio fixture has empty or unbounded PCM metadata"
         )
+
+
+def concatenate_public_wave_segments(
+    segment_paths: Sequence[Path],
+    output_path: Path,
+    *,
+    silence_milliseconds: int,
+) -> None:
+    if len(segment_paths) != len(EXPECTED_CONVERSATION_SEQUENCE):
+        raise CandidateAutomationError(
+            "public conversation requires exactly four rendered segments"
+        )
+    if silence_milliseconds != EXPECTED_CONVERSATION_SILENCE_MILLISECONDS:
+        raise CandidateAutomationError(
+            "public conversation silence duration drifted"
+        )
+    if output_path.exists():
+        raise CandidateAutomationError(
+            "public conversation output already exists"
+        )
+
+    expected_shape = (1, 2, 16_000, "NONE")
+    chunks: list[bytes] = []
+    try:
+        for path in segment_paths:
+            if (
+                not path.is_file()
+                or not 4_096 < path.stat().st_size <= 16 * 1024 * 1024
+            ):
+                raise CandidateAutomationError(
+                    "public conversation segment is empty or outside its size bound"
+                )
+            with wave.open(str(path), "rb") as reader:
+                shape = (
+                    reader.getnchannels(),
+                    reader.getsampwidth(),
+                    reader.getframerate(),
+                    reader.getcomptype(),
+                )
+                if shape != expected_shape:
+                    raise CandidateAutomationError(
+                        "public conversation segment is not mono 16 kHz Int16 PCM"
+                    )
+                frame_count = reader.getnframes()
+                if not 16_000 <= frame_count <= 16_000 * 180:
+                    raise CandidateAutomationError(
+                        "public conversation segment duration is outside its bound"
+                    )
+                chunk = reader.readframes(frame_count)
+                if len(chunk) != frame_count * expected_shape[1]:
+                    raise CandidateAutomationError(
+                        "public conversation segment PCM is truncated"
+                    )
+                chunks.append(chunk)
+    except (OSError, wave.Error) as error:
+        raise CandidateAutomationError(
+            "public conversation segment is unreadable"
+        ) from error
+
+    temporary = output_path.with_name(f".{output_path.name}.tmp")
+    silence_frames = round(
+        expected_shape[2] * silence_milliseconds / 1_000
+    )
+    silence = b"\0" * (silence_frames * expected_shape[1])
+    try:
+        descriptor = os.open(
+            temporary,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+        with os.fdopen(descriptor, "wb") as raw_output:
+            with wave.open(raw_output, "wb") as writer:
+                writer.setnchannels(expected_shape[0])
+                writer.setsampwidth(expected_shape[1])
+                writer.setframerate(expected_shape[2])
+                writer.setcomptype(expected_shape[3], "not compressed")
+                for index, chunk in enumerate(chunks):
+                    if index:
+                        writer.writeframesraw(silence)
+                    writer.writeframesraw(chunk)
+            raw_output.flush()
+            os.fsync(raw_output.fileno())
+        os.replace(temporary, output_path)
+        os.chmod(output_path, 0o600)
+    except (OSError, wave.Error) as error:
+        temporary.unlink(missing_ok=True)
+        output_path.unlink(missing_ok=True)
+        raise CandidateAutomationError(
+            "public conversation fixture could not be published"
+        ) from error
+
+
+def render_public_conversation(
+    root: Path,
+    expected_commit: str,
+    fixture: dict[str, Any],
+    output_path: Path,
+    *,
+    environment: dict[str, str | None],
+) -> None:
+    turns = fixture["conversationTurns"]
+    if tuple(voice for voice, _ in turns) != EXPECTED_CONVERSATION_SEQUENCE:
+        raise CandidateAutomationError("public conversation turn sequence drifted")
+    segments = tuple(
+        output_path.with_name(f".{output_path.stem}-turn-{index}.wav")
+        for index in range(len(turns))
+    )
+    if output_path.exists() or any(segment.exists() for segment in segments):
+        raise CandidateAutomationError(
+            "public conversation scratch paths must start empty"
+        )
+    try:
+        for index, ((voice, text), segment) in enumerate(zip(turns, segments)):
+            run_command(
+                root,
+                expected_commit,
+                f"Public bilingual model fixture turn {index + 1}",
+                [
+                    "say",
+                    "-v",
+                    voice,
+                    "-r",
+                    str(fixture["rateWordsPerMinute"]),
+                    "-o",
+                    str(segment),
+                    "--file-format=WAVE",
+                    "--data-format=LEI16@16000",
+                    text,
+                ],
+                environment=environment,
+            )
+            validate_public_model_fixture(
+                segment,
+                minimum_duration_seconds=10,
+                maximum_duration_seconds=180,
+            )
+        concatenate_public_wave_segments(
+            segments,
+            output_path,
+            silence_milliseconds=fixture["conversationSilenceMilliseconds"],
+        )
+        exact_checkout(root, expected_commit)
+    finally:
+        for segment in segments:
+            segment.unlink(missing_ok=True)
 
 
 def candidate_receipt(
@@ -1139,7 +1336,7 @@ def _run_candidate(
     long_capture = output / "long-capture.json"
     ui_root = output / "ui"
     model_audio = output / "public-model-lane.aiff"
-    model_conversation = output / "public-diarization-lane.aiff"
+    model_conversation = output / "public-diarization-lane.wav"
 
     private_fixture_environment: dict[str, str | None] = {
         "PORTAVOZ_MODEL_TESTS": None,
@@ -1191,24 +1388,17 @@ def _run_candidate(
             environment=private_fixture_environment,
         )
         validate_public_model_fixture(model_audio)
-        run_command(
+        render_public_conversation(
             root,
             commit,
-            "Public bilingual two-voice model fixture",
-            [
-                "say",
-                "-v",
-                fixture["systemVoice"],
-                "-r",
-                str(fixture["rateWordsPerMinute"]),
-                "-o",
-                str(model_conversation),
-                "-f",
-                str(fixture["conversationTextPath"]),
-            ],
+            fixture,
+            model_conversation,
             environment=private_fixture_environment,
         )
-        validate_public_model_fixture(model_conversation)
+        validate_public_model_fixture(
+            model_conversation,
+            minimum_duration_seconds=MINIMUM_CONVERSATION_DURATION_SECONDS,
+        )
         run_swift_test_classes(
             root,
             commit,

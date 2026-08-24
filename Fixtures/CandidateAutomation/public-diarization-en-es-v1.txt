@@ -1,7 +1,7 @@
-[[voice Samantha]] Welcome to the public qualification. I will review the release plan and the latency budget.
+[[voice Daniel]] Welcome to the public qualification review. Today I will examine the release plan, the latency budget, cancellation behavior, offline recovery, and the exact source commit. Every observation in this synthetic meeting is safe to publish. We will not use private recordings, personal accounts, or external actions. I will speak clearly for long enough to establish a stable reference voice.
 [[slnc 700]]
-[[voice Paulina]] Gracias. Yo voy a revisar las citas, la memoria y la recuperación antes de mañana.
+[[voice Paulina]] Gracias por abrir la revisión pública. Yo voy a comprobar las citas, la frescura de las fuentes, la memoria local, la recuperación después de un cierre y el comportamiento sin conexión. Este diálogo es completamente sintético y no contiene reuniones privadas, nombres reales ni datos de cuentas. Hablaré con claridad para conservar una referencia estable de mi voz.
 [[slnc 700]]
-[[voice Samantha]] The final check must use only synthetic evidence and keep every source explicit.
+[[voice Daniel]] My second review covers deterministic search, source provenance, slow network behavior, provider failure, partial responses, relaunch safety, and memory limits. The candidate must stop when any required proof is missing, and it must never turn a failed lane into a green receipt. This longer public turn gives the installed diarization model enough clean speech for a meaningful cluster.
 [[slnc 700]]
-[[voice Paulina]] De acuerdo. La prueba no usa reuniones privadas y no publica ninguna acción externa.
+[[voice Paulina]] Mi segunda revisión cubre entrevistas, notas, evidencia bilingüe, pruebas de interfaz, rendimiento, consumo de memoria y compatibilidad futura. El candidato debe conservar cada fuente explícita, cancelar resultados tardíos y bloquear la salida cuando falte una prueba obligatoria. Este turno público más largo ofrece al modelo instalado suficiente voz limpia para formar un grupo estable y diferente.

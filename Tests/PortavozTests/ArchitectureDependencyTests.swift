@@ -9837,6 +9837,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             modelFixture["text"] as? String,
             "Fixtures/CandidateAutomation/public-model-lane-en-v1.txt")
         XCTAssertEqual(modelFixture["systemVoice"] as? String, "Samantha")
+        XCTAssertEqual(
+            modelFixture["conversationText"] as? String,
+            "Fixtures/CandidateAutomation/public-diarization-en-es-v1.txt")
+        XCTAssertEqual(
+            modelFixture["conversationVoices"] as? [String],
+            ["Daniel", "Paulina"])
 
         let runner = try Self.contents(of: "scripts/candidate_automation.py")
         let makefile = try Self.contents(of: "Makefile")
@@ -9859,6 +9865,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "validate_long_capture",
             "validate_ui_receipts",
             "validate_public_model_fixture",
+            "render_public_conversation",
+            "EXPECTED_CONVERSATION_SEQUENCE",
+            "--data-format=LEI16@16000",
+            "MINIMUM_CONVERSATION_DURATION_SECONDS",
             "PORTAVOZ_MODEL_TESTS\": \"1",
             "PORTAVOZ_PERF_WAVEFORM_MIC\": None",
             "PORTAVOZ_SIGN_IDENTITY\": \"-",
@@ -9881,6 +9891,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_candidate_automation"))
         XCTAssertTrue(decisions.contains("## D392"))
+        XCTAssertTrue(decisions.contains("## D393"))
     }
 
     func testRealModelGateReservesContextAndNeverEchoesTranscriptContent() throws {

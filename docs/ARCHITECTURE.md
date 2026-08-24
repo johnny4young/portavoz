@@ -4291,16 +4291,19 @@ owner-only `candidate-automation` qualification receipt; there is no CLI for
 caller-supplied proof state.
 
 The installed-model lane synthesizes one bounded spoken fixture from tracked
-public English text plus one alternating Samantha/Paulina EN/ES conversation,
-verifies actual mono audio frames and duration through `afinfo`, enables
-real-model tests explicitly, and deletes both scratch files after that lane
-even on failure. Diarization integration verifies already installed model
-files and skips rather than downloading; an all-skipped class blocks candidate
-qualification. The runner removes inherited private ASR/UI/waveform fixture
-paths from other subprocesses and forces the resource app to use ad-hoc scratch
-signing. A candidate run therefore does not silently consume a user's
-recording, performance inputs, signing identity, or network merely because
-they were exported or reachable in the parent shell.
+public English text. Its bilingual conversation is not one `say` process with
+embedded voice markup: four long tracked turns are rendered by explicit
+alternating Daniel/Paulina processes, each bounded segment is verified, and an
+owner-only atomic join produces mono 16 kHz Int16 PCM with exact 700 ms gaps.
+`afinfo` verifies actual frames and a minimum 60-second conversation before
+real-model tests are enabled. The runner deletes both final scratch fixtures
+and every intermediate segment even on failure. Diarization integration
+verifies already installed model files and skips rather than downloading; an
+all-skipped class blocks candidate qualification. The runner removes inherited
+private ASR/UI/waveform fixture paths from other subprocesses and forces the
+resource app to use ad-hoc scratch signing. A candidate run therefore does not
+silently consume a user's recording, performance inputs, signing identity, or
+network merely because they were exported or reachable in the parent shell.
 
 The performance proof is deliberately named candidate automation rather than
 universal performance certification. Twelve scale/semantic/Spotlight metrics

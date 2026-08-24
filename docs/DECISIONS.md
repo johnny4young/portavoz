@@ -14575,3 +14575,37 @@ real-field behavior remain separate gates and cannot be inferred from D392.
 The runner reads no private meeting and uses only existing public/synthetic
 fixtures or content-free receipts; model integration may use already installed
 assets but never emits transcript output.
+
+## D393 — Render candidate diarization voices as distinct PCM sources (Aug 2026)
+
+**Context:** the first candidate to reach D392's installed-model gate rendered
+the tracked bilingual conversation through one `say` process containing voice
+markup. Both batch and live real-model diarization tests observed only `S1` and
+the runner correctly emitted no qualification receipt. Lengthening that one
+conversation did not help. Even separately rendered Samantha and Paulina turns
+remained one cluster on the installed model, so accepting file duration or
+markup shape would have certified neither two audio voices nor the production
+diarization path. A separately rendered Daniel/Paulina fixture passed both
+paths without private meeting audio.
+
+**Decision:** retain one tracked four-turn bilingual conversation, but require
+the exact alternating sequence Daniel/Paulina/Daniel/Paulina and 50–90 words
+per turn. The candidate runner invokes one explicit local `say -v` process per
+turn, requests mono 16 kHz Int16 WAV, validates every bounded segment, and
+atomically joins them with three exact 700 ms PCM silence intervals. The joined
+owner-only file must contain at least 60 seconds of valid audio before the
+installed-model classes receive it. Embedded voice markup is only a tracked
+turn delimiter; it is never submitted to the speech process or treated as
+proof of audio identity. Every intermediate and final scratch file remains
+inside the candidate output and is deleted on success or failure.
+
+**Consequences:** autonomous qualification now exercises two voices the
+installed diarization model demonstrably separates, while keeping the corpus
+public, bilingual, bounded, offline, and repeatable. Tooling tests pin the
+voice sequence, minimum turn content, exact PCM join, private mode, explicit
+voice commands, and cleanup. A missing system voice, malformed audio, one-
+speaker result, missing installed model, or later model regression remains a
+candidate failure; the runner neither downloads a replacement nor weakens the
+two-speaker assertion. This current-host synthetic pass still does not certify
+real-meeting DER, physical Sequoia/Tahoe, accessibility, distribution,
+CloudKit, or field behavior.
