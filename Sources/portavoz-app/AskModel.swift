@@ -125,6 +125,10 @@ final class AskModel {
             submitWeb(question)
             return
         }
+        if state.sourceMode == .notes {
+            submitNotes(question)
+            return
+        }
         guard let source = resolvedSource(),
               let exchangeSource = exchangeSource(for: source)
         else { return }
@@ -240,6 +244,25 @@ final class AskModel {
     }
 
     private func publish(
+        _ update: AskNoteEvidenceUpdate,
+        generation requestGeneration: Int
+    ) {
+        guard !Task.isCancelled,
+              generation == requestGeneration,
+              state.isAsking
+        else { return }
+        state.pendingNoteCitations = update.citations
+        switch update.phase {
+        case .lexical:
+            state.pendingPhase = update.citations.isEmpty
+                ? .findingEvidence
+                : .refiningEvidence
+        case .fused:
+            state.pendingPhase = .generatingAnswer
+        }
+    }
+
+    private func publish(
         _ update: AskAnswerUpdate,
         generation requestGeneration: Int
     ) {
@@ -255,6 +278,7 @@ final class AskModel {
         state.isAsking = false
         state.pendingQuestion = nil
         state.pendingCitations = []
+        state.pendingNoteCitations = []
         state.pendingWebCitations = []
         state.pendingWebSourceFailures = []
         state.pendingAnswerText = nil
@@ -304,6 +328,8 @@ final class AskModel {
             .library
         case .meeting:
             state.selectedSourceMeetingID.map(AskSourceScope.meeting)
+        case .notes:
+            .notes
         case .web:
             .web
         }
@@ -319,10 +345,16 @@ final class AskModel {
             state.sourceMeetings.first(where: { $0.id == meetingID }).map {
                 .meeting(id: $0.id, title: $0.title)
             }
+        case .notes:
+            .notes
         case .web:
             resolvedWebSourceURL()?.host.map { .web(host: $0) }
         }
     }
+
+}
+
+extension AskModel {
 
     private func submitWeb(_ question: String) {
         guard state.webConsentApproved,
@@ -379,6 +411,47 @@ final class AskModel {
         }
     }
 
+    private func submitNotes(_ question: String) {
+        let requestGeneration = beginRequest(
+            question: question,
+            source: .notes)
+        let client = client
+        answerTask = Task { [weak self, client] in
+            let exchange: Exchange
+            do {
+                let result = try await client.answerAskNotes(
+                    question,
+                    limit: 6,
+                    onEvidence: { [weak self] update in
+                        await self?.publish(
+                            update,
+                            generation: requestGeneration)
+                    })
+                guard !Task.isCancelled else { return }
+                exchange = Exchange(
+                    question: question,
+                    answer: AskAnswerPresentation.text(for: result),
+                    citations: [],
+                    noteCitations: result.citations,
+                    generationOutcome: result.generationOutcome,
+                    source: .notes)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                exchange = Exchange(
+                    question: question,
+                    answer: L10n.format(
+                        "Search failed: %@",
+                        error.localizedDescription),
+                    citations: [],
+                    generationOutcome: .failed,
+                    source: .notes)
+            }
+            self?.complete(exchange, generation: requestGeneration)
+        }
+    }
+
     private func beginRequest(
         question: String,
         source: ExchangeSource
@@ -389,6 +462,7 @@ final class AskModel {
         state.isAsking = true
         state.pendingQuestion = question
         state.pendingCitations = []
+        state.pendingNoteCitations = []
         state.pendingWebCitations = []
         state.pendingWebSourceFailures = []
         state.pendingAnswerText = nil

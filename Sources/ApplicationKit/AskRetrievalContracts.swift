@@ -83,17 +83,19 @@ public struct AskMeetingAnswer: Equatable, Sendable {
 }
 
 /// One explicit source authority for a manual Ask request. `meeting` is an
-/// exact aggregate identity, `library` is the complete local meeting corpus,
-/// and `web` remains a separate authority that local meeting retrieval must
-/// reject until a consented web adapter is installed.
+/// exact aggregate identity, `library` is the complete local transcript
+/// corpus, `notes` is the separately typed raw user-note corpus, and `web`
+/// remains a separate authority that local meeting retrieval must reject.
 public enum AskSourceScope: Equatable, Sendable {
     case library
     case meeting(MeetingID)
+    case notes
     case web
 }
 
 public enum AskSourcePolicyError: Error, Equatable, LocalizedError {
     case webUnavailable
+    case notesRequireTypedAdapter
     case meetingScopeUnavailable
     case graphFactsRequireLibrary
     case sourceEvidenceMismatch
@@ -102,6 +104,8 @@ public enum AskSourcePolicyError: Error, Equatable, LocalizedError {
         switch self {
         case .webUnavailable:
             "Web answers are not available. No other source was searched."
+        case .notesRequireTypedAdapter:
+            "Notes require the typed local-notes adapter. No transcript was searched."
         case .meetingScopeUnavailable:
             "This Ask adapter cannot search one meeting without widening scope."
         case .graphFactsRequireLibrary:
@@ -158,10 +162,15 @@ public extension AskMeetingRetrieving {
         limit: Int,
         trace: AskPipelineTrace
     ) async throws -> [AskSearchResult] {
-        guard source == .library else {
-            throw source == .web
-                ? AskSourcePolicyError.webUnavailable
-                : AskSourcePolicyError.meetingScopeUnavailable
+        switch source {
+        case .library:
+            break
+        case .notes:
+            throw AskSourcePolicyError.notesRequireTypedAdapter
+        case .web:
+            throw AskSourcePolicyError.webUnavailable
+        case .meeting:
+            throw AskSourcePolicyError.meetingScopeUnavailable
         }
         return try await search(query: query, limit: limit, trace: trace)
     }
@@ -173,10 +182,15 @@ public extension AskMeetingRetrieving {
         trace: AskPipelineTrace,
         onEvidence: @escaping AskEvidenceReceiver
     ) async throws -> [AskCitation] {
-        guard source == .library else {
-            throw source == .web
-                ? AskSourcePolicyError.webUnavailable
-                : AskSourcePolicyError.meetingScopeUnavailable
+        switch source {
+        case .library:
+            break
+        case .notes:
+            throw AskSourcePolicyError.notesRequireTypedAdapter
+        case .web:
+            throw AskSourcePolicyError.webUnavailable
+        case .meeting:
+            throw AskSourcePolicyError.meetingScopeUnavailable
         }
         return try await retrieve(
             question: question,

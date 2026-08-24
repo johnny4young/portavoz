@@ -30,6 +30,11 @@ protocol AskModelClient: AnyObject {
         onAnswer: @escaping AskAnswerReceiver
     ) async throws -> AskMeetingAnswer
     func loadAskSourceMeetings(limit: Int) async throws -> [AskSourceMeetingOption]
+    func answerAskNotes(
+        _ question: String,
+        limit: Int,
+        onEvidence: @escaping AskNoteEvidenceReceiver
+    ) async throws -> AskNoteAnswer
     func answerAskWeb(
         _ request: AskWebRequest,
         onEvidence: @escaping AskWebEvidenceReceiver,
@@ -38,6 +43,18 @@ protocol AskModelClient: AnyObject {
 }
 
 extension AskModelClient {
+    func answerAskNotes(
+        _ question: String,
+        limit _: Int,
+        onEvidence _: @escaping AskNoteEvidenceReceiver
+    ) async throws -> AskNoteAnswer {
+        AskNoteAnswer(
+            question: question,
+            generatedText: nil,
+            citations: [],
+            generationOutcome: .unavailable)
+    }
+
     func loadAskSourceMeetings(limit _: Int) async throws -> [AskSourceMeetingOption] {
         []
     }

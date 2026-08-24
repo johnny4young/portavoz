@@ -15390,6 +15390,86 @@
           }
         }
       }
+    },
+    "Notes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notas"
+          }
+        }
+      }
+    },
+    "Evidence from your notes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidencia de tus notas"
+          }
+        }
+      }
+    },
+    "Your note sources": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuentes de tus notas"
+          }
+        }
+      }
+    },
+    "Only your explicit local notes will be searched. AI-enhanced notes are excluded.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo se buscarán tus notas locales explícitas. Las notas mejoradas por IA están excluidas."
+          }
+        }
+      }
+    },
+    "Source: Notes": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente: Notas"
+          }
+        }
+      }
+    },
+    "The selected evidence does not support an answer. Exact sources are still shown.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La evidencia seleccionada no respalda una respuesta. Aun así, se muestran las fuentes exactas."
+          }
+        }
+      }
+    },
+    "Nothing related in your notes yet.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay nada relacionado en tus notas."
+          }
+        }
+      }
+    },
+    "Closest raw notes:": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notas originales más cercanas:"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

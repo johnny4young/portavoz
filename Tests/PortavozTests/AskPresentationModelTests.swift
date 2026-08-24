@@ -103,6 +103,76 @@ final class AskPresentationModelTests: XCTestCase {
             .meeting(id: meeting.id, title: meeting.title))
     }
 
+    func testNotesSourceUsesOnlyTypedNoteLaneAndPublishesExactEvidence() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        let model = AskModel(client: client)
+
+        model.selectSourceMode(.notes)
+        model.updateDraft("budget Q3")
+        model.submit()
+        try await waitUntil { client.noteRequests == ["budget Q3"] }
+
+        XCTAssertTrue(client.answerRequests.isEmpty)
+        XCTAssertEqual(client.noteLimits, [6])
+        XCTAssertEqual(model.state.pendingSource, .notes)
+        await client.publishNoteEvidence(
+            "budget Q3",
+            update: AskNoteEvidenceUpdate(
+                phase: .lexical,
+                citations: [fixture.noteCitation]))
+        try await waitUntil { model.state.pendingPhase == .refiningEvidence }
+        XCTAssertEqual(model.state.pendingNoteCitations, [fixture.noteCitation])
+        XCTAssertTrue(model.state.pendingCitations.isEmpty)
+
+        client.completeNoteAnswer(
+            "budget Q3",
+            with: AskNoteAnswer(
+                question: "budget Q3",
+                generatedText: "Review the Q3 budget.",
+                citations: [fixture.noteCitation],
+                generationOutcome: .generated))
+        try await waitUntil { model.state.exchanges.count == 1 }
+
+        let exchange = try XCTUnwrap(model.state.exchanges.first)
+        XCTAssertEqual(exchange.source, .notes)
+        XCTAssertEqual(exchange.noteCitations, [fixture.noteCitation])
+        XCTAssertTrue(exchange.citations.isEmpty)
+        XCTAssertTrue(exchange.webCitations.isEmpty)
+        XCTAssertEqual(exchange.answer, "Review the Q3 budget.")
+    }
+
+    func testSwitchingAwayFromNotesRejectsLateEvidenceAndCompletion() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        let model = AskModel(client: client)
+
+        model.selectSourceMode(.notes)
+        model.updateDraft("old note question")
+        model.submit()
+        try await waitUntil { client.noteRequests == ["old note question"] }
+
+        model.selectSourceMode(.library)
+        await client.publishNoteEvidence(
+            "old note question",
+            update: AskNoteEvidenceUpdate(
+                phase: .fused,
+                citations: [fixture.noteCitation]))
+        client.completeNoteAnswer(
+            "old note question",
+            with: AskNoteAnswer(
+                question: "old note question",
+                generatedText: "stale",
+                citations: [fixture.noteCitation],
+                generationOutcome: .generated))
+        await Task.yield()
+
+        XCTAssertEqual(model.state.sourceMode, .library)
+        XCTAssertFalse(model.state.isAsking)
+        XCTAssertTrue(model.state.pendingNoteCitations.isEmpty)
+        XCTAssertTrue(model.state.exchanges.isEmpty)
+    }
+
     func testMeetingCatalogFailureRetriesWithoutInventingASelection() async throws {
         let fixture = AskPresentationFixture()
         let client = ControlledAskModelClient()
@@ -1336,6 +1406,7 @@ private struct AskPresentationFixture {
     let newHit: AskSearchResult
     let newerHit: AskSearchResult
     let citation: AskCitation
+    let noteCitation: AskNoteCitation
 
     init() {
         oldHit = AskSearchResult(
@@ -1362,6 +1433,15 @@ private struct AskPresentationFixture {
             meetingTitle: "Test meeting",
             timestamp: 3,
             text: "El rollout queda para el viernes.")
+        noteCitation = AskNoteCitation(
+            noteID: UUID(),
+            meetingID: meetingID,
+            meetingTitle: "Test meeting",
+            author: .localUser,
+            authoredAt: Date(timeIntervalSince1970: 1_700_000_012),
+            timestamp: 12,
+            text: "Review the Q3 budget.",
+            provenance: .userContextItem)
     }
 }
 
@@ -1695,6 +1775,8 @@ private final class ControlledAskModelClient: AskModelClient {
     private(set) var searchSources: [AskSourceScope] = []
     private(set) var answerRequests: [String] = []
     private(set) var answerSources: [AskSourceScope] = []
+    private(set) var noteRequests: [String] = []
+    private(set) var noteLimits: [Int] = []
     private(set) var sourceMeetingLimits: [Int] = []
     var sourceMeetings: [AskSourceMeetingOption] = []
     var sourceMeetingsShouldFail = false
@@ -1703,6 +1785,9 @@ private final class ControlledAskModelClient: AskModelClient {
     private var answerContinuations: [String: CheckedContinuation<AskMeetingAnswer, Error>] = [:]
     private var evidenceReceivers: [String: AskEvidenceReceiver] = [:]
     private var answerReceivers: [String: AskAnswerReceiver] = [:]
+    private var noteContinuations:
+        [String: CheckedContinuation<AskNoteAnswer, Error>] = [:]
+    private var noteEvidenceReceivers: [String: AskNoteEvidenceReceiver] = [:]
 
     func searchAskMeetings(
         _ query: String,
@@ -1770,6 +1855,19 @@ private final class ControlledAskModelClient: AskModelClient {
             : Array(sourceMeetings.prefix(limit))
     }
 
+    func answerAskNotes(
+        _ question: String,
+        limit: Int,
+        onEvidence: @escaping AskNoteEvidenceReceiver
+    ) async throws -> AskNoteAnswer {
+        noteRequests.append(question)
+        noteLimits.append(limit)
+        noteEvidenceReceivers[question] = onEvidence
+        return try await withCheckedThrowingContinuation { continuation in
+            noteContinuations[question] = continuation
+        }
+    }
+
     func completeSearch(_ query: String, with hits: [AskSearchResult]) {
         searchContinuations.removeValue(forKey: query)?.resume(returning: hits)
     }
@@ -1787,11 +1885,23 @@ private final class ControlledAskModelClient: AskModelClient {
             .resume(throwing: AskPresentationTestError.refused)
     }
 
+    func completeNoteAnswer(_ question: String, with answer: AskNoteAnswer) {
+        noteEvidenceReceivers.removeValue(forKey: question)
+        noteContinuations.removeValue(forKey: question)?.resume(returning: answer)
+    }
+
     func publishEvidence(
         _ question: String,
         update: AskEvidenceUpdate
     ) async {
         await evidenceReceivers[question]?(update)
+    }
+
+    func publishNoteEvidence(
+        _ question: String,
+        update: AskNoteEvidenceUpdate
+    ) async {
+        await noteEvidenceReceivers[question]?(update)
     }
 
 

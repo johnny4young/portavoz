@@ -18,6 +18,7 @@ extension AskModel {
     enum SourceMode: String, CaseIterable, Equatable {
         case library
         case meeting
+        case notes
         case web
     }
 
@@ -31,6 +32,7 @@ extension AskModel {
     enum ExchangeSource: Equatable {
         case library
         case meeting(id: MeetingID, title: String)
+        case notes
         case web(host: String)
     }
 
@@ -39,6 +41,7 @@ extension AskModel {
         let question: String
         let answer: String
         let citations: [AskCitation]
+        let noteCitations: [AskNoteCitation]
         let webCitations: [AskWebCitation]
         let webSourceFailures: [AskWebSourceFailure]
         let generationOutcome: AskGenerationOutcome
@@ -49,6 +52,7 @@ extension AskModel {
             question: String,
             answer: String,
             citations: [AskCitation],
+            noteCitations: [AskNoteCitation] = [],
             webCitations: [AskWebCitation] = [],
             webSourceFailures: [AskWebSourceFailure] = [],
             generationOutcome: AskGenerationOutcome,
@@ -58,6 +62,7 @@ extension AskModel {
             self.question = question
             self.answer = answer
             self.citations = citations
+            self.noteCitations = noteCitations
             self.webCitations = webCitations
             self.webSourceFailures = webSourceFailures
             self.generationOutcome = generationOutcome
@@ -72,6 +77,7 @@ extension AskModel {
         var isAsking = false
         var pendingQuestion: String?
         var pendingCitations: [AskCitation] = []
+        var pendingNoteCitations: [AskNoteCitation] = []
         var pendingWebCitations: [AskWebCitation] = []
         var pendingWebSourceFailures: [AskWebSourceFailure] = []
         var pendingAnswerText: String?

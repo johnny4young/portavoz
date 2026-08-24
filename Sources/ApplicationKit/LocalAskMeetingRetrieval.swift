@@ -485,6 +485,8 @@ extension LocalAskMeetingRetrieval {
             nil
         case .meeting(let meetingID):
             meetingID
+        case .notes:
+            throw AskSourcePolicyError.notesRequireTypedAdapter
         case .web:
             throw AskSourcePolicyError.webUnavailable
         }

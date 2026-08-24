@@ -17,6 +17,9 @@ enum AskAnswerPresentation {
         switch outcome {
         case .notRequested, .generated:
             return nil
+        case .insufficientEvidence:
+            return L10n.text(
+                "The selected evidence does not support an answer. Exact sources are still shown.")
         case .unavailable:
             return L10n.text(
                 "Your selected local answer engine is unavailable. Exact passages are still shown.")
@@ -35,5 +38,13 @@ enum AskAnswerPresentation {
         }
         return result.generatedText
             ?? L10n.text("Closest passages from the selected web source:")
+    }
+
+    static func text(for result: AskNoteAnswer) -> String {
+        guard !result.citations.isEmpty else {
+            return L10n.text("Nothing related in your notes yet.")
+        }
+        return result.generatedText
+            ?? L10n.text("Closest raw notes:")
     }
 }

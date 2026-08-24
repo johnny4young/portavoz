@@ -685,7 +685,7 @@ grounding contract. Missing selected-engine readiness never falls through to a
 different provider, and exact evidence remains usable without generation.
 Every manual Ask request also carries one explicit source authority. The full
 Ask window can search the complete local Library, one exact selected meeting,
-or one directly pasted public page. Web consumes an approval bound to the exact
+the user's explicit raw notes, or one directly pasted public page. Web consumes an approval bound to the exact
 question and URL for one request, fetches only that URL, and never sends the
 question or meeting material to the page. There is no default source on the
 public application workflow.
@@ -707,6 +707,18 @@ all page text as untrusted data; generated output is admitted only when it uses
 in-range `[n]` citations and contains no raw HTTP URL. Direct source links,
 observed dates, freshness, and truncation remain deterministic presentation
 data even when generation fails.
+
+Raw-note Ask is a separate typed application workflow and cannot reuse a
+transcript or Web citation. A synchronized FTS5 context-item projection serves
+only live raw notes from live meetings through a bounded three-variant
+bilingual search. Each result retains exact note and meeting identity,
+`local-user` authorship, meeting-relative offset, derived authored time, raw
+text, and user-context-item provenance. AI-enhanced notes and non-note context
+items have no serving conversion. The selected local engine receives only
+escaped structured note data under an explicit untrusted-data prompt; finite
+per-note and aggregate budgets, an eight-second timeout, cancellation, and
+exact per-sentence numbered-citation admission keep evidence usable when
+generation abstains, is unavailable, fails, or times out.
 
 Live interview assistance is a separate pull-based ApplicationKit workflow,
 not automatic Companion publication. Its pure policy examines at most 24 live

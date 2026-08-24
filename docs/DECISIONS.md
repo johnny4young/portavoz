@@ -14098,8 +14098,9 @@ Portavoz does not claim it can hard-kill arbitrary provider code, but the closed
 application gate prevents late publication and a weak task bridge prevents a
 closed window from being retained. Installed-model quality/performance, physical
 Sequoia/Tahoe, VoiceOver/Voice Control, distribution, CloudKit, and real-field
-behavior remain separate release evidence. This closes APT-1 code scope, not the
-later manual-source, web, interview, note, proactive, or 1.0.0 admission bands.
+behavior remain separate release evidence. This closes the progressive-
+reliability code scope, not the later manual-source, Web, interview, note,
+proactive, or 1.0.0 admission work.
 
 ## D385 — Route explicit manual Ask through the selected local engine (Aug 2026)
 
@@ -14151,8 +14152,9 @@ privacy receipts, model residency, or cancellation. The existing real-app Ask
 journey runs with simulated Sequoia capabilities rather than adding a duplicate
 microtest. Installed-model quality/latency/memory, physical Sequoia and Tahoe,
 VoiceOver/Voice Control, CloudKit, distribution, and real-meeting behavior
-remain external evidence. This closes APT-2 code scope; APT-3 source policy and
-later web, interview, note, proactive, and 1.0.0 admission bands remain open.
+remain external evidence. This closes selected-engine manual Ask; explicit
+source policy and later Web, interview, note, proactive, and 1.0.0 admission
+work remain open.
 
 ## D386 — Require an explicit fail-closed source for manual Ask (Aug 2026)
 
@@ -14204,14 +14206,15 @@ presentation share one source contract. The 256-candidate meeting semantic
 ceiling may trade recall for bounded work on very large libraries; current exact
 FTS remains authoritative and future search-engine optimization must preserve
 this fail-closed contract. D386 adds no Web transport, consent, citations, or
-freshness policy; those remain APT-4. Installed-model quality/performance,
+freshness policy; those remain direct-Web serving work. Installed-model
+quality/performance,
 physical Sequoia/Tahoe, VoiceOver/Voice Control, CloudKit, distribution, and
 real-field evidence remain external gates.
 
 ## D387 — Serve consented direct Web pages as cited untrusted evidence (Aug 2026)
 
 **Context:** D386 separated Web from Library and Meeting authority but left it
-unavailable. APT-4 needs useful current public evidence without uploading a
+unavailable. Useful current public evidence must not require uploading a
 meeting, inventing a search-provider contract, depending on an account, or
 allowing arbitrary page instructions to influence product policy. Broad Web
 discovery and search-result scraping would add unstable provider, consent,
@@ -14265,15 +14268,15 @@ stale, undated, hostile, redirect, partial, disconnected, provider-down, slow-
 cancel, cap, and migration cases. No user meeting, Internet, provider account,
 or private transcript is required.
 
-**Consequences:** APT-4 provides cited, freshness-aware public-page answers
-without mixing Web and meeting evidence or pretending that Portavoz offers
-broad search discovery. Explicit direct URLs can be less convenient than a
+**Consequences:** direct-Web serving provides cited, freshness-aware public-
+page answers without mixing Web and meeting evidence or pretending that
+Portavoz offers broad search discovery. Explicit direct URLs can be less convenient than a
 search engine, and syntax policy cannot certify DNS resolution or page safety;
 those are stated limitations, not hidden fallbacks. Physical Sequoia/Tahoe,
 installed-model quality/latency/memory, VoiceOver/Voice Control, production
 CloudKit, signed/notarized distribution, Internet variability, third-party
 terms, and real-field behavior remain external 1.0 gates. Interviews, notes,
-and bounded proactive assistance remain APT-5 through APT-7.
+and bounded proactive assistance remain separate work.
 
 ## D388 — Keep interview assistance pull-based and source-closed (Aug 2026)
 
@@ -14326,5 +14329,65 @@ exercise the production use case, model, selected-engine bridge, accessibility
 surface, and exact citations without a private meeting or installed model.
 Installed-engine quality/latency/memory, physical Sequoia/Tahoe, VoiceOver and
 Voice Control, distribution, CloudKit, and real-interview behavior remain
-separate evidence. This closes APT-5; typed notes and bounded proactive help
-remain APT-6 and APT-7.
+separate evidence. This closes pull-based interview assistance; typed notes and
+bounded proactive help remain separate work.
+
+## D389 — Keep manual Notes Ask typed, raw, and locally authored (Aug 2026)
+
+**Context:** Portavoz already preserves timestamped user notes and stores an
+optional AI-enhanced note as a separate generated document, but manual Ask
+could serve only transcript, graph, or direct-Web evidence. Reusing transcript
+citations would falsely imply a speaker, audio interval, or participant claim.
+Searching enhanced documents would let model output present itself as the
+user's own memory, and scanning every context item on each question would not
+give large libraries a bounded search path.
+
+**Decision:** full Ask adds an explicit **Notes** source with an independent
+`AskNotes` workflow, `AskNoteCitation`, retrieval port, answer port, and
+provider-neutral `RAGNotePassage`. Only live `contextItem.kind == note` rows
+owned by live meetings can enter this lane. Each citation retains its exact raw
+note UUID, owning meeting identity and title, stable `local-user` authorship,
+meeting-relative offset, derived authored instant, exact text, and
+`user-context-item` provenance. `enhancedNote` and every other context-item kind
+have no conversion path. Notes cannot enter transcript, graph, or Web adapters,
+and those adapters reject Notes before running.
+
+Schema v45 adds a synchronized external-content FTS5 projection over context
+item text and rebuilds existing rows during migration. Product reads still
+filter to live raw notes and live meetings before deterministic rank, time, and
+identity ordering. Retrieval evaluates at most three offline bilingual query
+variants with 24 candidates each, publishes the first nonempty lexical set,
+then completes one bounded fused set. It admits at most 12 whole notes, 4,000
+characters / 16 KiB per note, and 8,000 characters / 32 KiB in aggregate; it
+never truncates a source and silently changes its meaning. Absolute authorship
+is derived from meeting start plus the durable note offset so import and sync
+do not rewrite chronology.
+
+The selected local Ask engine receives only the question and typed raw-note
+passages. The prompt labels every escaped note element as untrusted data and
+forbids transcript, recording, participant, or AI-enhanced claims. An
+eight-second timeout, caller cancellation, one evidence gate, and generation
+fencing close late publication. Generated prose is accepted only when every
+sentence carries an exact in-range `[n]` marker and ordinary note-specific
+abstentions remain insufficient evidence. Unavailable, failure, timeout, and
+insufficient evidence preserve exact note sources separately from transcript
+and Web citations.
+
+The existing bilingual full-Ask XCUITest journey now covers Web, Notes, and one
+meeting in one real-app launch. Its disposable seed persists one Spanish raw
+note and the test asserts local author, meeting, exact 00:12 offset, generated
+answer, and source badge in English and Spanish. Public synthetic note cases
+cover answer/abstention, hard negatives, offline/provider failure, corruption,
+relaunch, prompt injection, cancellation, concurrency, and bounded FTS scale
+without private meetings or installed models.
+
+**Consequences:** users can ask across their own explicit raw notes without
+turning those notes into fake transcript evidence or trusting generated notes
+as authorship. This is a search-and-answer surface, not a standalone note
+editor, silent enhancement, automatic action, Web search, or participant
+attribution. Foundation Models remains Tahoe-only when available; selected
+loopback Ollama or verified MLX remains the supported Sequoia/Tahoe path.
+Installed-engine quality/latency/memory, physical Sequoia/Tahoe, VoiceOver and
+Voice Control, production CloudKit, notarized distribution, and real-note field
+behavior remain external gates. Typed raw-note Ask is complete; bounded
+proactive assistance remains open.

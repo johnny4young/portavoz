@@ -25,12 +25,12 @@ final class SkillOfferAuthorityTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 44)
+            XCTAssertEqual(StorageSchema.version, 45)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v44")
+                "v45")
             XCTAssertEqual(
                 try Set(database.columns(in: "skillOfferProposal").map(\.name)),
                 [

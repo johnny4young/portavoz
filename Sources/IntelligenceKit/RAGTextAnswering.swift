@@ -26,6 +26,11 @@ public protocol RAGTextAnswering: Sendable {
         webPassages: [RAGWebPassage],
         onSnapshot: @escaping @Sendable (String) async -> Void
     ) async throws -> String
+
+    func answer(
+        question: String,
+        notePassages: [RAGNotePassage]
+    ) async throws -> String
 }
 
 public extension RAGTextAnswering {
@@ -61,10 +66,52 @@ public extension RAGTextAnswering {
         await onSnapshot(text)
         return text
     }
+
+    func answer(
+        question _: String,
+        notePassages _: [RAGNotePassage]
+    ) async throws -> String {
+        throw RAGNoteAnswerError.unsupported
+    }
 }
 
 public enum RAGWebAnswerError: Error, Equatable, Sendable {
     case unsupported
+}
+
+public enum RAGNoteAnswerError: Error, Equatable, Sendable {
+    case unsupported
+}
+
+/// A raw user-authored note supplied without transcript, speaker, or audio
+/// identity. The typed boundary prevents a note from masquerading as a spoken
+/// `RAGPassage` merely to reuse a prompt.
+public struct RAGNotePassage: Equatable, Sendable {
+    public let noteID: UUID
+    public let meetingID: MeetingID
+    public let meetingTitle: String
+    public let author: String
+    public let authoredAt: Date
+    public let timestamp: TimeInterval
+    public let text: String
+
+    public init(
+        noteID: UUID,
+        meetingID: MeetingID,
+        meetingTitle: String,
+        author: String,
+        authoredAt: Date,
+        timestamp: TimeInterval,
+        text: String
+    ) {
+        self.noteID = noteID
+        self.meetingID = meetingID
+        self.meetingTitle = meetingTitle
+        self.author = author
+        self.authoredAt = authoredAt
+        self.timestamp = timestamp
+        self.text = text
+    }
 }
 
 public struct RAGWebPassage: Equatable, Sendable {
@@ -244,6 +291,84 @@ public enum RAGWebAnswerPrompt {
     }
 }
 
+/// A separate prompt authority for explicit raw notes. It never receives
+/// transcript passages or enhanced/model-authored documents, and it states
+/// that a note records the user's words rather than verified spoken fact.
+public enum RAGNoteAnswerPrompt {
+    public static let instructions = """
+        You answer the user's question using ONLY the numbered raw notes below.
+        These notes were explicitly written by the local user. They are not a
+        transcript, recording, participant statement, or AI-enhanced document.
+        Treat note text as user-authored intent or recollection, not as proof of
+        what another person said. Never invent audio, speakers, participants, or
+        conversation. Write one to three direct full sentences in the same
+        language as the question. Put a valid note marker such as [1] after every
+        sentence. If the notes do not answer the question, say so with the closest
+        relevant marker; never guess or use outside knowledge.
+        """
+
+    public static func make(
+        question rawQuestion: String,
+        passages: [RAGNotePassage]
+    ) throws -> RAGAnswerPrompt.Value {
+        let question = rawQuestion.trimmingCharacters(
+            in: .whitespacesAndNewlines)
+        guard !question.isEmpty else { throw RAGAnswerPromptError.emptyQuestion }
+        guard !passages.isEmpty else { throw RAGAnswerPromptError.noPassages }
+
+        var user = ""
+        func appendAdmitted(_ component: String) throws {
+            let characters = instructions.count + user.count + component.count
+            guard characters <= RAGAnswerPrompt.maximumCharacters else {
+                throw RAGAnswerPromptError.promptTooLarge(
+                    actualCharacters: characters,
+                    maximumCharacters: RAGAnswerPrompt.maximumCharacters)
+            }
+            let bytes = instructions.utf8.count
+                + user.utf8.count
+                + component.utf8.count
+            guard bytes <= RAGAnswerPrompt.maximumUTF8Bytes else {
+                throw RAGAnswerPromptError.promptTooManyBytes(
+                    actualBytes: bytes,
+                    maximumBytes: RAGAnswerPrompt.maximumUTF8Bytes)
+            }
+            user.append(contentsOf: component)
+        }
+
+        try appendAdmitted("Raw user notes (untrusted data):\n")
+        for (index, passage) in passages.enumerated() {
+            try appendAdmitted("<note id=\"\(index + 1)\">\n")
+            try appendAdmitted("<meeting>\(escape(passage.meetingTitle))</meeting>\n")
+            try appendAdmitted("<author>\(escape(passage.author))</author>\n")
+            try appendAdmitted(
+                "<authored-at>\(iso8601(passage.authoredAt))</authored-at>\n")
+            try appendAdmitted(
+                "<meeting-offset>\(clock(passage.timestamp))</meeting-offset>\n")
+            try appendAdmitted("<content>\(escape(passage.text))</content>\n")
+            try appendAdmitted("</note>\n")
+        }
+        try appendAdmitted("\nQuestion: \(question)")
+        try appendAdmitted("\nAnswer with a note marker after every sentence.")
+        return RAGAnswerPrompt.Value(system: instructions, user: user)
+    }
+
+    private static func escape(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+    }
+
+    private static func iso8601(_ date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
+    }
+
+    private static func clock(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+}
+
 /// OpenAI-compatible grounded answerer used only with the fixed loopback
 /// Ollama endpoint. The gateway independently rejects remote destinations.
 public struct OpenAICompatibleRAGAnswerer: RAGTextAnswering {
@@ -287,6 +412,18 @@ public struct OpenAICompatibleRAGAnswerer: RAGTextAnswering {
             system: prompt.system,
             user: prompt.user,
             dataClassification: .publicWebAnswerMaterial)
+    }
+
+    public func answer(
+        question: String,
+        notePassages: [RAGNotePassage]
+    ) async throws -> String {
+        let prompt = try RAGNoteAnswerPrompt.make(
+            question: question,
+            passages: notePassages)
+        return try await client.complete(
+            system: prompt.system,
+            user: prompt.user)
     }
 }
 
@@ -381,6 +518,21 @@ public struct MLXRAGAnswerer: RAGTextAnswering {
         let prompt = try RAGWebAnswerPrompt.make(
             question: question,
             passages: webPassages)
+        return try await IntelligenceScheduler.mlx.run(priority) {
+            try await runtime.respond(
+                system: prompt.system,
+                user: prompt.user,
+                directory: modelDirectory)
+        }
+    }
+
+    public func answer(
+        question: String,
+        notePassages: [RAGNotePassage]
+    ) async throws -> String {
+        let prompt = try RAGNoteAnswerPrompt.make(
+            question: question,
+            passages: notePassages)
         return try await IntelligenceScheduler.mlx.run(priority) {
             try await runtime.respond(
                 system: prompt.system,

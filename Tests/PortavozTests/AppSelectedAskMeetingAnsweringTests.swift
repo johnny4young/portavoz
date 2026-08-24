@@ -104,6 +104,42 @@ final class AppSelectedAskMeetingAnsweringTests: XCTestCase {
             isExcerptTruncated: false)])
     }
 
+    func testNoteRouterForwardsOnlyTypedRawNoteEvidence() async throws {
+        let provider = CapturingRAGProvider(answer: "Review Q3 [1].")
+        let router = AppSelectedAskMeetingAnswering()
+        router.install { .available(provider) }
+        let citation = AskNoteCitation(
+            noteID: UUID(),
+            meetingID: MeetingID(),
+            meetingTitle: "Planning",
+            author: .localUser,
+            authoredAt: Date(timeIntervalSince1970: 1_700_000_012),
+            timestamp: 12,
+            text: "Review the Q3 budget.",
+            provenance: .userContextItem)
+
+        let answer = try await router.answer(
+            question: "What should I review?",
+            citations: [citation])
+        let noteCapture = await provider.noteSnapshot()
+        let meetingCapture = await provider.snapshot()
+        let webCapture = await provider.webSnapshot()
+
+        XCTAssertEqual(answer, "Review Q3 [1].")
+        XCTAssertNil(meetingCapture)
+        XCTAssertNil(webCapture)
+        let captured = try XCTUnwrap(noteCapture)
+        XCTAssertEqual(captured.question, "What should I review?")
+        XCTAssertEqual(captured.passages, [RAGNotePassage(
+            noteID: citation.noteID,
+            meetingID: citation.meetingID,
+            meetingTitle: citation.meetingTitle,
+            author: "local-user",
+            authoredAt: citation.authoredAt,
+            timestamp: citation.timestamp,
+            text: citation.text)])
+    }
+
     func testInterviewRouterSamplesSelectedEngineAndForwardsOnlyLiveEvidence() async throws {
         let provider = CapturingRAGProvider(answer: "Page the owner [1].")
         let router = AppSelectedAskMeetingAnswering()
@@ -173,9 +209,15 @@ private actor CapturingRAGProvider: RAGTextAnswering {
         let passages: [RAGWebPassage]
     }
 
+    struct NoteRequest: Sendable {
+        let question: String
+        let passages: [RAGNotePassage]
+    }
+
     let answer: String
     private var request: Request?
     private var webRequest: WebRequest?
+    private var noteRequest: NoteRequest?
 
     init(answer: String) {
         self.answer = answer
@@ -197,8 +239,17 @@ private actor CapturingRAGProvider: RAGTextAnswering {
         return answer
     }
 
+    func answer(
+        question: String,
+        notePassages: [RAGNotePassage]
+    ) async throws -> String {
+        noteRequest = NoteRequest(question: question, passages: notePassages)
+        return answer
+    }
+
     func snapshot() -> Request? { request }
     func webSnapshot() -> WebRequest? { webRequest }
+    func noteSnapshot() -> NoteRequest? { noteRequest }
 }
 
 private actor AskRouterSnapshotProbe {

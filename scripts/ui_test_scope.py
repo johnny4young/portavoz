@@ -684,6 +684,23 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if any(token in lowered for token in (
+        "asknotes",
+        "localasknote",
+        "contextitemsearch",
+        "meetingstore+notesearch",
+    )):
+        # Typed raw-note Ask has one consolidated real-app journey. Keep its
+        # storage/index and orchestration files from paying for unrelated UI.
+        return {"ask"}
+    if any(token in lowered for token in (
+        "numberedcitationanswer",
+        "ragtextanswering",
+        "raganswerer",
+    )):
+        # The shared cited-prose/provider authority is consumed by manual Ask
+        # and live Interview Assist, but not every intelligence-backed screen.
+        return {"ask", "recording-interview"}
     if "interview" in lowered:
         return {"recording-interview"}
     if "loadcommitmentblockers" in lowered:

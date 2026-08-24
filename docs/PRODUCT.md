@@ -124,7 +124,7 @@ decisions, first confirmed discussion, decision changes, or changes since one
 meeting for one topic.
 
 The finite 1.0.0 expansion strengthens Apuntador through reliable streaming and
-cancellation, explicit manual Ask, a visible meeting/library/web source policy,
+cancellation, explicit manual Ask, a visible meeting/library/notes/web source policy,
 consented cited web research, interview assistance, typed user-authored notes,
 and bounded opt-in proactive help. Every answer or suggestion must preserve
 exact source provenance, honest unavailable/insufficient states, supported-
@@ -133,11 +133,11 @@ identity guessing, user-authored actions, standing automation rules, broader
 graph sync/export/CLI/MCP, alternate search/ASR authority, and autonomous
 external mutation remain outside this finite candidate. Current implemented
 truth and exit evidence remain authoritative in `GAPS.md` and the as-built
-specs. APT-1 progressive reliability, APT-2 selected-engine manual Ask, APT-3
-explicit fail-closed source policy, APT-4 consented cited direct-Web pages, and
-APT-5 pull-based interview assistance are implemented. Portavoz does not yet
-provide broad Web search discovery; typed notes, proactive help, and final
-admission remain open.
+specs. Progressive reliability, selected-engine manual Ask, explicit fail-
+closed source policy, consented cited direct-Web pages, pull-based interview
+assistance, and typed raw-note Ask are implemented. Portavoz does not yet
+provide broad Web search discovery;
+proactive help and final admission remain open.
 
 ## Standout UX (signature moments)
 

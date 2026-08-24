@@ -93,6 +93,12 @@ struct ContentView: View {
                         onOpenCitation: { citation in
                             services.requestMeetingSeek(for: citation)
                             route = .meeting(citation.meetingID)
+                        },
+                        onOpenNoteCitation: { citation in
+                            services.requestMeetingSeek(
+                                meetingID: citation.meetingID,
+                                timestamp: citation.timestamp)
+                            route = .meeting(citation.meetingID)
                         })
                 case .insights:
                     InsightsView(model: insightsModel, route: $route)

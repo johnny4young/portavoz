@@ -426,7 +426,14 @@ public struct AskMeetings: ApplicationUseCase {
     private static func validateLocalSource(
         _ source: AskSourceScope
     ) throws {
-        if source == .web { throw AskSourcePolicyError.webUnavailable }
+        switch source {
+        case .library, .meeting:
+            return
+        case .notes:
+            throw AskSourcePolicyError.notesRequireTypedAdapter
+        case .web:
+            throw AskSourcePolicyError.webUnavailable
+        }
     }
 
     private static func validateGraphSource(

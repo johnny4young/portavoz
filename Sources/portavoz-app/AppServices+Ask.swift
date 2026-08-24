@@ -7,6 +7,7 @@ import StorageKit
 @MainActor
 final class AppAskModelClient: AskModelClient {
     private let useCase: AskMeetings
+    private let noteUseCase: AskNotes
     private let webUseCase: AskWeb
     private let memoryEntities: LoadAutomationEntities
     private let memoryCommitments: LoadPersonCommitments
@@ -19,12 +20,14 @@ final class AppAskModelClient: AskModelClient {
 
     init(
         useCase: AskMeetings,
+        noteUseCase: AskNotes,
         webUseCase: AskWeb,
         store: MeetingStore,
         graphTelemetry: MeetingMemoryGraphQueryTelemetry =
             AppMeetingMemoryGraphQueryTelemetry.shared.telemetry
     ) {
         self.useCase = useCase
+        self.noteUseCase = noteUseCase
         self.webUseCase = webUseCase
         memoryEntities = LoadAutomationEntities(catalog: store)
         memoryCommitments = LoadPersonCommitments(
@@ -102,6 +105,17 @@ final class AppAskModelClient: AskModelClient {
                     title: $0.title,
                     startedAt: $0.startedAt)
             }
+    }
+
+    func answerAskNotes(
+        _ question: String,
+        limit: Int,
+        onEvidence: @escaping AskNoteEvidenceReceiver
+    ) async throws -> AskNoteAnswer {
+        try await noteUseCase.answer(
+            question,
+            limit: limit,
+            onEvidence: onEvidence)
     }
 
     func answerAskWeb(
@@ -202,6 +216,7 @@ extension AppAskModelClient: AskMemoryModelClient {
 struct AppSemanticSearchComposition {
     let coordinator: SemanticCorpusIndexingCoordinator
     let ask: AskMeetings
+    let notesAsk: AskNotes
     let webAsk: AskWeb
     let library: LocalLibrarySemanticSearch
     let background: SemanticCorpusIndexingSupervisor
@@ -209,6 +224,17 @@ struct AppSemanticSearchComposition {
 }
 
 extension AppServices {
+    static func makeAskModelClient(
+        composition: AppSemanticSearchComposition,
+        store: MeetingStore
+    ) -> AppAskModelClient {
+        AppAskModelClient(
+            useCase: composition.ask,
+            noteUseCase: composition.notesAsk,
+            webUseCase: composition.webAsk,
+            store: store)
+    }
+
     func makeAskModel() -> AskModel {
         AskModel(
             client: askClient,
@@ -222,7 +248,7 @@ extension AppServices {
         store: MeetingStore,
         usesTemporaryStore: Bool,
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
-        selectedAnswering: any AskMeetingAnswering & AskWebAnswering,
+        selectedAnswering: any AskMeetingAnswering & AskNoteAnswering & AskWebAnswering,
         telemetry: ResourceWorkloadTelemetry,
         pipelineTelemetry: AskPipelineTelemetry = AppAskPipelineTelemetry.shared.telemetry,
         captureState: AppResourceCaptureState
@@ -239,7 +265,7 @@ extension AppServices {
             store: store,
             runtime: semanticRuntime,
             maintenanceState: maintenanceState)
-        let (ask, webAnswering) = makeAskUseCases(
+        let (ask, notesAsk, webAnswering) = makeAskUseCases(
             store: store,
             usesTemporaryStore: usesTemporaryStore,
             semanticRuntime: semanticRuntime,
@@ -270,6 +296,7 @@ extension AppServices {
         return AppSemanticSearchComposition(
             coordinator: coordinator,
             ask: ask,
+            notesAsk: notesAsk,
             webAsk: webAsk,
             library: library,
             background: background,
@@ -282,13 +309,16 @@ extension AppServices {
         semanticRuntime: any SemanticEmbeddingRuntimeClient,
         readiness: ResolveSemanticCorpusReadiness,
         pipelineTelemetry: AskPipelineTelemetry,
-        selectedAnswering: any AskMeetingAnswering & AskWebAnswering
-    ) -> (AskMeetings, any AskWebAnswering) {
+        selectedAnswering: any AskMeetingAnswering & AskNoteAnswering & AskWebAnswering
+    ) -> (AskMeetings, AskNotes, any AskWebAnswering) {
         if usesTemporaryStore {
             return (
                 AskMeetings(
                     retrieval: UITestAskMeetingRetrieval(store: store),
                     answering: UITestAskMeetingAnswering()),
+                AskNotes(
+                    retrieval: LocalAskNoteRetrieval(store: store),
+                    answering: UITestAskNoteAnswering()),
                 UITestAskWebAnswering())
         }
         return (
@@ -298,6 +328,10 @@ extension AppServices {
                 semanticReadiness: readiness,
                 pipelineTelemetry: pipelineTelemetry,
                 answering: selectedAnswering),
+            AskNotes(
+                retrieval: LocalAskNoteRetrieval(store: store),
+                answering: selectedAnswering,
+                telemetry: pipelineTelemetry),
             selectedAnswering)
     }
 
@@ -471,9 +505,21 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
             nil
         case .meeting(let meetingID):
             meetingID
+        case .notes:
+            throw AskSourcePolicyError.notesRequireTypedAdapter
         case .web:
             throw AskSourcePolicyError.webUnavailable
         }
+    }
+}
+
+private struct UITestAskNoteAnswering: AskNoteAnswering {
+    func answer(
+        question _: String,
+        citations _: [AskNoteCitation]
+    ) async throws -> String? {
+        try await Task.sleep(for: .milliseconds(700))
+        return "Debes revisar el budget Q3 [1]."
     }
 }
 

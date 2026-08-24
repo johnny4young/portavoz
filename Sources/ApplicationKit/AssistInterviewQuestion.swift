@@ -216,8 +216,6 @@ public enum InterviewAssistanceResponse: Equatable, Sendable {
 private enum InterviewAnswerValidation {
     static let maximumAnswerCharacters = 2_000
     static let maximumAnswerUTF8Bytes = 16_000
-    private static let citationExpression = try? NSRegularExpression(
-        pattern: #"\[(\d+)\]"#)
 
     static func admit(
         _ raw: String,
@@ -226,11 +224,9 @@ private enum InterviewAnswerValidation {
         guard !evidence.isEmpty,
               raw.count <= maximumAnswerCharacters,
               raw.utf8.count <= maximumAnswerUTF8Bytes,
-              let indexes = exactCitationIndexes(
-                raw,
-                passageCount: evidence.count),
-              !indexes.isEmpty,
-              everySentenceHasCitation(raw),
+              let indexes = NumberedCitationAnswer.exactIndexes(
+                in: raw,
+                evidenceCount: evidence.count),
               let text = CompanionAnswer.usable(raw)
         else { return nil }
         return InterviewGroundedAnswer(
@@ -240,55 +236,6 @@ private enum InterviewAnswerValidation {
             })
     }
 
-    /// Every marker must resolve. Ignoring an out-of-range citation while
-    /// accepting another valid marker would publish a partially forged source
-    /// list, which is worse than an honest insufficient-evidence result.
-    private static func exactCitationIndexes(
-        _ raw: String,
-        passageCount: Int
-    ) -> [Int]? {
-        guard let citationExpression else { return nil }
-        let range = NSRange(raw.startIndex..<raw.endIndex, in: raw)
-        let matches = citationExpression.matches(in: raw, range: range)
-        var seen: Set<Int> = []
-        var indexes: [Int] = []
-        for match in matches {
-            guard let numberRange = Range(match.range(at: 1), in: raw),
-                  let number = Int(raw[numberRange]),
-                  (1...passageCount).contains(number)
-            else { return nil }
-            if seen.insert(number - 1).inserted {
-                indexes.append(number - 1)
-            }
-        }
-        var uncitedBrackets = raw
-        for match in matches.reversed() {
-            guard let fullRange = Range(match.range, in: uncitedBrackets) else {
-                return nil
-            }
-            uncitedBrackets.removeSubrange(fullRange)
-        }
-        guard !uncitedBrackets.contains("["),
-              !uncitedBrackets.contains("]")
-        else { return nil }
-        return indexes
-    }
-
-    private static func everySentenceHasCitation(_ raw: String) -> Bool {
-        guard let citationExpression else { return false }
-        var sentences: [String] = []
-        raw.enumerateSubstrings(
-            in: raw.startIndex..<raw.endIndex,
-            options: [.bySentences, .substringNotRequired]
-        ) { _, range, _, _ in
-            sentences.append(String(raw[range]))
-        }
-        guard !sentences.isEmpty else { return false }
-        return sentences.allSatisfy { sentence in
-            let range = NSRange(sentence.startIndex..<sentence.endIndex, in: sentence)
-            return citationExpression.firstMatch(in: sentence, range: range) != nil
-        }
-    }
 }
 
 /// One pull-based interview answer request. Evidence is preserved even when

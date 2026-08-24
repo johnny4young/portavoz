@@ -14,6 +14,7 @@ enum AppAskAnswerProviderResolution: Sendable {
 /// partially initialized service graph.
 final class AppSelectedAskMeetingAnswering:
     AskMeetingAnswering,
+    AskNoteAnswering,
     AskWebAnswering,
     InterviewQuestionAnswering,
     @unchecked Sendable {
@@ -73,6 +74,34 @@ final class AppSelectedAskMeetingAnswering:
             meetingTitle: citation.meetingTitle,
             timestamp: citation.timestamp,
             transcriptRevision: citation.transcriptRevision,
+            text: citation.text)
+    }
+
+    func answer(
+        question: String,
+        citations: [AskNoteCitation]
+    ) async throws -> String? {
+        guard let resolver = currentResolver() else { return nil }
+        switch await resolver() {
+        case .unavailable:
+            return nil
+        case .available(let provider):
+            return try await provider.answer(
+                question: question,
+                notePassages: citations.map(Self.notePassage))
+        }
+    }
+
+    private static func notePassage(
+        _ citation: AskNoteCitation
+    ) -> RAGNotePassage {
+        RAGNotePassage(
+            noteID: citation.noteID,
+            meetingID: citation.meetingID,
+            meetingTitle: citation.meetingTitle,
+            author: citation.author.rawValue,
+            authoredAt: citation.authoredAt,
+            timestamp: citation.timestamp,
             text: citation.text)
     }
 

@@ -243,6 +243,33 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.locales, ("en",))
         self.assertLess(len(selection.tests), len(ALL_TESTS))
 
+    def test_typed_note_ask_layers_select_only_the_consolidated_ask_scope(self):
+        for path in (
+            "Sources/ApplicationKit/AskNotes.swift",
+            "Sources/ApplicationKit/LocalAskNoteRetrieval.swift",
+            "Sources/StorageKit/Schema+ContextItemSearch.swift",
+            "Sources/StorageKit/MeetingStore+NoteSearch.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, FEATURE_TESTS["ask"], path)
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
+
+    def test_shared_cited_answering_selects_ask_and_interview_only(self):
+        selected = set(
+            FEATURE_TESTS["ask"] + FEATURE_TESTS["recording-interview"]
+        )
+        expected = tuple(test for test in ALL_TESTS if test in selected)
+        for path in (
+            "Sources/ApplicationKit/NumberedCitationAnswer.swift",
+            "Sources/IntelligenceKit/RAGTextAnswering.swift",
+            "Sources/IntelligenceKit/RAGAnswerer.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
+
     def test_confirmed_topic_catalog_selects_only_exact_ask_journeys(self):
         expected = FEATURE_TESTS["ask"]
         for path in (

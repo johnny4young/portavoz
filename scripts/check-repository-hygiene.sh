@@ -21,15 +21,16 @@ if [[ -n "$tracked_ignored" ]]; then
   failures=1
 fi
 
-# Ticket keys belong in GitHub, not production/test/tooling identifiers or
-# comments. Durable public architecture references such as D116 and Band 6 are
-# intentionally not ticket keys and remain valid project documentation.
+# Ticket keys and local execution-band identifiers belong in private planning,
+# not tracked repository files. Durable public architecture references such as
+# D116 and Band 6 are intentionally not ticket keys and remain valid project
+# documentation.
 ticket_refs="$(
-  git grep -nEI '\b(ENG|JIRA|TICKET|TASK|STORY|EPIC|SPIKE|PORTAVOZ|PV)-[0-9]{1,6}\b' -- \
-    Sources Tests scripts .github Makefile project.yml 2>/dev/null || true
+  git grep -nEI '\b(ENG|JIRA|TICKET|TASK|STORY|EPIC|SPIKE|PORTAVOZ|PV|APT)-[0-9]{1,6}\b' -- \
+    . 2>/dev/null || true
 )"
 if [[ -n "$ticket_refs" ]]; then
-  echo "Internal ticket references found in tracked implementation files:" >&2
+  echo "Internal ticket references found in tracked repository files:" >&2
   echo "$ticket_refs" >&2
   failures=1
 fi

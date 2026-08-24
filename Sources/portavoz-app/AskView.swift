@@ -8,6 +8,7 @@ import SwiftUI
 struct AskView: View {
     let model: AskModel
     let onOpenCitation: (AskCitation) -> Void
+    let onOpenNoteCitation: (AskNoteCitation) -> Void
 
     @FocusState private var questionFocused: Bool
 
@@ -146,6 +147,14 @@ struct AskView: View {
                         model.state.pendingCitations,
                         identifierPrefix: "ask-pending-citation")
                 }
+                if !model.state.pendingNoteCitations.isEmpty {
+                    Text("Evidence from your notes")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    noteCitationButtons(
+                        model.state.pendingNoteCitations,
+                        identifierPrefix: "ask-pending-note-citation")
+                }
                 if !model.state.pendingWebCitations.isEmpty {
                     Text("Web sources available now")
                         .font(.caption.weight(.semibold))
@@ -177,6 +186,8 @@ struct AskView: View {
             if let status = AskAnswerPresentation.statusText(
                 for: exchange.generationOutcome,
                 hasCitations: !exchange.citations.isEmpty
+                    || !exchange.noteCitations.isEmpty
+                    || !exchange.webCitations.isEmpty
             ) {
                 Label(status, systemImage: "cpu")
                     .font(.caption)
@@ -192,6 +203,15 @@ struct AskView: View {
                     exchange.citations,
                     identifierPrefix: "ask-citation-\(exchange.id.uuidString)")
             }
+            if !exchange.noteCitations.isEmpty {
+                Text("Your note sources")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                noteCitationButtons(
+                    exchange.noteCitations,
+                    identifierPrefix:
+                        "ask-note-citation-\(exchange.id.uuidString)")
+            }
             if !exchange.webCitations.isEmpty {
                 Text("Web sources")
                     .font(.caption.weight(.semibold))
@@ -204,6 +224,35 @@ struct AskView: View {
             webFailureNotice(exchange.webSourceFailures)
         }
         .id(exchange.id)
+    }
+
+}
+
+extension AskView {
+
+    @ViewBuilder
+    private func noteCitationButtons(
+        _ citations: [AskNoteCitation],
+        identifierPrefix: String
+    ) -> some View {
+        ForEach(Array(citations.enumerated()), id: \.offset) { index, citation in
+            Button {
+                onOpenNoteCitation(citation)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "note.text")
+                    Text(
+                        "\(L10n.text("You")) · \(citation.meetingTitle) · "
+                            + AskMarkdown.clock(citation.timestamp))
+                        .lineLimit(1)
+                }
+                .font(.caption)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(PVDesign.accent)
+            .help("\(citation.authoredAt.formatted())\n\(citation.text)")
+            .accessibilityIdentifier("\(identifierPrefix)-\(index)")
+        }
     }
 
     @ViewBuilder
@@ -289,12 +338,15 @@ struct AskView: View {
                 Label("Meeting", systemImage: "person.2")
                     .tag(AskModel.SourceMode.meeting)
                     .accessibilityIdentifier("ask-source-meeting")
+                Label("Notes", systemImage: "note.text")
+                    .tag(AskModel.SourceMode.notes)
+                    .accessibilityIdentifier("ask-source-notes")
                 Label("Web", systemImage: "globe")
                     .tag(AskModel.SourceMode.web)
                     .accessibilityIdentifier("ask-source-web")
             }
             .pickerStyle(.segmented)
-            .frame(maxWidth: 420)
+            .frame(maxWidth: 520)
             .accessibilityIdentifier("ask-source-picker")
 
             sourcePolicyStatus
@@ -313,6 +365,11 @@ struct AskView: View {
                 .accessibilityIdentifier("ask-source-status-library")
         case .meeting:
             meetingSourceStatus
+        case .notes:
+            Label(
+                "Only your explicit local notes will be searched. AI-enhanced notes are excluded.",
+                systemImage: "person.crop.circle.badge.checkmark")
+                .accessibilityIdentifier("ask-source-status-notes")
         case .web:
             webSourceStatus
         }
@@ -376,6 +433,11 @@ struct AskView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("\(identifier)-meeting")
+        case .notes:
+            Label("Source: Notes", systemImage: "note.text")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("\(identifier)-notes")
         case .web(let host):
             Label("Source: \(host)", systemImage: "globe")
                 .font(.caption)
@@ -402,6 +464,8 @@ struct AskView: View {
             true
         case .meeting:
             selectedMeetingTitle != nil
+        case .notes:
+            true
         case .web:
             model.state.webConsentApproved && model.canApproveWebConsent
         }

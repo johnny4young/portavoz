@@ -591,6 +591,43 @@ final class LibraryUITests: PortavozUITestCase {
             "one-request Web consent must be consumed after submission")
         attachScreenshot(of: app, named: "ask-consented-cited-web-answer")
 
+        let notesSource = app.descendants(matching: .any)["ask-source-notes"]
+        XCTAssertTrue(notesSource.waitForExistenceFast(timeout: 5))
+        notesSource.click()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-source-status-notes"]
+                .waitForExistenceFast(timeout: 5),
+            "Notes must disclose the raw-local-note-only boundary")
+        field.click()
+        field.typeText("budget Q3")
+        app.buttons["ask-submit"].click()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-pending-source-notes"]
+                .waitForExistenceFast(timeout: 5))
+        let pendingNote = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH 'ask-pending-note-citation-'"))
+            .firstMatch
+        XCTAssertTrue(
+            pendingNote.waitForExistenceFast(timeout: 10),
+            "the exact raw note must appear before local generation finishes")
+        let expectedAuthor = UITestLocale.environmentLocale == "es" ? "Tú" : "You"
+        XCTAssertTrue(pendingNote.label.contains(expectedAuthor), pendingNote.label)
+        XCTAssertTrue(pendingNote.label.contains("Test meeting · 00:12"), pendingNote.label)
+        XCTAssertTrue(
+            app.staticTexts["Debes revisar el budget Q3."]
+                .waitForExistenceFast(timeout: 10),
+            "the seeded real app must answer through the typed Notes lane")
+        let noteCitation = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'ask-note-citation-'"))
+            .firstMatch
+        XCTAssertTrue(noteCitation.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(noteCitation.label.contains(expectedAuthor), noteCitation.label)
+        XCTAssertTrue(noteCitation.label.contains("Test meeting · 00:12"), noteCitation.label)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["ask-exchange-source-notes"]
+                .waitForExistenceFast(timeout: 5))
+
         let meetingSource = app.descendants(matching: .any)["ask-source-meeting"]
         XCTAssertTrue(meetingSource.waitForExistenceFast(timeout: 5))
         meetingSource.click()

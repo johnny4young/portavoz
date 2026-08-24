@@ -29,6 +29,7 @@ public typealias AskEvidenceReceiver = @Sendable (AskEvidenceUpdate) async -> Vo
 public enum AskGenerationOutcome: String, Equatable, Sendable {
     case notRequested
     case generated
+    case insufficientEvidence
     case unavailable
     case failed
     case timedOut
@@ -317,6 +318,8 @@ actor AskProgressiveUpdateGate {
             true
         case .meeting(let meetingID):
             citations.allSatisfy { $0.meetingID == meetingID }
+        case .notes:
+            false
         case .web:
             false
         }

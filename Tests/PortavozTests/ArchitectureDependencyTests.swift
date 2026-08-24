@@ -2214,7 +2214,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_meeting_memory_graph_quality"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("graph database"))
         XCTAssertFalse(package.localizedCaseInsensitiveContains("neo4j"))
-        XCTAssertTrue(schema.contains("public static let version = 44"))
+        XCTAssertTrue(schema.contains("public static let version = 45"))
         XCTAssertTrue(decisions.contains("## D270"))
     }
 
@@ -3999,7 +3999,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(embedder.contains("embedding.revision"))
         XCTAssertTrue(embedder.contains("embedding.dimension"))
 
-        XCTAssertTrue(schema.contains("public static let version = 44"))
+        XCTAssertTrue(schema.contains("public static let version = 45"))
         XCTAssertTrue(schema.contains(
             "registerSemanticEmbeddingProfileMigration(in: &migrator)"))
         XCTAssertTrue(schemaMigration.contains("registerMigration(\"v17\")"))
@@ -8094,12 +8094,15 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         XCTAssertTrue(contracts.contains("enum AskSourceScope"))
         XCTAssertTrue(contracts.contains("case meeting(MeetingID)"))
+        XCTAssertTrue(contracts.contains("case notes"))
         XCTAssertTrue(contracts.contains("case web"))
+        XCTAssertTrue(contracts.contains("case notesRequireTypedAdapter"))
         XCTAssertTrue(contracts.contains("case meetingScopeUnavailable"))
         XCTAssertTrue(contracts.contains("case graphFactsRequireLibrary"))
         XCTAssertTrue(contracts.contains("case sourceEvidenceMismatch"))
         XCTAssertFalse(contracts.contains("source: AskSourceScope ="))
-        XCTAssertTrue(contracts.contains("guard source == .library"))
+        XCTAssertTrue(contracts.contains(
+            "throw AskSourcePolicyError.notesRequireTypedAdapter"))
         XCTAssertTrue(workflow.contains("try Self.validate(retrieved, for: source)"))
 
         XCTAssertTrue(retrieval.contains(
@@ -8123,6 +8126,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "ask-source-picker",
             "ask-source-library",
             "ask-source-meeting",
+            "ask-source-notes",
             "ask-source-web",
             "ask-source-status-web",
             "ask-source-meeting-picker",
@@ -8137,7 +8141,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(architecture.contains(
             "Every manual Ask request also carries one explicit source authority"))
         XCTAssertTrue(decisions.contains("## D386"))
-        XCTAssertTrue(intelligence.contains("D384–D388"))
+        XCTAssertTrue(intelligence.contains("D384–D389"))
         XCTAssertTrue(storage.contains("meeting-scoped three-lane FTS"))
         XCTAssertTrue(app.contains("explicit Library / one Meeting / Web"))
         XCTAssertTrue(interfaces.contains("explicitly Library-wide"))
@@ -8235,6 +8239,8 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testInterviewAssistRemainsPullBasedBoundedAndRecordingScoped() throws {
         let workflow = try Self.contents(
             of: "Sources/ApplicationKit/AssistInterviewQuestion.swift")
+        let citationPolicy = try Self.contents(
+            of: "Sources/ApplicationKit/NumberedCitationAnswer.swift")
         let model = try Self.contents(
             of: "Sources/portavoz-app/RecordingInterviewAssistModel.swift")
         let view = try Self.contents(
@@ -8250,7 +8256,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(workflow.contains("maximumEvidenceRows = 8"))
         XCTAssertTrue(workflow.contains("candidate.meetingID == row.meetingID"))
         XCTAssertTrue(workflow.contains("item.endedAt <= question.askedAt"))
-        XCTAssertTrue(workflow.contains("everySentenceHasCitation(raw)"))
+        XCTAssertTrue(workflow.contains("NumberedCitationAnswer.exactIndexes"))
+        XCTAssertTrue(citationPolicy.contains("everySentenceHasCitation"))
         XCTAssertTrue(workflow.contains("timeout: Duration = .seconds(8)"))
         XCTAssertFalse(workflow.contains("import SwiftUI"))
         XCTAssertFalse(workflow.contains("import StorageKit"))
@@ -8282,6 +8289,76 @@ final class ArchitectureDependencyTests: XCTestCase {
             "docs/specs/08-quality.md",
         ] {
             XCTAssertTrue(try Self.contents(of: path).contains("D388"), path)
+        }
+    }
+
+    func testTypedNotesAskRemainsRawLocalBoundedAndSourceSeparate() throws {
+        let contracts = try Self.contents(
+            of: "Sources/ApplicationKit/AskRetrievalContracts.swift")
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/AskNotes.swift")
+        let retrieval = try Self.contents(
+            of: "Sources/ApplicationKit/LocalAskNoteRetrieval.swift")
+        let search = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+NoteSearch.swift")
+        let migration = try Self.contents(
+            of: "Sources/StorageKit/Schema+ContextItemSearch.swift")
+        let schema = try Self.contents(of: "Sources/StorageKit/Schema.swift")
+        let prompt = try Self.contents(
+            of: "Sources/IntelligenceKit/RAGTextAnswering.swift")
+        let model = try Self.contents(of: "Sources/portavoz-app/AskModel.swift")
+            + (try Self.contents(of: "Sources/portavoz-app/AskModelState.swift"))
+        let view = try Self.contents(of: "Sources/portavoz-app/AskView.swift")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
+
+        XCTAssertTrue(contracts.contains("case notes"))
+        XCTAssertTrue(contracts.contains("case notesRequireTypedAdapter"))
+        XCTAssertTrue(workflow.contains("struct AskNoteCitation"))
+        XCTAssertTrue(workflow.contains("case localUser = \"local-user\""))
+        XCTAssertTrue(workflow.contains("case userContextItem"))
+        XCTAssertTrue(workflow.contains("maximumResultCount = 12"))
+        XCTAssertTrue(workflow.contains("maximumAggregateCharacters = 8_000"))
+        XCTAssertTrue(workflow.contains("answerTimeout: Duration = .seconds(8)"))
+        XCTAssertTrue(workflow.contains("NumberedCitationAnswer.exactIndexes"))
+        XCTAssertFalse(workflow.contains("RAGPassage"))
+
+        XCTAssertTrue(retrieval.contains("candidateLimit = 24"))
+        XCTAssertTrue(retrieval.contains("maximumQueryVariants = 3"))
+        XCTAssertTrue(search.contains("contextItem.kind = 'note'"))
+        XCTAssertTrue(search.contains("contextItem.deletedAt IS NULL"))
+        XCTAssertTrue(search.contains("meeting.deletedAt IS NULL"))
+        XCTAssertFalse(search.contains("FROM enhancedNote"))
+        XCTAssertTrue(schema.contains("public static let version = 45"))
+        XCTAssertTrue(migration.contains("virtualTable: \"contextItemSearch\""))
+        XCTAssertTrue(migration.contains("VALUES ('rebuild')"))
+
+        XCTAssertTrue(prompt.contains("struct RAGNotePassage"))
+        XCTAssertTrue(prompt.contains("Raw user notes (untrusted data):"))
+        XCTAssertTrue(prompt.contains("<content>"))
+        XCTAssertTrue(prompt.contains("transcript, recording, participant"))
+        XCTAssertTrue(model.contains("answerAskNotes"))
+        XCTAssertTrue(model.contains("pendingNoteCitations"))
+        for identifier in [
+            "ask-source-notes",
+            "ask-source-status-notes",
+            "ask-pending-note-citation",
+            "ask-note-citation",
+        ] {
+            XCTAssertTrue(view.contains(identifier), "missing \(identifier)")
+        }
+        XCTAssertTrue(uiTest.contains("Test meeting · 00:12"))
+        XCTAssertTrue(uiTest.contains("ask-exchange-source-notes"))
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        XCTAssertTrue(architecture.contains(
+            "Raw-note Ask is a separate typed application workflow"))
+        for path in [
+            "docs/DECISIONS.md", "docs/specs/04-intelligence.md",
+            "docs/specs/05-storage.md", "docs/specs/06-app-macos.md",
+            "docs/specs/08-quality.md",
+        ] {
+            XCTAssertTrue(try Self.contents(of: path).contains("D389"), path)
         }
     }
 
@@ -9818,7 +9895,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 44"))
+        XCTAssertTrue(schema.contains("public static let version = 45"))
         XCTAssertTrue(schema.contains("registerTranscriptCorrectionSearchMigration"))
         XCTAssertTrue(correctionSchema.contains("transcriptCorrectionSearchState"))
         XCTAssertTrue(correctionSchema.contains("SELECT DISTINCT meetingID"))
@@ -9861,7 +9938,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         let intelligenceSpec = try Self.contents(
             of: "docs/specs/04-intelligence.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 44"))
+        XCTAssertTrue(schema.contains("public static let version = 45"))
         XCTAssertTrue(schema.contains("registerSegmentCorrectedEmbeddingMigration"))
         XCTAssertTrue(correctedSchema.contains("registerMigration(\"v37\")"))
         XCTAssertTrue(correctedSchema.contains("table.add(column: \"embedding\", .blob)"))
@@ -9911,7 +9988,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/StorageKit/MeetingStore+Spotlight.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
-        XCTAssertTrue(schema.contains("public static let version = 44"))
+        XCTAssertTrue(schema.contains("public static let version = 45"))
         XCTAssertTrue(schema.contains("registerTranscriptStructuralSearchMigration"))
         XCTAssertTrue(structuralSchema.contains("registerMigration(\"v38\")"))
         XCTAssertTrue(structuralSchema.contains("transcriptStructuralSearchRow"))

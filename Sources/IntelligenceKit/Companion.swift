@@ -117,7 +117,8 @@ public enum CompanionAnswer {
         // Role drift ("as an AI…") joins the hedges: a card that talks about
         // being a model instead of answering is worse than no card.
         let hedges = [
-            "not mentioned in the context", "not in the context", "not in the passages",
+            "not mentioned in the context", "not mentioned in the notes",
+            "not in the context", "not in the passages", "not in the notes",
             "does not mention", "doesn't mention", "no mention of", "not provided in",
             "cannot determine", "can't determine", "unable to determine", "unable to answer",
             "i apologize", "need more information", "provide more context", "clarify your question",

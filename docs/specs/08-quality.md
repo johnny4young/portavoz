@@ -1780,6 +1780,73 @@ ID. The Dev bundle is local-only because no CloudKit profile was supplied, and
 the absent optional Metal Toolchain means this install contains no MLX
 `metallib`; neither limitation was silently converted into release evidence.
 
+### Typed raw-note Ask (D389)
+
+Storage integration tests create a clean v45 library, migrate a file-backed
+v44 library with an existing note, reopen it, and prove exact backfill. They
+exercise insert/update/tombstone triggers, meeting tombstones, raw-note-only
+kind filtering, structural exclusion of `enhancedNote`, hostile FTS input,
+corrupt UUID and offset rejection, deterministic limits, 2,000-note search,
+and 32 concurrent bounded reads. A real retrieval case proves early English
+lexical evidence can be followed by the Spanish bilingual variant in the one
+fused set rather than ending search after the first hit.
+
+Application tests cover exact cited-answer subsets, marker stripping,
+answer/abstention through the canonical public-synthetic English and Spanish
+note corpus, no evidence, unavailable provider, failure, timeout, caller
+cancellation, forged or missing sentence markers, evidence mismatch, duplicate
+identity, invalid time/title/provenance budgets, 40 concurrent cancellations,
+and zero late success. Prompt/provider tests preserve typed author/time/meeting
+material, isolate escaped prompt-like note text inside untrusted-data elements,
+enforce aggregate character/byte limits, and prove the selected MLX/Ollama
+adapters receive only `RAGNotePassage`. Presentation and router tests prove
+Notes never calls transcript/Web methods and that source changes fence late
+evidence and completion.
+
+The existing full-Ask XCUITest journey now exercises Web, Notes, and one exact
+meeting in the same disposable real-app launch. It verifies the raw-note-only
+disclosure, pending and final Notes source badges, localized `You`/`Tú` authorship,
+the exact `Test meeting · 00:12` source, and a generated answer with markers
+removed before continuing the released exact-meeting replacement/citation-seek
+journey. No duplicate UI case or launch was added. Typed Notes lower layers map
+only to the consolidated Ask scope; shared citation/provider files additionally
+map to Interview Assist. Localization and shared seed changes retain the
+complete bilingual fail-safe.
+
+The final package gate executed 2,734 tests with 15 environment-gated real-
+asset skips and zero failures in 121.198 seconds. Current-SDK first-party
+warnings-as-errors built cleanly, strict SwiftLint reported zero violations
+across 729 Swift files, the complete tooling discovery passed 504/504 tests in
+23.490 seconds, and repository hygiene, String Catalog validation, and diff
+checks passed. The changed-file catalogue was complete at 106/106 cases and
+selected the required English-plus-Spanish fail-safe expansion.
+
+The consolidated Ask journey passed 1/1 English in 21.306 seconds and 1/1
+Spanish in 19.358 seconds with one shared build and no retry. The complete
+real-app integration gate then reused one build and ran locales sequentially:
+106/106 English passed in 1,117.181 seconds of test time (1,141 seconds wall,
+7.036-second p50, 20.549-second p95, 90.149-second maximum), and 106/106
+Spanish passed in 1,118.177 seconds of test time (1,144 seconds wall,
+7.354-second p50, 20.707-second p95, 91.341-second maximum). Both content-free
+runtime receipts passed their budgets with zero retries.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was then rebuilt, deeply
+verified, installed only at `/Applications/Portavoz Dev.app`, and observed
+running from its exact executable at PID 37737. A fresh before/after comparison
+kept the notarized `app.portavoz.mac` release bundle unchanged across its 184-
+entry no-symlink-traversal lstat/content/hex-xattr manifest at SHA-256
+`7c0fc2e97f0dbe5894d2b2d082f65c3e76ab8b549fd33aed2356f5adef1c98c8`;
+its bundle identifier and designated requirement stayed unchanged, its deep
+signature remained valid, and Gatekeeper still reported Notarized Developer
+ID. The Dev bundle remains local-only because no CloudKit provisioning profile
+was supplied, and the absent optional Metal Toolchain means this install has no
+MLX `metallib`; neither limitation is release or real-model evidence.
+
+This autonomous evidence uses no private meeting, Internet, account, or
+installed model and does not certify physical Sequoia/Tahoe, VoiceOver/Voice
+Control, production CloudKit, notarized distribution, real model
+quality/latency/memory, or field-note behavior.
+
 ### Bounded post-RRF fact-aware selection (D286)
 
 Seven pure selector cases prove the fixed 6-transcript/4-fact/8-additional-

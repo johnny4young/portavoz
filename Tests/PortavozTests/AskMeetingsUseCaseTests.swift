@@ -22,6 +22,24 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         XCTAssertEqual(answerCallCount, 0)
     }
 
+    func testNotesScopeFailsClosedBeforeTranscriptCapabilitiesRun() async throws {
+        let retrieval = AskMeetingRetrievalFake(searches: [], citations: [])
+        let answering = AskMeetingAnsweringFake(text: "must not run")
+        let useCase = AskMeetings(retrieval: retrieval, answering: answering)
+
+        do {
+            _ = try await useCase.answer("budget", source: .notes)
+            XCTFail("typed notes must never widen into transcript retrieval")
+        } catch let error as AskSourcePolicyError {
+            XCTAssertEqual(error, .notesRequireTypedAdapter)
+        }
+
+        let retrievalCalls = await retrieval.calls
+        let answerCallCount = await answering.callCount
+        XCTAssertTrue(retrievalCalls.isEmpty)
+        XCTAssertEqual(answerCallCount, 0)
+    }
+
     func testMeetingScopeCannotFallBackToAnUnscopedRetriever() async throws {
         let retrieval = AskMeetingRetrievalFake(searches: [], citations: [])
         let useCase = AskMeetings(
