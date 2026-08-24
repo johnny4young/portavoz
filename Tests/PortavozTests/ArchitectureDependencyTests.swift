@@ -9802,6 +9802,87 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D391"))
     }
 
+    func testCandidateAutomationOwnsEightSpecializedProofs() throws {
+        let contract = try Self.jsonObject(
+            at: "docs/evidence/candidate-automation.json")
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 1)
+        XCTAssertEqual(
+            contract["kind"] as? String,
+            "candidate-automation-contract")
+        XCTAssertEqual(
+            contract["proofs"] as? [String],
+            [
+                "finite-scope",
+                "autonomous-validation",
+                "model-gated",
+                "performance-ledger",
+                "resource-baseline",
+                "long-capture",
+                "upgrade-recovery",
+                "complete-bilingual-ui",
+            ])
+
+        let performance = try XCTUnwrap(
+            contract["performance"] as? [String: Any])
+        let measured = Set(try XCTUnwrap(
+            performance["requiredMeasuredMetricIDs"] as? [String]))
+        let unmeasured = Set(try XCTUnwrap(
+            performance["allowedNotMeasuredMetricIDs"] as? [String]))
+        XCTAssertEqual(measured.count, 12)
+        XCTAssertEqual(unmeasured.count, 13)
+        XCTAssertTrue(measured.isDisjoint(with: unmeasured))
+        let modelFixture = try XCTUnwrap(
+            contract["modelFixture"] as? [String: Any])
+        XCTAssertEqual(
+            modelFixture["text"] as? String,
+            "Fixtures/CandidateAutomation/public-model-lane-en-v1.txt")
+        XCTAssertEqual(modelFixture["systemVoice"] as? String, "Samantha")
+
+        let runner = try Self.contents(of: "scripts/candidate_automation.py")
+        let makefile = try Self.contents(of: "Makefile")
+        let hygiene = try Self.contents(
+            of: "scripts/check-repository-hygiene.sh")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let diarizationTests = try Self.contents(
+            of: "Tests/PortavozTests/DiarizationTests.swift")
+        let embeddingTests = try Self.contents(
+            of: "Tests/PortavozTests/RAGTests.swift")
+        for required in [
+            "scripts/run-release-reliability-gates.sh",
+            "make\", \"test-apuntador-validation",
+            "scripts/run-perf-ledger.sh",
+            "scripts/run-resource-baseline.sh",
+            "scripts/run-long-capture-baseline.sh",
+            "make\", \"test-ui-bilingual",
+            "validate_performance_ledger",
+            "validate_resource_receipt",
+            "validate_long_capture",
+            "validate_ui_receipts",
+            "validate_public_model_fixture",
+            "PORTAVOZ_MODEL_TESTS\": \"1",
+            "PORTAVOZ_PERF_WAVEFORM_MIC\": None",
+            "PORTAVOZ_SIGN_IDENTITY\": \"-",
+            "candidate qualification requires a completely clean worktree",
+        ] {
+            XCTAssertTrue(runner.contains(required), "missing \(required)")
+        }
+        XCTAssertFalse(runner.contains("--proof"))
+        XCTAssertFalse(runner.contains("record-qualification"))
+        XCTAssertFalse(diarizationTests.contains("ensureAvailable("))
+        XCTAssertTrue(diarizationTests.contains(
+            "report.isComplete"))
+        XCTAssertTrue(diarizationTests.contains(
+            "store.directory(for: descriptor)"))
+        XCTAssertTrue(embeddingTests.contains(
+            "embedder.prepare(allowAssetDownload: false)"))
+        XCTAssertTrue(makefile.contains("candidate-automation:"))
+        XCTAssertTrue(makefile.contains(
+            "release-reliability long-capture-baseline candidate-automation"))
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_candidate_automation"))
+        XCTAssertTrue(decisions.contains("## D392"))
+    }
+
     func testRealModelGateReservesContextAndNeverEchoesTranscriptContent() throws {
         let formatter = try Self.contents(
             of: "Sources/IntelligenceKit/TranscriptFormatter.swift")

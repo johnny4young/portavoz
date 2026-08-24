@@ -1,0 +1,7 @@
+[[voice Samantha]] Welcome to the public qualification. I will review the release plan and the latency budget.
+[[slnc 700]]
+[[voice Paulina]] Gracias. Yo voy a revisar las citas, la memoria y la recuperación antes de mañana.
+[[slnc 700]]
+[[voice Samantha]] The final check must use only synthetic evidence and keep every source explicit.
+[[slnc 700]]
+[[voice Paulina]] De acuerdo. La prueba no usa reuniones privadas y no publica ninguna acción externa.

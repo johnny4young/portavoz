@@ -1,0 +1,1366 @@
+#!/usr/bin/env python3
+"""Run and attest the finite, autonomous Portavoz candidate qualification."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import re
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable, Sequence
+
+import long_capture_evidence
+import release_reliability
+import resource_baseline
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_CONTRACT = ROOT / "docs" / "evidence" / "candidate-automation.json"
+DEFAULT_OUTPUT_PARENT = ROOT / "dist" / "release-readiness"
+CONTRACT_SCHEMA_VERSION = 1
+PERF_LEDGER_SCHEMA_VERSION = 1
+UI_RECEIPT_SCHEMA_VERSION = 1
+EXPECTED_MODEL_CLASSES = (
+    "DiarizationIntegrationTests",
+    "FoundationModelIntegrationTests",
+    "MeetingTypeDetectorIntegrationTests",
+    "ObjectiveCheckDetectorShapeTests",
+    "ParakeetIntegrationTests",
+    "SentenceEmbedderIntegrationTests",
+)
+EXPECTED_UPGRADE_RECOVERY_CLASSES = (
+    "BackupFailureRecoveryStoreTests",
+    "LibraryMarkdownBackupRecoveryStoreTests",
+    "MeetingStoreLaunchRecoveryTests",
+    "ProcessingJobPersistenceTests",
+    "RecoverInterruptedMeetingsUseCaseTests",
+    "RecoverLibraryMarkdownBackupTests",
+    "StorageUpgradeTests",
+)
+EXPECTED_RESOURCE_SCENARIOS = (
+    "ask",
+    "idle",
+    "indexing",
+    "recording",
+    "recording-batch",
+    "recording-indexing",
+    "refine",
+    "stop",
+    "summary",
+)
+EXPECTED_UI_LOCALES = ("en", "es")
+EXPECTED_CONTRACT_PATHS = {
+    "modelFixture": "Fixtures/CandidateAutomation/public-model-lane-en-v1.txt",
+    "modelConversation": (
+        "Fixtures/CandidateAutomation/public-diarization-en-es-v1.txt"
+    ),
+    "performance": "docs/evidence/perf-thresholds.json",
+    "resource": "docs/evidence/resource-baseline-matrix.json",
+    "ui": "docs/evidence/ui-test-runtime-budget.json",
+}
+EXECUTED_PATTERN = re.compile(r"Executed\s+([0-9]+)\s+tests?,")
+SKIPPED_PATTERN = re.compile(r"([0-9]+)\s+tests?\s+skipped")
+
+
+class CandidateAutomationError(ValueError):
+    """A fail-closed candidate qualification error."""
+
+
+def exact_schema_version(value: Any, expected: int, label: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int) or value != expected:
+        raise CandidateAutomationError(f"{label} must be {expected}")
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def exact_object(
+    value: Any,
+    label: str,
+    required: Sequence[str],
+    optional: Sequence[str] = (),
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise CandidateAutomationError(f"{label} must be an object")
+    required_keys = set(required)
+    allowed_keys = required_keys | set(optional)
+    missing = required_keys - value.keys()
+    extra = value.keys() - allowed_keys
+    if missing:
+        raise CandidateAutomationError(
+            f"{label} is missing keys: {', '.join(sorted(missing))}"
+        )
+    if extra:
+        raise CandidateAutomationError(
+            f"{label} contains forbidden keys: {', '.join(sorted(extra))}"
+        )
+    return value
+
+
+def string_list(value: Any, label: str) -> tuple[str, ...]:
+    if not isinstance(value, list) or not value:
+        raise CandidateAutomationError(f"{label} must be a non-empty array")
+    if any(not isinstance(item, str) or not item for item in value):
+        raise CandidateAutomationError(f"{label} must contain non-empty strings")
+    if len(set(value)) != len(value):
+        raise CandidateAutomationError(f"{label} contains duplicates")
+    return tuple(value)
+
+
+def finite_nonnegative(value: Any, label: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise CandidateAutomationError(f"{label} must be numeric")
+    number = float(value)
+    if not math.isfinite(number) or number < 0:
+        raise CandidateAutomationError(f"{label} must be finite and non-negative")
+    return number
+
+
+def load_json(path: Path, label: str, maximum_bytes: int = 2 * 1024 * 1024) -> Any:
+    if not path.is_file():
+        raise CandidateAutomationError(f"{label} not found: {path}")
+    if path.stat().st_size > maximum_bytes:
+        raise CandidateAutomationError(f"{label} exceeds the size limit")
+
+    def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise CandidateAutomationError(f"{label} repeats key: {key}")
+            result[key] = value
+        return result
+
+    try:
+        return json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_keys,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise CandidateAutomationError(f"{label} is not valid UTF-8 JSON") from error
+
+
+def tracked_path(root: Path, raw: Any, label: str, expected: str) -> Path:
+    if raw != expected:
+        raise CandidateAutomationError(f"{label} must be {expected}")
+    path = (root / expected).resolve()
+    try:
+        path.relative_to(root.resolve())
+    except ValueError as error:
+        raise CandidateAutomationError(f"{label} escapes the repository") from error
+    if not path.is_file():
+        raise CandidateAutomationError(f"{label} does not exist: {path}")
+    return path
+
+
+def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
+    contract = exact_object(
+        document,
+        "candidate contract",
+        (
+            "schemaVersion",
+            "kind",
+            "proofs",
+            "modelFixture",
+            "modelGatedTestClasses",
+            "upgradeRecoveryTestClasses",
+            "performance",
+            "resource",
+            "ui",
+        ),
+    )
+    exact_schema_version(
+        contract["schemaVersion"],
+        CONTRACT_SCHEMA_VERSION,
+        "candidate contract.schemaVersion",
+    )
+    if contract["kind"] != "candidate-automation-contract":
+        raise CandidateAutomationError(
+            "candidate contract.kind must be candidate-automation-contract"
+        )
+
+    model_fixture = exact_object(
+        contract["modelFixture"],
+        "candidate contract.modelFixture",
+        (
+            "text",
+            "conversationText",
+            "conversationVoices",
+            "systemVoice",
+            "rateWordsPerMinute",
+        ),
+    )
+    model_fixture_path = tracked_path(
+        root,
+        model_fixture["text"],
+        "candidate contract.modelFixture.text",
+        EXPECTED_CONTRACT_PATHS["modelFixture"],
+    )
+    conversation_fixture_path = tracked_path(
+        root,
+        model_fixture["conversationText"],
+        "candidate contract.modelFixture.conversationText",
+        EXPECTED_CONTRACT_PATHS["modelConversation"],
+    )
+    if string_list(
+        model_fixture["conversationVoices"],
+        "candidate contract.modelFixture.conversationVoices",
+    ) != ("Paulina", "Samantha"):
+        raise CandidateAutomationError(
+            "candidate contract.modelFixture.conversationVoices drifted"
+        )
+    try:
+        spoken_text = model_fixture_path.read_text(encoding="utf-8")
+        conversation_text = conversation_fixture_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        raise CandidateAutomationError("candidate model fixture text is unreadable") from error
+    if not 80 <= len(spoken_text) <= 2_000 or "[[" in spoken_text:
+        raise CandidateAutomationError(
+            "candidate spoken fixture text is empty, unbounded, or directive-bearing"
+        )
+    voice_sequence = re.findall(
+        r"\[\[voice (Samantha|Paulina)\]\]", conversation_text
+    )
+    silence_sequence = re.findall(r"\[\[slnc ([0-9]+)\]\]", conversation_text)
+    stripped_directives = re.sub(
+        r"\[\[(?:voice (?:Samantha|Paulina)|slnc [0-9]+)\]\]",
+        "",
+        conversation_text,
+    )
+    if (
+        not 160 <= len(conversation_text) <= 3_000
+        or voice_sequence != ["Samantha", "Paulina", "Samantha", "Paulina"]
+        or silence_sequence != ["700", "700", "700"]
+        or "[[" in stripped_directives
+        or "]]" in stripped_directives
+    ):
+        raise CandidateAutomationError(
+            "candidate conversation fixture must have four bounded alternating turns"
+        )
+    if model_fixture["systemVoice"] != "Samantha":
+        raise CandidateAutomationError(
+            "candidate contract.modelFixture.systemVoice must be Samantha"
+        )
+    fixture_rate = model_fixture["rateWordsPerMinute"]
+    if (
+        isinstance(fixture_rate, bool)
+        or not isinstance(fixture_rate, int)
+        or fixture_rate != 170
+    ):
+        raise CandidateAutomationError(
+            "candidate contract.modelFixture.rateWordsPerMinute must be 170"
+        )
+
+    expected_proofs = tuple(
+        release_reliability.QUALIFICATION_RECEIPTS["candidate-automation"][
+            "proofs"
+        ]
+    )
+    if string_list(contract["proofs"], "candidate contract.proofs") != expected_proofs:
+        raise CandidateAutomationError(
+            "candidate contract.proofs must match the release-admission scope exactly"
+        )
+    if (
+        string_list(
+            contract["modelGatedTestClasses"],
+            "candidate contract.modelGatedTestClasses",
+        )
+        != EXPECTED_MODEL_CLASSES
+    ):
+        raise CandidateAutomationError("candidate contract model classes drifted")
+    if (
+        string_list(
+            contract["upgradeRecoveryTestClasses"],
+            "candidate contract.upgradeRecoveryTestClasses",
+        )
+        != EXPECTED_UPGRADE_RECOVERY_CLASSES
+    ):
+        raise CandidateAutomationError(
+            "candidate contract upgrade/recovery classes drifted"
+        )
+
+    performance = exact_object(
+        contract["performance"],
+        "candidate contract.performance",
+        (
+            "thresholdContract",
+            "requiredMeasuredMetricIDs",
+            "allowedNotMeasuredMetricIDs",
+            "acceptedMeasuredStates",
+        ),
+    )
+    performance_path = tracked_path(
+        root,
+        performance["thresholdContract"],
+        "candidate contract.performance.thresholdContract",
+        EXPECTED_CONTRACT_PATHS["performance"],
+    )
+    threshold_contract = load_json(performance_path, "performance threshold contract")
+    try:
+        threshold_contract = resource_baseline.object_shape(
+            threshold_contract,
+            "performance threshold contract",
+            ("schemaVersion", "metrics"),
+            ("authority", "baselines", "description", "regression", "stability"),
+        )
+    except resource_baseline.ResourceBaselineError as error:
+        raise CandidateAutomationError(str(error)) from error
+    exact_schema_version(
+        threshold_contract["schemaVersion"],
+        PERF_LEDGER_SCHEMA_VERSION,
+        "performance threshold contract.schemaVersion",
+    )
+    raw_metrics = threshold_contract["metrics"]
+    if not isinstance(raw_metrics, list) or not raw_metrics:
+        raise CandidateAutomationError(
+            "performance threshold contract.metrics must be a non-empty array"
+        )
+    threshold_ids: list[str] = []
+    for index, metric in enumerate(raw_metrics):
+        if not isinstance(metric, dict) or not isinstance(metric.get("id"), str):
+            raise CandidateAutomationError(
+                f"performance threshold contract.metrics[{index}].id is invalid"
+            )
+        threshold_ids.append(metric["id"])
+    if len(set(threshold_ids)) != len(threshold_ids):
+        raise CandidateAutomationError("performance threshold contract repeats metrics")
+    required_metrics = string_list(
+        performance["requiredMeasuredMetricIDs"],
+        "candidate contract.performance.requiredMeasuredMetricIDs",
+    )
+    allowed_unmeasured = string_list(
+        performance["allowedNotMeasuredMetricIDs"],
+        "candidate contract.performance.allowedNotMeasuredMetricIDs",
+    )
+    if set(required_metrics) & set(allowed_unmeasured):
+        raise CandidateAutomationError(
+            "candidate performance measured and unmeasured sets overlap"
+        )
+    if set(required_metrics) | set(allowed_unmeasured) != set(threshold_ids):
+        raise CandidateAutomationError(
+            "candidate performance policy must partition every threshold metric"
+        )
+    accepted_states = string_list(
+        performance["acceptedMeasuredStates"],
+        "candidate contract.performance.acceptedMeasuredStates",
+    )
+    if set(accepted_states) != {"pass", "diagnostic"}:
+        raise CandidateAutomationError(
+            "candidate performance accepted states must be diagnostic and pass"
+        )
+
+    resource = exact_object(
+        contract["resource"],
+        "candidate contract.resource",
+        ("contract", "samplesPerScenario", "requiredScenarios"),
+    )
+    resource_path = tracked_path(
+        root,
+        resource["contract"],
+        "candidate contract.resource.contract",
+        EXPECTED_CONTRACT_PATHS["resource"],
+    )
+    try:
+        resource_contract = resource_baseline.validate_contract(
+            resource_baseline.load_json(resource_path, "resource contract")
+        )
+    except resource_baseline.ResourceBaselineError as error:
+        raise CandidateAutomationError(str(error)) from error
+    sample_count = resource["samplesPerScenario"]
+    if isinstance(sample_count, bool) or not isinstance(sample_count, int):
+        raise CandidateAutomationError(
+            "candidate contract.resource.samplesPerScenario must be an integer"
+        )
+    if sample_count != resource_contract["minimumSamples"]:
+        raise CandidateAutomationError(
+            "candidate resource sample count must match the accepted minimum"
+        )
+    scenarios = string_list(
+        resource["requiredScenarios"],
+        "candidate contract.resource.requiredScenarios",
+    )
+    if scenarios != EXPECTED_RESOURCE_SCENARIOS:
+        raise CandidateAutomationError("candidate resource scenarios drifted")
+    if set(scenarios) != set(resource_contract["scenarios"]):
+        raise CandidateAutomationError(
+            "candidate resource scenarios must cover the resource contract"
+        )
+
+    ui = exact_object(
+        contract["ui"],
+        "candidate contract.ui",
+        ("budget", "locales"),
+    )
+    ui_budget_path = tracked_path(
+        root,
+        ui["budget"],
+        "candidate contract.ui.budget",
+        EXPECTED_CONTRACT_PATHS["ui"],
+    )
+    locales = string_list(ui["locales"], "candidate contract.ui.locales")
+    if locales != EXPECTED_UI_LOCALES:
+        raise CandidateAutomationError("candidate UI locales must be exactly en and es")
+
+    return {
+        "proofs": expected_proofs,
+        "modelFixture": {
+            "textPath": model_fixture_path,
+            "conversationTextPath": conversation_fixture_path,
+            "conversationVoices": ("Paulina", "Samantha"),
+            "systemVoice": "Samantha",
+            "rateWordsPerMinute": fixture_rate,
+        },
+        "modelClasses": EXPECTED_MODEL_CLASSES,
+        "upgradeRecoveryClasses": EXPECTED_UPGRADE_RECOVERY_CLASSES,
+        "performance": {
+            "thresholdContract": performance_path,
+            "requiredMeasuredMetricIDs": required_metrics,
+            "allowedNotMeasuredMetricIDs": allowed_unmeasured,
+            "acceptedMeasuredStates": accepted_states,
+        },
+        "resource": {
+            "contractPath": resource_path,
+            "contract": resource_contract,
+            "samplesPerScenario": sample_count,
+            "requiredScenarios": scenarios,
+        },
+        "ui": {
+            "budgetPath": ui_budget_path,
+            "locales": locales,
+        },
+    }
+
+
+def load_contract(path: Path = DEFAULT_CONTRACT, root: Path = ROOT) -> dict[str, Any]:
+    return validate_contract(load_json(path, "candidate contract"), root)
+
+
+def validate_release_identity(
+    release: dict[str, Any],
+    *,
+    version: str,
+    build: str,
+    commit: str,
+    label: str,
+) -> None:
+    expected = {"version": version, "build": build, "commit": commit}
+    if release != expected:
+        raise CandidateAutomationError(f"{label} release identity does not match")
+
+
+def validate_deterministic_receipt(
+    path: Path,
+    *,
+    version: str,
+    build: str,
+    commit: str,
+) -> None:
+    try:
+        _, release, proofs = release_reliability.validate_deterministic_receipt(
+            load_json(path, "deterministic receipt")
+        )
+    except release_reliability.ReliabilityError as error:
+        raise CandidateAutomationError(str(error)) from error
+    validate_release_identity(
+        release,
+        version=version,
+        build=build,
+        commit=commit,
+        label="deterministic receipt",
+    )
+    failed = sorted(identifier for identifier, state in proofs.items() if state != "pass")
+    if failed:
+        raise CandidateAutomationError(
+            "deterministic receipt did not pass: " + ", ".join(failed)
+        )
+
+
+def validate_performance_ledger(path: Path, contract: dict[str, Any]) -> None:
+    ledger = exact_object(
+        load_json(path, "performance ledger"),
+        "performance ledger",
+        ("schemaVersion", "authority", "metrics", "summary"),
+        ("generatedAt", "host", "toolchain", "comparability"),
+    )
+    exact_schema_version(
+        ledger["schemaVersion"],
+        PERF_LEDGER_SCHEMA_VERSION,
+        "performance ledger.schemaVersion",
+    )
+    if ledger["authority"] != "authoritative":
+        raise CandidateAutomationError("performance ledger is not authoritative")
+    if not isinstance(ledger.get("host"), dict) or not ledger["host"]:
+        raise CandidateAutomationError("performance ledger has no host identity")
+    if not isinstance(ledger.get("toolchain"), dict) or not ledger["toolchain"]:
+        raise CandidateAutomationError("performance ledger has no toolchain identity")
+    if "generatedAt" in ledger:
+        try:
+            release_reliability.timestamp(
+                ledger["generatedAt"], "performance ledger.generatedAt"
+            )
+        except release_reliability.ReliabilityError as error:
+            raise CandidateAutomationError(str(error)) from error
+
+    metrics = ledger["metrics"]
+    if not isinstance(metrics, list):
+        raise CandidateAutomationError("performance ledger.metrics must be an array")
+    by_identifier: dict[str, dict[str, Any]] = {}
+    status_counts: dict[str, int] = {}
+    for index, raw_metric in enumerate(metrics):
+        if not isinstance(raw_metric, dict):
+            raise CandidateAutomationError(
+                f"performance ledger.metrics[{index}] must be an object"
+            )
+        identifier = raw_metric.get("id")
+        status = raw_metric.get("status")
+        if not isinstance(identifier, str) or not isinstance(status, str):
+            raise CandidateAutomationError(
+                f"performance ledger.metrics[{index}] has invalid identity or status"
+            )
+        if identifier in by_identifier:
+            raise CandidateAutomationError(
+                f"performance ledger repeats metric: {identifier}"
+            )
+        by_identifier[identifier] = raw_metric
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+    policy = contract["performance"]
+    required = set(policy["requiredMeasuredMetricIDs"])
+    allowed_unmeasured = set(policy["allowedNotMeasuredMetricIDs"])
+    if set(by_identifier) != required | allowed_unmeasured:
+        raise CandidateAutomationError(
+            "performance ledger metric inventory does not match the candidate contract"
+        )
+    accepted_states = set(policy["acceptedMeasuredStates"])
+    for identifier in sorted(required):
+        status = by_identifier[identifier]["status"]
+        if status not in accepted_states:
+            raise CandidateAutomationError(
+                f"performance metric {identifier} has blocking state {status}"
+            )
+        finite_nonnegative(
+            by_identifier[identifier].get("measured"),
+            f"performance metric {identifier}.measured",
+        )
+    for identifier in sorted(allowed_unmeasured):
+        if by_identifier[identifier]["status"] != "not-measured":
+            raise CandidateAutomationError(
+                f"performance metric {identifier} must be explicitly not-measured"
+            )
+
+    summary = exact_object(
+        ledger["summary"],
+        "performance ledger.summary",
+        (
+            "failures",
+            "regressionCandidates",
+            "notMeasured",
+            "unresolved",
+            "unstable",
+            "dispersed",
+        ),
+    )
+    expected_summary = {
+        "failures": status_counts.get("fail", 0),
+        "regressionCandidates": status_counts.get("regression-candidate", 0),
+        "notMeasured": status_counts.get("not-measured", 0),
+        "unresolved": status_counts.get("unresolved", 0),
+        "unstable": status_counts.get("unstable", 0),
+    }
+    for key, expected in expected_summary.items():
+        value = summary[key]
+        if isinstance(value, bool) or not isinstance(value, int) or value != expected:
+            raise CandidateAutomationError(
+                f"performance ledger.summary.{key} is inconsistent"
+            )
+    if any(summary[key] != 0 for key in (
+        "failures", "regressionCandidates", "unresolved", "unstable"
+    )):
+        raise CandidateAutomationError("performance ledger contains blocking results")
+    if summary["notMeasured"] != len(allowed_unmeasured):
+        raise CandidateAutomationError(
+            "performance ledger not-measured count does not match policy"
+        )
+    if isinstance(summary["dispersed"], bool) or not isinstance(
+        summary["dispersed"], int
+    ) or not 0 <= summary["dispersed"] <= len(metrics):
+        raise CandidateAutomationError(
+            "performance ledger.summary.dispersed is outside the metric inventory"
+        )
+
+
+def validate_resource_receipt(
+    path: Path,
+    contract: dict[str, Any],
+    *,
+    version: str,
+    build: str,
+    commit: str,
+    profile: str,
+) -> None:
+    policy = contract["resource"]
+    try:
+        receipt = resource_baseline.validate_receipt(
+            load_json(path, "resource receipt"),
+            policy["contract"],
+            "resource receipt",
+        )
+    except resource_baseline.ResourceBaselineError as error:
+        raise CandidateAutomationError(str(error)) from error
+    resource_build = dict(receipt["build"])
+    if resource_build.pop("configuration", None) != "release":
+        raise CandidateAutomationError("resource receipt is not a Release build")
+    validate_release_identity(
+        resource_build,
+        version=version,
+        build=build,
+        commit=commit,
+        label="resource receipt",
+    )
+    if receipt["host"]["profile"] != profile:
+        raise CandidateAutomationError("resource receipt host profile does not match")
+    scenarios = receipt["scenarios"]
+    if set(scenarios) != set(policy["requiredScenarios"]):
+        raise CandidateAutomationError(
+            "resource receipt scenario inventory does not match"
+        )
+    expected_samples = policy["samplesPerScenario"]
+    expected_runs = set(range(1, expected_samples + 1))
+    for identifier in policy["requiredScenarios"]:
+        scenario = scenarios[identifier]
+        if set(scenario["runs"]) != expected_runs:
+            raise CandidateAutomationError(
+                f"resource scenario {identifier} must have exact runs 1...{expected_samples}"
+            )
+        try:
+            row = resource_baseline.scenario_row(
+                profile,
+                identifier,
+                scenario,
+                expected_samples,
+                policy["contract"]["maximumTimingRatio"],
+            )
+        except resource_baseline.ResourceBaselineError as error:
+            raise CandidateAutomationError(str(error)) from error
+        if row["state"] != "pass":
+            raise CandidateAutomationError(
+                f"resource scenario {identifier} has blocking state {row['state']}"
+            )
+    ask_pipeline = receipt["askPipeline"]
+    try:
+        ask_row = resource_baseline.ask_pipeline_row(
+            profile,
+            ask_pipeline,
+            expected_samples,
+            policy["contract"]["maximumTimingRatio"],
+        )
+    except resource_baseline.ResourceBaselineError as error:
+        raise CandidateAutomationError(str(error)) from error
+    if ask_row["state"] != "pass":
+        raise CandidateAutomationError(
+            f"resource Ask pipeline has blocking state {ask_row['state']}"
+        )
+    if set(ask_pipeline["runs"]) != expected_runs:
+        raise CandidateAutomationError(
+            f"resource Ask pipeline must have exact runs 1...{expected_samples}"
+        )
+    if set(ask_pipeline["runs"]) != set(scenarios["ask"]["runs"]):
+        raise CandidateAutomationError(
+            "resource Ask pipeline runs do not match the Ask samples"
+        )
+
+
+def validate_long_capture(path: Path, commit: str) -> None:
+    try:
+        long_capture_evidence.validate_report(
+            load_json(path, "long-capture receipt", maximum_bytes=512 * 1024),
+            commit,
+        )
+    except long_capture_evidence.EvidenceError as error:
+        raise CandidateAutomationError(str(error)) from error
+
+
+def validate_ui_receipts(results_root: Path, contract: dict[str, Any]) -> None:
+    ui_policy = contract["ui"]
+    budget = exact_object(
+        load_json(ui_policy["budgetPath"], "UI runtime budget"),
+        "UI runtime budget",
+        ("schemaVersion", "catalog", "fullSuite", "testBudgetsSeconds"),
+        ("historicalBaseline", "qualifiedCandidate"),
+    )
+    exact_schema_version(
+        budget["schemaVersion"],
+        UI_RECEIPT_SCHEMA_VERSION,
+        "UI runtime budget.schemaVersion",
+    )
+    catalog = exact_object(
+        budget["catalog"], "UI runtime budget.catalog", ("expectedCaseCount",)
+    )
+    expected_count = catalog["expectedCaseCount"]
+    if isinstance(expected_count, bool) or not isinstance(expected_count, int):
+        raise CandidateAutomationError("UI expected case count must be an integer")
+    raw_test_budgets = budget["testBudgetsSeconds"]
+    if not isinstance(raw_test_budgets, dict):
+        raise CandidateAutomationError("UI test budgets must be an object")
+    expected_identifiers = set(raw_test_budgets)
+    if len(expected_identifiers) != expected_count:
+        raise CandidateAutomationError(
+            "UI budget inventory does not match its expected case count"
+        )
+
+    build_durations: list[float] = []
+    for locale in ui_policy["locales"]:
+        receipt = exact_object(
+            load_json(results_root / f"{locale}-runtime.json", f"{locale} UI receipt"),
+            f"{locale} UI receipt",
+            (
+                "schemaVersion",
+                "locale",
+                "selectorCount",
+                "caseCount",
+                "buildDurationSeconds",
+                "testWallDurationSeconds",
+                "testDurationSeconds",
+                "p50Seconds",
+                "p95Seconds",
+                "maximumSeconds",
+                "budgetStatus",
+                "budgetViolations",
+                "tests",
+            ),
+        )
+        exact_schema_version(
+            receipt["schemaVersion"],
+            UI_RECEIPT_SCHEMA_VERSION,
+            f"{locale} UI receipt.schemaVersion",
+        )
+        if receipt["locale"] != locale:
+            raise CandidateAutomationError(f"{locale} UI receipt locale does not match")
+        if (
+            isinstance(receipt["selectorCount"], bool)
+            or not isinstance(receipt["selectorCount"], int)
+            or receipt["selectorCount"] != 0
+        ):
+            raise CandidateAutomationError(
+                f"{locale} UI receipt is not a complete-catalog run"
+            )
+        if receipt["caseCount"] != expected_count:
+            raise CandidateAutomationError(
+                f"{locale} UI receipt has {receipt['caseCount']} cases; "
+                f"expected {expected_count}"
+            )
+        if receipt["budgetStatus"] != "passed" or receipt["budgetViolations"] != []:
+            raise CandidateAutomationError(f"{locale} UI receipt failed its budget")
+        build_durations.append(
+            finite_nonnegative(
+                receipt["buildDurationSeconds"],
+                f"{locale} UI receipt.buildDurationSeconds",
+            )
+        )
+        for key in (
+            "testWallDurationSeconds",
+            "testDurationSeconds",
+            "p50Seconds",
+            "p95Seconds",
+            "maximumSeconds",
+        ):
+            finite_nonnegative(receipt[key], f"{locale} UI receipt.{key}")
+        tests = receipt["tests"]
+        if not isinstance(tests, list) or len(tests) != expected_count:
+            raise CandidateAutomationError(
+                f"{locale} UI receipt tests do not match the full catalog"
+            )
+        identifiers: set[str] = set()
+        for index, raw_test in enumerate(tests):
+            test = exact_object(
+                raw_test,
+                f"{locale} UI receipt.tests[{index}]",
+                ("identifier", "durationSeconds", "result"),
+            )
+            identifier = test["identifier"]
+            if not isinstance(identifier, str) or not identifier:
+                raise CandidateAutomationError(
+                    f"{locale} UI receipt.tests[{index}].identifier is invalid"
+                )
+            if identifier in identifiers:
+                raise CandidateAutomationError(
+                    f"{locale} UI receipt repeats test: {identifier}"
+                )
+            identifiers.add(identifier)
+            finite_nonnegative(
+                test["durationSeconds"],
+                f"{locale} UI receipt test {identifier}.durationSeconds",
+            )
+            if test["result"] != "Passed":
+                raise CandidateAutomationError(
+                    f"{locale} UI receipt test {identifier} did not pass"
+                )
+        if identifiers != expected_identifiers:
+            raise CandidateAutomationError(
+                f"{locale} UI receipt test inventory does not match the budget"
+            )
+    if len(set(build_durations)) != 1:
+        raise CandidateAutomationError(
+            "bilingual UI receipts do not share one build duration"
+        )
+
+
+def detect_profile(contract: dict[str, Any], physical_memory_bytes: int) -> str:
+    if isinstance(physical_memory_bytes, bool) or not isinstance(
+        physical_memory_bytes, int
+    ) or physical_memory_bytes <= 0:
+        raise CandidateAutomationError("physical memory must be a positive integer")
+    matches = []
+    for identifier, profile in contract["resource"]["contract"]["profiles"].items():
+        minimum = profile["minimum"]
+        maximum = profile["maximum"]
+        if physical_memory_bytes >= minimum and (
+            maximum is None or physical_memory_bytes <= maximum
+        ):
+            matches.append(identifier)
+    if len(matches) != 1:
+        raise CandidateAutomationError(
+            "this Mac does not map to exactly one accepted resource profile"
+        )
+    return matches[0]
+
+
+def physical_memory_bytes() -> int:
+    try:
+        result = subprocess.run(
+            ["sysctl", "-n", "hw.memsize"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return int(result.stdout.strip())
+    except (OSError, subprocess.CalledProcessError, ValueError) as error:
+        raise CandidateAutomationError("cannot read this Mac's physical memory") from error
+
+
+def developer_environment() -> dict[str, str]:
+    environment = os.environ.copy()
+    if environment.get("DEVELOPER_DIR"):
+        return environment
+    try:
+        selected = subprocess.run(
+            ["xcode-select", "-p"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return environment
+    fallback = Path("/Applications/Xcode.app/Contents/Developer")
+    if selected.endswith("/CommandLineTools") and fallback.is_dir():
+        environment["DEVELOPER_DIR"] = str(fallback)
+    return environment
+
+
+def exact_checkout(root: Path, expected_commit: str | None = None) -> str:
+    try:
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=all"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise CandidateAutomationError("cannot inspect the source checkout") from error
+    try:
+        release_reliability.safe_string(
+            head, "candidate source commit", release_reliability.COMMIT_PATTERN
+        )
+    except release_reliability.ReliabilityError as error:
+        raise CandidateAutomationError(str(error)) from error
+    if expected_commit is not None and head != expected_commit:
+        raise CandidateAutomationError("candidate source HEAD changed during qualification")
+    if status:
+        raise CandidateAutomationError(
+            "candidate qualification requires a completely clean worktree"
+        )
+    return head
+
+
+def run_command(
+    root: Path,
+    expected_commit: str,
+    label: str,
+    command: Sequence[str],
+    *,
+    environment: dict[str, str | None] | None = None,
+) -> None:
+    exact_checkout(root, expected_commit)
+    print(f"==> {label}", flush=True)
+    merged_environment = developer_environment()
+    if environment:
+        for key, value in environment.items():
+            if value is None:
+                merged_environment.pop(key, None)
+            else:
+                merged_environment[key] = value
+    try:
+        status = subprocess.run(
+            list(command),
+            cwd=root,
+            env=merged_environment,
+            check=False,
+        ).returncode
+    except OSError as error:
+        raise CandidateAutomationError(f"{label} could not start") from error
+    if status != 0:
+        raise CandidateAutomationError(f"{label} failed with exit status {status}")
+    exact_checkout(root, expected_commit)
+
+
+def test_summary(output: str) -> tuple[int, int]:
+    summaries = [line for line in output.splitlines() if EXECUTED_PATTERN.search(line)]
+    if not summaries:
+        raise CandidateAutomationError("Swift test output has no XCTest summary")
+    summary = summaries[-1]
+    executed_match = EXECUTED_PATTERN.search(summary)
+    if executed_match is None:
+        raise CandidateAutomationError("Swift test output has no XCTest summary")
+    skipped_match = SKIPPED_PATTERN.search(summary)
+    return int(executed_match.group(1)), (
+        int(skipped_match.group(1)) if skipped_match else 0
+    )
+
+
+def run_swift_test_classes(
+    root: Path,
+    expected_commit: str,
+    label: str,
+    classes: Sequence[str],
+    *,
+    environment: dict[str, str | None] | None = None,
+) -> None:
+    test_environment = developer_environment()
+    if environment:
+        for key, value in environment.items():
+            if value is None:
+                test_environment.pop(key, None)
+            else:
+                test_environment[key] = value
+    for class_name in classes:
+        exact_checkout(root, expected_commit)
+        print(f"==> {label}: {class_name}", flush=True)
+        try:
+            result = subprocess.run(
+                [
+                    "swift",
+                    "test",
+                    "--configuration",
+                    "release",
+                    "--filter",
+                    class_name,
+                ],
+                cwd=root,
+                env=test_environment,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except OSError as error:
+            raise CandidateAutomationError(
+                f"{label} class {class_name} could not start"
+            ) from error
+        combined = result.stdout + "\n" + result.stderr
+        try:
+            executed, skipped = test_summary(combined)
+        except CandidateAutomationError as error:
+            raise CandidateAutomationError(
+                f"{label} class {class_name} produced no valid test summary"
+            ) from error
+        print(f"{class_name}: executed={executed} skipped={skipped}", flush=True)
+        if result.returncode != 0:
+            raise CandidateAutomationError(
+                f"{label} class {class_name} failed (private log withheld)"
+            )
+        if "[DEBUG] [FluidAudio." in combined:
+            raise CandidateAutomationError(
+                f"{label} class {class_name} emitted FluidAudio DEBUG output"
+            )
+        if executed <= 0:
+            raise CandidateAutomationError(
+                f"{label} class {class_name} matched no tests"
+            )
+        if skipped >= executed:
+            raise CandidateAutomationError(
+                f"{label} class {class_name} skipped every test"
+            )
+        exact_checkout(root, expected_commit)
+
+
+def validate_public_model_fixture(path: Path) -> None:
+    if not path.is_file():
+        raise CandidateAutomationError("public model audio fixture was not produced")
+    size = path.stat().st_size
+    if not 4_096 < size <= 64 * 1024 * 1024:
+        raise CandidateAutomationError(
+            "public model audio fixture is empty or outside its bounded size"
+        )
+    try:
+        result = subprocess.run(
+            ["afinfo", "-x", str(path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        document = ET.fromstring(result.stdout)
+        channel_text = document.findtext(".//{*}num_channels")
+        sample_rate_text = document.findtext(".//{*}sample_rate")
+        audio_bytes_text = document.findtext(".//{*}audio_bytes")
+        duration_text = document.findtext(".//{*}duration")
+        channels = int(channel_text or "")
+        sample_rate = float(sample_rate_text or "")
+        audio_bytes = int(audio_bytes_text or "")
+        duration = float(duration_text or "")
+    except (
+        OSError,
+        subprocess.CalledProcessError,
+        ET.ParseError,
+        TypeError,
+        ValueError,
+    ) as error:
+        raise CandidateAutomationError(
+            "public model audio fixture metadata is unreadable"
+        ) from error
+    if (
+        channels != 1
+        or not math.isfinite(sample_rate)
+        or sample_rate < 10
+        or audio_bytes <= 4_096
+        or not math.isfinite(duration)
+        or not 1 <= duration <= 600
+    ):
+        raise CandidateAutomationError(
+            "public model audio fixture has empty or unbounded PCM metadata"
+        )
+
+
+def candidate_receipt(
+    *, version: str, build: str, commit: str, proofs: Sequence[str]
+) -> dict[str, Any]:
+    expected = tuple(
+        release_reliability.QUALIFICATION_RECEIPTS["candidate-automation"][
+            "proofs"
+        ]
+    )
+    if tuple(proofs) != expected:
+        raise CandidateAutomationError(
+            "candidate receipt requires every proof in the canonical order"
+        )
+    try:
+        release = {
+            "version": release_reliability.safe_string(
+                version, "release.version", release_reliability.VERSION_PATTERN
+            ),
+            "build": release_reliability.safe_string(
+                build, "release.build", release_reliability.BUILD_PATTERN
+            ),
+            "commit": release_reliability.safe_string(
+                commit, "release.commit", release_reliability.COMMIT_PATTERN
+            ),
+        }
+    except release_reliability.ReliabilityError as error:
+        raise CandidateAutomationError(str(error)) from error
+    receipt = {
+        "schemaVersion": release_reliability.RECEIPT_SCHEMA_VERSION,
+        "kind": "qualification",
+        "scope": "candidate-automation",
+        "collectedAt": utc_now(),
+        "release": release,
+        "proofs": [
+            {"id": identifier, "state": "pass"} for identifier in expected
+        ],
+    }
+    try:
+        release_reliability.validate_qualification_receipt(
+            receipt, "candidate qualification receipt"
+        )
+    except release_reliability.ReliabilityError as error:
+        raise CandidateAutomationError(str(error)) from error
+    return receipt
+
+
+def prepare_output(path: Path) -> Path:
+    output = path.expanduser().resolve()
+    if output.exists():
+        raise CandidateAutomationError(f"candidate output already exists: {output}")
+    output.mkdir(parents=True, mode=0o700)
+    os.chmod(output, 0o700)
+    return output
+
+
+def default_output(commit: str) -> Path:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return DEFAULT_OUTPUT_PARENT / f"candidate-{commit[:12]}-{stamp}"
+
+
+def _run_candidate(
+    *,
+    version: str,
+    build: str,
+    contract_path: Path = DEFAULT_CONTRACT,
+    output_path: Path | None = None,
+    root: Path = ROOT,
+) -> Path:
+    commit = exact_checkout(root)
+    try:
+        version = release_reliability.safe_string(
+            version, "release.version", release_reliability.VERSION_PATTERN
+        )
+        build = release_reliability.safe_string(
+            build, "release.build", release_reliability.BUILD_PATTERN
+        )
+    except release_reliability.ReliabilityError as error:
+        raise CandidateAutomationError(str(error)) from error
+    contract = load_contract(contract_path, root)
+    profile = detect_profile(contract, physical_memory_bytes())
+    output = prepare_output(output_path or default_output(commit))
+    deterministic = output / "deterministic.json"
+    performance_root = output / "performance"
+    resource_root = output / "resource"
+    long_capture = output / "long-capture.json"
+    ui_root = output / "ui"
+    model_audio = output / "public-model-lane.aiff"
+    model_conversation = output / "public-diarization-lane.aiff"
+
+    private_fixture_environment: dict[str, str | None] = {
+        "PORTAVOZ_MODEL_TESTS": None,
+        "PORTAVOZ_TEST_WAV": None,
+        "PORTAVOZ_TEST_CONVERSATION_WAV": None,
+        "PORTAVOZ_TEST_AUDIO_ROOT": None,
+        "TEST_RUNNER_PORTAVOZ_TEST_AUDIO_ROOT": None,
+    }
+
+    run_command(
+        root,
+        commit,
+        "Finite deterministic release scope",
+        ["scripts/run-release-reliability-gates.sh"],
+        environment={
+            "PORTAVOZ_RELEASE_VERSION": version,
+            "PORTAVOZ_RELEASE_BUILD": build,
+            "PORTAVOZ_RELIABILITY_RECEIPT": str(deterministic),
+            **private_fixture_environment,
+        },
+    )
+    validate_deterministic_receipt(
+        deterministic, version=version, build=build, commit=commit
+    )
+
+    run_command(
+        root,
+        commit,
+        "Public bilingual autonomous validation",
+        ["make", "test-apuntador-validation"],
+    )
+    fixture = contract["modelFixture"]
+    try:
+        run_command(
+            root,
+            commit,
+            "Public synthetic spoken model fixture",
+            [
+                "say",
+                "-v",
+                fixture["systemVoice"],
+                "-r",
+                str(fixture["rateWordsPerMinute"]),
+                "-o",
+                str(model_audio),
+                "-f",
+                str(fixture["textPath"]),
+            ],
+            environment=private_fixture_environment,
+        )
+        validate_public_model_fixture(model_audio)
+        run_command(
+            root,
+            commit,
+            "Public bilingual two-voice model fixture",
+            [
+                "say",
+                "-v",
+                fixture["systemVoice"],
+                "-r",
+                str(fixture["rateWordsPerMinute"]),
+                "-o",
+                str(model_conversation),
+                "-f",
+                str(fixture["conversationTextPath"]),
+            ],
+            environment=private_fixture_environment,
+        )
+        validate_public_model_fixture(model_conversation)
+        run_swift_test_classes(
+            root,
+            commit,
+            "Installed model/capability gate",
+            contract["modelClasses"],
+            environment={
+                "PORTAVOZ_MODEL_TESTS": "1",
+                "PORTAVOZ_TEST_WAV": str(model_audio),
+                "PORTAVOZ_TEST_CONVERSATION_WAV": str(model_conversation),
+                "PORTAVOZ_TEST_AUDIO_ROOT": None,
+                "TEST_RUNNER_PORTAVOZ_TEST_AUDIO_ROOT": None,
+            },
+        )
+    finally:
+        model_audio.unlink(missing_ok=True)
+        model_conversation.unlink(missing_ok=True)
+
+    run_command(
+        root,
+        commit,
+        "Strict authoritative performance ledger",
+        ["scripts/run-perf-ledger.sh", str(performance_root)],
+        environment={
+            "PORTAVOZ_PERF_STRICT": "1",
+            "PORTAVOZ_PERF_WAVEFORM_MIC": None,
+            "PORTAVOZ_PERF_WAVEFORM_SYSTEM": None,
+            "PORTAVOZ_PERF_INCLUDE_DETAIL_UI": "0",
+            **private_fixture_environment,
+        },
+    )
+    validate_performance_ledger(performance_root / "ledger.json", contract)
+
+    run_command(
+        root,
+        commit,
+        f"Release resource baseline ({profile})",
+        [
+            "scripts/run-resource-baseline.sh",
+            "--profile",
+            profile,
+            "--version",
+            version,
+            "--build",
+            build,
+            "--runs",
+            str(contract["resource"]["samplesPerScenario"]),
+            "--output",
+            str(resource_root),
+        ],
+        environment={
+            "PORTAVOZ_SIGN_IDENTITY": "-",
+            **private_fixture_environment,
+        },
+    )
+    validate_resource_receipt(
+        resource_root / "receipt.json",
+        contract,
+        version=version,
+        build=build,
+        commit=commit,
+        profile=profile,
+    )
+
+    run_command(
+        root,
+        commit,
+        "Accelerated canonical three-hour capture",
+        ["scripts/run-long-capture-baseline.sh", str(long_capture)],
+    )
+    validate_long_capture(long_capture, commit)
+
+    run_swift_test_classes(
+        root,
+        commit,
+        "Upgrade and recovery gate",
+        contract["upgradeRecoveryClasses"],
+    )
+
+    run_command(
+        root,
+        commit,
+        "Complete bilingual real-app XCUITest",
+        ["make", "test-ui-bilingual"],
+        environment={
+            "UI_TEST_RESULTS_DIR": str(ui_root),
+            **private_fixture_environment,
+        },
+    )
+    validate_ui_receipts(ui_root, contract)
+
+    exact_checkout(root, commit)
+    receipt = candidate_receipt(
+        version=version,
+        build=build,
+        commit=commit,
+        proofs=contract["proofs"],
+    )
+    receipt_path = output / "qualification.json"
+    release_reliability.write_json(receipt_path, receipt)
+    exact_checkout(root, commit)
+    print(f"Candidate automation qualified: {receipt_path}", flush=True)
+    return receipt_path
+
+
+def run_candidate(
+    *,
+    version: str,
+    build: str,
+    contract_path: Path = DEFAULT_CONTRACT,
+    output_path: Path | None = None,
+    root: Path = ROOT,
+) -> Path:
+    previous_umask = os.umask(0o077)
+    try:
+        return _run_candidate(
+            version=version,
+            build=build,
+            contract_path=contract_path,
+            output_path=output_path,
+            root=root,
+        )
+    finally:
+        os.umask(previous_umask)
+
+
+def parser() -> argparse.ArgumentParser:
+    result = argparse.ArgumentParser(description=__doc__)
+    result.add_argument("--version", required=True)
+    result.add_argument("--build", required=True)
+    result.add_argument("--output", type=Path)
+    return result
+
+
+def main(argv: Iterable[str] | None = None) -> int:
+    arguments = parser().parse_args(argv)
+    try:
+        run_candidate(
+            version=arguments.version,
+            build=arguments.build,
+            output_path=arguments.output,
+        )
+    except (
+        CandidateAutomationError,
+        OSError,
+        release_reliability.ReliabilityError,
+        resource_baseline.ResourceBaselineError,
+        long_capture_evidence.EvidenceError,
+    ) as error:
+        print(f"candidate automation error: {error}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

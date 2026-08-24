@@ -35,7 +35,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-recording-stress test-model-gated test-ui-real-audio test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
-	release-reliability long-capture-baseline
+	release-reliability long-capture-baseline candidate-automation
 
 ## Unit tests (the package suite).
 test:
@@ -630,6 +630,18 @@ resource-recording-baseline: resource-baseline
 PORTAVOZ_LONG_CAPTURE_OUTPUT ?=
 long-capture-baseline:
 	scripts/run-long-capture-baseline.sh "$(PORTAVOZ_LONG_CAPTURE_OUTPUT)"
+
+## Run the exact local candidate qualification sequentially. The owner writes
+## a qualification receipt only after all eight specialized gates pass on one
+## clean commit; it never accepts caller-supplied proof states.
+PORTAVOZ_CANDIDATE_OUTPUT ?=
+candidate-automation:
+	@test -n "$(PORTAVOZ_RELEASE_VERSION)" || \
+		(echo "PORTAVOZ_RELEASE_VERSION is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RELEASE_BUILD)" || \
+		(echo "PORTAVOZ_RELEASE_BUILD is required" >&2; exit 64)
+	scripts/candidate_automation.py --version "$(PORTAVOZ_RELEASE_VERSION)" \
+		--build "$(PORTAVOZ_RELEASE_BUILD)" $(if $(PORTAVOZ_CANDIDATE_OUTPUT),--output "$(PORTAVOZ_CANDIDATE_OUTPUT)")
 
 ## Run the deterministic release gates and write a receipt bound to the exact
 ## version, build, and current commit. Both release variables are required.

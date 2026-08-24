@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import subprocess
 import sys
 from collections import Counter
@@ -281,11 +282,18 @@ def input_failure_receipt(
 
 
 def write_receipt(path: Path, receipt: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(receipt, indent=2, sort_keys=True, allow_nan=False) + "\n",
-        encoding="utf-8",
-    )
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(path.parent, 0o700)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_text(
+            json.dumps(receipt, indent=2, sort_keys=True, allow_nan=False) + "\n",
+            encoding="utf-8",
+        )
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def main(argv: Iterable[str] | None = None) -> int:

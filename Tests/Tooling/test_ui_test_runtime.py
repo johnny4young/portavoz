@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,7 @@ from ui_test_runtime import (  # noqa: E402
     budget_violations,
     build_receipt,
     collect_test_cases,
+    write_receipt,
 )
 
 
@@ -259,6 +261,8 @@ class UITestRuntimeTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 1)
             self.assertEqual(json.loads(receipt.read_text())["budgetStatus"], "failed")
+            self.assertEqual(os.stat(receipt).st_mode & 0o777, 0o600)
+            self.assertEqual(os.stat(receipt.parent).st_mode & 0o777, 0o700)
 
     def test_cli_invalid_json_fails_closed_with_content_free_receipt(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -294,6 +298,17 @@ class UITestRuntimeTests(unittest.TestCase):
                 ["runtime input error: invalid-json"],
             )
             self.assertNotIn("transcript", json.dumps(payload))
+
+    def test_atomic_receipt_keeps_previous_file_when_serialization_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "runtime.json"
+            path.write_text("previous\n", encoding="utf-8")
+
+            with self.assertRaises(ValueError):
+                write_receipt(path, {"duration": float("nan")})
+
+            self.assertEqual(path.read_text(encoding="utf-8"), "previous\n")
+            self.assertEqual(list(path.parent.glob(".*.tmp")), [])
 
 
 if __name__ == "__main__":

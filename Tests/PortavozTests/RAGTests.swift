@@ -481,7 +481,7 @@ final class SentenceEmbedderIntegrationTests: XCTestCase {
             "set PORTAVOZ_MODEL_TESTS=1 to run")
         let embedder = try SentenceEmbedder()
         do {
-            try await embedder.prepare()
+            try await embedder.prepare(allowAssetDownload: false)
         } catch {
             throw XCTSkip("embedding assets unavailable: \(error)")
         }

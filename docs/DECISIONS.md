@@ -14517,3 +14517,61 @@ request, signing,
 notarization, CloudKit mutation, field collection, or publication authority,
 and it stores no meeting, transcript, note, prompt, answer, account, path, or
 support payload.
+
+## D392 — Let one runner own candidate-automation truth (Aug 2026)
+
+**Context:** D391 made all eight candidate-automation proofs release-blocking,
+but intentionally did not add a way to manufacture their receipt. Running a
+neighboring command and then hand-authoring eight `pass` values would not prove
+that the installed-model lane executed, that performance evidence was
+authoritative, that resource and long-capture outputs matched the source, or
+that the complete bilingual UI catalog ran. A generic qualification recorder
+would recreate that ambiguity in executable form.
+
+**Decision:** freeze a schema-1 candidate contract and give its execution to
+`scripts/candidate_automation.py`. The runner requires an entirely clean
+checkout, fixes the full `HEAD`, and rechecks both around every gate. It runs
+sequentially to avoid benchmark and model contention: deterministic release
+reliability, the public bilingual Apuntador corpus, six Release installed-model
+classes, the strict performance ledger, one automatically selected current-host
+Release resource profile, the canonical synthetic three-hour capture, seven
+upgrade/recovery classes, and the complete English/Spanish real-app XCUITest
+catalog. It validates each specialized artifact instead of accepting proof
+states as arguments, and writes the owner-only exact-version/build/commit
+qualification receipt only after all eight proofs pass. Output directories are
+new per run; an interrupted or failed run leaves no qualification receipt.
+
+Installed-model execution never asks for a user meeting. The contract pins a
+public synthetic English text and an alternating Samantha/Paulina EN/ES
+conversation; the runner renders both locally, rejects an empty, unreadable,
+multichannel, sub-second, or over-ten-minute audio result, passes those scratch
+files only to the six model classes, and deletes them in a `finally` boundary.
+It sets the model-test opt-in itself and removes inherited private model,
+UI-audio, and waveform paths from the other gates. Diarization tests verify an
+installed model and never call the downloading lifecycle; missing assets skip
+and therefore block the class rather than silently fetching during release
+qualification. Resource collection is ad-hoc signed in its private scratch
+identity, never with an inherited distribution signing identity.
+
+The tracked performance policy partitions every declared metric. All twelve
+automated scale, semantic, and Spotlight metrics must be measured with an
+authoritative single-host ledger and have `pass` or explicitly budgetless
+`diagnostic` state. The thirteen waveform, Instruments, and manual/real-data
+metrics must remain exactly `not-measured`; no additional omission is allowed
+and no omission is promoted to pass. The resource proof requires exactly three
+passing samples for all nine scenarios, a passing exact-run Ask pipeline,
+Release configuration, actual host profile, and exact source identity. The UI
+proof requires both locales, the complete 106-case budget inventory, zero
+failed/skipped/duplicate cases or budget violations, and the shared build
+duration produced by the one-build runner.
+
+**Consequences:** the candidate receipt now has an auditable owner and cannot
+be produced through a `--proof pass` or generic record command. It is still
+local candidate automation, not universal performance or hardware evidence.
+The exact thirteen visible performance omissions, additional resource hosts,
+physical Sequoia/Tahoe, VoiceOver/Voice Control, reviewed integration and
+hosted CI, signed/notarized distribution, production CloudKit, accounts, and
+real-field behavior remain separate gates and cannot be inferred from D392.
+The runner reads no private meeting and uses only existing public/synthetic
+fixtures or content-free receipts; model integration may use already installed
+assets but never emits transcript output.

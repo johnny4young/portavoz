@@ -266,7 +266,11 @@ final class DiarizationIntegrationTests: XCTestCase {
 
         let store = ModelStore()
         let descriptor = ModelCatalog.speakerDiarization
-        let directory = try await store.ensureAvailable(descriptor)
+        let report = await store.verify(descriptor)
+        try XCTSkipUnless(
+            report.isComplete,
+            "diarization model is not installed and verified")
+        let directory = await store.directory(for: descriptor)
         let runtime = try PyannoteDiarizationRuntime.load(
             fromVerifiedDirectory: directory)
         let diarizer = runtime.makeDiarizer()
@@ -296,7 +300,12 @@ final class DiarizationIntegrationTests: XCTestCase {
         }
 
         let store = ModelStore()
-        let directory = try await store.ensureAvailable(ModelCatalog.speakerDiarization)
+        let descriptor = ModelCatalog.speakerDiarization
+        let report = await store.verify(descriptor)
+        try XCTSkipUnless(
+            report.isComplete,
+            "diarization model is not installed and verified")
+        let directory = await store.directory(for: descriptor)
         let runtime = try PyannoteDiarizationRuntime.load(
             fromVerifiedDirectory: directory)
         let diarizer = runtime.makeDiarizer()

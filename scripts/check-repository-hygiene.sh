@@ -86,6 +86,7 @@ done
 python3 scripts/ui_test_scope.py --validate-catalog
 python3 -m unittest Tests.Tooling.test_collect_field_evidence
 python3 -m unittest Tests.Tooling.test_release_reliability
+python3 -m unittest Tests.Tooling.test_candidate_automation
 bash -n scripts/run-resource-baseline.sh
 bash -n scripts/run-resource-recording-baseline.sh
 bash -n scripts/run-exact-path-mutation-benchmark.sh

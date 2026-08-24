@@ -76,6 +76,41 @@ state; do not hand-author or copy one from a neighboring commit. Pass each
 receipt explicitly to the evaluator only after its owning gate or field
 workflow has produced it.
 
+### Candidate-automation receipt (D392)
+
+Run this only from the clean commit intended to become the candidate. It is a
+long sequential gate by design: benchmark, model, resource, and UI processes
+must not contend with one another. The runner reuses one XCUITest build across
+English and Spanish and accepts no caller-supplied proof state.
+
+```sh
+make candidate-automation \
+  PORTAVOZ_RELEASE_VERSION="$PORTAVOZ_RELEASE_VERSION" \
+  PORTAVOZ_RELEASE_BUILD="$PORTAVOZ_RELEASE_BUILD"
+```
+
+The new private output directory under `dist/release-readiness/` contains the
+deterministic receipt and specialized content-free artifacts. It contains
+`qualification.json` only if all eight gates pass against the same full Git
+commit. Do not copy that file to a new commit or edit it by hand.
+
+The installed-model lane generates its own short spoken fixture plus an
+alternating Samantha/Paulina EN/ES conversation from tracked public text. It
+validates real audio frames, uses already installed assets without downloading,
+withholds raw model output, and removes both scratch files afterward. Exported
+private `PORTAVOZ_TEST_WAV`, conversation, real-UI-audio, waveform, or signing
+variables are deliberately not inherited into candidate proof; routine
+qualification never needs one of your meetings.
+
+The performance subgate requires authoritative measurements for all twelve
+automated scale/semantic/Spotlight metrics. It also requires the other thirteen
+declared waveform, Instruments, and manual/real-data metrics to remain exactly
+and visibly `not-measured`; this receipt does not certify those lanes. The
+resource subgate selects only this Mac's accepted profile and requires three
+Release samples for all nine scenarios. Additional hosts, Sequoia/Tahoe,
+VoiceOver/Voice Control, signed distribution, production CloudKit, hosted CI,
+and field evidence still follow their separate procedures below.
+
 ### Performance gate (PERF-001/PERF-008)
 
 ```sh

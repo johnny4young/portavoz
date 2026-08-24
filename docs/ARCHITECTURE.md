@@ -4272,6 +4272,48 @@ candidate gates, reviewed integration plus hosted CI, production sync, and
 physical VoiceOver/Voice Control on Sequoia and Tahoe. Protocol-2 field
 packages remain the only source for the eight real-device/conversation cells.
 
+Candidate automation has one executable owner rather than a generic receipt
+recorder. `docs/evidence/candidate-automation.json` freezes the eight proof
+order, six installed-model classes, seven upgrade/recovery classes, nine
+resource scenarios, two UI locales, and the performance-ledger partition.
+`scripts/candidate_automation.py` requires a completely clean checkout, fixes
+one full source commit, and rechecks that identity around every sequential
+gate. It directly runs the deterministic release suite, public bilingual
+Apuntador corpus, installed-model classes, strict performance ledger,
+current-host Release resource baseline, canonical synthetic three-hour
+capture, upgrade/recovery classes, and complete bilingual real-app XCUITest.
+Specialized validators then require the deterministic receipt's exact release
+identity, an authoritative performance inventory, three passing resource
+samples for every scenario plus the Ask timing pipeline, zero-drift bounded
+long capture, and the exact 106-case EN/ES UI catalog with one reused build and
+passing runtime budgets. Only that in-process sequence can write the
+owner-only `candidate-automation` qualification receipt; there is no CLI for
+caller-supplied proof state.
+
+The installed-model lane synthesizes one bounded spoken fixture from tracked
+public English text plus one alternating Samantha/Paulina EN/ES conversation,
+verifies actual mono audio frames and duration through `afinfo`, enables
+real-model tests explicitly, and deletes both scratch files after that lane
+even on failure. Diarization integration verifies already installed model
+files and skips rather than downloading; an all-skipped class blocks candidate
+qualification. The runner removes inherited private ASR/UI/waveform fixture
+paths from other subprocesses and forces the resource app to use ad-hoc scratch
+signing. A candidate run therefore does not silently consume a user's
+recording, performance inputs, signing identity, or network merely because
+they were exported or reachable in the parent shell.
+
+The performance proof is deliberately named candidate automation rather than
+universal performance certification. Twelve scale/semantic/Spotlight metrics
+must be measured and pass or remain diagnostic only where their tracked
+threshold has no release budget. The other thirteen tracked waveform,
+Instruments, and manual/real-data metrics must remain explicitly
+`not-measured` in this runner—neither absent nor silently green—and continue to
+be owned by their specialized or physical evidence lanes. Likewise, the
+resource proof describes the one actual Mac that ran the candidate; it does
+not stand in for the 8 GB/16 GB/reference matrix, Sequoia/Tahoe hardware,
+assistive technology, signed distribution, production CloudKit, hosted CI, or
+user-field evidence.
+
 The production packager stamps `PortavozSourceCommit` only from an explicitly
 supplied full Git SHA. The release wrapper requires that SHA to equal a clean
 tracked checkout before and after the app build, and distribution verification

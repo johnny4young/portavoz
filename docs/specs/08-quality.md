@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,747 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,748 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2385,6 +2385,72 @@ distribution commit, and invalid-contract behavior. The repository-hygiene
 gate always runs them. An architecture ratchet pins the schema, 29 proofs,
 eight classes, fail-closed predicate, exact artifact stamp, distribution
 receipt ordering, D147, and D391.
+
+**Candidate automation owner (D392).**
+`docs/evidence/candidate-automation.json` is the finite executable contract for
+the eight candidate proofs. `scripts/candidate_automation.py` runs every gate
+sequentially on one completely clean full commit and rechecks the source before
+and after each command. It directly owns deterministic reliability, public
+bilingual Apuntador validation, six installed-model Release classes, the
+strict performance ledger, one current-host Release resource receipt, the
+canonical synthetic three-hour capture, seven upgrade/recovery classes, and
+the complete bilingual real-app XCUITest catalog. It has no arbitrary proof
+recorder; only the successful in-process sequence writes the schema-1
+`candidate-automation` qualification receipt with mode 0600.
+
+The model lane renders
+`Fixtures/CandidateAutomation/public-model-lane-en-v1.txt` and the alternating
+Samantha/Paulina
+`Fixtures/CandidateAutomation/public-diarization-en-es-v1.txt` into scratch
+AIFF files, then checks with `afinfo` that each process produced bounded mono
+PCM frames rather than trusting `say`'s exit status or a file header. It sets
+the real-model opt-in and both fixture paths explicitly, withholds captured
+model logs, and deletes both files in a `finally` boundary. Diarization tests
+verify installed files and cannot download during this lane. Inherited private
+ASR, real-UI-audio, and waveform paths are removed; resource collection forces
+ad-hoc scratch signing. This is autonomous public-fixture evidence, not a read
+of the user's library, network, or distribution identity.
+
+Specialized validation is fail closed. The performance ledger must be
+authoritative, contain its exact 25-metric inventory, measure all twelve
+scale/semantic/Spotlight metrics in `pass` or budgetless `diagnostic` state,
+and retain exactly thirteen declared non-autonomous metrics as
+`not-measured`. The resource receipt must match version/build/full commit,
+Release configuration, and the automatically selected host profile; all nine
+scenarios and the Ask pipeline must pass with exactly three samples. The long
+capture must conserve the canonical three logical hours with zero drift and
+bounded heap. The two UI receipts must name the exact 106-case budget catalog,
+zero budget violations, only passed cases, EN and ES, selector count zero, and
+one shared build duration. Runtime UI receipts are now published atomically as
+owner-only files so interruption cannot leave a partially accepted JSON file.
+
+Twenty-one adversarial tooling cases cover contract/order drift, content-bearing
+or duplicate keys, incomplete performance partitions, non-authoritative and
+regressed ledgers, silent omissions, resource identity/sample/Ask failures,
+stale long-capture commits, incomplete or over-budget bilingual UI receipts,
+profile gaps, non-empty bounded public speech audio, scratch-audio cleanup,
+XCTest discovery, owner-only output, process-umask restoration, and the rule
+that a failed gate cannot emit qualification.
+The repository-hygiene suite runs them, and an
+architecture ratchet pins D392, the exact eight proofs, 12/13 performance
+partition, specialized validators, clean-source fence, Make target, and the
+absence of a generic proof-state CLI. This automation does not close physical
+Sequoia/Tahoe, additional resource hosts, assistive technology, distribution,
+CloudKit, hosted integration, account, or user-field evidence.
+
+D392 implementation preflight on macOS 26.5.2 (25F84), arm64 passed the full
+2,748-case package suite with 15 explicit environment/model skips and zero
+failures in 155.035 seconds of XCTest execution. The current-SDK
+warnings-as-errors build passed in 21.34 seconds, strict SwiftLint reported zero
+violations across 731 files, all 539 tooling cases passed in 24.103 seconds,
+and repository hygiene passed with the exact 106-case UI catalog. After the
+final Make phony-target ratchet, its focused Swift architecture case passed
+1/1. The mandatory minimum-safe real-app XCUITest passed the existing Settings
+navigation journey 1/1 in English in 16.683 seconds, with an 8-second reused
+build observation, a passing runtime budget, and mode-0600 atomic receipt in a
+mode-0700 directory. No production UI changed, so this scoped harness proof
+does not replace the complete bilingual candidate gate and did not require a
+Dev-app reinstall.
 
 The 11 Aug 2026 development inventory is 2,377 XCTest package cases (14
 environment-gated), zero strict-lint violations across 656 production Swift
