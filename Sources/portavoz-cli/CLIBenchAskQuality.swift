@@ -446,7 +446,7 @@ enum AskQualityProductionBenchmark {
 }
 
 private struct AskQualityNoExpansion: AskQueryExpanding {
-    func expand(_ question: String) -> [String] { [question] }
+    func expand(_ question: String) throws -> [String] { [question] }
 }
 
 enum AskQualityPrivateJSONWriter {

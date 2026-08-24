@@ -182,6 +182,32 @@ final class IntelligenceSchedulerTests: XCTestCase {
         XCTAssertEqual(pending, 0)
     }
 
+    func testCancellationAfterOperationStartsRejectsItsLateValue() async throws {
+        let scheduler = IntelligenceScheduler()
+        let gate = Gate()
+        let task = Task {
+            try await scheduler.run(.interactive) {
+                await gate.wait()
+                return "late value"
+            }
+        }
+        await waitUntil { await scheduler.pendingCount == 1 }
+
+        task.cancel()
+        await gate.open()
+
+        do {
+            _ = try await task.value
+            XCTFail("a cancelled in-flight operation must not return a late value")
+        } catch is CancellationError {
+            // Expected even when the opaque operation ignores cancellation.
+        }
+        let next = try await scheduler.run(.interactive) { "next" }
+        XCTAssertEqual(next, "next")
+        let pending = await scheduler.pendingCount
+        XCTAssertEqual(pending, 0)
+    }
+
     func testThrowingJobReleasesSlot() async throws {
         struct Boom: Error {}
         let scheduler = IntelligenceScheduler()

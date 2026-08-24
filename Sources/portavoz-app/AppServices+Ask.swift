@@ -68,6 +68,19 @@ final class AppAskModelClient: AskModelClient {
             limit: limit,
             onEvidence: onEvidence)
     }
+
+    func answerAskMeetings(
+        _ question: String,
+        limit: Int,
+        onEvidence: @escaping AskEvidenceReceiver,
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> AskMeetingAnswer {
+        try await useCase.answer(
+            question,
+            limit: limit,
+            onEvidence: onEvidence,
+            onAnswer: onAnswer)
+    }
 }
 
 extension AppAskModelClient: AskMemoryModelClient {
@@ -265,7 +278,7 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
         await onEvidence(AskEvidenceUpdate(
             phase: .lexical,
             citations: citations))
-        try await Task.sleep(for: .seconds(5))
+        try await Task.sleep(for: .milliseconds(500))
         await onEvidence(AskEvidenceUpdate(
             phase: .fused,
             citations: citations))
@@ -287,7 +300,19 @@ private struct UITestAskMeetingAnswering: AskMeetingAnswering {
         question _: String,
         citations _: [AskCitation]
     ) async throws -> String? {
-        try await Task.sleep(for: .seconds(5))
         return "El presupuesto se revisó y el rollout quedó para el viernes."
+    }
+
+    func answer(
+        question _: String,
+        citations _: [AskCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> String? {
+        try await Task.sleep(for: .milliseconds(350))
+        await onAnswer(AskAnswerUpdate(text: "El presupuesto se revisó"))
+        try await Task.sleep(for: .milliseconds(350))
+        let final = "El presupuesto se revisó y el rollout quedó para el viernes."
+        await onAnswer(AskAnswerUpdate(text: final))
+        return final
     }
 }

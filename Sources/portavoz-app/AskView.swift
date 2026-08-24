@@ -99,6 +99,7 @@ struct AskView: View {
                         pendingExchange(
                             question: question,
                             citations: model.state.pendingCitations,
+                            answerText: model.state.pendingAnswerText,
                             phase: phase)
                         .id("asking")
                     }
@@ -117,6 +118,7 @@ struct AskView: View {
     private func pendingExchange(
         question: String,
         citations: [AskCitation],
+        answerText: String?,
         phase: AskModel.PendingPhase
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -147,6 +149,11 @@ struct AskView: View {
                 citationButtons(
                     citations,
                     identifierPrefix: "ask-pending-citation")
+            }
+            if let answerText {
+                Text(answerText)
+                    .textSelection(.enabled)
+                    .accessibilityIdentifier("ask-pending-answer")
             }
         }
     }
@@ -234,8 +241,8 @@ struct AskView: View {
                 Image(systemName: "paperplane.fill")
             }
             .disabled(
-                model.state.isAsking
-                    || model.state.draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                model.state.draft.trimmingCharacters(
+                    in: .whitespacesAndNewlines).isEmpty)
             .accessibilityIdentifier("ask-submit")
         }
         .padding(12)

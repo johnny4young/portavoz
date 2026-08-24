@@ -68,40 +68,21 @@ public struct AskMeetingAnswer: Equatable, Sendable {
     public let question: String
     public let generatedText: String?
     public let citations: [AskCitation]
+    public let generationOutcome: AskGenerationOutcome
 
     public init(
         question: String,
         generatedText: String?,
-        citations: [AskCitation]
+        citations: [AskCitation],
+        generationOutcome: AskGenerationOutcome? = nil
     ) {
         self.question = question
         self.generatedText = generatedText
         self.citations = citations
+        self.generationOutcome = generationOutcome
+            ?? (generatedText == nil ? .unavailable : .generated)
     }
 }
-
-/// Progressive evidence ownership for presentation surfaces. Lexical evidence
-/// may render immediately; fused evidence is the immutable set used by answer
-/// generation.
-public enum AskEvidencePhase: String, Equatable, Sendable {
-    case lexical
-    case fused
-}
-
-public struct AskEvidenceUpdate: Equatable, Sendable {
-    public let phase: AskEvidencePhase
-    public let citations: [AskCitation]
-
-    public init(
-        phase: AskEvidencePhase,
-        citations: [AskCitation]
-    ) {
-        self.phase = phase
-        self.citations = citations
-    }
-}
-
-public typealias AskEvidenceReceiver = @Sendable (AskEvidenceUpdate) async -> Void
 
 /// Retrieval is an internal capability of the application workflow. Real
 /// composition uses the hybrid local adapter; tests can inject deterministic
@@ -166,6 +147,25 @@ public extension AskMeetingRetrieving {
 /// retrieval success is never discarded because an answer model is absent.
 public protocol AskMeetingAnswering: Sendable {
     func answer(question: String, citations: [AskCitation]) async throws -> String?
+    func answer(
+        question: String,
+        citations: [AskCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> String?
+}
+
+public extension AskMeetingAnswering {
+    func answer(
+        question: String,
+        citations: [AskCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> String? {
+        let text = try await answer(question: question, citations: citations)
+        if let text {
+            await onAnswer(AskAnswerUpdate(text: text))
+        }
+        return text
+    }
 }
 
 /// Opt-in answer generation over the independent transcript and graph lanes.
@@ -199,6 +199,7 @@ public struct AskMeetings: ApplicationUseCase {
     private let graphFacts: (any AskGraphFactRetrieving)?
     private let graphFilterResolver: (any AskGraphFactFilterResolving)?
     private let telemetry: AskPipelineTelemetry
+    private let answerTimeout: Duration
 
     public init(
         retrieval: any AskMeetingRetrieving,
@@ -206,7 +207,8 @@ public struct AskMeetings: ApplicationUseCase {
         bundleAnswering: (any AskEvidenceBundleAnswering)? = nil,
         graphFacts: (any AskGraphFactRetrieving)? = nil,
         graphFilterResolver: (any AskGraphFactFilterResolving)? = nil,
-        telemetry: AskPipelineTelemetry = .disabled
+        telemetry: AskPipelineTelemetry = .disabled,
+        answerTimeout: Duration = .seconds(8)
     ) {
         self.retrieval = retrieval
         self.answering = answering
@@ -214,6 +216,9 @@ public struct AskMeetings: ApplicationUseCase {
         self.graphFacts = graphFacts
         self.graphFilterResolver = graphFilterResolver
         self.telemetry = telemetry
+        self.answerTimeout = answerTimeout > .zero
+            ? answerTimeout
+            : .seconds(8)
     }
 
     public static func local(
@@ -253,8 +258,9 @@ public struct AskMeetings: ApplicationUseCase {
         _ query: String,
         limit: Int = 6
     ) async throws -> [AskSearchResult] {
-        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty, limit > 0 else { return [] }
+        guard let query = try Self.validatedRequest(query, limit: limit) else {
+            return []
+        }
         return try await telemetry.measure(.search) { trace in
             let results = try await retrieval.search(
                 query: query,
@@ -271,8 +277,9 @@ public struct AskMeetings: ApplicationUseCase {
         _ question: String,
         limit: Int = 6
     ) async throws -> [AskCitation] {
-        let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty, limit > 0 else { return [] }
+        guard let question = try Self.validatedRequest(question, limit: limit) else {
+            return []
+        }
         return try await telemetry.measure(.evidence) { trace in
             let citations = try await retrieval.retrieve(
                 question: question,
@@ -294,8 +301,7 @@ public struct AskMeetings: ApplicationUseCase {
         graphQuery: AskGraphFactQuery? = nil,
         graphFilter: AskGraphFactFilterRequest? = nil
     ) async throws -> AskEvidenceBundle {
-        let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty, limit > 0 else {
+        guard let question = try Self.validatedRequest(question, limit: limit) else {
             return AskEvidenceBundle(
                 transcriptCitations: [],
                 graphFacts: .notRequested)
@@ -320,8 +326,7 @@ public struct AskMeetings: ApplicationUseCase {
         graphQuery: AskGraphFactQuery,
         graphFilter: AskGraphFactFilterRequest? = nil
     ) async throws -> AskEvidenceBundleAnswer {
-        let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty, limit > 0 else {
+        guard let question = try Self.validatedRequest(question, limit: limit) else {
             return AskEvidenceBundleAnswer(
                 question: question,
                 generatedText: nil,
@@ -367,47 +372,33 @@ public struct AskMeetings: ApplicationUseCase {
         limit: Int = 6,
         onEvidence: @escaping AskEvidenceReceiver
     ) async throws -> AskMeetingAnswer {
-        let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty, limit > 0 else {
+        try await answer(
+            question,
+            limit: limit,
+            onEvidence: onEvidence,
+            onAnswer: { _ in })
+    }
+
+    public func answer(
+        _ question: String,
+        limit: Int = 6,
+        onEvidence: @escaping AskEvidenceReceiver,
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> AskMeetingAnswer {
+        guard let question = try Self.validatedRequest(question, limit: limit) else {
             return AskMeetingAnswer(
-                question: question,
+                question: question.trimmingCharacters(in: .whitespacesAndNewlines),
                 generatedText: nil,
-                citations: [])
+                citations: [],
+                generationOutcome: .notRequested)
         }
         return try await telemetry.measure(.answer) { trace in
-            let milestone = AskFirstEvidenceMilestone()
-            let citations = try await retrieval.retrieve(
+            try await answerProgressively(
                 question: question,
                 limit: limit,
                 trace: trace,
-                onEvidence: { update in
-                    await milestone.reachIfNeeded(
-                        for: update.citations,
-                        trace: trace)
-                    await onEvidence(update)
-                })
-            try Task.checkCancellation()
-            guard !citations.isEmpty else {
-                return AskMeetingAnswer(
-                    question: question,
-                    generatedText: nil,
-                    citations: [])
-            }
-            await milestone.reachIfNeeded(for: citations, trace: trace)
-            let generatedText: String?
-            generatedText = try await generateTranscriptAnswer(
-                question: question,
-                citations: citations)
-            try Task.checkCancellation()
-            if generatedText?.contains(where: { !$0.isWhitespace }) == true {
-                // The current answer capability returns one complete String,
-                // so its first token becomes observable at this boundary.
-                trace.reach(.firstToken)
-            }
-            return AskMeetingAnswer(
-                question: question,
-                generatedText: generatedText,
-                citations: citations)
+                onEvidence: onEvidence,
+                onAnswer: onAnswer)
         }
     }
 
@@ -472,17 +463,32 @@ public struct AskMeetings: ApplicationUseCase {
 
     private func generateTranscriptAnswer(
         question: String,
-        citations: [AskCitation]
-    ) async throws -> String? {
-        guard !citations.isEmpty else { return nil }
+        citations: [AskCitation],
+        onAnswer: @escaping AskAnswerReceiver,
+        onTimeout: @escaping @Sendable () async -> Void
+    ) async throws -> AskGenerationResult {
+        guard !citations.isEmpty else {
+            return AskGenerationResult(text: nil, outcome: .notRequested)
+        }
         do {
-            return try await answering.answer(
-                question: question,
-                citations: citations)
+            let text = try await withAskTimeout(
+                answerTimeout,
+                onTimeout: onTimeout
+            ) { [answering] in
+                try await answering.answer(
+                    question: question,
+                    citations: citations,
+                    onAnswer: onAnswer)
+            }
+            return AskGenerationResult(
+                text: text,
+                outcome: text == nil ? .unavailable : .generated)
         } catch is CancellationError {
             throw CancellationError()
+        } catch is AskTimeoutError {
+            return AskGenerationResult(text: nil, outcome: .timedOut)
         } catch {
-            return nil
+            return AskGenerationResult(text: nil, outcome: .failed)
         }
     }
 
@@ -503,23 +509,26 @@ public struct AskMeetings: ApplicationUseCase {
             return nil
         }
     }
-}
 
-private actor AskFirstEvidenceMilestone {
-    private var didReach = false
-
-    func reachIfNeeded(
-        for citations: [AskCitation],
-        trace: AskPipelineTrace
-    ) {
-        guard !didReach, !citations.isEmpty else { return }
-        didReach = true
-        trace.reach(.firstEvidence)
+    private static func validatedRequest(
+        _ value: String,
+        limit: Int
+    ) throws -> String? {
+        guard value.utf8.count <= AskRequestLimits.maximumQuestionUTF8Bytes,
+              value.count <= AskRequestLimits.maximumQuestionCharacters
+        else { throw AskRequestError.questionTooLong }
+        let value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, limit > 0 else { return nil }
+        guard limit <= AskRequestLimits.maximumResultCount else {
+            throw AskRequestError.resultLimitExceeded
+        }
+        try Task.checkCancellation()
+        return value
     }
 }
 
 public protocol AskQueryExpanding: Sendable {
-    func expand(_ question: String) async -> [String]
+    func expand(_ question: String) async throws -> [String]
 }
 
 /// Concrete local intelligence adapter shared by retrieval expansion and final
@@ -530,11 +539,12 @@ public struct OnDeviceAskMeetingIntelligence:
     AskQueryExpanding {
     public init() {}
 
-    public func expand(_ question: String) async -> [String] {
+    public func expand(_ question: String) async throws -> [String] {
+        try Task.checkCancellation()
         guard #available(macOS 26.0, iOS 26.0, *),
               FoundationModelSummaryProvider.unavailabilityReason() == nil
         else { return [question] }
-        return await RAGAnswerer().expandQuery(question)
+        return try await RAGAnswerer().expandQuery(question)
     }
 
     public func answer(
@@ -547,6 +557,22 @@ public struct OnDeviceAskMeetingIntelligence:
         return try await RAGAnswerer().answer(
             question: question,
             passages: citations.map(Self.ragPassage))
+    }
+
+    public func answer(
+        question: String,
+        citations: [AskCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> String? {
+        guard #available(macOS 26.0, iOS 26.0, *),
+              FoundationModelSummaryProvider.unavailabilityReason() == nil
+        else { return nil }
+        return try await RAGAnswerer().streamAnswer(
+            question: question,
+            passages: citations.map(Self.ragPassage),
+            onSnapshot: { text in
+                await onAnswer(AskAnswerUpdate(text: text))
+            })
     }
 
     public func answer(
@@ -608,5 +634,122 @@ public struct OnDeviceAskMeetingIntelligence:
             timestamp: citation.timestamp,
             transcriptRevision: citation.transcriptRevision,
             text: citation.text)
+    }
+}
+
+private extension AskMeetings {
+    func answerProgressively(
+        question: String,
+        limit: Int,
+        trace: AskPipelineTrace,
+        onEvidence: @escaping AskEvidenceReceiver,
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> AskMeetingAnswer {
+        let updates = AskProgressiveUpdateGate(limit: limit)
+        let evidenceMilestone = AskFirstEvidenceMilestone()
+        let answerMilestone = AskFirstAnswerMilestone(trace: trace)
+        do {
+            let citations = try await retrieveProgressiveCitations(
+                question: question,
+                limit: limit,
+                trace: trace,
+                updates: updates,
+                milestone: evidenceMilestone,
+                receiver: onEvidence)
+            guard !citations.isEmpty else {
+                await updates.close()
+                return AskMeetingAnswer(
+                    question: question,
+                    generatedText: nil,
+                    citations: [],
+                    generationOutcome: .notRequested)
+            }
+            let generation = try await generateTranscriptAnswer(
+                question: question,
+                citations: citations,
+                onAnswer: { update in
+                    guard !Task.isCancelled,
+                          let update = await updates.admitAnswer(update),
+                          !Task.isCancelled
+                    else { return }
+                    await answerMilestone.reachIfNeeded()
+                    await onAnswer(update)
+                },
+                onTimeout: { await updates.stopAnswering() })
+            return try await finalizeProgressiveAnswer(
+                question: question,
+                citations: citations,
+                generation: generation,
+                updates: updates,
+                milestone: answerMilestone,
+                receiver: onAnswer)
+        } catch {
+            await updates.close()
+            throw error
+        }
+    }
+
+    func retrieveProgressiveCitations(
+        question: String,
+        limit: Int,
+        trace: AskPipelineTrace,
+        updates: AskProgressiveUpdateGate,
+        milestone: AskFirstEvidenceMilestone,
+        receiver: @escaping AskEvidenceReceiver
+    ) async throws -> [AskCitation] {
+        let retrieved = try await retrieval.retrieve(
+            question: question,
+            limit: limit,
+            trace: trace,
+            onEvidence: { update in
+                guard !Task.isCancelled,
+                      let update = await updates.admitEvidence(update),
+                      !Task.isCancelled
+                else { return }
+                await milestone.reachIfNeeded(
+                    for: update.citations,
+                    trace: trace)
+                await receiver(update)
+            })
+        try Task.checkCancellation()
+        let finalEvidence = try await updates.finalizeEvidence(retrieved)
+        if let update = finalEvidence.update {
+            try Task.checkCancellation()
+            await milestone.reachIfNeeded(
+                for: update.citations,
+                trace: trace)
+            await receiver(update)
+        }
+        await milestone.reachIfNeeded(
+            for: finalEvidence.citations,
+            trace: trace)
+        return finalEvidence.citations
+    }
+
+    func finalizeProgressiveAnswer(
+        question: String,
+        citations: [AskCitation],
+        generation: AskGenerationResult,
+        updates: AskProgressiveUpdateGate,
+        milestone: AskFirstAnswerMilestone,
+        receiver: @escaping AskAnswerReceiver
+    ) async throws -> AskMeetingAnswer {
+        try Task.checkCancellation()
+        let finalAnswer = await updates.finalizeAnswer(generation.text)
+        if let update = finalAnswer.update {
+            try Task.checkCancellation()
+            await milestone.reachIfNeeded()
+            await receiver(update)
+        }
+        try Task.checkCancellation()
+        await updates.close()
+        let outcome = generation.outcome == .generated && finalAnswer.text == nil
+            ? AskGenerationOutcome.failed
+            : generation.outcome
+        return AskMeetingAnswer(
+            question: question,
+            generatedText: finalAnswer.text,
+            citations: citations,
+            generationOutcome: outcome)
     }
 }

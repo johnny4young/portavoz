@@ -14,6 +14,9 @@ one-shot secret-Gist publication with a pre-transport duplicate fence; D333
 derives Skills privacy disclosure from the executable capability contract.
 D373/D374 compose exact-Skill and rolling update-time activity filters at query
 time while keeping the Settings window bounded and generation-fenced.
+D384 makes full Ask latest-submission-wins, displays bounded cumulative answer
+snapshots, caps per-window conversation retention, and uses an isolated Swift 6
+deinitializer so a closed window cancels without unsafe actor access.
 D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
 D193 lets only the resource-benchmark process observe that same closed stream
@@ -1319,9 +1322,13 @@ app client also composes the protected canonical-person catalogue and
 `AskMemoryModel` without giving SwiftUI a store or graph adapter. The models
 own answer/search tasks and generations, and the palette resets both on
 close/reopen. Full Ask additionally owns the pending question, lexical/fused
-citations, and distinct finding/refinement/generation presentation phases.
-Every progressive update crosses the same request-generation fence; cancel or
-navigation clears pending state and rejects late work. The command palette and
+citations, cumulative generated text, and distinct finding/refinement/generation
+presentation phases. Submitting a nonempty draft while another answer is
+pending cancels and replaces it instead of disabling the input. Every
+progressive update crosses the same request-generation fence; cancel or
+navigation clears pending state and rejects late work. Completed conversation
+state retains only the newest 20 exchanges, and the task captures its model
+weakly so an uncooperative provider cannot retain a closed window. The command palette and
 other consumers retain final-result behavior. AppKit owns panel lifetime,
 keyboard activation, clipboard, and window navigation only. The composition
 root also injects one

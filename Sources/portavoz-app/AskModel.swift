@@ -20,6 +20,12 @@ protocol AskModelClient: AnyObject {
         limit: Int,
         onEvidence: @escaping AskEvidenceReceiver
     ) async throws -> AskMeetingAnswer
+    func answerAskMeetings(
+        _ question: String,
+        limit: Int,
+        onEvidence: @escaping AskEvidenceReceiver,
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> AskMeetingAnswer
 }
 
 extension AskModelClient {
@@ -32,6 +38,22 @@ extension AskModelClient {
         await onEvidence(AskEvidenceUpdate(
             phase: .fused,
             citations: answer.citations))
+        return answer
+    }
+
+    func answerAskMeetings(
+        _ question: String,
+        limit: Int,
+        onEvidence: @escaping AskEvidenceReceiver,
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> AskMeetingAnswer {
+        let answer = try await answerAskMeetings(
+            question,
+            limit: limit,
+            onEvidence: onEvidence)
+        if let text = answer.generatedText {
+            await onAnswer(AskAnswerUpdate(text: text))
+        }
         return answer
     }
 }
@@ -78,6 +100,7 @@ final class AskModel {
         fileprivate(set) var isAsking = false
         fileprivate(set) var pendingQuestion: String?
         fileprivate(set) var pendingCitations: [AskCitation] = []
+        fileprivate(set) var pendingAnswerText: String?
         fileprivate(set) var pendingPhase: PendingPhase?
     }
 
@@ -101,6 +124,10 @@ final class AskModel {
         topicMemory = memoryClient.map {
             AskTopicMemoryModel(client: $0, searchDelay: memorySearchDelay)
         }
+    }
+
+    isolated deinit {
+        answerTask?.cancel()
     }
 
     func selectSurface(_ surface: Surface) {
@@ -129,17 +156,50 @@ final class AskModel {
 
     func submit() {
         let question = state.draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !question.isEmpty, !state.isAsking else { return }
+        guard !question.isEmpty else { return }
         state.draft = ""
+        generation += 1
+        answerTask?.cancel()
         state.isAsking = true
         state.pendingQuestion = question
         state.pendingCitations = []
+        state.pendingAnswerText = nil
         state.pendingPhase = .findingEvidence
-        generation += 1
         let requestGeneration = generation
-        answerTask?.cancel()
-        answerTask = Task { [weak self] in
-            await self?.answer(question, generation: requestGeneration)
+        let client = client
+        answerTask = Task { [weak self, client] in
+            let exchange: Exchange
+            do {
+                let result = try await client.answerAskMeetings(
+                    question,
+                    limit: 6,
+                    onEvidence: { [weak self] update in
+                        await self?.publish(
+                            update,
+                            generation: requestGeneration)
+                    },
+                    onAnswer: { [weak self] update in
+                        await self?.publish(
+                            update,
+                            generation: requestGeneration)
+                    })
+                guard !Task.isCancelled else { return }
+                exchange = Exchange(
+                    question: question,
+                    answer: Self.presentationText(for: result),
+                    citations: result.citations)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else { return }
+                exchange = Exchange(
+                    question: question,
+                    answer: L10n.format(
+                        "Search failed: %@",
+                        error.localizedDescription),
+                    citations: [])
+            }
+            self?.complete(exchange, generation: requestGeneration)
         }
     }
 
@@ -156,33 +216,15 @@ final class AskModel {
         topicMemory?.cancelPendingWork()
     }
 
-    private func answer(_ question: String, generation requestGeneration: Int) async {
-        let exchange: Exchange
-        do {
-            let result = try await client.answerAskMeetings(
-                question,
-                limit: 6,
-                onEvidence: { [weak self] update in
-                    await self?.publish(
-                        update,
-                        generation: requestGeneration)
-                })
-            guard !Task.isCancelled, generation == requestGeneration else { return }
-            exchange = Exchange(
-                question: question,
-                answer: Self.presentationText(for: result),
-                citations: result.citations)
-        } catch is CancellationError {
-            return
-        } catch {
-            guard !Task.isCancelled, generation == requestGeneration else { return }
-            exchange = Exchange(
-                question: question,
-                answer: L10n.format("Search failed: %@", error.localizedDescription),
-                citations: [])
-        }
-        guard generation == requestGeneration else { return }
+    private func complete(
+        _ exchange: Exchange,
+        generation requestGeneration: Int
+    ) {
+        guard !Task.isCancelled, generation == requestGeneration else { return }
         state.exchanges.append(exchange)
+        if state.exchanges.count > 20 {
+            state.exchanges.removeFirst(state.exchanges.count - 20)
+        }
         clearPendingState()
         answerTask = nil
     }
@@ -206,10 +248,23 @@ final class AskModel {
         }
     }
 
+    private func publish(
+        _ update: AskAnswerUpdate,
+        generation requestGeneration: Int
+    ) {
+        guard !Task.isCancelled,
+              generation == requestGeneration,
+              state.isAsking
+        else { return }
+        state.pendingAnswerText = update.text
+        state.pendingPhase = .generatingAnswer
+    }
+
     private func clearPendingState() {
         state.isAsking = false
         state.pendingQuestion = nil
         state.pendingCitations = []
+        state.pendingAnswerText = nil
         state.pendingPhase = nil
     }
 

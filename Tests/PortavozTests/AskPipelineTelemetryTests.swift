@@ -252,6 +252,23 @@ final class AskPipelineTelemetryTests: XCTestCase {
         XCTAssertEqual(expansionCalls, 1)
     }
 
+    func testGenerativeExpansionCancellationCannotBecomeAnEmptyFallback() async throws {
+        let store = try MeetingStore.inMemory()
+        let retrieval = LocalAskMeetingRetrieval(
+            store: store,
+            queryExpander: CancelledAskQueryExpander(),
+            runtime: UnavailableSemanticRuntime())
+
+        do {
+            _ = try await retrieval.retrieve(
+                question: "missing evidence",
+                limit: 6)
+            XCTFail("cancelled expansion must cancel the complete retrieval")
+        } catch is CancellationError {
+            // Cancellation is terminal, not an ordinary empty expansion.
+        }
+    }
+
     func testLexicalEvidencePublishesWhileSemanticAugmentationIsStillRunning() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Planning", startedAt: Date())
@@ -404,7 +421,8 @@ final class AskPipelineTelemetryTests: XCTestCase {
 
         let answer = try await useCase.answer("status")
 
-        XCTAssertEqual(answer.generatedText, "  \n")
+        XCTAssertNil(answer.generatedText)
+        XCTAssertEqual(answer.generationOutcome, .failed)
         XCTAssertEqual(
             recorder.events.compactMap { event -> AskPipelineMilestone? in
                 guard case .reached(_, let milestone) = event else { return nil }
@@ -432,8 +450,14 @@ private final class AskPipelineEventRecorder: @unchecked Sendable {
 }
 
 private struct FixedAskQueryExpander: AskQueryExpanding {
-    func expand(_ question: String) -> [String] {
+    func expand(_ question: String) throws -> [String] {
         [question]
+    }
+}
+
+private struct CancelledAskQueryExpander: AskQueryExpanding {
+    func expand(_: String) async throws -> [String] {
+        throw CancellationError()
     }
 }
 
@@ -445,7 +469,7 @@ private actor CountingAskQueryExpander: AskQueryExpanding {
         self.expansion = expansion
     }
 
-    func expand(_ question: String) -> [String] {
+    func expand(_ question: String) throws -> [String] {
         callCount += 1
         return expansion.isEmpty ? [question] : expansion
     }
@@ -525,6 +549,7 @@ private struct WhitespaceAskAnswerer: AskMeetingAnswering {
 
 private struct FixedCitationRetrieval: AskMeetingRetrieving {
     let meetingID: MeetingID
+    private let segmentID = UUID()
 
     func search(query _: String, limit _: Int) -> [AskSearchResult] {
         []
@@ -532,6 +557,7 @@ private struct FixedCitationRetrieval: AskMeetingRetrieving {
 
     func retrieve(question _: String, limit _: Int) -> [AskCitation] {
         [AskCitation(
+            segmentID: segmentID,
             meetingID: meetingID,
             meetingTitle: "Planning",
             timestamp: 1,

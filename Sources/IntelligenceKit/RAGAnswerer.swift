@@ -301,6 +301,43 @@ public struct RAGAnswerer: Sendable {
         }
     }
 
+    /// Streams cumulative Foundation Models snapshots while the shared
+    /// interactive scheduler retains single-flight model ownership.
+    public func streamAnswer(
+        question: String,
+        passages: [RAGPassage],
+        onSnapshot: @escaping @Sendable (String) async -> Void
+    ) async throws -> String {
+        if let reason = FoundationModelSummaryProvider.unavailabilityReason() {
+            throw IntelligenceError.modelUnavailable(reason)
+        }
+        guard !passages.isEmpty else {
+            return "No encuentro nada relacionado en tus reuniones."
+        }
+
+        let context = passages.enumerated().map { index, passage in
+            "[\(index + 1)] (\(passage.meetingTitle), "
+                + "\(Self.timestamp(passage.timestamp))) \(passage.text)"
+        }.joined(separator: "\n")
+        let session = LanguageModelSession(instructions: Self.answerInstructions)
+        return try await IntelligenceScheduler.shared.run(.interactive) {
+            let stream = session.streamResponse(
+                to: "Context:\n\(context)\n\nQuestion: \(question)\n\n"
+                    + "Answer with full sentences, in the same language as the question.",
+                options: GenerationOptions(
+                    sampling: .greedy,
+                    maximumResponseTokens: 500))
+            var finalText = ""
+            for try await snapshot in stream {
+                try Task.checkCancellation()
+                finalText = snapshot.content
+                await onSnapshot(finalText)
+            }
+            try Task.checkCancellation()
+            return finalText
+        }
+    }
+
     /// Answers from separately typed transcript and graph lanes. Fact markers
     /// expose structure to the model, while only exact transcript/source
     /// markers are valid citations in generated prose.
@@ -451,15 +488,16 @@ public struct RAGAnswerer: Sendable {
     /// bilingual, so a Spanish question must also search in English (and
     /// vice versa). Returns the original question plus up to two terse
     /// paraphrases; on any failure, just the original.
-    public func expandQuery(_ question: String) async -> [String] {
+    public func expandQuery(_ question: String) async throws -> [String] {
         let session = LanguageModelSession(
             instructions: """
                 Rewrite the user's question as exactly two terse keyword search queries \
                 for a meeting transcript index: one in English and one in Spanish. \
                 One per line, no numbering, no commentary.
                 """)
-        guard
-            let content = try? await IntelligenceScheduler.shared.run(
+        let content: String
+        do {
+            content = try await IntelligenceScheduler.shared.run(
                 .interactive,
                 operation: {
                     try await session.respond(
@@ -467,7 +505,13 @@ public struct RAGAnswerer: Sendable {
                         options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 60)
                     ).content
                 })
-        else { return [question] }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            return [question]
+        }
+        try Task.checkCancellation()
         let variants = content
             .split(separator: "\n")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters)) }

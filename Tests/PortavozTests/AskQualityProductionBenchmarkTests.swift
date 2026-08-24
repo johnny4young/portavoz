@@ -554,7 +554,7 @@ final class AskQualityProductionBenchmarkTests: XCTestCase {
 }
 
 private struct NoExpansion: AskQueryExpanding {
-    func expand(_ question: String) -> [String] { [question] }
+    func expand(_ question: String) throws -> [String] { [question] }
 }
 
 private struct FixedRuntime: SemanticEmbeddingRuntimeClient {

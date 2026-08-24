@@ -521,8 +521,17 @@ final class LibraryUITests: PortavozUITestCase {
         let field = app.textFields["ask-question-field"]
         XCTAssertTrue(field.waitForExistenceFast(timeout: 10))
         field.click()
+        field.typeText("sinresultado")
+        app.buttons["ask-submit"].click()
+        let pendingQuestion = app.staticTexts["ask-pending-question"]
+        XCTAssertTrue(pendingQuestion.waitForExistenceFast(timeout: 5))
+
+        field.click()
         field.typeText("viernes")
         app.buttons["ask-submit"].click()
+        XCTAssertTrue(
+            pendingQuestion.waitForLabelOrValue("viernes", timeout: 5),
+            "a new Ask submission must replace pending work")
 
         let progressiveEvidence = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'ask-pending-citation-'"))
@@ -541,6 +550,11 @@ final class LibraryUITests: PortavozUITestCase {
             app.descendants(matching: .any)["ask-progress-generating"]
                 .waitForExistenceFast(timeout: 5),
             "Ask must expose answer generation after the evidence set is fenced")
+        let pendingAnswer = app.staticTexts["ask-pending-answer"]
+        XCTAssertTrue(
+            pendingAnswer.waitForExistenceFast(timeout: 5),
+            "the local answer must become readable before generation completes")
+        XCTAssertTrue(renderedText(of: pendingAnswer).contains("presupuesto"))
         XCTAssertTrue(
             app.staticTexts["El presupuesto se revisó y el rollout quedó para el viernes."]
                 .waitForExistenceFast(timeout: 10),

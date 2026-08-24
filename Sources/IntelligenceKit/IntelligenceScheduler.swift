@@ -51,9 +51,6 @@ public actor IntelligenceScheduler {
     private var waiters: [Waiter] = []
     private var isRunning = false
     private var sequence: UInt64 = 0
-    /// Cancellations that arrived before their waiter was enqueued (the
-    /// task-cancellation handler can fire first) — consumed on enqueue.
-    private var earlyCancellations: Set<UUID> = []
     private let telemetry: ResourceWorkloadTelemetry
 
     public init(telemetry: ResourceWorkloadTelemetry = .disabled) {
@@ -101,6 +98,9 @@ public actor IntelligenceScheduler {
         do {
             try Task.checkCancellation()
             let value = try await operation()
+            // Some framework operations finish a value after their caller is
+            // cancelled. Never convert that late value into scheduler success.
+            try Task.checkCancellation()
             telemetry.finish(executionSpan, outcome: .completed)
             return value
         } catch {
@@ -131,8 +131,9 @@ public actor IntelligenceScheduler {
         sequence += 1
         let ticket = sequence
         try await withTaskCancellationHandler {
+            try Task.checkCancellation()
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                if earlyCancellations.remove(id) != nil {
+                if Task.isCancelled {
                     continuation.resume(throwing: CancellationError())
                     return
                 }
@@ -147,10 +148,7 @@ public actor IntelligenceScheduler {
     }
 
     private func cancelWaiter(id: UUID) {
-        guard let index = waiters.firstIndex(where: { $0.id == id }) else {
-            earlyCancellations.insert(id)
-            return
-        }
+        guard let index = waiters.firstIndex(where: { $0.id == id }) else { return }
         let waiter = waiters.remove(at: index)
         waiter.continuation.resume(throwing: CancellationError())
     }

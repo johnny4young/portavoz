@@ -50,9 +50,11 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         trace: AskPipelineTrace
     ) async throws -> [AskSearchResult] {
         guard limit > 0 else { return [] }
+        try Task.checkCancellation()
         let hits = try await trace.measure(.lexicalQuery) { [store] in
             try await store.search(query, limit: limit)
         }
+        try Task.checkCancellation()
         return await trace.measure(.citationFetch) {
             hits.map(Self.searchResult)
         }
@@ -90,9 +92,11 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             await onEvidence(AskEvidenceUpdate(phase: .fused, citations: []))
             return []
         }
+        try Task.checkCancellation()
         let queries = await trace.measure(.expansion) { [lexicalExpander] in
             lexicalExpander.expand(question)
         }
+        try Task.checkCancellation()
         async let semanticResult = semanticCandidates(
             queries: queries,
             trace: trace)
@@ -102,11 +106,14 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
                 store: store,
                 limit: Self.candidateLimit(for: queries))
         }
+        try Task.checkCancellation()
         await onEvidence(AskEvidenceUpdate(
             phase: .lexical,
             citations: lexical.prefix(limit).map(Self.citation)))
+        try Task.checkCancellation()
         let semantic = try await semanticResult
-        var citations = await fusedCitations(
+        try Task.checkCancellation()
+        var citations = try await fusedCitations(
             lexical: lexical,
             semanticResult: semantic,
             limit: limit,
@@ -119,9 +126,11 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
                 limit: limit,
                 onEvidence: onEvidence)
         }
+        try Task.checkCancellation()
         await onEvidence(AskEvidenceUpdate(
             phase: .fused,
             citations: citations))
+        try Task.checkCancellation()
         return citations
     }
 
@@ -130,7 +139,8 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         semanticResult: SemanticCandidates,
         limit: Int,
         trace: AskPipelineTrace
-    ) async -> [AskCitation] {
+    ) async throws -> [AskCitation] {
+        try Task.checkCancellation()
         let semantic = Self.orderedSemanticCandidateIDs(
             semanticResult.bestRank)
         var hitsByID = semanticResult.hitsByID
@@ -144,6 +154,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
                 semantic: semantic,
                 limit: limit)
         }
+        try Task.checkCancellation()
         return await trace.measure(.citationFetch) {
             fused.compactMap { finalHitsByID[$0] }.map(Self.citation)
         }
@@ -158,10 +169,13 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         limit: Int,
         onEvidence: @escaping AskEvidenceReceiver
     ) async throws -> [AskCitation] {
-        let expanded = await queryExpander.expand(question)
+        try Task.checkCancellation()
+        let expanded = try await queryExpander.expand(question)
+        try Task.checkCancellation()
         let queries = Self.uniqueQueries(expanded, excluding: initialQueries)
         guard !queries.isEmpty else { return [] }
         let trace = AskPipelineTelemetry.disabledTrace(for: .evidence)
+        try Task.checkCancellation()
         async let semanticResult = semanticCandidates(
             queries: queries,
             trace: trace)
@@ -169,12 +183,14 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
             queries: queries,
             store: store,
             limit: Self.candidateLimit(for: queries))
+        try Task.checkCancellation()
         if !lexical.isEmpty {
             await onEvidence(AskEvidenceUpdate(
                 phase: .lexical,
                 citations: lexical.prefix(limit).map(Self.citation)))
+            try Task.checkCancellation()
         }
-        return await fusedCitations(
+        return try await fusedCitations(
             lexical: lexical,
             semanticResult: try await semanticResult,
             limit: limit,
@@ -244,11 +260,13 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         var result = SemanticCandidates.empty
         // One traversal scores every variant; the fold keeps each segment's
         // best rank across variants, earliest variant winning a tie.
+        try Task.checkCancellation()
         for (variant, variantHits) in try await semanticIndex.search(
             vectors,
             profile: profile,
             limit: 12
         ).enumerated() {
+            try Task.checkCancellation()
             for (rank, hit) in variantHits.enumerated()
             where result.bestRank[hit.segmentID].map({
                 SemanticCandidateRank(rank: rank, variant: variant) < $0
@@ -317,6 +335,7 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         limit: Int
     ) async throws -> [SearchHit] {
         guard limit > 0 else { return [] }
+        try Task.checkCancellation()
         let queryTerms = queries.map(Self.contentTerms)
         let terms = Self.uniqueTerms(queryTerms.flatMap { $0 })
         guard !terms.isEmpty else { return [] }
@@ -336,7 +355,10 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         var scores: [UUID: Double] = [:]
         var bestRanks: [UUID: Int] = [:]
         for term in terms {
-            for (rank, hit) in try await store.search(term, limit: perTermLimit).enumerated() {
+            try Task.checkCancellation()
+            let termHits = try await store.search(term, limit: perTermLimit)
+            try Task.checkCancellation()
+            for (rank, hit) in termHits.enumerated() {
                 scores[hit.segmentID, default: 0] += 1.0 / Double(60 + rank)
                 if rank < (bestRanks[hit.segmentID] ?? .max) {
                     hitsByID[hit.segmentID] = hit
@@ -364,8 +386,14 @@ public struct LocalAskMeetingRetrieval: AskMeetingRetrieving {
         var hits: [SearchHit] = []
         var seen = Set<UUID>()
         for terms in queryTerms where !terms.isEmpty {
+            try Task.checkCancellation()
             let query = terms.joined(separator: " ")
-            for hit in try await store.search(query, limit: min(12, limit), requireAll: false)
+            let queryHits = try await store.search(
+                query,
+                limit: min(12, limit),
+                requireAll: false)
+            try Task.checkCancellation()
+            for hit in queryHits
             where seen.insert(hit.segmentID).inserted {
                 hits.append(hit)
             }

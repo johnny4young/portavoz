@@ -196,7 +196,9 @@ The implemented application workflows include:
 - explicit decision confirmation, later evidence-source confirmation, and
   named supersede/reverse relationship history;
 - instant Ask search, hybrid evidence retrieval, and optional local answer
-  generation with evidence-preserving degradation;
+  generation with exact fused-evidence admission, bounded cumulative streaming,
+  typed timeout/failure degradation, and cancellation-safe latest-request
+  replacement;
 - first-run eligibility without model or permission prerequisites;
 - independent exact local-data receipt metrics with per-source degradation;
 - pre-meeting preparation from shared Ask evidence, batched current summaries,
@@ -666,6 +668,17 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | Spotlight reconciliation | `SpotlightIndexer` | application process |
 | Post-capture processing | `PostCaptureProcessingSupervisor` | application process |
 | Whisper preparation | shared readiness owner | application process |
+
+The Ask workflow, not a model provider or SwiftUI, owns progressive admission.
+It accepts only one exact final fused citation set, coalesces cumulative answer
+snapshots under finite count/text limits, closes publication on cancellation or
+timeout, and preserves citations when optional generation is unavailable or
+fails. The per-window model retains at most 20 completed exchanges, weakly
+bridges its task so a non-cooperative provider cannot retain a closed window,
+and lets a new submitted draft cancel and replace pending work. On macOS 26 the
+Foundation Models adapter streams cumulative `String` snapshots through the
+shared interactive scheduler; on Sequoia the same UI remains evidence-capable
+without entering that unavailable API.
 
 Library combines independently observed meeting rows, open commitments, trash,
 and active FTS results. Insights combines chronology, participants,
@@ -4670,7 +4683,7 @@ reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,614 XCTest package cases are defined, with 15 real-model/environment cases
+- 2,627 XCTest package cases are defined, with 15 real-model/environment cases
   gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid

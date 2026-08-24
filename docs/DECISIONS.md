@@ -14051,3 +14051,52 @@ measured memory/leak/stress evidence, and minimum-safe admission. Installed
 Foundation Models/ASR/embeddings, physical Sequoia/Tahoe, VoiceOver/Voice
 Control, real providers, distribution, and real-field behavior remain separate
 irreducible evidence.
+
+## D384 — Put bounded progressive Ask ownership in ApplicationKit (Aug 2026)
+
+**Context:** full Ask already exposed exact lexical and fused evidence, but local
+answer generation returned one complete string. The UI disabled submission while
+that work ran, so a user could not replace a stale question; the per-window
+conversation grew without a ceiling; Foundation Models cancellation could be
+lost during query-expansion fallback; and the shared intelligence scheduler
+could accept a late value from an opaque operation that ignored cancellation.
+Adding more Apuntador sources on top of those contracts would multiply stale
+publication, latency, memory, and abrupt-failure risk.
+
+**Decision:** ApplicationKit owns the progressive protocol independently of any
+model provider. One request admits bounded exact lexical updates followed by one
+immutable fused citation set, and the provider's return must match it. Generated
+updates are cumulative, finite, coalesced, and validated before presentation;
+question, result, citation text, answer text, and snapshot count all have explicit
+ceilings; each citation also admits at most 4,096 ordered source segment identities.
+Generation has an eight-second cooperative timeout with content-free
+`notRequested`, `generated`, `unavailable`, `failed`, and `timedOut` terminal
+states. Cancellation remains an error and is checked around every retrieval,
+storage, semantic, model, and callback boundary. Timeout closes answer admission
+before provider cancellation; ordinary failure and timeout preserve evidence.
+
+On macOS 26, the on-device adapter consumes Foundation Models cumulative
+`String` snapshots inside the existing interactive single-flight scheduler. On
+Sequoia or when Apple Intelligence is unavailable, it returns evidence without
+pretending generation occurred. Final-string adapters keep compatibility by
+emitting one cumulative update. The scheduler checks cancellation again after
+opaque work returns and stores no early-cancellation tombstones. Generative query
+expansion is throwing, so cancellation cannot degrade into an ordinary fallback.
+
+Full Ask accepts a new nonempty submission while work is pending: it cancels and
+generation-fences the old request, renders identified partial answer text, keeps
+only the newest 20 exchanges, weakly captures the window model, and uses Swift
+6's isolated deinitializer to cancel owned work. The deterministic real-app
+adapter shortens its observable phase delays and streams a partial answer. The
+existing complete Ask journey is extended rather than duplicated and remains the
+minimum-safe English/Spanish feature gate.
+
+**Consequences:** users see useful local text earlier and can correct a question
+without waiting, while malformed, oversized, timed-out, cancelled, or stale
+providers cannot become final success. Structured cancellation is cooperative:
+Portavoz does not claim it can hard-kill arbitrary provider code, but the closed
+application gate prevents late publication and a weak task bridge prevents a
+closed window from being retained. Installed-model quality/performance, physical
+Sequoia/Tahoe, VoiceOver/Voice Control, distribution, CloudKit, and real-field
+behavior remain separate release evidence. This closes APT-1 code scope, not the
+later manual-source, web, interview, note, proactive, or 1.0.0 admission bands.

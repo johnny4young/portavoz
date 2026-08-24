@@ -124,6 +124,164 @@ final class AskMeetingsUseCaseTests: XCTestCase {
         XCTAssertEqual(finalCallCount, 1)
     }
 
+    func testProgressiveAnswerCoalescesCumulativeSnapshotsAndKeepsExactFinalText() async throws {
+        let fixture = AskWorkflowFixture()
+        let finalText = "El presupuesto se revisó y quedó para el viernes."
+        let updates = AskAnswerUpdateRecorder()
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: CharacterStreamingAskAnswerer(text: finalText))
+
+        let result = try await useCase.answer(
+            "rollout",
+            onEvidence: { _ in },
+            onAnswer: { update in await updates.receive(update) })
+        let values = await updates.values.map(\.text)
+
+        XCTAssertEqual(result.generatedText, finalText)
+        XCTAssertEqual(result.generationOutcome, .generated)
+        XCTAssertEqual(values.last, finalText)
+        XCTAssertLessThanOrEqual(values.count, 4)
+        XCTAssertTrue(zip(values, values.dropFirst()).allSatisfy { previous, next in
+            next.hasPrefix(previous)
+        })
+    }
+
+    func testGenerationTimeoutPreservesEvidenceAndRejectsLateSnapshots() async throws {
+        let fixture = AskWorkflowFixture()
+        let updates = AskAnswerUpdateRecorder()
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: CancellationIgnoringAskAnswerer(),
+            answerTimeout: .milliseconds(20))
+
+        let result = try await useCase.answer(
+            "rollout",
+            onEvidence: { _ in },
+            onAnswer: { update in await updates.receive(update) })
+
+        XCTAssertEqual(result.citations, fixture.citations)
+        XCTAssertNil(result.generatedText)
+        XCTAssertEqual(result.generationOutcome, .timedOut)
+        let published = await updates.values.map(\.text)
+        XCTAssertEqual(published, ["El presupuesto"])
+    }
+
+    func testMalformedProgressiveAnswersFailClosed() async throws {
+        let fixture = AskWorkflowFixture()
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: NonMonotonicAskAnswerer())
+
+        let result = try await useCase.answer("rollout")
+
+        XCTAssertEqual(result.citations, fixture.citations)
+        XCTAssertNil(result.generatedText)
+        XCTAssertEqual(result.generationOutcome, .failed)
+    }
+
+    func testOversizedAnswerFailsClosedWithoutPublishingSnapshots() async throws {
+        let fixture = AskWorkflowFixture()
+        let updates = AskAnswerUpdateRecorder()
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: fixture.citations),
+            answering: OversizedAskAnswerer())
+
+        let result = try await useCase.answer(
+            "rollout",
+            onEvidence: { _ in },
+            onAnswer: { update in await updates.receive(update) })
+
+        XCTAssertNil(result.generatedText)
+        XCTAssertEqual(result.generationOutcome, .failed)
+        let published = await updates.values
+        XCTAssertTrue(published.isEmpty)
+    }
+
+    func testOversizedCitationProvenanceFailsClosedBeforeGeneration() async throws {
+        let fixture = AskWorkflowFixture()
+        let answering = AskMeetingAnsweringFake(text: "must not run")
+        let citation = AskCitation(
+            segmentID: fixture.segmentID,
+            sourceSegmentIDs: (0...AskRequestLimits.maximumSourceSegmentsPerCitation)
+                .map { _ in UUID() },
+            meetingID: fixture.meetingID,
+            meetingTitle: "Planning",
+            timestamp: 7,
+            text: "The rollout stays scheduled for Friday.")
+        let useCase = AskMeetings(
+            retrieval: AskMeetingRetrievalFake(
+                searches: fixture.searches,
+                citations: [citation]),
+            answering: answering)
+
+        do {
+            _ = try await useCase.answer("rollout")
+            XCTFail("oversized citation provenance must fail closed")
+        } catch {
+            // The evidence cannot cross the bounded application contract.
+        }
+        let answerCallCount = await answering.callCount
+        XCTAssertEqual(answerCallCount, 0)
+    }
+
+    func testProgressiveEvidenceMustMatchTheReturnedFusedEvidence() async throws {
+        let fixture = AskWorkflowFixture()
+        let answering = AskMeetingAnsweringFake(text: "must not run")
+        let useCase = AskMeetings(
+            retrieval: MismatchedProgressiveAskRetrieval(
+                emitted: fixture.citations,
+                returned: [AskCitation(
+                    segmentID: UUID(),
+                    meetingID: fixture.meetingID,
+                    meetingTitle: "Planning",
+                    timestamp: 7,
+                    text: "Different evidence.")]),
+            answering: answering)
+
+        do {
+            _ = try await useCase.answer("rollout")
+            XCTFail("mismatched fused evidence must fail closed")
+        } catch {
+            // The progressive provider violated its application contract.
+        }
+        let callCount = await answering.callCount
+        XCTAssertEqual(callCount, 0)
+    }
+
+    func testOversizedRequestsAreRejectedBeforeCapabilitiesRun() async throws {
+        let retrieval = AskMeetingRetrievalFake(searches: [], citations: [])
+        let answering = AskMeetingAnsweringFake(text: "unused")
+        let useCase = AskMeetings(retrieval: retrieval, answering: answering)
+        let oversized = String(
+            repeating: "a",
+            count: AskRequestLimits.maximumQuestionCharacters + 1)
+
+        do {
+            _ = try await useCase.search(oversized)
+            XCTFail("oversized question must be rejected")
+        } catch AskRequestError.questionTooLong {}
+        do {
+            _ = try await useCase.evidence(
+                "valid",
+                limit: AskRequestLimits.maximumResultCount + 1)
+            XCTFail("oversized limit must be rejected")
+        } catch AskRequestError.resultLimitExceeded {}
+
+        let retrievalCalls = await retrieval.calls
+        let answerCallCount = await answering.callCount
+        XCTAssertTrue(retrievalCalls.isEmpty)
+        XCTAssertEqual(answerCallCount, 0)
+    }
+
     func testEvidenceBundleKeepsTranscriptAndGraphLanesIndependent() async throws {
         let fixture = AskWorkflowFixture()
         let retrieval = AskMeetingRetrievalFake(
@@ -804,6 +962,126 @@ private actor AskEvidenceUpdateRecorder {
 
     func receive(_ update: AskEvidenceUpdate) {
         values.append(update)
+    }
+}
+
+private actor AskAnswerUpdateRecorder {
+    private(set) var values: [AskAnswerUpdate] = []
+
+    func receive(_ update: AskAnswerUpdate) {
+        values.append(update)
+    }
+}
+
+private struct CharacterStreamingAskAnswerer: AskMeetingAnswering {
+    let text: String
+
+    func answer(
+        question _: String,
+        citations _: [AskCitation]
+    ) -> String? {
+        text
+    }
+
+    func answer(
+        question _: String,
+        citations _: [AskCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async -> String? {
+        for index in 1...text.count {
+            await onAnswer(AskAnswerUpdate(text: String(text.prefix(index))))
+        }
+        return text
+    }
+}
+
+private struct CancellationIgnoringAskAnswerer: AskMeetingAnswering {
+    func answer(
+        question _: String,
+        citations _: [AskCitation]
+    ) -> String? {
+        nil
+    }
+
+    func answer(
+        question _: String,
+        citations _: [AskCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async -> String? {
+        await onAnswer(AskAnswerUpdate(text: "El presupuesto"))
+        do {
+            try await Task.sleep(for: .seconds(1))
+        } catch {
+            await onAnswer(AskAnswerUpdate(text: "late cancelled output"))
+        }
+        return "late cancelled output"
+    }
+}
+
+private struct NonMonotonicAskAnswerer: AskMeetingAnswering {
+    func answer(
+        question _: String,
+        citations _: [AskCitation]
+    ) -> String? {
+        nil
+    }
+
+    func answer(
+        question _: String,
+        citations _: [AskCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async -> String? {
+        await onAnswer(AskAnswerUpdate(text: "El viernes."))
+        await onAnswer(AskAnswerUpdate(text: "El jueves."))
+        return "El jueves."
+    }
+}
+
+private struct OversizedAskAnswerer: AskMeetingAnswering {
+    private var oversized: String {
+        String(
+            repeating: "x",
+            count: AskRequestLimits.maximumAnswerCharacters + 1)
+    }
+
+    func answer(
+        question _: String,
+        citations _: [AskCitation]
+    ) -> String? {
+        oversized
+    }
+
+    func answer(
+        question _: String,
+        citations _: [AskCitation],
+        onAnswer: @escaping AskAnswerReceiver
+    ) async -> String? {
+        await onAnswer(AskAnswerUpdate(text: oversized))
+        return oversized
+    }
+}
+
+private struct MismatchedProgressiveAskRetrieval: AskMeetingRetrieving {
+    let emitted: [AskCitation]
+    let returned: [AskCitation]
+
+    func search(query _: String, limit _: Int) -> [AskSearchResult] { [] }
+
+    func retrieve(
+        question _: String,
+        limit _: Int
+    ) -> [AskCitation] {
+        returned
+    }
+
+    func retrieve(
+        question _: String,
+        limit _: Int,
+        trace _: AskPipelineTrace,
+        onEvidence: @escaping AskEvidenceReceiver
+    ) async -> [AskCitation] {
+        await onEvidence(AskEvidenceUpdate(phase: .fused, citations: emitted))
+        return returned
     }
 }
 

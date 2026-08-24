@@ -1108,11 +1108,41 @@ meeting-content HTTP receipt boundary.
 
 - **Embeddings**: `NLContextualEmbedding(script: .latin)` — shared es/en space (genuinely cross-lingual). Mean-pool + L2-normalize. `prepare()` requests assets from the OS.
 - **Index**: BLOB in the `embedding` column of `segment` + brute-force cosine (sqlite-vec intentionally deferred). `ApplicationKit.IndexSemanticCorpus` owns corpus writes. It validates one returned vector per eligible segment before persistence and writes an empty marker for micro-segments (< 20 chars), which are excluded because they drowned out cross-lingual hits. The signal-driven background owner requests product drains; explicit disposable benchmarks may prepare their isolated stores. Ask and Library perform no backfill and read only already-published vectors. One process-shared coordinator admits only one maintenance flight.
-- **Application boundary (D100/D201)**: `ApplicationKit.AskMeetings` is the only public workflow used by the macOS Ask route, resident command palette, CLI `ask`, local MCP `ask`, and meeting-brief evidence lookup. Instant results and citations are storage-independent values; the optional progressive contract emits lexical and final fused evidence without changing final-result consumers. Generated text is optional, so unavailable or failed local generation preserves evidence instead of converting retrieval success into failure; cancellation still propagates as cancellation.
+- **Application boundary (D100/D201/D384)**: `ApplicationKit.AskMeetings` is the only public workflow used by the macOS Ask route, resident command palette, CLI `ask`, local MCP `ask`, and meeting-brief evidence lookup. Instant results and citations are storage-independent values; the optional progressive contract emits lexical and final fused evidence plus bounded cumulative answer snapshots without changing final-result consumers. Generated text is optional, so unavailable, failed, or timed-out local generation preserves evidence instead of converting retrieval success into failure; cancellation still propagates as cancellation.
 - **Meeting preparation (D101)**: `ApplicationKit.PrepareMeetingBrief` ranks the shared Ask citations, joins them to one batched latest-live-General-summary projection and independently loaded open commitments, and exposes only storage-independent related meetings, commitments, and knowledge points. Foundation Models synthesis is optional and every returned source index is validated before it becomes a navigable knowledge point; invalid indexes and ordinary model failure produce no invented source, while cancellation remains cancellation.
 - **Lexical candidates (D81)**: `ApplicationKit.LocalAskMeetingRetrieval` owns the policy. It normalizes and deduplicates content words ≥ 4 characters, retrieves a bounded FTS top-k list per term for normal questions of up to eight unique terms, and fuses those lists with RRF (`k=60`). Multi-term passages climb without scoring one complete OR union. Longer pasted questions retain the released broad-OR fallback, and every selected hit carries complete segment text in addition to its UI snippet.
 - **Hybrid retrieval (D201/D352)**: deterministic English/Spanish variants start bounded lexical and brute-force semantic candidate work concurrently, then fuse with RRF (`k=60`). Each semantic result keeps its best rank across variants; different results at that rank prefer the earliest deterministic variant and then stable UUID order rather than process-randomized dictionary order. Lexical citations may publish before semantic completion; only the final fused set reaches generation. FM expansion is a bounded evidence-empty fallback, never a first-evidence prerequisite, and term deduplication spans all variants.
-- **Answer**: `OnDeviceAskMeetingIntelligence` wraps the IntelligenceKit query-expansion and answer primitives. The on-device FM receives complete selected segments, not bounded highlighted UI snippets, and citations retain segment/meeting identity plus timestamp. Verified E2E: MCP agent answered "what did we agree about the transcription budget?" with correct sources.
+- **Answer**: `OnDeviceAskMeetingIntelligence` wraps the IntelligenceKit query-expansion and answer primitives. The on-device FM receives complete selected segments, not bounded highlighted UI snippets, and citations retain segment/meeting identity plus timestamp. On macOS 26 it iterates Foundation Models cumulative `String` snapshots inside the shared interactive scheduler; unavailable Sequoia hosts return no generated text and keep exact evidence. Verified E2E: MCP agent answered "what did we agree about the transcription budget?" with correct sources.
+
+### Bounded progressive answer ownership (D384)
+
+`AskMeetings` admits at most 2,000 question characters, 100 requested results,
+8,000 generated characters, 512 provider snapshots, and 4,096 ordered source
+segment identities per citation. It accepts only finite, bounded, exact citations
+with stable source identity. Lexical evidence may improve
+until one fused update is admitted; the provider's returned citations must equal
+that fused set before generation begins. A mismatch or malformed source fails
+closed rather than letting presentation cite one set while the model saw another.
+
+Answer snapshots are cumulative. The application gate rejects rewinds,
+duplicates, whitespace-only or oversized output and coalesces valid changes at
+the first snapshot, punctuation, or meaningful growth. An eight-second
+cooperative timeout closes the answer lane before cancelling the provider and
+returns the typed `timedOut` outcome with citations intact. `notRequested`,
+`generated`, `unavailable`, `failed`, and `timedOut` carry no user content.
+Caller cancellation remains an error and is checked before and after retrieval,
+query expansion, semantic traversal, storage reads, generation, and external
+callbacks. `IntelligenceScheduler` also checks after an opaque operation returns,
+so a provider that ignores cancellation cannot convert a stale value into
+success or leave cancellation identifiers resident.
+
+Foundation Models streaming is macOS 26-only and uses
+`LanguageModelSession.streamResponse`; the fallback protocol implementation
+adapts final-string providers as one cumulative update. This does not claim hard
+pre-emption of arbitrary code: Swift structured timeout waits for cooperative
+child teardown, while the closed application gate prevents any late output from
+publishing. Query expansion now throws so cancellation can no longer be hidden
+by ordinary fallback to the original question.
 
 ### Corpus-read-only Ask retrieval (D196)
 
@@ -1153,9 +1183,9 @@ Empty or invalid requests still bypass every capability and trace.
 The taxonomy accepts no question, meeting, segment, citation, file, model, or
 error payload. Cancellation closes the active stage and complete trace as
 cancelled; an ordinary generation failure keeps its established evidence-first
-behavior and finishes successfully without a first-token milestone. The
-current non-streaming answer capability exposes its first token only when the
-complete string returns, so that milestone is intentionally an
+behavior and finishes successfully without a first-token milestone. The first-
+token milestone is reached by the first admitted nonempty cumulative snapshot,
+or by the compatibility update for a final-string provider. It remains an
 ApplicationKit-observable boundary rather than a claim about model-internal
 token timing. App composition records the closed values as OSLog Points of
 Interest. The benchmark process consumes that observer through one strict

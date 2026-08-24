@@ -108,6 +108,107 @@ final class AskPresentationModelTests: XCTestCase {
         XCTAssertTrue(model.state.exchanges.isEmpty)
     }
 
+    func testFullAskReplacesPendingQuestionAndRejectsStaleAnswerSnapshots() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        let model = AskModel(client: client)
+
+        model.updateDraft("old")
+        model.submit()
+        try await waitUntil { client.answerRequests == ["old"] }
+
+        model.updateDraft("viernes")
+        model.submit()
+        try await waitUntil { client.answerRequests == ["old", "viernes"] }
+        XCTAssertEqual(model.state.pendingQuestion, "viernes")
+
+        await client.publishAnswer(
+            "old",
+            update: AskAnswerUpdate(text: "stale"))
+        await Task.yield()
+        XCTAssertNil(model.state.pendingAnswerText)
+
+        await client.publishEvidence(
+            "viernes",
+            update: AskEvidenceUpdate(
+                phase: .fused,
+                citations: [fixture.citation]))
+        await client.publishAnswer(
+            "viernes",
+            update: AskAnswerUpdate(text: "El presupuesto se revisó"))
+        try await waitUntil {
+            model.state.pendingAnswerText == "El presupuesto se revisó"
+        }
+
+        client.completeAnswer(
+            "old",
+            with: AskMeetingAnswer(
+                question: "old",
+                generatedText: "stale",
+                citations: [fixture.citation]))
+        await Task.yield()
+        XCTAssertEqual(model.state.pendingQuestion, "viernes")
+        XCTAssertTrue(model.state.exchanges.isEmpty)
+
+        client.completeAnswer(
+            "viernes",
+            with: AskMeetingAnswer(
+                question: "viernes",
+                generatedText: "El presupuesto se revisó el viernes.",
+                citations: [fixture.citation]))
+        try await waitUntil { model.state.exchanges.count == 1 }
+        XCTAssertEqual(
+            model.state.exchanges.first?.answer,
+            "El presupuesto se revisó el viernes.")
+        XCTAssertNil(model.state.pendingAnswerText)
+    }
+
+    func testFullAskRetainsOnlyTheLatestTwentyExchanges() async throws {
+        let fixture = AskPresentationFixture()
+        let client = ControlledAskModelClient()
+        let model = AskModel(client: client)
+
+        for index in 0..<21 {
+            let question = "question-\(index)"
+            model.updateDraft(question)
+            model.submit()
+            try await waitUntil { client.answerRequests.last == question }
+            client.completeAnswer(
+                question,
+                with: AskMeetingAnswer(
+                    question: question,
+                    generatedText: "answer-\(index)",
+                    citations: [fixture.citation]))
+            try await waitUntil { !model.state.isAsking }
+        }
+
+        XCTAssertEqual(model.state.exchanges.count, 20)
+        XCTAssertEqual(model.state.exchanges.first?.question, "question-1")
+        XCTAssertEqual(model.state.exchanges.last?.question, "question-20")
+    }
+
+    func testPendingFullAskDoesNotRetainAClosedWindowModel() async throws {
+        let client = ControlledAskModelClient()
+        var model: AskModel? = AskModel(client: client)
+
+        model?.updateDraft("pending")
+        model?.submit()
+        try await waitUntil { client.answerRequests == ["pending"] }
+        weak let retainedModel = model
+        model = nil
+
+        XCTAssertNil(
+            retainedModel,
+            "an uncooperative provider must not retain a closed Ask window")
+        client.completeAnswer(
+            "pending",
+            with: AskMeetingAnswer(
+                question: "pending",
+                generatedText: nil,
+                citations: []))
+        await Task.yield()
+    }
+
     func testMemoryPersonSearchPublishesOnlyLatestBoundedExactCandidates() async throws {
         let ask = ControlledAskModelClient()
         let memory = ControlledAskMemoryModelClient()
@@ -1465,6 +1566,7 @@ private final class ControlledAskModelClient: AskModelClient {
     private var searchContinuations: [String: CheckedContinuation<[AskSearchResult], Error>] = [:]
     private var answerContinuations: [String: CheckedContinuation<AskMeetingAnswer, Error>] = [:]
     private var evidenceReceivers: [String: AskEvidenceReceiver] = [:]
+    private var answerReceivers: [String: AskAnswerReceiver] = [:]
 
     func searchAskMeetings(
         _ query: String,
@@ -1498,17 +1600,33 @@ private final class ControlledAskModelClient: AskModelClient {
         }
     }
 
+    func answerAskMeetings(
+        _ question: String,
+        limit _: Int,
+        onEvidence: @escaping AskEvidenceReceiver,
+        onAnswer: @escaping AskAnswerReceiver
+    ) async throws -> AskMeetingAnswer {
+        answerRequests.append(question)
+        evidenceReceivers[question] = onEvidence
+        answerReceivers[question] = onAnswer
+        return try await withCheckedThrowingContinuation { continuation in
+            answerContinuations[question] = continuation
+        }
+    }
+
     func completeSearch(_ query: String, with hits: [AskSearchResult]) {
         searchContinuations.removeValue(forKey: query)?.resume(returning: hits)
     }
 
     func completeAnswer(_ question: String, with answer: AskMeetingAnswer) {
         evidenceReceivers.removeValue(forKey: question)
+        answerReceivers.removeValue(forKey: question)
         answerContinuations.removeValue(forKey: question)?.resume(returning: answer)
     }
 
     func failAnswer(_ question: String) {
         evidenceReceivers.removeValue(forKey: question)
+        answerReceivers.removeValue(forKey: question)
         answerContinuations.removeValue(forKey: question)?
             .resume(throwing: AskPresentationTestError.refused)
     }
@@ -1518,6 +1636,14 @@ private final class ControlledAskModelClient: AskModelClient {
         update: AskEvidenceUpdate
     ) async {
         await evidenceReceivers[question]?(update)
+    }
+
+
+    func publishAnswer(
+        _ question: String,
+        update: AskAnswerUpdate
+    ) async {
+        await answerReceivers[question]?(update)
     }
 }
 

@@ -1060,7 +1060,7 @@ private struct SemanticIndexEmbedder: SemanticTextEmbedding {
 }
 
 private struct NoAskQueryExpansion: AskQueryExpanding {
-    func expand(_ question: String) -> [String] { [] }
+    func expand(_ question: String) throws -> [String] { [] }
 }
 
 private struct FailingSemanticIndex: SemanticIndexSearching {

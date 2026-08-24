@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,614 cases (15 environment-gated) + 105
+Status: the package inventory contains 2,627 cases (15 environment-gated) + 105
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -80,10 +80,10 @@ local justification.
 | AnalyzeAudioFileUseCaseTests / ManageLocalVoiceAndModelsUseCaseTests / PublishMeetingContentUseCaseTests | File admission and policy forwarding; deterministic transcription metrics; diarization threshold/timing/optional attribution; meeting-before-provider summary persistence; file, supplied-sample, and recorded local-voice enrollment with duration/sample validation, ordered progress, status/delete isolation, and capture-mode forwarding; catalog-order verification and sequential model installation; coherent Markdown/PDF/SRT/WebVTT/Gist export, canonical format/extension parsing, subtitle rendering without a Markdown prerequisite, pending-only owner-resolved action publication, typed missing/empty states, and zero concrete model, Keychain, filesystem, or network dependency |
 | MenuBarModelTests / MenuBarObservationTests | Storage-independent recent/pending composition, empty/degraded/failed phases, last-healthy-section preservation, and bounded newest-first live meeting roots through delete/restore |
 | ExportLibraryMarkdownBackupUseCaseTests / BackupPublicationReconcileTests / RecoverLibraryMarkdownBackupTests / LibraryMarkdownBackupRecoveryStoreTests / LibraryMarkdownBackupStoreTests / LibraryMarkdownBackupFilesTests / LibraryMarkdownBackupModelTests | Portable canonical filename allocation, existing/concurrent collision retries, typed partial and fatal outcomes, bounded page-copy suspension with partial-stage cleanup, one immutable newest-first SQLite stage with corrupt-aggregate isolation and General-summary parity, one-at-a-time aggregate delivery, process-local suspension/resume without rerender or republish, atomic non-replacing file publication, cursor-bound reservations, no-follow exact-byte destination evidence, missing/matching/conflicting and cursor-less reconciliation, cancellation and destination-failure lease closure, publication-before-source-checkpoint ordering, idempotent and monotonic cursor persistence, checkpoint-only retry without destination inspection or republish, failure-frozen cursor advancement, catalog-before-cleanup stage preservation, ambiguous/conflicting launch fail-closed behavior, exact active continuation and completed-result reconstruction, retryable adopted-stage abandon after destination setup failure, terminal recovered-source cleanup without an implicit fresh export, and process-scoped progress/terminal state |
-| AskMeetingsUseCaseTests / AskPipelineTelemetryTests | Shared trimming/search/evidence/answer behavior; lexical evidence before generation; deterministic bilingual exact retrieval before bounded generative fallback; concurrent lexical/semantic work with partial-order telemetry invariants; no-evidence generation skip; evidence-preserving ordinary generation failure; an independent exact graph-fact bundle that cannot replace transcript evidence, distinguishes no request/domain abstention/operational unavailability, routes all three implemented fact adapters, and propagates cancellation; corpus-read-only product retrieval; cold/unavailable semantic fallback to lexical evidence; honest semantic and pipeline cancellation propagation; capability bypass for empty/invalid requests without trace creation; closed content-free Ask telemetry taxonomy; matched success/failure/cancellation intervals; and first-evidence/first-observable-token milestones |
+| AskMeetingsUseCaseTests / AskPipelineTelemetryTests | Shared trimming/search/evidence/answer behavior; lexical evidence before generation; cumulative snapshot coalescing and exact final text; typed timeout with evidence retention and zero late publication; nonmonotonic, whitespace, oversized, duplicate, or mismatched provider output failing closed; finite request/result/source/answer limits; deterministic bilingual exact retrieval before bounded generative fallback; cancellation-preserving query expansion; concurrent lexical/semantic work with partial-order telemetry invariants; no-evidence generation skip; evidence-preserving ordinary generation failure; an independent exact graph-fact bundle that cannot replace transcript evidence, distinguishes no request/domain abstention/operational unavailability, routes all three implemented fact adapters, and propagates cancellation; corpus-read-only product retrieval; cold/unavailable semantic fallback to lexical evidence; honest semantic and pipeline cancellation propagation; capability bypass for empty/invalid requests without trace creation; closed content-free Ask telemetry taxonomy; matched success/failure/cancellation intervals; and first-evidence/first-observable-token milestones |
 | MeetingMemoryGraphQueryTelemetryTests | Closed six-job/four-outcome exact-graph telemetry taxonomy; facts/abstention/cancellation/failure classification without payload material; all six use-case mappings; alias-resolution timing only after one exact identity; and explicit app-observer removal without callback accumulation |
 | MeetingMemoryGraphQueryRunProbeTests | Bounded explicit benchmark configuration; matched lifecycle and exact six-job sample counts; fact-only nearest-rank wall/CPU summaries; invalid host/fixture refusal; trace/content exclusion; private non-replacing JSON; and late-event failure |
-| AskPresentationModelTests | Full Ask progressive finding/refinement/generation state, early citations, evidence fallback, cancellation and stale-progress rejection, process-scoped palette search/answer ownership, stale completion rejection across reset/reopen, and Markdown answer receipts |
+| AskPresentationModelTests | Full Ask progressive finding/refinement/generation state, early citations and cumulative answer text, latest-question replacement, cancellation and stale-progress/snapshot rejection, 20-exchange retention, closed-window non-retention with an uncooperative provider, evidence fallback, process-scoped palette search/answer ownership, stale completion rejection across reset/reopen, and Markdown answer receipts |
 | RetrievalChunkingTests | Deterministic single-actor turn grouping; confirmed-person continuity across observed labels; anonymous remote isolation and local-microphone continuity; mixed-language source preservation; character/duration/gap bounds; stable membership identity; representation-only retention; correction-local and per-source-text delta invalidation; source replacement; and fail-closed meeting, revision, identity, speaker, and timeline validation |
 | SuggestMeetingReviewMetadataTests / MeetingDetailModelTests | Title/structure/chapter eligibility, known-recipe and bounded-label admission, independent failure degradation, cancellation propagation, route-owned one-shot state, revision/request fencing, and suggestion preservation after failed title persistence |
 | MeetingLifecycleUseCaseTests | Exact Delete/Restore port delegation, failure propagation, and real-Store tombstone, aggregate, trash, and voice-mix conservation through the ApplicationKit boundary |
@@ -1475,6 +1475,45 @@ transcript-only prompt without executing a model. One architecture ratchet pins
 the ApplicationKit and IntelligenceKit contracts, source-only citation rule,
 dependency direction, and absence of Presentation adoption. These sixteen cases
 use no model, network, user library, SwiftUI, XCUITest, or screenshot.
+
+### Bounded progressive Ask reliability (D384)
+
+Focused workflow tests stream one character at a time and require bounded
+cumulative UI publications plus the exact final answer. Separate adversarial
+providers exercise timeout, cancellation-ignoring late output, nonmonotonic
+rewrites, whitespace, oversized answers, and fused/returned citation drift.
+Request and result bounds must reject before retrieval or generation, while
+oversized citation provenance must fail before generation. Telemetry
+tests prove Foundation Models query-expansion cancellation cannot become an
+ordinary empty fallback, and scheduler tests prove a cancelled opaque inference
+cannot return its late value or retain stale cancellation bookkeeping.
+
+Presentation tests submit a second question while the first provider remains
+suspended, reject the old evidence/answer/completion, retain only 20 exchanges,
+and release a closed window even when its provider ignores cancellation. The
+existing real-app `LibraryUITests` Ask journey remains the single complete
+conversation contract: it replaces an already-pending no-hit question, observes
+lexical and fused phases, observes identified partial generated text before the
+final answer, and follows the exact citation to 00:03. The disposable adapter
+uses finite subsecond delays only to keep each state observable; it downloads no
+model and touches no user library. Running that one journey in English and
+Spanish is the minimum-safe feature gate. Complete bilingual XCUITest remains
+the integration/release-candidate gate, and physical Sequoia/Tahoe plus assistive
+technology remain external evidence.
+
+The exact 2026-08-23 D384 candidate passed strict SwiftLint over 707 Swift
+files with zero violations and a first-party warnings-as-errors build in
+25.13 s. Its focused reliability set passed 287/287 in 5.270 s; the complete
+Swift package passed 2,627/2,627 with 15 explicit environment/model skips and
+zero failures in 115.127 s; and the architecture/commitment-source-link
+ratchets passed 207/207. Repository hygiene retained all 105 UI
+scope entries, while the socket-permitted tooling lane passed 499/499 in
+12.418 s. One reused real-app build then passed the exact Ask journey once per
+locale: English 1/1 in 9.853 s and Spanish 1/1 in 8.233 s, including
+latest-query replacement, progressive evidence, identified partial answer,
+exact final answer, and exact citation seek. Those scoped bilingual runs are
+D384 feature evidence, not a substitute for the complete bilingual
+integration/release-candidate gate.
 
 ### Bounded post-RRF fact-aware selection (D286)
 

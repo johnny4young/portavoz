@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,614 cases "
+            "package inventory contains 2,627 cases "
                 + "(15 environment-gated) + 105"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -7917,6 +7917,75 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Capture-prioritized semantic checkpoints (D177)"))
         XCTAssertTrue(appSpec.contains(
             "### Capture-prioritized semantic maintenance (D177)"))
+    }
+
+    func testAskProgressiveReliabilityRemainsBoundedAndApplicationOwned() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/AskMeetings.swift")
+        let progressive = try Self.contents(
+            of: "Sources/ApplicationKit/AskProgressiveAnswer.swift")
+        let retrieval = try Self.contents(
+            of: "Sources/ApplicationKit/LocalAskMeetingRetrieval.swift")
+        let answerer = try Self.contents(
+            of: "Sources/IntelligenceKit/RAGAnswerer.swift")
+        let scheduler = try Self.contents(
+            of: "Sources/IntelligenceKit/IntelligenceScheduler.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/AskModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/AskView.swift")
+        let composition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligence = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(progressive.contains("enum AskGenerationOutcome"))
+        XCTAssertTrue(progressive.contains("maximumQuestionCharacters = 2_000"))
+        XCTAssertTrue(progressive.contains("maximumResultCount = 100"))
+        XCTAssertTrue(progressive.contains("maximumAnswerCharacters = 8_000"))
+        XCTAssertTrue(progressive.contains("maximumAnswerSnapshots = 512"))
+        XCTAssertTrue(progressive.contains(
+            "maximumSourceSegmentsPerCitation = 4_096"))
+        XCTAssertTrue(workflow.contains("answerTimeout: Duration = .seconds(8)"))
+        XCTAssertTrue(progressive.contains("actor AskProgressiveUpdateGate"))
+        XCTAssertTrue(progressive.contains("AskProgressiveStreamError.evidenceMismatch"))
+        XCTAssertTrue(workflow.contains("await updates.stopAnswering()"))
+        XCTAssertTrue(workflow.contains("func expand(_ question: String) async throws"))
+        XCTAssertTrue(retrieval.contains("try await queryExpander.expand(question)"))
+        XCTAssertTrue(answerer.contains("session.streamResponse("))
+        XCTAssertTrue(answerer.contains("for try await snapshot in stream"))
+        XCTAssertTrue(scheduler.contains("let value = try await operation()"))
+        XCTAssertTrue(scheduler.contains(
+            "Never convert that late value into scheduler success"))
+        XCTAssertFalse(scheduler.contains("earlyCancellations"))
+
+        XCTAssertTrue(model.contains("pendingAnswerText"))
+        XCTAssertTrue(model.contains("state.exchanges.removeFirst"))
+        XCTAssertTrue(model.contains("isolated deinit"))
+        XCTAssertTrue(model.contains("Task { [weak self, client] in"))
+        XCTAssertFalse(model.contains("!state.isAsking else { return }"))
+        XCTAssertTrue(view.contains("ask-pending-answer"))
+        XCTAssertFalse(view.contains("model.state.isAsking\n                    ||"))
+        XCTAssertFalse(composition.contains("Task.sleep(for: .seconds(5))"))
+        XCTAssertTrue(composition.contains(
+            "await onAnswer(AskAnswerUpdate(text: \"El presupuesto se revisó\"))"))
+        XCTAssertTrue(uiTest.contains(
+            "testAskConversationAnswersAndSeeksToExactCitation"))
+        XCTAssertTrue(uiTest.contains("pendingQuestion.waitForLabelOrValue"))
+        XCTAssertTrue(uiTest.contains("ask-pending-answer"))
+
+        XCTAssertTrue(architecture.contains(
+            "The Ask workflow, not a model provider or SwiftUI"))
+        XCTAssertTrue(intelligence.contains(
+            "### Bounded progressive answer ownership (D384)"))
+        XCTAssertTrue(quality.contains(
+            "### Bounded progressive Ask reliability (D384)"))
+        XCTAssertTrue(decisions.contains("## D384"))
     }
 
     func testFirstRunLedgerAndBriefStayBehindApplicationOwners() throws {
