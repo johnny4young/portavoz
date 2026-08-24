@@ -67,6 +67,16 @@ policy corpus, and seven focused XCUITest journeys in English and Spanish. It
 writes `dist/release-readiness/deterministic.json` only after every command
 passes. Do not reuse a receipt after the commit, version, or build changes.
 
+The complete package step streams normally while retaining one owner-only,
+ephemeral diagnostic log. If XCTest fails, the final summary contains only
+deduplicated identifiers in `Module.Class/testMethod` form; assertion messages,
+paths, transcripts, prompts, and generated output are not repeated. The log is
+deleted after success, failure, or interruption, and the command returns the
+original Swift test status. An unavailable identifier remains a red gate. Do
+not replace that result with an unchanged retry, and do not use SwiftPM
+`--xunit-output` as a substitute: on the current toolchain it does not contain
+the package's XCTest inventory.
+
 D391 keeps this original deterministic receipt as one input rather than
 pretending it covers all of 1.0. The final schema-2 scorecard also requires four
 strict qualification receipts: complete candidate automation, reviewed source

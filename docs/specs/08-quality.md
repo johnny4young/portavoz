@@ -2485,6 +2485,49 @@ inside its mode-0700 directory. No production UI changed, so this scoped proof
 does not replace the candidate's complete bilingual gate and no Dev-app
 reinstall was required.
 
+The following clean candidate on
+`93ffd2074bedafb48db685d29f70d672f618095d` failed closed in its first full
+package lane with exactly one failure across 2,748 tests and 15 skips. Its
+output directory remained empty and neither deterministic nor candidate
+qualification was emitted. The streamed failure identity was not recoverable
+after orchestration output truncation. One immediate private-log run and three
+more sequential full-suite runs then passed in 123.201, 124.505, 128.128, and
+150.630 seconds; they are retained only as diagnostic evidence and do not
+replace the red candidate. The toolchain's `--xunit-output` files contained
+only the zero-case Swift Testing projection, not the XCTest inventory.
+
+**Content-free deterministic failure diagnosis (D394).** The deterministic
+runner now captures the complete package stream in one mode-0600 file under a
+mode-0700 temporary directory and a mode-077 umask. It preserves the Swift
+pipeline status, fails if capture itself fails, never retries, and removes the
+private log after pass, failure, or signal. Its bounded 16 MiB parser emits only
+stable, deduplicated XCTest identifiers; malformed, missing, empty, oversized,
+or unrecognized input returns an unavailable marker without reflecting any
+log payload. Five focused tooling cases cover order, deduplication, malformed
+content withholding, input bounds, and exact CLI disclosure. Repository
+hygiene runs those cases and syntax-checks the Bash owner. A future candidate
+must still pass the original package execution before either receipt exists.
+
+D394 preflight passed the synthetic failure-path harness with the original
+status 37, mode-0700 directory, mode-0600 log, exactly one content-free failed
+identifier, no repeated payload, and complete cleanup. The five focused parser
+cases and the architecture ratchet passed. The complete tooling inventory
+passed 547/547, the package passed 2,748 tests with 15 explicit skips and zero
+failures in 220.640 seconds, the current-SDK warnings-as-errors build passed in
+47.06 seconds, strict SwiftLint remained clean across 731 production files,
+and repository hygiene passed.
+
+The mandatory Settings real-app canary initially passed every assertion but
+correctly failed its runtime budget at 25.272 seconds against 24.352 seconds.
+The trace exposed up to twenty fixed 18-point wheel events rather than a product
+regression. The test now derives the target-to-viewport distance and permits at
+most three direction-aware bounded corrections; a tooling ratchet rejects the
+old micro-scroll loop. The changed test then passed 1/1 English in 14.121
+seconds with one 240-point scroll and a passing owner-only runtime receipt, a
+44.1% reduction from the red run without raising its budget. No production UI
+changed, so no Dev-app reinstall was required; this scoped canary does not
+replace the complete bilingual candidate gate.
+
 The 11 Aug 2026 development inventory is 2,377 XCTest package cases (14
 environment-gated), zero strict-lint violations across 656 production Swift
 files, a 221-case recording/recovery selector passing 25 consecutive iterations

@@ -9761,6 +9761,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let evaluator = try Self.contents(of: "scripts/release_reliability.py")
         let runner = try Self.contents(
             of: "scripts/run-release-reliability-gates.sh")
+        let failureSummary = try Self.contents(
+            of: "scripts/swift_test_failure_summary.py")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")
         let packager = try Self.contents(of: "scripts/make-app.sh")
         let releaseScript = try Self.contents(of: "scripts/make-release.sh")
@@ -9780,6 +9782,15 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(runner.contains("PORTAVOZ_RELEASE_VERSION"))
         XCTAssertTrue(runner.contains("make test-recording-stress"))
         XCTAssertTrue(runner.contains("make test-ui-scoped"))
+        XCTAssertTrue(runner.contains("umask 077"))
+        XCTAssertTrue(runner.contains("mktemp -d"))
+        XCTAssertTrue(runner.contains("swift test 2>&1 | tee"))
+        XCTAssertTrue(runner.contains(#"pipeline_status=("${PIPESTATUS[@]}")"#))
+        XCTAssertTrue(runner.contains("swift_test_failure_summary.py"))
+        XCTAssertFalse(runner.contains("swift test --xunit-output"))
+        XCTAssertTrue(failureSummary.contains("MAXIMUM_LOG_BYTES"))
+        XCTAssertTrue(failureSummary.contains("failed_test="))
+        XCTAssertFalse(failureSummary.contains("print(text"))
         XCTAssertTrue(verifier.contains("record-distribution"))
         XCTAssertTrue(verifier.contains("PortavozSourceCommit"))
         XCTAssertTrue(verifier.contains("--commit \"$SOURCE_COMMIT\""))
@@ -9798,8 +9809,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(verifier.contains("--receipt"))
         XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_release_reliability"))
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_swift_test_failure_summary"))
+        XCTAssertTrue(hygiene.contains(
+            "bash -n scripts/run-release-reliability-gates.sh"))
         XCTAssertTrue(decisions.contains("## D147"))
         XCTAssertTrue(decisions.contains("## D391"))
+        XCTAssertTrue(decisions.contains("## D394"))
     }
 
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {

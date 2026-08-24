@@ -4317,6 +4317,21 @@ not stand in for the 8 GB/16 GB/reference matrix, Sequoia/Tahoe hardware,
 assistive technology, signed distribution, production CloudKit, hosted CI, or
 user-field evidence.
 
+The deterministic package gate keeps failure diagnosis private without making
+an unchanged retry part of release proof. `run-release-reliability-gates.sh`
+streams the full `swift test` output through one owner-only log in an
+owner-only temporary directory, preserves the Swift process status from Bash's
+pipeline status, and deletes the log after success, failure, or interruption.
+On failure, `swift_test_failure_summary.py` reads at most 16 MiB and emits only
+stable, deduplicated XCTest identifiers such as
+`PortavozTests.ExampleTests/testFailure`; the final summary never repeats
+assertion messages, source paths, transcripts, prompts, or generated text. A
+missing, empty, oversized, malformed, or unreadable log reports only that the
+identifier is unavailable, and the gate still exits with the original nonzero
+Swift status.
+The runner never uses SwiftPM's Swift-Testing-only XML as an XCTest oracle and
+never retries a failed package suite.
+
 The production packager stamps `PortavozSourceCommit` only from an explicitly
 supplied full Git SHA. The release wrapper requires that SHA to equal a clean
 tracked checkout before and after the app build, and distribution verification

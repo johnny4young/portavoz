@@ -14609,3 +14609,36 @@ candidate failure; the runner neither downloads a replacement nor weakens the
 two-speaker assertion. This current-host synthetic pass still does not certify
 real-meeting DER, physical Sequoia/Tahoe, accessibility, distribution,
 CloudKit, or field behavior.
+
+## D394 — Summarize deterministic Swift failures without content or retries (Aug 2026)
+
+**Context:** the next clean candidate on
+`93ffd2074bedafb48db685d29f70d672f618095d` stopped in its first deterministic
+package suite with exactly one failure across 2,748 tests. The ordinary streamed
+output exceeded the orchestration capture, so the failing XCTest identity was
+not available afterward and no deterministic or candidate qualification
+receipt was written. Four later sequential full-suite runs passed, but those
+unchanged reruns were diagnostic only and could neither erase the red candidate
+nor identify its failure. SwiftPM's `--xunit-output` on the current toolchain
+wrote only the Swift Testing report and omitted the 2,748 XCTest cases, so it
+could not close this observability gap.
+
+**Decision:** the deterministic runner creates one mode-0700 temporary
+directory under a process-wide mode-077 umask and streams the full package run
+through one mode-0600 private log. It captures the Swift and `tee` pipeline
+statuses separately. A Swift failure invokes a bounded parser that accepts at
+most 16 MiB and prints only stable, deduplicated XCTest identifiers; it never
+prints an assertion, source path, transcript, note, prompt, answer, or other log
+payload. Missing, empty, oversized, unreadable, and unrecognized logs disclose
+only an unavailable marker. Cleanup runs after a pass, failure, or signal, and
+the runner exits with the original Swift status. A capture failure is itself a
+gate failure. There is no automatic retry and no XML surrogate.
+
+**Consequences:** the next candidate failure can name its bounded XCTest scope
+without retaining or publishing private test output, while successful release
+evidence still requires one uninterrupted original package pass. Tooling tests
+pin ordering, deduplication, bounded reads, malformed-input withholding, and
+CLI disclosure; repository hygiene also syntax-checks the owning Bash runner.
+This diagnostic does not classify an intermittent failure as fixed, turn a
+later green run into candidate proof, or close any physical Sequoia/Tahoe,
+assistive-technology, distribution, CloudKit, hosted-CI, or field gate.
