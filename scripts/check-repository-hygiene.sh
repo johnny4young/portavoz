@@ -115,6 +115,13 @@ python3 scripts/ask_quality.py verify-public \
   --fixture Fixtures/AskQuality/public-synthetic-v2.json
 python3 scripts/retrieval_chunk_resource_fixture.py verify-public \
   --fixture Fixtures/RetrievalChunkResource/public-bilingual-homogeneous-v1.json
+python3 -m unittest Tests.Tooling.test_apuntador_validation
+python3 -m unittest Tests.Tooling.test_apuntador_web_fixture
+python3 scripts/apuntador_validation.py verify-public \
+  --fixture Fixtures/ApuntadorValidation/public-bilingual-v1.json \
+  --budget docs/evidence/apuntador-validation-budget.json
+python3 scripts/apuntador_web_fixture.py verify-public \
+  --fixture Fixtures/ApuntadorWeb/public-local-v1.json
 python3 -m unittest Tests.Tooling.test_ui_test_scope
 python3 -m unittest Tests.Tooling.test_ui_test_runtime
 python3 -m unittest Tests.Tooling.test_run_ui_tests

@@ -12,7 +12,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 # SHA-1 disambiguates the Portavoz one. Override with the env var.
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
-.PHONY: build test test-ask-quality ask-quality-pair \
+.PHONY: build test test-ask-quality test-apuntador-validation ask-quality-pair \
 	test-meeting-memory-graph-query-receipt meeting-memory-graph-query-receipt \
 	test-retrieval-chunk-evidence retrieval-chunk-evidence \
 	test-commitment-quality commitment-quality-deterministic \
@@ -140,6 +140,18 @@ test-ask-quality:
 		--fixture Fixtures/AskQuality/public-synthetic-v1.json
 	python3 scripts/ask_quality.py verify-public \
 		--fixture Fixtures/AskQuality/public-synthetic-v2.json
+
+## Validate the finite bilingual meeting/interview/note ground truth, its
+## content-free scorecard budgets, and every deterministic loopback web fault.
+## No model, Internet connection, user meeting, or external account is used.
+test-apuntador-validation:
+	python3 -m unittest Tests.Tooling.test_apuntador_validation
+	python3 -m unittest Tests.Tooling.test_apuntador_web_fixture
+	python3 scripts/apuntador_validation.py verify-public \
+		--fixture Fixtures/ApuntadorValidation/public-bilingual-v1.json \
+		--budget docs/evidence/apuntador-validation-budget.json
+	python3 scripts/apuntador_web_fixture.py verify-public \
+		--fixture Fixtures/ApuntadorWeb/public-local-v1.json
 
 ## Validate the public bilingual commitment-candidate benchmark and its
 ## deterministic research control without loading a model or user data.

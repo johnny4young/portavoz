@@ -14001,3 +14001,53 @@ seconds p95, and a measured per-journey threshold; the sequential CI timeout is
 qualifies only this host and toolchain; it cannot certify physical Sequoia,
 separate Tahoe hardware, VoiceOver/Voice Control, permissions, signing,
 notarization, CloudKit, accounts, external effects, or field behavior.
+
+## D383 — Freeze autonomous bilingual Apuntador and loopback-web evidence (Aug 2026)
+
+**Context:** the finite 1.0.0 scope requires realistic meeting, interview,
+note, web, resilience, and quality evidence without asking the user to supply
+private meetings or perform routine QA. Existing Ask retrieval fixtures are
+deep but segment-oriented: they do not type an interview objective or a
+user-authored note, prescribe terminal cancellation/offline/relaunch outcomes,
+or provide deterministic HTTP faults and hostile pages. Adding product features
+before a stable cross-slice evidence vocabulary would let each implementation
+invent incompatible fixtures, metrics, and success claims.
+
+**Decision:** establish two public-synthetic, non-serving authorities. The
+first freezes exactly six bilingual typed sources and 24 scenarios. Meetings
+and interviews preserve participants and audio timestamps; interviews preserve
+an objective; notes preserve author/time and are forbidden from inventing audio
+or participants. Every kind/language pair carries answer, abstention, exact
+evidence/claim, and hard-negative/forbidden ground truth. Bilingual scenarios
+also prescribe cancel-before-evidence, timeout, offline, provider-down,
+corrupted-state, and relaunch outcomes.
+
+Adapters emit no source, question, transcript, note, or answer text. Their
+checksum-bound observation names every scenario exactly once with only stable
+claim/evidence identities, typed outcome, first-evidence/completion duration,
+late-publication count, and content-free build/host identity. The deterministic
+scorecard requires exact outcome/citation/claim quality, zero forbidden or
+hard-negative output, zero post-terminal publication, and frozen latency
+ceilings. It labels prose, memory/leaks, real-model quality, physical hardware,
+and field behavior unevaluated rather than converting fixture mechanics into a
+release claim.
+
+The second authority is a strict loopback-only HTTP server with canonical
+fresh/stale/missing-date and directly cited pages, redirect, slow, truncated,
+503, disconnected, offline, fixed non-reflecting 404, and bilingual hostile
+prompt-injection cases. Hostile content is always untrusted data, response
+metadata makes freshness/trust observable, local links must resolve inside the
+fixture, and the server cannot bind an external interface. The canonical
+fixtures, budgets, validators, and live loopback behavior run in repository
+hygiene and through one explicit Make target.
+
+**Consequences:** future assistant slices share one deterministic public
+ground-truth and transport-fault vocabulary, and routine regression can run
+without Internet, accounts, private content, or user participation. The
+authority is intentionally not a product adapter: it adds no serving source,
+web request, note ingestion, interview workflow, model selection, or UI. Each
+of those still needs its own implementation, real-app bilingual journey,
+measured memory/leak/stress evidence, and minimum-safe admission. Installed
+Foundation Models/ASR/embeddings, physical Sequoia/Tahoe, VoiceOver/Voice
+Control, real providers, distribution, and real-field behavior remain separate
+irreducible evidence.

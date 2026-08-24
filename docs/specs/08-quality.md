@@ -1797,6 +1797,45 @@ are 1,300 seconds per locale, 30 seconds p95, exact per-journey budgets, and a
 runs a fresh complete bilingual catalogue; this one-host measurement is not
 physical Sequoia/Tahoe or assistive-technology evidence.
 
+## Autonomous Apuntador scenario authority
+
+Routine assistant regression does not require private meetings. The canonical
+`Fixtures/ApuntadorValidation/public-bilingual-v1.json` corpus contains exactly
+one English and one Spanish source for each typed domain: meeting, interview,
+and explicit user-authored note. Spoken passages preserve timestamps and
+participants; notes preserve author/time and cannot invent audio timestamps or
+participants; interviews additionally preserve one declared objective. Each
+source has one supported fact and one adversarial rejected/negated distractor.
+The fixture then freezes 24 scenarios: answer and abstention for every
+kind/language pair, plus bilingual cancel-before-evidence, timeout, offline,
+provider-down, corrupt-state, and relaunch outcomes.
+
+`scripts/apuntador_validation.py` binds the exact fixture digest to
+`docs/evidence/apuntador-validation-budget.json`. A runtime adapter must cover
+every scenario exactly once and may retain only adapter/build/host identity,
+stable claim/evidence identities, typed outcome, first-evidence/completion
+timing, and a late-publication count. Non-answer terminal outcomes cannot carry
+claims, citations, or a first-evidence timestamp. The aggregate scorecard gates
+outcome accuracy, citation precision/evidence recall, claim precision/recall,
+hard-negative and forbidden-claim exclusion, zero late publication, and exact
+latency ceilings. It never contains source, question, transcript, note, or
+answer text; prose quality, measured memory/leaks, real models, physical hosts,
+and field behavior stay explicitly unevaluated until their separate lanes
+supply evidence.
+
+The canonical `Fixtures/ApuntadorWeb/public-local-v1.json` fixture and
+`scripts/apuntador_web_fixture.py` make web behavior repeatable without the
+Internet. The server binds only `127.0.0.1` on an ephemeral or declared port and
+serves 14 strict routes: direct local citations; fresh, stale, and missing-date
+documents; redirect; slow response; truncated body; 503 with Retry-After;
+connection drop; fixed non-reflecting 404; and bilingual hostile prompt-
+injection pages marked as untrusted data. Tests additionally prove a closed
+listener produces the offline transport case. Canonical checksum validation,
+strict route/status/date/link policy, no-store headers, atomic content-free
+ready files, and deterministic teardown are part of `make
+test-apuntador-validation`. This fixture is test infrastructure, not product
+web authority or evidence that a real provider behaves the same way.
+
 Full suites and the dedicated receipt-focus journey snapshot the host's global
 `AppleKeyboardUIMode`, enable Keyboard Navigation for the test process, and
 restore either the exact prior integer or the absence of the key through a

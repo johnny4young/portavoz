@@ -4328,6 +4328,31 @@ p95 is 20.265/20.678 seconds. The versioned gates cap each locale at 1,300
 seconds and p95 at 30 seconds, with independent per-journey ceilings. These are
 one-host performance measurements, not physical Sequoia or separate-hardware
 Tahoe evidence.
+
+Autonomous assistant validation has a separate, non-serving public authority.
+`Fixtures/ApuntadorValidation/public-bilingual-v1.json` freezes six synthetic
+English/Spanish meeting, interview, and user-note sources with typed
+provenance, exact evidence and claim identities, abstentions, adversarial
+distractors, and 24 normal/cancellation/timeout/offline/provider-down/
+corruption/relaunch scenarios. Runtime adapters may emit only the companion
+content-free observation contract: stable identities, outcomes, timings, and
+late-publication counts. `scripts/apuntador_validation.py` rejects source-type
+or language widening and scores exact outcome, citation, claim, hard-negative,
+late-publication, and latency gates against the checksum-bound budget in
+`docs/evidence/apuntador-validation-budget.json`. Its scorecard explicitly
+leaves prose, memory/leaks, physical hardware, and field behavior unevaluated.
+
+`Fixtures/ApuntadorWeb/public-local-v1.json` and
+`scripts/apuntador_web_fixture.py` provide a separate deterministic HTTP
+authority bound only to IPv4 loopback. Fourteen exact routes cover fresh,
+stale, and missing-date pages; direct local citations; redirects; slow,
+truncated, unavailable, disconnected, and offline transport; and English/
+Spanish prompt-injection content that is always marked untrusted. Unknown
+paths return a fixed non-reflecting 404, responses are no-store, hostile trust
+and freshness are explicit headers, and the server never opens an Internet
+listener. This infrastructure does not add web retrieval to the product or
+qualify any provider; serving composition requires its own product decision
+and exact real-app evidence.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
 `xcode-select` toolchain chosen by CI, and falls back to the conventional local
 Xcode path only when Command Line Tools is active. Before that runner builds,
@@ -4657,7 +4682,7 @@ reliability evidence retained from 9 Aug, is:
 - strict SwiftLint remains a blocking CI gate and is clean across all 706
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 478 deterministic tooling cases and the 197-case architecture subset pass;
+- 499 deterministic tooling cases and the 197-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
 - 105 XCUITest cases per locale define the 210-case bilingual release gate;
