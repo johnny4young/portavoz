@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Refuse to start macOS XCUITest while the shared host is contaminated.
 
-The check is deliberately read-only. It samples process identity plus
-CoreGraphics owner/layer metadata twice, never reads window titles or dialog
-content, and never dismisses a prompt or terminates another process.
+The check is deliberately read-only. It samples process identity,
+CoreGraphics owner/layer metadata, and a content-free Secure Input bit twice;
+it never reads window titles or dialog content, and never dismisses a prompt or
+terminates another process.
 """
 
 from __future__ import annotations
@@ -21,7 +22,9 @@ from typing import Callable, Protocol, TextIO
 SETTLE_SECONDS = 1.0
 PROCESS_PROBE_TIMEOUT_SECONDS = 3.0
 WINDOW_PROBE_TIMEOUT_SECONDS = 10.0
-WINDOW_INVENTORY_KEYS = frozenset({"notificationCenter", "securityAgent"})
+WINDOW_INVENTORY_KEYS = frozenset(
+    {"notificationCenter", "securityAgent", "secureInput"}
+)
 WINDOW_PROBE = Path(__file__).with_name("ui-test-window-probe.swift")
 
 
@@ -41,6 +44,7 @@ class HostSnapshot:
     processes: tuple[ProcessRecord, ...] = ()
     notification_center_windows: int = 0
     security_agent_windows: int = 0
+    secure_input: bool = False
 
 
 class HostProbe(Protocol):
@@ -51,6 +55,7 @@ class HostProbe(Protocol):
 class HostBlockers:
     notification_center: bool
     security_agent: bool
+    secure_input: bool
     xcode_test_process_count: int
     ui_test_runner_count: int
 
@@ -60,6 +65,7 @@ class HostBlockers:
             (
                 self.notification_center,
                 self.security_agent,
+                self.secure_input,
                 self.xcode_test_process_count,
                 self.ui_test_runner_count,
             )
@@ -90,7 +96,7 @@ class SystemHostProbe:
         return parse_process_inventory(result.stdout)
 
     @staticmethod
-    def _blocking_window_counts() -> dict[str, int]:
+    def _blocking_window_counts() -> dict[str, int | bool]:
         try:
             result = subprocess.run(
                 [
@@ -109,22 +115,26 @@ class SystemHostProbe:
         if result.returncode != 0:
             raise ProbeFailure("blocking-window inventory unavailable")
         try:
-            notification_center, security_agent = parse_window_inventory(result.stdout)
+            notification_center, security_agent, secure_input = (
+                parse_window_inventory(result.stdout)
+            )
         except (json.JSONDecodeError, TypeError, ValueError) as error:
             raise ProbeFailure("blocking-window inventory malformed") from error
         return {
             "notification_center_windows": notification_center,
             "security_agent_windows": security_agent,
+            "secure_input": secure_input,
         }
 
 
-def parse_window_inventory(output: str) -> tuple[int, int]:
+def parse_window_inventory(output: str) -> tuple[int, int, bool]:
     payload = json.loads(output)
     if not isinstance(payload, dict) or set(payload) != WINDOW_INVENTORY_KEYS:
         raise TypeError("window inventory has an unexpected shape")
     return (
         exact_nonnegative_int(payload, "notificationCenter"),
         exact_nonnegative_int(payload, "securityAgent"),
+        exact_bool(payload, "secureInput"),
     )
 
 
@@ -134,6 +144,15 @@ def exact_nonnegative_int(payload: object, key: str) -> int:
     value = payload.get(key)
     if type(value) is not int or value < 0:
         raise ValueError(f"{key} must be a nonnegative integer")
+    return value
+
+
+def exact_bool(payload: object, key: str) -> bool:
+    if not isinstance(payload, dict):
+        raise TypeError("window inventory must be an object")
+    value = payload.get(key)
+    if type(value) is not bool:
+        raise ValueError(f"{key} must be a boolean")
     return value
 
 
@@ -195,6 +214,7 @@ def classify(snapshot: HostSnapshot) -> HostBlockers:
     return HostBlockers(
         notification_center=snapshot.notification_center_windows > 0,
         security_agent=snapshot.security_agent_windows > 0,
+        secure_input=snapshot.secure_input,
         xcode_test_process_count=kinds.count("xcode-test"),
         ui_test_runner_count=kinds.count("ui-test-runner"),
     )
@@ -205,6 +225,11 @@ def explain(blockers: HostBlockers, output: TextIO) -> None:
     if blockers.security_agent:
         print(
             "   A SecurityAgent authentication window is visible; resolve it manually.",
+            file=output,
+        )
+    if blockers.secure_input:
+        print(
+            "   Another app owns Secure Input; wait until it releases keyboard protection.",
             file=output,
         )
     if blockers.notification_center:

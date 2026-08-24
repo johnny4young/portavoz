@@ -25,8 +25,13 @@ fi
 # not tracked repository files. Durable public architecture references such as
 # D116 and Band 6 are intentionally not ticket keys and remain valid project
 # documentation.
+private_ref_pattern='(^|[^[:alnum:]_])(ENG|JIRA|TICKET|TASK|STORY|EPIC|SPIKE|PORTAVOZ|PV|APT|APUN)-[0-9]{1,6}([^[:alnum:]_]|$)'
+if ! printf 'APT-%s\nAPUN-%s\n' 7 5 | grep -Eq "$private_ref_pattern"; then
+  echo "Internal-reference pattern does not recognize local execution bands." >&2
+  failures=1
+fi
 ticket_refs="$(
-  git grep -nEI '\b(ENG|JIRA|TICKET|TASK|STORY|EPIC|SPIKE|PORTAVOZ|PV|APT)-[0-9]{1,6}\b' -- \
+  git grep -nEI "$private_ref_pattern" -- \
     . 2>/dev/null || true
 )"
 if [[ -n "$ticket_refs" ]]; then

@@ -4359,6 +4359,113 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Recording-scoped Apuntador coordinator (D170)"))
     }
 
+    func testProactiveMeetingAssistIsOptInSourceClosedAndBounded() throws {
+        let policy = try Self.contents(
+            of: "Sources/IntelligenceKit/ProactiveMeetingAssist.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/RecordingProactiveAssistModel.swift")
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let controllerState = try Self.contents(
+            of: "Sources/portavoz-app/RecordingControllerState.swift")
+        let detection = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController+CompanionDetection.swift")
+        let toolbar = try Self.contents(
+            of: "Sources/portavoz-app/RecordingToolbar.swift")
+        let liveAssist = try Self.contents(
+            of: "Sources/portavoz-app/RecordingLiveAssist.swift")
+        let stressGate = try Self.contents(
+            of: "scripts/run-recording-reliability-stress.sh")
+        let releaseGate = try Self.contents(
+            of: "scripts/run-release-reliability-gates.sh")
+
+        for required in [
+            "public static let maximumSourceRows = 64",
+            "public static let maximumVisibleSuggestions = 3",
+            "public static let maximumSourceDuration: TimeInterval = recentWindow",
+            "public static let maximumTimelineOffset: TimeInterval = 1_000_000_000",
+            "public static let minimumEmissionInterval: TimeInterval = 180",
+            "case openObjective = \"open-objective\"",
+            "case talkBalance = \"talk-balance\"",
+            "Set(boundedClosed.map(\\.id)).count == boundedClosed.count",
+            "boundedClosed.allSatisfy({ $0.meetingID == meetingID })",
+            "mutableTail.meetingID == meetingID",
+            "isValidSourceRow(mutableTail)",
+            "!boundedClosed.contains(where: { $0.id == mutableTail.id })",
+            "!TranscriptSegmentOrder.canonicalOrder(mutableTail, newest)",
+        ] {
+            XCTAssertTrue(
+                policy.contains(required),
+                "Bounded proactive policy is missing \(required)")
+        }
+        for forbidden in ["FoundationModels", "URLSession", "Task {", "AsyncStream"] {
+            XCTAssertFalse(
+                policy.contains(forbidden),
+                "Proactive admission must remain source-closed and synchronous")
+        }
+        XCTAssertEqual(
+            policy.components(separatedBy: "public init(").count - 1,
+            1,
+            "Only user-authored objective input may be publicly constructed; policy output authority stays internal")
+
+        for required in [
+            "private(set) var isEnabled = false",
+            "private(set) var isPaused = false",
+            "private var emittedSignals: Set<ProactiveAssistSignalKey> = []",
+            "func setPaused(",
+            "func reset()",
+        ] {
+            XCTAssertTrue(model.contains(required))
+        }
+        XCTAssertFalse(model.contains("Task {"))
+        XCTAssertGreaterThanOrEqual(
+            controller.components(
+                separatedBy: "proactiveAssist.reset()").count - 1,
+            3,
+            "Start, Stop, and next-session lifecycle paths must clear proactive state")
+        XCTAssertTrue(detection.contains("observeProactiveAssist()"))
+        XCTAssertTrue(controllerState.contains(
+            "func observeProactiveAssist() {\n        guard phase == .recording else { return }"))
+        for gate in [stressGate, releaseGate] {
+            XCTAssertTrue(gate.contains("ProactiveMeetingAssistPolicyTests"))
+            XCTAssertTrue(gate.contains("RecordingProactiveAssistModelTests"))
+        }
+
+        for identifier in [
+            "recording-proactive-assist",
+            "recording-proactive-pause",
+        ] {
+            XCTAssertTrue(toolbar.contains(identifier))
+        }
+        for identifier in [
+            "recording-proactive-panel",
+            "recording-proactive-status",
+            "recording-proactive-suggestion-",
+            "recording-proactive-dismiss-",
+            "recording-proactive-source-",
+        ] {
+            XCTAssertTrue(liveAssist.contains(identifier))
+        }
+
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+        let appSpec = try Self.contents(
+            of: "docs/specs/06-app-macos.md")
+        let qualitySpec = try Self.contents(
+            of: "docs/specs/08-quality.md")
+        XCTAssertTrue(architecture.contains(
+            "Bounded source-closed proactive meeting assistance"))
+        XCTAssertTrue(decisions.contains("## D390"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Bounded source-closed proactive assistance (D390)"))
+        XCTAssertTrue(appSpec.contains(
+            "### Recording-scoped proactive assistance (D390)"))
+        XCTAssertTrue(qualitySpec.contains(
+            "### Bounded proactive assistance qualification (D390)"))
+    }
+
     func testLiveSummaryWorkIsSignalDrivenBoundedAndLifecycleFenced() throws {
         let coordinator = try Self.contents(
             of: "Sources/portavoz-app/LiveSummaryWorkCoordinator.swift")

@@ -1,8 +1,9 @@
+import Foundation
 import IntelligenceKit
 import PortavozCore
 import SwiftUI
 
-/// The live-assist surfaces (APUN-003/004) as standalone views, keeping the
+/// The live-assist surfaces as standalone views, keeping the
 /// already-large `RecordingView` inside its size budget.
 
 /// Pre-meeting objectives with live check-off. Manual toggling is always
@@ -73,9 +74,7 @@ struct RecordingObjectivesPanel: View {
     ) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Button {
-                controller.objectives.toggle(
-                    objective.id,
-                    elapsed: Date().timeIntervalSince(controller.startedAt))
+                controller.toggleObjective(objective.id)
             } label: {
                 Image(systemName: objective.checkedAt == nil
                     ? "circle" : "checkmark.circle.fill")
@@ -98,7 +97,7 @@ struct RecordingObjectivesPanel: View {
             }
             Spacer(minLength: 2)
             Button {
-                controller.objectives.remove(objective.id)
+                controller.removeObjective(objective.id)
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.tertiary)
@@ -110,7 +109,7 @@ struct RecordingObjectivesPanel: View {
     }
 
     private func add() {
-        controller.objectives.add(draft)
+        controller.addObjective(draft)
         if controller.objectives.admissionIssue == nil {
             draft = ""
         }
@@ -129,6 +128,133 @@ struct RecordingObjectivesPanel: View {
                 "This recording supports up to %d objectives.",
                 RecordingObjectivesModel.maximumObjectives)
         }
+    }
+}
+
+/// Transparent, inert proactive coaching from two declared local signals.
+/// The view can only disclose or dismiss cards; it owns no generation,
+/// navigation, persistence, or external-effect action.
+struct RecordingProactiveAssistView: View {
+    @Bindable var controller: RecordingController
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(L10n.text("Proactive help"), systemImage: "sparkles")
+                    .font(.headline)
+                    .accessibilityIdentifier("recording-proactive-panel")
+                Spacer()
+                Text(controller.proactiveAssist.isPaused
+                    ? L10n.text("Paused") : L10n.text("Watching local signals"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("recording-proactive-status")
+            }
+            if controller.proactiveAssist.suggestions.isEmpty {
+                Text("Suggestions appear only from open objectives or measured recent talk balance.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                ForEach(controller.proactiveAssist.suggestions.reversed()) { suggestion in
+                    suggestionCard(suggestion)
+                }
+            }
+            Label(
+                L10n.text("Local signals only · no model, Web request, or automatic action"),
+                systemImage: "lock.fill")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func suggestionCard(
+        _ suggestion: ProactiveAssistSuggestion
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(title(for: suggestion), systemImage: icon(for: suggestion))
+                    .font(.callout.weight(.semibold))
+                Spacer(minLength: 4)
+                Button {
+                    controller.dismissProactiveSuggestion(suggestion.id)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.text("Dismiss suggestion"))
+                .accessibilityIdentifier(
+                    "recording-proactive-dismiss-\(suggestion.id.uuidString)")
+            }
+            Text(message(for: suggestion))
+                .font(.callout)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(source(for: suggestion))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(
+                    "recording-proactive-source-\(suggestion.id.uuidString)")
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(.orange.opacity(0.25), lineWidth: 1))
+        .accessibilityIdentifier(
+            "recording-proactive-suggestion-\(suggestion.kind.rawValue)")
+    }
+
+    private func title(for suggestion: ProactiveAssistSuggestion) -> String {
+        switch suggestion.kind {
+        case .openObjective:
+            L10n.text("Bring this objective back")
+        case .talkBalance:
+            L10n.text("Invite another voice in")
+        }
+    }
+
+    private func icon(for suggestion: ProactiveAssistSuggestion) -> String {
+        switch suggestion.kind {
+        case .openObjective: "target"
+        case .talkBalance: "person.2.wave.2"
+        }
+    }
+
+    private func message(for suggestion: ProactiveAssistSuggestion) -> String {
+        switch suggestion.kind {
+        case .openObjective:
+            suggestion.objective?.text ?? ""
+        case .talkBalance:
+            L10n.format(
+                "You spoke %d%% of the recent measured window.",
+                Int(((suggestion.measuredUserFraction ?? 0) * 100).rounded()))
+        }
+    }
+
+    private func source(for suggestion: ProactiveAssistSuggestion) -> String {
+        let evidence = suggestion.evidence
+        let range = "\(timestamp(evidence.startTime))–\(timestamp(evidence.endTime))"
+        if suggestion.objective != nil {
+            return L10n.format(
+                "Source: your open objective + %d closed turns · %@",
+                evidence.segmentIDs.count,
+                range)
+        }
+        return L10n.format(
+            "Source: %d recent closed turns · %@",
+            evidence.segmentIDs.count,
+            range)
+    }
+
+    private func timestamp(_ seconds: TimeInterval) -> String {
+        let value = max(0, Int(seconds))
+        return String(format: "%02d:%02d", value / 60, value % 60)
     }
 }
 
@@ -176,7 +302,7 @@ struct RecordingNextQuestionCard: View {
     }
 }
 
-/// Rolling talk-time balance (APUN-004): your share of the last five
+/// Rolling talk-time balance: your share of the last five
 /// minutes as an amber fill. Pure math over closed captions — measured,
 /// not judged — with a soft emphasis only when you carry most of the
 /// conversation on solid evidence.

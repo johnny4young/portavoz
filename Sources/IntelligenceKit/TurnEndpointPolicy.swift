@@ -1,7 +1,7 @@
 import Foundation
 import PortavozCore
 
-/// APUN-005 stage 0 (D138): the deterministic end-of-turn endpointer.
+/// D138: the deterministic end-of-turn endpointer.
 ///
 /// Closing a caption row is delta-driven — a row closes only when the NEXT
 /// Parakeet delta appends a new one. Silence therefore never closes a row,

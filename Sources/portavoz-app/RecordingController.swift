@@ -35,12 +35,12 @@ final class RecordingController {
     /// just miss", not "what is this meeting about". Owns its own state.
     let catchUp = RecordingCatchUpModel()
 
-    /// Pre-meeting objectives with live check-off (APUN-003). The checklist
+    /// Pre-meeting objectives with live check-off. The checklist
     /// is plain UI state; only the automatic pass on the summary cycle is
     /// Apuntador work and respects that opt-in.
     let objectives = RecordingObjectivesModel()
 
-    /// On-demand next-question suggestion (APUN-004): sibling of catch-up,
+    /// On-demand next-question suggestion: sibling of catch-up,
     /// with the still-pending objectives riding along so a suggestion can
     /// steer back to what the meeting set out to do.
     let nextQuestion = RecordingNextQuestionModel()
@@ -48,6 +48,9 @@ final class RecordingController {
     /// Explicit interview mode: deterministic current-question detection and
     /// pull-only answers grounded in exact earlier live-caption evidence.
     let interviewAssist = RecordingInterviewAssistModel()
+    /// Explicit per-recording proactive help. Its deterministic cards are
+    /// source-closed, inert, throttled, and independently pausable.
+    let proactiveAssist = RecordingProactiveAssistModel()
     /// The user's notes during the meeting (D28): intent for the summary.
     /// The future notes panel calls `addContextNote`; everything downstream
     /// (rolling summary, final summary, persistence) is already wired.
@@ -227,6 +230,7 @@ final class RecordingController {
         companionCards = []
         companionArtifactsByCardID = [:]
         companionTerminalRuns = []
+        proactiveAssist.reset()
         contextItems = []
         liveNotes = []
         cancelLiveSummaryWork()
@@ -290,6 +294,7 @@ final class RecordingController {
         catchUp.dismiss()
         nextQuestion.dismiss()
         interviewAssist.reset()
+        proactiveAssist.reset()
         objectives.reset()
         liveDiarizerFeed?.finish()
         liveDiarizerTask?.cancel()
@@ -570,6 +575,7 @@ extension RecordingController {
         catchUp.dismiss()
         nextQuestion.dismiss()
         interviewAssist.reset()
+        proactiveAssist.reset()
         cancelLiveSummaryWork()
         cancelCompanionGeneration()
         turnEndpointTask?.cancel()
@@ -837,6 +843,7 @@ private extension RecordingController {
                 captions: captions,
                 elapsed: Date().timeIntervalSince(startedAt))
         }
+        observeProactiveAssist()
         return !Task.isCancelled && phase == .recording && hasBacklog
     }
 

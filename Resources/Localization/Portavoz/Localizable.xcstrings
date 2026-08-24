@@ -1,6 +1,136 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Bring this objective back": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retoma este objetivo"
+          }
+        }
+      }
+    },
+    "Invite another voice in": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invita a participar a otra persona"
+          }
+        }
+      }
+    },
+    "Local signals only · no model, Web request, or automatic action": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo señales locales · sin modelo, solicitud Web ni acción automática"
+          }
+        }
+      }
+    },
+    "Pause proactive help": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausar ayuda proactiva"
+          }
+        }
+      }
+    },
+    "Proactive": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proactiva"
+          }
+        }
+      }
+    },
+    "Proactive help": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayuda proactiva"
+          }
+        }
+      }
+    },
+    "Resume proactive help": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reanudar ayuda proactiva"
+          }
+        }
+      }
+    },
+    "Source: %d recent closed turns · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente: %d turnos cerrados recientes · %@"
+          }
+        }
+      }
+    },
+    "Source: your open objective + %d closed turns · %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente: tu objetivo abierto + %d turnos cerrados · %@"
+          }
+        }
+      }
+    },
+    "Suggestions appear only from open objectives or measured recent talk balance.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las sugerencias aparecen solo a partir de objetivos abiertos o del balance reciente medido de la conversación."
+          }
+        }
+      }
+    },
+    "Watches only open objectives and measured talk balance. It never opens the Web or takes action.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo observa objetivos abiertos y el balance medido de la conversación. Nunca abre la Web ni realiza acciones."
+          }
+        }
+      }
+    },
+    "Watching local signals": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Observando señales locales"
+          }
+        }
+      }
+    },
+    "You spoke %d%% of the recent measured window.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hablaste el %d%% de la ventana reciente medida."
+          }
+        }
+      }
+    },
     "Interview assist": {
       "localizations": {
         "es": {

@@ -91,6 +91,9 @@ struct RecordingView: View {
                             RecordingInterviewAssistView(controller: controller)
                         }
                         RecordingObjectivesPanel(controller: controller)
+                        if controller.proactiveAssist.isEnabled {
+                            RecordingProactiveAssistView(controller: controller)
+                        }
                         companionCardsPanel
                         notesPanel
                         if let live = controller.liveSummary {

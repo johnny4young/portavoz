@@ -121,11 +121,11 @@ self-contained over system frameworks and carries no module dependency.
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
 | `TranscriptionKit` | Live Parakeet, quality Whisper, macOS 26 SpeechAnalyzer, and a CLI-only non-serving Nemotron live challenger; transcript scheduling; language-aware operation fingerprints; model preparation tokens; segment mapping; structured SpeechAnalyzer input ownership; and one-shot CPU fallback when a verified Whisper model cannot load on its preferred accelerator. |
 | `DiarizationKit` | Pyannote/Core ML speaker turns, clustering, attribution, voice matching, session-clock-anchored live windowing, and encrypted local voice-gallery support. |
-| `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
+| `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador plus pure bounded proactive meeting-assist admission; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing validated on the timescale it is delivered on, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
 | `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport and direct public-page Web retrieval; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
-| `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
+| `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
 ### First-listen speech lifetime
@@ -878,6 +878,28 @@ evidence identities converged. A more complete result replaces the prior card,
 while an older or weaker result is discarded. The intelligence boundary also
 repairs only pathological every-word title casing, preserving configured names
 and common technical acronyms.
+
+Bounded source-closed proactive meeting assistance is a separate recording-
+scoped presentation lane. `ProactiveMeetingAssistPolicy` in `IntelligenceKit`
+examines at most the newest 64 finalized caption rows behind the mutable tail,
+requires that unique, bounded, canonical tail and the finalized timeline
+evidence to share one meeting and rejects any source row longer than its
+declared recent window,
+and admits one candidate from two declared signals only: an open user-authored
+objective after enough conversation or a measured recent microphone talk share.
+It retains exact segment identities and time bounds but sends no content to a
+model, network, Web source, store, or external action. Evidence and suggestion
+construction stays internal to that policy; application presentation can read
+the admitted value but cannot manufacture a second authority path.
+
+`RecordingProactiveAssistModel` owns explicit opt-in, independent pause/resume,
+one-emission-per-signal deduplication, a 180-second global interval, and at most
+three visible inert cards. Pause preserves evidence; disabling clears visible
+cards without making the same signal eligible again; Stop, recording reset, and
+next-session preparation clear the complete ephemeral lifecycle. Evaluation is
+pure and synchronous, so there is no task, callback, provider, or cancellation
+owner that can publish after the recording closes. This path is available on
+the Sequoia deployment floor and Tahoe without Foundation Models availability.
 
 The pre-meeting reminder controller owns only its periodic task, session-local
 deduplication, floating panel, and recording route. It requests a typed notice
@@ -4452,11 +4474,13 @@ Xcode path only when Command Line Tools is active. Before that runner builds,
 the host preflight gives only the stale Portavoz Dev app a three-second bounded
 quit request and requires two clean samples one second apart. A read-only
 process snapshot rejects another `xcodebuild` test action or UI-test runner;
-the persistent `testmanagerd`, an
-ordinary build, and an idle XcodeBuildMCP server are not blockers. A separate
-Swift 6 CoreGraphics probe reads only on-screen window owner and layer metadata
-and rejects visible SecurityAgent or Notification Center alerts. It never reads
-a window title, dismisses a prompt, kills the host-wide test service, or
+the persistent `testmanagerd`, an ordinary build, and an idle XcodeBuildMCP
+server are not blockers. A separate
+Swift 6 CoreGraphics/HIToolbox probe reads only on-screen window owner/layer
+metadata and the public process-agnostic Secure Input state. It rejects
+visible SecurityAgent or Notification Center alerts and any other process's
+keyboard protection without exposing that process identity. It never reads a
+window title, dismisses a prompt, kills the host-wide test service, or
 terminates another process. Probe timeout or malformed output fails closed.
 The UI-test bundle likewise installs no interruption monitor for external
 system prompts: a privacy or authentication choice that appears after preflight

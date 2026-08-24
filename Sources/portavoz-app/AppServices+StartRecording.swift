@@ -242,7 +242,9 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
         _ index: Int,
         request: StartRecordingCaptureRequest
     ) async throws {
-        let start = TimeInterval(index * 2)
+        let proactive = ProcessInfo.processInfo.arguments.contains(
+            "-simulate-proactive-assist")
+        let start = TimeInterval(index * (proactive ? 20 : 2))
         let isRemote = index.isMultiple(of: 2)
         let text: String
         if ProcessInfo.processInfo.arguments.contains("-seed-showcase") {
@@ -264,7 +266,7 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
                 ? "es"
                 : "en",
             startTime: start,
-            endTime: start + 1,
+            endTime: start + (proactive ? 5 : 1),
             isFinal: true))
         try await Task.sleep(for: .milliseconds(90))
     }

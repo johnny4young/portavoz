@@ -157,7 +157,7 @@ public enum PromptFactory {
         return lines.joined(separator: "\n")
     }
 
-    /// Instructions for the on-demand next-question suggestion (APUN-004):
+    /// Instructions for the on-demand next-question suggestion:
     /// the user asks "what should I ask now?" and wants questions the
     /// EXCERPT earns — follow-ups on what was just said, or a bridge to a
     /// still-open objective — never generic interview filler.

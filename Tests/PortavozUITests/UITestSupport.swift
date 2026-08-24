@@ -77,6 +77,7 @@ extension XCUIApplication {
         simulateSystemAudioClipping: Bool = false,
         simulateLiveTranscriptionAttach: Bool = false,
         simulateLiveTranscriptBrowsing: Bool = false,
+        simulateProactiveAssist: Bool = false,
         simulateInterviewAssist: Bool = false,
         simulateSemanticAssetsMissing: Bool = false,
         simulateSkillEffectFailureOnce: Bool = false,
@@ -152,6 +153,9 @@ extension XCUIApplication {
                 NSTemporaryDirectory() + "portavoz-live-resume-\(signalID)"
             app.launchEnvironment["PORTAVOZ_UI_TEST_LIVE_COMPLETE_PATH"] =
                 NSTemporaryDirectory() + "portavoz-live-complete-\(signalID)"
+        }
+        if simulateProactiveAssist {
+            app.launchArguments.append("-simulate-proactive-assist")
         }
         if simulateInterviewAssist {
             app.launchArguments.append("-simulate-interview-assist")

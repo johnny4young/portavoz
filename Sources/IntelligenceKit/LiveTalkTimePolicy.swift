@@ -1,7 +1,7 @@
 import Foundation
 import PortavozCore
 
-/// Rolling talk-time balance for the live recording bar (APUN-004, the
+/// Rolling talk-time balance for the live recording bar (the
 /// Fireflies/Read cue reimplemented as pure math — no model call, so it
 /// does not ride the Apuntador opt-in). Channel is the ground truth the
 /// live surface always has: microphone = the user, system = everyone

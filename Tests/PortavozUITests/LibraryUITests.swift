@@ -358,17 +358,19 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(newestRow.waitForHittable(timeout: 5))
     }
 
-    /// The live assist surface (APUN-003/004): objectives with manual
-    /// check-off, the next-question action, and the talk-balance cue that
-    /// appears once closed captions exist.
+    /// One live-assist journey covers objectives, proactive source disclosure,
+    /// pause/resume, the next-question action, and measured talk balance.
     @MainActor
     func testRecordingOffersObjectivesNextQuestionAndTalkBalance() {
-        let app = XCUIApplication.portavoz(simulateLiveTranscriptBrowsing: true)
+        let app = XCUIApplication.portavoz(
+            simulateLiveTranscriptBrowsing: true,
+            simulateProactiveAssist: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
         let record = app.buttons["library-new-recording-button"]
         XCTAssertTrue(record.waitForExistenceFast(timeout: 15))
+        let isSpanish = record.label == "Nueva grabación"
         record.click()
 
         XCTAssertTrue(
@@ -400,6 +402,48 @@ final class LibraryUITests: PortavozUITestCase {
             app.control(withIdentifier: "recording-talk-balance")
                 .waitForExistenceFast(timeout: 8),
             "closed captions must surface the talk-balance cue")
+
+        let proactive = app.control(withIdentifier: "recording-proactive-assist")
+        XCTAssertTrue(proactive.exists)
+        XCTAssertFalse(
+            app.control(withIdentifier: "recording-proactive-panel").exists,
+            "proactive help must be off until this recording explicitly opts in")
+        proactive.click()
+
+        let proactivePanel = app.control(withIdentifier: "recording-proactive-panel")
+        XCTAssertTrue(proactivePanel.waitForExistenceFast(timeout: 5))
+        let objectiveSuggestion = app.control(
+            withIdentifier: "recording-proactive-suggestion-open-objective")
+        XCTAssertTrue(
+            objectiveSuggestion.waitForExistenceFast(timeout: 5),
+            "an open objective after sufficient finalized conversation must produce one inert card")
+        XCTAssertTrue(app.staticTexts["Cerrar el presupuesto del trimestre"].exists)
+        let expectedSource = isSpanish
+            ? "Fuente: tu objetivo abierto + 16 turnos cerrados · 00:40–05:45"
+            : "Source: your open objective + 16 closed turns · 00:40–05:45"
+        XCTAssertTrue(
+            app.staticTexts[expectedSource].exists,
+            "the suggestion must disclose its exact objective and bounded caption window")
+
+        let pause = app.control(withIdentifier: "recording-proactive-pause")
+        XCTAssertTrue(pause.exists)
+        let proactiveStatus = app.control(
+            withIdentifier: "recording-proactive-status")
+        pause.click()
+        let paused = isSpanish ? "En pausa" : "Paused"
+        XCTAssertTrue(proactiveStatus.waitForLabelOrValue(paused, timeout: 3))
+        XCTAssertTrue(objectiveSuggestion.exists, "pause must preserve visible evidence")
+        pause.click()
+        let running = isSpanish ? "Observando señales locales" : "Watching local signals"
+        XCTAssertTrue(proactiveStatus.waitForLabelOrValue(running, timeout: 3))
+
+        proactive.click()
+        XCTAssertTrue(proactivePanel.waitForDisappearance(timeout: 3))
+        proactive.click()
+        XCTAssertTrue(proactivePanel.waitForExistenceFast(timeout: 3))
+        XCTAssertFalse(
+            objectiveSuggestion.exists,
+            "re-enabling the same recording must not repeat an emitted evidence signal")
     }
 
     @MainActor

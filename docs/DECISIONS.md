@@ -4060,7 +4060,7 @@ therefore keep live intelligence independent from presentation-array shape.
 
 ## D134 — Live assist stays measured, conservative, and schema-free (Jul 2026)
 
-**Context:** APUN-003/004 add pre-meeting objectives with live check-off, an
+**Context:** the live-assist expansion adds pre-meeting objectives with live check-off, an
 on-demand next-question suggestion, and a rolling talk-time cue. Each could
 have justified new tables, new toggles, or an eager model loop; the live
 surface's rules (D26 opt-in, D29 priorities, measured-not-judged mirror
@@ -4205,7 +4205,7 @@ row, and an Apuntador candidate only existed once a row closed. The
 consequence went beyond latency: when a remote participant asked a question
 and the room went quiet waiting for the user's answer, no card could be
 produced during the meeting at all. The one moment the prompter is most
-needed was the one moment it structurally could not act. (APUN-005's research
+needed was the one moment it structurally could not act. (the later endpointer research
 framing — "remove the 300–800 ms silence-endpointing tax" — understated the
 problem: there was no endpointing to tax.)
 
@@ -4247,7 +4247,7 @@ provenance. Neither is worth it while the deterministic stage covers the
 transcribable cases; GAPS records the trigger (an official CoreML artifact,
 or an onnxruntime decision made for its own sake).
 
-**Rationale:** the honest reading of APUN-005 was that the product gap was
+**Rationale:** the honest reading of the endpointer research was that the product gap was
 structural, not statistical. A two-line policy and one timer close the
 "question, then silence" hole entirely and cut several seconds in the common
 case; a 360 MB (v2) or new-runtime (v3) dependency would have improved
@@ -12359,21 +12359,25 @@ not reject an ordinary build, an idle XcodeBuildMCP server, unit-only `xctest`,
 or the persistent `testmanagerd`, and it never terminates any of them.
 
 A separate current-toolchain Swift 6 probe uses public CoreGraphics window-list
-metadata available below the macOS 14.4 floor. It asks only for on-screen,
-non-desktop owner and layer values, ignores Notification Center's negative-layer
-desktop surfaces, and returns bounded counts for visible Notification Center
-and SecurityAgent windows. It never reads `kCGWindowName`, bounds, dialog text,
-controls, or credentials. The orchestrator applies explicit timeouts, validates
-the exact JSON shape, and fails closed when either inventory is unavailable or
-malformed. It reports only blocker categories and never dismisses a prompt.
+metadata and HIToolbox's process-agnostic Secure Input query, both available
+below the macOS 14.4 floor. It asks only for on-screen, non-desktop owner/layer
+values plus whether any process enabled Secure Input, ignores Notification
+Center's negative-layer desktop surfaces, and returns bounded visible
+Notification Center/SecurityAgent counts plus one boolean keyboard-protection
+state. The public query exposes no PID; the probe never reads `kCGWindowName`,
+bounds, dialog text, controls, or credentials. The orchestrator applies
+explicit timeouts, validates the exact JSON shape, and fails closed when either
+inventory is unavailable or malformed. It reports only blocker categories and
+never dismisses a prompt.
 The UI-test bundle installs no interruption monitor for external system
 prompts, so it cannot answer a privacy or authentication decision that appears
 after the final sample.
 
 **Consequences:** already-present authentication alerts, notification alerts,
-Xcode test commands, and UI runners now fail before Portavoz spends a build or
-produces misleading product failures. The checker cannot reserve Apple's global
-automation service: an unrelated client can still start after the second
+Secure Input ownership, Xcode test commands, and UI runners now fail before
+Portavoz spends a build or produces misleading product failures. The checker
+cannot reserve Apple's global automation service: an unrelated client can
+still start after the second
 sample, and a generic accessibility client may have no safe process signature.
 Those cases remain result-bundle/host classification followed by a quiet-host
 rerun, not evidence of a Portavoz crash. The LaunchServices claimant check
@@ -14391,3 +14395,70 @@ Installed-engine quality/latency/memory, physical Sequoia/Tahoe, VoiceOver and
 Voice Control, production CloudKit, notarized distribution, and real-note field
 behavior remain external gates. Typed raw-note Ask is complete; bounded
 proactive assistance remains open.
+
+## D390 — Keep proactive meeting help explicit, inert, and source-closed (Aug 2026)
+
+**Context:** Portavoz already exposes an always-visible measured talk-balance
+cue, a user-authored objective checklist, automatic Foundation Models question
+cards, and pull-only catch-up, next-question, and interview assistance. A broad
+"proactive AI" loop would duplicate those surfaces, require provider readiness,
+retain transcript content in background tasks, and risk presenting generated
+advice or hidden Web activity without a user request. The 1.0 candidate instead
+needs a finite transparent nudge that works on both Sequoia and Tahoe and can be
+qualified without a private meeting or installed model.
+
+**Decision:** proactive help is an explicit per-recording opt-in with an
+independent pause/resume control. It is off for every new recording. A pure
+`IntelligenceKit` policy examines at most 64 newest finalized captions behind
+the mutable live tail, requires unique canonical same-meeting identities,
+finite ordered presentation-safe intervals no longer than the declared recent
+window, a same-meeting mutable tail,
+unique canonical identity and bounded nonblank text for that tail, and at most
+eight bounded trimmed objectives. Any
+malformed, mixed-meeting, duplicate, noncanonical, oversized, or
+non-representable timeline authority fails closed.
+
+Only two deterministic signals exist. First, after at least eight finalized
+turns spanning 180 seconds, the policy may surface the first open user-authored
+objective that has not already emitted. Second, when the latest five-minute
+window carries at least 60 seconds of attributed speech and the microphone owns
+at least 65 percent, it may surface one measured talk-balance nudge. Objective
+signals have priority. Every card retains the exact meeting, segment identities,
+time range, and measured speech duration; the balance card also retains the
+measured fraction. The policy emits at most one candidate per evaluation,
+requires 180 seconds between emissions, and never emits the same signal twice
+during one recording.
+
+Evidence and suggestion initializers remain internal to `IntelligenceKit`.
+Callers may construct only the bounded user-authored objective input; the app
+can present admitted output but cannot bypass the policy with a manufactured
+card.
+
+One main-actor recording model owns enabled/paused state, deduplication, the
+last emission offset, and at most three visible inert cards. Pause preserves
+visible evidence and admits nothing new. Disabling clears visible cards but
+does not re-arm already emitted evidence. Stop, recording-start reset, and the
+next-session transition clear all proactive state. Completing or removing an
+objective retracts its visible card even while paused. Evaluation is
+synchronous and creates no task, provider call, timer, persistence, Web request,
+model prompt, network receipt, spoken response, navigation, or external action.
+
+The toolbar and panel state the two watched sources and the absence of model,
+Web, and automatic action. Cards can only be read or dismissed. Stable
+`recording-proactive-*` identifiers cover opt-in, pause/resume, status, cards,
+dismissal, and exact source disclosure. The existing bilingual recording
+journey uses a deterministic closed-caption timing mode to prove opt-in,
+objective evidence, pause/resume, disable clearing, and no same-signal replay
+without adding another app launch.
+
+**Consequences:** Portavoz gains bounded proactive help on its Sequoia floor and
+Tahoe without creating a second automatic generation scheduler or weakening
+the existing selected-engine/source/consent contracts. The talk-balance card is
+a more explicit finite coaching surface over the same measured channel truth as
+the compact cue; it makes no social or speaker-identity inference. This closes
+the finite proactive product surface, not broad autonomous assistance, broad
+Web discovery, hidden research, automatic objective completion, or external
+mutation. Installed-model and ASR quality, memory/leak/stress measurements,
+physical Sequoia/Tahoe, VoiceOver/Voice Control, production CloudKit,
+signed/notarized distribution, hosted integration, and real-meeting behavior
+remain separate 1.0 admission evidence.

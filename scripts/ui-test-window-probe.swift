@@ -1,12 +1,14 @@
 #!/usr/bin/env swift
 
 import CoreGraphics
+import Carbon.HIToolbox
 import Darwin
 import Foundation
 
 private struct BlockingWindowCounts: Encodable {
     let notificationCenter: Int
     let securityAgent: Int
+    let secureInput: Bool
 }
 
 private func failClosed(_ message: String) -> Never {
@@ -52,7 +54,8 @@ for window in windows {
 
 private let result = BlockingWindowCounts(
     notificationCenter: notificationCenterCount,
-    securityAgent: securityAgentCount
+    securityAgent: securityAgentCount,
+    secureInput: IsSecureEventInputEnabled()
 )
 private let data = try JSONEncoder().encode(result)
 FileHandle.standardOutput.write(data)

@@ -68,6 +68,11 @@ existing Ask journey without another app launch. Temporary-store composition
 uses the production v45 FTS adapter and a delayed deterministic answerer;
 production samples the same Foundation Models/Ollama/MLX resolver as other
 manual Ask lanes without provider fallback.
+D390 adds an independent per-recording **Proactive** toggle and pause/resume
+control on every supported macOS version. `RecordingProactiveAssistModel` owns
+only ephemeral enablement, deduplication, throttle, and inert cards produced by
+the pure source-closed policy; it creates no model, Web, persistence, or effect
+work.
 D192 records closed Ask operation/stage/milestone/outcome values through one
 content-free Points of Interest adapter.
 D193 lets only the resource-benchmark process observe that same closed stream
@@ -1125,6 +1130,31 @@ does not unwind synchronously, a request from the next lifecycle waits behind
 it rather than creating concurrent model work. The coordinator owns no Store
 state, carries no durable queue, and never blocks capture or Stop.
 
+### Recording-scoped proactive assistance (D390)
+
+`RecordingController` owns one `RecordingProactiveAssistModel` independently of
+the Foundation Models Companion coordinator. The control is off at each
+recording start. Enabling it evaluates the currently finalized caption window
+and open objectives synchronously; each later closed-row signal and objective
+mutation reevaluates the same pure policy. There is no timer, asynchronous task,
+provider, network callback, or Store observation to retain the recording.
+
+Pause preserves current cards and stops admission. Resume may admit only a
+newly due signal. Disabling clears visible cards but deliberately keeps the
+recording's emitted-signal set, so toggling cannot replay the same evidence.
+Start reset, Stop, and the next-session transition clear all state. Completing
+or removing an objective retracts its card immediately, including while paused.
+At most three cards remain visible; each card exposes the exact bounded caption
+range and can only be dismissed.
+
+The recording toolbar uses `recording-proactive-assist` and
+`recording-proactive-pause`. The panel, status, suggestion, dismiss, and source
+rows use stable `recording-proactive-*` identifiers. Copy states explicitly
+that only open objectives and measured talk balance are watched and that no
+model, Web request, or automatic action occurs. The system controls remain
+keyboard- and assistive-technology reachable; physical VoiceOver, Voice
+Control, and Full Keyboard Access evidence remains an external release gate.
+
 ### Recording-scoped live-summary coordinator (D171)
 
 `RecordingController` owns one `LiveSummaryWorkCoordinator` for optional
@@ -2083,9 +2113,9 @@ Font: `docs/design/ds/` (authored in Claude Design, pine project). (1) `PVDesign
 
 **Catch me up (Jul 2026)**: a standing pull control in the recording bar (`recording-catch-up`) on EVERY platform. On macOS 26 with the on-device model available it renders a 2-4 bullet recap of the last five minutes of CLOSED captions (`CatchUpPolicy.clip` — window and minimum rows pinned by tests; the growing coalescer row is excluded) via `FoundationModelSummaryProvider.catchUp` at interactive priority with the injection guard; the formatted clip keeps its TAIL when over budget because newest speech wins. On Sequoia or without Apple Intelligence the same button answers with the honest capability explanation — visible and truthful, never a hidden control. The card (`recording-catch-up-panel`) never persists anywhere; dismiss cancels any in-flight generation, and Stop synchronously cancels and clears the ephemeral card before capture crosses the durable boundary.
 
-**Objectives with live check-off (APUN-003/D134, Jul 2026)**: `RecordingObjectivesModel` owns the checklist (`recording-objectives-panel`, add via `recording-objective-field`/`recording-objective-add`); adding trims and de-duplicates case-insensitively, manual toggling is always available and clears the model mark. The AUTOMATIC pass rides the signal-driven live-summary cycle behind the Apuntador opt-in: `ObjectiveCheckPolicy` (pure, tested) clips a 150-second window of closed rows and only runs with pending objectives plus enough conversation; `ObjectiveCheckDetector` (few-shot, `.background`, greedy) returns addressed indexes through a deterministic gate — out-of-range indexes drop, doubt leaves objectives pending, announced-but-not-discussed is explicitly NOT covered, and the model can never uncheck. At Stop the objectives join `contextItems` as `ContextItem.Kind.objective` rows ("✓ " prefix + check-off timestamp for covered ones), so the D28 notes block reports coverage to every summary without any schema change. Brief seeding is deferred (the `MeetingBrief` dies at the recording route boundary today).
+**Objectives with live check-off (D134, Jul 2026)**: `RecordingObjectivesModel` owns the checklist (`recording-objectives-panel`, add via `recording-objective-field`/`recording-objective-add`); adding trims and de-duplicates case-insensitively, manual toggling is always available and clears the model mark. The AUTOMATIC pass rides the signal-driven live-summary cycle behind the Apuntador opt-in: `ObjectiveCheckPolicy` (pure, tested) clips a 150-second window of closed rows and only runs with pending objectives plus enough conversation; `ObjectiveCheckDetector` (few-shot, `.background`, greedy) returns addressed indexes through a deterministic gate — out-of-range indexes drop, doubt leaves objectives pending, announced-but-not-discussed is explicitly NOT covered, and the model can never uncheck. At Stop the objectives join `contextItems` as `ContextItem.Kind.objective` rows ("✓ " prefix + check-off timestamp for covered ones), so the D28 notes block reports coverage to every summary without any schema change. Brief seeding is deferred (the `MeetingBrief` dies at the recording route boundary today).
 
-**Next question + talk balance (APUN-004/D134/D174, Jul 2026)**: `RecordingNextQuestionModel` is the exact catch-up sibling (`recording-next-question` button, `recording-next-question-panel` card): pull-based, `.interactive`, capability-honest, stale-fenced on every exit, dismissed synchronously at Stop; its prompt carries the still-open objectives so a suggestion can steer back to them, and `PromptFactory.nextQuestionInstructions` pins one-or-two grounded questions, no filler. The talk-balance cue (`recording-talk-balance`, next to the mic meter) is `LiveTalkTimePolicy` — pure channel math over closed rows in a five-minute window, no model call, so it does NOT ride the Apuntador opt-in; it evaluates at most 1,024 closed candidates before the time filter, renders only once closed captions exist, and shifts to amber emphasis only past 60 seconds of attributed speech and a two-thirds share, with the exact percentage in accessibility value and help.
+**Next question + talk balance (D134/D174, Jul 2026)**: `RecordingNextQuestionModel` is the exact catch-up sibling (`recording-next-question` button, `recording-next-question-panel` card): pull-based, `.interactive`, capability-honest, stale-fenced on every exit, dismissed synchronously at Stop; its prompt carries the still-open objectives so a suggestion can steer back to them, and `PromptFactory.nextQuestionInstructions` pins one-or-two grounded questions, no filler. The talk-balance cue (`recording-talk-balance`, next to the mic meter) is `LiveTalkTimePolicy` — pure channel math over closed rows in a five-minute window, no model call, so it does NOT ride the Apuntador opt-in; it evaluates at most 1,024 closed candidates before the time filter, renders only once closed captions exist, and shifts to amber emphasis only past 60 seconds of attributed speech and a two-thirds share, with the exact percentage in accessibility value and help.
 
 **Dictation 4b (pull DS 4 — Jul 11)**: the dictation strip gains the three traits of exploration 4b. (1) **Visible target chip**: `DictationController.targetApp` = `NSWorkspace.frontmostApplication.localizedName` captured in `start()` BEFORE showing non-activating panel (frontmost still is destination app); strip shows `✎ <app>` — never dictate «a ciegas». (2) **Partial in gray**: `confirmedText` in `.primary` + `partialText` in `.tertiary` concatenated (previously joined into one string) — volatility shown in gray and affirmed on confirmation. (3) **Inserted state**: new `Phase.inserted(Int)` — after `TextInserter.insert`, strip shows «N palabras insertadas en <app> — nada se guardó» for 1.6 s before closing (previously closed abruptly). Privacy ledger does NOT adopt the mock DS tile «0 B a la red»: would be an unmeasurable metric (no network log); real LedgerSection says what CAN go out (gists, external model, update check) — more honest («Measured, not promised»).
 

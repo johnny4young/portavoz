@@ -135,9 +135,9 @@ external mutation remain outside this finite candidate. Current implemented
 truth and exit evidence remain authoritative in `GAPS.md` and the as-built
 specs. Progressive reliability, selected-engine manual Ask, explicit fail-
 closed source policy, consented cited direct-Web pages, pull-based interview
-assistance, and typed raw-note Ask are implemented. Portavoz does not yet
-provide broad Web search discovery;
-proactive help and final admission remain open.
+assistance, typed raw-note Ask, and bounded source-closed proactive help are
+implemented. Portavoz does not provide broad Web search discovery or autonomous
+external action; exact 1.0 admission remains open.
 
 ## Standout UX (signature moments)
 

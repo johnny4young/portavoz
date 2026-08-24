@@ -932,7 +932,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
         XCTAssertTrue(
             app.control(withIdentifier: "detail-header-section")
-                .waitForStableFrame(timeout: 10),
+                .waitForExistenceFast(timeout: 10),
             "source review must return to the exact meeting detail")
         XCTAssertTrue(
             waitForWindowCount(1, in: app, timeout: 10),
@@ -1073,7 +1073,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-skill-email-recap-draft-enabled")
         XCTAssertTrue(email.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(Self.isOn(email))
-        scrollToVisible(email, in: app)
+        XCTAssertTrue(scrollToVisible(email, in: app))
         let emailDescription = UITestLocale.environmentLocale == "es"
             ? "Abre el recap exacto que revisaste en tu app de correo, sin destinatarios. Portavoz nunca lo envía."
             : "Opens the exact reviewed recap in your email app with no recipients. Portavoz never sends it."
@@ -1088,8 +1088,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             in: app)
         let gist = app.control(
             withIdentifier: "settings-skill-secret-gist-publish-enabled")
-        scrollToVisible(gist, in: app)
         XCTAssertTrue(gist.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(scrollToVisible(gist, in: app))
         XCTAssertTrue(Self.isOn(gist))
         let gistDescription = UITestLocale.environmentLocale == "es"
             ? "Publica el documento exacto que revisaste como un Gist secreto de GitHub. Cada ejecución vuelve a pedir confirmación."
@@ -1136,8 +1136,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     private func confirmRecapOffer(in app: XCUIApplication) {
         // Resuming restores the recap choice but keeps export disabled.
         let menu = app.control(withIdentifier: "skill-offer-menu")
-        XCTAssertTrue(menu.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(menu.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(menu.waitForStableFrame(timeout: 10))
         menu.click()
         let recapOffer = app.menuItems["skill-offer-recap-draft"]
         XCTAssertTrue(recapOffer.waitForExistenceFast(timeout: 5))
@@ -1199,10 +1198,10 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             format: "identifier BEGINSWITH %@",
             "settings-skill-proposal-why-email-recap-draft-"
         )).firstMatch
-        scrollToVisible(why, in: app)
         XCTAssertTrue(
             why.waitForExistenceFast(timeout: 5),
             "the real Meeting Detail producer must publish its durable offer")
+        XCTAssertTrue(scrollToVisible(why, in: app))
         let expectedWhy = UITestLocale.environmentLocale == "es"
             ? "Hay un resumen de reunión listo para usar."
             : "A meeting summary is ready to use."
@@ -1212,8 +1211,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             format: "identifier BEGINSWITH %@",
             "settings-skill-proposal-data-secret-gist-publish-"
         )).firstMatch
-        scrollToVisible(data, in: app)
         XCTAssertTrue(data.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(scrollToVisible(data, in: app))
         let expectedData = UITestLocale.environmentLocale == "es"
             ? "transcripción"
             : "transcript"
@@ -1247,7 +1246,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-skills-receipt-scope-needs-attention")
         let completed = app.control(
             withIdentifier: "settings-skills-receipt-scope-completed")
-        scrollToVisible(scope, in: app)
+        XCTAssertTrue(scope.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(scrollToVisible(scope, in: app))
         for control in [scope, recent, waiting, attention, completed] {
             XCTAssertTrue(
                 control.waitForExistenceFast(timeout: 5),
@@ -1343,12 +1343,14 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     private func openWaitingReceipt(in app: XCUIApplication) -> XCUIElement {
         let waiting = app.control(
             withIdentifier: "settings-skills-receipt-scope-waiting")
-        scrollToVisible(waiting, in: app, deltaY: -40)
+        XCTAssertTrue(waiting.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(scrollToVisible(waiting, in: app, deltaY: -40))
         XCTAssertTrue(waiting.waitForStableFrame(timeout: 5))
         waiting.click()
         let receipt = app.control(
             withIdentifier: "settings-skill-receipt-recap-draft")
-        scrollToVisible(receipt, in: app, deltaY: -40)
+        XCTAssertTrue(receipt.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(scrollToVisible(receipt, in: app, deltaY: -40))
         XCTAssertTrue(receipt.waitForStableFrame(timeout: 5))
         receipt.click()
         XCTAssertTrue(
@@ -1361,12 +1363,14 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     private func openFailedReceipt(in app: XCUIApplication) -> XCUIElement {
         let attention = app.control(
             withIdentifier: "settings-skills-receipt-scope-needs-attention")
-        scrollToVisible(attention, in: app, deltaY: -40)
+        XCTAssertTrue(attention.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(scrollToVisible(attention, in: app, deltaY: -40))
         XCTAssertTrue(attention.waitForStableFrame(timeout: 5))
         attention.click()
         let receipt = app.control(
             withIdentifier: "settings-skill-receipt-recap-draft")
-        scrollToVisible(receipt, in: app, deltaY: -40)
+        XCTAssertTrue(receipt.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(scrollToVisible(receipt, in: app, deltaY: -40))
         XCTAssertTrue(receipt.waitForStableFrame(timeout: 5))
         receipt.click()
         XCTAssertTrue(

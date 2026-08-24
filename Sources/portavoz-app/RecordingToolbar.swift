@@ -92,6 +92,32 @@ struct RecordingToolbar: View {
                 .accessibilityHint(L10n.text(
                     "Detects questions and suggests on-device answers. It never answers for you."))
             }
+            Toggle(isOn: proactiveAssistBinding) {
+                Label(L10n.text("Proactive"), systemImage: "sparkles")
+            }
+            .toggleStyle(.button)
+            .controlSize(.small)
+            .help(L10n.text(
+                "Watches only open objectives and measured talk balance. It never opens the Web or takes action."))
+            .accessibilityIdentifier("recording-proactive-assist")
+            .accessibilityHint(L10n.text(
+                "Watches only open objectives and measured talk balance. It never opens the Web or takes action."))
+            if controller.proactiveAssist.isEnabled {
+                Button {
+                    controller.setProactiveAssistPaused(
+                        !controller.proactiveAssist.isPaused)
+                } label: {
+                    Label(
+                        L10n.text(controller.proactiveAssist.isPaused
+                            ? "Resume proactive help" : "Pause proactive help"),
+                        systemImage: controller.proactiveAssist.isPaused
+                            ? "play.circle" : "pause.circle")
+                }
+                .controlSize(.small)
+                .accessibilityIdentifier("recording-proactive-pause")
+                .accessibilityValue(controller.proactiveAssist.isPaused
+                    ? L10n.text("Paused") : L10n.text("Watching local signals"))
+            }
             Toggle(isOn: interviewAssistBinding) {
                 Label(L10n.text("Interview"), systemImage: "person.crop.rectangle.stack")
             }
@@ -161,6 +187,13 @@ struct RecordingToolbar: View {
                     $0,
                     captions: controller.captions)
             })
+    }
+
+    private var proactiveAssistBinding: Binding<Bool> {
+        Binding(
+            get: { controller.proactiveAssist.isEnabled },
+            set: { controller.setProactiveAssistEnabled($0) }
+        )
     }
 
     private var translationBinding: Binding<String?> {

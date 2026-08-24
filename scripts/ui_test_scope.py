@@ -548,6 +548,8 @@ def app_features(filename: str) -> set[str]:
         return {"automation-entry", "recording-interview", "recording-recovery"}
     if "interviewassist" in lowered:
         return {"recording-interview"}
+    if "proactiveassist" in lowered:
+        return {"recording-recovery"}
     if any(token in lowered for token in (
         "recording", "startrecording", "stoprecording", "postcapture",
         "livetranslation", "livesummary"
@@ -684,6 +686,10 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "proactivemeetingassist" in lowered:
+        # The deterministic policy is rendered only by the consolidated live-
+        # assist journey; it has no model, Settings, detail, or Library route.
+        return {"recording-recovery"}
     if any(token in lowered for token in (
         "asknotes",
         "localasknote",

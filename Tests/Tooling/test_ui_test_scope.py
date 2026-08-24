@@ -270,6 +270,17 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
+    def test_proactive_assist_layers_select_only_consolidated_recording_evidence(self):
+        expected = FEATURE_TESTS["recording-recovery"]
+        for path in (
+            "Sources/IntelligenceKit/ProactiveMeetingAssist.swift",
+            "Sources/portavoz-app/RecordingProactiveAssistModel.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
+
     def test_confirmed_topic_catalog_selects_only_exact_ask_journeys(self):
         expected = FEATURE_TESTS["ask"]
         for path in (

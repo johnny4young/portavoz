@@ -1,7 +1,7 @@
 import Foundation
 import PortavozCore
 
-/// Pure gating for the periodic objective check-off pass (APUN-003): which
+/// Pure gating for the periodic objective check-off pass: which
 /// closed rows the detector may look at, and whether a pass is worth a
 /// model call at all. Mirrors `CatchUpPolicy`'s shape so the live surface
 /// keeps one idiom for windowed work.

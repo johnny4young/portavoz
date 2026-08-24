@@ -260,7 +260,7 @@ public struct FoundationModelSummaryProvider: SummaryProvider {
     /// One-shot "catch me up" recap over an already-clipped recent window
     /// (CatchUpPolicy). When the formatted clip exceeds the chunk budget the
     /// TAIL survives — in a catch-up, newest speech always wins.
-    /// On-demand next-question suggestion (APUN-004). Same shape as
+    /// On-demand next-question suggestion. Same shape as
     /// `catchUp`: recent excerpt in, short text out, interactive priority
     /// because a human is waiting mid-conversation. Pending objectives ride
     /// along so a suggestion can bridge back to what the meeting set out

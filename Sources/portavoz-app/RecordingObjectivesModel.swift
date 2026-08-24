@@ -3,7 +3,7 @@ import IntelligenceKit
 import Observation
 import PortavozCore
 
-/// Pre-meeting objectives with live check-off (APUN-003, the Otter Live
+/// Pre-meeting objectives with live check-off (the Otter Live
 /// Assist pattern reimplemented local-first). The checklist itself is pure
 /// UI state — adding and manually toggling objectives never needs a model.
 /// The AUTOMATIC check-off rides the rolling tick and is Apuntador work:

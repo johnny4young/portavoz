@@ -1847,6 +1847,97 @@ installed model and does not certify physical Sequoia/Tahoe, VoiceOver/Voice
 Control, production CloudKit, notarized distribution, real model
 quality/latency/memory, or field-note behavior.
 
+### Bounded proactive assistance qualification (D390)
+
+Nine pure policy cases cover exact objective evidence, the measured talk-
+balance threshold, insufficient conversation, signal deduplication plus the
+global interval, objective-to-balance priority, malformed/cross-meeting/
+duplicate/noncanonical/non-final/invalid-time/oversized caption rejection,
+unique bounded canonical same-meeting mutable-tail and presentation-safe
+timeline/duration authority, invalid objective and throttle authority, and
+bounded work over a 2,000-row meeting.
+Three main-actor model cases cover explicit opt-in, pause/resume,
+disable clearing, reset, dismissal without replay, the three-card cap, and
+objective-card retraction while paused. The implementation contains no task,
+model, URLSession, Web, persistence, or external-effect path.
+
+The existing objectives/next-question/talk-balance XCUITest journey is extended
+rather than duplicated. One deterministic real-app capture mode preserves the
+same 18-row bilingual fixture while giving finalized turns realistic elapsed
+spacing. The journey proves the panel is absent before explicit opt-in, an open
+Spanish objective produces one exact 16-turn `00:40–05:45` source, pause keeps
+the card visible, resume restores observation, disable clears the panel, and
+re-enabling the same recording does not replay the emitted signal. The existing
+objective, next-question, translation, HUD, and talk-balance assertions remain
+in the same launch.
+
+Architecture ratchets pin the two declared signals, 64-row source bound,
+three-card presentation bound, 180-second throttle, same-meeting identity
+checks, synchronous lifecycle ownership, Start/Stop/next-session reset paths,
+stable accessibility identifiers, deterministic and repeated recording/release
+gate membership, and durable D390 truth. Changed-file scope
+maps the policy/model only to the consolidated recording-recovery feature;
+localization or shared harness changes still expand fail-safe to complete
+bilingual XCUITest.
+
+The post-review deterministic gates pass 2,747 Swift tests with 15 explicit
+installed-asset/environment skips and zero failures, 507 tooling cases, strict
+SwiftLint with zero violations across 731 files, repository hygiene, and 25/25
+recording-stress iterations with 237 focused cases each. The consolidated real-
+app journey passed once in English in 14.884 seconds and once in Spanish in
+12.926 seconds from one build, sequentially, with no retry.
+
+The complete bilingual gate initially produced honest red host and runtime
+evidence rather than a green retry. One invocation passed 36 of 106 cases,
+including the D390 journey, before macOS revoked UI-test accessibility authority;
+the remaining 70 launches failed uniformly as unauthorized without a Portavoz
+crash. A fresh diagnostic received authorization and later lost it, and another
+invocation lost authorization during its first unrelated case. Once the host was
+authorized and clean, the first complete English product catalogue passed all
+106 assertions but the runtime policy rejected two Skills journeys: confirmed-
+receipt control took 81.529 seconds against 80.796, and Waiting source review
+took 39.086 seconds against 24.924. That result bundle and receipt remain
+preserved as red evidence.
+
+The correction did not raise either budget or weaken stable activation. Async
+Skills projections now prove accessibility-tree existence before geometry,
+assert the bounded scroll result, and retain a stable-frame gate only for the
+controls that are clicked. A one-build focused rerun then passed both routes in
+English at 62.390/15.749 seconds and Spanish at 59.449/15.580 seconds. The final
+uncontaminated complete gate reused one build and ran locales sequentially with
+no retry: 106/106 English passed in 1,118.415 seconds of test time (1,131 seconds
+wall, 7.320-second p50, 19.414-second p95, 93.138-second maximum) and 106/106
+Spanish passed in 1,120.285 seconds (1,140 seconds wall, 7.280-second p50,
+19.764-second p95, 92.327-second maximum). Both content-free receipts report
+`budgetStatus: passed` with no violations. The formerly red routes remained
+inside policy in the complete catalogues at 60.346/14.720 seconds in English and
+59.611/15.497 seconds in Spanish.
+
+The read-only D344 preflight rejects public process-agnostic Secure Input state
+before paying the build, while still reading no prompt, exposing no owner,
+terminating no process, and changing no TCC or test service. It cannot reserve
+the host after its final sample, so any later system authorization change still
+invalidates that run rather than becoming product evidence.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was then rebuilt with its
+MLX Metal library, deeply verified, installed, registered, and opened only at
+`/Applications/Portavoz Dev.app`. A before/after comparison kept the notarized
+`app.portavoz.mac` release bundle identical across its 184-entry no-symlink-
+traversal metadata/content/hex-xattr manifest at SHA-256
+`22ff1d9adfc20206c96c0e75c886dba1d031a94e0dff399a102c3ea266a20adb`;
+its bundle identifier and designated requirement stayed unchanged, its deep
+signature remained valid, and Gatekeeper still reported Notarized Developer
+ID. The Dev bundle remains local-only because no CloudKit provisioning profile
+was supplied; neither the successful Metal build nor local Developer ID signing
+is installed-model, production CloudKit, notarized-distribution, or model-
+quality evidence.
+
+This repeatable lane needs no private meeting, Internet, account, Foundation
+Models asset, or provider. It does not certify physical Sequoia/Tahoe,
+VoiceOver/Voice Control/Full Keyboard Access, production CloudKit,
+signed/notarized distribution, installed-model or ASR quality, long-call memory,
+or real-meeting usefulness; those remain separate 1.0 admission evidence.
+
 ### Bounded post-RRF fact-aware selection (D286)
 
 Seven pure selector cases prove the fixed 6-transcript/4-fact/8-additional-
@@ -2146,7 +2237,11 @@ predicate poll and every fixed sleep. Inequality and negative-label waits also
 require existence, so a missing accessibility element cannot satisfy them.
 Moving controls must keep a stable hittable frame before activation. Skills
 Settings scrolls according to the target's measured distance from the real form
-viewport in at most six bounded gestures. Three proven launch overlaps were
+viewport in at most six bounded gestures. An asynchronously projected target
+must first prove accessibility-tree existence before the geometry helper reads
+its frame; callers assert that the bounded scroll succeeded, retain the stable-
+frame gate for controls they activate, and use existence alone for a
+noninteractive navigation destination. Three proven launch overlaps were
 removed without deleting their assertions: two Insights microtests became one
 dashboard journey, three sequential onboarding microtests became one journey,
 and the exact-Skill filter assertions joined the existing period/filter/reset
@@ -2434,12 +2529,14 @@ Portavoz Dev instance and requires two clean host snapshots one second apart.
 The read-only process inventory rejects an active `xcodebuild test` or
 `test-without-building` action and any UI-test runner, while allowing an
 ordinary build, unit-only `xctest`, idle XcodeBuildMCP server, and the persistent
-`testmanagerd`. A current-toolchain Swift 6 probe uses CoreGraphics to inspect
-only on-screen, non-desktop window owner and layer metadata; visible
-SecurityAgent or Notification Center windows block the run. It never asks for a
-window title, bounds, dialog text, control, or credential, and negative-layer
-Notification Center desktop surfaces do not count. Both probes have explicit
-timeouts and exact-shape validation; unavailable or malformed evidence fails
+`testmanagerd`. A current-toolchain Swift 6 probe uses CoreGraphics/HIToolbox to
+inspect only on-screen, non-desktop window owner/layer metadata and the public
+process-agnostic Secure Input state; visible SecurityAgent or Notification
+Center windows and any other keyboard-protection owner block the run. It never
+reports the owning PID or asks for a window title, bounds, dialog text, control,
+or credential, and negative-layer Notification Center desktop surfaces do not
+count. Both probes have explicit timeouts and exact-shape validation;
+unavailable or malformed evidence fails
 closed. The preflight never dismisses a prompt or terminates another process,
 and the UI-test bundle installs no external-prompt interruption handler. A
 privacy or authentication prompt raised after preflight therefore invalidates
@@ -3904,15 +4001,18 @@ Portavoz Dev a three-second bounded quit request, then takes two host snapshots
 one second apart before building. A bounded process probe
 rejects only active `xcodebuild test`/`test-without-building` actions and
 recognizable UI-test runners. A Swift 6 CoreGraphics probe rejects visible
-SecurityAgent or Notification Center surfaces while reading only window owner
-and layer metadata; negative-layer desktop surfaces do not count. Probe
-timeout, malformed output, or unreadable process state fails closed. The gate
+SecurityAgent or Notification Center surfaces and another process's Secure
+Input ownership while reading only window owner/layer plus public content-free
+global state; negative-layer desktop surfaces do not count and the owning
+process is not exposed. Probe timeout, malformed output, or unreadable process
+state fails closed. The gate
 never reads a window title or bounds, dismisses a prompt, resets LaunchServices,
 or terminates another process. Persistent `testmanagerd`, unit-test processes,
 `build-for-testing`, and idle `xcodebuildmcp` helpers are not evidence of an
-active UI run. Fifteen injectable tooling cases and source-policy ratchets pin
-those classifications. The hosted bilingual job allows 85 minutes because the
-complete local catalogues now need about 63 minutes together after their build.
+active UI run. Eighteen injectable tooling cases and source-policy ratchets pin
+those classifications. The hosted bilingual job keeps an 85-minute fail-safe
+ceiling; the current 106-case-per-locale local evidence needs about 38 minutes
+together after one shared build, without parallel locale contention.
 
 The final gate passed the strict current-SDK build, 2,453 package tests with 14
 explicit skips and zero failures, SwiftLint with zero violations across 675

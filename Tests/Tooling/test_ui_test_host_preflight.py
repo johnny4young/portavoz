@@ -1,5 +1,6 @@
 import importlib.util
 import io
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -39,11 +40,17 @@ def process(pid: int, command: str, executable_name: str | None = None):
     )
 
 
-def snapshot(*processes, notification_center=0, security_agent=0):
+def snapshot(
+        *processes,
+        notification_center=0,
+        security_agent=0,
+        secure_input=False,
+):
     return preflight.HostSnapshot(
         processes=tuple(processes),
         notification_center_windows=notification_center,
         security_agent_windows=security_agent,
+        secure_input=secure_input,
     )
 
 
@@ -84,6 +91,17 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertEqual(result, 1)
         self.assertIn("Notification Center alert", output)
         self.assertNotIn("window title", output.lower())
+
+    def test_secure_input_fails_without_identifying_or_terminating_its_owner(self):
+        result, output, calls, sleeps = self.run_fake(
+            snapshot(secure_input=True)
+        )
+
+        self.assertEqual(result, 1)
+        self.assertEqual(calls, 1)
+        self.assertEqual(sleeps, [])
+        self.assertIn("Another app owns Secure Input", output)
+        self.assertIn("no process was terminated", output)
 
     def test_xcodebuild_test_actions_are_blockers(self):
         for command in (
@@ -179,17 +197,32 @@ class UITestHostPreflightTests(unittest.TestCase):
     def test_window_payload_rejects_missing_or_additional_keys(self):
         self.assertEqual(
             preflight.parse_window_inventory(
-                '{"notificationCenter": 2, "securityAgent": 1}'
+                '{"notificationCenter": 2, "securityAgent": 1, '
+                '"secureInput": true}'
             ),
-            (2, 1),
+            (2, 1, True),
         )
         for payload in (
-                '{"notificationCenter": 0}',
-                '{"notificationCenter": 0, "securityAgent": 0, "title": "hidden"}',
+                '{"notificationCenter": 0, "securityAgent": 0}',
+                '{"notificationCenter": 0, "securityAgent": 0, '
+                '"secureInput": false, "title": "hidden"}',
         ):
             with self.subTest(payload=payload):
                 with self.assertRaises(TypeError):
                     preflight.parse_window_inventory(payload)
+
+    def test_window_payload_requires_an_exact_secure_input_boolean(self):
+        for value in (0, 1, "true", None):
+            with self.subTest(value=value):
+                payload = {
+                    "notificationCenter": 0,
+                    "securityAgent": 0,
+                    "secureInput": value,
+                }
+                with self.assertRaises(ValueError):
+                    preflight.parse_window_inventory(
+                        json.dumps(payload)
+                    )
 
     def test_process_inventory_ignores_malformed_rows(self):
         records = preflight.parse_process_inventory(
@@ -209,6 +242,10 @@ class UITestHostPreflightTests(unittest.TestCase):
 
         self.assertIn("kCGWindowOwnerName", source)
         self.assertIn("kCGWindowLayer", source)
+        self.assertIn("import Carbon.HIToolbox", source)
+        self.assertIn("IsSecureEventInputEnabled()", source)
+        self.assertNotIn("CGSessionCopyCurrentDictionary", source)
+        self.assertNotIn("kCGSSessionSecureInputPID", source)
         self.assertIn("layer >= 0", source)
         self.assertNotIn("kCGWindowName", source)
         self.assertNotIn("kCGWindowBounds", source)

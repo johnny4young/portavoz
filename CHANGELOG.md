@@ -18,6 +18,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 24, 2026
 
+- **✨ Proactive help, never autopilot** — Opt in per recording for source-disclosed nudges about open objectives or measured talk balance, pause anytime, and know no model, Web request, or action runs behind the card.
 - **📝 Ask remembers what you wrote** — Search only your explicit raw notes, get a locally generated answer with exact author, meeting, and time sources, and keep AI-enhanced notes out of the evidence.
 - **🎙️ Interview answers stay grounded** — See the current question, set bounded objectives, and request a private answer backed by exact earlier captions—or get an honest abstention.
 - **🌐 Ask reads the public page you choose** — Approve one direct web request, get a locally generated answer with clickable citations and freshness, and keep your question and meetings away from the page.

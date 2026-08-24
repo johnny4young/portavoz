@@ -2,6 +2,8 @@
 
 Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (ApplicationKit durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence), D206 (injected semantic-index query port with exact control retained), D207–D217 (governed non-serving semantic shadows, exact-path evidence, and research-only baseline retention), D233 (correction-aware generation lineage and stale artifacts), D236 (commitment-candidate benchmark before continuity state), D245 (adapter-neutral cross-meeting link quality), D246 (bounded non-serving product observation), D247 (isolated product-path quality adapter), D248 (profile-bound non-serving similarity evidence), D249 (versioned scored evidence contract), D250 (deterministic non-serving similarity-policy replay), D251 (private anonymized calibration-pack boundary), D252 (isolated private product-path evidence collection), D253 (deterministic private policy replay), D254 (clean-head public/private profile matrix), D255 (explicit private calibration review gate), D270 (query contract before graph schema), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (disposable typed graph projection), D274 (authoritative memory timeline hydration), D275 (exact commitment-change evidence), D276 (explicit topic-scoped question continuity), D277 (explicit decision-to-commitment blocker continuity), D278 (source-backed commitment-blocker query), D279 (canonical blocker product conformance), D280 (authoritative first-discussion query and canonical conformance), D281 (exact source-backed person commitments), D282 (fail-closed alias resolution and canonical person-commitment conformance), D283 (independent exact graph-fact Ask lane), D284 (exact ambiguity-safe graph filters), D285 (typed source-backed graph-fact synthesis), D286 (bounded post-RRF fact-aware selection), D308–D314 (explicit decision-topic authority, complete graph adapters, user confirmation/retraction, relational scale verdict, and near-linear rebuild), D315 (content-free Ask answer judge), D330 (correction-aware semantic maintenance), D331 (explicit correction-aware Apuntador regeneration), D332 (explicit semantic asset preparation), D360 (same-generation graph-profile readmission), D361–D366 (six released exact graph explorers), D380 (Foundation Models context headroom and content-free real-model gate), D384 (bounded progressive Ask ownership), D385 (selected local-engine manual Ask), D386 (explicit fail-closed Ask source authority), D387 (consented direct-Web evidence and hostile-content isolation), D388 (bounded cited interview assistance), D389 (typed raw-note Ask).
 
+D390 adds bounded source-closed proactive meeting assistance.
+
 D239 additionally owns explicit evidence-first commitment admission in Meeting
 Detail. D243 adds an explicit Application/Storage link boundary for a later
 meeting's active evidence. D244 adds a pure PortavozCore link ranker over
@@ -2127,6 +2129,38 @@ cancellation cannot create a card. A candidate submitted for a new lifecycle
 waits for the cancelled operation to unwind instead of overlapping it. This
 bound applies only to ephemeral generation work: accepted visible cards remain
 unlimited history until the user dismisses them or the recording resets.
+
+### Bounded source-closed proactive assistance (D390)
+
+`ProactiveMeetingAssistPolicy` is pure deterministic admission, not another
+Apuntador generation pipeline. It consumes only the current live captions and
+the recording's pending user-authored objectives. The mutable newest caption is
+excluded but must carry a unique canonical identity, bounded source fields, and
+the same meeting identity. Admission first retains at
+most 64 finalized rows, then keeps only the latest five minutes and rejects
+non-final, blank, oversized, non-finite, reversed, duplicate-identity,
+noncanonical, cross-meeting, over-window-duration, or non-representable timeline
+evidence. Objective
+input is capped at eight unique trimmed values of at most 280 characters and
+2,048 UTF-8 bytes each.
+
+The policy has exactly two signals. An open objective becomes eligible only
+after eight finalized turns span at least 180 seconds. A talk-balance nudge
+becomes eligible only after at least 60 seconds of measured speech and a
+microphone share of at least 65 percent. Objective admission runs first. Each
+candidate carries the exact meeting identity, closed segment identities, time
+range, and speech duration; the balance candidate also carries its measured
+fraction. One evaluation returns at most one candidate, emitted signal keys do
+not repeat, and a global 180-second interval separates accepted candidates.
+Evidence and suggestion construction is internal to this policy module, so the
+app can read admitted output but cannot create an unchecked card directly.
+
+There is no Foundation Models, MLX, Ollama, BYOK, Web, URLSession, persistence,
+or external-effect dependency in this path. No transcript text enters a prompt
+or receipt. The policy therefore behaves identically on the Sequoia deployment
+floor and Tahoe, subject only to finalized caption availability. It complements
+the generated live Companion instead of sharing its scheduler or automatic
+objective-check model.
 
 ### Deterministic Apuntador card admission (D172)
 
