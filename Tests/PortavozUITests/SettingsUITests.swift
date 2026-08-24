@@ -118,14 +118,24 @@ final class SettingsUITests: PortavozUITestCase {
                 && !downloadFrame.isEmpty
                 && downloadFrame.intersects(visibleFormFrame)
         }
-        // GitHub's macOS runner exposes a 760x650 Settings viewport. Keep the
-        // bounded wheel step large enough for every preceding Intelligence
-        // status section while stopping as soon as the action enters the form.
-        for _ in 0..<20 {
-            if downloadIsVisible() {
+        // Compute the actual offscreen distance instead of spending one
+        // automation round trip on every tiny wheel step. Three bounded
+        // corrections retain the small hosted-runner viewport fallback.
+        for _ in 0..<3 where !downloadIsVisible() {
+            let visibleFormFrame = settingsForm.frame.intersection(
+                settingsWindow.frame)
+            let downloadFrame = whisperDownload.frame
+            let deltaY: CGFloat
+            if downloadFrame.maxY > visibleFormFrame.maxY {
+                let distance = downloadFrame.maxY - visibleFormFrame.maxY + 24
+                deltaY = -min(max(distance, 240), 900)
+            } else if downloadFrame.minY < visibleFormFrame.minY {
+                let distance = visibleFormFrame.minY - downloadFrame.minY + 24
+                deltaY = min(max(distance, 240), 900)
+            } else {
                 break
             }
-            settingsForm.scroll(byDeltaX: 0, deltaY: -18)
+            settingsForm.scroll(byDeltaX: 0, deltaY: deltaY)
         }
         XCTAssertTrue(
             downloadIsVisible(),

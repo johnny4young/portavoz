@@ -681,6 +681,17 @@ class UITestScopeTests(unittest.TestCase):
         self.assertIn("func waitForExistenceFast(", support_source)
         self.assertIn("func waitForDisappearance(", support_source)
         self.assertIn("RunLoop.current.run", support_source)
+        settings_source = (
+            ROOT / "Tests" / "PortavozUITests" / "SettingsUITests.swift"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn(
+            "settingsForm.scroll(byDeltaX: 0, deltaY: -18)",
+            settings_source,
+        )
+        self.assertIn(
+            "downloadFrame.maxY - visibleFormFrame.maxY",
+            settings_source,
+        )
 
     def test_catalog_policy_rejects_an_unscoped_test(self):
         scoped = ui_scope.test_id("InsightsUITests", "testScoped")
