@@ -1,6 +1,196 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Interview assist": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asistente de entrevista"
+          }
+        }
+      }
+    },
+    "Interview objectives": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivos de la entrevista"
+          }
+        }
+      }
+    },
+    "Uses only earlier finalized captions. It never starts, stops, or speaks for you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa solo subtítulos anteriores ya finalizados. Nunca inicia, detiene ni habla por ti."
+          }
+        }
+      }
+    },
+    "Waiting for a question from the other participants.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando una pregunta de las otras personas."
+          }
+        }
+      }
+    },
+    "Dismiss interview answer": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar respuesta de entrevista"
+          }
+        }
+      }
+    },
+    "Current question": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pregunta actual"
+          }
+        }
+      }
+    },
+    "Find grounded answer": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar respuesta con evidencia"
+          }
+        }
+      }
+    },
+    "Drafts only from earlier cited captions using your selected local AI.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redacta solo con subtítulos anteriores citados mediante la IA local seleccionada."
+          }
+        }
+      }
+    },
+    "Ask only when the earlier conversation contains evidence. Otherwise Portavoz will abstain.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicítala solo cuando la conversación anterior contenga evidencia. De lo contrario, Portavoz se abstendrá."
+          }
+        }
+      }
+    },
+    "Checking the cited conversation…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisando la conversación citada…"
+          }
+        }
+      }
+    },
+    "The earlier conversation does not contain enough cited evidence to answer.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La conversación anterior no contiene suficiente evidencia citada para responder."
+          }
+        }
+      }
+    },
+    "Your selected local AI is unavailable. The recording continues untouched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La IA local seleccionada no está disponible. La grabación continúa intacta."
+          }
+        }
+      }
+    },
+    "No answer this time. The recording and its captions remain untouched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hubo respuesta esta vez. La grabación y sus subtítulos permanecen intactos."
+          }
+        }
+      }
+    },
+    "The answer took too long. Try again; the recording continues untouched.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La respuesta tardó demasiado. Inténtalo de nuevo; la grabación continúa intacta."
+          }
+        }
+      }
+    },
+    "You": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tú"
+          }
+        }
+      }
+    },
+    "%d of %d interview objectives": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d de %d objetivos de entrevista"
+          }
+        }
+      }
+    },
+    "Keep each objective to %d characters or fewer.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limita cada objetivo a %d caracteres o menos."
+          }
+        }
+      }
+    },
+    "This recording supports up to %d objectives.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta grabación admite hasta %d objetivos."
+          }
+        }
+      }
+    },
+    "Shows the current remote question and offers a pull-only answer from earlier cited captions.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra la pregunta remota actual y ofrece, solo al pedirla, una respuesta basada en subtítulos anteriores citados."
+          }
+        }
+      }
+    },
     "Library": {
       "localizations": {
         "es": {

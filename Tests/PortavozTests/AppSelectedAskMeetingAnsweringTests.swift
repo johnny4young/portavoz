@@ -104,6 +104,36 @@ final class AppSelectedAskMeetingAnsweringTests: XCTestCase {
             isExcerptTruncated: false)])
     }
 
+    func testInterviewRouterSamplesSelectedEngineAndForwardsOnlyLiveEvidence() async throws {
+        let provider = CapturingRAGProvider(answer: "Page the owner [1].")
+        let router = AppSelectedAskMeetingAnswering()
+        router.install { .available(provider) }
+        let meetingID = MeetingID()
+        let passage = RAGPassage(
+            segmentID: UUID(),
+            meetingID: meetingID,
+            meetingTitle: "This interview",
+            timestamp: 41,
+            text: "Me: I would page the database owner.")
+
+        let answer = try await router.answer(
+            question: "What would you do first?",
+            passages: [passage])
+        let providerSnapshot = await provider.snapshot()
+        let captured = try XCTUnwrap(providerSnapshot)
+
+        XCTAssertEqual(answer, "Page the owner [1].")
+        XCTAssertEqual(captured.question, "What would you do first?")
+        XCTAssertEqual(captured.passages, [passage])
+
+        let unavailable = AppSelectedAskMeetingAnswering()
+        unavailable.install { .unavailable(.requiresMacOS26) }
+        let unavailableAnswer = try await unavailable.answer(
+            question: "What would you do first?",
+            passages: [passage])
+        XCTAssertNil(unavailableAnswer)
+    }
+
     private func fixtureCitation() -> AskCitation {
         let segmentID = UUID()
         return AskCitation(

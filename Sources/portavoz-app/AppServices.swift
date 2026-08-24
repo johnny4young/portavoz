@@ -122,6 +122,9 @@ final class AppServices {
     let localDataLedger: LocalDataLedgerModel
     /// One Ask application workflow feeds every macOS Ask presentation model.
     @ObservationIgnored let askClient: AppAskModelClient
+    /// Pull-based live interview answers reuse the exact selected Ask engine
+    /// but keep their bounded recording evidence outside library retrieval.
+    @ObservationIgnored let assistInterviewQuestion: AssistInterviewQuestion
     /// Ask and Library share one governed Apple contextual-embedding runtime.
     @ObservationIgnored let semanticEmbeddingRuntime:
         AppSemanticEmbeddingRuntime
@@ -301,6 +304,8 @@ final class AppServices {
         commitmentReminders = Self.makeCommitmentReminderModel(
             store: store, usesTemporaryStore: usesTemporaryMeetingStore)
         let selectedAskAnswering = AppSelectedAskMeetingAnswering()
+        assistInterviewQuestion = Self.makeInterviewAssist(
+            arguments: arguments, selectedAnswering: selectedAskAnswering)
         let semanticSearch = Self.makeSemanticSearchComposition(
             store: store, usesTemporaryStore: usesTemporaryMeetingStore, semanticRuntime: semanticEmbeddingRuntime,
             selectedAnswering: selectedAskAnswering, telemetry: workloadTelemetry, captureState: resourceCaptureState)

@@ -115,7 +115,7 @@ self-contained over system frameworks and carries no module dependency.
 | Module | Implemented responsibility |
 |---|---|
 | `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, direct-Web citation/retrieval, language, privacy, sync, immutable transcript-correction, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
-| `ApplicationKit` | Delete, restore, purge, summary and explicit Apuntador regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, focused text/speaker correction, and accepted-snapshot structural correction commands, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
+| `ApplicationKit` | Delete, restore, purge, summary and explicit Apuntador regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, bounded source-closed live interview question assistance, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, focused text/speaker correction, and accepted-snapshot structural correction commands, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
 | `AudioCaptureKit` | Call-safe raw microphone capture, explicit nondefault voice processing for bounded nonmeeting tools, macOS process taps, dual-channel recording sessions, callback-liveness recovery, staged CAF writing, utility-priority finalization, audio validation, checksums, levels, and recovery inspection. |
@@ -657,6 +657,7 @@ owners. Adopted read surfaces do not observe a global invalidation counter.
 | Commitment Radar | `CommitmentRadarModel` + `ReminderDraftModel` | one main window |
 | Meeting Detail | `MeetingDetailScene` + `MeetingDetailModel` | one selected meeting route |
 | Ask conversation | `AskModel` | one main window |
+| Live interview assistance | `RecordingInterviewAssistModel` | one explicitly enabled active recording |
 | Command palette | `CommandPaletteModel` | application process |
 | First-run welcome | `FirstRunModel` | application process |
 | Local-data receipt | `LocalDataLedgerModel` | application process |
@@ -706,6 +707,20 @@ all page text as untrusted data; generated output is admitted only when it uses
 in-range `[n]` citations and contains no raw HTTP URL. Direct source links,
 observed dates, freshness, and truncation remain deterministic presentation
 data even when generation fails.
+
+Live interview assistance is a separate pull-based ApplicationKit workflow,
+not automatic Companion publication. Its pure policy examines at most 24 live
+caption callbacks, chooses the chronologically current final system/room question,
+and retains at most eight same-meeting final turns whose complete time interval
+precedes it. Delayed callbacks are sorted by transcript time; overlapping,
+reversed, duplicate, oversized, or cross-meeting evidence fails closed at the
+application boundary. The user must explicitly enable the mode and request an
+answer. That request samples the same selected local Ask engine, applies the
+existing eight-second timeout, and publishes model prose only after every
+sentence carries valid citations into the exact admitted evidence. Question
+revision, disable, dismissal, Stop, or recording reset cancels and generation-
+fences the request. Answers remain ephemeral and cannot start capture, speak,
+persist as a user note, request Web material, or invoke an external effect.
 
 Library combines independently observed meeting rows, open commitments, trash,
 and active FTS results. Insights combines chronology, participants,

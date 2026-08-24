@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,693 cases (15 environment-gated) + 105
+Status: the package inventory contains 2,707 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 105
+Meeting Detail tests. The English and Spanish release gates each cover all 106
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -1712,6 +1712,73 @@ XCUITest remains the integration/RC gate. Automation does not certify DNS
 behavior, arbitrary Internet pages, installed-model quality, physical
 Sequoia/Tahoe, VoiceOver/Voice Control, CloudKit, distribution, or field
 behavior.
+
+### Pull-based cited interview assistance (D388)
+
+Pure policy tests cover current-question selection across delayed callbacks,
+partial and microphone-only question rejection, 24-row candidate and eight-row
+evidence ceilings, chronological evidence order, same-meeting ownership, finite
+closed intervals, transcript-progress expiry, and character plus UTF-8 budgets.
+Application tests execute the canonical public/synthetic EN/ES interview corpus
+through the production use case, including supported answers and abstentions;
+they reject missing, forged, partially forged, malformed, or sentence-local
+missing citations before provider prose reaches presentation. Typed unavailable,
+failure, timeout, cancellation, invalid injected contexts, and provider bypass
+are separate regressions. Main-actor model cases prove question revision and
+disable cancel work, stale completions cannot publish, and unavailable selected
+engines remain visible and retryable. Router and objective tests preserve exact
+selected-engine passages plus the eight-row / 280-character / 2,048-byte input
+limits.
+
+The `recording-interview` XCUITest scope owns one complete real-app journey per
+selected locale rather than several overlapping microtests. It launches the
+temporary store with deterministic canonical captions and a deterministic final
+answer adapter, starts a disposable recording, explicitly enables Interview,
+asserts the exact localized current question, adds one bounded objective,
+requests an answer, and verifies both grounded prose and the exact cited source.
+It uses the production start-recording workflow, question/evidence policy,
+application answer use case, selected-engine bridge, presentation model, and
+SwiftUI accessibility surface without a private meeting or installed model.
+Changed interview sources select this one journey; recording-toolbar or generic
+recording changes conservatively compose it with their other owned journeys,
+while localization/shared-harness changes still expand fail-safe. The catalogue
+and runtime-budget policy expect 106 cases and reject an unscoped or orphaned
+interview journey.
+
+The final package gate executed 2,707 tests with 15 environment-gated skips and
+zero failures in 117.041 seconds of test time (117.204 seconds wall time).
+Current-SDK first-party warnings-as-errors built cleanly in 28.21 seconds; the
+only emitted warning was FluidAudio's dependency-owned unhandled
+`benchmark.md`. Strict SwiftLint passed across all 724 production Swift files,
+the complete tooling gate passed 502 tests in 23.091 seconds, repository
+hygiene and String Catalog validation passed, and the changed-file selector
+validated a fail-safe 106-case English plus Spanish expansion before XCUITest.
+
+The final post-hardening Interview Assist real-app journey passed 1/1 English
+in 15.700 seconds and 1/1 Spanish in 14.936 seconds, with one shared build and
+no retry.
+The complete integration gate then reused one build and ran locales
+sequentially: 106/106 English passed in 1,114.763 seconds of test time (1,138
+seconds wall, 7.088-second p50, 19.758-second p95, 91.601-second maximum), and
+106/106 Spanish passed in 1,113.266 seconds of test time (1,139 seconds wall,
+7.160-second p50, 20.143-second p95, 89.924-second maximum). Both content-free
+runtime receipts passed their budgets with zero failures, skips, expected
+failures, or retries. This deterministic macOS 26.5.2 Tahoe-family evidence is
+not physical Sequoia/Tahoe, assistive-technology, installed-model, private-
+meeting, CloudKit, distribution, or field evidence.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was then rebuilt, deeply
+verified, installed only at `/Applications/Portavoz Dev.app`, and observed at
+PID 85448 running from its exact executable. A fresh before/after comparison
+kept the notarized `app.portavoz.mac` release bundle byte-for-byte unchanged
+under the same 184-entry no-symlink-traversal lstat/content/hex-xattr manifest
+schema at SHA-256
+`b77ec3a0c28a2fec10a1be83990b950fac0dd450fffad17f8f26318805cf4dc0`;
+its bundle ID and designated requirement also stayed unchanged, its deep
+signature remained valid, and Gatekeeper still reported Notarized Developer
+ID. The Dev bundle is local-only because no CloudKit profile was supplied, and
+the absent optional Metal Toolchain means this install contains no MLX
+`metallib`; neither limitation was silently converted into release evidence.
 
 ### Bounded post-RRF fact-aware selection (D286)
 

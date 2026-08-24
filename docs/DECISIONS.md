@@ -14274,3 +14274,57 @@ installed-model quality/latency/memory, VoiceOver/Voice Control, production
 CloudKit, signed/notarized distribution, Internet variability, third-party
 terms, and real-field behavior remain external 1.0 gates. Interviews, notes,
 and bounded proactive assistance remain APT-5 through APT-7.
+
+## D388 — Keep interview assistance pull-based and source-closed (Aug 2026)
+
+**Context:** Portavoz already showed live captions, bounded objectives, automatic
+Apuntador cards, and an on-demand next-question suggestion, but it did not expose
+the exact question an interviewer had just asked or help the user draft a
+source-backed response. Reusing automatic Companion generation would publish
+before explicit intent, use a different engine policy, and make a stale partial
+caption look authoritative. Treating callback order as conversation order would
+also let delayed transcription replace the current question or reorder evidence.
+
+**Decision:** Interview Assist is an explicit recording-toolbar mode and never
+owns capture. A pure ApplicationKit policy inspects only the latest 24 caption
+callbacks, selects the chronologically latest final question from the system or room
+channel, and admits at most the eight most recent chronologically ordered final
+turns whose exact start/end interval precedes that question in the same meeting.
+Questions admit at most 600 characters / 4,800 UTF-8 bytes; each evidence turn
+admits 2,000 characters / 12,000 bytes. Invalid time intervals, mixed meetings,
+duplicate identities, partial evidence, and a question older than 180 seconds of
+transcript progress fail closed. The visible question remains exact transcript
+text; no model rewrites it.
+
+Answer generation occurs only when the user presses **Find grounded answer**
+during the same active recording. The app samples the exact local Ask engine for
+that request: Foundation Models when available on Tahoe, or the explicitly
+selected loopback Ollama / verified embedded MLX engine on supported Sequoia or
+Tahoe. Missing readiness never falls through. The provider receives only the
+question and admitted earlier captions through the existing bounded grounded
+prompt. ApplicationKit applies an eight-second timeout and accepts no more than
+2,000 characters / 16,000 bytes of final prose. Every sentence must carry only
+valid in-range `[n]` citations; missing, forged, partial, or malformed citations
+and ordinary model abstentions become typed insufficient evidence. Unavailable,
+failure, and timeout remain distinct while the exact question and captions stay
+visible.
+
+One recording-scoped presentation model cancels and generation-fences work on
+question revision, disable, dismissal, Stop, and recording reset. It weakly
+bridges the recording owner so an escaping liveness check cannot retain the
+capture graph. Interview mode relabels the existing objectives surface and adds
+finite admission—eight objectives, each at most 280 characters / 2,048 UTF-8
+bytes—but does not silently insert objectives into an answer. Answers are
+ephemeral: Portavoz does not persist them as notes, speak them, answer for the
+user, start hidden capture, make a Web request, or execute an external action.
+
+**Consequences:** the user can see the current interview question and request a
+private draft whose claims point to exact earlier conversation, while late
+callbacks, stale providers, overlapping turns, and unsupported prose cannot
+become success. Deterministic EN/ES temporary-store capture and answer adapters
+exercise the production use case, model, selected-engine bridge, accessibility
+surface, and exact citations without a private meeting or installed model.
+Installed-engine quality/latency/memory, physical Sequoia/Tahoe, VoiceOver and
+Voice Control, distribution, CloudKit, and real-interview behavior remain
+separate evidence. This closes APT-5; typed notes and bounded proactive help
+remain APT-6 and APT-7.

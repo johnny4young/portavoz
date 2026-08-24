@@ -70,6 +70,12 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testLaunchRecoversInterruptedStagingAudio"),
         test_id("LibraryUITests", "testLaunchResumesDurablePostCaptureProcessing"),
     ),
+    "recording-interview": (
+        test_id(
+            "InterviewAssistUITests",
+            "testInterviewAssistGroundsTheCurrentQuestionInExactEvidence",
+        ),
+    ),
     "ask": (
         test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
         test_id(
@@ -405,6 +411,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "meeting-brief": "Sources/portavoz-app/MeetingBriefView.swift",
     "menu-bar-brief": "Sources/portavoz-app/MenuBarView.swift",
     "recording-recovery": "Sources/portavoz-app/RecordingView.swift",
+    "recording-interview": "Sources/portavoz-app/RecordingInterviewAssistView.swift",
     "ask": "Sources/portavoz-app/AskView.swift",
     "insights": "Sources/portavoz-app/InsightsView.swift",
     "commitment-radar": "Sources/portavoz-app/CommitmentRadarView.swift",
@@ -538,12 +545,14 @@ def app_features(filename: str) -> set[str]:
         # This component owns the external-recording geometry contract as
         # well as the live catch-up, next-question, mute, and Stop controls.
         # It does not affect Library grouping or unrelated detail surfaces.
-        return {"automation-entry", "recording-recovery"}
+        return {"automation-entry", "recording-interview", "recording-recovery"}
+    if "interviewassist" in lowered:
+        return {"recording-interview"}
     if any(token in lowered for token in (
         "recording", "startrecording", "stoprecording", "postcapture",
         "livetranslation", "livesummary"
     )):
-        return {"library", "recording-recovery"}
+        return {"library", "recording-interview", "recording-recovery"}
     if any(token in lowered for token in ("library", "trash", "voicemix")):
         return {"library"}
     if "menubar" in lowered:
@@ -675,6 +684,8 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if "interview" in lowered:
+        return {"recording-interview"}
     if "loadcommitmentblockers" in lowered:
         return {"ask"}
     if "decisionrelationship" in lowered:

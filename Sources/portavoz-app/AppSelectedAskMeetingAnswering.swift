@@ -15,6 +15,7 @@ enum AppAskAnswerProviderResolution: Sendable {
 final class AppSelectedAskMeetingAnswering:
     AskMeetingAnswering,
     AskWebAnswering,
+    InterviewQuestionAnswering,
     @unchecked Sendable {
     typealias Resolver = @MainActor @Sendable () async
         -> AppAskAnswerProviderResolution
@@ -111,6 +112,25 @@ final class AppSelectedAskMeetingAnswering:
             observedDate: citation.observedDate,
             text: citation.text,
             isExcerptTruncated: citation.isExcerptTruncated)
+    }
+
+    func answer(
+        question: String,
+        passages: [RAGPassage]
+    ) async throws -> String? {
+        guard let resolver = currentResolver() else { return nil }
+        switch await resolver() {
+        case .unavailable:
+            return nil
+        case .available(let provider):
+            // The provider may stream internally, but interview presentation
+            // waits for the complete citation-valid answer before exposing
+            // model prose as a supported claim.
+            return try await provider.streamAnswer(
+                question: question,
+                passages: passages,
+                onSnapshot: { _ in })
+        }
     }
 }
 

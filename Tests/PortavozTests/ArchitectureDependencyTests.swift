@@ -2613,8 +2613,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,693 cases "
-                + "(15 environment-gated) + 105"))
+            "package inventory contains 2,707 cases "
+                + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -8137,7 +8137,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(architecture.contains(
             "Every manual Ask request also carries one explicit source authority"))
         XCTAssertTrue(decisions.contains("## D386"))
-        XCTAssertTrue(intelligence.contains("D384–D387"))
+        XCTAssertTrue(intelligence.contains("D384–D388"))
         XCTAssertTrue(storage.contains("meeting-scoped three-lane FTS"))
         XCTAssertTrue(app.contains("explicit Library / one Meeting / Web"))
         XCTAssertTrue(interfaces.contains("explicitly Library-wide"))
@@ -8229,6 +8229,59 @@ final class ArchitectureDependencyTests: XCTestCase {
             "docs/specs/08-quality.md",
         ] {
             XCTAssertTrue(try Self.contents(of: path).contains("D387"), path)
+        }
+    }
+
+    func testInterviewAssistRemainsPullBasedBoundedAndRecordingScoped() throws {
+        let workflow = try Self.contents(
+            of: "Sources/ApplicationKit/AssistInterviewQuestion.swift")
+        let model = try Self.contents(
+            of: "Sources/portavoz-app/RecordingInterviewAssistModel.swift")
+        let view = try Self.contents(
+            of: "Sources/portavoz-app/RecordingInterviewAssistView.swift")
+        let controller = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController.swift")
+        let router = try Self.contents(
+            of: "Sources/portavoz-app/AppSelectedAskMeetingAnswering.swift")
+        let uiTest = try Self.contents(
+            of: "Tests/PortavozUITests/InterviewAssistUITests.swift")
+
+        XCTAssertTrue(workflow.contains("maximumCandidateRows = 24"))
+        XCTAssertTrue(workflow.contains("maximumEvidenceRows = 8"))
+        XCTAssertTrue(workflow.contains("candidate.meetingID == row.meetingID"))
+        XCTAssertTrue(workflow.contains("item.endedAt <= question.askedAt"))
+        XCTAssertTrue(workflow.contains("everySentenceHasCitation(raw)"))
+        XCTAssertTrue(workflow.contains("timeout: Duration = .seconds(8)"))
+        XCTAssertFalse(workflow.contains("import SwiftUI"))
+        XCTAssertFalse(workflow.contains("import StorageKit"))
+
+        XCTAssertTrue(model.contains("requestID == id"))
+        XCTAssertTrue(model.contains("task?.cancel()"))
+        XCTAssertTrue(model.contains("self.context?.question == context.question"))
+        XCTAssertTrue(controller.contains("interviewAssist.reset()"))
+        XCTAssertTrue(router.contains("InterviewQuestionAnswering"))
+        XCTAssertFalse(view.contains("RAGAnswerer"))
+        XCTAssertFalse(view.contains("import IntelligenceKit"))
+        XCTAssertTrue(view.contains(".accessibilityElement(children: .contain)"))
+        for identifier in [
+            "recording-interview-panel",
+            "recording-interview-current-question",
+            "recording-interview-answer",
+            "recording-interview-grounded-answer",
+        ] {
+            XCTAssertTrue(view.contains(identifier), "missing \(identifier)")
+        }
+        XCTAssertTrue(uiTest.contains(
+            "testInterviewAssistGroundsTheCurrentQuestionInExactEvidence"))
+
+        XCTAssertTrue(try Self.contents(of: "docs/ARCHITECTURE.md").contains(
+            "Live interview assistance is a separate pull-based ApplicationKit workflow"))
+        for path in [
+            "docs/DECISIONS.md",
+            "docs/specs/04-intelligence.md", "docs/specs/06-app-macos.md",
+            "docs/specs/08-quality.md",
+        ] {
+            XCTAssertTrue(try Self.contents(of: path).contains("D388"), path)
         }
     }
 

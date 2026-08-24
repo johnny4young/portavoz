@@ -564,12 +564,23 @@ class UITestScopeTests(unittest.TestCase):
         )
         self.assertEqual(
             selection.tests,
-            tuple(dict.fromkeys(
+            tuple(test for test in ALL_TESTS if test in set(
                 FEATURE_TESTS["automation-entry"]
-                + FEATURE_TESTS["recording-recovery"]
-            )),
+                + FEATURE_TESTS["recording-interview"]
+                + FEATURE_TESTS["recording-recovery"])),
         )
         self.assertEqual(selection.locales, ("en",))
+
+    def test_interview_sources_select_the_single_grounded_real_app_journey(self):
+        expected = FEATURE_TESTS["recording-interview"]
+        for path in [
+            "Sources/ApplicationKit/AssistInterviewQuestion.swift",
+            "Sources/portavoz-app/RecordingInterviewAssistModel.swift",
+            "Sources/portavoz-app/RecordingInterviewAssistView.swift",
+        ]:
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
 
     def test_changed_ui_test_file_selects_only_its_class(self):
         selection = select_paths(["Tests/PortavozUITests/InsightsUITests.swift"])

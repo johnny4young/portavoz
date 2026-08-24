@@ -14,7 +14,10 @@ struct RecordingObjectivesPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Objectives", systemImage: "target")
+            Label(
+                L10n.text(controller.interviewAssist.isEnabled
+                    ? "Interview objectives" : "Objectives"),
+                systemImage: "target")
                 .font(.headline)
                 .accessibilityIdentifier("recording-objectives-panel")
             HStack(alignment: .bottom, spacing: 6) {
@@ -36,6 +39,21 @@ struct RecordingObjectivesPanel: View {
             }
             ForEach(controller.objectives.objectives) { objective in
                 objectiveRow(objective)
+            }
+            if let issue = controller.objectives.admissionIssue {
+                Text(objectiveIssue(issue))
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("recording-objective-limit")
+            }
+            if controller.interviewAssist.isEnabled {
+                Text(L10n.format(
+                    "%d of %d interview objectives",
+                    controller.objectives.objectives.count,
+                    RecordingObjectivesModel.maximumObjectives))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("recording-interview-objective-count")
             }
             if controller.objectives.objectives.isEmpty {
                 // One-line UI help text.
@@ -93,7 +111,24 @@ struct RecordingObjectivesPanel: View {
 
     private func add() {
         controller.objectives.add(draft)
-        draft = ""
+        if controller.objectives.admissionIssue == nil {
+            draft = ""
+        }
+    }
+
+    private func objectiveIssue(
+        _ issue: RecordingObjectivesModel.AdmissionIssue
+    ) -> String {
+        switch issue {
+        case .tooLong:
+            L10n.format(
+                "Keep each objective to %d characters or fewer.",
+                RecordingObjectivesModel.maximumObjectiveCharacters)
+        case .limitReached:
+            L10n.format(
+                "This recording supports up to %d objectives.",
+                RecordingObjectivesModel.maximumObjectives)
+        }
     }
 }
 

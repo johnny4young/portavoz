@@ -92,6 +92,16 @@ struct RecordingToolbar: View {
                 .accessibilityHint(L10n.text(
                     "Detects questions and suggests on-device answers. It never answers for you."))
             }
+            Toggle(isOn: interviewAssistBinding) {
+                Label(L10n.text("Interview"), systemImage: "person.crop.rectangle.stack")
+            }
+            .toggleStyle(.button)
+            .controlSize(.small)
+            .help(L10n.text(
+                "Shows the current remote question and offers a pull-only answer from earlier cited captions."))
+            .accessibilityIdentifier("recording-interview-assist")
+            .accessibilityHint(L10n.text(
+                "Shows the current remote question and offers a pull-only answer from earlier cited captions."))
             Button {
                 controller.requestCatchUp()
             } label: {
@@ -141,6 +151,16 @@ struct RecordingToolbar: View {
             get: { controller.companionEnabled },
             set: { controller.companionEnabled = $0 }
         )
+    }
+
+    private var interviewAssistBinding: Binding<Bool> {
+        Binding(
+            get: { controller.interviewAssist.isEnabled },
+            set: {
+                controller.interviewAssist.setEnabled(
+                    $0,
+                    captions: controller.captions)
+            })
     }
 
     private var translationBinding: Binding<String?> {

@@ -17,6 +17,8 @@ extension AppServices {
             runtime = UITestSystemCaptureStallRuntime()
         } else if isSystemAudioClippingFixture {
             runtime = UITestSystemAudioClippingRuntime()
+        } else if isInterviewAssistFixture {
+            runtime = UITestInterviewAssistRuntime()
         } else if isLiveTranscriptBrowsingFixture {
             runtime = UITestLiveTranscriptBrowsingRuntime()
         } else if isLiveTranscriptionAttachFixture {
@@ -62,6 +64,12 @@ extension AppServices {
         let arguments = ProcessInfo.processInfo.arguments
         return arguments.contains("-use-temp-store")
             && arguments.contains("-simulate-live-transcript-browsing")
+    }
+
+    private var isInterviewAssistFixture: Bool {
+        let arguments = ProcessInfo.processInfo.arguments
+        return arguments.contains("-use-temp-store")
+            && arguments.contains("-simulate-interview-assist")
     }
 }
 
@@ -260,6 +268,72 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
             isFinal: true))
         try await Task.sleep(for: .milliseconds(90))
     }
+}
+
+private struct UITestInterviewAssistRuntime: StartRecordingRuntime {
+    func prepare(
+        preferences: StartRecordingPreferencesSnapshot
+    ) async throws -> StartRecordingPreparedRuntime {
+        StartRecordingPreparedRuntime(
+            channels: [.microphone, .system],
+            tappedMeetingApps: ["Meet"],
+            liveTranscriptionAvailable: true)
+    }
+
+    func startCapture(
+        _ request: StartRecordingCaptureRequest
+    ) async throws -> any StartRecordingSession {
+        request.callbacks.liveTranscription(.available)
+        Task {
+            do {
+                try await Task.sleep(for: .milliseconds(350))
+                let spanish = Locale.current.language.languageCode?.identifier == "es"
+                let rows: [(AudioChannel, String, TimeInterval)] = spanish
+                    ? [
+                        (.microphone,
+                         "Camila: Avisaría a la responsable de base de datos "
+                            + "en cinco minutos y congelaría escrituras antes "
+                            + "de reconstruir réplicas.",
+                         44),
+                        (.microphone,
+                         "Camila: No desactivaría alertas ni esperaría treinta minutos antes de avisar.",
+                         71),
+                        (.system,
+                         "¿Qué haría Camila primero durante el incidente?",
+                         90)
+                    ]
+                    : [
+                        (.microphone,
+                         "Jordan: I would page the database owner within five "
+                            + "minutes and freeze writes before rebuilding replicas.",
+                         41),
+                        (.microphone,
+                         "Jordan: I would not disable alerts or wait thirty minutes before paging the owner.",
+                         67),
+                        (.system,
+                         "What would Jordan do first during the database incident?",
+                         90)
+                    ]
+                for (channel, text, timestamp) in rows {
+                    await request.callbacks.caption(TranscriptSegment(
+                        meetingID: request.meetingID,
+                        channel: channel,
+                        text: text,
+                        language: spanish ? "es" : "en",
+                        startTime: timestamp,
+                        endTime: timestamp + 2,
+                        isFinal: true))
+                    try await Task.sleep(for: .milliseconds(80))
+                }
+            } catch {
+                return
+            }
+        }
+        return UITestSystemCaptureStallSession()
+    }
+
+    func cancelPreparation() async {}
+    func scheduleIdleRelease() async {}
 }
 
 /// File-backed handshakes keep disposable UI fixtures deterministic even when

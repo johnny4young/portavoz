@@ -44,6 +44,10 @@ final class RecordingController {
     /// with the still-pending objectives riding along so a suggestion can
     /// steer back to what the meeting set out to do.
     let nextQuestion = RecordingNextQuestionModel()
+
+    /// Explicit interview mode: deterministic current-question detection and
+    /// pull-only answers grounded in exact earlier live-caption evidence.
+    let interviewAssist = RecordingInterviewAssistModel()
     /// The user's notes during the meeting (D28): intent for the summary.
     /// The future notes panel calls `addContextNote`; everything downstream
     /// (rolling summary, final summary, persistence) is already wired.
@@ -285,6 +289,7 @@ final class RecordingController {
         cancelLiveSummaryWork()
         catchUp.dismiss()
         nextQuestion.dismiss()
+        interviewAssist.reset()
         objectives.reset()
         liveDiarizerFeed?.finish()
         liveDiarizerTask?.cancel()
@@ -342,6 +347,7 @@ final class RecordingController {
                 text: segment.text,
                 confidence: segment.confidence) { return }
         coalescer.apply(segment, to: &captions)
+        interviewAssist.observe(captions: captions)
         seedLiveTranslationUIIfRequested()
         detectClosedRow()
         armTurnEndpointDeadline()
@@ -563,6 +569,7 @@ extension RecordingController {
         levelRelay = nil
         catchUp.dismiss()
         nextQuestion.dismiss()
+        interviewAssist.reset()
         cancelLiveSummaryWork()
         cancelCompanionGeneration()
         turnEndpointTask?.cancel()

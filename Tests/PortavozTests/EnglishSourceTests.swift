@@ -190,6 +190,22 @@ final class EnglishSourceTests: XCTestCase {
             // data so both locales verify answer content without a model.
             return line.contains("El presupuesto se revisó")
         }
+        if relative == "Sources/portavoz-app/AppServices+InterviewAssist.swift" {
+            // The disposable interview adapter mirrors the canonical public
+            // Spanish source and answer without invoking a host model.
+            return line.contains("Avisaría a la responsable de base de datos")
+                || line.contains("Camila avisaría a la responsable de base de datos")
+                || line.contains("minutos y congelaría escrituras")
+        }
+        if relative == "Sources/portavoz-app/AppServices+StartRecording.swift" {
+            // The temp-store interview capture fixture mirrors the canonical
+            // public Spanish transcript. Production explanatory prose remains English.
+            return line.contains("Camila: Avisaría")
+                || line.contains("en cinco minutos y congelaría")
+                || line.contains("de reconstruir réplicas")
+                || line.contains("Camila: No desactivaría alertas")
+                || line.contains("¿Qué haría Camila primero")
+        }
         if relative == "Sources/portavoz-app/BenchMode.swift" {
             // Synthetic Spanish meeting fed to the --mlx-smoke in-app check.
             return line.contains("Revisemos el presupuesto")

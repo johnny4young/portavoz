@@ -87,6 +87,9 @@ struct RecordingView: View {
                                 controller.nextQuestion.dismiss()
                             }
                         }
+                        if controller.interviewAssist.isEnabled {
+                            RecordingInterviewAssistView(controller: controller)
+                        }
                         RecordingObjectivesPanel(controller: controller)
                         companionCardsPanel
                         notesPanel
@@ -98,6 +101,7 @@ struct RecordingView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .frame(maxHeight: 260)
+                .accessibilityIdentifier("recording-assist-scroll")
                 .padding(.bottom, 16)
 
             case .processing(let step):

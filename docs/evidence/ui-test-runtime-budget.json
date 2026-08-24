@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 105
+    "expectedCaseCount": 106
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -24,6 +24,7 @@
     "CommitmentRadarUITests/testReminderDraftRequiresExplicitAccessAndLeavesDurableReceipt()": 20.0,
     "CommitmentRadarUITests/testReviewQueueKeepsSuggestionsSeparateAndOpensExactEvidence()": 20.0,
     "InsightsUITests/testInsightsShowsCompleteLocalDashboard()": 20.0,
+    "InterviewAssistUITests/testInterviewAssistGroundsTheCurrentQuestionInExactEvidence()": 20.0,
     "LibraryUITests/testActiveRecordingRemainsReachableAfterBrowsingTheLibrary()": 20.0,
     "LibraryUITests/testAskConfirmedMemoryLoadsExactCommitmentBlockersAndEvidence()": 20.0,
     "LibraryUITests/testAskConfirmedMemoryLoadsExactPersonCommitmentsAndEvidence()": 20.0,

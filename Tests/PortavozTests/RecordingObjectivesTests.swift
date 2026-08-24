@@ -87,6 +87,32 @@ final class RecordingObjectivesModelTests: XCTestCase {
         model.reset()
         XCTAssertTrue(model.objectives.isEmpty)
     }
+
+    func testObjectiveCountAndTextBudgetsFailClosed() {
+        let model = RecordingObjectivesModel()
+        for index in 0..<RecordingObjectivesModel.maximumObjectives {
+            model.add("Objective \(index)")
+        }
+        model.add("One too many")
+        XCTAssertEqual(
+            model.objectives.count,
+            RecordingObjectivesModel.maximumObjectives)
+        XCTAssertEqual(model.admissionIssue, .limitReached)
+
+        model.remove(model.objectives[0].id)
+        XCTAssertNil(model.admissionIssue)
+        model.add(String(
+            repeating: "x",
+            count: RecordingObjectivesModel.maximumObjectiveCharacters + 1))
+        XCTAssertEqual(model.admissionIssue, .tooLong)
+        XCTAssertFalse(model.objectives.contains { $0.text.hasPrefix("xxx") })
+
+        model.add(String(repeating: "👩🏽‍💻", count: 200))
+        XCTAssertEqual(
+            model.admissionIssue,
+            .tooLong,
+            "a short grapheme count must still respect the UTF-8 memory budget")
+    }
 }
 
 final class ObjectiveCheckDetectorShapeTests: XCTestCase {
