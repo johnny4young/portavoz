@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,750 cases "
+            "package inventory contains 2,754 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -4829,6 +4829,14 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "indexing", "recording-indexing", "recording-batch",
             ]))
         XCTAssertEqual(contract["minimumStableSamples"] as? Int, 3)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 2)
+        let recordingInput = try XCTUnwrap(
+            contract["recordingInput"] as? [String: Any])
+        XCTAssertEqual(
+            recordingInput["generation"] as? String,
+            "public-synthetic-dual-channel-v1")
+        XCTAssertEqual(recordingInput["sampleRate"] as? Int, 16_000)
+        XCTAssertEqual(recordingInput["chunkFrames"] as? Int, 1_600)
         XCTAssertEqual(
             contract["maximumTimingP95ToP50Ratio"] as? Double,
             1.25)
@@ -4866,6 +4874,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/BenchMode.swift")
         let recordingRunner = try Self.contents(
             of: "Sources/portavoz-app/BenchRecordingResourceRunner.swift")
+        let syntheticCapture = try Self.contents(
+            of: "Sources/portavoz-app/BenchSyntheticRecordingRuntime.swift")
+        let resourceWatchdog = try Self.contents(
+            of: "Sources/portavoz-app/BenchResourceProcessWatchdog.swift")
         let indexingBench = try Self.contents(
             of: "Sources/portavoz-app/BenchMode+ResourceIndexing.swift")
         let batchBench = try Self.contents(
@@ -4891,6 +4903,33 @@ final class ArchitectureDependencyTests: XCTestCase {
         let compatibilityRunner = try Self.contents(
             of: "scripts/run-resource-recording-baseline.sh")
         XCTAssertTrue(nativeProbe.contains("proc_pid_rusage"))
+        XCTAssertTrue(syntheticCapture.contains(
+            "public-synthetic-dual-channel-v1"))
+        XCTAssertTrue(syntheticCapture.contains(
+            "appearsOnce(\"-use-temp-store\", in: arguments)"))
+        XCTAssertFalse(syntheticCapture.contains("MicrophoneSource("))
+        XCTAssertFalse(syntheticCapture.contains("ProcessTapSource("))
+        XCTAssertFalse(syntheticCapture.contains("requestAccess"))
+        XCTAssertTrue(recordingRunner.contains(
+            "BenchSyntheticCapturePolicy"))
+        XCTAssertTrue(recordingRunner.contains(
+            ".validateResourceRequest(arguments: arguments)"))
+        XCTAssertTrue(recordingRunner.contains(
+            "BenchRecordingResourcePolicy.duration"))
+        XCTAssertTrue(recordingRunner.contains(
+            "await services.authorizeMicrophoneForRecording()"))
+        XCTAssertTrue(resourceWatchdog.contains(
+            "expirationStatus: Int32 = 124"))
+        XCTAssertTrue(resourceWatchdog.contains(
+            "Darwin._exit(expirationStatus)"))
+        XCTAssertTrue(resourceWatchdog.contains(
+            "BenchMode.runsIsolatedBenchmark"))
+        XCTAssertTrue(runner.contains(
+            "PROCESS_TIMEOUT >= MAX_BENCHMARK_PHASE_TIMEOUT + 420"))
+        XCTAssertTrue(runner.contains(
+            "guard_timeout=$((PROCESS_TIMEOUT + 30))"))
+        XCTAssertTrue(runner.contains(
+            #"pgrep -f -- "$APP/Contents/MacOS/portavoz-app""#))
         XCTAssertTrue(nativeProbe.contains("ri_energy_nj"))
         XCTAssertTrue(nativeProbe.contains(
             "IOPSGetProvidingPowerSourceType"))
@@ -5012,7 +5051,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             runner.components(separatedBy: "run_benchmark_app").count - 1,
             9)
         XCTAssertFalse(runner.contains(
-            #""$APP/Contents/MacOS/portavoz-app""#))
+            #"open -W -n "$APP/Contents/MacOS/portavoz-app""#))
         XCTAssertTrue(runner.contains(
             "resource_baseline.py assemble"))
         XCTAssertTrue(runner.contains(

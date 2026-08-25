@@ -1184,8 +1184,12 @@ Its explicit user action asks `MicrophonePermissionClient` to resolve an
 undetermined microphone grant before `MicrophoneSource` exists. Existing
 authorization proceeds without another prompt; denied or restricted access
 returns the localized typed preparation failure without entering Core Audio.
-The isolated resource app performs the same preflight before any measured
-window, so one-time TCC interaction is never counted as runtime workload.
+The legacy direct physical recording benchmark performs the same preflight.
+The candidate resource matrix deliberately does not: its exact disposable
+admission selects the public synthetic runtime described below and constructs
+no physical capture source. Therefore it proves the product recording
+lifecycle without claiming microphone/system TCC, device-route, or acoustic
+behavior.
 
 The tracked `docs/evidence/resource-baseline-matrix.json` contract and
 `scripts/resource_baseline.py` sit outside the executable. They require three
@@ -1228,6 +1232,21 @@ keeps the hardened runtime but gives only this disposable scratch identity the
 library-validation exception needed for its separately ad-hoc-signed embedded
 Sparkle framework. Real Developer-ID resource evidence and every ordinary or
 distribution app retain library validation.
+A recording resource process is admitted only by one each of
+`-use-temp-store`, `--bench-record`, `--bench-resource-output`, and
+`--bench-resource-synthetic-capture`. It emits the fixed
+`public-synthetic-dual-channel-v1` signal as 1,600-frame microphone/system
+chunks at 16 kHz. The signal crosses the production `RecordingSession`, CAF
+writers, live-transcription feeds, Stop workflow, and concurrent indexing or
+batch scheduler while avoiding AVAudioEngine, process taps, TCC, and user
+audio. The schema-2 host receipt records this input identity; physical capture
+remains a separate field gate.
+
+Every invocation also carries a 60–7,200-second in-app watchdog armed before
+app composition. The shell requires its value to exceed both the configured
+model timeout and the longest idle-plus-recording phase by 420 seconds, then
+adds a 30-second outer LaunchServices grace guard. Expiry terminates only the
+disposable scratch process/wait and leaves no passing sample or receipt.
 A five-second launch-settling interval precedes the model-free idle window.
 Refine runs as a draft-only cold-runtime operation in a separate process against
 one host-generated, non-silent English AIFF containing only fixed public text.

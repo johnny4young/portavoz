@@ -40,6 +40,14 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(result, 0)
             scorecard = self.read_scorecard(output)
             self.assertEqual(scorecard["outcome"], "pass")
+            self.assertEqual(
+                scorecard["recordingInput"],
+                {
+                    "generation": "public-synthetic-dual-channel-v1",
+                    "sampleRate": 16_000,
+                    "chunkFrames": 1_600,
+                },
+            )
             self.assertEqual(len(scorecard["measurements"]), 27)
             recording = next(
                 row
@@ -596,6 +604,11 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(result, 0)
             receipt = json.loads(output.read_text())
             self.assertEqual(receipt["kind"], "resource-baseline")
+            self.assertEqual(receipt["schemaVersion"], 2)
+            self.assertEqual(
+                receipt["recordingInput"]["generation"],
+                "public-synthetic-dual-channel-v1",
+            )
             self.assertEqual(
                 receipt["askPipeline"]["samples"][0]["run"], 1
             )
@@ -797,6 +810,26 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("--bench-resource-indexing", runner)
         self.assertIn("--bench-resource-recording-indexing", runner)
         self.assertIn("--bench-resource-recording-batch", runner)
+        self.assertEqual(
+            runner.count("--bench-resource-synthetic-capture"),
+            3,
+        )
+        self.assertIn("PROCESS_TIMEOUT=1800", runner)
+        self.assertIn("--bench-resource-process-timeout", runner)
+        self.assertIn("MAX_BENCHMARK_PHASE_TIMEOUT", runner)
+        self.assertIn(
+            "PROCESS_TIMEOUT >= MAX_BENCHMARK_PHASE_TIMEOUT + 420",
+            runner,
+        )
+        self.assertIn("guard_timeout=$((PROCESS_TIMEOUT + 30))", runner)
+        self.assertIn('ACTIVE_LAUNCH_PID="$launch_pid"', runner)
+        self.assertIn('ACTIVE_GUARD_PID="$guard_pid"', runner)
+        self.assertIn("terminate_benchmark_processes", runner)
+        self.assertIn('kill -TERM "$launch_pid"', runner)
+        self.assertIn(
+            'pgrep -f -- "$APP/Contents/MacOS/portavoz-app"',
+            runner,
+        )
         self.assertIn("--bench-resource-timeout", runner)
         self.assertIn('idle_sample="$fragments/idle-$run.json"', runner)
         self.assertIn('sample_arguments+=(--sample "idle=$idle_sample")', runner)
@@ -863,7 +896,7 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn('OUTPUT="$ROOT/$OUTPUT"', runner)
         self.assertEqual(runner.count("run_benchmark_app"), 9)
         self.assertNotIn(
-            '"$APP/Contents/MacOS/portavoz-app"',
+            'open -W -n "$APP/Contents/MacOS/portavoz-app"',
             runner,
         )
         self.assertIn("resource_baseline.py assemble", runner)
@@ -924,7 +957,7 @@ class ResourceBaselineTests(unittest.TestCase):
     def write_receipt(self, root, profile, suffix=None):
         path = root / f"{profile}{'-' + suffix if suffix else ''}.json"
         payload = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "kind": "resource-baseline",
             "collectedAt": "2026-07-28T18:00:00Z",
             "build": {
@@ -945,6 +978,11 @@ class ResourceBaselineTests(unittest.TestCase):
                 "xcodeVersion": "26.0",
                 "xcodeBuild": "17A123",
                 "swiftVersion": "6.2",
+            },
+            "recordingInput": {
+                "generation": "public-synthetic-dual-channel-v1",
+                "sampleRate": 16_000,
+                "chunkFrames": 1_600,
             },
             "scenarios": [
                 self.scenario(identifier, required)

@@ -39,7 +39,7 @@ struct ApuntadorWebFixtureDescriptor {
 
 private extension ApuntadorWebFixtureDescriptor {
     static let canonicalFixtureChecksum =
-        "cf351b78d939998c421aa7e72981ca7ae357dcd51860499027245cb824fb2897"
+        "97a560b3049bd0d2e0b41fc2e8f7664272f7d20fcf4771b6ec7940295822fd26"
 
     struct Descriptor: Decodable {
         let schemaVersion: Int

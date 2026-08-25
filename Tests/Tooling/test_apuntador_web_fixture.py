@@ -48,7 +48,7 @@ class ApuntadorWebFixtureTests(unittest.TestCase):
             web_fixture.CANONICAL_FIXTURE_SHA256,
         )
 
-    def test_server_is_loopback_only_and_returns_fresh_cited_bilingual_pages(self):
+    def test_server_is_loopback_only_and_keeps_fresh_progress_observable(self):
         with web_fixture.running_server(self.fixture) as (server, base_url):
             self.assertEqual(server.server_address[0], "127.0.0.1")
             for path, phrase in (
@@ -56,8 +56,10 @@ class ApuntadorWebFixtureTests(unittest.TestCase):
                 ("/source/fresh-es", "Costa se lanza"),
             ):
                 with self.subTest(path=path):
+                    started = time.monotonic()
                     with urllib.request.urlopen(base_url + path, timeout=2) as response:
                         body = response.read().decode("utf-8")
+                        self.assertGreaterEqual(time.monotonic() - started, 0.35)
                         self.assertEqual(response.status, 200)
                         self.assertEqual(
                             response.headers["X-Portavoz-Fixture-Freshness"],

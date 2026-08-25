@@ -100,7 +100,7 @@ class RunUITestsTests(unittest.TestCase):
                 "done\n"
                 "[ -n \"$ready\" ] || exit 2\n"
                 "printf '{\"schemaVersion\":1,\"generation\":\"public-local-v1\","
-                "\"fixtureChecksum\":\"cf351b78d939998c421aa7e72981ca7ae357dcd51860499027245cb824fb2897\","
+                "\"fixtureChecksum\":\"97a560b3049bd0d2e0b41fc2e8f7664272f7d20fcf4771b6ec7940295822fd26\","
                 "\"baseURL\":\"http://127.0.0.1:54321\",\"processID\":%s}\\n' "
                 "\"$$\" > \"$ready\"\n"
                 "trap 'exit 0' TERM INT\n"

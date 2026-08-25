@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,750 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,754 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2295,10 +2295,13 @@ Internet. The server binds only `127.0.0.1` on an ephemeral or declared port and
 serves 14 strict routes: direct local citations; fresh, stale, and missing-date
 documents; redirect; slow response; truncated body; 503 with Retry-After;
 connection drop; fixed non-reflecting 404; and bilingual hostile prompt-
-injection pages marked as untrusted data. Tests additionally prove a closed
-listener produces the offline transport case. Canonical checksum validation,
-strict route/status/date/link policy, no-store headers, atomic content-free
-ready files, and deterministic teardown are part of `make
+injection pages marked as untrusted data. Both cited bilingual fresh pages use
+the fixture's bounded observable delay so the real-app journey can prove the
+pending Web-source state before the final cited answer replaces it; the delay
+is deterministic test authority, not a product sleep. Tests additionally prove
+a closed listener produces the offline transport case. Canonical checksum
+validation, strict route/status/date/link policy, no-store headers, atomic
+content-free ready files, and deterministic teardown are part of `make
 test-apuntador-validation`. This fixture is test infrastructure, not product
 web authority or evidence that a real provider behaves the same way.
 
@@ -2386,7 +2389,7 @@ gate always runs them. An architecture ratchet pins the schema, 29 proofs,
 eight classes, fail-closed predicate, exact artifact stamp, distribution
 receipt ordering, D147, and D391.
 
-**Candidate automation owner (D392/D393/D396).**
+**Candidate automation owner (D392/D393/D396–D398).**
 `docs/evidence/candidate-automation.json` is the finite executable contract for
 the eight candidate proofs. `scripts/candidate_automation.py` runs every gate
 sequentially on one completely clean full commit and rechecks the source before
@@ -2425,6 +2428,16 @@ The post-signing assertion treats the dotted entitlement name as one literal
 plist key: ad-hoc evidence requires exact `true`, while real-identity evidence
 requires the key to be absent. Decode failures and non-boolean values are not
 treated as absence.
+The recording cells do not request a fresh microphone grant for that ad-hoc
+identity. They require the hidden `public-synthetic-dual-channel-v1` input,
+admitted only with the disposable store and resource-output boundary, and run
+it at real time through the production recording session, writers, live-model
+feeds, Stop, indexing, and batch concurrency. Resource receipt schema 2 records
+the exact 16 kHz/1,600-frame input contract. No physical capture source, TCC
+prompt, or user audio participates, so physical capture and permissions remain
+external evidence. Every copied-app invocation also arms a bounded process
+watchdog before database composition; expiration emits no passing fragment or
+qualification receipt.
 
 Specialized validation is fail closed. The performance ledger must be
 authoritative, contain its exact 25-metric inventory, measure all twelve
@@ -3086,7 +3099,8 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   Standalone indexing prepares already-installed Apple embedding assets and a
   fixed 1,024-segment corpus before measurement, then drains it through the
   real ApplicationKit operation. Recording plus indexing prepares that same
-  workload, starts one real recording, runs indexing only after Start succeeds,
+  workload, starts the real product recording lifecycle over the tracked
+  public synthetic dual-channel input, runs indexing only after Start succeeds,
   and keeps recording active until the operation completes. Its process metrics
   freeze before Stop while already-active live-transcription spans may still
   publish their terminal outcome. Recording plus batch resolves the shared
@@ -3103,13 +3117,12 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   never targets the notarized installed app. Resource-mode app initialization
   returns before sync, recovery, provider discovery, or dictation registration
   can contaminate a measured operation; the AppKit delegate remains detached
-  from product services. The windowed recording runner resolves the scratch
-  bundle's one-time microphone authorization before it arms any resource
-  probe; rejection fails the run instead of entering an ambiguous Core Audio
-  bind or publishing a contaminated sample. The repeated reference workflow
-  also acts as a device-route-churn field gate: input taps do not request a
-  previously read hardware format and resample from the actual buffer rate,
-  preventing a 48 kHz → 24 kHz transition from aborting AVFAudio. Native app
+  from product services. The windowed recording runner requires the exact
+  deterministic real-time microphone/system fixture before it arms a resource
+  probe. It exercises product recording, live transcription, and Stop without
+  constructing a physical input graph. Real TCC, device-route churn, and
+  48 kHz → 24 kHz hardware transitions remain physical field gates and are not
+  certified by this matrix. Native app
   probes begin only after two nominal thermal observations five seconds apart;
   inherited pressure fails closed after five minutes, while pressure produced
   after counters start remains part of the sample. The probes sample process
@@ -3132,12 +3145,19 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   app invocations per round use the copied signed bundle through
   LaunchServices—never the inner SwiftUI/AppKit
   executable—so each scenario receives the same application resource policy,
-  bundle identity, environment, and TCC boundary. The Stop probe atomically
+  bundle identity, and environment. An in-app watchdog is armed before
+  database composition and makes AppKit, TCC, model, or teardown stalls
+  finite. Its bound exceeds both the tighter model-operation timeout and the
+  longest idle-plus-recording phase by 420 seconds. An outer shell guard ends
+  only the disposable app and its `open -W` wait after a further 30-second
+  grace if LaunchServices itself does not return. The Stop probe atomically
   replays active spans
   before recording metrics freeze, preventing a boundary finish from falling
   between collectors. A timeout or partial lifecycle emits no passing sample.
 - `scripts/resource_baseline.py assemble/evaluate`: assembles exact native
-  fragments into one host receipt, validates exact-shaped Release
+  fragments into one schema-2 host receipt whose required recording-input
+  provenance is `public-synthetic-dual-channel-v1` at 16 kHz with 1,600-frame
+  chunks, validates exact-shaped Release
   receipts against `docs/evidence/resource-baseline-matrix.json` and always
   projects the 3-profile × 9-scenario matrix. Each passing cell requires three
   stable runs and its contracted workload descriptors. Output is owner-only

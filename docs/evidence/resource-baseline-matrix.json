@@ -1,6 +1,11 @@
 {
   "minimumStableSamples": 3,
   "maximumTimingP95ToP50Ratio": 1.25,
+  "recordingInput": {
+    "chunkFrames": 1600,
+    "generation": "public-synthetic-dual-channel-v1",
+    "sampleRate": 16000
+  },
   "profiles": [
     {
       "id": "memory-8gb",
@@ -144,5 +149,5 @@
       ]
     }
   ],
-  "schemaVersion": 1
+  "schemaVersion": 2
 }

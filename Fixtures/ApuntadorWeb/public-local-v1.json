@@ -29,9 +29,9 @@
       "trust": "trusted"
     },
     {
-      "behavior": "document",
+      "behavior": "slow",
       "body": "<article><time datetime=\"2026-08-22T14:00:00Z\"></time><p>Harbor launches September 14 at 09:00 UTC.</p><a href=\"/authority/release-policy-en\">Release policy</a></article>",
-      "delayMilliseconds": 0,
+      "delayMilliseconds": 500,
       "freshness": "fresh",
       "id": "fresh-en",
       "location": null,
@@ -41,9 +41,9 @@
       "trust": "trusted"
     },
     {
-      "behavior": "document",
+      "behavior": "slow",
       "body": "<article><time datetime=\"2026-08-22T15:00:00Z\"></time><p>Costa se lanza el 18 de septiembre a las 10:00 UTC.</p><a href=\"/authority/release-policy-es\">Política</a></article>",
-      "delayMilliseconds": 0,
+      "delayMilliseconds": 500,
       "freshness": "fresh",
       "id": "fresh-es",
       "location": null,

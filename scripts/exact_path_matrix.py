@@ -48,6 +48,7 @@ RESOURCE_CONTRACT_KEYS = {
     "schemaVersion",
     "minimumStableSamples",
     "maximumTimingP95ToP50Ratio",
+    "recordingInput",
     "profiles",
     "scenarios",
 }
@@ -55,6 +56,11 @@ PROFILE_KEYS = {
     "id",
     "minimumPhysicalMemoryBytes",
     "maximumPhysicalMemoryBytes",
+}
+RECORDING_INPUT_KEYS = {
+    "generation",
+    "sampleRate",
+    "chunkFrames",
 }
 OBSERVATION_KEYS = {
     "schemaVersion",
@@ -348,8 +354,29 @@ def load_profiles(path: Path) -> dict[str, tuple[int, int | None]]:
         RESOURCE_CONTRACT_KEYS,
         "resource contract",
     )
-    if integer(raw["schemaVersion"], "resource contract.schemaVersion", 1) != 1:
-        raise MatrixError("resource contract schemaVersion must be 1")
+    if integer(raw["schemaVersion"], "resource contract.schemaVersion", 1) != 2:
+        raise MatrixError("resource contract schemaVersion must be 2")
+    recording_input = exact_object(
+        raw["recordingInput"],
+        RECORDING_INPUT_KEYS,
+        "resource contract recordingInput",
+    )
+    if (
+        recording_input["generation"] != "public-synthetic-dual-channel-v1"
+        or integer(
+            recording_input["sampleRate"],
+            "resource contract recordingInput.sampleRate",
+            1,
+        )
+        != 16_000
+        or integer(
+            recording_input["chunkFrames"],
+            "resource contract recordingInput.chunkFrames",
+            1,
+        )
+        != 1_600
+    ):
+        raise MatrixError("resource contract recordingInput is not supported")
     profiles: dict[str, tuple[int, int | None]] = {}
     if not isinstance(raw["profiles"], list):
         raise MatrixError("resource contract profiles must be an array")

@@ -4,6 +4,139 @@ import XCTest
 @testable import portavoz_app
 
 final class ResourceRunProbeTests: XCTestCase {
+    func testSyntheticResourceCaptureRequiresTheCompleteDisposableAdmission() throws {
+        let admitted = [
+            "Portavoz",
+            "-use-temp-store",
+            "--bench-record", "60",
+            "--bench-resource-output", "/tmp/fragments",
+            "--bench-resource-synthetic-capture",
+        ]
+        XCTAssertTrue(BenchSyntheticCapturePolicy.requested(
+            arguments: admitted))
+        XCTAssertTrue(try BenchSyntheticCapturePolicy.validateResourceRequest(
+            arguments: admitted))
+        XCTAssertFalse(try BenchSyntheticCapturePolicy.validateResourceRequest(
+            arguments: ["Portavoz", "--bench-record", "60"]))
+        XCTAssertThrowsError(try BenchSyntheticCapturePolicy
+            .validateResourceRequest(arguments: [
+                "Portavoz",
+                "-use-temp-store",
+                "--bench-record", "60",
+                "--bench-resource-output", "/tmp/fragments",
+            ])) { error in
+                XCTAssertEqual(
+                    error as? BenchSyntheticCaptureError,
+                    .syntheticInputRequired)
+            }
+        XCTAssertThrowsError(try BenchSyntheticCapturePolicy
+            .validateResourceRequest(arguments: [
+                "Portavoz",
+                "--bench-resource-synthetic-capture",
+            ])) { error in
+                XCTAssertEqual(
+                    error as? BenchSyntheticCaptureError,
+                    .invalidAdmission)
+            }
+        XCTAssertThrowsError(try BenchSyntheticCapturePolicy
+            .validateResourceRequest(arguments: admitted + [
+                "--bench-resource-synthetic-capture",
+            ])) { error in
+                XCTAssertEqual(
+                    error as? BenchSyntheticCaptureError,
+                    .syntheticInputRequired)
+            }
+    }
+
+    func testRecordingResourceDurationIsUniqueAndBounded() throws {
+        XCTAssertEqual(
+            try BenchRecordingResourcePolicy.duration(arguments: [
+                "Portavoz", "--bench-record", "31",
+            ]),
+            31)
+        for arguments in [
+            ["Portavoz"],
+            ["Portavoz", "--bench-record"],
+            ["Portavoz", "--bench-record", "invalid"],
+            ["Portavoz", "--bench-record", "29"],
+            ["Portavoz", "--bench-record", "601"],
+            [
+                "Portavoz", "--bench-record", "60",
+                "--bench-record", "60",
+            ],
+        ] {
+            XCTAssertThrowsError(try BenchRecordingResourcePolicy
+                .duration(arguments: arguments)) { error in
+                    XCTAssertEqual(
+                        error as? BenchRecordingResourceRunnerError,
+                        .invalidDuration)
+                }
+        }
+    }
+
+    func testSyntheticCapturePublishesBoundedContentFreePCMAndStops() async throws {
+        let source = BenchSyntheticAudioCaptureSource(channel: .microphone)
+        let stream = try await source.start()
+        var iterator = stream.makeAsyncIterator()
+        let first = try await iterator.next()
+        XCTAssertEqual(first?.channel, .microphone)
+        XCTAssertEqual(
+            first?.sampleRate,
+            BenchSyntheticCapturePolicy.sampleRate)
+        XCTAssertEqual(
+            first?.samples.count,
+            BenchSyntheticCapturePolicy.chunkFrames)
+        XCTAssertEqual(first?.timestamp, 0)
+        XCTAssertTrue(first?.samples.contains(where: { $0 != 0 }) == true)
+
+        source.setMuted(true)
+        let second = try await iterator.next()
+        XCTAssertTrue(second?.samples.allSatisfy { $0 == 0 } == true)
+
+        await source.stop()
+        let afterStop = try await iterator.next()
+        XCTAssertNil(afterStop)
+    }
+
+    func testResourceProcessWatchdogRequiresOneBoundedIsolatedAdmission() throws {
+        XCTAssertNil(try BenchResourceProcessWatchdog.timeoutSeconds(
+            arguments: ["Portavoz", "-use-temp-store"]))
+        XCTAssertEqual(
+            try BenchResourceProcessWatchdog.timeoutSeconds(arguments: [
+                "Portavoz",
+                "-use-temp-store",
+                "--bench-record", "60",
+                "--bench-resource-process-timeout", "1200",
+            ]),
+            1_200)
+        for arguments in [
+            [
+                "Portavoz", "--bench-record", "60",
+                "--bench-resource-process-timeout", "1200",
+            ],
+            [
+                "Portavoz", "-use-temp-store",
+                "--bench-resource-process-timeout", "1200",
+            ],
+            [
+                "Portavoz", "-use-temp-store", "--bench-record", "60",
+                "--bench-resource-process-timeout", "59",
+            ],
+            [
+                "Portavoz", "-use-temp-store", "--bench-record", "60",
+                "--bench-resource-process-timeout", "7201",
+            ],
+            [
+                "Portavoz", "-use-temp-store", "--bench-record", "60",
+                "--bench-resource-process-timeout", "1200",
+                "--bench-resource-process-timeout", "1200",
+            ],
+        ] {
+            XCTAssertThrowsError(try BenchResourceProcessWatchdog
+                .timeoutSeconds(arguments: arguments))
+        }
+    }
+
     func testResourceBenchmarksOwnTheirProcessStartup() {
         XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-resource-launch-probe", "/tmp/ready"]))

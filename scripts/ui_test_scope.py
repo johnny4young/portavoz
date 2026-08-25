@@ -493,6 +493,12 @@ def app_features(filename: str) -> set[str]:
         return {"automation-entry", "commitment-radar"}
     if lowered in {"applaunchmodel.swift", "applaunchrecoveryview.swift"}:
         return {"launch-recovery", "main-shell"}
+    if lowered == "benchresourceprocesswatchdog.swift":
+        # This hidden pre-composition owner has no presentation. Its safe UI
+        # proof is normal/failing launch plus one canary per root destination;
+        # resource timeout behavior is covered by unit and disposable Release
+        # app evidence rather than all feature journeys.
+        return {"launch-recovery", "main-shell"}
     if lowered == "contentview.swift":
         # Root composition changes can affect every destination, but one
         # deterministic canary per route is sufficient; do not rerun all
@@ -838,6 +844,22 @@ def select_paths(paths: Iterable[str]) -> Selection:
             selected.update(HARNESS_TESTS)
             locales.add("es")
             reasons.append(f"{path}: complete bilingual shared-harness fallback")
+            continue
+
+        if path in {
+            "Fixtures/ApuntadorWeb/public-local-v1.json",
+            "Tests/PortavozUITests/ApuntadorWebFixtureSupport.swift",
+        }:
+            selected.add(
+                test_id(
+                    "LibraryUITests",
+                    "testAskConversationAnswersAndSeeksToExactCitation",
+                )
+            )
+            locales.add("es")
+            reasons.append(
+                f"{path}: bilingual deterministic Web Ask journey"
+            )
             continue
 
         changed_ui_tests = tests_for_ui_test_file(path)

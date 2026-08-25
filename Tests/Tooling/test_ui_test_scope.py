@@ -62,6 +62,16 @@ class UITestScopeTests(unittest.TestCase):
         )
         self.assertEqual(storage.tests, recovery)
 
+    def test_resource_watchdog_selects_startup_canaries_not_every_feature(self):
+        selection = select_paths([
+            "Sources/portavoz-app/BenchResourceProcessWatchdog.swift",
+        ])
+        expected = set(FEATURE_TESTS["launch-recovery"])
+        expected.update(FEATURE_TESTS["main-shell"])
+        self.assertEqual(selection.locales, ("en",))
+        self.assertEqual(set(selection.tests), expected)
+        self.assertLess(len(selection.tests), len(ALL_TESTS))
+
     def test_docs_governance_and_local_tooling_do_not_spend_a_ui_runner(self):
         selection = select_paths(
             [
@@ -624,6 +634,23 @@ class UITestScopeTests(unittest.TestCase):
         selection = select_paths(["Tests/PortavozUITests/InsightsUITests.swift"])
         self.assertEqual(selection.tests, FEATURE_TESTS["insights"])
         self.assertTrue(all("InsightsUITests" in test for test in selection.tests))
+
+    def test_web_fixture_selects_only_its_bilingual_real_app_journey(self):
+        for path in (
+            "Fixtures/ApuntadorWeb/public-local-v1.json",
+            "Tests/PortavozUITests/ApuntadorWebFixtureSupport.swift",
+        ):
+            selection = select_paths([path])
+
+            self.assertEqual(
+                selection.tests,
+                (
+                    "PortavozUITests/LibraryUITests/"
+                    "testAskConversationAnswersAndSeeksToExactCitation",
+                ),
+                path,
+            )
+            self.assertEqual(selection.locales, ("en", "es"), path)
 
     def test_unknown_production_source_falls_back_to_full_english(self):
         selection = select_paths(["Sources/NewCapabilityKit/Unknown.swift"])

@@ -9,6 +9,7 @@ RUNS=3
 DURATION=60
 IDLE_DURATION=30
 MODEL_TIMEOUT=900
+PROCESS_TIMEOUT=1800
 OUTPUT=""
 
 usage() {
@@ -17,7 +18,7 @@ usage: scripts/run-resource-baseline.sh \
   --profile <memory-8gb|memory-16gb|reference> \
   --version <version> --build <build> \
   [--runs <count>] [--duration <seconds>] [--idle-duration <seconds>] \
-  [--model-timeout <seconds>] \
+  [--model-timeout <seconds>] [--process-timeout <seconds>] \
   [--output <directory>]
 EOF
 }
@@ -70,6 +71,11 @@ while [[ $# -gt 0 ]]; do
             MODEL_TIMEOUT="$2"
             shift 2
             ;;
+        --process-timeout)
+            [[ $# -ge 2 ]] || { usage; exit 64; }
+            PROCESS_TIMEOUT="$2"
+            shift 2
+            ;;
         --output)
             [[ $# -ge 2 ]] || { usage; exit 64; }
             OUTPUT="$2"
@@ -93,13 +99,22 @@ require_unsigned_integer "$RUNS" "--runs"
 require_unsigned_integer "$DURATION" "--duration"
 require_unsigned_integer "$IDLE_DURATION" "--idle-duration"
 require_unsigned_integer "$MODEL_TIMEOUT" "--model-timeout"
+require_unsigned_integer "$PROCESS_TIMEOUT" "--process-timeout"
 (( RUNS >= 3 )) || fail "--runs must be at least 3"
 (( RUNS <= 100 )) || fail "--runs must be at most 100"
 (( DURATION >= 30 )) || fail "--duration must be at least 30 seconds"
+(( DURATION <= 600 )) || fail "--duration must be at most 600 seconds"
 (( IDLE_DURATION >= 10 )) || fail "--idle-duration must be at least 10 seconds"
 (( IDLE_DURATION <= 600 )) || fail "--idle-duration must be at most 600 seconds"
 (( MODEL_TIMEOUT >= 60 )) || fail "--model-timeout must be at least 60 seconds"
 (( MODEL_TIMEOUT <= 3600 )) || fail "--model-timeout must be at most 3600 seconds"
+MAX_BENCHMARK_PHASE_TIMEOUT="$MODEL_TIMEOUT"
+if (( IDLE_DURATION + DURATION > MAX_BENCHMARK_PHASE_TIMEOUT )); then
+    MAX_BENCHMARK_PHASE_TIMEOUT=$((IDLE_DURATION + DURATION))
+fi
+(( PROCESS_TIMEOUT >= MAX_BENCHMARK_PHASE_TIMEOUT + 420 )) ||
+    fail "--process-timeout must exceed the longest benchmark phase by at least 420 seconds"
+(( PROCESS_TIMEOUT <= 7200 )) || fail "--process-timeout must be at most 7200 seconds"
 
 cd "$ROOT"
 if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
@@ -122,8 +137,26 @@ mkdir -p "$COLLECTION/fragments"
 RUN_ROOT="$(mktemp -d /private/tmp/portavoz-resource-baseline.XXXXXX)"
 APP="$RUN_ROOT/Portavoz Resource Bench.app"
 SIGN_ID="${PORTAVOZ_SIGN_IDENTITY:--}"
+ACTIVE_LAUNCH_PID=""
+ACTIVE_GUARD_PID=""
+
+terminate_benchmark_processes() {
+    local benchmark_pid
+    while IFS= read -r benchmark_pid; do
+        if [[ "$benchmark_pid" =~ ^[0-9]+$ ]]; then
+            kill -TERM "$benchmark_pid" 2>/dev/null || true
+        fi
+    done < <(pgrep -f -- "$APP/Contents/MacOS/portavoz-app" || true)
+}
 
 cleanup() {
+    if [[ -n "$ACTIVE_GUARD_PID" ]]; then
+        kill -TERM "$ACTIVE_GUARD_PID" 2>/dev/null || true
+    fi
+    if [[ -n "$ACTIVE_LAUNCH_PID" ]]; then
+        terminate_benchmark_processes
+        kill -TERM "$ACTIVE_LAUNCH_PID" 2>/dev/null || true
+    fi
     if [[ -n "${COLLECTION:-}" && -d "$COLLECTION" ]]; then
         rm -rf "$COLLECTION"
     fi
@@ -199,7 +232,34 @@ else
 fi
 
 run_benchmark_app() {
-    open -W -n "$APP" --args "$@"
+    local launch_pid
+    local launch_status
+    local guard_pid
+    local guard_timeout=$((PROCESS_TIMEOUT + 30))
+    open -W -n "$APP" --args "$@" \
+        --bench-resource-process-timeout "$PROCESS_TIMEOUT" &
+    launch_pid=$!
+    ACTIVE_LAUNCH_PID="$launch_pid"
+    (
+        sleep "$guard_timeout"
+        if kill -0 "$launch_pid" 2>/dev/null; then
+            echo "resource baseline error: LaunchServices wait exceeded watchdog grace" >&2
+            terminate_benchmark_processes
+            kill -TERM "$launch_pid" 2>/dev/null || true
+        fi
+    ) &
+    guard_pid=$!
+    ACTIVE_GUARD_PID="$guard_pid"
+    if wait "$launch_pid"; then
+        launch_status=0
+    else
+        launch_status=$?
+    fi
+    kill -TERM "$guard_pid" 2>/dev/null || true
+    wait "$guard_pid" 2>/dev/null || true
+    ACTIVE_GUARD_PID=""
+    ACTIVE_LAUNCH_PID=""
+    return "$launch_status"
 }
 
 launch_probe="$RUN_ROOT/launch-ready"
@@ -273,6 +333,7 @@ for ((run = 1; run <= RUNS; run++)); do
             -ApplePersistenceIgnoreState YES \
             -use-temp-store \
             --bench-record "$DURATION" \
+            --bench-resource-synthetic-capture \
             --bench-resource-output "$fragments" \
             --bench-resource-run "$run" \
             --bench-resource-idle-duration "$IDLE_DURATION" \
@@ -297,6 +358,7 @@ for ((run = 1; run <= RUNS; run++)); do
             -ApplePersistenceIgnoreState YES \
             -use-temp-store \
             --bench-record "$DURATION" \
+            --bench-resource-synthetic-capture \
             --bench-resource-recording-indexing \
             --bench-resource-output "$fragments" \
             --bench-resource-run "$run" \
@@ -322,6 +384,7 @@ for ((run = 1; run <= RUNS; run++)); do
             -ApplePersistenceIgnoreState YES \
             -use-temp-store \
             --bench-record "$DURATION" \
+            --bench-resource-synthetic-capture \
             --bench-resource-recording-batch "$fixture_audio" \
             --bench-resource-output "$fragments" \
             --bench-resource-run "$run" \

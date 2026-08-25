@@ -11,7 +11,13 @@ extension AppServices {
     /// runtime, filesystem evidence, and the durable MeetingStore adapter.
     var startRecording: StartRecording {
         let runtime: any StartRecordingRuntime
-        if isRecordingFailureFixture {
+        if BenchSyntheticCapturePolicy.requested(
+            arguments: ProcessInfo.processInfo.arguments
+        ) {
+            runtime = BenchSyntheticStartRecordingRuntime(
+                services: self,
+                audioRoot: Self.audioRoot)
+        } else if isRecordingFailureFixture {
             runtime = UITestStartRecordingFailureRuntime()
         } else if isSystemCaptureStallFixture {
             runtime = UITestSystemCaptureStallRuntime()

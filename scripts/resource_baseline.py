@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DEFAULT_CONTRACT = (
     Path(__file__).resolve().parents[1]
     / "docs"
@@ -231,6 +231,7 @@ def validate_contract(document):
             "schemaVersion",
             "minimumStableSamples",
             "maximumTimingP95ToP50Ratio",
+            "recordingInput",
             "profiles",
             "scenarios",
         ),
@@ -253,6 +254,10 @@ def validate_contract(document):
         raise ResourceBaselineError(
             "contract.maximumTimingP95ToP50Ratio must be <= 1.25"
         )
+    recording_input = validate_recording_input(
+        contract["recordingInput"],
+        "contract.recordingInput",
+    )
     if not isinstance(contract["profiles"], list) or not contract["profiles"]:
         raise ResourceBaselineError("contract.profiles must be a non-empty array")
     if not isinstance(contract["scenarios"], list) or not contract["scenarios"]:
@@ -335,6 +340,7 @@ def validate_contract(document):
     return {
         "minimumSamples": minimum_samples,
         "maximumTimingRatio": maximum_timing_ratio,
+        "recordingInput": recording_input,
         "profiles": profiles,
         "scenarios": scenarios,
     }
@@ -352,6 +358,23 @@ def validate_build(raw, path):
     if build["configuration"] != "release":
         raise ResourceBaselineError(f"{path}.configuration must be release")
     return build
+
+
+def validate_recording_input(raw, path):
+    value = object_shape(
+        raw,
+        path,
+        ("generation", "sampleRate", "chunkFrames"),
+    )
+    if value["generation"] != "public-synthetic-dual-channel-v1":
+        raise ResourceBaselineError(
+            f"{path}.generation must be public-synthetic-dual-channel-v1"
+        )
+    if integer(value["sampleRate"], f"{path}.sampleRate", 1) != 16_000:
+        raise ResourceBaselineError(f"{path}.sampleRate must be 16000")
+    if integer(value["chunkFrames"], f"{path}.chunkFrames", 1) != 1_600:
+        raise ResourceBaselineError(f"{path}.chunkFrames must be 1600")
+    return dict(value)
 
 
 def validate_host(raw, path, contract):
@@ -803,6 +826,7 @@ def validate_receipt(document, contract, label):
             "build",
             "host",
             "toolchain",
+            "recordingInput",
             "scenarios",
         ),
         ("askPipeline",),
@@ -817,6 +841,14 @@ def validate_receipt(document, contract, label):
     build = validate_build(receipt["build"], f"{label}.build")
     host = validate_host(receipt["host"], f"{label}.host", contract)
     toolchain = validate_toolchain(receipt["toolchain"], f"{label}.toolchain")
+    recording_input = validate_recording_input(
+        receipt["recordingInput"],
+        f"{label}.recordingInput",
+    )
+    if recording_input != contract["recordingInput"]:
+        raise ResourceBaselineError(
+            f"{label}.recordingInput does not match the contract"
+        )
     if not isinstance(receipt["scenarios"], list):
         raise ResourceBaselineError(f"{label}.scenarios must be an array")
     scenarios = {}
@@ -850,6 +882,7 @@ def validate_receipt(document, contract, label):
         "build": dict(build),
         "host": dict(host),
         "toolchain": dict(toolchain),
+        "recordingInput": recording_input,
         "scenarios": scenarios,
         "askPipeline": ask_pipeline,
     }
@@ -1206,6 +1239,7 @@ def assemble_namespace(arguments):
         "build": build,
         "host": host,
         "toolchain": toolchain,
+        "recordingInput": contract["recordingInput"],
         "scenarios": [
             {
                 "id": scenario,
@@ -1239,6 +1273,10 @@ def render_markdown(scorecard):
         f"- Outcome: **{scorecard['outcome'].upper()}**",
         f"- Version/build: `{build['version']} ({build['build']})`",
         f"- Commit: `{build['commit']}`",
+        "- Recording input: "
+        f"`{scorecard['recordingInput']['generation']}` at "
+        f"{scorecard['recordingInput']['sampleRate']} Hz / "
+        f"{scorecard['recordingInput']['chunkFrames']} frames",
         f"- Minimum stable samples: `{scorecard['minimumStableSamples']}`",
         "- Maximum timing p95/p50 ratio: "
         f"`{scorecard['maximumTimingP95ToP50Ratio']:.2f}`",
@@ -1426,6 +1464,7 @@ def evaluate_namespace(arguments):
         "generatedAt": utc_now(),
         "build": build,
         "outcome": outcome,
+        "recordingInput": contract["recordingInput"],
         "minimumStableSamples": contract["minimumSamples"],
         "maximumTimingP95ToP50Ratio": contract["maximumTimingRatio"],
         "profiles": sorted(profile_metadata, key=lambda value: value["profile"]),

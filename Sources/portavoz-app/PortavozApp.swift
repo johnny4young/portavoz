@@ -10,6 +10,8 @@ struct PortavozApp: App {
 
     init() {
         let process = ProcessInfo.processInfo
+        BenchResourceProcessWatchdog.runIfRequested(
+            arguments: process.arguments)
         BenchResourceLaunchProbe.runIfRequested(arguments: process.arguments)
         if process.arguments.contains("-reset-app-language")
             || process.environment["PORTAVOZ_RESET_APP_LANGUAGE"] == "1" {

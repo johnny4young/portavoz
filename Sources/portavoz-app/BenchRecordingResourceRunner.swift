@@ -7,35 +7,49 @@ import Foundation
 /// after Start succeeds, remains inside the active recording lifetime, and
 /// freezes before product Stop so the scenarios stay independently attributable.
 enum BenchRecordingResourceRunner {
+    private struct Configuration {
+        let seconds: Int
+        let usesSyntheticCapture: Bool
+        let baselineProbes: BenchRecordResourceProbes?
+        let concurrentProbe: BenchConcurrentRecordingResourceProbe?
+        let batchConfiguration: BenchBatchResourceConfiguration?
+    }
+
     @MainActor
     static func runIfRequested(
         services: AppServices,
         recording: RecordingController
     ) {
         let arguments = ProcessInfo.processInfo.arguments
-        guard let flag = arguments.firstIndex(of: "--bench-record") else {
+        guard arguments.contains("--bench-record") else {
             return
         }
         guard arguments.contains("-use-temp-store") else {
             emit("bench-record: -use-temp-store is required")
             exit(1)
         }
-        let seconds = arguments.indices.contains(flag + 1)
-            ? Int(arguments[flag + 1]) ?? 60
-            : 60
-        let baselineProbes: BenchRecordResourceProbes?
-        let concurrentProbe: BenchConcurrentRecordingResourceProbe?
-        let batchConfiguration: BenchBatchResourceConfiguration?
+        let seconds: Int
+        let configuration: Configuration
         do {
-            batchConfiguration = try BenchBatchResourceConfiguration
+            seconds = try BenchRecordingResourcePolicy.duration(
+                arguments: arguments)
+            let usesSyntheticCapture = try BenchSyntheticCapturePolicy
+                .validateResourceRequest(arguments: arguments)
+            let batchConfiguration = try BenchBatchResourceConfiguration
                 .requested(arguments: arguments)
-            concurrentProbe = try BenchConcurrentRecordingResourceProbe
+            let concurrentProbe = try BenchConcurrentRecordingResourceProbe
                 .requested(arguments: arguments)
-            baselineProbes = if concurrentProbe == nil {
+            let baselineProbes: BenchRecordResourceProbes? = if concurrentProbe == nil {
                 try BenchRecordResourceProbes.requested(arguments: arguments)
             } else {
                 nil
             }
+            configuration = Configuration(
+                seconds: seconds,
+                usesSyntheticCapture: usesSyntheticCapture,
+                baselineProbes: baselineProbes,
+                concurrentProbe: concurrentProbe,
+                batchConfiguration: batchConfiguration)
         } catch {
             emit(
                 "bench-record: resource probe setup FAILED: "
@@ -49,14 +63,11 @@ enum BenchRecordingResourceRunner {
                 try await execute(
                     services: services,
                     recording: recording,
-                    seconds: seconds,
-                    baselineProbes: baselineProbes,
-                    concurrentProbe: concurrentProbe,
-                    batchConfiguration: batchConfiguration)
+                    configuration: configuration)
                 exit(0)
             } catch {
-                baselineProbes?.cancel()
-                concurrentProbe?.cancel()
+                configuration.baselineProbes?.cancel()
+                configuration.concurrentProbe?.cancel()
                 if recording.phase == .recording {
                     _ = await stopRecording(
                         recording,
@@ -73,28 +84,29 @@ enum BenchRecordingResourceRunner {
     private static func execute(
         services: AppServices,
         recording: RecordingController,
-        seconds: Int,
-        baselineProbes: BenchRecordResourceProbes?,
-        concurrentProbe: BenchConcurrentRecordingResourceProbe?,
-        batchConfiguration: BenchBatchResourceConfiguration?
+        configuration: Configuration
     ) async throws {
-        guard await services.authorizeMicrophoneForRecording() else {
+        if configuration.usesSyntheticCapture {
+            emit(
+                "bench-record: capture input "
+                    + BenchSyntheticCapturePolicy.generation)
+        } else if !(await services.authorizeMicrophoneForRecording()) {
             throw BenchRecordingResourceRunnerError.microphonePermissionRequired
         }
         let concurrentWorkload = try await prepareConcurrentWorkload(
             services: services,
             arguments: ProcessInfo.processInfo.arguments,
-            batchConfiguration: batchConfiguration)
+            batchConfiguration: configuration.batchConfiguration)
 
         try await prepareRecording(
             services: services,
             recording: recording,
-            baselineProbes: baselineProbes,
-            concurrentProbe: concurrentProbe)
+            baselineProbes: configuration.baselineProbes,
+            concurrentProbe: configuration.concurrentProbe)
 
         let concurrentTask = concurrentWorkload.map { workload in
             Task { @MainActor in
-                guard let concurrentProbe else {
+                guard let concurrentProbe = configuration.concurrentProbe else {
                     throw BenchConcurrentProbeError
                         .incompleteLifecycle
                 }
@@ -103,20 +115,21 @@ enum BenchRecordingResourceRunner {
                     timeoutSeconds: concurrentProbe.timeoutSeconds)
             }
         }
-        let peak = await sampleRecordingFootprint(seconds: seconds)
+        let peak = await sampleRecordingFootprint(
+            seconds: configuration.seconds)
         if let concurrentTask {
             emit(try await concurrentTask.value)
         }
         emit(String(
             format: "bench-record: peak footprint %.0f MB over %d s",
             peak,
-            seconds))
+            configuration.seconds))
 
         try await finishRecording(
             services: services,
             recording: recording,
-            baselineProbes: baselineProbes,
-            concurrentProbe: concurrentProbe)
+            baselineProbes: configuration.baselineProbes,
+            concurrentProbe: configuration.concurrentProbe)
     }
 
     @MainActor
@@ -177,6 +190,10 @@ enum BenchRecordingResourceRunner {
         var peak: Double = 0
         for _ in 0..<(seconds / 2) {
             try? await Task.sleep(for: .seconds(2))
+            peak = max(peak, physicalFootprintMB())
+        }
+        if !seconds.isMultiple(of: 2) {
+            try? await Task.sleep(for: .seconds(1))
             peak = max(peak, physicalFootprintMB())
         }
         return peak
@@ -284,6 +301,23 @@ enum BenchRecordingResourceRunner {
     }
 }
 
+enum BenchRecordingResourcePolicy {
+    static func duration(arguments: [String]) throws -> Int {
+        let indexes = arguments.indices.filter {
+            arguments[$0] == "--bench-record"
+        }
+        guard indexes.count == 1,
+              let index = indexes.first,
+              arguments.indices.contains(index + 1),
+              let seconds = Int(arguments[index + 1]),
+              (30...600).contains(seconds)
+        else {
+            throw BenchRecordingResourceRunnerError.invalidDuration
+        }
+        return seconds
+    }
+}
+
 private enum BenchConcurrentRecordingWorkload {
     case batch(BenchBatchResourceWorkload)
     case indexing(BenchIndexingResourceWorkload)
@@ -311,13 +345,16 @@ private enum BenchConcurrentRecordingWorkload {
     }
 }
 
-private enum BenchRecordingResourceRunnerError: Error, LocalizedError {
+enum BenchRecordingResourceRunnerError: Error, Equatable, LocalizedError {
+    case invalidDuration
     case microphonePermissionRequired
     case startFailed(String)
     case stopTimedOut
 
     var errorDescription: String? {
         switch self {
+        case .invalidDuration:
+            "--bench-record must occur once with a duration between 30 and 600 seconds"
         case .microphonePermissionRequired:
             "grant microphone access to Portavoz Resource Bench and rerun"
         case .startFailed(let reason):

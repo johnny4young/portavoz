@@ -14720,6 +14720,8 @@ exception is not a distribution, security, notarization, or same-team signing
 claim. Microphone TCC remains an honest interactive host prerequisite, and the
 result still does not certify other memory tiers, physical Sequoia/Tahoe,
 VoiceOver/Voice Control, production CloudKit, hosted CI, or field behavior.
+For candidate automation this prerequisite is superseded by D398's explicitly
+synthetic recording input; physical capture keeps the interactive field gate.
 
 ## D397 — Read the signed library-validation entitlement literally (Aug 2026)
 
@@ -14743,3 +14745,48 @@ scratch app or tempt a future change to remove the security assertion. This is
 only a candidate-runner correction. It does not qualify the failed candidate,
 change shipping entitlements, relax library validation for real identities, or
 certify resource, TCC, distribution, physical-host, or field gates.
+
+## D398 — Make recording resource evidence autonomous and finite (Aug 2026)
+
+**Context:** the exact clean `2b1c9ab` candidate passed deterministic scope,
+2,750 package tests, isolated correction timing, recording stress, scoped
+bilingual UI, public fixtures, installed-model gates, and the authoritative
+measured performance partition. Its first Release recording-resource process
+then waited indefinitely before writing a log or fragment. A content-free
+process sample showed no runnable benchmark worker, while TCC recorded an
+interactive microphone prompt for `app.portavoz.mac.resource-bench`: the
+scratch app had been re-signed ad hoc, so its code requirement no longer
+matched the existing Developer-ID microphone grant. Candidate automation had
+both delegated routine QA to the user and exposed an unbounded process wait.
+
+**Decision:** candidate resource recording no longer uses physical input. The
+three recording cells require one hidden runtime only when all of
+`-use-temp-store`, `--bench-record`, `--bench-resource-output`, and
+`--bench-resource-synthetic-capture` are present. It emits a bounded public
+real-time 16 kHz microphone/system signal and feeds the production
+`RecordingSession`, CAF writers, live-transcription attachment, Stop workflow,
+resource telemetry, semantic-indexing concurrency, and batch-transcription
+concurrency. It constructs neither `MicrophoneSource` nor `ProcessTapSource`
+and makes no TCC request. Resource receipt schema 2 binds the exact
+`public-synthetic-dual-channel-v1`, 16 kHz, 1,600-frame input contract; missing,
+different, or content-bearing provenance fails closed.
+
+Every LaunchServices benchmark invocation also receives one bounded in-app
+watchdog, armed before database and service composition. The
+watchdog admission requires a disposable isolated benchmark, accepts only one
+60–7,200-second value, and exits with status 124 if AppKit, TCC, model work, or
+teardown outlives the owner timeout. The shell requires that bound to exceed
+both the tighter model-operation timeout and the longest idle-plus-recording
+phase by at least 420 seconds. A separate shell guard gives the in-app owner 30
+additional seconds, then terminates only the disposable scratch app and its
+`open -W` wait if LaunchServices itself has not returned. A timeout writes no
+passing sample, resource receipt, or candidate qualification.
+
+**Consequences:** a clean candidate can measure realistic product recording
+interference repeatedly without private meetings, user audio, TCC resets, or a
+human permission click, and it cannot wait forever. This deliberately removes
+physical capture and permission behavior from candidate automation rather than
+faking their success. Real microphone/process-tap TCC, device routing,
+acoustics, 90-minute calls, additional memory tiers, physical Sequoia/Tahoe,
+VoiceOver/Voice Control, distribution, CloudKit, hosted CI, and field behavior
+remain separate gates.

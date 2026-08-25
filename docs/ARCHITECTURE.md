@@ -3150,8 +3150,16 @@ participant-identity root. It never reads or writes the host Keychain,
 voiceprint, or participant-voice gallery. Production composition continues to
 use the Keychain and its durable identity root. Resource scenarios reuse the
 normal SHA-256-verified model cache only when their measured operation requires
-it. After scenario assets are prepared but before counters start, a
-benchmark-only readiness gate requires two consecutive nominal thermal
+it. The three recording scenarios require the exact public
+`public-synthetic-dual-channel-v1` real-time 16 kHz input through the production
+recording session, writers, live-model feeds, Stop workflow, and concurrent
+schedulers. Receipt schema 2 records that generation, sample rate, and chunk
+size. The hidden runtime is admitted only by the conjunction of temporary
+store, recording-resource output, and synthetic-input flags; it never
+constructs physical capture sources, asks TCC, or reads user audio. Physical
+microphone/system capture, device routes, and permission behavior remain
+separate field evidence. After scenario assets are prepared but before counters
+start, a benchmark-only readiness gate requires two consecutive nominal thermal
 observations five seconds apart and fails closed after five minutes. This
 excludes pressure inherited from an earlier scenario while preserving pressure
 created by the measured work itself. A five-second launch-settling interval
@@ -3159,8 +3167,15 @@ also precedes the model-free idle gate, and ordinary XCUITest launches keep
 their existing empty temporary model root. Every scenario launches the copied,
 signed application bundle through LaunchServices; no SwiftUI/AppKit benchmark
 executes the inner Mach-O directly. This keeps application resource policy,
-bundle identity, environment inheritance, and TCC behavior aligned across
-recording and non-recording evidence.
+bundle identity, and environment inheritance aligned without turning
+interactive TCC into a candidate prerequisite. An in-app watchdog is armed
+before database/app composition and exits with a distinct status if AppKit,
+model work, or teardown exceeds its bounded owner timeout. The shell requires
+that timeout to exceed both the model-operation bound and the longest
+idle-plus-recording window by 420 seconds; a separate 30-second grace guard then
+terminates only the disposable scratch app and its `open -W` owner if
+LaunchServices itself does not return. Operation-specific model timeouts remain
+tighter.
 Once a resource benchmark dispatcher is armed, app initialization returns
 before sync, recovery, provider discovery, or dictation registration can start;
 the AppKit delegate remains detached from product services. The benchmark owns
@@ -4327,6 +4342,9 @@ ad-hoc-signed Sparkle framework and must pass an in-process launch marker before
 resource collection. A candidate run therefore does not silently consume a
 user's recording, performance inputs, signing identity, or network merely
 because they were exported or reachable in the parent shell.
+The recording cells additionally require the schema-2 public synthetic input
+identity and bounded process watchdog, so a new TCC prompt or suspended app
+cannot delegate routine candidate QA to the user or wait indefinitely.
 
 The performance proof is deliberately named candidate automation rather than
 universal performance certification. Twelve scale/semantic/Spotlight metrics
