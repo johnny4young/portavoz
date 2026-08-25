@@ -4330,9 +4330,10 @@ resource scenarios, two UI locales, and the performance-ledger partition.
 `scripts/candidate_automation.py` requires a completely clean checkout, fixes
 one full source commit, and rechecks that identity around every sequential
 gate. It directly runs the deterministic release suite, public bilingual
-Apuntador corpus, installed-model classes, strict performance ledger,
-current-host Release resource baseline, canonical synthetic three-hour
-capture, upgrade/recovery classes, and complete bilingual real-app XCUITest.
+Apuntador corpus, installed-model classes, authoritative performance ledger
+plus finite confirmation, current-host Release resource baseline, canonical
+synthetic three-hour capture, upgrade/recovery classes, and complete bilingual
+real-app XCUITest.
 Specialized validators then require the deterministic receipt's exact release
 identity, an authoritative performance inventory, three passing resource
 samples for every scenario plus the Ask timing pipeline, zero-drift bounded
@@ -4363,16 +4364,29 @@ identity and bounded process watchdog, so a new TCC prompt or suspended app
 cannot delegate routine candidate QA to the user or wait indefinitely.
 
 The performance proof is deliberately named candidate automation rather than
-universal performance certification. Twelve scale/semantic/Spotlight metrics
-must be measured and pass or remain diagnostic only where their tracked
-threshold has no release budget. The other thirteen tracked waveform,
-Instruments, and manual/real-data metrics must remain explicitly
-`not-measured` in this runner—neither absent nor silently green—and continue to
-be owned by their specialized or physical evidence lanes. Likewise, the
-resource proof describes the one actual Mac that ran the candidate; it does
-not stand in for the 8 GB/16 GB/reference matrix, Sequoia/Tahoe hardware,
-assistive technology, signed distribution, production CloudKit, hosted CI, or
-user-field evidence.
+universal performance certification. Candidate contract schema 2 pins the
+same three-run confirmation count as PERF-008. The runner begins with one
+non-strict authoritative ledger. A clean ledger is canonical immediately; a
+regression candidate opens exactly two more sequential ledgers on the same
+host and toolchain. The fixed set blocks when one metric is a candidate in all
+three runs, or when different candidate sets leave no completely clean run.
+Otherwise the last clean ledger is atomically published as the canonical
+performance proof while all three raw ledgers and a content-free receipt of
+their digests and candidate metric IDs are retained. A hard budget,
+unresolved, unstable, authority, exit-state, identity, or digest failure always
+blocks. This is finite confirmation of one candidate observation, not an
+unchanged full-candidate retry or permission to cherry-pick arbitrary green
+runs.
+
+Twelve scale/semantic/Spotlight metrics must be measured and pass or remain
+diagnostic only where their tracked threshold has no release budget. The other
+thirteen tracked waveform, Instruments, and manual/real-data metrics must
+remain explicitly `not-measured` in this runner—neither absent nor silently
+green—and continue to be owned by their specialized or physical evidence
+lanes. Likewise, the resource proof describes the one actual Mac that ran the
+candidate; it does not stand in for the 8 GB/16 GB/reference matrix,
+Sequoia/Tahoe hardware, assistive technology, signed distribution, production
+CloudKit, hosted CI, or user-field evidence.
 
 The deterministic package gate keeps failure diagnosis private without making
 an unchanged retry part of release proof. `run-release-reliability-gates.sh`

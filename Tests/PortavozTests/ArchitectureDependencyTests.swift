@@ -9955,7 +9955,7 @@ final class ArchitectureDependencyTests: XCTestCase {
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {
         let contract = try Self.jsonObject(
             at: "docs/evidence/candidate-automation.json")
-        XCTAssertEqual(contract["schemaVersion"] as? Int, 1)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 2)
         XCTAssertEqual(
             contract["kind"] as? String,
             "candidate-automation-contract")
@@ -9981,6 +9981,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertEqual(measured.count, 12)
         XCTAssertEqual(unmeasured.count, 13)
         XCTAssertTrue(measured.isDisjoint(with: unmeasured))
+        XCTAssertEqual(performance["confirmationRuns"] as? Int, 3)
         let modelFixture = try XCTUnwrap(
             contract["modelFixture"] as? [String: Any])
         XCTAssertEqual(
@@ -10007,6 +10008,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             "scripts/run-release-reliability-gates.sh",
             "make\", \"test-apuntador-validation",
             "scripts/run-perf-ledger.sh",
+            "run_candidate_performance_gate",
+            "performance-regression-confirmation",
+            "accepted_exit_codes=(0, 2)",
+            "PORTAVOZ_PERF_STRICT\": \"0",
             "scripts/run-resource-baseline.sh",
             "scripts/run-long-capture-baseline.sh",
             "make\", \"test-ui-bilingual",
@@ -10042,6 +10047,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Tests.Tooling.test_candidate_automation"))
         XCTAssertTrue(decisions.contains("## D392"))
         XCTAssertTrue(decisions.contains("## D393"))
+        XCTAssertTrue(decisions.contains("## D401"))
     }
 
     func testRealModelGateReservesContextAndNeverEchoesTranscriptContent() throws {

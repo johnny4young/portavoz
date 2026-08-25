@@ -2389,13 +2389,14 @@ gate always runs them. An architecture ratchet pins the schema, 29 proofs,
 eight classes, fail-closed predicate, exact artifact stamp, distribution
 receipt ordering, D147, and D391.
 
-**Candidate automation owner (D392–D400).**
+**Candidate automation owner (D392–D401).**
 `docs/evidence/candidate-automation.json` is the finite executable contract for
 the eight candidate proofs. `scripts/candidate_automation.py` runs every gate
 sequentially on one completely clean full commit and rechecks the source before
 and after each command. It directly owns deterministic reliability, public
 bilingual Apuntador validation, six installed-model Release classes, the
-strict performance ledger, one current-host Release resource receipt, the
+authoritative performance ledger and its finite PERF-008 confirmation, one
+current-host Release resource receipt, the
 canonical synthetic three-hour capture, seven upgrade/recovery classes, and
 the complete bilingual real-app XCUITest catalog. It has no arbitrary proof
 recorder; only the successful in-process sequence writes the schema-1
@@ -2444,7 +2445,19 @@ Specialized validation is fail closed. The performance ledger must be
 authoritative, contain its exact 25-metric inventory, measure all twelve
 scale/semantic/Spotlight metrics in `pass` or budgetless `diagnostic` state,
 and retain exactly thirteen declared non-autonomous metrics as
-`not-measured`. The resource receipt must match version/build/full commit,
+`not-measured`. Candidate contract schema 2 also pins PERF-008's three-run
+authority. One clean first ledger proceeds without repetition. A first
+`regression-candidate` runs exactly two additional sequential non-strict
+ledgers on the identical host and toolchain; every ledger and its SHA-256 is
+retained. A metric present in all three candidate sets is a confirmed blocker.
+Different candidates with no clean run are inconclusive and block. Otherwise
+the last clean run is atomically copied to the canonical performance directory,
+alongside a validated content-free confirmation receipt. Exit-state mismatch,
+tampering, hard budget failure, instability, unresolved evidence, identity
+drift, or a non-authoritative ledger blocks before qualification. This fixed
+set is not an arbitrary green retry and never changes a baseline.
+
+The resource receipt must match version/build/full commit,
 Release configuration, and the automatically selected host profile; all nine
 scenarios and the Ask pipeline must pass with exactly three samples. The long
 capture must conserve the canonical three logical hours with zero drift and
@@ -2453,9 +2466,11 @@ zero budget violations, only passed cases, EN and ES, selector count zero, and
 one shared build duration. Runtime UI receipts are now published atomically as
 owner-only files so interruption cannot leave a partially accepted JSON file.
 
-Twenty-four adversarial tooling cases cover contract/order drift, content-bearing
+Thirty-one adversarial tooling cases cover contract/order drift, content-bearing
 or duplicate keys, incomplete performance partitions, non-authoritative and
-regressed ledgers, silent omissions, resource identity/sample/Ask failures,
+regressed ledgers, silent omissions, fixed-set confirmation, confirmed and
+inconclusive regressions, exit/host/toolchain mismatch, retained-ledger
+tampering, resource identity/sample/Ask failures,
 stale long-capture commits, incomplete or over-budget bilingual UI receipts,
 profile gaps, non-empty bounded public speech audio, scratch-audio cleanup,
 long distinct alternating conversation turns, exact private PCM joining,
@@ -3197,7 +3212,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   multi-host evidence remains required.
 - `portavoz-cli bench-waveform`: Release first/repeat wall, process CPU, physical-footprint, exact-result, and replacement-invalidation evidence over source audio copied to scratch.
 - `scripts/run-spotlight-scale-baseline.sh`: isolated Release legacy/snapshot projection matrix at 1k/10k/100k meetings, exact fingerprint comparison, and optional synthetic-only protected-index delivery/cleanup.
-- `make perf-ledger` (`scripts/run-perf-ledger.sh` + `scripts/perf_ledger.py`): the release gate (PERF-001/PERF-008). It runs the unattended harnesses, resolves every metric declared in `docs/evidence/perf-thresholds.json` out of their reports, and answers with one JSON + Markdown scorecard and one exit code. Budgets come from the Target column below; nothing is invented in the contract. An absolute miss fails the run; a regression beyond 15% (latency) or 20% (footprint) against the committed baseline is reported as a candidate, because PERF-008 requires three stable runs before a regression counts. A metric whose harness did not run is printed as **not measured** rather than omitted, and the run claims `authoritative` only when every report comes from one release build on one Apple Silicon machine matching the baseline — hosted CI and mixed hosts stay informational. The gate also refuses to convict on a measurement that disagrees with itself: when a timed metric's p95 exceeds its own p50 by more than 1.25x, the 20 iterations did not agree, so a budget miss is reported as **verdict withheld** rather than a failure, and the run drops to informational because PERF-001's "stable machine" is a claim about the machine's state, not only its identity. The rule applies only to timed units with enough samples for p95 to differ from the maximum — byte deltas move with page granularity rather than with scheduling, and a three-run distribution has no tail to speak of. Each run also stamps the Swift/Xcode toolchain onto every report it produces, because a shift in the numbers is otherwise indistinguishable from a codegen change: when the baseline was measured with a different toolchain — or, like the July 2026 evidence, predates the stamp entirely — the scorecard prints a **Comparability** caveat. That caveat qualifies what a delta can be attributed to; it never costs the run its authority, which PERF-001 grants on the machine alone. `Tests/Tooling/test_perf_ledger.py` covers the budget, regression, honesty, authority, toolchain, selector, and contract rules.
+- `make perf-ledger` (`scripts/run-perf-ledger.sh` + `scripts/perf_ledger.py`): the release gate (PERF-001/PERF-008). It runs the unattended harnesses, resolves every metric declared in `docs/evidence/perf-thresholds.json` out of their reports, and answers with one JSON + Markdown scorecard and one exit code. Budgets come from the Target column below; nothing is invented in the contract. An absolute miss fails the run; a regression beyond 15% (latency) or 20% (footprint) against the committed baseline is reported as a candidate, because PERF-008 requires three stable runs before a regression counts. The standalone `PORTAVOZ_PERF_STRICT=1` switch still turns one candidate into an operator-requested blocker; candidate automation instead owns the fixed three-run D401 confirmation and never treats a single candidate as a final regression. A metric whose harness did not run is printed as **not measured** rather than omitted, and the run claims `authoritative` only when every report comes from one release build on one Apple Silicon machine matching the baseline — hosted CI and mixed hosts stay informational. The gate also refuses to convict on a measurement that disagrees with itself: when a timed metric's p95 exceeds its own p50 by more than 1.25x, the 20 iterations did not agree, so a budget miss is reported as **verdict withheld** rather than a failure, and the run drops to informational because PERF-001's "stable machine" is a claim about the machine's state, not only its identity. The rule applies only to timed units with enough samples for p95 to differ from the maximum — byte deltas move with page granularity rather than with scheduling, and a three-run distribution has no tail to speak of. Each run also stamps the Swift/Xcode toolchain onto every report it produces, because a shift in the numbers is otherwise indistinguishable from a codegen change: when the baseline was measured with a different toolchain — or, like the July 2026 evidence, predates the stamp entirely — the scorecard prints a **Comparability** caveat. That caveat qualifies what a delta can be attributed to; it never costs the run its authority, which PERF-001 grants on the machine alone. `Tests/Tooling/test_perf_ledger.py` covers the budget, regression, honesty, authority, toolchain, selector, and contract rules.
 
 The 8 Aug 2026 audit run on the authoritative reference host passed exact FTS
 (23.33 ms), lexical Ask (47.59 ms), and Spotlight at 100k (394.13 ms wall,

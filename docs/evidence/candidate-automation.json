@@ -23,6 +23,7 @@
       "diagnostic",
       "pass"
     ],
+    "confirmationRuns": 3,
     "allowedNotMeasuredMetricIDs": [
       "capture.drift-30min",
       "detail.first-content",
@@ -79,7 +80,7 @@
       "summary"
     ]
   },
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "ui": {
     "budget": "docs/evidence/ui-test-runtime-budget.json",
     "locales": [

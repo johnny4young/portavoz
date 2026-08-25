@@ -27,6 +27,7 @@ class CandidateAutomationTests(unittest.TestCase):
         self.contract = candidate.load_contract()
 
     def test_tracked_contract_is_exact_and_complete(self):
+        self.assertEqual(self.contract_document["schemaVersion"], 2)
         self.assertEqual(
             self.contract["proofs"],
             (
@@ -82,6 +83,8 @@ class CandidateAutomationTests(unittest.TestCase):
             metric["id"] for metric in thresholds["metrics"]
         })
         self.assertFalse(measured & unmeasured)
+        self.assertEqual(self.contract["performance"]["confirmationRuns"], 3)
+        self.assertEqual(thresholds["regression"]["confirmationRuns"], 3)
 
     def test_contract_rejects_proof_order_drift_and_extra_content(self):
         drifted = copy.deepcopy(self.contract_document)
@@ -109,6 +112,14 @@ class CandidateAutomationTests(unittest.TestCase):
             "partition every threshold metric",
         ):
             candidate.validate_contract(drifted)
+
+        weakened = copy.deepcopy(self.contract_document)
+        weakened["performance"]["confirmationRuns"] = 2
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "three-run PERF-008 contract",
+        ):
+            candidate.validate_contract(weakened)
 
     def test_contract_rejects_weaker_resource_or_ui_scope(self):
         weak_resource = copy.deepcopy(self.contract_document)
@@ -199,6 +210,272 @@ class CandidateAutomationTests(unittest.TestCase):
                 "notMeasured is inconsistent",
             ):
                 candidate.validate_performance_ledger(path, self.contract)
+
+    def test_candidate_performance_gate_stops_after_a_clean_first_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            performance = Path(directory) / "performance"
+            side_effect = self.performance_run_side_effect({1: ()})
+            with mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=side_effect,
+            ) as command:
+                candidate.run_candidate_performance_gate(
+                    ROOT,
+                    self.commit,
+                    performance,
+                    self.contract,
+                    environment={},
+                )
+
+            self.assertEqual(command.call_count, 1)
+            confirmation = json.loads(
+                (performance / "confirmation.json").read_text()
+            )
+            self.assertEqual(confirmation["outcome"], "clean-first-run")
+            self.assertEqual(confirmation["observedRuns"], 1)
+            self.assertEqual(confirmation["selectedRun"], 1)
+            self.assertTrue((performance / "ledger.json").is_file())
+            self.assertFalse(
+                (Path(directory) / "performance-confirmation" / "run-2").exists()
+            )
+            environment = command.call_args.kwargs["environment"]
+            self.assertEqual(environment["PORTAVOZ_PERF_STRICT"], "0")
+            self.assertEqual(command.call_args.kwargs["accepted_exit_codes"], (0, 2))
+
+    def test_run_command_accepts_declared_exit_and_rechecks_source(self):
+        completed = mock.Mock(returncode=2)
+        with mock.patch.object(
+            candidate,
+            "exact_checkout",
+            return_value=self.commit,
+        ) as checkout, mock.patch.object(
+            candidate,
+            "developer_environment",
+            return_value={},
+        ), mock.patch.object(
+            candidate.subprocess,
+            "run",
+            return_value=completed,
+        ):
+            exit_code = candidate.run_command(
+                ROOT,
+                self.commit,
+                "candidate exit",
+                ["false"],
+                accepted_exit_codes=(0, 2),
+            )
+
+        self.assertEqual(exit_code, 2)
+        self.assertEqual(checkout.call_count, 2)
+        with self.assertRaisesRegex(
+            candidate.CandidateAutomationError,
+            "invalid accepted exit codes",
+        ):
+            candidate.run_command(
+                ROOT,
+                self.commit,
+                "invalid exit policy",
+                ["false"],
+                accepted_exit_codes=(False,),
+            )
+
+    def test_candidate_performance_gate_retains_fixed_set_and_selects_last_clean(self):
+        metric = self.contract["performance"]["requiredMeasuredMetricIDs"][0]
+        with tempfile.TemporaryDirectory() as directory:
+            performance = Path(directory) / "performance"
+            side_effect = self.performance_run_side_effect({
+                1: (metric,),
+                2: (),
+                3: (),
+            })
+            with mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=side_effect,
+            ) as command:
+                candidate.run_candidate_performance_gate(
+                    ROOT,
+                    self.commit,
+                    performance,
+                    self.contract,
+                    environment={},
+                )
+
+            self.assertEqual(command.call_count, 3)
+            confirmation = json.loads(
+                (performance / "confirmation.json").read_text()
+            )
+            self.assertEqual(confirmation["outcome"], "unconfirmed-regression")
+            self.assertEqual(confirmation["observedRuns"], 3)
+            self.assertEqual(confirmation["selectedRun"], 3)
+            self.assertEqual(confirmation["initialCandidateMetricIDs"], [metric])
+            self.assertEqual(confirmation["confirmedRegressionMetricIDs"], [])
+            canonical = json.loads((performance / "ledger.json").read_text())
+            measured = next(
+                item["measured"] for item in canonical["metrics"]
+                if item["id"] == metric
+            )
+            self.assertEqual(measured, 3.0)
+            runs_root = Path(directory) / "performance-confirmation"
+            self.assertTrue(all(
+                (runs_root / f"run-{run}" / "ledger.json").is_file()
+                for run in range(1, 4)
+            ))
+
+    def test_candidate_performance_gate_blocks_confirmed_regression(self):
+        metric = self.contract["performance"]["requiredMeasuredMetricIDs"][0]
+        with tempfile.TemporaryDirectory() as directory:
+            performance = Path(directory) / "performance"
+            side_effect = self.performance_run_side_effect({
+                1: (metric,),
+                2: (metric,),
+                3: (metric,),
+            })
+            with mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=side_effect,
+            ), self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "regression confirmed across three runs",
+            ):
+                candidate.run_candidate_performance_gate(
+                    ROOT,
+                    self.commit,
+                    performance,
+                    self.contract,
+                    environment={},
+                )
+
+            self.assertFalse(performance.exists())
+            confirmation = json.loads((
+                Path(directory)
+                / "performance-confirmation"
+                / "confirmation.json"
+            ).read_text())
+            self.assertEqual(confirmation["outcome"], "confirmed-regression")
+            self.assertEqual(confirmation["confirmedRegressionMetricIDs"], [metric])
+
+    def test_candidate_performance_gate_blocks_inconclusive_mixed_candidates(self):
+        first, second = self.contract["performance"][
+            "requiredMeasuredMetricIDs"
+        ][:2]
+        with tempfile.TemporaryDirectory() as directory:
+            performance = Path(directory) / "performance"
+            side_effect = self.performance_run_side_effect({
+                1: (first,),
+                2: (second,),
+                3: (first,),
+            })
+            with mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=side_effect,
+            ), self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "inconclusive",
+            ):
+                candidate.run_candidate_performance_gate(
+                    ROOT,
+                    self.commit,
+                    performance,
+                    self.contract,
+                    environment={},
+                )
+
+            confirmation = json.loads((
+                Path(directory)
+                / "performance-confirmation"
+                / "confirmation.json"
+            ).read_text())
+            self.assertEqual(confirmation["outcome"], "inconclusive")
+            self.assertIsNone(confirmation["selectedRun"])
+
+    def test_candidate_performance_gate_rejects_exit_and_identity_mismatch(self):
+        metric = self.contract["performance"]["requiredMeasuredMetricIDs"][0]
+        with tempfile.TemporaryDirectory() as directory:
+            side_effect = self.performance_run_side_effect(
+                {1: (metric,)},
+                exit_codes={1: 0},
+            )
+            with mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=side_effect,
+            ), self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "exit status does not match",
+            ):
+                candidate.run_candidate_performance_gate(
+                    ROOT,
+                    self.commit,
+                    Path(directory) / "performance",
+                    self.contract,
+                    environment={},
+                )
+
+        for identity, message in (
+            ("host", "changed host identity"),
+            ("toolchain", "changed toolchain identity"),
+        ):
+            with (
+                self.subTest(identity=identity),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                identities = {2: {identity: {identity: "different"}}}
+                side_effect = self.performance_run_side_effect(
+                    {1: (metric,), 2: (), 3: ()},
+                    identities=identities,
+                )
+                with mock.patch.object(
+                    candidate,
+                    "run_command",
+                    side_effect=side_effect,
+                ), self.assertRaisesRegex(
+                    candidate.CandidateAutomationError,
+                    message,
+                ):
+                    candidate.run_candidate_performance_gate(
+                        ROOT,
+                        self.commit,
+                        Path(directory) / "performance",
+                        self.contract,
+                        environment={},
+                    )
+
+    def test_performance_confirmation_detects_retained_ledger_tampering(self):
+        metric = self.contract["performance"]["requiredMeasuredMetricIDs"][0]
+        with tempfile.TemporaryDirectory() as directory:
+            performance = Path(directory) / "performance"
+            side_effect = self.performance_run_side_effect({
+                1: (metric,),
+                2: (),
+                3: (),
+            })
+            with mock.patch.object(
+                candidate,
+                "run_command",
+                side_effect=side_effect,
+            ):
+                candidate.run_candidate_performance_gate(
+                    ROOT,
+                    self.commit,
+                    performance,
+                    self.contract,
+                    environment={},
+                )
+            runs_root = Path(directory) / "performance-confirmation"
+            (runs_root / "run-2" / "ledger.json").write_text("{}\n")
+            with self.assertRaisesRegex(
+                candidate.CandidateAutomationError,
+                "digest does not match",
+            ):
+                candidate.validate_performance_confirmation(
+                    performance / "confirmation.json",
+                    self.contract,
+                    runs_root=runs_root,
+                )
 
     def test_resource_receipt_requires_exact_release_profile_samples_and_ask(self):
         validated = self.validated_resource_receipt()
@@ -636,7 +913,7 @@ class CandidateAutomationTests(unittest.TestCase):
                 "validate_deterministic_receipt",
             ) as deterministic, mock.patch.object(
                 candidate,
-                "validate_performance_ledger",
+                "run_candidate_performance_gate",
             ) as performance, mock.patch.object(
                 candidate,
                 "validate_resource_receipt",
@@ -657,7 +934,7 @@ class CandidateAutomationTests(unittest.TestCase):
             receipt = json.loads(receipt_path.read_text())
             self.assertEqual(receipt["release"]["commit"], self.commit)
             self.assertEqual(len(receipt["proofs"]), 8)
-            self.assertEqual(commands.call_count, 7)
+            self.assertEqual(commands.call_count, 6)
             conversation.assert_called_once()
             self.assertEqual(swift_classes.call_count, 2)
             self.assertEqual(model_fixture.call_count, 2)
@@ -668,12 +945,8 @@ class CandidateAutomationTests(unittest.TestCase):
                 "Finite deterministic release scope"
             ].kwargs["environment"]
             self.assertIsNone(deterministic_environment["PORTAVOZ_TEST_WAV"])
-            performance_environment = command_by_label[
-                "Strict authoritative performance ledger"
-            ].kwargs["environment"]
-            self.assertIsNone(
-                performance_environment["PORTAVOZ_PERF_WAVEFORM_MIC"]
-            )
+            performance_environment = performance.call_args.kwargs["environment"]
+            self.assertIsNone(performance_environment["PORTAVOZ_TEST_WAV"])
             resource_call = next(
                 call for call in commands.call_args_list
                 if call.args[2].startswith("Release resource baseline")
@@ -788,6 +1061,41 @@ class CandidateAutomationTests(unittest.TestCase):
             self.assertEqual(observed, original)
         finally:
             os.umask(original)
+
+    def performance_run_side_effect(
+        self,
+        candidates_by_run,
+        *,
+        exit_codes=None,
+        identities=None,
+    ):
+        exit_codes = exit_codes or {}
+        identities = identities or {}
+
+        def side_effect(_, __, ___, command, **____):
+            run_root = Path(command[-1])
+            run_number = int(run_root.name.removeprefix("run-"))
+            run_root.mkdir(parents=True)
+            ledger = self.performance_ledger()
+            identity = identities.get(run_number, {})
+            if "host" in identity:
+                ledger["host"] = identity["host"]
+            if "toolchain" in identity:
+                ledger["toolchain"] = identity["toolchain"]
+            candidate_ids = tuple(candidates_by_run.get(run_number, ()))
+            for metric in ledger["metrics"]:
+                if "measured" in metric:
+                    metric["measured"] = float(run_number)
+                if metric["id"] in candidate_ids:
+                    metric["status"] = "regression-candidate"
+            ledger["summary"]["regressionCandidates"] = len(candidate_ids)
+            (run_root / "ledger.json").write_text(json.dumps(ledger))
+            (run_root / "ledger.md").write_text("# Performance\n")
+            for name in ("scale.json", "semantic.json", "spotlight.json"):
+                (run_root / name).write_text("{}\n")
+            return exit_codes.get(run_number, 2 if candidate_ids else 0)
+
+        return side_effect
 
     def performance_ledger(self):
         required = self.contract["performance"]["requiredMeasuredMetricIDs"]

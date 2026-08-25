@@ -14864,3 +14864,46 @@ spread still blocks when its ratio is above 1.25. This correction does not
 raise a product latency budget, clip evidence, qualify `cc9d2e4`, accept a
 multi-host baseline, or close first-use Refine, physical Sequoia/Tahoe,
 VoiceOver/Voice Control, distribution, CloudKit, hosted CI, or field behavior.
+
+## D401 — Confirm performance candidates with one retained fixed set (Aug 2026)
+
+**Context:** the exact clean `6e9476f` candidate passed deterministic scope,
+public bilingual validation, every installed-model class, and every hard
+performance budget. Its first authoritative ledger then measured Detail core
+read at 18.334959 ms against a 15.480667 ms comparison baseline, an 18.44%
+budgetless delta. `PORTAVOZ_PERF_STRICT=1` immediately blocked qualification,
+although PERF-008 says a single delta is only a candidate until three stable
+runs agree. Two sequential isolated diagnostic ledgers on the same source,
+host, and toolchain measured about +11.6% and +14.7%; both were diagnostic and
+all hard budgets remained green. The three observations therefore did not
+confirm the first candidate. The candidate remains failed because its runner
+had no authority to interpret that set.
+
+**Decision:** evolve `candidate-automation.json` to schema 2 and pin its
+`confirmationRuns` to the same exact integer 3 declared by
+`perf-thresholds.json`. Candidate automation runs the authoritative ledger
+without standalone strict mode. Exit 0 publishes that first clean run. Exit 2
+opens exactly two more sequential runs; exit 1 or any other status still blocks
+immediately. Every ledger must be authoritative, exact-inventory, internally
+stable, and from the identical host and toolchain, and its exit code must match
+its candidate set.
+
+The three-run set is closed before its outcome is interpreted. A metric that
+is `regression-candidate` in all three is a confirmed blocker. Different
+candidate sets with no completely clean run are inconclusive and also block.
+Otherwise the last clean run is atomically published as the canonical ledger.
+All observed ledgers remain owner-only, and a validated content-free receipt
+records only run number, exit code, ledger SHA-256, candidate metric IDs,
+outcome, and selected run. Qualification still admits only canonical `pass` or
+budgetless `diagnostic` metrics; it never accepts a candidate state, changes a
+baseline, discards an adverse observation, or runs more than the declared set.
+
+**Consequences:** one scheduling outlier can no longer contradict PERF-008 and
+abort a candidate as though it were a confirmed regression. The fixed retained
+set is not an unchanged full-candidate retry and cannot be extended until a
+green observation appears. A hard budget miss, unresolved or unstable metric,
+non-authoritative ledger, host/toolchain drift, exit mismatch, digest tampering,
+three matching candidates, or a no-clean mixed set remains fail closed. This
+current-host automation still does not certify other memory tiers, physical
+Sequoia/Tahoe, VoiceOver/Voice Control, signed distribution, production
+CloudKit, hosted CI, or field behavior.

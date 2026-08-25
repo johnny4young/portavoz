@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
 import re
+import shutil
 import subprocess
 import sys
 import wave
@@ -24,9 +26,18 @@ import resource_baseline
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = ROOT / "docs" / "evidence" / "candidate-automation.json"
 DEFAULT_OUTPUT_PARENT = ROOT / "dist" / "release-readiness"
-CONTRACT_SCHEMA_VERSION = 1
+CONTRACT_SCHEMA_VERSION = 2
 PERF_LEDGER_SCHEMA_VERSION = 1
+PERFORMANCE_CONFIRMATION_SCHEMA_VERSION = 1
 UI_RECEIPT_SCHEMA_VERSION = 1
+EXPECTED_PERFORMANCE_CONFIRMATION_RUNS = 3
+EXPECTED_PERFORMANCE_ARTIFACTS = (
+    "ledger.json",
+    "ledger.md",
+    "scale.json",
+    "semantic.json",
+    "spotlight.json",
+)
 EXPECTED_MODEL_CLASSES = (
     "DiarizationIntegrationTests",
     "FoundationModelIntegrationTests",
@@ -321,6 +332,7 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         "candidate contract.performance",
         (
             "thresholdContract",
+            "confirmationRuns",
             "requiredMeasuredMetricIDs",
             "allowedNotMeasuredMetricIDs",
             "acceptedMeasuredStates",
@@ -347,6 +359,30 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         PERF_LEDGER_SCHEMA_VERSION,
         "performance threshold contract.schemaVersion",
     )
+    regression = exact_object(
+        threshold_contract.get("regression"),
+        "performance threshold contract.regression",
+        (
+            "latencyToleranceFraction",
+            "footprintToleranceFraction",
+            "confirmationRuns",
+        ),
+        ("note",),
+    )
+    confirmation_runs = performance["confirmationRuns"]
+    threshold_confirmation_runs = regression["confirmationRuns"]
+    if (
+        isinstance(confirmation_runs, bool)
+        or not isinstance(confirmation_runs, int)
+        or confirmation_runs != EXPECTED_PERFORMANCE_CONFIRMATION_RUNS
+        or isinstance(threshold_confirmation_runs, bool)
+        or not isinstance(threshold_confirmation_runs, int)
+        or threshold_confirmation_runs != confirmation_runs
+    ):
+        raise CandidateAutomationError(
+            "candidate performance confirmation runs must match the tracked "
+            "three-run PERF-008 contract"
+        )
     raw_metrics = threshold_contract["metrics"]
     if not isinstance(raw_metrics, list) or not raw_metrics:
         raise CandidateAutomationError(
@@ -455,6 +491,7 @@ def validate_contract(document: Any, root: Path = ROOT) -> dict[str, Any]:
         "upgradeRecoveryClasses": EXPECTED_UPGRADE_RECOVERY_CLASSES,
         "performance": {
             "thresholdContract": performance_path,
+            "confirmationRuns": confirmation_runs,
             "requiredMeasuredMetricIDs": required_metrics,
             "allowedNotMeasuredMetricIDs": allowed_unmeasured,
             "acceptedMeasuredStates": accepted_states,
@@ -516,7 +553,12 @@ def validate_deterministic_receipt(
         )
 
 
-def validate_performance_ledger(path: Path, contract: dict[str, Any]) -> None:
+def validated_performance_ledger(
+    path: Path,
+    contract: dict[str, Any],
+    *,
+    allow_regression_candidates: bool = False,
+) -> dict[str, Any]:
     ledger = exact_object(
         load_json(path, "performance ledger"),
         "performance ledger",
@@ -575,7 +617,9 @@ def validate_performance_ledger(path: Path, contract: dict[str, Any]) -> None:
     accepted_states = set(policy["acceptedMeasuredStates"])
     for identifier in sorted(required):
         status = by_identifier[identifier]["status"]
-        if status not in accepted_states:
+        if status not in accepted_states and not (
+            allow_regression_candidates and status == "regression-candidate"
+        ):
             raise CandidateAutomationError(
                 f"performance metric {identifier} has blocking state {status}"
             )
@@ -614,9 +658,10 @@ def validate_performance_ledger(path: Path, contract: dict[str, Any]) -> None:
             raise CandidateAutomationError(
                 f"performance ledger.summary.{key} is inconsistent"
             )
-    if any(summary[key] != 0 for key in (
-        "failures", "regressionCandidates", "unresolved", "unstable"
-    )):
+    always_blocking = ("failures", "unresolved", "unstable")
+    if any(summary[key] != 0 for key in always_blocking):
+        raise CandidateAutomationError("performance ledger contains blocking results")
+    if summary["regressionCandidates"] != 0 and not allow_regression_candidates:
         raise CandidateAutomationError("performance ledger contains blocking results")
     if summary["notMeasured"] != len(allowed_unmeasured):
         raise CandidateAutomationError(
@@ -628,6 +673,19 @@ def validate_performance_ledger(path: Path, contract: dict[str, Any]) -> None:
         raise CandidateAutomationError(
             "performance ledger.summary.dispersed is outside the metric inventory"
         )
+    return ledger
+
+
+def validate_performance_ledger(path: Path, contract: dict[str, Any]) -> None:
+    validated_performance_ledger(path, contract)
+
+
+def performance_candidate_metric_ids(ledger: dict[str, Any]) -> tuple[str, ...]:
+    return tuple(sorted(
+        metric["id"]
+        for metric in ledger["metrics"]
+        if metric["status"] == "regression-candidate"
+    ))
 
 
 def validate_resource_receipt(
@@ -940,7 +998,20 @@ def run_command(
     command: Sequence[str],
     *,
     environment: dict[str, str | None] | None = None,
-) -> None:
+    accepted_exit_codes: Sequence[int] = (0,),
+) -> int:
+    accepted = tuple(accepted_exit_codes)
+    if (
+        not accepted
+        or len(set(accepted)) != len(accepted)
+        or any(
+            isinstance(code, bool)
+            or not isinstance(code, int)
+            or not 0 <= code <= 255
+            for code in accepted
+        )
+    ):
+        raise CandidateAutomationError(f"{label} has invalid accepted exit codes")
     exact_checkout(root, expected_commit)
     print(f"==> {label}", flush=True)
     merged_environment = developer_environment()
@@ -959,9 +1030,440 @@ def run_command(
         ).returncode
     except OSError as error:
         raise CandidateAutomationError(f"{label} could not start") from error
-    if status != 0:
-        raise CandidateAutomationError(f"{label} failed with exit status {status}")
     exact_checkout(root, expected_commit)
+    if status not in accepted:
+        raise CandidateAutomationError(f"{label} failed with exit status {status}")
+    return status
+
+
+def sha256_file(path: Path, label: str) -> str:
+    if path.is_symlink() or not path.is_file():
+        raise CandidateAutomationError(f"{label} is missing or not a regular file")
+    if path.stat().st_size > 64 * 1024 * 1024:
+        raise CandidateAutomationError(f"{label} exceeds the size limit")
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError as error:
+        raise CandidateAutomationError(f"{label} is unreadable") from error
+    return digest.hexdigest()
+
+
+def exact_sorted_string_array(value: Any, label: str) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        raise CandidateAutomationError(f"{label} must be an array")
+    if any(not isinstance(item, str) or not item for item in value):
+        raise CandidateAutomationError(f"{label} must contain non-empty strings")
+    if value != sorted(set(value)):
+        raise CandidateAutomationError(f"{label} must be sorted and unique")
+    return tuple(value)
+
+
+def validate_performance_run(
+    path: Path,
+    contract: dict[str, Any],
+    *,
+    exit_code: int,
+    expected_host: dict[str, Any] | None = None,
+    expected_toolchain: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], tuple[str, ...]]:
+    ledger = validated_performance_ledger(
+        path,
+        contract,
+        allow_regression_candidates=True,
+    )
+    candidate_ids = performance_candidate_metric_ids(ledger)
+    expected_exit_code = 2 if candidate_ids else 0
+    if exit_code != expected_exit_code:
+        raise CandidateAutomationError(
+            "performance ledger exit status does not match its regression candidates"
+        )
+    if expected_host is not None and ledger["host"] != expected_host:
+        raise CandidateAutomationError(
+            "performance confirmation changed host identity between runs"
+        )
+    if expected_toolchain is not None and ledger["toolchain"] != expected_toolchain:
+        raise CandidateAutomationError(
+            "performance confirmation changed toolchain identity between runs"
+        )
+    return ledger, candidate_ids
+
+
+def performance_confirmation_document(
+    runs: Sequence[dict[str, Any]],
+    *,
+    required_runs: int,
+    outcome: str,
+    selected_run: int | None,
+) -> dict[str, Any]:
+    candidate_sets = [set(run["candidateMetricIDs"]) for run in runs]
+    confirmed = (
+        sorted(set.intersection(*candidate_sets))
+        if len(candidate_sets) == required_runs
+        else []
+    )
+    return {
+        "schemaVersion": PERFORMANCE_CONFIRMATION_SCHEMA_VERSION,
+        "kind": "performance-regression-confirmation",
+        "requiredRuns": required_runs,
+        "observedRuns": len(runs),
+        "outcome": outcome,
+        "selectedRun": selected_run,
+        "initialCandidateMetricIDs": list(runs[0]["candidateMetricIDs"]),
+        "confirmedRegressionMetricIDs": confirmed,
+        "runs": [
+            {
+                "run": run["run"],
+                "exitCode": run["exitCode"],
+                "ledgerSHA256": run["ledgerSHA256"],
+                "candidateMetricIDs": list(run["candidateMetricIDs"]),
+            }
+            for run in runs
+        ],
+    }
+
+
+def validate_performance_confirmation(
+    path: Path,
+    contract: dict[str, Any],
+    *,
+    runs_root: Path | None = None,
+) -> dict[str, Any]:
+    receipt = exact_object(
+        load_json(path, "performance confirmation receipt"),
+        "performance confirmation receipt",
+        (
+            "schemaVersion",
+            "kind",
+            "requiredRuns",
+            "observedRuns",
+            "outcome",
+            "selectedRun",
+            "initialCandidateMetricIDs",
+            "confirmedRegressionMetricIDs",
+            "runs",
+        ),
+    )
+    exact_schema_version(
+        receipt["schemaVersion"],
+        PERFORMANCE_CONFIRMATION_SCHEMA_VERSION,
+        "performance confirmation receipt.schemaVersion",
+    )
+    if receipt["kind"] != "performance-regression-confirmation":
+        raise CandidateAutomationError("performance confirmation kind is invalid")
+    required_runs = contract["performance"]["confirmationRuns"]
+    if (
+        isinstance(receipt["requiredRuns"], bool)
+        or not isinstance(receipt["requiredRuns"], int)
+        or receipt["requiredRuns"] != required_runs
+    ):
+        raise CandidateAutomationError(
+            "performance confirmation required-run count drifted"
+        )
+    raw_runs = receipt["runs"]
+    if not isinstance(raw_runs, list) or not raw_runs:
+        raise CandidateAutomationError("performance confirmation runs are missing")
+    if (
+        isinstance(receipt["observedRuns"], bool)
+        or not isinstance(receipt["observedRuns"], int)
+        or receipt["observedRuns"] != len(raw_runs)
+    ):
+        raise CandidateAutomationError(
+            "performance confirmation observed-run count is inconsistent"
+        )
+    allowed_metric_ids = set(contract["performance"]["requiredMeasuredMetricIDs"])
+    parsed_runs: list[dict[str, Any]] = []
+    expected_host: dict[str, Any] | None = None
+    expected_toolchain: dict[str, Any] | None = None
+    for index, raw_run in enumerate(raw_runs, start=1):
+        run = exact_object(
+            raw_run,
+            f"performance confirmation runs[{index}]",
+            ("run", "exitCode", "ledgerSHA256", "candidateMetricIDs"),
+        )
+        if (
+            isinstance(run["run"], bool)
+            or not isinstance(run["run"], int)
+            or run["run"] != index
+            or isinstance(run["exitCode"], bool)
+            or not isinstance(run["exitCode"], int)
+            or run["exitCode"] not in (0, 2)
+        ):
+            raise CandidateAutomationError(
+                "performance confirmation run order or exit status is invalid"
+            )
+        digest = run["ledgerSHA256"]
+        if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+            raise CandidateAutomationError(
+                "performance confirmation ledger digest is invalid"
+            )
+        candidate_ids = exact_sorted_string_array(
+            run["candidateMetricIDs"],
+            f"performance confirmation runs[{index}].candidateMetricIDs",
+        )
+        if not set(candidate_ids) <= allowed_metric_ids:
+            raise CandidateAutomationError(
+                "performance confirmation names an unknown candidate metric"
+            )
+        if run["exitCode"] != (2 if candidate_ids else 0):
+            raise CandidateAutomationError(
+                "performance confirmation exit status is inconsistent"
+            )
+        if runs_root is not None:
+            ledger_path = runs_root / f"run-{index}" / "ledger.json"
+            if sha256_file(
+                ledger_path,
+                f"performance confirmation run {index} ledger",
+            ) != digest:
+                raise CandidateAutomationError(
+                    "performance confirmation ledger digest does not match"
+                )
+            ledger, ledger_candidate_ids = validate_performance_run(
+                ledger_path,
+                contract,
+                exit_code=run["exitCode"],
+                expected_host=expected_host,
+                expected_toolchain=expected_toolchain,
+            )
+            if ledger_candidate_ids != candidate_ids:
+                raise CandidateAutomationError(
+                    "performance confirmation candidate metrics do not match ledger"
+                )
+            expected_host = ledger["host"]
+            expected_toolchain = ledger["toolchain"]
+        parsed_runs.append({**run, "candidateMetricIDs": candidate_ids})
+
+    initial_ids = exact_sorted_string_array(
+        receipt["initialCandidateMetricIDs"],
+        "performance confirmation initialCandidateMetricIDs",
+    )
+    confirmed_ids = exact_sorted_string_array(
+        receipt["confirmedRegressionMetricIDs"],
+        "performance confirmation confirmedRegressionMetricIDs",
+    )
+    if initial_ids != parsed_runs[0]["candidateMetricIDs"]:
+        raise CandidateAutomationError(
+            "performance confirmation initial candidates are inconsistent"
+        )
+    candidate_sets = [set(run["candidateMetricIDs"]) for run in parsed_runs]
+    expected_confirmed = (
+        tuple(sorted(set.intersection(*candidate_sets)))
+        if len(parsed_runs) == required_runs
+        else ()
+    )
+    if confirmed_ids != expected_confirmed:
+        raise CandidateAutomationError(
+            "performance confirmation confirmed candidates are inconsistent"
+        )
+    clean_runs = [
+        run["run"] for run in parsed_runs if not run["candidateMetricIDs"]
+    ]
+    selected_run = receipt["selectedRun"]
+    if selected_run is not None and (
+        isinstance(selected_run, bool) or not isinstance(selected_run, int)
+    ):
+        raise CandidateAutomationError("performance confirmation selected run is invalid")
+    outcome = receipt["outcome"]
+    valid = False
+    if outcome == "clean-first-run":
+        valid = (
+            len(parsed_runs) == 1
+            and not initial_ids
+            and selected_run == 1
+            and clean_runs == [1]
+        )
+    elif outcome == "unconfirmed-regression":
+        valid = (
+            len(parsed_runs) == required_runs
+            and bool(initial_ids)
+            and not confirmed_ids
+            and bool(clean_runs)
+            and selected_run == clean_runs[-1]
+        )
+    elif outcome == "confirmed-regression":
+        valid = (
+            len(parsed_runs) == required_runs
+            and bool(initial_ids)
+            and bool(confirmed_ids)
+            and selected_run is None
+        )
+    elif outcome == "inconclusive":
+        valid = (
+            len(parsed_runs) == required_runs
+            and bool(initial_ids)
+            and not confirmed_ids
+            and not clean_runs
+            and selected_run is None
+        )
+    if not valid:
+        raise CandidateAutomationError(
+            "performance confirmation outcome is inconsistent with its runs"
+        )
+    return receipt
+
+
+def publish_performance_run(
+    selected_root: Path,
+    performance_root: Path,
+    confirmation_path: Path,
+) -> None:
+    if performance_root.exists():
+        raise CandidateAutomationError("canonical performance output already exists")
+    staging = performance_root.with_name(
+        f".{performance_root.name}.partial-{os.getpid()}"
+    )
+    if staging.exists():
+        raise CandidateAutomationError("partial performance output already exists")
+    staging.mkdir(mode=0o700)
+    os.chmod(staging, 0o700)
+    try:
+        sources = [selected_root / name for name in EXPECTED_PERFORMANCE_ARTIFACTS]
+        sources.append(confirmation_path)
+        for source in sources:
+            label = f"selected performance artifact {source.name}"
+            source_digest = sha256_file(source, label)
+            destination_name = (
+                "confirmation.json"
+                if source == confirmation_path
+                else source.name
+            )
+            destination = staging / destination_name
+            shutil.copyfile(source, destination, follow_symlinks=False)
+            os.chmod(destination, 0o600)
+            if sha256_file(destination, label) != source_digest:
+                raise CandidateAutomationError(
+                    f"{label} changed while it was published"
+                )
+        os.replace(staging, performance_root)
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging, ignore_errors=True)
+
+
+def run_candidate_performance_gate(
+    root: Path,
+    expected_commit: str,
+    performance_root: Path,
+    contract: dict[str, Any],
+    *,
+    environment: dict[str, str | None],
+) -> None:
+    required_runs = contract["performance"]["confirmationRuns"]
+    runs_root = performance_root.with_name("performance-confirmation")
+    if runs_root.exists():
+        raise CandidateAutomationError(
+            "performance confirmation output already exists"
+        )
+    runs_root.mkdir(mode=0o700)
+    os.chmod(runs_root, 0o700)
+    run_results: list[dict[str, Any]] = []
+    expected_host: dict[str, Any] | None = None
+    expected_toolchain: dict[str, Any] | None = None
+
+    def execute(run_number: int) -> None:
+        nonlocal expected_host, expected_toolchain
+        run_root = runs_root / f"run-{run_number}"
+        label = (
+            "Authoritative performance ledger"
+            if run_number == 1
+            else f"PERF-008 confirmation {run_number}/{required_runs}"
+        )
+        exit_code = run_command(
+            root,
+            expected_commit,
+            label,
+            ["scripts/run-perf-ledger.sh", str(run_root)],
+            environment={
+                **environment,
+                "PORTAVOZ_PERF_STRICT": "0",
+                "PORTAVOZ_PERF_WAVEFORM_MIC": None,
+                "PORTAVOZ_PERF_WAVEFORM_SYSTEM": None,
+                "PORTAVOZ_PERF_INCLUDE_DETAIL_UI": "0",
+            },
+            accepted_exit_codes=(0, 2),
+        )
+        ledger_path = run_root / "ledger.json"
+        ledger, candidate_ids = validate_performance_run(
+            ledger_path,
+            contract,
+            exit_code=exit_code,
+            expected_host=expected_host,
+            expected_toolchain=expected_toolchain,
+        )
+        expected_host = ledger["host"]
+        expected_toolchain = ledger["toolchain"]
+        run_results.append({
+            "run": run_number,
+            "exitCode": exit_code,
+            "ledgerSHA256": sha256_file(
+                ledger_path,
+                f"performance confirmation run {run_number} ledger",
+            ),
+            "candidateMetricIDs": candidate_ids,
+            "root": run_root,
+        })
+
+    execute(1)
+    if run_results[0]["candidateMetricIDs"]:
+        for run_number in range(2, required_runs + 1):
+            execute(run_number)
+
+    candidate_sets = [set(run["candidateMetricIDs"]) for run in run_results]
+    confirmed = (
+        set.intersection(*candidate_sets)
+        if len(candidate_sets) == required_runs
+        else set()
+    )
+    clean_runs = [run for run in run_results if not run["candidateMetricIDs"]]
+    selected = clean_runs[-1] if clean_runs else None
+    if len(run_results) == 1:
+        outcome = "clean-first-run"
+    elif confirmed:
+        outcome = "confirmed-regression"
+        selected = None
+    elif selected is None:
+        outcome = "inconclusive"
+    else:
+        outcome = "unconfirmed-regression"
+
+    confirmation = performance_confirmation_document(
+        run_results,
+        required_runs=required_runs,
+        outcome=outcome,
+        selected_run=selected["run"] if selected is not None else None,
+    )
+    confirmation_path = runs_root / "confirmation.json"
+    release_reliability.write_json(confirmation_path, confirmation)
+    validate_performance_confirmation(
+        confirmation_path,
+        contract,
+        runs_root=runs_root,
+    )
+    if selected is None:
+        if confirmed:
+            detail = ", ".join(sorted(confirmed))
+            raise CandidateAutomationError(
+                f"performance regression confirmed across three runs: {detail}"
+            )
+        raise CandidateAutomationError(
+            "performance confirmation is inconclusive: no clean run in the "
+            "fixed three-run set"
+        )
+
+    publish_performance_run(selected["root"], performance_root, confirmation_path)
+    validate_performance_ledger(performance_root / "ledger.json", contract)
+    validate_performance_confirmation(
+        performance_root / "confirmation.json",
+        contract,
+        runs_root=runs_root,
+    )
+    print(
+        "Performance confirmation: "
+        f"{outcome}; selected run {selected['run']} of {len(run_results)}.",
+        flush=True,
+    )
 
 
 def test_summary(output: str) -> tuple[int, int]:
@@ -1418,20 +1920,13 @@ def _run_candidate(
         model_audio.unlink(missing_ok=True)
         model_conversation.unlink(missing_ok=True)
 
-    run_command(
+    run_candidate_performance_gate(
         root,
         commit,
-        "Strict authoritative performance ledger",
-        ["scripts/run-perf-ledger.sh", str(performance_root)],
-        environment={
-            "PORTAVOZ_PERF_STRICT": "1",
-            "PORTAVOZ_PERF_WAVEFORM_MIC": None,
-            "PORTAVOZ_PERF_WAVEFORM_SYSTEM": None,
-            "PORTAVOZ_PERF_INCLUDE_DETAIL_UI": "0",
-            **private_fixture_environment,
-        },
+        performance_root,
+        contract,
+        environment=private_fixture_environment,
     )
-    validate_performance_ledger(performance_root / "ledger.json", contract)
 
     run_command(
         root,
