@@ -3134,9 +3134,15 @@ and records at least three runs into owner-only fragments before atomically
 publishing a host receipt. User-supplied output roots are normalized to
 absolute repository paths before crossing into the GUI benchmark process, so
 relative Make overrides cannot escape to that process's read-only working
-volume. Each run uses a disposable meeting database, scratch audio,
-process-local secret storage, and a unique temporary participant-identity
-root. It never reads or writes the host Keychain,
+volume. A process-owning launch preflight must first publish one fixed,
+exclusive, mode-0600 marker from inside the copied app; LaunchServices success
+without that marker is rejected because `open -W` does not propagate an early
+dyld process failure. The ad-hoc candidate copy alone carries the standard
+library-validation exception needed for its separately ad-hoc-signed embedded
+Sparkle framework. Real Developer-ID resource evidence, local development, and
+distribution retain library validation. Each run uses a disposable meeting
+database, scratch audio, process-local secret storage, and a unique temporary
+participant-identity root. It never reads or writes the host Keychain,
 voiceprint, or participant-voice gallery. Production composition continues to
 use the Keychain and its durable identity root. Resource scenarios reuse the
 normal SHA-256-verified model cache only when their measured operation requires
@@ -4311,9 +4317,12 @@ and every intermediate segment even on failure. Diarization integration
 verifies already installed model files and skips rather than downloading; an
 all-skipped class blocks candidate qualification. The runner removes inherited
 private ASR/UI/waveform fixture paths from other subprocesses and forces the
-resource app to use ad-hoc scratch signing. A candidate run therefore does not
-silently consume a user's recording, performance inputs, signing identity, or
-network merely because they were exported or reachable in the parent shell.
+resource app to use ad-hoc scratch signing. Its disposable bundle alone uses
+the hardened-runtime library-validation exception needed for the separately
+ad-hoc-signed Sparkle framework and must pass an in-process launch marker before
+resource collection. A candidate run therefore does not silently consume a
+user's recording, performance inputs, signing identity, or network merely
+because they were exported or reachable in the parent shell.
 
 The performance proof is deliberately named candidate automation rather than
 universal performance certification. Twelve scale/semantic/Spotlight metrics

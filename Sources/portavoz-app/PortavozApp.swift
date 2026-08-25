@@ -10,6 +10,7 @@ struct PortavozApp: App {
 
     init() {
         let process = ProcessInfo.processInfo
+        BenchResourceLaunchProbe.runIfRequested(arguments: process.arguments)
         if process.arguments.contains("-reset-app-language")
             || process.environment["PORTAVOZ_RESET_APP_LANGUAGE"] == "1" {
             UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey)

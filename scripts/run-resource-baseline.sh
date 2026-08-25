@@ -145,12 +145,20 @@ plutil -replace CFBundleName -string "Portavoz Resource Bench" \
 plutil -replace CFBundleIdentifier -string "app.portavoz.mac.resource-bench" \
     "$APP/Contents/Info.plist"
 
-ENTITLEMENTS="$(cat "$ROOT/dist/.portavoz-sign-entitlements")"
+SOURCE_ENTITLEMENTS="$(cat "$ROOT/dist/.portavoz-sign-entitlements")"
+BENCH_ENTITLEMENTS="$ROOT/$SOURCE_ENTITLEMENTS"
+if [[ "$SIGN_ID" == "-" ]]; then
+    # Hardened-runtime library validation rejects separately ad-hoc-signed
+    # embedded frameworks on current macOS. This entitlement is confined to
+    # the disposable benchmark copy; shipping and Developer-ID builds retain
+    # ordinary library validation.
+    BENCH_ENTITLEMENTS="$ROOT/packaging/portavoz-resource-bench.entitlements"
+fi
 sign_arguments=(
     --force
     --options runtime
     --sign "$SIGN_ID"
-    --entitlements "$ROOT/$ENTITLEMENTS"
+    --entitlements "$BENCH_ENTITLEMENTS"
 )
 if [[ "$SIGN_ID" != "-" ]]; then
     sign_arguments+=(--timestamp)
@@ -158,9 +166,39 @@ fi
 codesign "${sign_arguments[@]}" "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 
+SIGNED_ENTITLEMENTS="$RUN_ROOT/signed-entitlements.plist"
+codesign -d --entitlements :- "$APP" > "$SIGNED_ENTITLEMENTS" 2>/dev/null
+if [[ "$SIGN_ID" == "-" ]]; then
+    [[ "$(plutil -extract com.apple.security.cs.disable-library-validation raw \
+        "$SIGNED_ENTITLEMENTS" 2>/dev/null)" == "true" ]] ||
+        fail "the ad-hoc benchmark copy must disable library validation"
+else
+    if plutil -extract com.apple.security.cs.disable-library-validation raw \
+        "$SIGNED_ENTITLEMENTS" >/dev/null 2>&1
+    then
+        fail "Developer-ID resource evidence must retain library validation"
+    fi
+fi
+
 run_benchmark_app() {
     open -W -n "$APP" --args "$@"
 }
+
+launch_probe="$RUN_ROOT/launch-ready"
+if ! run_benchmark_app \
+        -ApplePersistenceIgnoreState YES \
+        -use-temp-store \
+        --bench-resource-launch-probe "$launch_probe"
+then
+    fail "the benchmark app launch preflight failed"
+fi
+if [[ ! -f "$launch_probe" \
+    || "$(cat "$launch_probe")" != "portavoz-resource-benchmark-ready-v1" \
+    || "$(stat -f %Lp "$launch_probe")" != "600" ]]
+then
+    fail "the benchmark app did not complete its exact launch preflight"
+fi
+rm -f "$launch_probe"
 
 fixture_text="$RUN_ROOT/refine-fixture.txt"
 fixture_audio="$RUN_ROOT/refine-fixture.aiff"

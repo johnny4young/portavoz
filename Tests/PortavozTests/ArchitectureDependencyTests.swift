@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,749 cases "
+            "package inventory contains 2,750 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -4884,6 +4884,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/PostCaptureProcessingCoordinator.swift")
         let runner = try Self.contents(
             of: "scripts/run-resource-baseline.sh")
+        let resourceBenchEntitlements = try Self.contents(
+            of: "packaging/portavoz-resource-bench.entitlements")
+        let localEntitlements = try Self.contents(
+            of: "packaging/portavoz-local.entitlements")
         let compatibilityRunner = try Self.contents(
             of: "scripts/run-resource-recording-baseline.sh")
         XCTAssertTrue(nativeProbe.contains("proc_pid_rusage"))
@@ -4988,9 +4992,19 @@ final class ArchitectureDependencyTests: XCTestCase {
             "usesTemporaryMeetingStore && !reusesVerifiedModels"))
         XCTAssertTrue(runner.contains(
             "app.portavoz.mac.resource-bench"))
+        XCTAssertTrue(runner.contains(
+            "packaging/portavoz-resource-bench.entitlements"))
+        XCTAssertTrue(runner.contains(
+            "--bench-resource-launch-probe"))
+        XCTAssertTrue(runner.contains(
+            "portavoz-resource-benchmark-ready-v1"))
+        XCTAssertTrue(resourceBenchEntitlements.contains(
+            "com.apple.security.cs.disable-library-validation"))
+        XCTAssertFalse(localEntitlements.contains(
+            "com.apple.security.cs.disable-library-validation"))
         XCTAssertEqual(
             runner.components(separatedBy: "run_benchmark_app").count - 1,
-            8)
+            9)
         XCTAssertFalse(runner.contains(
             #""$APP/Contents/MacOS/portavoz-app""#))
         XCTAssertTrue(runner.contains(

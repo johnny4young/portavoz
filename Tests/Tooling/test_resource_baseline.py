@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import plistlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -730,10 +731,48 @@ class ResourceBaselineTests(unittest.TestCase):
         runner = (
             REPOSITORY / "scripts" / "run-resource-baseline.sh"
         ).read_text()
+        local_entitlements = plistlib.loads(
+            (
+                REPOSITORY / "packaging" / "portavoz-local.entitlements"
+            ).read_bytes()
+        )
+        bench_entitlements = plistlib.loads(
+            (
+                REPOSITORY
+                / "packaging"
+                / "portavoz-resource-bench.entitlements"
+            ).read_bytes()
+        )
 
         self.assertIn("git status --porcelain --untracked-files=all", runner)
         self.assertIn("scripts/make-app.sh --release", runner)
         self.assertIn("app.portavoz.mac.resource-bench", runner)
+        self.assertEqual(
+            bench_entitlements,
+            {
+                **local_entitlements,
+                "com.apple.security.cs.disable-library-validation": True,
+            },
+        )
+        self.assertNotIn(
+            "com.apple.security.cs.disable-library-validation",
+            local_entitlements,
+        )
+        self.assertIn(
+            'if [[ "$SIGN_ID" == "-" ]]; then',
+            runner,
+        )
+        self.assertIn(
+            "packaging/portavoz-resource-bench.entitlements",
+            runner,
+        )
+        self.assertIn(
+            "Developer-ID resource evidence must retain library validation",
+            runner,
+        )
+        self.assertIn("--bench-resource-launch-probe", runner)
+        self.assertIn("portavoz-resource-benchmark-ready-v1", runner)
+        self.assertIn('stat -f %Lp "$launch_probe"', runner)
         self.assertIn("-use-temp-store", runner)
         self.assertIn("--bench-resource-output", runner)
         self.assertIn("--bench-resource-run", runner)
@@ -808,7 +847,7 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("(( MODEL_TIMEOUT <= 3600 ))", runner)
         self.assertIn('if [[ "$OUTPUT" != /* ]]; then', runner)
         self.assertIn('OUTPUT="$ROOT/$OUTPUT"', runner)
-        self.assertEqual(runner.count("run_benchmark_app"), 8)
+        self.assertEqual(runner.count("run_benchmark_app"), 9)
         self.assertNotIn(
             '"$APP/Contents/MacOS/portavoz-app"',
             runner,

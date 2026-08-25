@@ -21,7 +21,8 @@ enum BenchMode {
     static func runsIsolatedBenchmark(
         arguments: [String] = ProcessInfo.processInfo.arguments
     ) -> Bool {
-        arguments.contains("--bench-record")
+        arguments.contains("--bench-resource-launch-probe")
+            || arguments.contains("--bench-record")
             || arguments.contains("--bench-resource-refine")
             || arguments.contains("--bench-resource-summary")
             || arguments.contains("--bench-resource-ask")

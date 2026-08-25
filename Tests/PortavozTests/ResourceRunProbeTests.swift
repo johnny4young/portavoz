@@ -6,6 +6,8 @@ import XCTest
 final class ResourceRunProbeTests: XCTestCase {
     func testResourceBenchmarksOwnTheirProcessStartup() {
         XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
+            arguments: ["Portavoz", "--bench-resource-launch-probe", "/tmp/ready"]))
+        XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-record", "30"]))
         XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-resource-refine", "fixture.aiff"]))
@@ -19,6 +21,73 @@ final class ResourceRunProbeTests: XCTestCase {
             arguments: ["Portavoz", "--bench-graph-queries"]))
         XCTAssertFalse(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "-use-temp-store", "-seed-demo"]))
+    }
+
+    func testResourceLaunchProbeRequiresFreshAbsoluteOwnerOnlyOutput() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "BenchResourceLaunchProbe-\(UUID().uuidString)",
+            isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: root,
+            withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let output = root.appendingPathComponent("ready")
+
+        XCTAssertNil(try BenchResourceLaunchProbe.requested(arguments: [
+            "Portavoz", "-use-temp-store",
+        ]))
+        XCTAssertThrowsError(try BenchResourceLaunchProbe.requested(arguments: [
+            "Portavoz", "-use-temp-store", "--bench-resource-launch-probe",
+        ])) {
+            XCTAssertEqual(
+                $0 as? BenchResourceLaunchProbeError,
+                .missingOutput)
+        }
+        XCTAssertThrowsError(try BenchResourceLaunchProbe.requested(arguments: [
+            "Portavoz", "--bench-resource-launch-probe", output.path,
+        ])) {
+            XCTAssertEqual(
+                $0 as? BenchResourceLaunchProbeError,
+                .temporaryStoreRequired)
+        }
+        XCTAssertThrowsError(try BenchResourceLaunchProbe.requested(arguments: [
+            "Portavoz", "-use-temp-store",
+            "--bench-resource-launch-probe", "relative/ready",
+        ])) {
+            XCTAssertEqual(
+                $0 as? BenchResourceLaunchProbeError,
+                .absoluteOutputRequired)
+        }
+        XCTAssertThrowsError(try BenchResourceLaunchProbe.requested(arguments: [
+            "Portavoz", "-use-temp-store",
+            "--bench-resource-launch-probe", output.path,
+            "--bench-resource-launch-probe", output.path,
+        ])) {
+            XCTAssertEqual(
+                $0 as? BenchResourceLaunchProbeError,
+                .duplicateOption)
+        }
+
+        let request = try XCTUnwrap(BenchResourceLaunchProbe.requested(arguments: [
+            "Portavoz", "-use-temp-store",
+            "--bench-resource-launch-probe", output.path,
+        ]))
+        XCTAssertEqual(request, output.standardizedFileURL)
+        try BenchResourceLaunchProbe.writeMarker(to: request)
+
+        XCTAssertEqual(
+            try String(contentsOf: output, encoding: .utf8),
+            BenchResourceLaunchProbe.marker)
+        let attributes = try FileManager.default.attributesOfItem(
+            atPath: output.path)
+        XCTAssertEqual(
+            (attributes[.posixPermissions] as? NSNumber)?.intValue,
+            0o600)
+        XCTAssertThrowsError(try BenchResourceLaunchProbe.writeMarker(to: output)) {
+            XCTAssertEqual(
+                $0 as? BenchResourceLaunchProbeError,
+                .outputAlreadyExists)
+        }
     }
 
     func testRefineResourceConfigurationBoundsTimeout() throws {

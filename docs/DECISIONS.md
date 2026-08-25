@@ -14680,3 +14680,43 @@ new candidate measurement. This current-host synthetic result still does not
 certify combined Meeting Detail rendering, correction-heavy search, other
 hardware profiles, physical Sequoia/Tahoe, distribution, CloudKit,
 accessibility, or field behavior.
+
+## D396 — Prove the ad-hoc resource app reached its benchmark (Aug 2026)
+
+**Context:** the clean `1c5ad3f` candidate passed deterministic, public,
+installed-model, performance, and release-build gates, then produced no idle,
+recording, or Stop fragment in the first resource process. `open -W` returned
+zero, the bundle and deep signature verified, and the runner therefore reported
+only an incomplete sample shape. The content-free crash report and a bounded
+direct dyld probe showed the actual pre-main failure: hardened-runtime library
+validation rejected the separately ad-hoc-signed embedded Sparkle framework as
+a different signing team. D392 deliberately withholds a user's distribution
+identity from autonomous candidate automation, while D368 correctly requires a
+real same-team identity for separately accepted graph timing evidence.
+
+**Decision:** keep ordinary local, Developer-ID, and distribution entitlements
+unchanged. Only the disposable `app.portavoz.mac.resource-bench` copy may select
+one tracked benchmark entitlement when its signing identity is ad hoc. That
+entitlement preserves hardened runtime and capture permission while adding the
+standard library-validation exception needed to load the embedded ad-hoc
+framework. A real-identity resource run selects the normal build entitlements
+and fails closed if the exception appears. This does not relax D368's real-team
+requirement or change the shipping bundle.
+
+Before generating fixtures or opening a measured window, LaunchServices runs a
+minimal process-owning probe. It requires the disposable-store flag, one unique
+absolute output, and writes exactly one fixed content-free marker through an
+exclusive no-follow descriptor with mode 0600 and `fsync`, then exits. The
+shell requires the exact marker and mode and removes it. A zero `open -W` status
+without the marker is a launch failure; it cannot fall through to a misleading
+missing-resource-fragment error. Unit and policy tests pin duplicate/relative/
+overwrite rejection, marker permissions and content, the exact entitlement
+delta, real-identity exclusion, and launch-preflight ownership.
+
+**Consequences:** current-host candidate automation can reach the real app
+resource harness without borrowing a private signing identity, while a dyld or
+LaunchServices regression fails before the long matrix begins. The benchmark
+exception is not a distribution, security, notarization, or same-team signing
+claim. Microphone TCC remains an honest interactive host prerequisite, and the
+result still does not certify other memory tiers, physical Sequoia/Tahoe,
+VoiceOver/Voice Control, production CloudKit, hosted CI, or field behavior.

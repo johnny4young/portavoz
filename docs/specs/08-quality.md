@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,749 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,750 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2386,7 +2386,7 @@ gate always runs them. An architecture ratchet pins the schema, 29 proofs,
 eight classes, fail-closed predicate, exact artifact stamp, distribution
 receipt ordering, D147, and D391.
 
-**Candidate automation owner (D392/D393).**
+**Candidate automation owner (D392/D393/D396).**
 `docs/evidence/candidate-automation.json` is the finite executable contract for
 the eight candidate proofs. `scripts/candidate_automation.py` runs every gate
 sequentially on one completely clean full commit and rechecks the source before
@@ -2412,9 +2412,15 @@ header. The lane sets the real-model opt-in and both fixture paths explicitly,
 withholds captured model logs, and deletes the final audio plus every segment
 in `finally` boundaries. Diarization tests verify installed files and cannot
 download during this lane. Inherited private ASR, real-UI-audio, and waveform
-paths are removed; resource collection forces ad-hoc scratch signing. This is
-autonomous public-fixture evidence, not a read of the user's library, network,
-or distribution identity.
+paths are removed; resource collection forces ad-hoc scratch signing. The
+disposable resource copy alone carries the standard hardened-runtime
+library-validation exception required to load its separately ad-hoc-signed
+embedded Sparkle framework. The tracked local/developer and distribution
+entitlements retain library validation. Before any scenario, LaunchServices
+must reach a process-owning app probe that publishes one fresh, owner-only,
+fixed content-free marker; `open -W` success without that marker is a launch
+failure rather than evidence. This is autonomous public-fixture evidence, not a
+read of the user's library, network, or distribution identity.
 
 Specialized validation is fail closed. The performance ledger must be
 authoritative, contain its exact 25-metric inventory, measure all twelve
@@ -3108,8 +3114,16 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   closed workload descriptors. Behavioral unit tests inject an immediate
   readiness gate so host thermal pressure cannot delay or invalidate their
   scenario assertions; production benchmark processes retain the real gate.
-  All seven app invocations per round use the
-  copied signed bundle through LaunchServices—never the inner SwiftUI/AppKit
+  Ad-hoc candidate collection uses a dedicated scratch-only entitlement for
+  `com.apple.security.cs.disable-library-validation`, because current macOS
+  rejects the separately ad-hoc-signed embedded Sparkle framework under the
+  hardened runtime. A real Developer-ID collection keeps library validation
+  and fails if that exception is present. Before the first scenario, a minimal
+  process-owning launch probe must create one exact mode-0600 marker with
+  exclusive creation and durable write; this catches dyld/LaunchServices
+  failures that `open -W` can otherwise report as success. All seven measured
+  app invocations per round use the copied signed bundle through
+  LaunchServices—never the inner SwiftUI/AppKit
   executable—so each scenario receives the same application resource policy,
   bundle identity, environment, and TCC boundary. The Stop probe atomically
   replays active spans

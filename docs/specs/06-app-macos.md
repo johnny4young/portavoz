@@ -1220,6 +1220,14 @@ re-signs a scratch app with the separate
 idle/recording/Stop/Refine/Summary/Ask/indexing/recording-plus-indexing
 and recording-plus-batch samples. The original
 `make resource-recording-baseline` target delegates to this canonical command.
+A minimal process-owning launch probe runs first and writes one fixed,
+owner-only, non-replacing marker before `AppServices` exists. This is required
+because LaunchServices can return success even when dyld aborts the app before
+the benchmark writes its normal log or fragments. Ad-hoc candidate collection
+keeps the hardened runtime but gives only this disposable scratch identity the
+library-validation exception needed for its separately ad-hoc-signed embedded
+Sparkle framework. Real Developer-ID resource evidence and every ordinary or
+distribution app retain library validation.
 A five-second launch-settling interval precedes the model-free idle window.
 Refine runs as a draft-only cold-runtime operation in a separate process against
 one host-generated, non-silent English AIFF containing only fixed public text.
