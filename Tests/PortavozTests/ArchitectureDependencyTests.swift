@@ -4829,7 +4829,10 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "indexing", "recording-indexing", "recording-batch",
             ]))
         XCTAssertEqual(contract["minimumStableSamples"] as? Int, 3)
-        XCTAssertEqual(contract["schemaVersion"] as? Int, 3)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 4)
+        XCTAssertEqual(
+            contract["minimumBlockingTimingDeltaMilliseconds"] as? Int,
+            100)
         let recordingInput = try XCTUnwrap(
             contract["recordingInput"] as? [String: Any])
         XCTAssertEqual(
@@ -4861,6 +4864,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(evaluator.contains("os.chmod(temporary, 0o600)"))
         XCTAssertTrue(evaluator.contains(
             "contract.maximumTimingP95ToP50Ratio must be <= 1.25"))
+        XCTAssertTrue(evaluator.contains(
+            "contract.minimumBlockingTimingDeltaMilliseconds must be <= 100"))
         for forbidden in [
             "meetingTitle", "transcriptText", "sourcePath", "modelName",
             "errorMessage",

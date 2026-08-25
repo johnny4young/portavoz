@@ -218,7 +218,7 @@ class ExactPathMatrixTests(unittest.TestCase):
             with self.assertRaisesRegex(matrix.MatrixError, "duplicate JSON key"):
                 matrix.read_observations(path)
 
-    def test_resource_profiles_require_the_shared_schema_three_contract(self):
+    def test_resource_profiles_require_the_shared_schema_four_contract(self):
         self.assertEqual(
             set(self.profiles),
             {"memory-8gb", "memory-16gb", "reference"},
@@ -228,9 +228,9 @@ class ExactPathMatrixTests(unittest.TestCase):
             path = Path(directory) / "resource-contract.json"
 
             stale = copy.deepcopy(source)
-            stale["schemaVersion"] = 2
+            stale["schemaVersion"] = 3
             path.write_text(json.dumps(stale))
-            with self.assertRaisesRegex(matrix.MatrixError, "schemaVersion must be 3"):
+            with self.assertRaisesRegex(matrix.MatrixError, "schemaVersion must be 4"):
                 matrix.load_profiles(path)
 
             unsupported = copy.deepcopy(source)

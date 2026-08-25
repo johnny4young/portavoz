@@ -1197,8 +1197,11 @@ stable Release runs for every combination of 8 GB, 16 GB, and reference-memory
 profiles with idle, recording, Stop, Refine, summary, Ask, indexing,
 recording-plus-indexing, and recording-plus-batch scenarios. Receipts accept
 only aggregate process resource metrics and bounded summaries of the same
-closed workload enums. Wall or CPU p95/p50 above 1.25 marks a cell unstable.
-The evaluator rejects extra/content-bearing fields, unknown enums, non-finite
+closed workload enums. Schema 4 marks a wall or CPU distribution unstable only
+when p95/p50 is above 1.25 and p95 minus p50 is at least 100 milliseconds; a
+zero median blocks only when p95 reaches that floor. The contract cannot raise
+the absolute floor, and raw aggregates remain visible without clipping. The
+evaluator rejects extra/content-bearing fields, unknown enums, non-finite
 values, duplicate JSON keys/runs/profiles, wrong memory tiers, and build
 mismatches. Missing, incomplete, or unstable hardware evidence still produces
 all 27 rows as a blocking owner-only scorecard. The app never reads this
@@ -1239,7 +1242,7 @@ A recording resource process is admitted only by one each of
 chunks at 16 kHz. The signal crosses the production `RecordingSession`, CAF
 writers, live-transcription feeds, Stop workflow, and concurrent indexing or
 batch scheduler while avoiding AVAudioEngine, process taps, TCC, and user
-audio. The schema-3 host receipt records this input identity; physical capture
+audio. The schema-4 host receipt records this input identity; physical capture
 remains a separate field gate.
 
 Every invocation also carries a 60–7,200-second in-app watchdog armed before
@@ -1252,7 +1255,7 @@ Before repeated Refine measurement, one bounded unmeasured scratch-app process
 verifies the selected Whisper model, tokenizer, and diarization artifacts,
 acquires and finishes the real Whisper runtime, and only then acquires and
 finishes the real diarization runtime. It publishes one exact owner-only
-mode-0600 marker that the schema-3 receipt binds as
+mode-0600 marker that the schema-4 receipt binds as
 `refine-runtime-preparation-v1`. The three measured Refine processes remain
 independent and start without an app-resident runtime. This isolates one-time
 host/Core ML compilation from the repeated-sample stability rule without

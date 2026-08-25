@@ -3082,8 +3082,11 @@ recording-plus-indexing, and recording-plus-batch observations on 8 GB, 16 GB,
 and reference-memory Macs. A receipt is exact-shaped and release-build-bound;
 it may contain only host/toolchain identity, aggregate process resource
 metrics, and summaries of the closed workload enums. Three stable runs are
-required for each matrix cell; the existing measurement-stability rule marks
-wall or CPU timing with p95/p50 above 1.25 as unstable. The evaluator emits
+required for each matrix cell. Resource receipt schema 4 marks a wall or CPU
+distribution unstable only when its nearest-rank p95/p50 is above 1.25 and its
+p95-minus-p50 delta is at least 100 milliseconds. A zero median blocks only
+when p95 reaches that same absolute floor. The contract cannot raise the floor,
+and the evaluator retains every raw aggregate without clipping while emitting
 owner-only JSON and Markdown with nearest-rank p50/p95 and peak/thermal
 summaries. Missing, failed, not-observed, under-sampled, or unstable cells
 produce a complete blocked scorecard, while malformed, duplicate,
@@ -3153,7 +3156,7 @@ normal SHA-256-verified model cache only when their measured operation requires
 it. Before the three Refine samples, one bounded, unmeasured scratch-app process
 verifies the installed artifacts, acquires and finishes the production Whisper
 runtime, then acquires and finishes the production diarization runtime. It
-publishes one fixed owner-only mode-0600 marker. Receipt schema 3 binds this
+publishes one fixed owner-only mode-0600 marker. Receipt schema 4 binds this
 exact `refine-runtime-preparation-v1` prerequisite plus the recording-input
 contract. Missing, malformed, symlinked, or incorrectly permissioned evidence
 fails closed. Every measured Refine sample still runs in its own app process
@@ -3831,7 +3834,7 @@ but does not invalidate an otherwise identical top-k set; graded MRR/nDCG
 quality remains a separate corpus gate. Timing stability reuses nearest-rank
 p95/p50 no greater than 1.25 both inside each query observation and across
 repeated fixture, build, and query measurements.
-Host-profile loading delegates to the same closed schema-3 resource-contract
+Host-profile loading delegates to the same closed schema-4 resource-contract
 validator used by the resource baseline, so an exact-path run cannot silently
 accept stale recording or runtime-preparation prerequisites.
 

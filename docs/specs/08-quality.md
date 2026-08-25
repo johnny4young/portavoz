@@ -2389,7 +2389,7 @@ gate always runs them. An architecture ratchet pins the schema, 29 proofs,
 eight classes, fail-closed predicate, exact artifact stamp, distribution
 receipt ordering, D147, and D391.
 
-**Candidate automation owner (D392/D393/D396–D398).**
+**Candidate automation owner (D392–D400).**
 `docs/evidence/candidate-automation.json` is the finite executable contract for
 the eight candidate proofs. `scripts/candidate_automation.py` runs every gate
 sequentially on one completely clean full commit and rechecks the source before
@@ -2432,7 +2432,7 @@ The recording cells do not request a fresh microphone grant for that ad-hoc
 identity. They require the hidden `public-synthetic-dual-channel-v1` input,
 admitted only with the disposable store and resource-output boundary, and run
 it at real time through the production recording session, writers, live-model
-feeds, Stop, indexing, and batch concurrency. Resource receipt schema 3 records
+feeds, Stop, indexing, and batch concurrency. Resource receipt schema 4 records
 the exact 16 kHz/1,600-frame input contract and the completed
 `refine-runtime-preparation-v1` prerequisite. No physical capture source, TCC
 prompt, or user audio participates, so physical capture and permissions remain
@@ -3164,7 +3164,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   before recording metrics freeze, preventing a boundary finish from falling
   between collectors. A timeout or partial lifecycle emits no passing sample.
 - `scripts/resource_baseline.py assemble/evaluate`: assembles exact native
-  fragments into one schema-3 host receipt whose required recording-input
+  fragments into one schema-4 host receipt whose required recording-input
   provenance is `public-synthetic-dual-channel-v1` at 16 kHz with 1,600-frame
   chunks and whose required runtime preparation is
   `refine-runtime-preparation-v1`. The assembler requires one regular,
@@ -3174,10 +3174,13 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   projects the 3-profile × 9-scenario matrix. Each passing cell requires three
   stable runs and its contracted workload descriptors. Output is owner-only
   JSON/Markdown with nearest-rank p50/p95, peak footprint, energy, free-disk,
-  thermal, and power summaries. Wall or CPU p95/p50 above 1.25 marks the row
-  unstable. Missing, failed, not-observed, under-sampled, or unstable rows
-  block without disappearing; malformed or payload-bearing evidence is an
-  error. Twenty-nine deterministic tooling tests cover completeness,
+  thermal, and power summaries. Wall or CPU timing marks the row unstable only
+  when both p95/p50 is above 1.25 and p95 minus p50 is at least 100
+  milliseconds; a zero median blocks only when p95 reaches that floor. The
+  tracked contract cannot raise the floor, and raw aggregates remain visible
+  without clipping. Missing, failed, not-observed, under-sampled, or unstable
+  rows block without disappearing; malformed or payload-bearing evidence is an
+  error. Thirty deterministic tooling tests cover completeness,
   blocking states, assembly, native host metadata, runner isolation,
   identity/memory-tier mismatches, exact privacy shape, non-finite metrics,
   duplicate keys/runs/profiles, required workloads, contract weakening, output

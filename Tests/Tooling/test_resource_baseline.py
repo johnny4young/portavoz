@@ -40,6 +40,11 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(result, 0)
             scorecard = self.read_scorecard(output)
             self.assertEqual(scorecard["outcome"], "pass")
+            self.assertEqual(scorecard["schemaVersion"], 4)
+            self.assertEqual(
+                scorecard["minimumBlockingTimingDeltaMilliseconds"],
+                100,
+            )
             self.assertEqual(
                 scorecard["recordingInput"],
                 {
@@ -146,6 +151,71 @@ class ResourceBaselineTests(unittest.TestCase):
                 and row["scenario"] == "idle"
             )
             self.assertEqual(idle["state"], "unstable")
+
+    def test_dual_timing_stability_ignores_noise_but_blocks_regressions(self):
+        def metrics(wall_p50, wall_p95, cpu_p50, cpu_p95):
+            return {
+                "wallDurationMilliseconds": {
+                    "p50": wall_p50,
+                    "p95": wall_p95,
+                },
+                "cpuTimeMilliseconds": {
+                    "p50": cpu_p50,
+                    "p95": cpu_p95,
+                },
+            }
+
+        # Exact cc9d2e4 candidate Stop evidence. The CPU ratio is 1.282589,
+        # but its 47.0938 ms absolute delta is below the blocking floor.
+        self.assertTrue(baseline.timing_is_stable(
+            metrics(
+                126.939333,
+                128.05175,
+                166.65133333333335,
+                213.74516666666665,
+            ),
+            maximum_ratio=1.25,
+            minimum_blocking_delta=100,
+        ))
+        # Exact cc9d2e4 Ask fusion evidence: a large ratio over a 0.021791 ms
+        # delta is timer noise, not a release-blocking resource regression.
+        self.assertTrue(baseline.timing_is_stable(
+            metrics(
+                0.068667,
+                0.090458,
+                0.06870833333333333,
+                0.0905,
+            ),
+            maximum_ratio=1.25,
+            minimum_blocking_delta=100,
+        ))
+        # D398's first-use Refine regression remains actionable by both tests.
+        self.assertFalse(baseline.timing_is_stable(
+            metrics(
+                4_751.910334,
+                137_808.281667,
+                2_780.8050416666665,
+                46_452.165791666666,
+            ),
+            maximum_ratio=1.25,
+            minimum_blocking_delta=100,
+        ))
+        # The floor is inclusive when the relative ratio also exceeds 1.25.
+        self.assertFalse(baseline.timing_is_stable(
+            metrics(300, 400, 300, 400),
+            maximum_ratio=1.25,
+            minimum_blocking_delta=100,
+        ))
+        self.assertTrue(baseline.timing_is_stable(
+            metrics(0, 99.999, 0, 99.999),
+            maximum_ratio=1.25,
+            minimum_blocking_delta=100,
+        ))
+        self.assertFalse(baseline.timing_is_stable(
+            metrics(0, 100, 0, 100),
+            maximum_ratio=1.25,
+            minimum_blocking_delta=100,
+        ))
 
     def test_failed_and_not_observed_scenarios_remain_blocking(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -407,6 +477,11 @@ class ResourceBaselineTests(unittest.TestCase):
                     2.0,
                     "maximumTimingP95ToP50Ratio must be <= 1.25",
                 ),
+                (
+                    "minimumBlockingTimingDeltaMilliseconds",
+                    101,
+                    "minimumBlockingTimingDeltaMilliseconds must be <= 100",
+                ),
             )
             for key, value, message in mutations:
                 with self.subTest(key=key):
@@ -447,6 +522,7 @@ class ResourceBaselineTests(unittest.TestCase):
             baseline.load_json(baseline.DEFAULT_CONTRACT, "resource contract")
         )
         self.assertEqual(contract["minimumSamples"], 3)
+        self.assertEqual(contract["minimumBlockingTimingDelta"], 100)
         self.assertEqual(contract["maximumTimingRatio"], 1.25)
         self.assertEqual(
             contract["preparations"],
@@ -618,7 +694,7 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(result, 0)
             receipt = json.loads(output.read_text())
             self.assertEqual(receipt["kind"], "resource-baseline")
-            self.assertEqual(receipt["schemaVersion"], 3)
+            self.assertEqual(receipt["schemaVersion"], 4)
             self.assertEqual(
                 receipt["recordingInput"]["generation"],
                 "public-synthetic-dual-channel-v1",
@@ -1066,7 +1142,7 @@ class ResourceBaselineTests(unittest.TestCase):
     def write_receipt(self, root, profile, suffix=None):
         path = root / f"{profile}{'-' + suffix if suffix else ''}.json"
         payload = {
-            "schemaVersion": 3,
+            "schemaVersion": 4,
             "kind": "resource-baseline",
             "collectedAt": "2026-07-28T18:00:00Z",
             "build": {

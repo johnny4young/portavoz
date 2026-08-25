@@ -1,5 +1,6 @@
 {
   "minimumStableSamples": 3,
+  "minimumBlockingTimingDeltaMilliseconds": 100,
   "maximumTimingP95ToP50Ratio": 1.25,
   "recordingInput": {
     "chunkFrames": 1600,
@@ -156,5 +157,5 @@
       ]
     }
   ],
-  "schemaVersion": 3
+  "schemaVersion": 4
 }

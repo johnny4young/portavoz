@@ -16,7 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
+MAXIMUM_BLOCKING_TIMING_DELTA_MILLISECONDS = 100.0
 DEFAULT_CONTRACT = (
     Path(__file__).resolve().parents[1]
     / "docs"
@@ -237,6 +238,7 @@ def validate_contract(document):
         (
             "schemaVersion",
             "minimumStableSamples",
+            "minimumBlockingTimingDeltaMilliseconds",
             "maximumTimingP95ToP50Ratio",
             "recordingInput",
             "preparations",
@@ -253,6 +255,17 @@ def validate_contract(document):
         "contract.minimumStableSamples",
         3,
     )
+    minimum_blocking_timing_delta = number(
+        contract["minimumBlockingTimingDeltaMilliseconds"],
+        "contract.minimumBlockingTimingDeltaMilliseconds",
+    )
+    if (
+        minimum_blocking_timing_delta
+        > MAXIMUM_BLOCKING_TIMING_DELTA_MILLISECONDS
+    ):
+        raise ResourceBaselineError(
+            "contract.minimumBlockingTimingDeltaMilliseconds must be <= 100"
+        )
     maximum_timing_ratio = number(
         contract["maximumTimingP95ToP50Ratio"],
         "contract.maximumTimingP95ToP50Ratio",
@@ -378,6 +391,7 @@ def validate_contract(document):
 
     return {
         "minimumSamples": minimum_samples,
+        "minimumBlockingTimingDelta": minimum_blocking_timing_delta,
         "maximumTimingRatio": maximum_timing_ratio,
         "recordingInput": recording_input,
         "preparations": preparations,
@@ -1066,6 +1080,7 @@ def ask_pipeline_row(
     pipeline,
     minimum_samples,
     maximum_timing_ratio,
+    minimum_blocking_timing_delta,
 ):
     if pipeline is None:
         return {
@@ -1104,7 +1119,11 @@ def ask_pipeline_row(
             *metrics["stages"].values(),
         ]
         if any(
-            not timing_is_stable(group, maximum_timing_ratio)
+            not timing_is_stable(
+                group,
+                maximum_timing_ratio,
+                minimum_blocking_timing_delta,
+            )
             for group in timing_groups
         ):
             state = "unstable"
@@ -1123,10 +1142,16 @@ def ask_pipeline_row(
     }
 
 
-def timing_is_stable(metrics, maximum_ratio):
+def timing_is_stable(
+    metrics,
+    maximum_ratio,
+    minimum_blocking_delta,
+):
     for metric in ("wallDurationMilliseconds", "cpuTimeMilliseconds"):
         p50 = metrics[metric]["p50"]
         p95 = metrics[metric]["p95"]
+        if p95 - p50 < minimum_blocking_delta:
+            continue
         if p50 == 0:
             if p95 > 0:
                 return False
@@ -1141,6 +1166,7 @@ def scenario_row(
     scenario,
     minimum_samples,
     maximum_timing_ratio,
+    minimum_blocking_timing_delta,
 ):
     if scenario is None:
         return {
@@ -1158,7 +1184,11 @@ def scenario_row(
     elif (
         state == "pass"
         and metrics is not None
-        and not timing_is_stable(metrics, maximum_timing_ratio)
+        and not timing_is_stable(
+            metrics,
+            maximum_timing_ratio,
+            minimum_blocking_timing_delta,
+        )
     ):
         state = "unstable"
     return {
@@ -1434,6 +1464,8 @@ def render_markdown(scorecard):
             for item in scorecard["preparations"]
         ),
         f"- Minimum stable samples: `{scorecard['minimumStableSamples']}`",
+        "- Minimum blocking timing delta: "
+        f"`{scorecard['minimumBlockingTimingDeltaMilliseconds']:.0f} ms`",
         "- Maximum timing p95/p50 ratio: "
         f"`{scorecard['maximumTimingP95ToP50Ratio']:.2f}`",
         "",
@@ -1570,6 +1602,7 @@ def evaluate_namespace(arguments):
                     scenarios.get(scenario),
                     contract["minimumSamples"],
                     contract["maximumTimingRatio"],
+                    contract["minimumBlockingTimingDelta"],
                 )
             )
         ask_pipeline_measurements.append(
@@ -1578,6 +1611,7 @@ def evaluate_namespace(arguments):
                 receipt["askPipeline"] if receipt is not None else None,
                 contract["minimumSamples"],
                 contract["maximumTimingRatio"],
+                contract["minimumBlockingTimingDelta"],
             )
         )
     comparable_ask = [
@@ -1631,6 +1665,9 @@ def evaluate_namespace(arguments):
             )
         ],
         "minimumStableSamples": contract["minimumSamples"],
+        "minimumBlockingTimingDeltaMilliseconds": (
+            contract["minimumBlockingTimingDelta"]
+        ),
         "maximumTimingP95ToP50Ratio": contract["maximumTimingRatio"],
         "profiles": sorted(profile_metadata, key=lambda value: value["profile"]),
         "measurements": measurements,

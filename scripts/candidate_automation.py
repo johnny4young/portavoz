@@ -680,6 +680,7 @@ def validate_resource_receipt(
                 scenario,
                 expected_samples,
                 policy["contract"]["maximumTimingRatio"],
+                policy["contract"]["minimumBlockingTimingDelta"],
             )
         except resource_baseline.ResourceBaselineError as error:
             raise CandidateAutomationError(str(error)) from error
@@ -694,6 +695,7 @@ def validate_resource_receipt(
             ask_pipeline,
             expected_samples,
             policy["contract"]["maximumTimingRatio"],
+            policy["contract"]["minimumBlockingTimingDelta"],
         )
     except resource_baseline.ResourceBaselineError as error:
         raise CandidateAutomationError(str(error)) from error

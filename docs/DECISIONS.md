@@ -14830,3 +14830,37 @@ feedback remain explicit field/UX evidence. The failed `fd09b77` candidate
 stays failed. Additional memory tiers, independent physical Sequoia/Tahoe,
 VoiceOver/Voice Control, distribution, CloudKit, hosted CI, and field behavior
 remain separate gates.
+
+## D400 — Require actionable absolute timing variance in resource evidence (Aug 2026)
+
+**Context:** the exact clean `cc9d2e4` candidate completed deterministic
+validation, recording stress, scoped bilingual XCUITest, public fixtures, every
+installed-model lane, the authoritative performance ledger, and all three
+resource rounds. D399 made Refine stable at about 4.74–4.86 seconds wall and
+2.71–2.77 seconds CPU with zero measured disk writes. Candidate validation then
+blocked Stop because its CPU p95/p50 was 1.282589, although the absolute spread
+was only 47.0938 milliseconds and wall time was stable. The next blocking row
+would have been Ask's `fusion` stage: ratio 1.317343 over only 0.021791
+milliseconds. A pure relative ratio is ill-conditioned for small measurements;
+neither distribution represented a user-visible or resource-actionable
+regression. The candidate remains failed and emitted no qualification receipt.
+
+**Decision:** resource receipt and scorecard schema 4 retain the three-sample
+nearest-rank distributions and every raw aggregate unchanged. A wall or CPU
+distribution is unstable only when both its p95/p50 ratio is above 1.25 and its
+p95-minus-p50 delta is at least the tracked 100-millisecond blocking floor. If
+p50 is zero, p95 must reach that same floor before blocking. The contract may
+choose a stricter lower floor but cannot raise it above 100 milliseconds.
+Candidate validation applies the same rule to every resource scenario, the
+aggregate Ask timings, and every Ask stage. Dedicated UX/performance gates
+continue to own sub-100-millisecond latency rather than turning timer noise into
+a resource-matrix failure.
+
+**Consequences:** the exact Stop and Ask-fusion evidence that exposed the
+ill-conditioned ratio is admitted by a deterministic versioned policy rather
+than by an unchanged retry, while D398's 4.751-to-137.808-second Refine
+distribution remains unstable by both thresholds. An exactly 100-millisecond
+spread still blocks when its ratio is above 1.25. This correction does not
+raise a product latency budget, clip evidence, qualify `cc9d2e4`, accept a
+multi-host baseline, or close first-use Refine, physical Sequoia/Tahoe,
+VoiceOver/Voice Control, distribution, CloudKit, hosted CI, or field behavior.
