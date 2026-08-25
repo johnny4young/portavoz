@@ -62,15 +62,20 @@ class UITestScopeTests(unittest.TestCase):
         )
         self.assertEqual(storage.tests, recovery)
 
-    def test_resource_watchdog_selects_startup_canaries_not_every_feature(self):
-        selection = select_paths([
-            "Sources/portavoz-app/BenchResourceProcessWatchdog.swift",
-        ])
+    def test_resource_benchmark_owners_select_startup_canaries(self):
         expected = set(FEATURE_TESTS["launch-recovery"])
         expected.update(FEATURE_TESTS["main-shell"])
-        self.assertEqual(selection.locales, ("en",))
-        self.assertEqual(set(selection.tests), expected)
-        self.assertLess(len(selection.tests), len(ALL_TESTS))
+        for path in (
+            "Sources/portavoz-app/BenchMode.swift",
+            "Sources/portavoz-app/BenchMode+ResourceRefinePreparation.swift",
+            "Sources/portavoz-app/BenchResourceLaunchProbe.swift",
+            "Sources/portavoz-app/BenchResourceProcessWatchdog.swift",
+            "Sources/portavoz-app/BenchResourceScenarioProbe.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertEqual(set(selection.tests), expected, path)
+            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
     def test_docs_governance_and_local_tooling_do_not_spend_a_ui_runner(self):
         selection = select_paths(

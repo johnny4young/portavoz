@@ -311,6 +311,28 @@ require_unsigned_integer "$fixture_audio_bytes" "Refine fixture audio bytes"
 (( fixture_audio_bytes > 0 )) ||
     fail "the generated Refine fixture contains no audio bytes"
 
+refine_runtime_marker="$RUN_ROOT/refine-runtime-prepared"
+refine_runtime_log="$RUN_ROOT/refine-runtime-preparation.log"
+echo "Preparing Refine runtime before repeated measurement…"
+if ! run_benchmark_app \
+        -ApplePersistenceIgnoreState YES \
+        -use-temp-store \
+        --bench-resource-prepare-refine "$refine_runtime_marker" \
+        --bench-resource-timeout "$MODEL_TIMEOUT" \
+        --bench-log "$refine_runtime_log"
+then
+    [[ -f "$refine_runtime_log" ]] && cat "$refine_runtime_log" >&2
+    fail "Refine runtime preparation failed"
+fi
+if [[ ! -f "$refine_runtime_marker" \
+    || "$(cat "$refine_runtime_marker")" \
+        != "portavoz-resource-refine-runtime-prepared-v1" \
+    || "$(stat -f %Lp "$refine_runtime_marker")" != "600" ]]
+then
+    [[ -f "$refine_runtime_log" ]] && cat "$refine_runtime_log" >&2
+    fail "Refine runtime preparation did not publish its exact marker"
+fi
+
 fragments="$COLLECTION/fragments"
 sample_arguments=()
 ask_pipeline_arguments=()
@@ -506,6 +528,7 @@ python3 scripts/resource_baseline.py assemble \
     --build "$BUILD" \
     --commit "$COMMIT" \
     --profile "$PROFILE" \
+    --preparation "refine-runtime=$refine_runtime_marker" \
     "${sample_arguments[@]}" \
     "${ask_pipeline_arguments[@]}" \
     --output "$COLLECTION/receipt.json"

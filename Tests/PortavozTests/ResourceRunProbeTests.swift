@@ -143,6 +143,10 @@ final class ResourceRunProbeTests: XCTestCase {
         XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-record", "30"]))
         XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
+            arguments: [
+                "Portavoz", "--bench-resource-prepare-refine", "/tmp/ready",
+            ]))
+        XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-resource-refine", "fixture.aiff"]))
         XCTAssertTrue(BenchMode.runsIsolatedBenchmark(
             arguments: ["Portavoz", "--bench-resource-summary"]))
@@ -221,6 +225,19 @@ final class ResourceRunProbeTests: XCTestCase {
                 $0 as? BenchResourceLaunchProbeError,
                 .outputAlreadyExists)
         }
+
+        let refineOutput = root.appendingPathComponent("refine-ready")
+        try BenchResourceLaunchProbe.writeMarker(
+            to: refineOutput,
+            marker: .refineRuntimePrepared)
+        XCTAssertEqual(
+            try String(contentsOf: refineOutput, encoding: .utf8),
+            BenchResourceLaunchProbe.Marker.refineRuntimePrepared.rawValue)
+        let refineAttributes = try FileManager.default.attributesOfItem(
+            atPath: refineOutput.path)
+        XCTAssertEqual(
+            (refineAttributes[.posixPermissions] as? NSNumber)?.intValue,
+            0o600)
     }
 
     func testRefineResourceConfigurationBoundsTimeout() throws {
@@ -243,6 +260,33 @@ final class ResourceRunProbeTests: XCTestCase {
             XCTAssertEqual(
                 $0 as? BenchRefineResourceError,
                 .invalidTimeout)
+        }
+
+        let preparation = try XCTUnwrap(
+            BenchRefinePreparationConfiguration.requested(arguments: [
+                "Portavoz", "-use-temp-store",
+                "--bench-resource-prepare-refine", "/tmp/refine-ready",
+                "--bench-resource-timeout", "1200",
+            ]))
+        XCTAssertEqual(preparation.outputURL.path, "/tmp/refine-ready")
+        XCTAssertEqual(preparation.timeoutSeconds, 1_200)
+        XCTAssertThrowsError(
+            try BenchRefinePreparationConfiguration.requested(arguments: [
+                "Portavoz", "-use-temp-store",
+                "--bench-resource-prepare-refine", "relative/refine-ready",
+            ])) {
+            XCTAssertEqual(
+                $0 as? BenchRefineResourcePreparationError,
+                .absoluteOutputRequired)
+        }
+        XCTAssertThrowsError(
+            try BenchRefinePreparationConfiguration.requested(arguments: [
+                "Portavoz",
+                "--bench-resource-prepare-refine", "/tmp/refine-ready",
+            ])) {
+            XCTAssertEqual(
+                $0 as? BenchRefineResourcePreparationError,
+                .temporaryStoreRequired)
         }
     }
 

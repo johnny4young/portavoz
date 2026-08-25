@@ -39,6 +39,7 @@ struct AppStorageIsolationPolicy: Equatable {
         usesTemporaryMeetingStore = arguments.contains("-use-temp-store")
         usesTemporarySensitiveStore = usesTemporaryMeetingStore
         let reusesVerifiedModels = arguments.contains("--bench-record")
+            || arguments.contains("--bench-resource-prepare-refine")
             || arguments.contains("--bench-resource-refine")
             || arguments.contains("--bench-resource-summary")
         usesTemporaryModelStore =

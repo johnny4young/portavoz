@@ -4829,7 +4829,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 "indexing", "recording-indexing", "recording-batch",
             ]))
         XCTAssertEqual(contract["minimumStableSamples"] as? Int, 3)
-        XCTAssertEqual(contract["schemaVersion"] as? Int, 2)
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 3)
         let recordingInput = try XCTUnwrap(
             contract["recordingInput"] as? [String: Any])
         XCTAssertEqual(
@@ -4837,6 +4837,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             "public-synthetic-dual-channel-v1")
         XCTAssertEqual(recordingInput["sampleRate"] as? Int, 16_000)
         XCTAssertEqual(recordingInput["chunkFrames"] as? Int, 1_600)
+        let preparations = try XCTUnwrap(
+            contract["preparations"] as? [[String: Any]])
+        XCTAssertEqual(preparations.count, 1)
+        XCTAssertEqual(preparations[0]["id"] as? String, "refine-runtime")
+        XCTAssertEqual(
+            preparations[0]["generation"] as? String,
+            "refine-runtime-preparation-v1")
+        XCTAssertEqual(
+            preparations[0]["marker"] as? String,
+            "portavoz-resource-refine-runtime-prepared-v1\n")
         XCTAssertEqual(
             contract["maximumTimingP95ToP50Ratio"] as? Double,
             1.25)
@@ -4872,12 +4882,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/BenchResourceScenarioProbe.swift")
         let benchMode = try Self.contents(
             of: "Sources/portavoz-app/BenchMode.swift")
+        let refinePreparationMode = try Self.contents(
+            of: "Sources/portavoz-app/BenchMode+ResourceRefinePreparation.swift")
         let recordingRunner = try Self.contents(
             of: "Sources/portavoz-app/BenchRecordingResourceRunner.swift")
         let syntheticCapture = try Self.contents(
             of: "Sources/portavoz-app/BenchSyntheticRecordingRuntime.swift")
         let resourceWatchdog = try Self.contents(
             of: "Sources/portavoz-app/BenchResourceProcessWatchdog.swift")
+        let launchProbe = try Self.contents(
+            of: "Sources/portavoz-app/BenchResourceLaunchProbe.swift")
         let indexingBench = try Self.contents(
             of: "Sources/portavoz-app/BenchMode+ResourceIndexing.swift")
         let batchBench = try Self.contents(
@@ -4983,6 +4997,40 @@ final class ArchitectureDependencyTests: XCTestCase {
             "voiceprintStore = sensitiveStorage.voiceprintStore"))
         XCTAssertFalse(volatileSecrets.contains("Security"))
         XCTAssertFalse(volatileSecrets.contains("SecItem"))
+        XCTAssertTrue(refinePreparationMode.contains(
+            "runRefineResourcePreparationIfRequested"))
+        XCTAssertTrue(refinePreparationMode.contains(
+            "services.acquireWhisperRuntime"))
+        XCTAssertTrue(refinePreparationMode.contains(
+            ".acquireDiarizationRuntime"))
+        let acquireWhisper = try XCTUnwrap(refinePreparationMode.range(
+            of: "services.acquireWhisperRuntime"))
+        let finishWhisper = try XCTUnwrap(refinePreparationMode.range(
+            of: "services.finishWhisperRuntime"))
+        let acquireDiarization = try XCTUnwrap(refinePreparationMode.range(
+            of: ".acquireDiarizationRuntime"))
+        let finishDiarization = try XCTUnwrap(refinePreparationMode.range(
+            of: "services.finishDiarizationRuntime"))
+        XCTAssertLessThan(acquireWhisper.lowerBound, finishWhisper.lowerBound)
+        XCTAssertLessThan(finishWhisper.lowerBound, acquireDiarization.lowerBound)
+        XCTAssertLessThan(
+            acquireDiarization.lowerBound,
+            finishDiarization.lowerBound)
+        XCTAssertTrue(launchProbe.contains(
+            "portavoz-resource-refine-runtime-prepared-v1"))
+        XCTAssertTrue(app.contains(
+            "runRefineResourcePreparationIfRequested"))
+        XCTAssertTrue(runner.contains(
+            "--bench-resource-prepare-refine"))
+        XCTAssertTrue(runner.contains(
+            "--preparation \"refine-runtime=$refine_runtime_marker\""))
+        let refinePreparation = try XCTUnwrap(runner.range(
+            of: "Preparing Refine runtime before repeated measurement"))
+        let repeatedResourceRuns = try XCTUnwrap(runner.range(
+            of: "for ((run = 1; run <= RUNS; run++))"))
+        XCTAssertLessThan(
+            refinePreparation.lowerBound,
+            repeatedResourceRuns.lowerBound)
         XCTAssertTrue(benchMode.contains(
             "runRefineResourceBenchIfRequested"))
         XCTAssertTrue(benchMode.contains(
@@ -5049,7 +5097,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "com.apple.security.cs.disable-library-validation"))
         XCTAssertEqual(
             runner.components(separatedBy: "run_benchmark_app").count - 1,
-            9)
+            10)
         XCTAssertFalse(runner.contains(
             #"open -W -n "$APP/Contents/MacOS/portavoz-app""#))
         XCTAssertTrue(runner.contains(

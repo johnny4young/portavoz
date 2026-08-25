@@ -493,11 +493,17 @@ def app_features(filename: str) -> set[str]:
         return {"automation-entry", "commitment-radar"}
     if lowered in {"applaunchmodel.swift", "applaunchrecoveryview.swift"}:
         return {"launch-recovery", "main-shell"}
-    if lowered == "benchresourceprocesswatchdog.swift":
-        # This hidden pre-composition owner has no presentation. Its safe UI
-        # proof is normal/failing launch plus one canary per root destination;
-        # resource timeout behavior is covered by unit and disposable Release
-        # app evidence rather than all feature journeys.
+    if lowered in {
+        "benchmode.swift",
+        "benchmode+resourcerefinepreparation.swift",
+        "benchresourcelaunchprobe.swift",
+        "benchresourceprocesswatchdog.swift",
+        "benchresourcescenarioprobe.swift",
+    }:
+        # These hidden isolated-benchmark owners have no presentation. Their
+        # safe UI proof is normal/failing launch plus one canary per root
+        # destination; benchmark behavior is covered by unit and disposable
+        # Release-app evidence rather than every product journey.
         return {"launch-recovery", "main-shell"}
     if lowered == "contentview.swift":
         # Root composition changes can affect every destination, but one

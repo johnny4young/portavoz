@@ -23,6 +23,7 @@ enum BenchMode {
     ) -> Bool {
         arguments.contains("--bench-resource-launch-probe")
             || arguments.contains("--bench-record")
+            || arguments.contains("--bench-resource-prepare-refine")
             || arguments.contains("--bench-resource-refine")
             || arguments.contains("--bench-resource-summary")
             || arguments.contains("--bench-resource-ask")
@@ -256,7 +257,7 @@ extension BenchMode {
     }
 
     @MainActor
-    private static func verifyRefineBenchmarkModels(
+    static func verifyRefineBenchmarkModels(
         services: AppServices
     ) async throws {
         for descriptor in [
@@ -715,7 +716,7 @@ extension BenchMode {
     /// a GUI instance launched via `open -n` has no usable stdout, and the
     /// record bench must run as a real windowed app (its driver is a view
     /// `.task`, and TCC-covered capture needs the bundle).
-    private static func emit(_ line: String) {
+    static func emit(_ line: String) {
         print(line)
         let arguments = ProcessInfo.processInfo.arguments
         guard let flag = arguments.firstIndex(of: "--bench-log"),

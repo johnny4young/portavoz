@@ -1239,7 +1239,7 @@ A recording resource process is admitted only by one each of
 chunks at 16 kHz. The signal crosses the production `RecordingSession`, CAF
 writers, live-transcription feeds, Stop workflow, and concurrent indexing or
 batch scheduler while avoiding AVAudioEngine, process taps, TCC, and user
-audio. The schema-2 host receipt records this input identity; physical capture
+audio. The schema-3 host receipt records this input identity; physical capture
 remains a separate field gate.
 
 Every invocation also carries a 60–7,200-second in-app watchdog armed before
@@ -1248,11 +1248,20 @@ model timeout and the longest idle-plus-recording phase by 420 seconds, then
 adds a 30-second outer LaunchServices grace guard. Expiry terminates only the
 disposable scratch process/wait and leaves no passing sample or receipt.
 A five-second launch-settling interval precedes the model-free idle window.
-Refine runs as a draft-only cold-runtime operation in a separate process against
-one host-generated, non-silent English AIFF containing only fixed public text.
-The runner verifies the selected Whisper model, tokenizer, and diarization
-model before sampling and bounds execution to 60–3,600 seconds; model download
-is not part of the scenario. Summary runs in another cold process, verifies
+Before repeated Refine measurement, one bounded unmeasured scratch-app process
+verifies the selected Whisper model, tokenizer, and diarization artifacts,
+acquires and finishes the real Whisper runtime, and only then acquires and
+finishes the real diarization runtime. It publishes one exact owner-only
+mode-0600 marker that the schema-3 receipt binds as
+`refine-runtime-preparation-v1`. The three measured Refine processes remain
+independent and start without an app-resident runtime. This isolates one-time
+host/Core ML compilation from the repeated-sample stability rule without
+claiming first-ever activation latency, disk cost, or UX. Refine then runs as a
+draft-only operation in a separate process against one host-generated,
+non-silent English AIFF containing only fixed public text. The runner verifies
+the models again before sampling and bounds execution to 60–3,600 seconds;
+model download is not part of either preparation or measurement. Summary runs
+in another cold process, verifies
 the pinned Qwen3.5 MLX descriptor before sampling, inserts a fixed public
 English meeting/cast/transcript into the disposable database, and measures the
 real `RegenerateSummary` ApplicationKit workflow through successful
@@ -1286,7 +1295,8 @@ and a unique temporary participant-identity root, so resource and UI
 automation never inspect or mutate the host Keychain, voiceprint, or
 participant-voice gallery. Production keeps the Keychain-backed store and
 durable identity root. `AppStorageIsolationPolicy` allows only hidden
-recording/recording-plus-indexing/recording-plus-batch/Refine/Summary
+recording/recording-plus-indexing/recording-plus-batch/Refine-preparation/
+Refine/Summary
 benchmarks to reuse the normal verified Portavoz model cache. Ask and indexing
 use OS-managed assets and keep the disposable model root. Regular
 `-use-temp-store` automation still receives an empty model root.

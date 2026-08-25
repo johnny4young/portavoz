@@ -84,6 +84,15 @@ final class UITestDefaultsTests: XCTestCase {
         XCTAssertTrue(policy.usesTemporaryMeetingStore)
         XCTAssertFalse(policy.usesTemporaryModelStore)
         XCTAssertTrue(policy.usesTemporarySensitiveStore)
+
+        let preparation = AppStorageIsolationPolicy(
+            arguments: [
+                "Portavoz", "-use-temp-store",
+                "--bench-resource-prepare-refine", "/tmp/refine-ready",
+            ])
+        XCTAssertTrue(preparation.usesTemporaryMeetingStore)
+        XCTAssertFalse(preparation.usesTemporaryModelStore)
+        XCTAssertTrue(preparation.usesTemporarySensitiveStore)
     }
 
     func testSummaryResourceBenchmarkReusesVerifiedModelsOnly() {

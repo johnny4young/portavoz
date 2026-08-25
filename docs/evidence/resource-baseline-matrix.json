@@ -6,6 +6,13 @@
     "generation": "public-synthetic-dual-channel-v1",
     "sampleRate": 16000
   },
+  "preparations": [
+    {
+      "generation": "refine-runtime-preparation-v1",
+      "id": "refine-runtime",
+      "marker": "portavoz-resource-refine-runtime-prepared-v1\n"
+    }
+  ],
   "profiles": [
     {
       "id": "memory-8gb",
@@ -149,5 +156,5 @@
       ]
     }
   ],
-  "schemaVersion": 2
+  "schemaVersion": 3
 }

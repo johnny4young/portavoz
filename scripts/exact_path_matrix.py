@@ -13,6 +13,13 @@ from pathlib import Path
 from typing import Any
 
 
+SCRIPT_DIRECTORY = Path(__file__).resolve().parent
+if str(SCRIPT_DIRECTORY) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIRECTORY))
+
+import resource_baseline
+
+
 REPOSITORY = Path(__file__).resolve().parents[1]
 DEFAULT_CONTRACT = REPOSITORY / "docs" / "evidence" / "exact-path-shadow-matrix.json"
 DEFAULT_RESOURCE_CONTRACT = (
@@ -43,24 +50,6 @@ CONTRACT_KEYS = {
     "minimumStableObservations",
     "maximumTimingP95ToP50Ratio",
     "supportedOperatingSystemMajors",
-}
-RESOURCE_CONTRACT_KEYS = {
-    "schemaVersion",
-    "minimumStableSamples",
-    "maximumTimingP95ToP50Ratio",
-    "recordingInput",
-    "profiles",
-    "scenarios",
-}
-PROFILE_KEYS = {
-    "id",
-    "minimumPhysicalMemoryBytes",
-    "maximumPhysicalMemoryBytes",
-}
-RECORDING_INPUT_KEYS = {
-    "generation",
-    "sampleRate",
-    "chunkFrames",
 }
 OBSERVATION_KEYS = {
     "schemaVersion",
@@ -349,58 +338,16 @@ def load_contract(path: Path) -> dict[str, Any]:
 
 
 def load_profiles(path: Path) -> dict[str, tuple[int, int | None]]:
-    raw = exact_object(
-        read_json(path, "resource contract"),
-        RESOURCE_CONTRACT_KEYS,
-        "resource contract",
-    )
-    if integer(raw["schemaVersion"], "resource contract.schemaVersion", 1) != 2:
-        raise MatrixError("resource contract schemaVersion must be 2")
-    recording_input = exact_object(
-        raw["recordingInput"],
-        RECORDING_INPUT_KEYS,
-        "resource contract recordingInput",
-    )
-    if (
-        recording_input["generation"] != "public-synthetic-dual-channel-v1"
-        or integer(
-            recording_input["sampleRate"],
-            "resource contract recordingInput.sampleRate",
-            1,
+    try:
+        contract = resource_baseline.validate_contract(
+            resource_baseline.load_json(path, "resource contract")
         )
-        != 16_000
-        or integer(
-            recording_input["chunkFrames"],
-            "resource contract recordingInput.chunkFrames",
-            1,
-        )
-        != 1_600
-    ):
-        raise MatrixError("resource contract recordingInput is not supported")
-    profiles: dict[str, tuple[int, int | None]] = {}
-    if not isinstance(raw["profiles"], list):
-        raise MatrixError("resource contract profiles must be an array")
-    for index, value in enumerate(raw["profiles"]):
-        profile = exact_object(value, PROFILE_KEYS, f"resource profiles[{index}]")
-        identifier = bounded_string(profile["id"], f"resource profiles[{index}].id", 64)
-        if not PROFILE.fullmatch(identifier) or identifier in profiles:
-            raise MatrixError("resource contract profile identifiers are invalid")
-        minimum = integer(
-            profile["minimumPhysicalMemoryBytes"],
-            f"resource profiles[{index}].minimumPhysicalMemoryBytes",
-            1,
-        )
-        maximum = profile["maximumPhysicalMemoryBytes"]
-        if maximum is not None:
-            maximum = integer(
-                maximum,
-                f"resource profiles[{index}].maximumPhysicalMemoryBytes",
-                minimum,
-            )
-        profiles[identifier] = (minimum, maximum)
-    if set(profiles) != {"memory-8gb", "memory-16gb", "reference"}:
-        raise MatrixError("resource contract host profiles are not supported")
-    return profiles
+    except resource_baseline.ResourceBaselineError as error:
+        raise MatrixError(f"resource contract is invalid: {error}") from error
+    return {
+        identifier: (limits["minimum"], limits["maximum"])
+        for identifier, limits in contract["profiles"].items()
+    }
 
 
 def validate_host(

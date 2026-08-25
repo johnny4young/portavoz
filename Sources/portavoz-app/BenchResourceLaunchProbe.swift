@@ -9,7 +9,13 @@ import Foundation
 /// publishes one fixed, content-free marker before any application service is
 /// composed, then exits.
 enum BenchResourceLaunchProbe {
-    static let marker = "portavoz-resource-benchmark-ready-v1\n"
+    enum Marker: String {
+        case launchReady = "portavoz-resource-benchmark-ready-v1\n"
+        case refineRuntimePrepared =
+            "portavoz-resource-refine-runtime-prepared-v1\n"
+    }
+
+    static let marker = Marker.launchReady.rawValue
     private static let option = "--bench-resource-launch-probe"
 
     static func runIfRequested(
@@ -46,7 +52,10 @@ enum BenchResourceLaunchProbe {
         return URL(fileURLWithPath: path).standardizedFileURL
     }
 
-    static func writeMarker(to output: URL) throws {
+    static func writeMarker(
+        to output: URL,
+        marker: Marker = .launchReady
+    ) throws {
         let descriptor = output.path.withCString {
             Darwin.open(
                 $0,
@@ -68,7 +77,7 @@ enum BenchResourceLaunchProbe {
             }
         }
 
-        let data = Data(marker.utf8)
+        let data = Data(marker.rawValue.utf8)
         try data.withUnsafeBytes { rawBuffer in
             guard var cursor = rawBuffer.baseAddress else {
                 throw BenchResourceLaunchProbeError.writeFailed

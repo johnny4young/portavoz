@@ -9,13 +9,14 @@ import math
 import os
 import platform
 import re
+import stat
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 DEFAULT_CONTRACT = (
     Path(__file__).resolve().parents[1]
     / "docs"
@@ -58,6 +59,12 @@ REQUIRED_SCENARIOS = {
     "indexing",
     "recording-indexing",
     "recording-batch",
+}
+REQUIRED_PREPARATIONS = {
+    "refine-runtime": {
+        "generation": "refine-runtime-preparation-v1",
+        "marker": "portavoz-resource-refine-runtime-prepared-v1\n",
+    },
 }
 VERSION_PATTERN = re.compile(r"^[A-Za-z0-9._+\-]{1,40}$")
 BUILD_PATTERN = re.compile(r"^[A-Za-z0-9._+\-]{1,80}$")
@@ -232,6 +239,7 @@ def validate_contract(document):
             "minimumStableSamples",
             "maximumTimingP95ToP50Ratio",
             "recordingInput",
+            "preparations",
             "profiles",
             "scenarios",
         ),
@@ -258,6 +266,37 @@ def validate_contract(document):
         contract["recordingInput"],
         "contract.recordingInput",
     )
+    if not isinstance(contract["preparations"], list):
+        raise ResourceBaselineError("contract.preparations must be an array")
+    preparations = {}
+    for index, raw in enumerate(contract["preparations"]):
+        path = f"contract.preparations[{index}]"
+        preparation = object_shape(
+            raw,
+            path,
+            ("id", "generation", "marker"),
+        )
+        identifier = safe_string(
+            preparation["id"], f"{path}.id", PROFILE_PATTERN
+        )
+        if identifier in preparations:
+            raise ResourceBaselineError(
+                f"contract repeats preparation: {identifier}"
+            )
+        expected = REQUIRED_PREPARATIONS.get(identifier)
+        if expected is None or {
+            "generation": preparation["generation"],
+            "marker": preparation["marker"],
+        } != expected:
+            raise ResourceBaselineError(
+                f"{path} does not match a supported preparation"
+            )
+        preparations[identifier] = dict(expected)
+    if set(preparations) != set(REQUIRED_PREPARATIONS):
+        raise ResourceBaselineError(
+            "contract preparations must be exactly: "
+            + ", ".join(sorted(REQUIRED_PREPARATIONS))
+        )
     if not isinstance(contract["profiles"], list) or not contract["profiles"]:
         raise ResourceBaselineError("contract.profiles must be a non-empty array")
     if not isinstance(contract["scenarios"], list) or not contract["scenarios"]:
@@ -341,6 +380,7 @@ def validate_contract(document):
         "minimumSamples": minimum_samples,
         "maximumTimingRatio": maximum_timing_ratio,
         "recordingInput": recording_input,
+        "preparations": preparations,
         "profiles": profiles,
         "scenarios": scenarios,
     }
@@ -375,6 +415,48 @@ def validate_recording_input(raw, path):
     if integer(value["chunkFrames"], f"{path}.chunkFrames", 1) != 1_600:
         raise ResourceBaselineError(f"{path}.chunkFrames must be 1600")
     return dict(value)
+
+
+def validate_preparations(raw, path, contract):
+    if not isinstance(raw, list):
+        raise ResourceBaselineError(f"{path} must be an array")
+    preparations = {}
+    for index, value in enumerate(raw):
+        item_path = f"{path}[{index}]"
+        item = object_shape(
+            value,
+            item_path,
+            ("id", "generation", "state"),
+        )
+        identifier = safe_string(
+            item["id"], f"{item_path}.id", PROFILE_PATTERN
+        )
+        if identifier in preparations:
+            raise ResourceBaselineError(
+                f"{path} repeats preparation: {identifier}"
+            )
+        expected = contract["preparations"].get(identifier)
+        if expected is None:
+            raise ResourceBaselineError(
+                f"{item_path}.id is not in the contract"
+            )
+        if item["generation"] != expected["generation"]:
+            raise ResourceBaselineError(
+                f"{item_path}.generation does not match the contract"
+            )
+        if item["state"] != "completed":
+            raise ResourceBaselineError(
+                f"{item_path}.state must be completed"
+            )
+        preparations[identifier] = {
+            "generation": item["generation"],
+            "state": item["state"],
+        }
+    if set(preparations) != set(contract["preparations"]):
+        raise ResourceBaselineError(
+            f"{path} must cover every contracted preparation"
+        )
+    return preparations
 
 
 def validate_host(raw, path, contract):
@@ -827,6 +909,7 @@ def validate_receipt(document, contract, label):
             "host",
             "toolchain",
             "recordingInput",
+            "preparations",
             "scenarios",
         ),
         ("askPipeline",),
@@ -849,6 +932,11 @@ def validate_receipt(document, contract, label):
         raise ResourceBaselineError(
             f"{label}.recordingInput does not match the contract"
         )
+    preparations = validate_preparations(
+        receipt["preparations"],
+        f"{label}.preparations",
+        contract,
+    )
     if not isinstance(receipt["scenarios"], list):
         raise ResourceBaselineError(f"{label}.scenarios must be an array")
     scenarios = {}
@@ -883,6 +971,7 @@ def validate_receipt(document, contract, label):
         "host": dict(host),
         "toolchain": dict(toolchain),
         "recordingInput": recording_input,
+        "preparations": preparations,
         "scenarios": scenarios,
         "askPipeline": ask_pipeline,
     }
@@ -1180,6 +1269,48 @@ def split_sample_assignment(value):
     return scenario_id, raw_path
 
 
+def validate_preparation_marker(path, identifier, contract):
+    expected = contract["preparations"].get(identifier)
+    if expected is None:
+        raise ResourceBaselineError(
+            f"--preparation id is not in the contract: {identifier}"
+        )
+    marker_path = Path(path).expanduser()
+    try:
+        metadata = marker_path.lstat()
+    except OSError as error:
+        raise ResourceBaselineError(
+            f"resource preparation marker not found: {marker_path}"
+        ) from error
+    if not stat.S_ISREG(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
+        raise ResourceBaselineError(
+            f"resource preparation marker must be a regular file: {identifier}"
+        )
+    if metadata.st_uid != os.getuid():
+        raise ResourceBaselineError(
+            f"resource preparation marker must be owner-created: {identifier}"
+        )
+    if stat.S_IMODE(metadata.st_mode) != 0o600:
+        raise ResourceBaselineError(
+            f"resource preparation marker must use mode 0600: {identifier}"
+        )
+    try:
+        marker = marker_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        raise ResourceBaselineError(
+            f"resource preparation marker is unreadable: {identifier}"
+        ) from error
+    if marker != expected["marker"]:
+        raise ResourceBaselineError(
+            f"resource preparation marker is invalid: {identifier}"
+        )
+    return {
+        "id": identifier,
+        "generation": expected["generation"],
+        "state": "completed",
+    }
+
+
 def assemble_namespace(arguments):
     contract = validate_contract(load_json(arguments.contract, "resource contract"))
     build = expected_build(arguments)
@@ -1188,6 +1319,22 @@ def assemble_namespace(arguments):
         raise ResourceBaselineError("--profile is not in the resource contract")
     if not arguments.sample:
         raise ResourceBaselineError("at least one --sample is required")
+    preparation_rows = {}
+    for assignment in arguments.preparation:
+        identifier, marker_path = split_sample_assignment(assignment)
+        if identifier in preparation_rows:
+            raise ResourceBaselineError(
+                f"resource preparations repeat id: {identifier}"
+            )
+        preparation_rows[identifier] = validate_preparation_marker(
+            marker_path,
+            identifier,
+            contract,
+        )
+    if set(preparation_rows) != set(contract["preparations"]):
+        raise ResourceBaselineError(
+            "resource preparations must cover every contracted id"
+        )
     samples_by_scenario = {}
     for index, assignment in enumerate(arguments.sample):
         scenario, sample_path = split_sample_assignment(assignment)
@@ -1240,6 +1387,10 @@ def assemble_namespace(arguments):
         "host": host,
         "toolchain": toolchain,
         "recordingInput": contract["recordingInput"],
+        "preparations": [
+            preparation_rows[identifier]
+            for identifier in sorted(preparation_rows)
+        ],
         "scenarios": [
             {
                 "id": scenario,
@@ -1277,6 +1428,11 @@ def render_markdown(scorecard):
         f"`{scorecard['recordingInput']['generation']}` at "
         f"{scorecard['recordingInput']['sampleRate']} Hz / "
         f"{scorecard['recordingInput']['chunkFrames']} frames",
+        "- Runtime preparations: "
+        + ", ".join(
+            f"`{item['id']}:{item['generation']}`"
+            for item in scorecard["preparations"]
+        ),
         f"- Minimum stable samples: `{scorecard['minimumStableSamples']}`",
         "- Maximum timing p95/p50 ratio: "
         f"`{scorecard['maximumTimingP95ToP50Ratio']:.2f}`",
@@ -1465,6 +1621,15 @@ def evaluate_namespace(arguments):
         "build": build,
         "outcome": outcome,
         "recordingInput": contract["recordingInput"],
+        "preparations": [
+            {
+                "id": identifier,
+                "generation": preparation["generation"],
+            }
+            for identifier, preparation in sorted(
+                contract["preparations"].items()
+            )
+        ],
         "minimumStableSamples": contract["minimumSamples"],
         "maximumTimingP95ToP50Ratio": contract["maximumTimingRatio"],
         "profiles": sorted(profile_metadata, key=lambda value: value["profile"]),
@@ -1494,6 +1659,12 @@ def build_parser():
         "--contract",
         default=str(DEFAULT_CONTRACT),
         help="Tracked resource matrix contract.",
+    )
+    assemble.add_argument(
+        "--preparation",
+        action="append",
+        default=[],
+        help="Preparation/marker assignment; repeat for every prerequisite.",
     )
     assemble.add_argument(
         "--sample",

@@ -31,6 +31,44 @@ struct BenchRefineResourceConfiguration: Equatable {
     }
 }
 
+struct BenchRefinePreparationConfiguration: Equatable {
+    let outputURL: URL
+    let timeoutSeconds: Int
+
+    static func requested(
+        arguments: [String]
+    ) throws -> BenchRefinePreparationConfiguration? {
+        let option = "--bench-resource-prepare-refine"
+        let indices = arguments.indices.filter { arguments[$0] == option }
+        guard !indices.isEmpty else { return nil }
+        guard indices.count == 1 else {
+            throw BenchRefineResourcePreparationError.duplicateOption
+        }
+        guard arguments.contains("-use-temp-store") else {
+            throw BenchRefineResourcePreparationError.temporaryStoreRequired
+        }
+        let optionIndex = indices[0]
+        guard arguments.indices.contains(optionIndex + 1),
+              !arguments[optionIndex + 1].isEmpty
+        else {
+            throw BenchRefineResourcePreparationError.missingOutput
+        }
+        let path = arguments[optionIndex + 1]
+        guard path.hasPrefix("/") else {
+            throw BenchRefineResourcePreparationError.absoluteOutputRequired
+        }
+        let timeout = try BenchResourceArguments.integer(
+            "--bench-resource-timeout",
+            arguments: arguments,
+            defaultValue: 900,
+            allowed: 60...3_600,
+            error: BenchRefineResourcePreparationError.invalidTimeout)
+        return BenchRefinePreparationConfiguration(
+            outputURL: URL(fileURLWithPath: path).standardizedFileURL,
+            timeoutSeconds: timeout)
+    }
+}
+
 struct BenchSummaryResourceConfiguration: Equatable {
     let timeoutSeconds: Int
 
@@ -88,7 +126,7 @@ struct BenchIndexingResourceConfiguration: Equatable {
     }
 }
 
-private enum BenchResourceArguments {
+enum BenchResourceArguments {
     static func integer<Failure: Error>(
         _ option: String,
         arguments: [String],
@@ -373,6 +411,38 @@ enum BenchRefineResourceError: Error, Equatable, LocalizedError {
             "Refine resource operation failed: \(message)"
         case .timedOut(let seconds):
             "Refine resource operation exceeded \(seconds) seconds"
+        }
+    }
+}
+
+enum BenchRefineResourcePreparationError: Error, Equatable, LocalizedError {
+    case absoluteOutputRequired
+    case duplicateOption
+    case invalidTimeout
+    case missingOutput
+    case operationFailed(String)
+    case residencyFailed
+    case temporaryStoreRequired
+    case timedOut(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .absoluteOutputRequired:
+            "Refine runtime preparation requires an absolute output path"
+        case .duplicateOption:
+            "--bench-resource-prepare-refine must appear exactly once"
+        case .invalidTimeout:
+            "--bench-resource-timeout must be between 60 and 3600 seconds"
+        case .missingOutput:
+            "--bench-resource-prepare-refine requires an output path"
+        case .operationFailed(let message):
+            "Refine runtime preparation failed: \(message)"
+        case .residencyFailed:
+            "Refine runtime preparation could not release a model lease"
+        case .temporaryStoreRequired:
+            "Refine runtime preparation requires -use-temp-store"
+        case .timedOut(let seconds):
+            "Refine runtime preparation exceeded \(seconds) seconds"
         }
     }
 }

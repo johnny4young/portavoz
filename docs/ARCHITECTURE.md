@@ -3150,11 +3150,21 @@ participant-identity root. It never reads or writes the host Keychain,
 voiceprint, or participant-voice gallery. Production composition continues to
 use the Keychain and its durable identity root. Resource scenarios reuse the
 normal SHA-256-verified model cache only when their measured operation requires
-it. The three recording scenarios require the exact public
+it. Before the three Refine samples, one bounded, unmeasured scratch-app process
+verifies the installed artifacts, acquires and finishes the production Whisper
+runtime, then acquires and finishes the production diarization runtime. It
+publishes one fixed owner-only mode-0600 marker. Receipt schema 3 binds this
+exact `refine-runtime-preparation-v1` prerequisite plus the recording-input
+contract. Missing, malformed, symlinked, or incorrectly permissioned evidence
+fails closed. Every measured Refine sample still runs in its own app process
+without an app-resident runtime; the preparation removes one-time host/Core ML
+compilation from the repeated-sample stability calculation but does not claim
+first-ever activation latency, disk cost, or UX. The three recording scenarios
+require the exact public
 `public-synthetic-dual-channel-v1` real-time 16 kHz input through the production
 recording session, writers, live-model feeds, Stop workflow, and concurrent
-schedulers. Receipt schema 2 records that generation, sample rate, and chunk
-size. The hidden runtime is admitted only by the conjunction of temporary
+schedulers. The receipt records that generation, sample rate, and chunk size.
+The hidden runtime is admitted only by the conjunction of temporary
 store, recording-resource output, and synthetic-input flags; it never
 constructs physical capture sources, asks TCC, or reads user audio. Physical
 microphone/system capture, device routes, and permission behavior remain
@@ -3821,6 +3831,9 @@ but does not invalidate an otherwise identical top-k set; graded MRR/nDCG
 quality remains a separate corpus gate. Timing stability reuses nearest-rank
 p95/p50 no greater than 1.25 both inside each query observation and across
 repeated fixture, build, and query measurements.
+Host-profile loading delegates to the same closed schema-3 resource-contract
+validator used by the resource baseline, so an exact-path run cannot silently
+accept stale recording or runtime-preparation prerequisites.
 
 `scripts/run-exact-path-shadow-matrix.sh` admits only a clean committed
 checkout, runs three complete matrices through ephemeral owner-only files,

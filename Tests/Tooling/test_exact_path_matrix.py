@@ -218,6 +218,27 @@ class ExactPathMatrixTests(unittest.TestCase):
             with self.assertRaisesRegex(matrix.MatrixError, "duplicate JSON key"):
                 matrix.read_observations(path)
 
+    def test_resource_profiles_require_the_shared_schema_three_contract(self):
+        self.assertEqual(
+            set(self.profiles),
+            {"memory-8gb", "memory-16gb", "reference"},
+        )
+        source = json.loads(matrix.DEFAULT_RESOURCE_CONTRACT.read_text())
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "resource-contract.json"
+
+            stale = copy.deepcopy(source)
+            stale["schemaVersion"] = 2
+            path.write_text(json.dumps(stale))
+            with self.assertRaisesRegex(matrix.MatrixError, "schemaVersion must be 3"):
+                matrix.load_profiles(path)
+
+            unsupported = copy.deepcopy(source)
+            unsupported["preparations"][0]["marker"] = "stale-marker\n"
+            path.write_text(json.dumps(unsupported))
+            with self.assertRaisesRegex(matrix.MatrixError, "supported preparation"):
+                matrix.load_profiles(path)
+
     def test_direct_empty_input_and_invalid_timestamp_fail_closed(self):
         with self.assertRaisesRegex(matrix.MatrixError, "observation stream is empty"):
             self.receipt([])

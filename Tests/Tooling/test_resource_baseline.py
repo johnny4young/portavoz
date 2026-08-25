@@ -48,6 +48,13 @@ class ResourceBaselineTests(unittest.TestCase):
                     "chunkFrames": 1_600,
                 },
             )
+            self.assertEqual(
+                scorecard["preparations"],
+                [{
+                    "id": "refine-runtime",
+                    "generation": "refine-runtime-preparation-v1",
+                }],
+            )
             self.assertEqual(len(scorecard["measurements"]), 27)
             recording = next(
                 row
@@ -442,6 +449,10 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertEqual(contract["minimumSamples"], 3)
         self.assertEqual(contract["maximumTimingRatio"], 1.25)
         self.assertEqual(
+            contract["preparations"],
+            baseline.REQUIRED_PREPARATIONS,
+        )
+        self.assertEqual(
             contract["profiles"],
             {
                 "memory-8gb": {
@@ -560,6 +571,7 @@ class ResourceBaselineTests(unittest.TestCase):
                 self.sample(1, scenarios["recording-batch"])))
             stop.write_text(json.dumps(
                 self.sample(1, scenarios["stop"])))
+            preparation = self.write_preparation_marker(root)
             output = root / "receipt.json"
 
             with mock.patch.object(
@@ -577,6 +589,8 @@ class ResourceBaselineTests(unittest.TestCase):
                     self.commit,
                     "--profile",
                     "memory-8gb",
+                    "--preparation",
+                    f"refine-runtime={preparation}",
                     "--sample",
                     f"idle={idle}",
                     "--sample",
@@ -604,13 +618,21 @@ class ResourceBaselineTests(unittest.TestCase):
             self.assertEqual(result, 0)
             receipt = json.loads(output.read_text())
             self.assertEqual(receipt["kind"], "resource-baseline")
-            self.assertEqual(receipt["schemaVersion"], 2)
+            self.assertEqual(receipt["schemaVersion"], 3)
             self.assertEqual(
                 receipt["recordingInput"]["generation"],
                 "public-synthetic-dual-channel-v1",
             )
             self.assertEqual(
                 receipt["askPipeline"]["samples"][0]["run"], 1
+            )
+            self.assertEqual(
+                receipt["preparations"],
+                [{
+                    "id": "refine-runtime",
+                    "generation": "refine-runtime-preparation-v1",
+                    "state": "completed",
+                }],
             )
             self.assertEqual(receipt["host"]["profile"], "memory-8gb")
             self.assertEqual(
@@ -642,6 +664,7 @@ class ResourceBaselineTests(unittest.TestCase):
             sample = self.sample(1, scenarios["recording"])
             first.write_text(json.dumps(sample))
             second.write_text(json.dumps(sample))
+            preparation = self.write_preparation_marker(root)
 
             with self.assertRaisesRegex(
                 baseline.ResourceBaselineError,
@@ -658,6 +681,8 @@ class ResourceBaselineTests(unittest.TestCase):
                         self.commit,
                         "--profile",
                         "memory-8gb",
+                        "--preparation",
+                        f"refine-runtime={preparation}",
                         "--sample",
                         f"recording={first}",
                         "--sample",
@@ -667,11 +692,78 @@ class ResourceBaselineTests(unittest.TestCase):
                     ])
                 )
 
+    def test_assemble_requires_exact_owner_only_runtime_preparation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            idle = root / "idle.json"
+            idle.write_text(json.dumps(self.sample(1, [])))
+            base = [
+                "assemble",
+                "--version",
+                self.version,
+                "--build",
+                self.build,
+                "--commit",
+                self.commit,
+                "--profile",
+                "memory-8gb",
+                "--sample",
+                f"idle={idle}",
+                "--output",
+                str(root / "receipt.json"),
+            ]
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "must cover every contracted id",
+            ):
+                baseline.assemble_namespace(
+                    baseline.build_parser().parse_args(base)
+                )
+
+            marker = root / "bad-marker"
+            marker.write_text("unexpected\n", encoding="utf-8")
+            marker.chmod(0o600)
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "marker is invalid",
+            ):
+                baseline.assemble_namespace(
+                    baseline.build_parser().parse_args(
+                        base[:-2]
+                        + [
+                            "--preparation",
+                            f"refine-runtime={marker}",
+                        ]
+                        + base[-2:]
+                    )
+                )
+
+            marker.write_text(
+                baseline.REQUIRED_PREPARATIONS["refine-runtime"]["marker"],
+                encoding="utf-8",
+            )
+            marker.chmod(0o644)
+            with self.assertRaisesRegex(
+                baseline.ResourceBaselineError,
+                "mode 0600",
+            ):
+                baseline.assemble_namespace(
+                    baseline.build_parser().parse_args(
+                        base[:-2]
+                        + [
+                            "--preparation",
+                            f"refine-runtime={marker}",
+                        ]
+                        + base[-2:]
+                    )
+                )
+
     def test_assemble_rejects_sample_without_required_workload(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             sample = root / "recording.json"
             sample.write_text(json.dumps(self.sample(1, [])))
+            preparation = self.write_preparation_marker(root)
 
             with mock.patch.object(
                 baseline,
@@ -692,6 +784,8 @@ class ResourceBaselineTests(unittest.TestCase):
                         self.commit,
                         "--profile",
                         "memory-8gb",
+                        "--preparation",
+                        f"refine-runtime={preparation}",
                         "--sample",
                         f"recording={sample}",
                         "--output",
@@ -800,6 +894,19 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("--bench-resource-launch-probe", runner)
         self.assertIn("portavoz-resource-benchmark-ready-v1", runner)
         self.assertIn('stat -f %Lp "$launch_probe"', runner)
+        self.assertIn("--bench-resource-prepare-refine", runner)
+        self.assertIn(
+            "portavoz-resource-refine-runtime-prepared-v1",
+            runner,
+        )
+        self.assertIn(
+            '--preparation "refine-runtime=$refine_runtime_marker"',
+            runner,
+        )
+        self.assertLess(
+            runner.index("Preparing Refine runtime before repeated measurement"),
+            runner.index("for ((run = 1; run <= RUNS; run++))"),
+        )
         self.assertIn("-use-temp-store", runner)
         self.assertIn("--bench-resource-output", runner)
         self.assertIn("--bench-resource-run", runner)
@@ -894,7 +1001,9 @@ class ResourceBaselineTests(unittest.TestCase):
         self.assertIn("(( MODEL_TIMEOUT <= 3600 ))", runner)
         self.assertIn('if [[ "$OUTPUT" != /* ]]; then', runner)
         self.assertIn('OUTPUT="$ROOT/$OUTPUT"', runner)
-        self.assertEqual(runner.count("run_benchmark_app"), 9)
+        # One launch preflight, one Refine-runtime preparation, and seven
+        # measured app invocations per repeated run.
+        self.assertEqual(runner.count("run_benchmark_app"), 10)
         self.assertNotIn(
             'open -W -n "$APP/Contents/MacOS/portavoz-app"',
             runner,
@@ -957,7 +1066,7 @@ class ResourceBaselineTests(unittest.TestCase):
     def write_receipt(self, root, profile, suffix=None):
         path = root / f"{profile}{'-' + suffix if suffix else ''}.json"
         payload = {
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "kind": "resource-baseline",
             "collectedAt": "2026-07-28T18:00:00Z",
             "build": {
@@ -984,6 +1093,11 @@ class ResourceBaselineTests(unittest.TestCase):
                 "sampleRate": 16_000,
                 "chunkFrames": 1_600,
             },
+            "preparations": [{
+                "id": "refine-runtime",
+                "generation": "refine-runtime-preparation-v1",
+                "state": "completed",
+            }],
             "scenarios": [
                 self.scenario(identifier, required)
                 for identifier, required in self.required_scenarios()
@@ -997,6 +1111,16 @@ class ResourceBaselineTests(unittest.TestCase):
             },
         }
         path.write_text(json.dumps(payload))
+        return path
+
+    @staticmethod
+    def write_preparation_marker(root):
+        path = root / "refine-runtime-prepared"
+        path.write_text(
+            baseline.REQUIRED_PREPARATIONS["refine-runtime"]["marker"],
+            encoding="utf-8",
+        )
+        path.chmod(0o600)
         return path
 
     def scenario(self, identifier, required):

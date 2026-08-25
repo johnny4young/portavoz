@@ -14790,3 +14790,43 @@ faking their success. Real microphone/process-tap TCC, device routing,
 acoustics, 90-minute calls, additional memory tiers, physical Sequoia/Tahoe,
 VoiceOver/Voice Control, distribution, CloudKit, hosted CI, and field behavior
 remain separate gates.
+
+## D399 — Prepare one-time Refine runtime state outside repeated samples (Aug 2026)
+
+**Context:** the exact clean `fd09b77` candidate passed deterministic scope,
+2,754 package tests, recording stress, scoped bilingual UI, public fixtures,
+installed-model lanes, and the authoritative performance partition. Its
+resource receipt then blocked Refine stability. Run one took 137.808 seconds
+wall, 46.452 seconds process CPU, and wrote 1.755 GB; runs two and three took
+about 4.75 and 4.72 seconds and wrote nothing. The closed workload ledger
+attributed 131.554 seconds of run one to `qualityTranscription/load`. The
+nearest-rank p95/p50 rule correctly rejected that distribution: the first
+sample had paid one-time host/Core ML preparation that artifact verification
+alone does not perform.
+
+**Decision:** before the three measured Refine processes, run exactly one
+bounded, unmeasured scratch-app preparation through the production composition
+root. It force-verifies the already-installed Whisper, tokenizer, and
+diarization artifacts, acquires and finishes the Whisper runtime, and only then
+acquires and finishes the diarization runtime. Sequential leases mirror the
+product workflow and avoid manufacturing simultaneous heavy-model residency.
+It may reuse only the normal verified model cache; no download, user library,
+Keychain, voiceprint, or participant gallery is admitted.
+
+The preparation publishes one fixed content-free marker through the existing
+exclusive no-follow, mode-0600, `fsync` writer. Resource receipt schema 3 binds
+the exact `refine-runtime-preparation-v1` prerequisite. Assembly rejects a
+missing, duplicate, unsupported, symlinked, wrong-owner, wrong-mode, unreadable,
+or different marker. Every measured Refine sample remains a separate app
+process with no app-resident runtime, and all existing timeout, model
+verification, workload, privacy, and stability checks remain in force.
+
+**Consequences:** repeated Refine samples no longer depend on accidental prior
+host cache state or an unchanged retry, while each measured process still pays
+its real per-process load and execution cost. This does not turn the preparation
+into a passing sample and does not certify the first-ever Refine activation
+experience; its latency, disk writes, thermal behavior, cancellation, and user
+feedback remain explicit field/UX evidence. The failed `fd09b77` candidate
+stays failed. Additional memory tiers, independent physical Sequoia/Tahoe,
+VoiceOver/Voice Control, distribution, CloudKit, hosted CI, and field behavior
+remain separate gates.

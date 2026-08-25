@@ -162,6 +162,7 @@ final class AppLaunchModel {
         BenchMode.runRecordBenchIfRequested(
             services: services,
             recording: services.recording)
+        BenchMode.runRefineResourcePreparationIfRequested(services: services)
         BenchMode.runRefineResourceBenchIfRequested(services: services)
         BenchMode.runSummaryResourceBenchIfRequested(services: services)
         BenchMode.runAskResourceBenchIfRequested(services: services)

@@ -2432,8 +2432,9 @@ The recording cells do not request a fresh microphone grant for that ad-hoc
 identity. They require the hidden `public-synthetic-dual-channel-v1` input,
 admitted only with the disposable store and resource-output boundary, and run
 it at real time through the production recording session, writers, live-model
-feeds, Stop, indexing, and batch concurrency. Resource receipt schema 2 records
-the exact 16 kHz/1,600-frame input contract. No physical capture source, TCC
+feeds, Stop, indexing, and batch concurrency. Resource receipt schema 3 records
+the exact 16 kHz/1,600-frame input contract and the completed
+`refine-runtime-preparation-v1` prerequisite. No physical capture source, TCC
 prompt, or user audio participates, so physical capture and permissions remain
 external evidence. Every copied-app invocation also arms a bounded process
 watchdog before database composition; expiration emits no passing fragment or
@@ -3077,10 +3078,18 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   recording-plus-batch runs.
   The original `make resource-recording-baseline` target is a compatibility
   alias. After a five-second launch-settling interval, the benchmark measures
-  idle before loading models. Refine runs separately against a fixed non-silent
-  English AIFF synthesized from public text; it requires full verification of
-  the installed Whisper, tokenizer, and diarization artifacts before sampling
-  and never downloads models inside the sample. Summary runs in another cold
+  idle before loading models. Before the repeated Refine samples, one bounded
+  unmeasured scratch-app process verifies installed artifacts, loads and
+  releases the production Whisper runtime, then loads and releases the
+  production diarization runtime. It must publish the exact owner-only
+  mode-0600 `refine-runtime-preparation-v1` marker. Refine runs separately
+  against a fixed non-silent English AIFF synthesized from public text; it
+  verifies the installed Whisper, tokenizer, and diarization artifacts again
+  before every sample and never downloads models. Each measured sample remains
+  an independent app process without a resident runtime. This excludes one-time
+  host/Core ML compilation from the repeated-sample stability calculation; it
+  does not measure or certify first-ever Refine activation latency, disk cost,
+  or UX. Summary runs in another cold
   process, verifies the pinned Qwen3.5 MLX model, creates a fixed public English
   meeting/cast/transcript only in the disposable database, and measures the
   real ApplicationKit regeneration transaction. Ask runs in another cold
@@ -3155,9 +3164,12 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   before recording metrics freeze, preventing a boundary finish from falling
   between collectors. A timeout or partial lifecycle emits no passing sample.
 - `scripts/resource_baseline.py assemble/evaluate`: assembles exact native
-  fragments into one schema-2 host receipt whose required recording-input
+  fragments into one schema-3 host receipt whose required recording-input
   provenance is `public-synthetic-dual-channel-v1` at 16 kHz with 1,600-frame
-  chunks, validates exact-shaped Release
+  chunks and whose required runtime preparation is
+  `refine-runtime-preparation-v1`. The assembler requires one regular,
+  non-symlinked, current-owner, exact-mode-0600 marker with fixed content,
+  validates exact-shaped Release
   receipts against `docs/evidence/resource-baseline-matrix.json` and always
   projects the 3-profile × 9-scenario matrix. Each passing cell requires three
   stable runs and its contracted workload descriptors. Output is owner-only
@@ -3165,7 +3177,7 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   thermal, and power summaries. Wall or CPU p95/p50 above 1.25 marks the row
   unstable. Missing, failed, not-observed, under-sampled, or unstable rows
   block without disappearing; malformed or payload-bearing evidence is an
-  error. Twenty-eight deterministic tooling tests cover completeness,
+  error. Twenty-nine deterministic tooling tests cover completeness,
   blocking states, assembly, native host metadata, runner isolation,
   identity/memory-tier mismatches, exact privacy shape, non-finite metrics,
   duplicate keys/runs/profiles, required workloads, contract weakening, output
