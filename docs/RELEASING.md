@@ -62,7 +62,8 @@ make release-reliability-deterministic
 ```
 
 This command runs hygiene, warnings-as-errors build, the complete package
-suite, strict SwiftLint, 25 recording/recovery stress iterations, the exact mixed-language
+suite, the isolated twenty-sample Release correction-composition budget,
+strict SwiftLint, 25 recording/recovery stress iterations, the exact mixed-language
 policy corpus, and seven focused XCUITest journeys in English and Spanish. It
 writes `dist/release-readiness/deterministic.json` only after every command
 passes. Do not reuse a receipt after the commit, version, or build changes.
@@ -76,6 +77,15 @@ original Swift test status. An unavailable identifier remains a red gate. Do
 not replace that result with an unchanged retry, and do not use SwiftPM
 `--xunit-output` as a substitute: on the current toolchain it does not contain
 the package's XCTest inventory.
+
+The ordinary Debug package suite characterizes the dense
+8,000-segment/4,000-correction result without using wall time for admission.
+Immediately afterward, the release owner runs twenty prebuilt
+20,000-segment/400-correction permutations under `-c release`; nearest-rank
+p95 must remain at or below 250 ms. This isolated command is the only
+correction-composition timing authority in deterministic admission. Do not run
+it concurrently with another performance gate, lower its sample count, convert
+its red result into a retry, or infer combined UI/search performance from it.
 
 D391 keeps this original deterministic receipt as one input rather than
 pretending it covers all of 1.0. The final schema-2 scorecard also requires four

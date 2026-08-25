@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: scripts/run-correction-composition-benchmark.sh [--runs 5]
+Usage: scripts/run-correction-composition-benchmark.sh [--runs 20]
 
 Runs the content-free 20,000-segment correction composition benchmark in
 Release mode. Build and test logs go to stderr; one schema-v1 JSON observation
@@ -11,7 +11,7 @@ goes to stdout. The runner never reads a user library or persists a report.
 EOF
 }
 
-runs=5
+runs=20
 while (($# > 0)); do
   case "$1" in
     --runs)

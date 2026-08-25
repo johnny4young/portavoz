@@ -2766,14 +2766,24 @@ prove duplicate blocked delivery is idempotent across relaunch and three
 compatible device histories converge independently of merge association.
 
 The test-only Release composition harness owns a synthetic mixed-language
-20,000-segment/400-correction fixture. It prebuilds five deterministic input
+20,000-segment/400-correction fixture. It prebuilds twenty deterministic input
 permutations, emits only host/configuration/count/timing aggregates, and fails
-when p95 exceeds 250 ms. The Aug 2026 reference observation records p50
-168.85 ms and p95/max 175.20 ms, with 19,867 visible rows. This is a pure
-composition budget, not a claim about combined Meeting Detail rendering or
-correction-heavy search cost. Replacement text now has FTS and background-
-maintained semantic lanes, while structural composed output remains excluded
-until it has a shared result-identity contract.
+when nearest-rank p95 exceeds 250 ms. The deterministic package suite retains a
+dense 8,000-segment/4,000-correction semantic characterization but no wall-clock
+admission: the release runner executes the isolated Release benchmark
+sequentially after that suite instead. An architecture ratchet requires the
+composer to build exactly one domain index per validation and projection pass
+and forbids its per-event whole-history convenience entry point, preserving the
+linear indexed structure without making unrelated Debug-suite contention a
+release failure. The dense characterization also requires complete composed
+content equality across all five input permutations; that comparison happens
+after each timed compose. The Aug 2026 reference observation records p50
+168.85 ms and p95/max 175.20 ms over the original five samples, with 19,867
+visible rows.
+This is a pure composition budget, not a claim about combined Meeting Detail
+rendering or correction-heavy search cost. Replacement text now has FTS and
+background-maintained semantic lanes, while structural composed output remains
+excluded until it has a shared result-identity contract.
 
 The complete docked playback surface enters SwiftUI through
 `MeetingDetailPlayerSection`. The section receives the current application-

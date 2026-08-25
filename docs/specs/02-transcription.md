@@ -19,10 +19,13 @@ Every correction's lane — text, speaker, or structure — is resolved through
 restore inherits its predecessor's lane, so resolution walks the supersession
 chain; doing that against a freshly grouped copy of the whole history per event
 made composition quadratic in a meeting's correction count, on the interactive
-path. Measured on 8 000 segments with 4 000 corrections: p95 12 749 ms before,
-185 ms after, guarded by
-`testDenseCorrectionHistoryStaysWithinTheCompositionBudget`. Per-event
-semantics are unchanged, including which event id a duplicate reports — the
+path. Measured on 8 000 segments with 4 000 corrections: p95 12 749 ms before
+and 185 ms after. `testDenseCorrectionHistoryComposesStablyOutsideTimedGate`
+retains that dense semantic shape, exact row count, and complete composed
+content equality across shuffled inputs, while an architecture
+ratchet pins the two indexed passes and the isolated Release benchmark owns the
+250 ms admission budget. Per-event semantics are unchanged, including which
+event id a duplicate reports — the
 duplicate check is deferred to the query so the refusal still names the event
 that was asked about.
 
@@ -125,11 +128,14 @@ English remain per-row spoken-language evidence; correction composition is
 never a translation step.
 
 `TranscriptCorrectionScaleBenchmarkTests` owns the payload-free synthetic scale
-fixture. `make test-correction-composition` validates its schema cheaply;
-`make correction-composition-benchmark` measures five Release permutations of
-20,000 rows and 400 corrections, failing above 250 ms p95. The retained Aug 2026
-reference observation is p50 168.85 ms and p95/max 175.20 ms. Search does not
-invoke this composer and corrected text remains intentionally unmaterialized.
+fixture. `make test-correction-composition` validates its schema and dense
+semantic output without wall-clock admission;
+`make correction-composition-benchmark` measures twenty Release permutations
+of 20,000 rows and 400 corrections, failing above 250 ms p95. The deterministic
+release runner executes that command sequentially after the full package suite.
+The retained Aug 2026 reference observation used the original five-sample
+policy and records p50 168.85 ms and p95/max 175.20 ms. Search does not invoke
+this composer and corrected text remains intentionally unmaterialized.
 
 ## Roles and engines (D7)
 

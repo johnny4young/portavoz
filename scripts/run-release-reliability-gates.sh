@@ -74,6 +74,8 @@ if [[ "$tee_status" -ne 0 ]]; then
   exit "$tee_status"
 fi
 cleanup_swift_test_diagnostics
+PORTAVOZ_CORRECTION_COMPOSITION_RUNS=20 \
+  make correction-composition-benchmark
 swiftlint lint --strict --no-cache
 PORTAVOZ_STRESS_MINIMUM_TESTS=108 make test-recording-stress
 swift test --filter "$LANGUAGE_FILTER"

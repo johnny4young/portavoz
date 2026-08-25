@@ -14642,3 +14642,41 @@ CLI disclosure; repository hygiene also syntax-checks the owning Bash runner.
 This diagnostic does not classify an intermittent failure as fixed, turn a
 later green run into candidate proof, or close any physical Sequoia/Tahoe,
 assistive-technology, distribution, CloudKit, hosted-CI, or field gate.
+
+## D395 — Isolate correction timing from the deterministic Debug suite (Aug 2026)
+
+**Context:** the first clean candidate after D394 again stopped with one of
+2,748 package tests failing. The new content-free summary identified the dense
+correction-history budget case in `TranscriptCorrectionScaleBenchmarkTests`.
+That test ran five wall-clock samples of an
+8,000-segment/4,000-correction fixture inside the full Debug suite;
+nearest-rank p95 over five samples is the maximum, so one unrelated host stall
+failed release admission. On the unchanged source, the intended
+isolated Release authority then passed twenty 20,000-segment/400-correction
+samples at 91.311 ms p50, 92.774 ms p95, and 93.702 ms maximum against the
+existing 250 ms budget. The product path had not regressed; the timing owner
+was misplaced.
+
+**Decision:** keep the dense Debug test as deterministic semantic
+characterization: five input permutations must retain 4,000 corrections,
+exactly 6,667 composed rows, and identical complete composed content, but
+elapsed time cannot fail the ordinary package suite. A source-level
+architecture ratchet preserves D300 by requiring one prebuilt
+correction-domain index in each of the validation and row-projection passes and
+forbidding the per-event whole-history convenience entry point from
+`ComposeTranscript`. Hard wall-clock admission moves to the existing
+content-free Release harness, now using twenty prebuilt permutations so
+nearest-rank p95 is not the single maximum. The deterministic release runner
+executes that isolated 20,000-segment/400-correction gate sequentially after
+the full package suite and before later gates; p95 above 250 ms remains an
+immediate failure and there is no automatic retry. Direct benchmark activation
+also defaults to twenty samples when no explicit diagnostic count is supplied.
+
+**Consequences:** package correctness stays deterministic under unrelated host
+load while the candidate gains a stronger, statistically meaningful Release
+performance gate instead of losing coverage or raising a budget. The original
+five-sample Aug reference remains historical evidence, not a substitute for the
+new candidate measurement. This current-host synthetic result still does not
+certify combined Meeting Detail rendering, correction-heavy search, other
+hardware profiles, physical Sequoia/Tahoe, distribution, CloudKit,
+accessibility, or field behavior.

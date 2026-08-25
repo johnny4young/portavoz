@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,748 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,749 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -46,7 +46,7 @@ local justification.
 |---|---|
 | StorageUpgradeTests | Disposable clean-install and exact v0.6.0 (`v1`–`v5`) file-library upgrade to the latest schema; every supported v1-v18 starting schema reaches typed empty v19 correction storage; bilingual transcript/cast, summary/action, note, Apuntador, and relative-audio-reference conservation; migration order, integrity, foreign keys, no implicit sync seed, and idempotent reopen |
 | RestructureMeetingTranscriptTests / MeetingTranscriptContentTests / TranscriptCorrectionCompositionTests / TranscriptCorrectionRevisionTests / MeetingTranscriptGenerationMaterialTests / TranscriptCorrectionStorageTests / TranscriptCorrectionReplicaMergeTests | Exact accepted-snapshot structural commands; explicit adjacent same-speaker/channel/time-monotonic merges; complete split partitions; collision-safe generated and historical part identities; recoverable suppression; restore that releases active ownership without erasing lineage; precomputed 20k-row editor projection; timestamp-aware bidirectional split-source navigation and export-to-original-audio seeking; deterministic typed replace/speaker/split/merge/suppress/restore composition; convergent effective correction revisions and disjoint replica-lane union; immutable rewrite, divergent tombstone, competing-lane, wrong-meeting, stale, overlapping, branched, malformed, and tombstoned-terminal rejection; fail-closed artifact and document provenance; generated-to-accepted evidence projection; strict portable-envelope decoding; idempotent atomic append; source retirement; schema immutability; monotonic semantic-maintenance invalidation; accepted-only search/index exclusion and restore; summary publication fences; one journal generation per logical correction; injected semantic-generation failure proving atomic rollback; and three-device replica convergence |
-| TranscriptCorrectionQualityTests / TranscriptCorrectionScaleBenchmarkTests | Sixty-four seeded permutations of replace/speaker/split/merge/suppress/restore history; stable composed readings independent of arrival order; explicit refined Spanish/English source language, source identity, and lineage preservation; content-free 20,000-segment/400-correction Release measurement; and a 250 ms p95 pure-composition budget over at least three runs |
+| TranscriptCorrectionQualityTests / TranscriptCorrectionScaleBenchmarkTests | Sixty-four seeded permutations of replace/speaker/split/merge/suppress/restore history; stable composed readings independent of arrival order; explicit refined Spanish/English source language, source identity, and lineage preservation; deterministic dense 8,000-segment/4,000-correction output with complete content equality across permutations; content-free isolated 20,000-segment/400-correction Release measurement; and a 250 ms p95 pure-composition budget over twenty candidate runs |
 | CommitmentRadarQueryTests / CommitmentRadarStorageTests / CommitmentRadarScaleBenchmarkTests | Injected seven-day calendar boundaries; strict root/related-row limits; exact self/person/unassigned ownership plus urgency/activity filters; oldest source and newest history bounds with visible totals; source-meeting navigation; projection/history corruption rejection; an at-most-four-SELECT snapshot read independent of root count; and a content-free 1,000/10,000-confirmed-commitment Release gate with a 100 ms p95 budget |
 | CommitmentFieldQualityTests | Content-free rolling 90-day cohort evaluation bounded to 50,000 observations; explicit pending/deferred/withdrawn versus terminal-review denominators; dismissal-based field false-positive proxy; exact opaque-owner and millisecond due-date precision; generated-evidence, user-note, manual-origin, and intentionally missing confirmation coverage; nearest-rank confirmation-latency p50/p95; English/Spanish/mixed/other-or-unknown breakdowns; and duplicate, out-of-window, inconsistent, and empty-cohort failure semantics over the canonical 12-observation public synthetic fixture |
 | CommitmentFieldQualityStorageTests | Schema-v24 content-free and immutable first-presentation evidence; no foreign-key erasure on source retirement; idempotent replay; exact canonical-owner token capture; mixed-language classification; immutable first-confirmation owner/date truth after later edits; and distinct dismissed/deferred/withdrawn current rolling assembly |
@@ -2528,6 +2528,52 @@ seconds with one 240-point scroll and a passing owner-only runtime receipt, a
 changed, so no Dev-app reinstall was required; this scoped canary does not
 replace the complete bilingual candidate gate.
 
+The next clean candidate on
+`83634dec14bd01a12657f8434287ddfc260c43bb` again failed closed after 2,748
+tests and 15 skips, with no deterministic or candidate qualification receipt.
+D394 reduced the result to the dense correction-history budget case in
+`PortavozTests.TranscriptCorrectionScaleBenchmarkTests`. That default Debug
+case measured five 8,000-segment/4,000-correction permutations, making
+nearest-rank p95 equal the maximum while the rest of the package shared the
+host. The intended isolated Release authority on the unchanged source passed
+twenty 20,000-segment/400-correction samples at 91.311 ms p50, 92.774 ms p95,
+and 93.702 ms maximum against the existing 250 ms budget. This proves D394's
+diagnostic path and distinguishes a misplaced timing owner from a product-path
+regression; it is not an unchanged candidate retry.
+
+**Isolated correction-composition admission (D395).** The ordinary package
+suite now keeps five shuffled dense semantic compositions and requires the
+exact 4,000-correction/6,667-row output plus complete composed-content equality
+without using elapsed time as a pass condition. A fail-closed unit pins the
+250 ms boundary itself, and an architecture ratchet requires exactly the
+validation and projection domain indexes while forbidding the per-event
+whole-history convenience path from the composer. The hard performance
+authority remains the same payload-free
+20,000-segment/400-correction Release harness and unchanged 250 ms p95 budget,
+but the default and candidate runners now use twenty prebuilt permutations.
+Direct environment activation also fails safe to twenty when a diagnostic run
+count is not supplied. The deterministic release owner executes it sequentially
+after the package suite, before later gates, and still writes no receipt if it
+fails. No budget, fixture size, semantic assertion, privacy boundary, or final
+bilingual UI gate was removed.
+
+D395's focused class passed 5/5 in 0.790 seconds. Its isolated current-host
+Release execution passed all twenty samples at 55.281 ms p50, 56.485 ms p95,
+and 56.786 ms maximum against the unchanged 250 ms budget. The complete
+package then passed 2,749 tests with 15 explicit skips and zero failures in
+130.577 seconds; the private diagnostic log was deleted after preserving the
+original pipeline statuses. The complete architecture ratchet passed 205/205,
+the tooling inventory passed 547/547, the current-SDK warnings-as-errors build
+passed in 23.47 seconds, strict SwiftLint remained clean across 731 production
+files, and repository hygiene passed. These are local deterministic and
+current-host synthetic proofs, not a candidate receipt or evidence for a clean
+install, physical Sequoia/Tahoe coverage, accessibility, distribution,
+CloudKit production, or field behavior. The mandatory real-app Settings
+category-navigation journey then passed 1/1 in English in 11.822 seconds with
+its owner-only runtime receipt and unchanged budget green. No production UI
+changed, so no Dev-app reinstall was required; this scoped journey does not
+replace the complete bilingual candidate gate.
+
 The 11 Aug 2026 development inventory is 2,377 XCTest package cases (14
 environment-gated), zero strict-lint violations across 656 production Swift
 files, a 221-case recording/recovery selector passing 25 consecutive iterations
@@ -2952,11 +2998,13 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   or performance decision. Use `make test-exact-path-mutation-baseline` for the
   synthetic fail-closed suite; no real baseline is committed.
 - `make correction-composition-benchmark`: run the content-free correction
-  composition benchmark in Release mode for three to twenty iterations. The
-  benchmark prepares deterministic mixed-language 20,000-segment and
-  400-correction permutations before timing, verifies identical visible-row
-  counts across every run, and fails when nearest-rank p95 exceeds 250 ms. Its
-  stdout contains one aggregate JSON document and its stderr retains test
+  composition benchmark in Release mode for twenty iterations by default; the
+  diagnostic CLI accepts three to twenty, while release admission requires all
+  twenty. The benchmark prepares deterministic mixed-language 20,000-segment and
+  400-correction permutations before timing, verifies complete composed-content
+  equality and identical visible-row counts across every run, and fails when
+  nearest-rank p95 exceeds 250 ms. Its stdout contains one aggregate JSON
+  document and its stderr retains test
   progress; neither carries meeting, segment, correction, text, or path data.
   The 2 Aug 2026 reference in
   `docs/evidence/correction-composition-20260802.json` measured p50 168.85 ms

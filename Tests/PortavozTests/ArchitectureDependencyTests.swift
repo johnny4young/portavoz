@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,748 cases "
+            "package inventory contains 2,749 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -9763,6 +9763,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "scripts/run-release-reliability-gates.sh")
         let failureSummary = try Self.contents(
             of: "scripts/swift_test_failure_summary.py")
+        let correctionScale = try Self.contents(
+            of: "Tests/PortavozTests/TranscriptCorrectionScaleBenchmarkTests.swift")
+        let correctionComposer = try Self.contents(
+            of: "Sources/ApplicationKit/ComposeTranscript.swift")
         let verifier = try Self.contents(of: "scripts/verify-distribution.sh")
         let packager = try Self.contents(of: "scripts/make-app.sh")
         let releaseScript = try Self.contents(of: "scripts/make-release.sh")
@@ -9788,9 +9792,26 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(runner.contains(#"pipeline_status=("${PIPESTATUS[@]}")"#))
         XCTAssertTrue(runner.contains("swift_test_failure_summary.py"))
         XCTAssertFalse(runner.contains("swift test --xunit-output"))
+        XCTAssertTrue(runner.contains(
+            "PORTAVOZ_CORRECTION_COMPOSITION_RUNS=20"))
+        XCTAssertTrue(runner.contains("make correction-composition-benchmark"))
         XCTAssertTrue(failureSummary.contains("MAXIMUM_LOG_BYTES"))
         XCTAssertTrue(failureSummary.contains("failed_test="))
         XCTAssertFalse(failureSummary.contains("print(text"))
+        XCTAssertTrue(correctionScale.contains(
+            "testDenseCorrectionHistoryComposesStablyOutsideTimedGate"))
+        XCTAssertTrue(correctionScale.contains(
+            "CorrectionCompositionBenchmark.measure(options:"))
+        XCTAssertTrue(correctionScale.contains(
+            "CorrectionCompositionBenchmark.run(options: options)"))
+        XCTAssertEqual(
+            correctionComposer.components(
+                separatedBy:
+                    "TranscriptCorrectionDomainIndex(history: history)"
+            ).count,
+            3)
+        XCTAssertFalse(correctionComposer.contains(
+            "TranscriptCorrectionPolicy.correctionDomain("))
         XCTAssertTrue(verifier.contains("record-distribution"))
         XCTAssertTrue(verifier.contains("PortavozSourceCommit"))
         XCTAssertTrue(verifier.contains("--commit \"$SOURCE_COMMIT\""))
@@ -9816,6 +9837,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D147"))
         XCTAssertTrue(decisions.contains("## D391"))
         XCTAssertTrue(decisions.contains("## D394"))
+        XCTAssertTrue(decisions.contains("## D395"))
     }
 
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {

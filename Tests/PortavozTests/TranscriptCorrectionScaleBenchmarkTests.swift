@@ -8,6 +8,12 @@ final class TranscriptCorrectionScaleBenchmarkTests: XCTestCase {
         XCTAssertNil(try CorrectionCompositionBenchmarkOptions.environmentOptions([:]))
         XCTAssertEqual(CorrectionCompositionBenchmarkOptions.canonicalSegmentCount, 20_000)
 
+        let defaultOptions = try XCTUnwrap(
+            CorrectionCompositionBenchmarkOptions.environmentOptions([
+                "PORTAVOZ_CORRECTION_COMPOSITION_BENCHMARK": "1",
+            ]))
+        XCTAssertEqual(defaultOptions.runs, 20)
+
         XCTAssertThrowsError(try CorrectionCompositionBenchmarkOptions.environmentOptions([
             "PORTAVOZ_CORRECTION_COMPOSITION_BENCHMARK": "1",
             "PORTAVOZ_CORRECTION_COMPOSITION_RUNS": "2",
@@ -32,24 +38,36 @@ final class TranscriptCorrectionScaleBenchmarkTests: XCTestCase {
     /// Lane resolution used to re-index the whole correction history once per
     /// active correction, twice per compose — quadratic in the correction
     /// count. This fixture measured 12 749 ms p95 that way, against 185 ms
-    /// once the history is indexed once. The test is the guard against that
-    /// cost coming back.
-    func testDenseCorrectionHistoryStaysWithinTheCompositionBudget() throws {
-        let report = try CorrectionCompositionBenchmark.run(options: .init(
+    /// once the history is indexed once. The default Debug suite keeps the
+    /// dense semantic characterization, while the isolated Release lane owns
+    /// wall-clock admission so unrelated suite load cannot manufacture a red.
+    func testDenseCorrectionHistoryComposesStablyOutsideTimedGate() throws {
+        let report = try CorrectionCompositionBenchmark.measure(options: .init(
             segmentCount: 8_000,
             correctionInterval: 2,
             runs: 5,
             p95BudgetMilliseconds: 250))
 
         XCTAssertEqual(report.configuration.correctionCount, 4_000)
-        XCTAssertLessThan(
-            report.timing.p95Milliseconds,
-            250,
-            "a dense correction history must stay interactive")
+        XCTAssertEqual(report.configuration.composedRowCount, 6_667)
+        XCTAssertEqual(report.timing.sampleCount, 5)
+    }
+
+    func testBudgetPolicyFailsClosedAtTheMeasuredBoundary() throws {
+        XCTAssertNoThrow(try CorrectionCompositionBenchmark.enforceBudget(
+            MillisecondDistribution([249.9, 250]),
+            maximumMilliseconds: 250))
+        XCTAssertThrowsError(try CorrectionCompositionBenchmark.enforceBudget(
+            MillisecondDistribution([250, 250.1]),
+            maximumMilliseconds: 250)) {
+            XCTAssertEqual(
+                $0 as? CorrectionCompositionBenchmarkError,
+                .p95BudgetExceeded)
+        }
     }
 
     func testSmallHarnessReportsOnlyAggregateCompositionCost() throws {
-        let report = try CorrectionCompositionBenchmark.run(options: .init(
+        let report = try CorrectionCompositionBenchmark.measure(options: .init(
             segmentCount: 200,
             correctionInterval: 10,
             runs: 2,
@@ -112,7 +130,7 @@ private struct CorrectionCompositionBenchmarkOptions: Equatable, Sendable {
         guard environment["PORTAVOZ_CORRECTION_COMPOSITION_BENCHMARK"] == "1" else {
             return nil
         }
-        let runs = environment["PORTAVOZ_CORRECTION_COMPOSITION_RUNS"].flatMap(Int.init) ?? 5
+        let runs = environment["PORTAVOZ_CORRECTION_COMPOSITION_RUNS"].flatMap(Int.init) ?? 20
         guard (3...20).contains(runs) else {
             throw CorrectionCompositionBenchmarkError.invalidRuns
         }
@@ -181,6 +199,16 @@ private enum CorrectionCompositionBenchmark {
     static func run(
         options: CorrectionCompositionBenchmarkOptions
     ) throws -> CorrectionCompositionBenchmarkReport {
+        let report = try measure(options: options)
+        try enforceBudget(
+            report.timing,
+            maximumMilliseconds: options.p95BudgetMilliseconds)
+        return report
+    }
+
+    static func measure(
+        options: CorrectionCompositionBenchmarkOptions
+    ) throws -> CorrectionCompositionBenchmarkReport {
         guard options.isValid else {
             throw CorrectionCompositionBenchmarkError.invalidConfiguration
         }
@@ -193,6 +221,7 @@ private enum CorrectionCompositionBenchmark {
         }
         let composer = ComposeTranscript()
         var samples: [Double] = []
+        var expectedComposition: MeetingTranscriptContent?
         var expectedRowCount: Int?
         for input in inputs {
             let start = ContinuousClock.now
@@ -202,7 +231,12 @@ private enum CorrectionCompositionBenchmark {
                 segments: input.0,
                 corrections: input.1)
             samples.append(milliseconds(since: start))
-            let rowCount = result.composed.rows.count
+            let composition = result.composed
+            guard expectedComposition.map({ $0 == composition }) ?? true else {
+                throw CorrectionCompositionBenchmarkError.unstableOutput
+            }
+            expectedComposition = composition
+            let rowCount = composition.rows.count
             guard expectedRowCount.map({ $0 == rowCount }) ?? true else {
                 throw CorrectionCompositionBenchmarkError.unstableOutput
             }
@@ -210,9 +244,6 @@ private enum CorrectionCompositionBenchmark {
         }
 
         let timing = MillisecondDistribution(samples)
-        guard timing.p95Milliseconds <= options.p95BudgetMilliseconds else {
-            throw CorrectionCompositionBenchmarkError.p95BudgetExceeded
-        }
         let process = ProcessInfo.processInfo
         return CorrectionCompositionBenchmarkReport(
             schemaVersion: 1,
@@ -232,6 +263,15 @@ private enum CorrectionCompositionBenchmark {
                 composedRowCount: expectedRowCount ?? 0,
                 p95BudgetMilliseconds: options.p95BudgetMilliseconds),
             timing: timing)
+    }
+
+    static func enforceBudget(
+        _ timing: MillisecondDistribution,
+        maximumMilliseconds: Double
+    ) throws {
+        guard timing.p95Milliseconds <= maximumMilliseconds else {
+            throw CorrectionCompositionBenchmarkError.p95BudgetExceeded
+        }
     }
 
     private static var architectureName: String {

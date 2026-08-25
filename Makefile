@@ -113,7 +113,7 @@ test-correction-composition:
 
 ## Emit one content-free Release observation for correction composition over
 ## 20,000 mixed-language transcript segments.
-PORTAVOZ_CORRECTION_COMPOSITION_RUNS ?= 5
+PORTAVOZ_CORRECTION_COMPOSITION_RUNS ?= 20
 correction-composition-benchmark:
 	scripts/run-correction-composition-benchmark.sh \
 		--runs "$(PORTAVOZ_CORRECTION_COMPOSITION_RUNS)"
