@@ -168,16 +168,34 @@ codesign --verify --deep --strict --verbose=2 "$APP"
 
 SIGNED_ENTITLEMENTS="$RUN_ROOT/signed-entitlements.plist"
 codesign -d --entitlements :- "$APP" > "$SIGNED_ENTITLEMENTS" 2>/dev/null
+LIBRARY_VALIDATION_KEY="com.apple.security.cs.disable-library-validation"
+if ! LIBRARY_VALIDATION_STATE="$(
+    python3 - "$SIGNED_ENTITLEMENTS" "$LIBRARY_VALIDATION_KEY" <<'PY'
+import plistlib
+import sys
+
+with open(sys.argv[1], "rb") as handle:
+    entitlements = plistlib.load(handle)
+key = sys.argv[2]
+if key not in entitlements:
+    print("absent")
+elif entitlements[key] is True:
+    print("true")
+elif entitlements[key] is False:
+    print("false")
+else:
+    raise SystemExit(f"{key} must be a boolean")
+PY
+)"
+then
+    fail "could not inspect the signed library-validation entitlement"
+fi
 if [[ "$SIGN_ID" == "-" ]]; then
-    [[ "$(plutil -extract com.apple.security.cs.disable-library-validation raw \
-        "$SIGNED_ENTITLEMENTS" 2>/dev/null)" == "true" ]] ||
+    [[ "$LIBRARY_VALIDATION_STATE" == "true" ]] ||
         fail "the ad-hoc benchmark copy must disable library validation"
 else
-    if plutil -extract com.apple.security.cs.disable-library-validation raw \
-        "$SIGNED_ENTITLEMENTS" >/dev/null 2>&1
-    then
+    [[ "$LIBRARY_VALIDATION_STATE" == "absent" ]] ||
         fail "Developer-ID resource evidence must retain library validation"
-    fi
 fi
 
 run_benchmark_app() {

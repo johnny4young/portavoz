@@ -770,6 +770,20 @@ class ResourceBaselineTests(unittest.TestCase):
             "Developer-ID resource evidence must retain library validation",
             runner,
         )
+        self.assertIn('python3 - "$SIGNED_ENTITLEMENTS"', runner)
+        self.assertIn("entitlements = plistlib.load(handle)", runner)
+        self.assertIn("if key not in entitlements:", runner)
+        self.assertIn('print("absent")', runner)
+        self.assertIn("entitlements[key] is True", runner)
+        self.assertIn("entitlements[key] is False", runner)
+        self.assertIn(
+            "could not inspect the signed library-validation entitlement",
+            runner,
+        )
+        self.assertNotIn(
+            "plutil -extract com.apple.security.cs.disable-library-validation",
+            runner,
+        )
         self.assertIn("--bench-resource-launch-probe", runner)
         self.assertIn("portavoz-resource-benchmark-ready-v1", runner)
         self.assertIn('stat -f %Lp "$launch_probe"', runner)

@@ -4998,6 +4998,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             "--bench-resource-launch-probe"))
         XCTAssertTrue(runner.contains(
             "portavoz-resource-benchmark-ready-v1"))
+        XCTAssertTrue(runner.contains(
+            "entitlements = plistlib.load(handle)"))
+        XCTAssertTrue(runner.contains(
+            "could not inspect the signed library-validation entitlement"))
+        XCTAssertFalse(runner.contains(
+            "plutil -extract com.apple.security.cs.disable-library-validation"))
         XCTAssertTrue(resourceBenchEntitlements.contains(
             "com.apple.security.cs.disable-library-validation"))
         XCTAssertFalse(localEntitlements.contains(

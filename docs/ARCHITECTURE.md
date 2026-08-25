@@ -3140,7 +3140,11 @@ without that marker is rejected because `open -W` does not propagate an early
 dyld process failure. The ad-hoc candidate copy alone carries the standard
 library-validation exception needed for its separately ad-hoc-signed embedded
 Sparkle framework. Real Developer-ID resource evidence, local development, and
-distribution retain library validation. Each run uses a disposable meeting
+distribution retain library validation. The post-signing gate reads that
+dotted entitlement name as one literal plist key rather than a `plutil`
+key-path, then requires exact presence/`true` for ad hoc and exact absence for
+a real identity; decode errors and non-boolean values fail both paths. Each run
+uses a disposable meeting
 database, scratch audio, process-local secret storage, and a unique temporary
 participant-identity root. It never reads or writes the host Keychain,
 voiceprint, or participant-voice gallery. Production composition continues to

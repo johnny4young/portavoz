@@ -2421,6 +2421,10 @@ must reach a process-owning app probe that publishes one fresh, owner-only,
 fixed content-free marker; `open -W` success without that marker is a launch
 failure rather than evidence. This is autonomous public-fixture evidence, not a
 read of the user's library, network, or distribution identity.
+The post-signing assertion treats the dotted entitlement name as one literal
+plist key: ad-hoc evidence requires exact `true`, while real-identity evidence
+requires the key to be absent. Decode failures and non-boolean values are not
+treated as absence.
 
 Specialized validation is fail closed. The performance ledger must be
 authoritative, contain its exact 25-metric inventory, measure all twelve
@@ -3118,7 +3122,10 @@ The preflight also warns (via `scripts/check-url-scheme-handlers.sh`) when Launc
   `com.apple.security.cs.disable-library-validation`, because current macOS
   rejects the separately ad-hoc-signed embedded Sparkle framework under the
   hardened runtime. A real Developer-ID collection keeps library validation
-  and fails if that exception is present. Before the first scenario, a minimal
+  and fails if that exception is present. The embedded-signature check uses a
+  literal plist-key lookup because `plutil -extract` interprets periods as
+  key-path separators. Parser or type failures block both signing paths rather
+  than becoming false absence. Before the first scenario, a minimal
   process-owning launch probe must create one exact mode-0600 marker with
   exclusive creation and durable write; this catches dyld/LaunchServices
   failures that `open -W` can otherwise report as success. All seven measured

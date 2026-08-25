@@ -14720,3 +14720,26 @@ exception is not a distribution, security, notarization, or same-team signing
 claim. Microphone TCC remains an honest interactive host prerequisite, and the
 result still does not certify other memory tiers, physical Sequoia/Tahoe,
 VoiceOver/Voice Control, production CloudKit, hosted CI, or field behavior.
+
+## D397 — Read the signed library-validation entitlement literally (Aug 2026)
+
+**Context:** the first exact `797ae9f` candidate passed deterministic scope,
+the complete package suite, isolated correction timing, recording stress,
+scoped bilingual UI, public fixtures, installed-model gates, and the measured
+performance ledger. The resource lane then rejected its signed ad-hoc app
+before launch. The entitlement was present, but `plutil -extract` interpreted
+the periods in `com.apple.security.cs.disable-library-validation` as key-path
+separators and therefore reported a missing value.
+
+**Decision:** keep the D396 post-signing assertion and its fail-closed policy.
+Read the embedded entitlement with a literal plist-key lookup instead. Ad-hoc
+resource evidence requires the key to exist with exact boolean `true`; a real
+Developer-ID run requires the key to be absent. Decode errors and non-boolean
+values fail both paths. Policy and architecture tests reject the known
+dotted-key `plutil -extract` form and pin the three-state parser.
+
+**Consequences:** a parser mismatch can no longer block a correctly scoped
+scratch app or tempt a future change to remove the security assertion. This is
+only a candidate-runner correction. It does not qualify the failed candidate,
+change shipping entitlements, relax library validation for real identities, or
+certify resource, TCC, distribution, physical-host, or field gates.
