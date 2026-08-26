@@ -3716,6 +3716,11 @@ p95 observations but has no engine, performance, or serving decision
 authority. The measured vectors are deterministic synthetic Float32 values;
 the Apple model profile and asset availability qualify compatibility, but the
 runner never downloads or uses those assets to create the timed vectors.
+Both semantic wrappers resolve their disposable workspace through the
+validated writable `TMPDIR` boundary, falling back to `/tmp`, and convert an
+allocation failure into an explicit unavailable-workspace exit before source
+collection or a Release build. They do not depend on macOS-only
+`/private/tmp`; this changes no manifest, benchmark, or retention authority.
 
 Repeated control retention is a second, narrower boundary. The semantic
 control runner alternates three clean one-vector matrices with three clean

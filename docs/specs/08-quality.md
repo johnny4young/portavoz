@@ -3445,6 +3445,13 @@ surfaces stayed unchanged before atomically publishing an owner-only manifest.
 Only a clean 1k/10k/50k/100k matrix with 20 measured queries per scale is
 retention eligible. Custom or dirty matrices are labelled development-only.
 
+The single-run and repeated-control wrappers select disposable workspaces from
+a validated writable `TMPDIR`, with `/tmp` as the portable fallback. An invalid
+temporary root fails with usage status before source collection, and allocation
+failure returns the explicit unavailable-workspace status before the Release
+build. Neither runner depends on macOS-only `/private/tmp`; output manifests,
+comparability identity, and retention rules are unchanged.
+
 `scripts/semantic_scale_manifest.py compare` validates exact JSON shape,
 scalar types, finite and monotonic distributions, sample counts, corpus/result
 arithmetic, profile dimensions, top-k completeness, host agreement, stage

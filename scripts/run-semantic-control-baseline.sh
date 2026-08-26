@@ -12,10 +12,14 @@ if ! ROOT="$(cd "$SOURCE_ROOT" 2>/dev/null && pwd)"; then
 fi
 RUNNER="$TOOL_ROOT/scripts/run-semantic-scale-baseline.sh"
 MANIFEST_TOOL="$TOOL_ROOT/scripts/semantic_scale_manifest.py"
-CANONICAL_OUTPUT="${1:-/private/tmp/portavoz-semantic-current-control.json}"
-DIAGNOSTIC_OUTPUT="${2:-/private/tmp/portavoz-semantic-three-variant.json}"
-PARTS="$(mktemp -d /private/tmp/portavoz-semantic-control.XXXXXX)"
-trap 'rm -rf "$PARTS"' EXIT
+TEMP_ROOT_CANDIDATE="${TMPDIR:-/tmp}"
+if ! TEMP_ROOT="$(cd "$TEMP_ROOT_CANDIDATE" 2>/dev/null && pwd)" ||
+    [[ ! -w "$TEMP_ROOT" ]]; then
+    echo "error: TMPDIR must be a writable directory" >&2
+    exit 64
+fi
+CANONICAL_OUTPUT="${1:-$TEMP_ROOT/portavoz-semantic-current-control.json}"
+DIAGNOSTIC_OUTPUT="${2:-$TEMP_ROOT/portavoz-semantic-three-variant.json}"
 
 python3 - "$CANONICAL_OUTPUT" "$DIAGNOSTIC_OUTPUT" <<'PY'
 import sys
@@ -25,6 +29,12 @@ if Path(sys.argv[1]).resolve() == Path(sys.argv[2]).resolve():
     print("error: semantic control outputs must be different paths", file=sys.stderr)
     raise SystemExit(64)
 PY
+
+if ! PARTS="$(mktemp -d "$TEMP_ROOT/portavoz-semantic-control.XXXXXX")"; then
+    echo "error: unable to allocate semantic control workspace" >&2
+    exit 73
+fi
+trap 'rm -rf "$PARTS"' EXIT
 
 cd "$ROOT"
 python3 "$MANIFEST_TOOL" source \

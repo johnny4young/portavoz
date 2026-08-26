@@ -1070,6 +1070,9 @@ class SemanticScaleManifestTests(unittest.TestCase):
         self.assertIn('--variants "$VARIANTS"', source)
         self.assertIn('SOURCE_ROOT="${PORTAVOZ_SEMANTIC_SOURCE_ROOT:-$TOOL_ROOT}"', source)
         self.assertIn('MANIFEST_TOOL="$TOOL_ROOT/scripts/semantic_scale_manifest.py"', source)
+        self.assertIn('TEMP_ROOT_CANDIDATE="${TMPDIR:-/tmp}"', source)
+        self.assertIn('exit 73', source)
+        self.assertNotIn("/private/tmp", source)
 
         control_source = CONTROL_RUNNER.read_text(encoding="utf-8")
         source_before = control_source.index('source-before.json')
@@ -1094,6 +1097,9 @@ class SemanticScaleManifestTests(unittest.TestCase):
             control_source.count('PORTAVOZ_SEMANTIC_SOURCE_ROOT="$ROOT"'),
             2,
         )
+        self.assertIn('TEMP_ROOT_CANDIDATE="${TMPDIR:-/tmp}"', control_source)
+        self.assertIn('exit 73', control_source)
+        self.assertNotIn("/private/tmp", control_source)
 
         perf_source = PERF_RUNNER.read_text(encoding="utf-8")
         self.assertIn('payload.get("kind") == "semantic-scale-run-manifest"', perf_source)
@@ -1119,6 +1125,98 @@ class SemanticScaleManifestTests(unittest.TestCase):
             result.stderr,
         )
         self.assertNotIn("Building for production", result.stdout + result.stderr)
+
+    def test_runner_rejects_unusable_tmpdir_before_build(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tools = root / "tools"
+            tools.mkdir()
+            build_marker = root / "swift-called"
+            swift = tools / "swift"
+            swift.write_text(
+                '#!/bin/sh\n: > "$SWIFT_CALLED_MARKER"\nexit 97\n',
+                encoding="utf-8",
+            )
+            swift.chmod(0o700)
+            result = subprocess.run(
+                [str(RUNNER), str(root / "manifest.json")],
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{tools}:{os.environ['PATH']}",
+                    "SWIFT_CALLED_MARKER": str(build_marker),
+                    "TMPDIR": str(root / "missing"),
+                },
+            )
+
+            self.assertEqual(result.returncode, 64)
+            self.assertIn("TMPDIR must be a writable directory", result.stderr)
+            self.assertFalse(build_marker.exists())
+
+    def test_runner_reports_workspace_allocation_failure_before_build(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tools = root / "tools"
+            tools.mkdir()
+            mktemp = tools / "mktemp"
+            mktemp.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+            mktemp.chmod(0o700)
+            build_marker = root / "swift-called"
+            swift = tools / "swift"
+            swift.write_text(
+                '#!/bin/sh\n: > "$SWIFT_CALLED_MARKER"\nexit 97\n',
+                encoding="utf-8",
+            )
+            swift.chmod(0o700)
+            result = subprocess.run(
+                [str(RUNNER), str(root / "manifest.json")],
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{tools}:{os.environ['PATH']}",
+                    "SWIFT_CALLED_MARKER": str(build_marker),
+                    "TMPDIR": str(root),
+                },
+            )
+
+            self.assertEqual(result.returncode, 73)
+            self.assertIn(
+                "unable to allocate semantic scale workspace",
+                result.stderr,
+            )
+            self.assertFalse(build_marker.exists())
+
+    def test_control_runner_rejects_unusable_tmpdir_before_collection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result = subprocess.run(
+                [
+                    str(CONTROL_RUNNER),
+                    str(root / "canonical.json"),
+                    str(root / "diagnostic.json"),
+                ],
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "TMPDIR": str(root / "missing"),
+                },
+            )
+
+            self.assertEqual(result.returncode, 64)
+            self.assertIn("TMPDIR must be a writable directory", result.stderr)
+            self.assertNotIn(
+                "repeated semantic control requires a clean worktree",
+                result.stderr,
+            )
 
     def test_runner_rejects_unreadable_external_source_root_before_build(self):
         with tempfile.TemporaryDirectory() as directory:

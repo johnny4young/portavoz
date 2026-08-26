@@ -8,12 +8,10 @@ if ! ROOT="$(cd "$SOURCE_ROOT" 2>/dev/null && pwd)"; then
     exit 64
 fi
 MANIFEST_TOOL="$TOOL_ROOT/scripts/semantic_scale_manifest.py"
-OUTPUT="${1:-/private/tmp/portavoz-semantic-scale-baseline.json}"
+OUTPUT="${1:-}"
 SIZES="${PORTAVOZ_SEMANTIC_SCALE_SIZES:-1000,10000,50000,100000}"
 RUNS="${PORTAVOZ_SEMANTIC_SCALE_RUNS:-20}"
 VARIANTS="${PORTAVOZ_SEMANTIC_SCALE_VARIANTS:-1}"
-PARTS="$(mktemp -d /private/tmp/portavoz-semantic-scale.XXXXXX)"
-trap 'rm -rf "$PARTS"' EXIT
 
 cd "$ROOT"
 if [[ ! "$RUNS" =~ ^[0-9]+$ ]] || ((RUNS < 3 || RUNS > 100)); then
@@ -39,6 +37,19 @@ for raw_size in "${checkpoints[@]}"; do
     fi
     seen+="$size,"
 done
+
+TEMP_ROOT_CANDIDATE="${TMPDIR:-/tmp}"
+if ! TEMP_ROOT="$(cd "$TEMP_ROOT_CANDIDATE" 2>/dev/null && pwd)" ||
+    [[ ! -w "$TEMP_ROOT" ]]; then
+    echo "error: TMPDIR must be a writable directory" >&2
+    exit 64
+fi
+OUTPUT="${OUTPUT:-$TEMP_ROOT/portavoz-semantic-scale-baseline.json}"
+if ! PARTS="$(mktemp -d "$TEMP_ROOT/portavoz-semantic-scale.XXXXXX")"; then
+    echo "error: unable to allocate semantic scale workspace" >&2
+    exit 73
+fi
+trap 'rm -rf "$PARTS"' EXIT
 
 python3 "$MANIFEST_TOOL" source \
     --root "$ROOT" \

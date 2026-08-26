@@ -10866,6 +10866,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(semanticRunner.contains(#""$MANIFEST_TOOL" assemble"#))
         XCTAssertTrue(semanticRunner.contains(
             #"SOURCE_ROOT="${PORTAVOZ_SEMANTIC_SOURCE_ROOT:-$TOOL_ROOT}""#))
+        XCTAssertTrue(semanticRunner.contains(
+            #"TEMP_ROOT_CANDIDATE="${TMPDIR:-/tmp}""#))
+        XCTAssertTrue(semanticRunner.contains(
+            "unable to allocate semantic scale workspace"))
+        XCTAssertFalse(semanticRunner.contains("/private/tmp"))
         XCTAssertTrue(semanticManifest.contains(#"MANIFEST_KIND = "semantic-scale-run-manifest""#))
         XCTAssertTrue(semanticManifest.contains("identitySHA256"))
         XCTAssertTrue(semanticManifest.contains("retentionEligible"))
@@ -10891,6 +10896,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             #"module.validate_control_baseline"#))
         XCTAssertTrue(semanticControlRunner.contains(
             #"PORTAVOZ_SEMANTIC_SOURCE_ROOT="$ROOT""#))
+        XCTAssertTrue(semanticControlRunner.contains(
+            #"TEMP_ROOT_CANDIDATE="${TMPDIR:-/tmp}""#))
+        XCTAssertTrue(semanticControlRunner.contains(
+            "unable to allocate semantic control workspace"))
+        XCTAssertFalse(semanticControlRunner.contains("/private/tmp"))
         XCTAssertTrue(semanticControl.contains(
             #""outcome": "current-control-budget-pass""#))
         XCTAssertTrue(semanticControl.contains(
