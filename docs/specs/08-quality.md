@@ -4473,7 +4473,10 @@ SecurityAgent or Notification Center surfaces and another process's Secure
 Input ownership while reading only window owner/layer plus public content-free
 global state; negative-layer desktop surfaces do not count and the owning
 process is not exposed. Probe timeout, malformed output, or unreadable process
-state fails closed. The gate
+state fails closed. The Swift probe is compiled once inside a private temporary
+workspace with a 60-second cold-toolchain ceiling, its executable output is
+validated, and the same binary performs both three-second observations; a
+build or workspace failure also fails closed before XCUITest. The gate
 never reads a window title or bounds, dismisses a prompt, resets LaunchServices,
 or terminates another process. Persistent `testmanagerd`, unit-test processes,
 `build-for-testing`, and idle `xcodebuildmcp` helpers are not evidence of an

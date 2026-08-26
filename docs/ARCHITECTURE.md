@@ -4806,7 +4806,11 @@ metadata and the public process-agnostic Secure Input state. It rejects
 visible SecurityAgent or Notification Center alerts and any other process's
 keyboard protection without exposing that process identity. It never reads a
 window title, dismisses a prompt, kills the host-wide test service, or
-terminates another process. Probe timeout or malformed output fails closed.
+terminates another process. The preflight compiles this probe once into a
+private disposable workspace under a bounded 60-second cold-toolchain budget,
+verifies that the binary exists and is executable, then reuses it for both
+three-second observations instead of compiling the Swift script twice. Build,
+observation, workspace, or malformed-output failure remains fail-closed.
 The UI-test bundle likewise installs no interruption monitor for external
 system prompts: a privacy or authentication choice that appears after preflight
 remains user-owned and invalidates that host run instead of being answered by

@@ -10,9 +10,11 @@ terminates another process.
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,7 +23,8 @@ from typing import Callable, Protocol, TextIO
 
 SETTLE_SECONDS = 1.0
 PROCESS_PROBE_TIMEOUT_SECONDS = 3.0
-WINDOW_PROBE_TIMEOUT_SECONDS = 10.0
+WINDOW_PROBE_BUILD_TIMEOUT_SECONDS = 60.0
+WINDOW_PROBE_OBSERVATION_TIMEOUT_SECONDS = 3.0
 WINDOW_INVENTORY_KEYS = frozenset(
     {"notificationCenter", "securityAgent", "secureInput"}
 )
@@ -73,6 +76,18 @@ class HostBlockers:
 
 
 class SystemHostProbe:
+    def __init__(
+        self,
+        *,
+        workspace: Path,
+        command_runner: Callable[
+            ..., subprocess.CompletedProcess[str]
+        ] = subprocess.run,
+    ) -> None:
+        self._window_probe_binary = workspace / "ui-test-window-probe"
+        self._command_runner = command_runner
+        self._window_probe_is_ready = False
+
     def snapshot(self) -> HostSnapshot:
         return HostSnapshot(
             processes=self._processes(),
@@ -95,20 +110,43 @@ class SystemHostProbe:
             raise ProbeFailure("process inventory unavailable")
         return parse_process_inventory(result.stdout)
 
-    @staticmethod
-    def _blocking_window_counts() -> dict[str, int | bool]:
+    def _compile_window_probe_if_needed(self) -> None:
+        if self._window_probe_is_ready:
+            return
         try:
-            result = subprocess.run(
+            result = self._command_runner(
                 [
                     "/usr/bin/xcrun",
-                    "swift",
+                    "swiftc",
                     "-warnings-as-errors",
                     str(WINDOW_PROBE),
+                    "-o",
+                    str(self._window_probe_binary),
                 ],
                 check=False,
                 capture_output=True,
                 text=True,
-                timeout=WINDOW_PROBE_TIMEOUT_SECONDS,
+                timeout=WINDOW_PROBE_BUILD_TIMEOUT_SECONDS,
+            )
+        except (OSError, subprocess.TimeoutExpired, UnicodeError) as error:
+            raise ProbeFailure("blocking-window probe build unavailable") from error
+        if (
+            result.returncode != 0
+            or not self._window_probe_binary.is_file()
+            or not os.access(self._window_probe_binary, os.X_OK)
+        ):
+            raise ProbeFailure("blocking-window probe build unavailable")
+        self._window_probe_is_ready = True
+
+    def _blocking_window_counts(self) -> dict[str, int | bool]:
+        self._compile_window_probe_if_needed()
+        try:
+            result = self._command_runner(
+                [str(self._window_probe_binary)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=WINDOW_PROBE_OBSERVATION_TIMEOUT_SECONDS,
             )
         except (OSError, subprocess.TimeoutExpired, UnicodeError) as error:
             raise ProbeFailure("blocking-window inventory unavailable") from error
@@ -281,7 +319,25 @@ def run_preflight(
 
 
 def main() -> int:
-    return run_preflight(SystemHostProbe(), output=sys.stdout)
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="portavoz-ui-host-preflight-"
+        ) as directory:
+            return run_preflight(
+                SystemHostProbe(workspace=Path(directory)),
+                output=sys.stdout,
+            )
+    except OSError:
+        print(
+            "⛔️ XCUITest host preflight failed: "
+            "blocking-window probe workspace unavailable.",
+            file=sys.stdout,
+        )
+        print(
+            "   No UI test was started; no prompt or process was changed.",
+            file=sys.stdout,
+        )
+        return 2
 
 
 if __name__ == "__main__":

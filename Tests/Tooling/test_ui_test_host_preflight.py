@@ -1,7 +1,9 @@
 import importlib.util
 import io
 import json
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -178,6 +180,116 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertIn("blocking-window inventory unavailable", output)
         self.assertIn("No UI test was started", output)
 
+    def test_system_probe_compiles_once_then_observes_twice(self):
+        calls = []
+
+        def command_runner(arguments, **options):
+            calls.append((arguments, options))
+            if arguments[0:2] == ["/usr/bin/xcrun", "swiftc"]:
+                binary = Path(arguments[-1])
+                binary.write_text("fixture", encoding="utf-8")
+                binary.chmod(0o700)
+                return subprocess.CompletedProcess(arguments, 0, "", "")
+            return subprocess.CompletedProcess(
+                arguments,
+                0,
+                '{"notificationCenter": 0, "securityAgent": 0, '
+                '"secureInput": false}\n',
+                "",
+            )
+
+        with tempfile.TemporaryDirectory() as directory:
+            probe = preflight.SystemHostProbe(
+                workspace=Path(directory),
+                command_runner=command_runner,
+            )
+
+            first = probe._blocking_window_counts()
+            second = probe._blocking_window_counts()
+
+        self.assertEqual(first, second)
+        self.assertEqual(
+            first,
+            {
+                "notification_center_windows": 0,
+                "security_agent_windows": 0,
+                "secure_input": False,
+            },
+        )
+        self.assertEqual(len(calls), 3)
+        compiled_binary = calls[1][0][0]
+        self.assertEqual(
+            calls[0][0],
+            [
+                "/usr/bin/xcrun",
+                "swiftc",
+                "-warnings-as-errors",
+                str(WINDOW_PROBE),
+                "-o",
+                compiled_binary,
+            ],
+        )
+        self.assertEqual(calls[1][0], [compiled_binary])
+        self.assertEqual(calls[2][0], [compiled_binary])
+        self.assertEqual(
+            [call[1]["timeout"] for call in calls],
+            [60.0, 3.0, 3.0],
+        )
+        self.assertEqual(calls[1][0], calls[2][0])
+
+    def test_system_probe_rejects_missing_compiled_binary(self):
+        def command_runner(arguments, **_):
+            return subprocess.CompletedProcess(arguments, 0, "", "")
+
+        with tempfile.TemporaryDirectory() as directory:
+            probe = preflight.SystemHostProbe(
+                workspace=Path(directory),
+                command_runner=command_runner,
+            )
+
+            with self.assertRaisesRegex(
+                preflight.ProbeFailure,
+                "blocking-window probe build unavailable",
+            ):
+                probe._blocking_window_counts()
+
+    def test_system_probe_build_timeout_fails_closed(self):
+        def command_runner(arguments, **options):
+            raise subprocess.TimeoutExpired(arguments, options["timeout"])
+
+        with tempfile.TemporaryDirectory() as directory:
+            probe = preflight.SystemHostProbe(
+                workspace=Path(directory),
+                command_runner=command_runner,
+            )
+
+            with self.assertRaisesRegex(
+                preflight.ProbeFailure,
+                "blocking-window probe build unavailable",
+            ):
+                probe._blocking_window_counts()
+
+    def test_system_probe_observation_timeout_fails_closed(self):
+        def command_runner(arguments, **options):
+            if arguments[0:2] == ["/usr/bin/xcrun", "swiftc"]:
+                binary = Path(arguments[-1])
+                binary.write_text("fixture", encoding="utf-8")
+                binary.chmod(0o700)
+                return subprocess.CompletedProcess(arguments, 0, "", "")
+            raise subprocess.TimeoutExpired(arguments, options["timeout"])
+
+        with tempfile.TemporaryDirectory() as directory:
+            probe = preflight.SystemHostProbe(
+                workspace=Path(directory),
+                command_runner=command_runner,
+            )
+
+            with self.assertRaisesRegex(
+                preflight.ProbeFailure,
+                "blocking-window inventory unavailable",
+            ):
+                probe._blocking_window_counts()
+
     def test_window_payload_requires_exact_nonnegative_integers(self):
         self.assertEqual(
             preflight.exact_nonnegative_int({"securityAgent": 0}, "securityAgent"),
@@ -239,6 +351,7 @@ class UITestHostPreflightTests(unittest.TestCase):
 
     def test_swift_window_probe_reads_no_title_or_dialog_content(self):
         source = WINDOW_PROBE.read_text(encoding="utf-8")
+        checker = SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn("kCGWindowOwnerName", source)
         self.assertIn("kCGWindowLayer", source)
@@ -252,6 +365,10 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertNotIn("System Events", source)
         self.assertNotIn("?? []", source)
         self.assertIn("exit(EXIT_FAILURE)", source)
+        self.assertIn('"swiftc"', checker)
+        self.assertIn("WINDOW_PROBE_BUILD_TIMEOUT_SECONDS = 60.0", checker)
+        self.assertIn("WINDOW_PROBE_OBSERVATION_TIMEOUT_SECONDS = 3.0", checker)
+        self.assertIn("self._window_probe_is_ready = True", checker)
 
     def test_make_preflight_uses_read_only_checker_and_never_kills_testmanagerd(self):
         makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
