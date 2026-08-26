@@ -11,6 +11,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+PROFILE_PLIST=""
+cleanup() {
+  if [[ -n "$PROFILE_PLIST" ]]; then
+    rm -f "$PROFILE_PLIST"
+  fi
+}
+trap cleanup EXIT
+
 CONFIG=debug
 VERSION="${PORTAVOZ_VERSION:-0.1.0}"
 BUILD="${PORTAVOZ_BUILD:-1}"
@@ -69,6 +77,7 @@ fi
 APP=dist/Portavoz.app
 rm -rf "$APP"
 rm -f dist/.portavoz-sign-entitlements
+rm -f dist/.portavoz-production.entitlements
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 
 # CloudKit and APNs are restricted Developer ID capabilities. A public build
@@ -85,7 +94,16 @@ if [[ -n "$PROVISIONING_PROFILE" ]]; then
     exit 66
   fi
   cp "$PROVISIONING_PROFILE" "$APP/Contents/embedded.provisionprofile"
-  SIGN_ENTITLEMENTS=packaging/portavoz.entitlements
+  PROFILE_PLIST="$(mktemp "${TMPDIR:-/tmp}/portavoz-profile.XXXXXX.plist")"
+  security cms -D -i "$PROVISIONING_PROFILE" > "$PROFILE_PLIST"
+  python3 scripts/materialize-cloudkit-entitlements.py \
+    packaging/portavoz.entitlements \
+    "$PROFILE_PLIST" \
+    dist/.portavoz-production.entitlements \
+    app.portavoz.mac
+  rm -f "$PROFILE_PLIST"
+  PROFILE_PLIST=""
+  SIGN_ENTITLEMENTS=dist/.portavoz-production.entitlements
 elif [[ "$REQUIRE_CLOUDKIT_PROFILE" == "1" ]]; then
   echo "A public CloudKit build requires PORTAVOZ_PROVISIONING_PROFILE." >&2
   exit 64
@@ -280,7 +298,7 @@ codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" "$APP/Contents/Frameworks/Sparkle.
 codesign "${SIGN_FLAGS[@]}" --sign "$SIGN_ID" \
   --entitlements "$SIGN_ENTITLEMENTS" "$APP"
 
-if [[ "$SIGN_ENTITLEMENTS" == "packaging/portavoz.entitlements" ]]; then
+if [[ "$SIGN_ENTITLEMENTS" == "dist/.portavoz-production.entitlements" ]]; then
   scripts/verify-cloudkit-capabilities.sh "$APP"
 fi
 

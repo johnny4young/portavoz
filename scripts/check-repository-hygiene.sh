@@ -88,7 +88,12 @@ python3 -m unittest Tests.Tooling.test_collect_field_evidence
 python3 -m unittest Tests.Tooling.test_release_reliability
 python3 -m unittest Tests.Tooling.test_candidate_automation
 python3 -m unittest Tests.Tooling.test_source_integration_qualification
+python3 -m unittest Tests.Tooling.test_verify_cloudkit_capabilities
+python3 -m unittest Tests.Tooling.test_production_sync_qualification_packaging
 python3 -m unittest Tests.Tooling.test_swift_test_failure_summary
+bash -n scripts/make-app.sh
+bash -n scripts/make-production-sync-qualification-app.sh
+bash -n scripts/verify-cloudkit-capabilities.sh
 bash -n scripts/run-release-reliability-gates.sh
 bash -n scripts/run-resource-baseline.sh
 bash -n scripts/run-resource-recording-baseline.sh

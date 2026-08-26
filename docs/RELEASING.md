@@ -265,25 +265,52 @@ stapled outer image can open while a cask-extracted app has no embedded ticket
 and must reach Apple's service at first launch. Never publish unless both
 boundaries pass. It also decodes the app copied from the DMG and requires its
 signed container/service/production/push values to match the unexpired embedded
-profile exactly, reads the embedded `PortavozSourceCommit`, and requires that
-commit to match `PORTAVOZ_RELEASE_COMMIT` before writing the distribution
-receipt. This catches a restricted-capability app that notarizes but would fail
-at launch, never reach the intended container, or be attributed to adjacent
+profile exactly. The verifier requires the sealed Info.plist identity to remain
+`app.portavoz.mac` and the profile's application-identifier entitlement to
+equal one of its declared application-identifier prefixes, a delimiter, and
+that exact bundle ID. Manual signing materializes the native macOS App ID and
+developer-team entitlements from the decoded profile; the final signature must
+match both. Matching legacy and namespaced profile application-identifier keys
+are accepted; conflicting aliases fail closed. Distribution verification then
+reads the embedded `PortavozSourceCommit` and requires that commit to match
+`PORTAVOZ_RELEASE_COMMIT` before writing the receipt. This catches a restricted-
+capability app that notarizes but would fail at launch, never reach the intended
+container, carry a profile for another App ID, or be attributed to adjacent
 source.
 
-### Local-only versus provisioned development builds
+### Local-only development versus exact-ID sync qualification (D403)
 
 `make app`, `make install`, and XCUITest intentionally use
 `packaging/portavoz-local.entitlements` when no profile is supplied. They stay
-fully local and the Sync pane reports that the build is not provisioned. To
-field-test the real production container in `/Applications/Portavoz Dev.app`
-without touching the release copy, use:
+fully local and the Sync pane reports that the build is not provisioned.
+`make install` changes the bundle identifier to `app.portavoz.mac.dev`, so it
+now rejects `PORTAVOZ_PROVISIONING_PROFILE`: a profile for the production App ID
+cannot authorize that development identity.
+
+After the exact integrated candidate exists, build the separate production-
+sync qualification artifact with the same fixed release identity:
 
 ```sh
+export PORTAVOZ_RELEASE_VERSION="1.0.0"
+export PORTAVOZ_RELEASE_BUILD="<the fixed release build>"
+export PORTAVOZ_RELEASE_COMMIT="$(git rev-parse HEAD)"
 export PORTAVOZ_PROVISIONING_PROFILE="/absolute/path/to/Portavoz.provisionprofile"
-PORTAVOZ_SIGN_IDENTITY="8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17" make install
-scripts/verify-cloudkit-capabilities.sh "/Applications/Portavoz Dev.app"
+export PORTAVOZ_SIGN_IDENTITY="8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17"
+make production-sync-qualification-app
+scripts/verify-cloudkit-capabilities.sh \
+  "dist/Portavoz Sync Qualification.app"
 ```
+
+The builder requires a clean exact checkout, real signing identity, matching
+profile, numeric build, and full source commit. It changes only the display
+name, re-signs the outer app with the profile-derived App ID and Team ID, then
+re-verifies signature, profile, production
+capabilities, version, build, and source stamp. The bundle deliberately remains
+under `dist/`. Do **not** copy it into `/Applications`, register it with
+LaunchServices, or open it beside the user's notarized `Portavoz.app`; the
+production-sync evidence owner executes its binary directly with isolated
+scratch state. Building this artifact alone creates no CloudKit receipt and
+does not close the two-Mac matrix.
 
 The release and field-test profile has an expiration date and macOS evaluates
 it at launch. Refresh and re-embed it before expiry; never work around a profile

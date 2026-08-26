@@ -2423,6 +2423,38 @@ review reduction, no-green-rerun policy, workflow permissions, immutable
 action pins, and absence of a generic recorder. This producer proves neither
 distribution nor CloudKit, hardware, assistive-technology, or field behavior.
 
+**Production-sync exact-identity packaging (D403).**
+The capability verifier reads the final app's Info.plist as well as signed
+entitlements and the embedded profile. It requires `app.portavoz.mac`, one
+nonempty `ApplicationIdentifierPrefix`, and a profile application-identifier
+equal to `<prefix>.<bundle identifier>`. The build materializes the profile's
+native macOS App ID and developer-team identity into the manual signing input;
+the final signature, profile entitlements, prefix list, team list, and
+Info.plist must agree. The legacy and namespaced profile
+application-identifier keys may coexist only with the same value. The existing
+single-container, exact signed CloudKit service, Production, production APNs,
+profile-wildcard service, and expiry rules remain. Eighteen isolated verifier
+cases plus four materializer cases cover the accepted direct-distribution
+shapes and reject Dev identity,
+missing Info.plist, foreign/missing/conflicting App IDs, missing prefixes,
+expired profiles, malformed plist roots, missing CloudKit authorization, and
+signed wildcard service, missing or foreign signed identity, team mismatch,
+and hard-coded base identity without leaking a Python traceback.
+
+`make-production-sync-qualification-app.sh` requires one clean exact
+version/build/commit checkout, real identity, and profile. It invokes the real
+release app builder, confirms profile-materialized production entitlements,
+changes only display metadata, re-signs, and re-verifies the final exact-ID
+artifact under `dist/`.
+Four hermetic packaging tests use a temporary Git repository and fake signing
+boundary to prove exact stamping, final verification, adjacent-commit rejection
+before build, failed-signature cleanup, and the ordinary Dev install's profile
+rejection. Architecture
+tests additionally forbid `/Applications`, LaunchServices registration, or
+ordinary opening from this script. This evidence validates packaging behavior;
+it does not execute CloudKit, prove a second Mac/account/push path, or create the
+release qualification receipt.
+
 **Candidate automation owner (D392–D401).**
 `docs/evidence/candidate-automation.json` is the finite executable contract for
 the eight candidate proofs. `scripts/candidate_automation.py` runs every gate

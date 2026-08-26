@@ -14963,3 +14963,57 @@ creates a new commit that must rerun candidate automation. D402 implements no
 push, PR, review, merge, workflow dispatch, distribution, CloudKit, physical
 hardware, assistive-technology, or field evidence; those actions and proofs
 remain explicitly authorized external work.
+
+## D403 — Preserve the provisioned identity for sync qualification (Aug 2026)
+
+**Context:** the documented production-CloudKit field path supplied the
+`app.portavoz.mac` Developer ID profile to `make install`. `make-app.sh` first
+built and verified that exact production identity, but the install recipe then
+changed `CFBundleIdentifier` to `app.portavoz.mac.dev`, re-signed the outer app,
+and never rechecked the profile App ID. The capability verifier checked the
+container, service, environments, and expiration, but not Info.plist identity,
+the profile application-identifier, or the App ID and developer-team claims in
+the manually created signature. It also concatenated the profile prefix and
+bundle ID without the required delimiter. A green build therefore could
+describe a bundle the embedded production App ID did not authorize. Installing another
+exact-production-ID app beside the user's notarized copy would replace that bug
+with LaunchServices/TCC identity ambiguity.
+
+**Decision:** join CloudKit capability verification to exact app identity. The
+final Info.plist must contain `app.portavoz.mac`. The embedded profile must have
+one or more nonempty `ApplicationIdentifierPrefix` values and an
+`application-identifier` (or namespaced Apple alias) equal to a declared
+`<prefix>.<bundle identifier>`; two aliases are accepted only when their values
+match. The build materializes the profile-owned
+`com.apple.application-identifier` and
+`com.apple.developer.team-identifier` into a generated production-entitlements
+file instead of hard-coding account identity in source. The final signature,
+profile entitlement, prefix list, profile team list, and Info.plist must agree.
+Missing, malformed, conflicting, wildcard, or foreign identities fail before
+launch or notarization. Exact signed container, CloudKit service, Production
+environment, production APNs, accepted profile service wildcard, and expiry
+checks remain unchanged.
+
+Ordinary `make install` fails before building when a production provisioning
+profile is supplied. A separate production-sync qualification builder requires
+the fixed release version, numeric build, full source commit, a clean matching
+tracked checkout before and after construction, a real signing identity, and
+the profile. It calls the production app builder, confirms production
+entitlements including the profile-derived App ID and Team ID, preserves
+`app.portavoz.mac`, changes only the display name to
+`Portavoz Sync Qualification`, re-signs the outer bundle, and re-verifies its
+signature, capability/profile identity, version, build, and source stamp. It
+publishes only under `dist/`; it never copies to `/Applications`, registers with
+LaunchServices, or opens beside the stable app. The future sync evidence owner
+will execute the binary directly with scratch stores and explicit qualification
+arguments.
+
+**Consequences:** a provisioned Dev-name artifact can no longer pass an
+intermediate production check, omit Xcode's normal identity claims during
+manual signing, or then lose its authorized identity. Release,
+distribution, and sync qualification share the same fail-closed App ID rule,
+while normal development and XCUITest retain separate unprovisioned identities.
+This band does not sign an artifact, access an iCloud account, mutate CloudKit,
+exercise push/account transitions, prove the two-Mac matrix, or create a
+production-sync receipt. Those remain separately authorized physical evidence
+owned by the later staged producer.

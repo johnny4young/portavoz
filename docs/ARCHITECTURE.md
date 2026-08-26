@@ -4353,6 +4353,29 @@ actors, logs, source paths, or payloads. There is no local proof-state flag and
 no workflow trigger from pull-request content. Running or downloading that
 remote artifact remains an explicit integration/release action.
 
+Production-sync qualification has a separate exact-identity packaging
+boundary. Ordinary `make install` is local-only and fails before building when a
+production profile is supplied; it may not verify `app.portavoz.mac` and then
+mutate that provisioned bundle into `app.portavoz.mac.dev`. The CloudKit gate
+now joins signed capabilities to the sealed Info.plist bundle identifier and
+the provisioning profile's `<prefix>.<bundle identifier>` App ID. The native
+macOS App ID and developer-team entitlements are materialized from that profile
+into the manual `codesign` input and must match in the final signature; two
+Apple App ID key aliases are accepted in the profile only when they agree. A
+mismatch, missing identity, conflicting alias, expired profile, wrong
+container/service/environment, or wrong APNs environment fails closed.
+
+`make-production-sync-qualification-app.sh` requires one clean exact
+version/build/full-commit checkout, a real signing identity, and the matching
+production profile. It preserves `app.portavoz.mac`, changes only the visible
+name, re-signs the outer bundle with the materialized identity entitlements,
+and re-verifies signature, capabilities, version, build, and source stamp before publishing
+`dist/Portavoz Sync Qualification.app`. That bundle is not copied to
+`/Applications`, registered with LaunchServices, or opened beside the user's
+notarized app. The later sync evidence owner executes it directly with isolated
+scratch state. Packaging alone performs no CloudKit mutation and cannot write a
+production-sync receipt.
+
 Candidate automation has one executable owner rather than a generic receipt
 recorder. `docs/evidence/candidate-automation.json` freezes the eight proof
 order, six installed-model classes, seven upgrade/recovery classes, nine

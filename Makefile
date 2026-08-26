@@ -34,6 +34,7 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-meeting-detail-baseline meeting-detail-baseline \
 	test-recording-stress test-model-gated test-ui-real-audio test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
+	production-sync-qualification-app \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
 	release-reliability long-capture-baseline candidate-automation \
 	test-source-integration-qualification
@@ -766,6 +767,13 @@ public-screenshots:
 app:
 	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) scripts/make-app.sh --release
 
+## Build the exact-ID, signed production-sync qualification bundle under
+## dist/. It is intentionally never installed, LaunchServices-registered, or
+## opened beside the user's notarized production app.
+production-sync-qualification-app:
+	PORTAVOZ_SIGN_IDENTITY="$(PORTAVOZ_SIGN_IDENTITY)" \
+		scripts/make-production-sync-qualification-app.sh
+
 ## Build the dev app and install it as "Portavoz Dev" — NEVER touching
 ## /Applications/Portavoz.app, which is the user's notarized release copy
 ## (it updates via Sparkle/Homebrew only). Dev has a separate bundle identity
@@ -774,6 +782,11 @@ app:
 ## recordings/data for a test? COPY them — never operate on the release app's
 ## live folders.
 install:
+	@if [ -n "$(PORTAVOZ_PROVISIONING_PROFILE)" ]; then \
+		echo "make install cannot mutate a production-profile app into app.portavoz.mac.dev." >&2; \
+		echo "Use make production-sync-qualification-app for exact-ID CloudKit qualification." >&2; \
+		exit 64; \
+	fi
 	-osascript -e 'tell application "Portavoz Dev" to quit' 2>/dev/null; sleep 1
 	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) scripts/make-app.sh --release
 	plutil -replace CFBundleDisplayName -string "Portavoz Dev" dist/Portavoz.app/Contents/Info.plist

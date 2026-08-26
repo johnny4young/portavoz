@@ -10180,6 +10180,70 @@ final class ArchitectureDependencyTests: XCTestCase {
             range: register.upperBound..<makefile.endIndex))
     }
 
+    func testProductionSyncQualificationPreservesExactProvisionedIdentity() throws {
+        let verifier = try Self.contents(
+            of: "scripts/verify-cloudkit-capabilities.sh")
+        let qualification = try Self.contents(
+            of: "scripts/make-production-sync-qualification-app.sh")
+        let makeApp = try Self.contents(of: "scripts/make-app.sh")
+        let materializer = try Self.contents(
+            of: "scripts/materialize-cloudkit-entitlements.py")
+        let makefile = try Self.contents(of: "Makefile")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(verifier.contains("$APP/Contents/Info.plist"))
+        XCTAssertTrue(verifier.contains(
+            #"expected_bundle_identifier = "app.portavoz.mac""#))
+        XCTAssertTrue(verifier.contains("ApplicationIdentifierPrefix"))
+        XCTAssertTrue(verifier.contains(#""application-identifier""#))
+        XCTAssertTrue(verifier.contains(
+            #""com.apple.application-identifier""#))
+        XCTAssertTrue(verifier.contains(
+            #""com.apple.developer.team-identifier""#))
+        XCTAssertTrue(verifier.contains(
+            "application identifier does not authorize"))
+        XCTAssertTrue(verifier.contains(
+            #"f"{prefix}.{expected_bundle_identifier}""#))
+
+        XCTAssertTrue(makeApp.contains(
+            "scripts/materialize-cloudkit-entitlements.py"))
+        XCTAssertTrue(makeApp.contains(
+            "dist/.portavoz-production.entitlements"))
+        XCTAssertTrue(materializer.contains(
+            #"result["com.apple.application-identifier"]"#))
+        XCTAssertTrue(materializer.contains(
+            #"result["com.apple.developer.team-identifier"]"#))
+
+        XCTAssertTrue(qualification.contains(
+            #"OUTPUT="dist/Portavoz Sync Qualification.app""#))
+        XCTAssertTrue(qualification.contains(
+            #""CFBundleIdentifier": "app.portavoz.mac""#))
+        XCTAssertTrue(qualification.contains(
+            "PORTAVOZ_REQUIRE_CLOUDKIT_PROFILE=1"))
+        XCTAssertTrue(qualification.contains(
+            "require_exact_source_checkout \"final verification\""))
+        XCTAssertFalse(qualification.contains("/Applications/"))
+        XCTAssertFalse(qualification.contains("lsregister"))
+        XCTAssertFalse(qualification.contains("\nopen \"$OUTPUT\""))
+
+        let resign = try XCTUnwrap(qualification.range(
+            of: "--entitlements \"$SIGN_ENTITLEMENTS\" \"$STAGING\""))
+        let signature = try XCTUnwrap(qualification.range(
+            of: "codesign --verify --deep --strict --verbose=2 \"$STAGING\"",
+            range: resign.upperBound..<qualification.endIndex))
+        XCTAssertNotNil(qualification.range(
+            of: "scripts/verify-cloudkit-capabilities.sh \"$STAGING\"",
+            range: signature.upperBound..<qualification.endIndex))
+
+        let installGuard = try XCTUnwrap(makefile.range(
+            of: "make install cannot mutate a production-profile app"))
+        XCTAssertNotNil(makefile.range(
+            of: "scripts/make-app.sh --release",
+            range: installGuard.upperBound..<makefile.endIndex))
+        XCTAssertTrue(makefile.contains("production-sync-qualification-app:"))
+        XCTAssertTrue(decisions.contains("## D403"))
+    }
+
     func testDevelopmentAndUITestAppsCannotClaimTheReleaseIdentity() throws {
         let makefile = try Self.contents(of: "Makefile")
         let project = try Self.contents(of: "project.yml")
