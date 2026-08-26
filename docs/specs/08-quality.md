@@ -2306,7 +2306,11 @@ is deterministic test authority, not a product sleep. Tests additionally prove
 a closed listener produces the offline transport case. Canonical checksum
 validation, strict route/status/date/link policy, no-store headers, atomic
 content-free ready files, and deterministic teardown are part of `make
-test-apuntador-validation`. This fixture is test infrastructure, not product
+test-apuntador-validation`. The ready file is a close-then-rename same-host
+handshake, not durable evidence, so it never waits for a volume `fsync`;
+unit-test and XCUITest owners retain a 30-second failure-only startup ceiling,
+return immediately on readiness, and close the child process, pipe, and
+temporary descriptor on every rejection. This fixture is test infrastructure, not product
 web authority or evidence that a real provider behaves the same way.
 
 Full suites and the dedicated receipt-focus journey snapshot the host's global

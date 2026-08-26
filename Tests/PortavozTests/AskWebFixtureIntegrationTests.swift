@@ -130,7 +130,7 @@ private final class UnitTestWebFixtureProcess: @unchecked Sendable {
         self.output = output
     }
 
-    static func start(timeout: TimeInterval = 10) throws -> UnitTestWebFixtureProcess {
+    static func start(timeout: TimeInterval = 30) throws -> UnitTestWebFixtureProcess {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -163,19 +163,34 @@ private final class UnitTestWebFixtureProcess: @unchecked Sendable {
         guard process.isRunning,
               FileManager.default.fileExists(atPath: readyFile.path)
         else {
-            process.terminate()
-            throw FixtureError.didNotStart(Self.outputText(from: output))
+            let diagnostic = Self.stop(
+                process: process,
+                readyFile: readyFile,
+                output: output)
+            throw FixtureError.didNotStart(diagnostic)
         }
-        let descriptor = try JSONDecoder().decode(
-            Descriptor.self,
-            from: Data(contentsOf: readyFile))
+        let descriptor: Descriptor
+        do {
+            descriptor = try JSONDecoder().decode(
+                Descriptor.self,
+                from: Data(contentsOf: readyFile))
+        } catch {
+            _ = Self.stop(
+                process: process,
+                readyFile: readyFile,
+                output: output)
+            throw FixtureError.invalidDescriptor
+        }
         guard descriptor.schemaVersion == 1,
               descriptor.generation == "public-local-v1",
               descriptor.fixtureChecksum.count == 64,
               let baseURL = URL(string: descriptor.baseURL),
               baseURL.host == "127.0.0.1"
         else {
-            process.terminate()
+            _ = Self.stop(
+                process: process,
+                readyFile: readyFile,
+                output: output)
             throw FixtureError.invalidDescriptor
         }
         return UnitTestWebFixtureProcess(
@@ -190,6 +205,19 @@ private final class UnitTestWebFixtureProcess: @unchecked Sendable {
     }
 
     func stop(timeout: TimeInterval = 5) {
+        _ = Self.stop(
+            process: process,
+            readyFile: readyFile,
+            output: output,
+            timeout: timeout)
+    }
+
+    private static func stop(
+        process: Process,
+        readyFile: URL,
+        output: Pipe,
+        timeout: TimeInterval = 5
+    ) -> String {
         if process.isRunning {
             process.terminate()
             let deadline = Date().addingTimeInterval(timeout)
@@ -198,8 +226,10 @@ private final class UnitTestWebFixtureProcess: @unchecked Sendable {
             }
             if process.isRunning { process.interrupt() }
         }
+        let diagnostic = outputText(from: output)
         try? FileManager.default.removeItem(at: readyFile)
         output.fileHandleForReading.closeFile()
+        return diagnostic
     }
 
     private static func outputText(from pipe: Pipe) -> String {

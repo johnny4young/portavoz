@@ -10,6 +10,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -227,6 +228,26 @@ class ApuntadorWebFixtureTests(unittest.TestCase):
             self.assertEqual(json.loads(path.read_text()), second)
             self.assertEqual(list(path.parent.glob("ready.json.*")), [])
             self.assertEqual(stat.S_IMODE(path.stat().st_mode) & 0o077, 0)
+
+    def test_ready_file_does_not_require_durable_volume_sync(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ready.json"
+            payload = {
+                "schemaVersion": 1,
+                "generation": web_fixture.GENERATION,
+                "fixtureChecksum": "a" * 64,
+                "baseURL": "http://127.0.0.1:1234",
+                "processID": 10,
+            }
+
+            with mock.patch.object(
+                web_fixture.os,
+                "fsync",
+                side_effect=AssertionError("durable sync is forbidden"),
+            ):
+                web_fixture.write_ready_file(path, payload)
+
+            self.assertEqual(json.loads(path.read_text()), payload)
 
     def test_unknown_routes_fail_closed_without_reflection(self):
         with web_fixture.running_server(self.fixture) as (_, base_url):

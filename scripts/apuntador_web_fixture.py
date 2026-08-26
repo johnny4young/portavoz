@@ -459,7 +459,9 @@ def write_ready_file(path: Path, payload: dict[str, Any]) -> None:
             json.dump(payload, handle, sort_keys=True, allow_nan=False)
             handle.write("\n")
             handle.flush()
-            os.fsync(handle.fileno())
+            # This is an ephemeral same-host readiness handshake, not durable
+            # evidence. Closing before the atomic replace makes the complete
+            # descriptor visible without coupling startup to volume sync.
         os.replace(temporary_name, path)
     except BaseException:
         try:

@@ -134,7 +134,9 @@ if [[ "$needs_web_fixture" == true ]]; then
     --ready-file "$web_fixture_ready" \
     >"$web_fixture_log" 2>&1 &
   web_fixture_pid=$!
-  for _attempt in {1..500}; do
+  # Normal startup is immediate. The bounded 30-second ceiling exists only for
+  # heavily contended hosted runners and does not delay the success path.
+  for _attempt in {1..1500}; do
     [[ -f "$web_fixture_ready" ]] && break
     kill -0 "$web_fixture_pid" 2>/dev/null || break
     sleep 0.02
