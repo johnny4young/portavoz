@@ -22,6 +22,10 @@ final class CompanionGenerationProvenanceTests: XCTestCase {
             request: first,
             externalProvider: externalProvider))
 
+        XCTAssertEqual(
+            base,
+            "0872a9aff42fb1aa72c4cf999689bf0ec05574327d11150e7186b8fc43391ffd",
+            "refactors must preserve the durable operation identity")
         XCTAssertEqual(base, CompanionGenerationOperationFingerprint.compute(
             request: first,
             externalProvider: externalProvider))

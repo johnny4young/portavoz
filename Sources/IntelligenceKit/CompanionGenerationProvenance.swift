@@ -130,15 +130,13 @@ public enum CompanionGenerationOperationFingerprint {
         let evidenceGeneratedIDs = unique(
             request.questionSegmentIDs
                 + request.recentTranscript.compactMap(\.segmentID))
-        let evidenceComponents = evidenceGeneratedIDs.flatMap { generatedID in
-            let sourceIDs = request.evidenceSourceIDsByGeneratedID[generatedID]
-                ?? [generatedID]
-            return [
-                "evidence-generated:\(generatedID.uuidString)",
-                "evidence-source-count:\(sourceIDs.count)"
-            ] + sourceIDs.map { "evidence-source:\($0.uuidString)" }
-        }
-        let components = [
+        var components: [String] = []
+        components.reserveCapacity(
+            13
+                + request.questionSegmentIDs.count
+                + (request.recentTranscript.count * 5)
+                + (evidenceGeneratedIDs.count * 3))
+        components.append(contentsOf: [
             request.meetingID.rawValue.uuidString,
             String(request.sourceTranscriptRevision),
             request.sourceCorrectionRevision.rawValue,
@@ -151,17 +149,27 @@ public enum CompanionGenerationOperationFingerprint {
             optional("external-provider", externalProvider?.providerID),
             optional("external-model", externalProvider?.modelID),
             String(request.questionSegmentIDs.count)
-        ] + request.questionSegmentIDs.map(\.uuidString) + [
-            String(request.recentTranscript.count)
-        ] + request.recentTranscript.flatMap { passage in
-            [
+        ])
+        components.append(contentsOf: request.questionSegmentIDs.map(\.uuidString))
+        components.append(String(request.recentTranscript.count))
+        for passage in request.recentTranscript {
+            components.append(contentsOf: [
                 optional("segment", passage.segmentID?.uuidString),
                 passage.meetingID.rawValue.uuidString,
                 passage.meetingTitle,
                 String(passage.timestamp.bitPattern, radix: 16),
                 passage.text
-            ]
-        } + evidenceComponents
+            ])
+        }
+        for generatedID in evidenceGeneratedIDs {
+            let sourceIDs = request.evidenceSourceIDsByGeneratedID[generatedID]
+                ?? [generatedID]
+            components.append("evidence-generated:\(generatedID.uuidString)")
+            components.append("evidence-source-count:\(sourceIDs.count)")
+            for sourceID in sourceIDs {
+                components.append("evidence-source:\(sourceID.uuidString)")
+            }
+        }
         return OperationFingerprint.make(version: version, components: components)
     }
 
