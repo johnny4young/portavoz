@@ -84,6 +84,9 @@ final class AppLaunchModel {
                 environment: environment,
                 storagePolicy: storagePolicy)
         }
+        guard !ProductionSyncQualificationConfiguration.isRequested(
+            arguments: arguments)
+        else { return }
         openServices()
     }
 
@@ -168,7 +171,6 @@ final class AppLaunchModel {
         BenchMode.runAskResourceBenchIfRequested(services: services)
         BenchMode.runIndexingResourceBenchIfRequested(services: services)
         BenchMode.runMemoryGraphQueryBenchIfRequested(services: services)
-
         // Resource evidence owns this process. Do not start sync, recovery,
         // provider discovery, or dictation registrations beside a measured
         // window; temporary storage alone would not isolate their resource use.

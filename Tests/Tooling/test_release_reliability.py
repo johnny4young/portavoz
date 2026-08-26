@@ -206,6 +206,92 @@ class ReleaseReliabilityTests(unittest.TestCase):
                     )
                 )
 
+    def test_authority_owned_qualification_requires_its_sibling(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_qualification(root, "production-sync")
+            receipt.with_name("authority.json").unlink()
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "qualification receipt 1 authority not found",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(
+                        None,
+                        None,
+                        [],
+                        root / "scorecard",
+                        [receipt],
+                    )
+                )
+
+    def test_authority_owned_qualification_rejects_sibling_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_qualification(root, "source-integration")
+            authority_path = receipt.with_name("authority.json")
+            authority = json.loads(authority_path.read_text())
+            authority["unexpected"] = "drift"
+            authority_path.write_text(json.dumps(authority))
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "authority digest differs",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(
+                        None,
+                        None,
+                        [],
+                        root / "scorecard",
+                        [receipt],
+                    )
+                )
+
+    def test_authority_owned_qualification_rejects_renamed_or_symlinked_pair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_qualification(root, "production-sync")
+            renamed = receipt.with_name("production-sync.json")
+            receipt.rename(renamed)
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "must retain its owner directory and qualification.json name",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(
+                        None,
+                        None,
+                        [],
+                        root / "renamed-scorecard",
+                        [renamed],
+                    )
+                )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_qualification(root, "source-integration")
+            authority = receipt.with_name("authority.json")
+            target = root / "moved-authority.json"
+            authority.rename(target)
+            authority.symlink_to(target)
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "authority must not be a symbolic link",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(
+                        None,
+                        None,
+                        [],
+                        root / "symlink-scorecard",
+                        [receipt],
+                    )
+                )
+
     def test_qualification_receipt_rejects_content_bearing_additions(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -541,22 +627,39 @@ class ReleaseReliabilityTests(unittest.TestCase):
         ]
 
     def write_qualification(self, root, scope, commit=None, name=None):
-        path = root / f"{name or scope}.json"
+        release = {
+            "version": self.version,
+            "build": self.build,
+            "commit": commit or self.commit,
+        }
         payload = {
             "schemaVersion": 1,
             "kind": "qualification",
             "scope": scope,
             "collectedAt": "2026-07-28T12:07:00Z",
-            "release": {
-                "version": self.version,
-                "build": self.build,
-                "commit": commit or self.commit,
-            },
+            "release": release,
             "proofs": [
                 {"id": identifier, "state": "pass"}
                 for identifier in reliability.QUALIFICATION_RECEIPTS[scope]["proofs"]
             ],
         }
+        descriptor = reliability.QUALIFICATION_RECEIPTS[scope]
+        if "authorityKind" in descriptor:
+            evidence = root / (name or scope)
+            evidence.mkdir()
+            authority = {
+                "schemaVersion": 1,
+                "kind": descriptor["authorityKind"],
+                "collectedAt": payload["collectedAt"],
+                "release": release,
+            }
+            (evidence / "authority.json").write_text(json.dumps(authority))
+            payload["authoritySHA256"] = reliability.canonical_document_sha256(
+                authority
+            )
+            path = evidence / "qualification.json"
+        else:
+            path = root / f"{name or scope}.json"
         path.write_text(json.dumps(payload))
         return path
 

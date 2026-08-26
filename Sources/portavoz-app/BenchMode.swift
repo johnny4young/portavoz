@@ -22,6 +22,8 @@ enum BenchMode {
         arguments: [String] = ProcessInfo.processInfo.arguments
     ) -> Bool {
         arguments.contains("--bench-resource-launch-probe")
+            || ProductionSyncQualificationConfiguration.isRequested(
+                arguments: arguments)
             || arguments.contains("--bench-record")
             || arguments.contains("--bench-resource-prepare-refine")
             || arguments.contains("--bench-resource-refine")

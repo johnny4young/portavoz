@@ -8,11 +8,13 @@ import http.client
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol, Sequence
@@ -718,7 +720,7 @@ def release_identity(version: str, build: str, commit: str) -> dict[str, str]:
 
 
 def qualification_receipt(
-    release: dict[str, str], *, collected_at: str
+    release: dict[str, str], *, collected_at: str, authority_sha256: str
 ) -> dict[str, Any]:
     expected = tuple(
         release_reliability.QUALIFICATION_RECEIPTS["source-integration"]["proofs"]
@@ -727,6 +729,11 @@ def qualification_receipt(
         "schemaVersion": release_reliability.RECEIPT_SCHEMA_VERSION,
         "kind": "qualification",
         "scope": "source-integration",
+        "authoritySHA256": release_reliability.safe_string(
+            authority_sha256,
+            "source integration authority digest",
+            release_reliability.DIGEST_PATTERN,
+        ),
         "collectedAt": collected_at,
         "release": release,
         "proofs": [{"id": identifier, "state": "pass"} for identifier in expected],
@@ -751,7 +758,7 @@ def exact_checkout(commit: str) -> None:
     if head != commit:
         raise SourceIntegrationError("checked-out Git commit does not match release commit")
     status = subprocess.run(
-        ["git", "status", "--porcelain", "--untracked-files=no"],
+        ["git", "status", "--porcelain", "--untracked-files=all"],
         cwd=ROOT,
         check=True,
         capture_output=True,
@@ -787,6 +794,47 @@ def write_json(path: Path, document: dict[str, Any]) -> None:
         os.chmod(path, 0o600)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def publish_output(
+    path: Path,
+    authority: dict[str, Any],
+    receipt: dict[str, Any],
+) -> Path:
+    output = path.expanduser().resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    lock = output.parent / f".{output.name}.publish.lock"
+    try:
+        descriptor = os.open(
+            lock,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+        os.close(descriptor)
+    except FileExistsError as error:
+        raise SourceIntegrationError(
+            f"source integration publication is already in progress: {output}"
+        ) from error
+    staging = output.parent / f".{output.name}.{uuid.uuid4()}"
+    try:
+        if output.exists():
+            raise SourceIntegrationError(
+                f"source integration output already exists: {output}"
+            )
+        prepared = prepare_output(staging)
+        write_json(prepared / "authority.json", authority)
+        write_json(prepared / "qualification.json", receipt)
+        if output.exists():
+            raise SourceIntegrationError(
+                f"source integration output already exists: {output}"
+            )
+        os.replace(prepared, output)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    finally:
+        lock.unlink(missing_ok=True)
+    return output
 
 
 def require_github_environment(
@@ -855,16 +903,12 @@ def execute(args: argparse.Namespace) -> int:
         producer_run_id=run_id,
         producer_run_attempt=run_attempt,
     )
-    receipt = qualification_receipt(release, collected_at=collected_at)
-    output = prepare_output(Path(args.output))
-    try:
-        write_json(output / "authority.json", authority)
-        write_json(output / "qualification.json", receipt)
-    except BaseException:
-        for child in output.iterdir():
-            child.unlink(missing_ok=True)
-        output.rmdir()
-        raise
+    receipt = qualification_receipt(
+        release,
+        collected_at=collected_at,
+        authority_sha256=release_reliability.canonical_document_sha256(authority),
+    )
+    output = publish_output(Path(args.output), authority, receipt)
     print(f"Source integration qualification passed -> {output}")
     return 0
 

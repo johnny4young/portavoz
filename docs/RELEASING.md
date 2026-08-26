@@ -122,8 +122,10 @@ gh workflow run source-integration-evidence.yml \
 ```
 
 Download the completed run's uniquely named artifact and pass its
-`qualification.json` to the scorecard. Preserve its sibling `authority.json`
-for audit. Bot/self/outsider/stale/dismissed approvals, a commit outside
+`qualification.json` to the scorecard **without separating it from** sibling
+`authority.json`. The receipt carries the authority's canonical SHA-256 and the
+scorecard rejects a renamed, copied-alone, missing, or drifted pair.
+Bot/self/outsider/stale/dismissed approvals, a commit outside
 or behind current `main`, multiple unchanged-commit CI runs, any rerun, a
 missing/failing job, or workflow metadata drift produces no receipt. Do not
 weaken this by editing JSON or dispatching again for the same unchanged commit.
@@ -312,6 +314,104 @@ production-sync evidence owner executes its binary directly with isolated
 scratch state. Building this artifact alone creates no CloudKit receipt and
 does not close the two-Mac matrix.
 
+### Run the staged production-sync qualification (D404)
+
+This is an authorized physical gate, not routine local QA. Use two clean Macs,
+assign one role to Sequoia and the other to Tahoe or newer,
+the same exact source commit and unchanged qualification app, production
+CloudKit/APNs access, the original iCloud account on both roles, and a second
+real iCloud account for role A's switch stages. Never point it at a Portavoz
+library: the owner creates its fixed public EN/ES meeting under role-local
+scratch storage.
+
+On role A, initialize one empty mode-0700 workspace:
+
+```sh
+export PORTAVOZ_PRODUCTION_SYNC_WORKSPACE="$HOME/PortavozQualification/portavoz-sync-run"
+make production-sync-qualification-init \
+  PORTAVOZ_RELEASE_VERSION="$PORTAVOZ_RELEASE_VERSION" \
+  PORTAVOZ_RELEASE_BUILD="$PORTAVOZ_RELEASE_BUILD" \
+  PORTAVOZ_RELEASE_COMMIT="$PORTAVOZ_RELEASE_COMMIT"
+```
+
+The run manifest binds the main executable, outer code-resource seal, embedded
+production provisioning profile, and contract digests. Copy the unchanged
+`.app` and only the mode-0600 `run.json` to role B's empty
+mode-0700 local workspace. Each Mac must retain its own `roles/` and `app-shell/`
+directories; never copy or merge those databases. Before a cross-role stage,
+copy only the required owner-written receipt named by the tracked contract into
+the identical `receipts/<role>/` relative path on the other Mac, preserving
+mode 0600. Then run one stage at a time:
+
+```sh
+make production-sync-qualification-stage \
+  PORTAVOZ_PRODUCTION_SYNC_WORKSPACE="$PORTAVOZ_PRODUCTION_SYNC_WORKSPACE" \
+  PORTAVOZ_PRODUCTION_SYNC_ROLE=a \
+  PORTAVOZ_PRODUCTION_SYNC_STAGE=prepare-existing
+
+make production-sync-qualification-status \
+  PORTAVOZ_PRODUCTION_SYNC_WORKSPACE="$PORTAVOZ_PRODUCTION_SYNC_WORKSPACE"
+```
+
+Follow all 27 stages in
+`docs/evidence/production-sync-qualification.json`. The owner rejects a stage
+until every declared prerequisite receipt is present and valid. For the one
+concurrent boundary, start role B's `await-push` after `b.receive-retry` and
+leave it running. Wait until it writes `live/b-await-push.json` and prints
+`production-sync await-push READY`. Copy that mode-0600 marker to the identical
+relative path in role A's workspace, then run role A's `push-source` without
+terminating B; do not manually refresh role B. The A receipt must consume that
+marker, and a qualifying B receipt must bind the same process/host marker, a
+real remote-notification wake, and the exact pushed corpus.
+
+Six stages declare an irreducible `externalAction`. Perform it immediately
+before the stage and pass that exact token as an acknowledgment; the app still
+has to observe the resulting CloudKit state, so this token is never proof:
+
+| Stage | Required physical action | Exact value |
+|---|---|---|
+| `a.offline-attempt` | Disable networking on role A | `disable-network` |
+| `a.retry-relaunch` | Restore networking on role A | `restore-network` |
+| `a.observe-signout` | Sign role A out of the original iCloud account | `sign-out-original-account` |
+| `a.resume-signin` | Sign role A back into the original iCloud account | `sign-in-original-account` |
+| `a.observe-account-switch` | Switch role A to the real secondary iCloud account | `switch-to-secondary-account` |
+| `a.observe-account-restore` | Restore role A to the original iCloud account | `restore-original-account` |
+
+For example:
+
+```sh
+make production-sync-qualification-stage \
+  PORTAVOZ_PRODUCTION_SYNC_WORKSPACE="$PORTAVOZ_PRODUCTION_SYNC_WORKSPACE" \
+  PORTAVOZ_PRODUCTION_SYNC_ROLE=a \
+  PORTAVOZ_PRODUCTION_SYNC_STAGE=offline-attempt \
+  PORTAVOZ_PRODUCTION_SYNC_EXTERNAL_ACTION=disable-network
+```
+
+Do not pass the variable for stages whose contract value is `none`. A missing,
+wrong, or surplus acknowledgment fails before app launch.
+
+The stage workspace must be a strict descendant of the current user's home or
+the system temporary directory; do not use either root itself or an external
+volume. After both local workspaces are complete, assemble a new mode-0700
+evidence directory containing only the identical `run.json`,
+`live/b-await-push.json`, and all 27 receipts. Do not include role databases.
+From the exact clean source commit, finalize into a new output:
+
+```sh
+make production-sync-qualification-finalize \
+  PORTAVOZ_PRODUCTION_SYNC_WORKSPACE="/absolute/evidence/complete-sync-run" \
+  PORTAVOZ_PRODUCTION_SYNC_OUTPUT="/absolute/evidence/production-sync-authority"
+```
+
+Only the finalizer writes `authority.json` and the generic
+`qualification.json`; the latter binds the canonical authority digest and the
+scorecard requires the intact sibling pair. It rejects an incomplete or extra
+set, broken chains, reused app processes, one physical Mac acting as both
+roles, account/OS drift,
+a fake account switch, zero-wake push, malformed or content-bearing receipts,
+and non-owner permissions. A green unit, packaging, or XCUITest run does not
+substitute for this two-Mac/account/APNs evidence.
+
 The release and field-test profile has an expiration date and macOS evaluates
 it at launch. Refresh and re-embed it before expiry; never work around a profile
 failure by signing the restricted entitlements without one.
@@ -331,8 +431,8 @@ make release-reliability \
   PORTAVOZ_RELEASE_COMMIT="$PORTAVOZ_RELEASE_COMMIT" \
   PORTAVOZ_QUALIFICATION_RECEIPT_ARGS='\
     --qualification-receipt /path/to/candidate-automation.json
-    --qualification-receipt /path/to/source-integration.json
-    --qualification-receipt /path/to/production-sync.json
+    --qualification-receipt /path/to/source-integration/qualification.json
+    --qualification-receipt /path/to/production-sync-authority/qualification.json
     --qualification-receipt /path/to/assistive-technology.json' \
   PORTAVOZ_FIELD_EVIDENCE_ARGS='
     --field-evidence /path/to/built-in-sequoia

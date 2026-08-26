@@ -350,6 +350,9 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("SettingsUITests", "testDataPaneExportsARedactedLocalSupportFile"),
         test_id("SettingsUITests", "testDataPaneExportsAReadableWholeLibraryMarkdownBackup"),
     ),
+    "production-sync": (
+        test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
+    ),
     "settings-intelligence": (
         test_id(
             "SettingsUITests",
@@ -432,6 +435,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "settings-navigation": "Sources/portavoz-app/SettingsView.swift",
     "settings-skills": "Sources/portavoz-app/SkillsSettingsSection.swift",
     "settings-data": "Sources/portavoz-app/AppServices+MeetingSync.swift",
+    "production-sync": "Sources/portavoz-app/ProductionSyncQualificationRunner.swift",
     "settings-intelligence": "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
     "settings-audio": "Sources/portavoz-app/AudioSection.swift",
     "settings-voice": "Sources/portavoz-app/SettingsVoiceSection.swift",
@@ -505,6 +509,11 @@ def app_features(filename: str) -> set[str]:
         # destination; benchmark behavior is covered by unit and disposable
         # Release-app evidence rather than every product journey.
         return {"launch-recovery", "main-shell"}
+    if lowered.startswith("productionsyncqualification"):
+        # The hidden exact-app owner has no presentation and runs only with a
+        # disposable shell. Its safe real-app canary is the existing explicit
+        # sync opt-in/existing-library Settings journey.
+        return {"production-sync"}
     if lowered == "contentview.swift":
         # Root composition changes can affect every destination, but one
         # deterministic canary per route is sufficient; do not rerun all

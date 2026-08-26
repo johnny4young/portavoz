@@ -39,7 +39,7 @@ require_exact_source_checkout() {
     echo "PORTAVOZ_RELEASE_COMMIT does not match HEAD at $phase." >&2
     exit 64
   fi
-  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+  if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
     echo "production-sync qualification requires a clean tracked worktree at $phase." >&2
     exit 64
   fi
@@ -70,6 +70,13 @@ fi
 mv dist/Portavoz.app "$STAGING"
 
 INFO_PLIST="$STAGING/Contents/Info.plist"
+QUALIFICATION_CONTRACT="docs/evidence/production-sync-qualification.json"
+if [[ ! -f "$QUALIFICATION_CONTRACT" ]]; then
+  echo "production-sync qualification contract not found." >&2
+  exit 66
+fi
+cp "$QUALIFICATION_CONTRACT" \
+  "$STAGING/Contents/Resources/production-sync-qualification.json"
 plutil -replace CFBundleDisplayName -string "Portavoz Sync Qualification" "$INFO_PLIST"
 plutil -replace CFBundleName -string "Portavoz Sync Qualification" "$INFO_PLIST"
 for plist in "$STAGING"/Contents/Resources/*.lproj/InfoPlist.strings; do
@@ -88,11 +95,24 @@ codesign --force --options runtime --timestamp --sign "$SIGN_ID" \
 codesign --verify --deep --strict --verbose=2 "$STAGING"
 scripts/verify-cloudkit-capabilities.sh "$STAGING"
 
-python3 - "$INFO_PLIST" "$VERSION" "$BUILD" "$SOURCE_COMMIT" <<'PY'
+python3 - \
+  "$INFO_PLIST" \
+  "$STAGING/Contents/Resources/production-sync-qualification.json" \
+  "$QUALIFICATION_CONTRACT" \
+  "$VERSION" \
+  "$BUILD" \
+  "$SOURCE_COMMIT" <<'PY'
 import plistlib
 import sys
 
-info_path, expected_version, expected_build, expected_commit = sys.argv[1:]
+(
+    info_path,
+    bundled_contract,
+    source_contract,
+    expected_version,
+    expected_build,
+    expected_commit,
+) = sys.argv[1:]
 with open(info_path, "rb") as handle:
     info = plistlib.load(handle)
 
@@ -109,6 +129,13 @@ for key, value in expected.items():
         raise SystemExit(
             f"production-sync qualification has invalid {key}"
         )
+
+with open(bundled_contract, "rb") as handle:
+    bundled = handle.read()
+with open(source_contract, "rb") as handle:
+    source = handle.read()
+if bundled != source:
+    raise SystemExit("production-sync qualification contract drifted")
 PY
 
 require_exact_source_checkout "final verification"

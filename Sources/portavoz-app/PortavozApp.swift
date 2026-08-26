@@ -10,6 +10,8 @@ struct PortavozApp: App {
 
     init() {
         let process = ProcessInfo.processInfo
+        ProductionSyncProcessWatchdog.runIfRequested(
+            arguments: process.arguments)
         BenchResourceProcessWatchdog.runIfRequested(
             arguments: process.arguments)
         BenchResourceLaunchProbe.runIfRequested(arguments: process.arguments)
@@ -33,6 +35,7 @@ struct PortavozApp: App {
             arguments: process.arguments,
             environment: process.environment)
         _launch = State(initialValue: launch)
+        ProductionSyncQualificationRunner.runIfRequested()
         launch.activateReadyServicesIfNeeded()
     }
 

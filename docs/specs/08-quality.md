@@ -2418,7 +2418,9 @@ a second dispatch from replacing the observation.
 Successful output is a new mode-0700 directory containing mode-0600
 `authority.json` and `qualification.json`. The authority report is
 content-free: release identity, PR/review numeric IDs, CI run identity, and
-fixed job names only. Tooling and architecture tests pin output permissions,
+fixed job names only. The qualification receipt carries its canonical digest,
+and release evaluation rejects a copied-alone, renamed, missing, or drifted
+sibling pair. Tooling and architecture tests pin output permissions,
 review reduction, no-green-rerun policy, workflow permissions, immutable
 action pins, and absence of a generic recorder. This producer proves neither
 distribution nor CloudKit, hardware, assistive-technology, or field behavior.
@@ -2454,6 +2456,45 @@ tests additionally forbid `/Applications`, LaunchServices registration, or
 ordinary opening from this script. This evidence validates packaging behavior;
 it does not execute CloudKit, prove a second Mac/account/push path, or create the
 release qualification receipt.
+
+**Staged production-sync owner (D404).**
+`ProductionSyncQualificationTests` exercises exact hidden-mode argument admission,
+proves the ordinary `AppServices` factory is never invoked, and covers the
+tracked 27-stage contract, the public bilingual corpus through portable replay
+and tombstone, explicit existing-library admission, role-separated device
+identity, and the closed receipt vocabulary. The Python owner suite adds
+contract graph/corpus checks, app-bound manifest creation, mode-0600 and exact-
+shape enforcement, mode-0700 workspace admission, inherited-environment
+sanitization, typed external-action acknowledgment, prerequisite admission,
+same-stage concurrent-process rejection, complete cross-version finalization
+across two host scopes and two accounts, atomic pair publication, and negative
+cases for symlinked scratch roots, missing/extra or malformed receipts, broken
+chains, reused processes, false-green offline work,
+zero-wake push, a missing/foreign/reused live waiter, host/account substitution,
+OS drift or same-generation pairing, a changed code-resource seal or embedded
+profile, private content keys, unexpected evidence, and unsupported macOS
+majors. Hermetic packaging tests also require the bundled
+contract bytes to equal the tracked contract before final signing.
+The published qualification receipt binds the canonical authority digest, and
+generic release evaluation requires the unchanged sibling pair.
+The changed-file UI selector owns exactly one English real-app canary for these
+hidden sources: the existing Sync Settings journey that separates opt-in from
+including an existing library. Complete bilingual XCUITest remains the RC gate.
+
+The physical lane is intentionally not automated away. Each Mac keeps its role
+database local and exchanges only the owner-only manifest and required receipt
+files. Every stage launches the exact app once; `b.await-push` starts first and
+must write its live marker and print `READY`. That marker is copied to role A,
+which must consume it before `a.push-source` runs while the same B process stays
+waiting. The delegate bridge keeps only a contract-sized newest-event buffer,
+so a notification burst cannot grow process memory without bound. The app uses
+real Foundation CloudKit account, engine, and notification paths against the
+production container, but only the fixed public corpus.
+Finalization requires one exact OS per role, distinct run-scoped host hashes,
+and a cross-version pair with one Sequoia Mac and one Tahoe-or-newer Mac; it also
+rejects a fake account switch.
+No deterministic test, XCUITest, packaging check, or locally shaped JSON file
+can replace this authorized two-Mac/account/APNs observation.
 
 **Candidate automation owner (D392–D401).**
 `docs/evidence/candidate-automation.json` is the finite executable contract for

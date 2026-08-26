@@ -4322,6 +4322,9 @@ qualification receipts use one closed scope vocabulary for the eight complete
 candidate gates, reviewed integration plus hosted CI, production sync, and
 physical VoiceOver/Voice Control on Sequoia and Tahoe. Protocol-2 field
 packages remain the only source for the eight real-device/conversation cells.
+Source-integration and production-sync receipts additionally carry the
+canonical digest of their owner-specific `authority.json`; evaluation requires
+the unchanged sibling pair rather than accepting a copied generic receipt.
 
 Reviewed source integration has a separate executable owner rather than a
 generic qualification recorder. The manually dispatched, read-only
@@ -4352,6 +4355,8 @@ review/run identifiers and fixed job names, never titles, bodies, comments,
 actors, logs, source paths, or payloads. There is no local proof-state flag and
 no workflow trigger from pull-request content. Running or downloading that
 remote artifact remains an explicit integration/release action.
+The generic receipt binds the authority report's canonical digest, and release
+evaluation requires both unchanged siblings.
 
 Production-sync qualification has a separate exact-identity packaging
 boundary. Ordinary `make install` is local-only and fails before building when a
@@ -4375,6 +4380,60 @@ and re-verifies signature, capabilities, version, build, and source stamp before
 notarized app. The later sync evidence owner executes it directly with isolated
 scratch state. Packaging alone performs no CloudKit mutation and cannot write a
 production-sync receipt.
+
+### Staged production-sync qualification
+
+The executable evidence owner does not turn local automation into physical
+proof. `docs/evidence/production-sync-qualification.json` freezes 27
+ordered stages and six typed external-action preconditions over role A and role
+B. The signed exact-ID app is executed
+directly with one exact argument vector: two inert AppKit persistence/opening
+pairs, `-use-temp-store`, and the hidden manifest/workspace/role/stage/timeout
+tuple. Every other launch argument is rejected. The wrapper removes every
+inherited `PORTAVOZ_*` override and injects only the UUID-named role-local shell
+database path; the synchronous watchdog verifies that closed environment before
+any preference mutation. The ordinary notification/App Intent launch plumbing
+and `AppServices` graph are never installed or constructed, and the
+qualification session constructs the real `CloudMeetingSyncLifecycle` and
+`CloudKitMeetingSyncPlatform` only over role-local scratch stores. A fixed
+public bilingual meeting is the only synchronized content. Its initial journal
+generation is explicitly acknowledged so enabling sync cannot silently include
+the existing scratch library; the later include-existing stage must admit it.
+
+Each stage runs in a fresh bounded app process under a mode-0700 workspace and
+writes one mode-0600 receipt itself. An owner-only reservation rejects a second
+concurrent launch of the same stage. The owner materializes each fixed scratch
+and evidence directory component separately; both layers reject symbolic links,
+special entries, or a non-owner directory before opening SQLite, transport
+state, live markers, or receipts. Before mutation, both the Python command owner
+and app runner require the exact completed prerequisite receipts; each role
+also carries an exact SHA-256 predecessor chain. Cross-Mac operation
+exchanges only `run.json` and required receipt files while the role databases
+stay local. The silent-push pair is deliberately concurrent: role B starts
+`await-push` after `b.receive-retry` and writes one content-free live-stage
+marker only after APNs registration. After it prints `READY`, that marker is
+copied to role A and `push-source` must consume its digest before any mutation.
+B never polls or manually synchronizes until a remote wake; its final receipt
+must share the marker digest and process nonce, so queued delivery to a later
+process cannot claim this boundary. The delegate bridge uses a contract-sized
+newest-event buffer rather than retaining an unbounded notification burst. At
+least one bounded wake and the expected pushed corpus are required.
+
+Receipts contain only exact release/executable/code-resource-seal/provisioning-
+profile/contract/corpus digests, run-scoped hashes, closed lifecycle counts,
+push-wake count, process nonce, and OS facts plus the nullable live-stage marker
+digest. The host hash is derived from IOPlatformUUID plus the random run nonce;
+the raw identifier is never written. Finalization requires 27 exact receipts,
+two distinct IOPlatformUUID-derived host scopes, one original account shared by
+both roles, a genuinely different switched account followed by restoration,
+one consistent OS identity per role, a cross-version pair containing one
+Sequoia Mac and one Tahoe-or-newer Mac, and no extra files. It atomically
+publishes the authority and generic admission receipt as a pair; the receipt
+binds the canonical authority digest and release evaluation requires the
+unchanged sibling. Host-scope inequality is not hardware attestation: the
+authorized runbook still requires two physical Macs. Until that physical
+workflow is actually completed, production sync remains an open release gate;
+unit, packaging, and XCUITest evidence do not mint its receipt.
 
 Candidate automation has one executable owner rather than a generic receipt
 recorder. `docs/evidence/candidate-automation.json` freezes the eight proof

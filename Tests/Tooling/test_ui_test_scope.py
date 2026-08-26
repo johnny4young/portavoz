@@ -77,6 +77,20 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(set(selection.tests), expected, path)
             self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
+    def test_production_sync_stage_owners_select_only_the_sync_settings_journey(self):
+        expected = FEATURE_TESTS["production-sync"]
+        for path in (
+            "Sources/portavoz-app/ProductionSyncQualificationCorpus.swift",
+            "Sources/portavoz-app/ProductionSyncQualificationEvidence.swift",
+            "Sources/portavoz-app/ProductionSyncQualificationProcess.swift",
+            "Sources/portavoz-app/ProductionSyncQualificationRunner.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(len(selection.tests), 1, path)
+            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
+
     def test_docs_governance_and_local_tooling_do_not_spend_a_ui_runner(self):
         selection = select_paths(
             [

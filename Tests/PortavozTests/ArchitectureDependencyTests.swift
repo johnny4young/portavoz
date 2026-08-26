@@ -9899,6 +9899,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(evaluator.contains(
             #""The scorecard contains no meeting content.""#))
         XCTAssertTrue(evaluator.contains("QUALIFICATION_RECEIPTS"))
+        XCTAssertTrue(evaluator.contains("def validate_qualification_authority("))
+        XCTAssertTrue(evaluator.contains("canonical_document_sha256(authority)"))
         XCTAssertTrue(evaluator.contains(
             #""artifact": ("#))
         XCTAssertEqual(sourceIntegrationContract["schemaVersion"] as? Int, 1)
@@ -9910,6 +9912,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(sourceIntegration.contains("run_attempt"))
         XCTAssertTrue(sourceIntegration.contains("CHANGES_REQUESTED"))
         XCTAssertTrue(sourceIntegration.contains("source-integration"))
+        XCTAssertTrue(sourceIntegration.contains("authoritySHA256"))
+        XCTAssertTrue(sourceIntegration.contains("os.replace(prepared, output)"))
         XCTAssertFalse(sourceIntegration.contains("--proof"))
         XCTAssertFalse(sourceIntegration.contains("--contract"))
         XCTAssertTrue(sourceIntegrationWorkflow.contains("actions: read"))
@@ -10242,6 +10246,156 @@ final class ArchitectureDependencyTests: XCTestCase {
             range: installGuard.upperBound..<makefile.endIndex))
         XCTAssertTrue(makefile.contains("production-sync-qualification-app:"))
         XCTAssertTrue(decisions.contains("## D403"))
+    }
+
+    func testProductionSyncQualificationUsesIsolatedRealAppAndPublicCorpus() throws {
+        let evidence = try Self.contents(
+            of: "Sources/portavoz-app/ProductionSyncQualificationEvidence.swift")
+        let corpus = try Self.contents(
+            of: "Sources/portavoz-app/ProductionSyncQualificationCorpus.swift")
+        let runner = try Self.contents(
+            of: "Sources/portavoz-app/ProductionSyncQualificationRunner.swift")
+        let process = try Self.contents(
+            of: "Sources/portavoz-app/ProductionSyncQualificationProcess.swift")
+        let launch = try Self.contents(
+            of: "Sources/portavoz-app/AppLaunchModel.swift")
+        let app = try Self.contents(of: "Sources/portavoz-app/PortavozApp.swift")
+        let bench = try Self.contents(of: "Sources/portavoz-app/BenchMode.swift")
+        let delegate = try Self.contents(
+            of: "Sources/portavoz-app/PortavozAppDelegate.swift")
+
+        XCTAssertTrue(evidence.contains("temporaryStoreIndexes.count == 1"))
+        XCTAssertTrue(evidence.contains("forbiddenIsolationArguments.isEmpty"))
+        XCTAssertTrue(evidence.contains("arguments == expected"))
+        XCTAssertTrue(evidence.contains("portavozKeys == [qualificationKey]"))
+        XCTAssertTrue(evidence.contains("Contents/_CodeSignature/CodeResources"))
+        XCTAssertTrue(evidence.contains("Contents/embedded.provisionprofile"))
+        XCTAssertTrue(process.contains("kIOPlatformUUIDKey"))
+        XCTAssertTrue(process.contains("portavoz-production-sync-host-v1"))
+        XCTAssertTrue(process.contains("requireSafeScratchTree"))
+        XCTAssertFalse(evidence.contains("platformUUID:"))
+
+        XCTAssertTrue(corpus.contains(
+            "We approved the public qualification plan."))
+        XCTAssertTrue(corpus.contains(
+            "Aprobamos el plan público de calificación."))
+        XCTAssertTrue(corpus.contains("audioDirectory: nil"))
+        XCTAssertTrue(corpus.contains("acknowledgeMeetingSync"))
+
+        let prerequisites = try XCTUnwrap(runner.range(
+            of: "try validatePrerequisites()"))
+        let predecessor = try XCTUnwrap(runner.range(
+            of: "let predecessor = try predecessorDigest()"))
+        XCTAssertLessThan(prerequisites.lowerBound, predecessor.lowerBound)
+        XCTAssertTrue(runner.contains("CloudMeetingSyncLifecycle("))
+        XCTAssertTrue(runner.contains("CloudKitMeetingSyncPlatform()"))
+        XCTAssertTrue(runner.contains("workspacePath.hasPrefix(root + \"/\")"))
+        XCTAssertFalse(runner.contains("workspacePath == root ||"))
+        XCTAssertTrue(runner.contains("production-sync await-push READY"))
+        XCTAssertTrue(runner.contains("writeLiveStageMarker()"))
+        XCTAssertTrue(runner.contains("validatedLiveStageMarkerDigest()"))
+        XCTAssertTrue(runner.contains("registerForRemoteNotifications()"))
+        XCTAssertTrue(runner.contains("unregisterForRemoteNotifications()"))
+        XCTAssertTrue(runner.contains("bufferingPolicy: .bufferingNewest("))
+
+        XCTAssertTrue(bench.contains(
+            "ProductionSyncQualificationConfiguration.isRequested"))
+        let isolationGuard = try XCTUnwrap(launch.range(
+            of: "guard !ProductionSyncQualificationConfiguration.isRequested"))
+        let serviceConstruction = try XCTUnwrap(launch.range(
+            of: "openServices()",
+            range: isolationGuard.upperBound..<launch.endIndex))
+        XCTAssertLessThan(isolationGuard.lowerBound, serviceConstruction.lowerBound)
+        let runnerLaunch = try XCTUnwrap(app.range(
+            of: "ProductionSyncQualificationRunner.runIfRequested()"))
+        let ordinaryActivation = try XCTUnwrap(app.range(
+            of: "launch.activateReadyServicesIfNeeded()"))
+        XCTAssertLessThan(runnerLaunch.lowerBound, ordinaryActivation.lowerBound)
+        XCTAssertTrue(delegate.contains(
+            "ProductionSyncQualificationPushBridge"))
+        XCTAssertTrue(delegate.contains("handler()"))
+        XCTAssertEqual(
+            delegate.components(separatedBy:
+                "guard !runsProductionSyncQualification else { return }").count - 1,
+            2)
+        let launchIsolation = try XCTUnwrap(delegate.range(
+            of: "guard !runsProductionSyncQualification else { return }"))
+        let notificationMutation = try XCTUnwrap(delegate.range(
+            of: "UNUserNotificationCenter.current()"))
+        XCTAssertLessThan(
+            launchIsolation.lowerBound,
+            notificationMutation.lowerBound)
+    }
+
+    func testProductionSyncQualificationOwnerIsFailClosed() throws {
+        let owner = try Self.contents(
+            of: "scripts/production_sync_qualification.py")
+        let packager = try Self.contents(
+            of: "scripts/make-production-sync-qualification-app.sh")
+        let hygiene = try Self.contents(
+            of: "scripts/check-repository-hygiene.sh")
+        let makefile = try Self.contents(of: "Makefile")
+
+        XCTAssertTrue(owner.contains("def validate_stage_prerequisites("))
+        XCTAssertTrue(owner.contains("def validate_live_stage_relationship("))
+        XCTAssertTrue(owner.contains("canonical_document_sha256(authority)"))
+        XCTAssertTrue(owner.contains("codeResourcesSHA256"))
+        XCTAssertTrue(owner.contains("provisioningProfileSHA256"))
+        XCTAssertTrue(owner.contains("def require_stage_workspace_location("))
+        XCTAssertTrue(owner.contains("def prepare_stage_directories("))
+        XCTAssertTrue(owner.contains("--untracked-files=all"))
+        XCTAssertTrue(owner.contains("if not key.startswith(\"PORTAVOZ_\")"))
+        XCTAssertTrue(owner.contains("each stage must run in a distinct app process"))
+        XCTAssertTrue(owner.contains("two distinct Mac host scopes"))
+        XCTAssertTrue(owner.contains("another account"))
+        XCTAssertTrue(owner.contains("os.replace(staging, output)"))
+        XCTAssertEqual(
+            owner.components(separatedBy: "\ndef qualification_receipt(").count - 1,
+            1)
+        XCTAssertEqual(
+            owner.components(separatedBy: "receipt = qualification_receipt(").count - 1,
+            1)
+        XCTAssertFalse(owner.contains("/Applications/"))
+        XCTAssertFalse(owner.contains("proof-state"))
+
+        XCTAssertTrue(packager.contains(
+            "production-sync-qualification.json"))
+        XCTAssertTrue(packager.contains("--untracked-files=all"))
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_production_sync_qualification"))
+        for target in [
+            "production-sync-qualification-init:",
+            "production-sync-qualification-stage:",
+            "production-sync-qualification-status:",
+            "production-sync-qualification-finalize:"
+        ] {
+            XCTAssertTrue(makefile.contains(target))
+        }
+        XCTAssertTrue(makefile.contains(
+            "PORTAVOZ_PRODUCTION_SYNC_APP ?= $(CURDIR)/dist/Portavoz Sync Qualification.app"))
+        XCTAssertFalse(makefile.contains(
+            "$(abspath dist/Portavoz Sync Qualification.app)"))
+    }
+
+    func testProductionSyncQualificationTruthIsDocumented() throws {
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let appSpec = try Self.contents(of: "docs/specs/06-app-macos.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let releasing = try Self.contents(of: "docs/RELEASING.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(architecture.contains(
+            "Staged production-sync qualification"))
+        XCTAssertTrue(appSpec.contains(
+            "real-app production-sync qualification"))
+        XCTAssertTrue(quality.contains(
+            "ProductionSyncQualificationTests"))
+        XCTAssertTrue(releasing.contains(
+            "production-sync-qualification-init"))
+        XCTAssertTrue(gaps.contains(
+            "STAGED PRODUCER IMPLEMENTED (D404)"))
+        XCTAssertTrue(decisions.contains("## D404"))
     }
 
     func testDevelopmentAndUITestAppsCannotClaimTheReleaseIdentity() throws {

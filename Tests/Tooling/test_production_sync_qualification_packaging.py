@@ -38,6 +38,20 @@ class ProductionSyncQualificationPackagingTests(unittest.TestCase):
             self.assertEqual(info["CFBundleShortVersionString"], "1.0.0")
             self.assertEqual(info["CFBundleVersion"], "202608250001")
             self.assertEqual(info["PortavozSourceCommit"], commit)
+            self.assertEqual(
+                (
+                    output
+                    / "Contents"
+                    / "Resources"
+                    / "production-sync-qualification.json"
+                ).read_bytes(),
+                (
+                    repository
+                    / "docs"
+                    / "evidence"
+                    / "production-sync-qualification.json"
+                ).read_bytes(),
+            )
             self.assertIn(
                 "--entitlements dist/.portavoz-production.entitlements",
                 (repository / "codesign.log").read_text(encoding="utf-8"),
@@ -117,19 +131,35 @@ class ProductionSyncQualificationPackagingTests(unittest.TestCase):
         repository = root / "repository"
         scripts = repository / "scripts"
         packaging = repository / "packaging"
+        evidence = repository / "docs" / "evidence"
         tools = root / "bin"
         scripts.mkdir(parents=True)
         packaging.mkdir()
+        evidence.mkdir(parents=True)
         tools.mkdir()
 
         copied_packager = scripts / PACKAGER.name
         copied_packager.write_bytes(PACKAGER.read_bytes())
         copied_packager.chmod(copied_packager.stat().st_mode | stat.S_IXUSR)
+        (
+            evidence / "production-sync-qualification.json"
+        ).write_bytes(
+            (
+                REPOSITORY
+                / "docs"
+                / "evidence"
+                / "production-sync-qualification.json"
+            ).read_bytes()
+        )
         (packaging / "portavoz.entitlements").write_text(
             "fixture\n", encoding="utf-8"
         )
         profile = repository / "fixture.provisionprofile"
         profile.write_bytes(b"fixture")
+        (repository / ".gitignore").write_text(
+            "dist/\nmake-app.log\ncodesign.log\nverify.log\n",
+            encoding="utf-8",
+        )
 
         make_app = scripts / "make-app.sh"
         make_app.write_text(

@@ -14496,6 +14496,9 @@ blocking state so the evaluator can always produce an actionable scorecard.
 Only the verified gate runner, reviewed integration workflow, sync field
 workflow, or assistive field workflow may create its corresponding receipt;
 the evaluator does not convert adjacent commands or prose into proof.
+Scopes with an owner-specific authority report carry its canonical SHA-256 and
+must remain beside the exact `authority.json`; evaluation rejects copied-alone,
+renamed, missing, or drifted pairs.
 
 Production packaging accepts an optional `PORTAVOZ_RELEASE_COMMIT` only when it
 is one full lowercase SHA and stamps it as `PortavozSourceCommit`. The release
@@ -14955,6 +14958,9 @@ report retains release identity, numeric PR/review/run IDs, and fixed job names
 without titles, bodies, actors, comments, logs, paths, or content. The script
 accepts version/build/commit/output only—never proof states or a replacement
 contract—and output is new, atomic, and mode 0600 inside a mode 0700 directory.
+The generic receipt binds the authority report's canonical SHA-256, and release
+evaluation requires both unchanged siblings rather than trusting a copied JSON
+receipt.
 
 **Consequences:** final admission can no longer turn a locally manufactured
 integration receipt into two green cells. A solo-maintainer release needs a
@@ -15017,3 +15023,76 @@ This band does not sign an artifact, access an iCloud account, mutate CloudKit,
 exercise push/account transitions, prove the two-Mac matrix, or create a
 production-sync receipt. Those remain separately authorized physical evidence
 owned by the later staged producer.
+
+## D404 — Let the exact app own staged production-sync evidence (Aug 2026)
+
+**Context:** D403 can build an exact-identity, production-provisioned app, but
+packaging cannot prove that the shipped CloudKit lifecycle converges. The D147
+evaluator accepted a correctly shaped `production-sync` receipt without an
+executable producer. A manual checklist or generic pass recorder could
+therefore claim two-Mac sync without proving separate existing-library consent,
+durable retry/relaunch, push wake, account boundaries, tombstones, or the exact
+candidate. Testing with a private meeting would also make routine qualification
+depend on user data and risk leaking content into evidence.
+
+**Decision:** freeze one 27-stage contract over role A and role B and execute
+each stage through the unchanged signed app. One owner-generated manifest binds
+release version/build/commit, bundled contract digest, executable digest, a
+random run nonce, and random identities for a fixed public English/Spanish
+meeting. The strict hidden mode accepts only the wrapper's fixed AppKit pairs,
+one disposable shell flag, and the exact stage tuple; every other launch
+argument fails closed. The wrapper removes every inherited `PORTAVOZ_*`
+override before injecting one
+role-local shell database path. The synchronous watchdog validates that closed
+environment before preference handling. It keeps ordinary notification/App
+Intent launch plumbing and process owners dormant and does not construct the
+ordinary `AppServices` graph; the inert app shell
+constructs only the real `CloudMeetingSyncLifecycle` plus
+`CloudKitMeetingSyncPlatform` over role-local scratch stores. The public seed's
+automatic journal entry is acknowledged first, so Enable alone cannot smuggle
+the existing library into sync; Include Existing must explicitly readmit it.
+
+Both the Python command owner and the app process require completed contract
+prerequisites before mutation. Each role's receipts form an exact digest chain,
+and every stage has a unique process nonce. Fixed scratch/evidence directory
+components are created one level at a time with owner-only permissions; either
+layer rejects a symbolic-link escape or special entry before database or
+receipt I/O. Cross-Mac operation transfers only the mode-0600 manifest and
+prerequisite receipts; scratch databases never move.
+The `await-push` and `push-source` stages are concurrent siblings after
+`b.receive-retry`: B registers for remote notifications and announces `READY`,
+but first writes a content-free marker bound to its process and host. A must
+consume that copied marker digest before publishing; B's final receipt must bind
+the same marker and process. B may synchronize only from the delegate's remote
+wake and must observe the exact push state within the bounded wake/timeout budget.
+The six network/account transitions carry a closed external-action token. The
+wrapper requires the exact acknowledgment before launch, but only the app's
+observed lifecycle/account result can enter the receipt.
+
+Stage receipts are content-free and exact-shaped: release, executable,
+code-resource seal, provisioning-profile, contract, and corpus digests;
+role/stage/sequence; predecessor and process identity; run-scoped host/account
+hashes, lifecycle counts, push wakes, the nullable live-stage marker digest,
+and OS facts. The host scope hashes IOPlatformUUID with the run nonce; raw
+platform/account identity never leaves the process. Finalization requires all
+and only the 27
+receipts plus the one live-stage marker and no other evidence files, two
+distinct IOPlatformUUID-derived host scopes, one original account shared across
+roles, a genuinely different switched account and restoration, one consistent
+OS identity per role plus a cross-version pair containing one Sequoia Mac and
+one Tahoe-or-newer Mac, valid chains and states, then publishes
+the authority and generic admission receipt atomically as one directory. There
+is no caller-supplied proof state and status never mints authority. The generic
+receipt binds the authority's canonical SHA-256, and release evaluation requires
+the unchanged sibling pair.
+
+**Consequences:** Portavoz now has an autonomous, repeatable producer for the
+code and receipt protocol, using no private meeting. It still cannot fabricate
+the external observation: the exact app/profile/container, two clean Macs, real
+iCloud accounts, offline transition, APNs delivery, and account switch must be
+run with explicit authorization. Until that physical matrix completes, no
+production-sync receipt exists and the release gate remains blocked. This band
+does not sign, notarize, distribute, mutate a remote repository, or claim
+Sequoia/Tahoe/assistive-technology/field evidence beyond receipts actually
+collected. Host-scope inequality is not hardware attestation; the authorized
+runbook and retained operator evidence must still establish two physical Macs.

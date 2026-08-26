@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -57,10 +58,12 @@ QUALIFICATION_RECEIPTS = {
     "source-integration": {
         "class": "source-integration",
         "proofs": ("reviewed", "hosted-ci"),
+        "authorityKind": "source-integration-authority",
     },
     "production-sync": {
         "class": "production-sync",
         "proofs": ("admission",),
+        "authorityKind": "production-sync-authority",
     },
     "assistive-technology": {
         "class": "assistive-technology",
@@ -175,6 +178,20 @@ class ReliabilityError(ValueError):
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def canonical_document_sha256(document) -> str:
+    try:
+        payload = json.dumps(
+            document,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        raise ReliabilityError("authority document is not canonical JSON") from error
+    return hashlib.sha256(payload).hexdigest()
 
 
 def object_shape(value, path, required, optional=()):
@@ -379,6 +396,17 @@ def validate_distribution_receipt(document):
 
 
 def validate_qualification_receipt(document, label):
+    if not isinstance(document, dict):
+        raise ReliabilityError(f"{label} must be an object")
+    scope = document.get("scope")
+    descriptor = QUALIFICATION_RECEIPTS.get(scope)
+    if descriptor is None:
+        raise ReliabilityError(f"{label}.scope is unknown")
+    authority_keys = (
+        ("authoritySHA256",)
+        if descriptor.get("authorityKind") is not None
+        else ()
+    )
     receipt = object_shape(
         document,
         label,
@@ -389,7 +417,7 @@ def validate_qualification_receipt(document, label):
             "collectedAt",
             "release",
             "proofs",
-        ),
+        ) + authority_keys,
     )
     identity, release = receipt_identity(
         {
@@ -403,9 +431,12 @@ def validate_qualification_receipt(document, label):
     if "commit" not in release:
         raise ReliabilityError(f"{label}.release.commit is required")
     scope = safe_string(receipt["scope"], f"{label}.scope", BUILD_PATTERN)
-    descriptor = QUALIFICATION_RECEIPTS.get(scope)
-    if descriptor is None:
-        raise ReliabilityError(f"{label}.scope is unknown")
+    if authority_keys:
+        safe_string(
+            receipt["authoritySHA256"],
+            f"{label}.authoritySHA256",
+            DIGEST_PATTERN,
+        )
     proofs = validate_proofs(
         receipt["proofs"],
         descriptor["proofs"],
@@ -413,6 +444,53 @@ def validate_qualification_receipt(document, label):
         require_complete=True,
     )
     return receipt, release, scope, proofs
+
+
+def validate_qualification_authority(path, receipt, scope, label):
+    descriptor = QUALIFICATION_RECEIPTS[scope]
+    expected_kind = descriptor.get("authorityKind")
+    if expected_kind is None:
+        return
+    if path.name != "qualification.json":
+        raise ReliabilityError(
+            f"{label} must retain its owner directory and qualification.json name"
+        )
+    authority_path = path.with_name("authority.json")
+    if authority_path.is_symlink():
+        raise ReliabilityError(f"{label} authority must not be a symbolic link")
+    authority = load_json(authority_path, f"{label} authority")
+    if not isinstance(authority, dict):
+        raise ReliabilityError(f"{label} authority must be an object")
+    for key in ("schemaVersion", "kind", "collectedAt", "release"):
+        if key not in authority:
+            raise ReliabilityError(f"{label} authority is missing {key}")
+    if integer(authority["schemaVersion"], f"{label} authority.schemaVersion") != 1:
+        raise ReliabilityError(f"{label} authority.schemaVersion must be 1")
+    if authority["kind"] != expected_kind:
+        raise ReliabilityError(f"{label} authority.kind is invalid")
+    timestamp(authority["collectedAt"], f"{label} authority.collectedAt")
+    if authority["collectedAt"] != receipt["collectedAt"]:
+        raise ReliabilityError(f"{label} authority collection time differs")
+    authority_release = object_shape(
+        authority["release"],
+        f"{label} authority.release",
+        ("version", "build", "commit"),
+    )
+    for key, pattern in (
+        ("version", VERSION_PATTERN),
+        ("build", BUILD_PATTERN),
+        ("commit", COMMIT_PATTERN),
+    ):
+        safe_string(
+            authority_release[key],
+            f"{label} authority.release.{key}",
+            pattern,
+        )
+    if authority_release != receipt["release"]:
+        raise ReliabilityError(f"{label} authority release differs")
+    digest = canonical_document_sha256(authority)
+    if digest != receipt["authoritySHA256"]:
+        raise ReliabilityError(f"{label} authority digest differs")
 
 
 def validate_contract(document):
@@ -785,10 +863,13 @@ def evaluate(args):
         if not path.is_file():
             continue
         label = f"qualification receipt {index + 1}"
-        _, release, scope, proofs = validate_qualification_receipt(
+        if path.is_symlink():
+            raise ReliabilityError(f"{label} must not be a symbolic link")
+        receipt, release, scope, proofs = validate_qualification_receipt(
             load_json(path, label),
             label,
         )
+        validate_qualification_authority(path, receipt, scope, label)
         release_matches(release, expected_release, label, include_commit=True)
         if scope in qualification_proofs:
             raise ReliabilityError(f"qualification receipts repeat scope: {scope}")

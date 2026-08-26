@@ -206,6 +206,13 @@ final class EnglishSourceTests: XCTestCase {
                 || line.contains("Camila: No desactivaría alertas")
                 || line.contains("¿Qué haría Camila primero")
         }
+        if relative
+            == "Sources/portavoz-app/ProductionSyncQualificationCorpus.swift" {
+            // The exact production-sync evidence corpus deliberately carries
+            // one public Spanish transcript segment; explanatory prose stays
+            // English and every other Spanish source line remains rejected.
+            return line.contains("Aprobamos el plan público de calificación.")
+        }
         if relative == "Sources/portavoz-app/BenchMode.swift" {
             // Synthetic Spanish meeting fed to the --mlx-smoke in-app check.
             return line.contains("Revisemos el presupuesto")

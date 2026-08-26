@@ -45,6 +45,11 @@ class FakeGitHubAuthority:
 
 
 class SourceIntegrationQualificationTests(unittest.TestCase):
+    def test_exact_checkout_includes_untracked_source(self):
+        source = (ROOT / "scripts" / "source_integration_qualification.py").read_text()
+        self.assertIn("--untracked-files=all", source)
+        self.assertNotIn("--untracked-files=no", source)
+
     version = "1.0.0"
     build = "202608260001"
     commit = "a" * 40
@@ -101,6 +106,11 @@ class SourceIntegrationQualificationTests(unittest.TestCase):
         receipt = source_integration.qualification_receipt(
             self.release,
             collected_at="2026-08-26T00:00:00Z",
+            authority_sha256=(
+                source_integration.release_reliability.canonical_document_sha256(
+                    authority
+                )
+            ),
         )
 
         self.assertEqual(authority["pullRequest"]["number"], 42)
@@ -120,6 +130,12 @@ class SourceIntegrationQualificationTests(unittest.TestCase):
                 {"id": "hosted-ci", "state": "pass"},
             ],
         )
+        self.assertEqual(
+            receipt["authoritySHA256"],
+            source_integration.release_reliability.canonical_document_sha256(
+                authority
+            ),
+        )
         serialized = json.dumps(authority)
         for private_or_content_key in (
             "reviewer",
@@ -134,13 +150,25 @@ class SourceIntegrationQualificationTests(unittest.TestCase):
     def test_outputs_are_new_owner_only_and_atomically_written(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "source-integration"
-            prepared = source_integration.prepare_output(output)
-            source_integration.write_json(
-                prepared / "qualification.json",
-                source_integration.qualification_receipt(
-                    self.release,
-                    collected_at="2026-08-26T00:00:00Z",
+            authority = source_integration.collect_authority(
+                self.good_api(),
+                self.contract,
+                self.commit,
+                self.release,
+                collected_at="2026-08-26T00:00:00Z",
+            )
+            receipt = source_integration.qualification_receipt(
+                self.release,
+                collected_at="2026-08-26T00:00:00Z",
+                authority_sha256=(
+                    source_integration.release_reliability
+                    .canonical_document_sha256(authority)
                 ),
+            )
+            prepared = source_integration.publish_output(
+                output,
+                authority,
+                receipt,
             )
 
             self.assertEqual(os.stat(prepared).st_mode & 0o777, 0o700)
@@ -148,11 +176,60 @@ class SourceIntegrationQualificationTests(unittest.TestCase):
                 os.stat(prepared / "qualification.json").st_mode & 0o777,
                 0o600,
             )
+            self.assertEqual(
+                os.stat(prepared / "authority.json").st_mode & 0o777,
+                0o600,
+            )
             with self.assertRaisesRegex(
                 source_integration.SourceIntegrationError,
                 "output already exists",
             ):
-                source_integration.prepare_output(output)
+                source_integration.publish_output(output, authority, receipt)
+
+    def test_atomic_publication_leaves_no_partial_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "source-integration"
+            original_write = source_integration.write_json
+
+            def fail_second(path, document):
+                if path.name == "qualification.json":
+                    raise OSError("simulated publication failure")
+                original_write(path, document)
+
+            with mock.patch.object(
+                source_integration,
+                "write_json",
+                side_effect=fail_second,
+            ), self.assertRaisesRegex(OSError, "simulated publication failure"):
+                source_integration.publish_output(
+                    output,
+                    {"schemaVersion": 1},
+                    {"schemaVersion": 1},
+                )
+
+            self.assertFalse(output.exists())
+            self.assertEqual(list(root.glob(".source-integration.*")), [])
+
+    def test_atomic_publication_rejects_an_active_publisher(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root / "source-integration"
+            lock = root / ".source-integration.publish.lock"
+            lock.write_text("content-free reservation")
+
+            with self.assertRaisesRegex(
+                source_integration.SourceIntegrationError,
+                "publication is already in progress",
+            ):
+                source_integration.publish_output(
+                    output,
+                    {"schemaVersion": 1},
+                    {"schemaVersion": 1},
+                )
+
+            self.assertFalse(output.exists())
+            self.assertTrue(lock.exists())
 
     def test_api_transport_truncation_fails_closed_without_a_raw_exception(self):
         client = source_integration.GitHubRESTClient(

@@ -34,7 +34,9 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-meeting-detail-baseline meeting-detail-baseline \
 	test-recording-stress test-model-gated test-ui-real-audio test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
-	production-sync-qualification-app \
+	production-sync-qualification-app production-sync-qualification-init \
+	production-sync-qualification-stage production-sync-qualification-status \
+	production-sync-qualification-finalize \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
 	release-reliability long-capture-baseline candidate-automation \
 	test-source-integration-qualification
@@ -773,6 +775,66 @@ app:
 production-sync-qualification-app:
 	PORTAVOZ_SIGN_IDENTITY="$(PORTAVOZ_SIGN_IDENTITY)" \
 		scripts/make-production-sync-qualification-app.sh
+
+PORTAVOZ_PRODUCTION_SYNC_APP ?= $(CURDIR)/dist/Portavoz Sync Qualification.app
+PORTAVOZ_PRODUCTION_SYNC_WORKSPACE ?=
+PORTAVOZ_PRODUCTION_SYNC_ROLE ?=
+PORTAVOZ_PRODUCTION_SYNC_STAGE ?=
+PORTAVOZ_PRODUCTION_SYNC_TIMEOUT ?=
+PORTAVOZ_PRODUCTION_SYNC_EXTERNAL_ACTION ?=
+PORTAVOZ_PRODUCTION_SYNC_OUTPUT ?=
+
+## Initialize one exact, owner-only two-Mac run manifest. Copy only run.json
+## plus the unchanged qualification app to the second Mac; keep role databases
+## local and exchange only required receipts. Never use a private library.
+production-sync-qualification-init:
+	@test -n "$(PORTAVOZ_PRODUCTION_SYNC_WORKSPACE)" || \
+		(echo "PORTAVOZ_PRODUCTION_SYNC_WORKSPACE is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RELEASE_VERSION)" || \
+		(echo "PORTAVOZ_RELEASE_VERSION is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RELEASE_BUILD)" || \
+		(echo "PORTAVOZ_RELEASE_BUILD is required" >&2; exit 64)
+	python3 scripts/production_sync_qualification.py init \
+		--app "$(PORTAVOZ_PRODUCTION_SYNC_APP)" \
+		--workspace "$(PORTAVOZ_PRODUCTION_SYNC_WORKSPACE)" \
+		--version "$(PORTAVOZ_RELEASE_VERSION)" \
+		--build "$(PORTAVOZ_RELEASE_BUILD)" \
+		--commit "$(PORTAVOZ_RELEASE_COMMIT)"
+
+## Run exactly one contract stage through the real app bundle. For
+## b.await-push, leave this command running until it prints READY, then run
+## a.push-source on the other Mac. External-action stages require the exact
+## contract value in PORTAVOZ_PRODUCTION_SYNC_EXTERNAL_ACTION; outcomes, not
+## that acknowledgment, remain the proof. The runner writes the only receipt.
+production-sync-qualification-stage:
+	@test -n "$(PORTAVOZ_PRODUCTION_SYNC_WORKSPACE)" || \
+		(echo "PORTAVOZ_PRODUCTION_SYNC_WORKSPACE is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_PRODUCTION_SYNC_ROLE)" || \
+		(echo "PORTAVOZ_PRODUCTION_SYNC_ROLE is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_PRODUCTION_SYNC_STAGE)" || \
+		(echo "PORTAVOZ_PRODUCTION_SYNC_STAGE is required" >&2; exit 64)
+	python3 scripts/production_sync_qualification.py stage \
+		--app "$(PORTAVOZ_PRODUCTION_SYNC_APP)" \
+		--workspace "$(PORTAVOZ_PRODUCTION_SYNC_WORKSPACE)" \
+		--role "$(PORTAVOZ_PRODUCTION_SYNC_ROLE)" \
+		--stage "$(PORTAVOZ_PRODUCTION_SYNC_STAGE)"$(if $(PORTAVOZ_PRODUCTION_SYNC_TIMEOUT), --timeout "$(PORTAVOZ_PRODUCTION_SYNC_TIMEOUT)")$(if $(PORTAVOZ_PRODUCTION_SYNC_EXTERNAL_ACTION), --confirm-external-action "$(PORTAVOZ_PRODUCTION_SYNC_EXTERNAL_ACTION)")
+
+production-sync-qualification-status:
+	@test -n "$(PORTAVOZ_PRODUCTION_SYNC_WORKSPACE)" || \
+		(echo "PORTAVOZ_PRODUCTION_SYNC_WORKSPACE is required" >&2; exit 64)
+	python3 scripts/production_sync_qualification.py status \
+		--evidence-root "$(PORTAVOZ_PRODUCTION_SYNC_WORKSPACE)"
+
+## Only a complete, chained, two-host/two-account evidence set can mint the
+## generic production-sync admission receipt consumed by release reliability.
+production-sync-qualification-finalize:
+	@test -n "$(PORTAVOZ_PRODUCTION_SYNC_WORKSPACE)" || \
+		(echo "PORTAVOZ_PRODUCTION_SYNC_WORKSPACE is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_PRODUCTION_SYNC_OUTPUT)" || \
+		(echo "PORTAVOZ_PRODUCTION_SYNC_OUTPUT is required" >&2; exit 64)
+	python3 scripts/production_sync_qualification.py finalize \
+		--evidence-root "$(PORTAVOZ_PRODUCTION_SYNC_WORKSPACE)" \
+		--output "$(PORTAVOZ_PRODUCTION_SYNC_OUTPUT)"
 
 ## Build the dev app and install it as "Portavoz Dev" — NEVER touching
 ## /Applications/Portavoz.app, which is the user's notarized release copy

@@ -20,6 +20,7 @@ final class PortavozAppDelegate:
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         _ = notification
+        guard !runsProductionSyncQualification else { return }
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         center.setNotificationCategories([
@@ -29,6 +30,7 @@ final class PortavozAppDelegate:
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         _ = notification
+        guard !runsProductionSyncQualification else { return }
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(startRecordingIntentRequested(_:)),
@@ -221,7 +223,34 @@ final class PortavozAppDelegate:
     ) {
         _ = userInfo
         MainActor.assumeIsolated {
+            if let handler = ProductionSyncQualificationPushBridge
+                .didReceiveRemoteChange {
+                handler()
+                return
+            }
             Self.services?.meetingSync.remoteChangeReceived()
+        }
+    }
+
+    func application(
+        _ application: NSApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        _ = application
+        _ = deviceToken
+        MainActor.assumeIsolated {
+            ProductionSyncQualificationPushBridge.didRegister?()
+        }
+    }
+
+    func application(
+        _ application: NSApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: any Error
+    ) {
+        _ = application
+        _ = error
+        MainActor.assumeIsolated {
+            ProductionSyncQualificationPushBridge.didFailRegistration?()
         }
     }
 
@@ -282,6 +311,11 @@ final class PortavozAppDelegate:
 }
 
 private extension PortavozAppDelegate {
+    var runsProductionSyncQualification: Bool {
+        ProductionSyncQualificationConfiguration.isRequested(
+            arguments: ProcessInfo.processInfo.arguments)
+    }
+
     func reminderRecord(
         from notification: UNNotification
     ) -> AppReminderNotificationRecord? {
