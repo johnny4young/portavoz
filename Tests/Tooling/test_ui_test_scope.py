@@ -1,3 +1,4 @@
+import hashlib
 import subprocess
 import sys
 import tempfile
@@ -42,6 +43,36 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_empty_change_set_requires_no_ui_runner(self):
         self.assertFalse(select_paths([]).required)
+
+    def test_github_summary_is_bounded_without_weakening_selected_evidence(self):
+        reasons = tuple(
+            f"Sources/Feature{index}.swift: " + ("mapped-impact " * 80).strip()
+            for index in range(200)
+        )
+        selection = ui_scope.Selection(
+            tests=ui_scope.ALL_TESTS,
+            locales=("en", "es"),
+            reasons=reasons,
+        )
+
+        rendered = ui_scope.render(selection, "github")
+        outputs = dict(line.split("=", 1) for line in rendered.splitlines())
+
+        self.assertEqual(outputs["required"], "true")
+        self.assertEqual(outputs["tests"].split(), list(ui_scope.ALL_TESTS))
+        self.assertEqual(outputs["locales"], "en es")
+        self.assertLessEqual(
+            len(outputs["summary"].encode("utf-8")),
+            ui_scope.MAX_SUMMARY_BYTES,
+        )
+        self.assertIn("additional reasons omitted", outputs["summary"])
+        full_summary = "; ".join(reasons)
+        digest = hashlib.sha256(full_summary.encode("utf-8")).hexdigest()
+        self.assertTrue(outputs["summary"].endswith(f"full-summary-sha256={digest}"))
+        kept_summary = outputs["summary"].split("; ... ", 1)[0]
+        self.assertTrue(
+            all(reason in reasons for reason in kept_summary.split("; "))
+        )
 
     def test_database_launch_recovery_selects_failure_and_normal_shell_evidence(self):
         recovery = FEATURE_TESTS["launch-recovery"]

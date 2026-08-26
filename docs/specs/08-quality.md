@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,769 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,770 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2204,7 +2204,11 @@ an unknown production Swift path selects the complete English suite. Docs,
 governance, site, CLI, and package-test-only diffs select no UI runner. Catalog
 validation fails for an added or renamed unscoped test, empty or duplicate
 scope, missing production owner, retired known-overlap journey, or missing/stale
-runtime budget. Standard-library unit tests characterize skip, targeted,
+runtime budget. The selector never truncates tests or locales. Only its
+diagnostic reason summary is bounded to 16 KiB at complete-entry boundaries;
+an omitted count and SHA-256 preserve deterministic identity without passing a
+historical integration diff as one oversized Linux environment string.
+Standard-library unit tests characterize skip, targeted,
 bilingual, harness, and conservative-fallback behavior. `make test-ui-changed` consumes that
 policy locally against committed, staged, unstaged, and untracked paths, so a
 pre-commit smoke cannot silently select nothing; `UI_HEAD` remains an explicit
@@ -2381,7 +2385,12 @@ exits successfully. The distribution receipt additionally requires the commit
 stamped into the app copied from the DMG, with a clean exact-source recheck
 after the app build, and exposes that exact artifact digest on the final
 scorecard. The owner-only JSON/Markdown output contains no meeting
-reference or support payload. Twenty-four tooling tests cover complete,
+reference or support payload. The field packager's production CLI reads exact
+Mac product/build identity only from `/usr/bin/sw_vers` and accepts no version
+override. Its in-process Python composition boundary admits an injected system
+observer solely so Linux tooling tests can exercise complete privacy, shape,
+and publication behavior without fabricating a command-line field receipt.
+Twenty-four tooling tests cover complete,
 omitted/missing-path, failed, incomplete, stale deterministic or qualification
 commit, duplicate qualification scope/platform, content-bearing input,
 authority-pair ownership including assistive evidence, distribution commit,

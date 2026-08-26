@@ -1,4 +1,7 @@
 import copy
+import contextlib
+import importlib.util
+import io
 import json
 import os
 import plistlib
@@ -6,10 +9,18 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 COLLECTOR = REPOSITORY / "scripts" / "collect-field-evidence.py"
+COLLECTOR_SPEC = importlib.util.spec_from_file_location(
+    "collect_field_evidence",
+    COLLECTOR,
+)
+assert COLLECTOR_SPEC is not None and COLLECTOR_SPEC.loader is not None
+collector = importlib.util.module_from_spec(COLLECTOR_SPEC)
+COLLECTOR_SPEC.loader.exec_module(collector)
 
 
 class CollectFieldEvidenceTests(unittest.TestCase):
@@ -40,6 +51,10 @@ class CollectFieldEvidenceTests(unittest.TestCase):
             self.assertEqual(manifest["protocolVersion"], 1)
             self.assertEqual(manifest["outcome"], "pass")
             self.assertEqual(manifest["app"], {"version": "0.7.0", "build": "700"})
+            self.assertEqual(
+                manifest["macOS"],
+                {"productVersion": "26.0", "buildVersion": "25A123"},
+            )
             self.assertEqual(manifest["elapsedSeconds"], 12.5)
             self.assertNotIn(str(report), json.dumps(manifest))
             self.assertNotIn(str(app), json.dumps(manifest))
@@ -291,11 +306,50 @@ class CollectFieldEvidenceTests(unittest.TestCase):
                 {"pass"},
             )
 
+    def test_current_macos_uses_only_the_exact_system_binary(self):
+        responses = {
+            "-productVersion": "26.0\n",
+            "-buildVersion": "25A123\n",
+        }
+
+        def run(command, **kwargs):
+            self.assertEqual(command[0], "/usr/bin/sw_vers")
+            self.assertEqual(
+                kwargs,
+                {"capture_output": True, "check": True, "text": True},
+            )
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                stdout=responses[command[1]],
+                stderr="",
+            )
+
+        with mock.patch.object(collector.subprocess, "run", side_effect=run) as call:
+            self.assertEqual(
+                collector.current_macos(),
+                {"productVersion": "26.0", "buildVersion": "25A123"},
+            )
+        self.assertEqual(call.call_count, 2)
+
+    def test_injected_macos_observation_remains_fail_closed(self):
+        for observation in (
+            [],
+            {"productVersion": "26.0"},
+            {
+                "productVersion": "26.0",
+                "buildVersion": "25A123",
+                "callerOverride": "unsafe",
+            },
+            {"productVersion": "/tmp/fake", "buildVersion": "25A123"},
+        ):
+            with self.subTest(observation=observation):
+                with self.assertRaises(collector.EvidenceError):
+                    collector.validate_macos_observation(observation)
+
     def run_collector(self, report, app, output, *extra, scenario="cold-live-captions"):
-        return subprocess.run(
+        return self.run_cli(
             [
-                "python3",
-                str(COLLECTOR),
                 "--scenario",
                 scenario,
                 "--report",
@@ -306,16 +360,11 @@ class CollectFieldEvidenceTests(unittest.TestCase):
                 str(app),
                 *extra,
             ],
-            capture_output=True,
-            check=False,
-            text=True,
         )
 
     def run_fixture(self, report, app, output, fixture, *extra):
-        return subprocess.run(
+        return self.run_cli(
             [
-                "python3",
-                str(COLLECTOR),
                 "--fixture",
                 fixture,
                 "--report",
@@ -328,9 +377,25 @@ class CollectFieldEvidenceTests(unittest.TestCase):
                 str(app),
                 *extra,
             ],
-            capture_output=True,
-            check=False,
-            text=True,
+        )
+
+    @staticmethod
+    def run_cli(arguments):
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            returncode = collector.main(
+                arguments,
+                system_observer=lambda: {
+                    "productVersion": "26.0",
+                    "buildVersion": "25A123",
+                },
+            )
+        return subprocess.CompletedProcess(
+            arguments,
+            returncode,
+            stdout=stdout.getvalue(),
+            stderr=stderr.getvalue(),
         )
 
     @staticmethod

@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,754 cases "
+            "package inventory contains 2,770 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -10492,6 +10492,46 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(gaps.contains(
             "BOUNDED PRODUCER IMPLEMENTED (D405)"))
         XCTAssertTrue(decisions.contains("## D405"))
+    }
+
+    func testHostedQualificationToolingStaysPortableAndBounded() throws {
+        let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+        let scopeTests = try Self.contents(
+            of: "Tests/Tooling/test_ui_test_scope.py")
+        let collector = try Self.contents(
+            of: "scripts/collect-field-evidence.py")
+        let collectorTests = try Self.contents(
+            of: "Tests/Tooling/test_collect_field_evidence.py")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+
+        XCTAssertTrue(scope.contains("MAX_SUMMARY_BYTES = 16 * 1024"))
+        XCTAssertTrue(scope.contains(#"tests = " ".join(selection.tests)"#))
+        XCTAssertTrue(scope.contains(#"locales = " ".join(selection.locales)"#))
+        XCTAssertTrue(scope.contains("full-summary-sha256="))
+        XCTAssertTrue(scope.contains("summary = bounded_summary(selection.reasons)"))
+        XCTAssertTrue(scopeTests.contains(
+            "test_github_summary_is_bounded_without_weakening_selected_evidence"))
+
+        XCTAssertTrue(collector.contains(#"["/usr/bin/sw_vers", flag]"#))
+        XCTAssertTrue(collector.contains(
+            "def main(argv=None, system_observer=current_macos):"))
+        XCTAssertTrue(collector.contains(
+            #""macOS": validate_macos_observation(system_observer())"#))
+        XCTAssertFalse(collector.contains(#""--macos""#))
+        XCTAssertTrue(collectorTests.contains(
+            "test_current_macos_uses_only_the_exact_system_binary"))
+
+        XCTAssertTrue(architecture.contains(
+            "GitHub summary is capped at 16 KiB on whole-reason boundaries"))
+        XCTAssertTrue(architecture.contains(
+            "exact `/usr/bin/sw_vers` binary"))
+        XCTAssertTrue(quality.contains(
+            "selector never truncates tests or locales"))
+        XCTAssertTrue(quality.contains(
+            "accepts no version"))
+        XCTAssertTrue(quality.contains(
+            "override. Its in-process Python composition boundary"))
     }
 
     func testDevelopmentAndUITestAppsCannotClaimTheReleaseIdentity() throws {

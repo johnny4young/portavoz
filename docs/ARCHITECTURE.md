@@ -4309,7 +4309,12 @@ meeting reference and two independently validated format-2 snapshots; the
 collector requires monotonic export time and transcript revision without
 reading spoken text. Protocol-1 scenario output remains available for one
 release, so field tooling evolves without turning support JSON into a second
-application schema or invalidating existing evidence.
+application schema or invalidating existing evidence. Production collection
+has no caller-controlled OS flag: it reads product/build identity only through
+the exact `/usr/bin/sw_vers` binary. The Python boundary accepts an injected
+system observer only when called in-process, allowing Linux tooling tests to
+exercise complete packaging without weakening the command-line evidence
+authority.
 
 Release admission consumes this evidence through a separate, fail-closed
 ledger. `docs/evidence/reliability-gates.json` declares every required proof
@@ -4718,6 +4723,11 @@ case plus the live recording-control/recovery cases, without paying for
 unrelated Library grouping or Meeting Detail. The local selector compares the
 base with committed, staged, unstaged, and untracked paths by default,
 preventing an uncommitted pre-commit smoke from becoming an accidental no-op.
+The selected tests and locales remain complete outputs, while the explanatory
+GitHub summary is capped at 16 KiB on whole-reason boundaries and records the
+omitted count plus the full-summary SHA-256. A historical integration diff
+therefore cannot exceed Linux's per-environment-string limit before the macOS
+runner starts, and truncation cannot reduce selected evidence.
 An empty selector explicitly means every test; optional selector and locale
 arguments are assembled without empty-array expansion on the system Bash
 runtime. One `build-for-testing` result is reused across selected locales.

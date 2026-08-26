@@ -453,6 +453,25 @@ def sw_vers(flag):
     return label(result.stdout.strip(), f"macOS.{flag}")
 
 
+def current_macos():
+    return {
+        "productVersion": sw_vers("-productVersion"),
+        "buildVersion": sw_vers("-buildVersion"),
+    }
+
+
+def validate_macos_observation(value):
+    value = object_shape(
+        value,
+        "macOS",
+        ("productVersion", "buildVersion"),
+    )
+    return {
+        "productVersion": label(value["productVersion"], "macOS.productVersion"),
+        "buildVersion": label(value["buildVersion"], "macOS.buildVersion"),
+    }
+
+
 def parse_checks(raw_checks, scenario):
     allowed = set(LEGACY_SCENARIOS[scenario])
     parsed = {}
@@ -603,7 +622,7 @@ def publish_package(output, manifest, reports):
     return output
 
 
-def collect_legacy(args, app):
+def collect_legacy(args, app, system_observer):
     if args.evidence or args.after_refine_report or args.meeting_reference:
         raise EvidenceError(
             "legacy --scenario accepts only --report and --check evidence"
@@ -622,10 +641,7 @@ def collect_legacy(args, app):
         "checks": checks,
         "elapsedSeconds": elapsed,
         "app": app,
-        "macOS": {
-            "productVersion": sw_vers("-productVersion"),
-            "buildVersion": sw_vers("-buildVersion"),
-        },
+        "macOS": validate_macos_observation(system_observer()),
         "supportReport": {
             "formatVersion": report["formatVersion"],
             "generatedAt": report["generatedAt"],
@@ -640,7 +656,7 @@ def collect_legacy(args, app):
     return output, manifest
 
 
-def collect_fixture(args, app):
+def collect_fixture(args, app, system_observer):
     if args.check:
         raise EvidenceError("canonical --fixture accepts --evidence, not --check")
     if not args.meeting_reference:
@@ -708,10 +724,7 @@ def collect_fixture(args, app):
         ],
         "elapsedSeconds": elapsed,
         "app": app,
-        "macOS": {
-            "productVersion": sw_vers("-productVersion"),
-            "buildVersion": sw_vers("-buildVersion"),
-        },
+        "macOS": validate_macos_observation(system_observer()),
         "supportReports": {
             "beforeRefine": report_metadata(before, before_meeting),
             "afterRefine": (
@@ -728,11 +741,11 @@ def collect_fixture(args, app):
     return output, manifest
 
 
-def collect(args):
+def collect(args, system_observer=current_macos):
     app = safe_app_metadata(args.app)
     if args.fixture:
-        return collect_fixture(args, app)
-    return collect_legacy(args, app)
+        return collect_fixture(args, app, system_observer)
+    return collect_legacy(args, app, system_observer)
 
 
 def parser():
@@ -777,10 +790,10 @@ def parser():
     return result
 
 
-def main():
-    args = parser().parse_args()
+def main(argv=None, system_observer=current_macos):
+    args = parser().parse_args(argv)
     try:
-        output, manifest = collect(args)
+        output, manifest = collect(args, system_observer)
     except (EvidenceError, OSError, plistlib.InvalidFileException, subprocess.SubprocessError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2

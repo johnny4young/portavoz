@@ -11,6 +11,7 @@ changes do not spend a macOS UI runner.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shlex
@@ -22,6 +23,7 @@ from typing import Iterable, Sequence
 
 
 TARGET = "PortavozUITests"
+MAX_SUMMARY_BYTES = 16 * 1024
 
 
 def test_id(test_class: str, method: str) -> str:
@@ -1051,10 +1053,46 @@ def validate_catalog(root: Path, *, runtime_budget_required: bool = True) -> Non
         raise RuntimeError("UI-test scope catalog is stale; " + "; ".join(details))
 
 
+def bounded_summary(reasons: Sequence[str]) -> str:
+    if not reasons:
+        return "no UI-impacting paths"
+    full_summary = "; ".join(reasons)
+    if len(full_summary.encode("utf-8")) <= MAX_SUMMARY_BYTES:
+        return full_summary
+
+    digest = hashlib.sha256(full_summary.encode("utf-8")).hexdigest()
+    kept: list[str] = []
+    for reason in reasons:
+        candidate = kept + [reason]
+        omitted = len(reasons) - len(candidate)
+        suffix = (
+            f"; ... {omitted} additional reason"
+            f"{'s' if omitted != 1 else ''} omitted"
+            f"; full-summary-sha256={digest}"
+        )
+        rendered = "; ".join(candidate) + suffix
+        if len(rendered.encode("utf-8")) > MAX_SUMMARY_BYTES:
+            break
+        kept = candidate
+
+    if not kept:
+        return (
+            f"{len(reasons)} reasons omitted; "
+            f"full-summary-sha256={digest}"
+        )
+    omitted = len(reasons) - len(kept)
+    return (
+        "; ".join(kept)
+        + f"; ... {omitted} additional reason"
+        + ("s" if omitted != 1 else "")
+        + f" omitted; full-summary-sha256={digest}"
+    )
+
+
 def render(selection: Selection, output_format: str) -> str:
     tests = " ".join(selection.tests)
     locales = " ".join(selection.locales)
-    summary = "; ".join(selection.reasons) if selection.reasons else "no UI-impacting paths"
+    summary = bounded_summary(selection.reasons)
     if output_format == "github":
         return "\n".join(
             (
