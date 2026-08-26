@@ -4323,6 +4323,36 @@ candidate gates, reviewed integration plus hosted CI, production sync, and
 physical VoiceOver/Voice Control on Sequoia and Tahoe. Protocol-2 field
 packages remain the only source for the eight real-device/conversation cells.
 
+Reviewed source integration has a separate executable owner rather than a
+generic qualification recorder. The manually dispatched, read-only
+`source-integration-evidence.yml` workflow accepts a dispatch only from
+`main`, checks out trusted `main`, and never executes a caller-selected side
+branch with its Actions-read token. Before any GitHub API query,
+`scripts/source_integration_qualification.py` requires the dispatch ref,
+checked-out HEAD, `GITHUB_SHA`, and requested full release commit to be the
+same clean source. Its tracked contract fixes the GitHub repository, exact
+default-branch-head policy, API version, minimum independent human approval,
+hosted `CI` workflow, and four required jobs. GitHub's REST authority must show
+exactly one non-draft merged pull request whose merge commit is the candidate
+and that candidate must be the current `main` head, not merely an ancestor.
+The latest decisive state per human
+reviewer must contain at least one current approval of the exact pull-request
+head and no outstanding change request. Bot, self, outsider, stale-head, and
+dismissed approvals do not count.
+
+The same exact commit must have one first-attempt successful `push` run of the
+tracked `CI` workflow on `main`; multiple unchanged-commit runs, a rerun, a
+failed/cancelled job, a missing Sequoia/build/lint/hygiene job, or metadata
+drift blocks. The producer also queries its own exact commit-titled dispatch
+and requires the in-progress run to be the only matching first attempt; a
+second dispatch or workflow rerun cannot mint a replacement receipt. Only
+then does the workflow upload a mode-0600 qualification
+receipt plus a separate content-free authority report containing numeric
+review/run identifiers and fixed job names, never titles, bodies, comments,
+actors, logs, source paths, or payloads. There is no local proof-state flag and
+no workflow trigger from pull-request content. Running or downloading that
+remote artifact remains an explicit integration/release action.
+
 Candidate automation has one executable owner rather than a generic receipt
 recorder. `docs/evidence/candidate-automation.json` freezes the eight proof
 order, six installed-model classes, seven upgrade/recovery classes, nine

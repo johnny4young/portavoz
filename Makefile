@@ -35,7 +35,8 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-recording-stress test-model-gated test-ui-real-audio test-ui test-ui-en test-ui-es \
 	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
-	release-reliability long-capture-baseline candidate-automation
+	release-reliability long-capture-baseline candidate-automation \
+	test-source-integration-qualification
 
 ## Unit tests (the package suite).
 test:
@@ -642,6 +643,12 @@ candidate-automation:
 		(echo "PORTAVOZ_RELEASE_BUILD is required" >&2; exit 64)
 	scripts/candidate_automation.py --version "$(PORTAVOZ_RELEASE_VERSION)" \
 		--build "$(PORTAVOZ_RELEASE_BUILD)" $(if $(PORTAVOZ_CANDIDATE_OUTPUT),--output "$(PORTAVOZ_CANDIDATE_OUTPUT)")
+
+## Validate the pure, read-only GitHub authority used by the remote
+## source-integration producer. This target never dispatches a workflow or
+## mutates GitHub; the receipt owner remains the explicit hosted workflow.
+test-source-integration-qualification:
+	python3 -m unittest Tests.Tooling.test_source_integration_qualification
 
 ## Run the deterministic release gates and write a receipt bound to the exact
 ## version, build, and current commit. Both release variables are required.

@@ -2389,6 +2389,40 @@ gate always runs them. An architecture ratchet pins the schema, 29 proofs,
 eight classes, fail-closed predicate, exact artifact stamp, distribution
 receipt ordering, D147, and D391.
 
+**Reviewed source-integration owner (D402).**
+`docs/evidence/source-integration-qualification.json` freezes one read-only
+GitHub authority: `johnny4young/portavoz`, `main`, the versioned REST API, one
+current independent human approval, the hosted `CI` push workflow, and the
+`build-and-test`, `sequoia-compatibility`, `lint`, and
+`repository-hygiene` jobs. `.github/workflows/source-integration-evidence.yml`
+is manual-dispatch only and grants `actions`, `contents`, and `pull-requests`
+read permissions. It accepts dispatch only from `main`, checks out trusted
+`main`, and calls `scripts/source_integration_qualification.py`; it never runs
+a caller-selected side branch with that token. The runner requires dispatch
+ref, checked-out HEAD, `GITHUB_SHA`, requested release commit, and current
+GitHub `main` head to be identical. Neither the workflow nor the script accepts
+caller-supplied proof states or a replacement contract.
+
+The runner queries the commit-to-PR, commit ancestry, PR-review, exact-SHA
+workflow-run, and workflow-job REST authorities. Admission requires exactly
+one non-draft PR merged to `main` as the release commit, at least one latest
+human approval of the PR's exact head from an owner/member/collaborator, no
+latest change request, one successful first-attempt `CI` push run, and exactly
+one passing instance of each required job. Self/bot/outsider/stale/dismissed
+reviews, any commit other than the exact current `main` head, multiple
+unchanged runs, reruns, missing jobs, cancellation, or any metadata mismatch
+fails before output. The
+producer separately queries its own exact commit-titled dispatch and requires
+the current in-progress run to be the only matching first attempt, preventing
+a second dispatch from replacing the observation.
+Successful output is a new mode-0700 directory containing mode-0600
+`authority.json` and `qualification.json`. The authority report is
+content-free: release identity, PR/review numeric IDs, CI run identity, and
+fixed job names only. Tooling and architecture tests pin output permissions,
+review reduction, no-green-rerun policy, workflow permissions, immutable
+action pins, and absence of a generic recorder. This producer proves neither
+distribution nor CloudKit, hardware, assistive-technology, or field behavior.
+
 **Candidate automation owner (D392–D401).**
 `docs/evidence/candidate-automation.json` is the finite executable contract for
 the eight candidate proofs. `scripts/candidate_automation.py` runs every gate

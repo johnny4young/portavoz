@@ -9871,6 +9871,12 @@ final class ArchitectureDependencyTests: XCTestCase {
             ]))
 
         let evaluator = try Self.contents(of: "scripts/release_reliability.py")
+        let sourceIntegration = try Self.contents(
+            of: "scripts/source_integration_qualification.py")
+        let sourceIntegrationWorkflow = try Self.contents(
+            of: ".github/workflows/source-integration-evidence.yml")
+        let sourceIntegrationContract = try Self.jsonObject(
+            at: "docs/evidence/source-integration-qualification.json")
         let runner = try Self.contents(
             of: "scripts/run-release-reliability-gates.sh")
         let failureSummary = try Self.contents(
@@ -9895,6 +9901,30 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(evaluator.contains("QUALIFICATION_RECEIPTS"))
         XCTAssertTrue(evaluator.contains(
             #""artifact": ("#))
+        XCTAssertEqual(sourceIntegrationContract["schemaVersion"] as? Int, 1)
+        XCTAssertEqual(
+            sourceIntegrationContract["kind"] as? String,
+            "source-integration-qualification-contract")
+        XCTAssertTrue(sourceIntegration.contains("GitHub API"))
+        XCTAssertTrue(sourceIntegration.contains("workflow_dispatch"))
+        XCTAssertTrue(sourceIntegration.contains("run_attempt"))
+        XCTAssertTrue(sourceIntegration.contains("CHANGES_REQUESTED"))
+        XCTAssertTrue(sourceIntegration.contains("source-integration"))
+        XCTAssertFalse(sourceIntegration.contains("--proof"))
+        XCTAssertFalse(sourceIntegration.contains("--contract"))
+        XCTAssertTrue(sourceIntegrationWorkflow.contains("actions: read"))
+        XCTAssertTrue(sourceIntegrationWorkflow.contains("contents: read"))
+        XCTAssertTrue(sourceIntegrationWorkflow.contains("pull-requests: read"))
+        XCTAssertTrue(sourceIntegrationWorkflow.contains(
+            "PORTAVOZ_RELEASE_COMMIT: ${{ inputs.commit }}"))
+        XCTAssertTrue(sourceIntegrationWorkflow.contains(
+            "if: github.ref == 'refs/heads/main'"))
+        XCTAssertTrue(sourceIntegrationWorkflow.contains("ref: main"))
+        XCTAssertFalse(sourceIntegrationWorkflow.contains(
+            "ref: ${{ inputs.commit }}"))
+        XCTAssertFalse(sourceIntegrationWorkflow.contains("pull_request_target"))
+        XCTAssertFalse(sourceIntegrationWorkflow.contains(
+            "--commit '${{ inputs.commit }}'"))
         XCTAssertTrue(runner.contains("PORTAVOZ_RELEASE_VERSION"))
         XCTAssertTrue(runner.contains("make test-recording-stress"))
         XCTAssertTrue(runner.contains("make test-ui-scoped"))
@@ -9943,6 +9973,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_release_reliability"))
         XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_source_integration_qualification"))
+        XCTAssertTrue(hygiene.contains(
             "Tests.Tooling.test_swift_test_failure_summary"))
         XCTAssertTrue(hygiene.contains(
             "bash -n scripts/run-release-reliability-gates.sh"))
@@ -9950,6 +9982,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D391"))
         XCTAssertTrue(decisions.contains("## D394"))
         XCTAssertTrue(decisions.contains("## D395"))
+        XCTAssertTrue(decisions.contains("## D402"))
     }
 
     func testCandidateAutomationOwnsEightSpecializedProofs() throws {

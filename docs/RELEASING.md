@@ -96,6 +96,38 @@ state; do not hand-author or copy one from a neighboring commit. Pass each
 receipt explicitly to the evaluator only after its owning gate or field
 workflow has produced it.
 
+### Reviewed source-integration receipt (D402)
+
+This receipt cannot be produced from a local branch. First obtain explicit
+authorization for the push/PR/merge, integrate the exact candidate through one
+non-draft pull request to `main`, obtain at least one independent current human
+approval of the final PR head, resolve every change request, and let the `CI`
+push workflow pass on the resulting merge commit without rerunning it. A
+squash or merge changes the source identity: rerun candidate automation for
+that integrated commit before final admission.
+
+While that integrated commit is still the exact current `main` head, explicitly
+dispatch the read-only evidence owner from `main` in GitHub Actions with the
+same release identity. The workflow checks out trusted `main`; it refuses a
+side-branch dispatch, a stale ancestor, or any mismatch among the dispatch
+source, checked-out HEAD, `GITHUB_SHA`, requested commit, and GitHub's current
+`main` head. It only queries GitHub and uploads an artifact; it cannot push,
+merge, release, or mark caller-supplied proofs pass.
+
+```sh
+gh workflow run source-integration-evidence.yml \
+  -f version="$PORTAVOZ_RELEASE_VERSION" \
+  -f build="$PORTAVOZ_RELEASE_BUILD" \
+  -f commit="$PORTAVOZ_RELEASE_COMMIT"
+```
+
+Download the completed run's uniquely named artifact and pass its
+`qualification.json` to the scorecard. Preserve its sibling `authority.json`
+for audit. Bot/self/outsider/stale/dismissed approvals, a commit outside
+or behind current `main`, multiple unchanged-commit CI runs, any rerun, a
+missing/failing job, or workflow metadata drift produces no receipt. Do not
+weaken this by editing JSON or dispatching again for the same unchanged commit.
+
 ### Candidate-automation receipt (D392/D393)
 
 Run this only from the clean commit intended to become the candidate. It is a

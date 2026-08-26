@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "source-integration-qualification-contract",
+  "github": {
+    "repository": "johnny4young/portavoz",
+    "defaultBranch": "main",
+    "requireDefaultBranchHead": true,
+    "apiURL": "https://api.github.com",
+    "apiVersion": "2026-03-10"
+  },
+  "review": {
+    "minimumApprovals": 1,
+    "allowedAuthorAssociations": [
+      "COLLABORATOR",
+      "MEMBER",
+      "OWNER"
+    ]
+  },
+  "producer": {
+    "workflowName": "Source integration evidence",
+    "workflowPath": ".github/workflows/source-integration-evidence.yml",
+    "event": "workflow_dispatch"
+  },
+  "hostedCI": {
+    "workflowName": "CI",
+    "workflowPath": ".github/workflows/ci.yml",
+    "event": "push",
+    "requiredJobs": [
+      "build-and-test",
+      "sequoia-compatibility",
+      "lint",
+      "repository-hygiene"
+    ],
+    "rejectMultipleRuns": true,
+    "rejectReruns": true
+  }
+}

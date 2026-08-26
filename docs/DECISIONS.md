@@ -14907,3 +14907,59 @@ three matching candidates, or a no-clean mixed set remains fail closed. This
 current-host automation still does not certify other memory tiers, physical
 Sequoia/Tahoe, VoiceOver/Voice Control, signed distribution, production
 CloudKit, hosted CI, or field behavior.
+
+## D402 — Let GitHub own reviewed source-integration truth (Aug 2026)
+
+**Context:** D391 made reviewed source integration and hosted CI two exact
+release cells, but only the evaluator schema existed. The repository had no
+producer for the `source-integration` receipt, so a hand-authored exact-shaped
+JSON file could satisfy those cells without proving a PR, review, default-
+branch integration, or hosted run. Candidate automation cannot own this
+evidence because a local checkout cannot prove remote review or CI state. The
+current release branch is also hundreds of commits ahead of `origin/main`, so
+local green evidence is not integration evidence.
+
+**Decision:** add one manual-dispatch, read-only GitHub Actions owner backed by
+the tracked `source-integration-qualification.json` contract. It accepts a
+dispatch only from `main`, checks out trusted `main`, and requires the dispatch
+ref, checked-out HEAD, `GITHUB_SHA`, and requested full commit to be the same
+clean source before making a token-authenticated API call. It never executes a
+caller-selected side branch with its Actions-read token. GitHub REST must show
+that commit as the unique non-draft merge introducing a pull request to `main`
+and as the exact current `main` head, not merely a reachable ancestor. Review
+reduction keeps the latest
+decisive state per reviewer. At least one owner/member/collaborator other than
+the author must currently approve the exact PR head, and no reviewer may retain
+a change request; bots, outsiders, self-review, stale-head approvals, and
+dismissed reviews do not count.
+
+Hosted evidence is the exact commit's `CI` push workflow on `main`, with
+`build-and-test`, `sequoia-compatibility`, `lint`, and
+`repository-hygiene` each present once and successful. The contract rejects
+multiple unchanged-commit CI runs and any `run_attempt` other than one, so a
+green retry cannot replace the first observation. Missing, queued, cancelled,
+failed, duplicate, or metadata-drifted evidence blocks before output. The
+workflow permissions are only `actions:read`, `contents:read`, and
+`pull-requests:read`; it has no pull-request-target trigger and no remote write
+permission.
+
+The producer run is part of the same authority. Its workflow title includes the
+exact requested commit, and the script queries that workflow's dispatches. The
+current in-progress run must be the only matching dispatch, with the exact
+workflow identity and `run_attempt == 1`; a second dispatch or rerun cannot
+mint a replacement receipt for unchanged source.
+
+Only that live query may write the existing exact-shaped
+`source-integration` qualification receipt. A sibling owner-only authority
+report retains release identity, numeric PR/review/run IDs, and fixed job names
+without titles, bodies, actors, comments, logs, paths, or content. The script
+accepts version/build/commit/output only—never proof states or a replacement
+contract—and output is new, atomic, and mode 0600 inside a mode 0700 directory.
+
+**Consequences:** final admission can no longer turn a locally manufactured
+integration receipt into two green cells. A solo-maintainer release needs a
+genuine independent reviewer for this gate, and an integrated merge/squash
+creates a new commit that must rerun candidate automation. D402 implements no
+push, PR, review, merge, workflow dispatch, distribution, CloudKit, physical
+hardware, assistive-technology, or field evidence; those actions and proofs
+remain explicitly authorized external work.
