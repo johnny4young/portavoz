@@ -15096,3 +15096,79 @@ does not sign, notarize, distribute, mutate a remote repository, or claim
 Sequoia/Tahoe/assistive-technology/field evidence beyond receipts actually
 collected. Host-scope inequality is not hardware attestation; the authorized
 runbook and retained operator evidence must still establish two physical Macs.
+
+## D405 — Bind physical assistive observations to one fixed public journey (Aug 2026)
+
+**Context:** the schema-2 release ledger requires VoiceOver and Voice Control
+on Sequoia and Tahoe, but it accepted a correctly shaped generic qualification
+receipt without an executable evidence owner. Full bilingual XCUITest proves
+the real app's accessibility identifiers, labels, focus, activation, and
+journeys under automation; it cannot prove that a human actually completed
+those journeys with either assistive technology on physical target hosts. An
+unbounded manual checklist would invite scope drift, private meeting data,
+screenshots, retries to green, or an assistive claim detached from the exact
+candidate. macOS exposes documented VoiceOver state through
+`NSWorkspace.isVoiceOverEnabled`; this project found no documented public
+equivalent for current Voice Control activation.
+
+**Decision:** freeze four cells—VoiceOver and Voice Control on macOS 15
+Sequoia and macOS 26-or-newer Tahoe families—each executed in English then
+Spanish. Both technologies share one exact host/build within a platform, while
+the two platform families use different run-scoped host values. Every locale
+launches the unchanged Developer-ID-signed `app.portavoz.mac.dev` executable
+directly with a disposable database/audio/defaults root, the public demo,
+duplicate-Skill and Waiting-receipt seeds, and synthetic Interview Assist. The
+stable app, user library, private meeting, microphone, external account,
+network, installed model, and Web source are outside this protocol.
+
+The fixed journey has six ordered checkpoints: Library plus exact search,
+Meeting Detail notes and evidence navigation, local Ask notes/meeting citation
+navigation, distinct Skills actions plus receipt focus restoration, grounded
+Interview Assist, and visible recording Stop/recovery. Each checkpoint maps to
+existing real-app XCUITest selectors, but only the trusted human observation
+can fill the physical cell. VoiceOver requires a separately typed human
+confirmation and a positive documented `NSWorkspace` state. Voice Control
+uses the separately typed human confirmation only; a nullable system
+observation is the explicit authority model, not missing data. The operator
+must not use a pointer or another assistive technology to rescue a checkpoint.
+
+One owner-generated run manifest requires a clean exact checkout, an exact-byte
+all-pass candidate-automation receipt, and a matching signed Dev bundle. It
+binds version/build/commit, contract and candidate digests, executable,
+Info.plist, CodeResources, Developer ID kind, and a run-salted team scope.
+Cells bind technology, platform, exact arm64 OS build, a run-salted
+IOPlatformUUID host scope, and a random nonce. Locale sessions bind a unique
+identity-checked process, exact empty seed-ready marker, and activation
+authority. A single run-root reservation serializes launch admission across
+technologies and locales, and inherited Portavoz/test-runner/XCTest variables
+are removed before the closed disposable environment is injected.
+
+Observations have exact content-free shapes, require a separately typed
+`checkpoint:outcome` acknowledgment, and form one immutable SHA-256 predecessor
+chain per locale. Atomic writes use a same-directory fully written hard link so
+concurrent output can never replace an existing receipt. A failure remains in
+the chain, gracefully terminates only the exact owned Dev process, removes the
+disposable runtime only after confirmed exit, blocks the whole cell, and
+requires a new run. A cleanup timeout preserves scratch state and fails rather
+than hiding a possible orphan. There is no
+delete, edit, arbitrary proof-state, or retry command.
+
+Finalization requires all and only four cells with complete passing EN/ES
+chains, unique cell/process nonces, shared host/build within each platform,
+different host scopes across platforms, exact app/candidate/source identity,
+owner-only modes, and no extra, symbolic-link, special, or runtime entries. It
+publishes a new owner-only `assistive-technology-authority` and generic
+qualification receipt atomically as siblings; release evaluation requires the
+unchanged pair and canonical authority digest. The publisher never chmods an
+existing shared parent.
+
+**Consequences:** physical accessibility qualification is now finite,
+repeatable, bilingual, private-data-free, and bound to the exact release
+candidate rather than to a screenshot or hand-authored pass. Failure and host
+drift cannot be hidden by overwriting evidence. This owner still cannot
+fabricate trusted human use or physical hardware: IOPlatformUUID-derived scope
+inequality is not attestation, and XCUITest is not VoiceOver/Voice Control
+evidence. Until authorized operators complete the four real cells, no
+assistive receipt exists and Portavoz 1.0.0 remains blocked. This decision
+performs no signing, notarization, distribution, CloudKit/account operation,
+remote mutation, or field claim.

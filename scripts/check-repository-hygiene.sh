@@ -91,6 +91,7 @@ python3 -m unittest Tests.Tooling.test_source_integration_qualification
 python3 -m unittest Tests.Tooling.test_verify_cloudkit_capabilities
 python3 -m unittest Tests.Tooling.test_production_sync_qualification
 python3 -m unittest Tests.Tooling.test_production_sync_qualification_packaging
+python3 -m unittest Tests.Tooling.test_assistive_technology_qualification
 python3 -m unittest Tests.Tooling.test_swift_test_failure_summary
 bash -n scripts/make-app.sh
 bash -n scripts/make-production-sync-qualification-app.sh

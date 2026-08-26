@@ -73,6 +73,7 @@ QUALIFICATION_RECEIPTS = {
             "voice-control-sequoia",
             "voice-control-tahoe",
         ),
+        "authorityKind": "assistive-technology-authority",
     },
 }
 CONTRACT_PROOF_IDS = (

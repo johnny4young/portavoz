@@ -4322,9 +4322,10 @@ qualification receipts use one closed scope vocabulary for the eight complete
 candidate gates, reviewed integration plus hosted CI, production sync, and
 physical VoiceOver/Voice Control on Sequoia and Tahoe. Protocol-2 field
 packages remain the only source for the eight real-device/conversation cells.
-Source-integration and production-sync receipts additionally carry the
-canonical digest of their owner-specific `authority.json`; evaluation requires
-the unchanged sibling pair rather than accepting a copied generic receipt.
+Source-integration, production-sync, and assistive-technology receipts
+additionally carry the canonical digest of their owner-specific
+`authority.json`; evaluation requires the unchanged sibling pair rather than
+accepting a copied generic receipt.
 
 Reviewed source integration has a separate executable owner rather than a
 generic qualification recorder. The manually dispatched, read-only
@@ -4434,6 +4435,60 @@ unchanged sibling. Host-scope inequality is not hardware attestation: the
 authorized runbook still requires two physical Macs. Until that physical
 workflow is actually completed, production sync remains an open release gate;
 unit, packaging, and XCUITest evidence do not mint its receipt.
+
+### Physical assistive-technology qualification
+
+`docs/evidence/assistive-technology-qualification.json` freezes four cells:
+VoiceOver and Voice Control on Sequoia and Tahoe-or-newer, each executed in
+English then Spanish. Every locale launches the unchanged Developer-ID-signed
+`app.portavoz.mac.dev` executable directly against isolated paths with the
+public demo, duplicate-Skill, waiting-receipt, and synthetic Interview Assist
+fixtures. The exact launch vector is closed; inherited Portavoz, test-runner,
+and XCTest environment overrides are removed before the five fixed disposable
+paths are injected. The stable app and its library are never opened.
+
+The six ordered human checkpoints cover Library/search, Meeting Detail notes
+and source navigation, local Ask evidence/citation navigation, distinct Skills
+actions plus keyboard-focus restoration, grounded Interview Assist, and
+visible recording Stop/recovery. Each checkpoint names existing XCUITest
+selectors as deterministic regression prerequisites. Those selectors do not
+claim that a person completed the journey with an assistive technology; the
+physical run adds only that irreducible observation over the same public
+surfaces.
+
+`scripts/assistive_technology_qualification.py` owns the run, sessions,
+observations, completion receipts, and final authority. Initialization requires
+one clean exact source commit, a complete exact-byte candidate-automation
+receipt, and the matching signed Dev bundle. App identity binds its executable,
+Info.plist, outer CodeResources seal, Developer ID kind, and a run-salted
+signing-team scope. Each cell additionally binds one run-salted
+IOPlatformUUID-derived host scope, exact arm64 macOS build, technology, and
+random cell nonce; each locale receives a unique process nonce.
+
+Only one candidate process may be admitted at a time. The owner waits for the
+exact empty seed-ready marker and rechecks activation before writing the
+session. VoiceOver requires both explicit human confirmation and Apple's
+documented `NSWorkspace.isVoiceOverEnabled` value. Voice Control uses explicit
+human confirmation only because the project has no documented public active-
+state API for it. Observations have exact content-free shapes and one SHA-256
+predecessor chain per locale. A failed observation is retained, gracefully
+terminates only the identity-checked owned process, deletes disposable runtime
+state only after confirmed exit, blocks the entire cell, and requires a new run
+rather than an overwrite or retry-to-green. A graceful-cleanup timeout preserves
+scratch state and surfaces its own failure instead of hiding a possible orphan.
+
+Finalization admits all and only the four complete cells and their two locale
+chains, requires VoiceOver and Voice Control to share one host scope and exact
+OS build within each platform, requires distinct Sequoia/Tahoe host scopes,
+rejects reused process/cell nonces and every extra, symbolic-link, special, or
+mode-drifted entry, then atomically publishes a new owner-only
+`authority.json`/`qualification.json` pair. JSON publication uses a no-clobber
+hard-link boundary and never changes a pre-existing shared parent directory's
+permissions. The generic receipt binds the authority's canonical digest and
+release evaluation requires both unchanged siblings. Host-scope inequality is
+not cryptographic physical-hardware attestation; the trusted operator and the
+runbook remain part of the authority. Until real cells are collected, the
+assistive release gate remains open.
 
 Candidate automation has one executable owner rather than a generic receipt
 recorder. `docs/evidence/candidate-automation.json` freezes the eight proof

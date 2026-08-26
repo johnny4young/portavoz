@@ -10398,6 +10398,102 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D404"))
     }
 
+    func testAssistiveTechnologyQualificationOwnerIsFailClosed() throws {
+        let contract = try Self.jsonObject(
+            at: "docs/evidence/assistive-technology-qualification.json")
+        let technologies = try XCTUnwrap(
+            contract["technologies"] as? [[String: Any]])
+        let checkpoints = try XCTUnwrap(
+            contract["checkpoints"] as? [[String: Any]])
+        let owner = try Self.contents(
+            of: "scripts/assistive_technology_qualification.py")
+        let evaluator = try Self.contents(
+            of: "scripts/release_reliability.py")
+        let hygiene = try Self.contents(
+            of: "scripts/check-repository-hygiene.sh")
+        let makefile = try Self.contents(of: "Makefile")
+
+        XCTAssertEqual(contract["schemaVersion"] as? Int, 1)
+        XCTAssertEqual(
+            contract["kind"] as? String,
+            "assistive-technology-qualification-contract")
+        XCTAssertEqual(
+            technologies.compactMap { $0["id"] as? String },
+            ["voiceover", "voice-control"])
+        XCTAssertEqual(checkpoints.count, 6)
+        XCTAssertEqual(
+            checkpoints.compactMap { $0["sequence"] as? Int },
+            Array(1...6))
+
+        XCTAssertTrue(owner.contains("EXPECTED_PLATFORMS"))
+        XCTAssertTrue(owner.contains("EXPECTED_TECHNOLOGIES"))
+        XCTAssertTrue(owner.contains("EXPECTED_CHECKPOINTS"))
+        XCTAssertTrue(owner.contains("--untracked-files=all"))
+        XCTAssertTrue(owner.contains("candidateReceiptSHA256"))
+        XCTAssertTrue(owner.contains("CodeResources"))
+        XCTAssertTrue(owner.contains("Developer ID Application:"))
+        XCTAssertTrue(owner.contains("NSWorkspace.sharedWorkspace.isVoiceOverEnabled"))
+        XCTAssertTrue(owner.contains(#""authority": "human-observed""#))
+        XCTAssertTrue(owner.contains(
+            #"exclusive_reservation(evidence_root, "start-locale")"#))
+        XCTAssertTrue(owner.contains("os.link(temporary_path, path"))
+        XCTAssertTrue(owner.contains("terminate_owned_process("))
+        XCTAssertTrue(owner.contains(
+            "failed candidate launch did not exit after graceful cleanup"))
+        XCTAssertTrue(owner.contains(
+            "a failed observation makes the cell immutable"))
+        XCTAssertTrue(owner.contains(
+            "Sequoia and Tahoe must use distinct Mac host scopes"))
+        XCTAssertTrue(owner.contains(
+            "cryptographically attest physical hardware."))
+        XCTAssertTrue(owner.contains("canonical_document_sha256(authority)"))
+        XCTAssertFalse(owner.contains("os.chmod(output.parent"))
+        XCTAssertFalse(owner.contains("proof-state"))
+
+        XCTAssertTrue(evaluator.contains(
+            #""authorityKind": "assistive-technology-authority""#))
+        XCTAssertTrue(hygiene.contains(
+            "Tests.Tooling.test_assistive_technology_qualification"))
+        for target in [
+            "test-assistive-technology-qualification:",
+            "assistive-qualification-init:",
+            "assistive-qualification-start:",
+            "assistive-qualification-observe:",
+            "assistive-qualification-finish:",
+            "assistive-qualification-status:",
+            "assistive-qualification-finalize:"
+        ] {
+            XCTAssertTrue(makefile.contains(target))
+        }
+        XCTAssertTrue(makefile.contains(
+            "PORTAVOZ_ASSISTIVE_APP ?= /Applications/Portavoz Dev.app"))
+        XCTAssertFalse(makefile.contains(
+            "PORTAVOZ_ASSISTIVE_APP ?= /Applications/Portavoz.app"))
+    }
+
+    func testAssistiveTechnologyQualificationTruthIsDocumented() throws {
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let quality = try Self.contents(of: "docs/specs/08-quality.md")
+        let releasing = try Self.contents(of: "docs/RELEASING.md")
+        let runbook = try Self.contents(of: "docs/ASSISTIVE-VALIDATION.md")
+        let gaps = try Self.contents(of: "docs/GAPS.md")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(architecture.contains(
+            "Physical assistive-technology qualification"))
+        XCTAssertTrue(quality.contains(
+            "Physical assistive-technology owner (D405)"))
+        XCTAssertTrue(releasing.contains(
+            "physical assistive-technology qualification (D405)"))
+        XCTAssertTrue(runbook.contains(
+            "VoiceOver and Voice Control must run on the same host"))
+        XCTAssertTrue(runbook.contains(
+            "do **not** cryptographically attest physical hardware"))
+        XCTAssertTrue(gaps.contains(
+            "BOUNDED PRODUCER IMPLEMENTED (D405)"))
+        XCTAssertTrue(decisions.contains("## D405"))
+    }
+
     func testDevelopmentAndUITestAppsCannotClaimTheReleaseIdentity() throws {
         let makefile = try Self.contents(of: "Makefile")
         let project = try Self.contents(of: "project.yml")

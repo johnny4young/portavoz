@@ -37,9 +37,12 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	production-sync-qualification-app production-sync-qualification-init \
 	production-sync-qualification-stage production-sync-qualification-status \
 	production-sync-qualification-finalize \
+	assistive-qualification-init assistive-qualification-start \
+	assistive-qualification-observe assistive-qualification-finish \
+	assistive-qualification-status assistive-qualification-finalize \
 	perf-ledger resource-baseline resource-recording-baseline public-screenshots release-reliability-deterministic \
 	release-reliability long-capture-baseline candidate-automation \
-	test-source-integration-qualification
+	test-source-integration-qualification test-assistive-technology-qualification
 
 ## Unit tests (the package suite).
 test:
@@ -653,6 +656,11 @@ candidate-automation:
 test-source-integration-qualification:
 	python3 -m unittest Tests.Tooling.test_source_integration_qualification
 
+## Validate the fixed bilingual VoiceOver/Voice Control physical-evidence
+## contract and its content-free, fail-closed owner without launching the app.
+test-assistive-technology-qualification:
+	python3 -m unittest Tests.Tooling.test_assistive_technology_qualification
+
 ## Run the deterministic release gates and write a receipt bound to the exact
 ## version, build, and current commit. Both release variables are required.
 release-reliability-deterministic:
@@ -835,6 +843,117 @@ production-sync-qualification-finalize:
 	python3 scripts/production_sync_qualification.py finalize \
 		--evidence-root "$(PORTAVOZ_PRODUCTION_SYNC_WORKSPACE)" \
 		--output "$(PORTAVOZ_PRODUCTION_SYNC_OUTPUT)"
+
+PORTAVOZ_ASSISTIVE_APP ?= /Applications/Portavoz Dev.app
+PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT ?=
+PORTAVOZ_ASSISTIVE_CANDIDATE_RECEIPT ?=
+PORTAVOZ_ASSISTIVE_TECHNOLOGY ?=
+PORTAVOZ_ASSISTIVE_LOCALE ?=
+PORTAVOZ_ASSISTIVE_CHECKPOINT ?=
+PORTAVOZ_ASSISTIVE_OUTCOME ?=
+PORTAVOZ_ASSISTIVE_CONFIRM_TECHNOLOGY ?=
+PORTAVOZ_ASSISTIVE_CONFIRM_OBSERVATION ?=
+PORTAVOZ_ASSISTIVE_OUTPUT ?=
+
+## Initialize one exact signed-Dev-app assistive run. This only creates the
+## content-free manifest; it does not claim any physical or human evidence.
+assistive-qualification-init:
+	@test -n "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" || \
+		(echo "PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_CANDIDATE_RECEIPT)" || \
+		(echo "PORTAVOZ_ASSISTIVE_CANDIDATE_RECEIPT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RELEASE_VERSION)" || \
+		(echo "PORTAVOZ_RELEASE_VERSION is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_RELEASE_BUILD)" || \
+		(echo "PORTAVOZ_RELEASE_BUILD is required" >&2; exit 64)
+	python3 scripts/assistive_technology_qualification.py init \
+		--app "$(PORTAVOZ_ASSISTIVE_APP)" \
+		--evidence-root "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" \
+		--candidate-receipt "$(PORTAVOZ_ASSISTIVE_CANDIDATE_RECEIPT)" \
+		--version "$(PORTAVOZ_RELEASE_VERSION)" \
+		--build "$(PORTAVOZ_RELEASE_BUILD)" \
+		--commit "$(PORTAVOZ_RELEASE_COMMIT)"
+
+## Launch one disposable public-seed EN or ES session. The typed technology
+## confirmation is deliberately separate from the selected technology.
+assistive-qualification-start:
+	@test -n "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" || \
+		(echo "PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_TECHNOLOGY)" || \
+		(echo "PORTAVOZ_ASSISTIVE_TECHNOLOGY is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_LOCALE)" || \
+		(echo "PORTAVOZ_ASSISTIVE_LOCALE is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_CONFIRM_TECHNOLOGY)" || \
+		(echo "PORTAVOZ_ASSISTIVE_CONFIRM_TECHNOLOGY is required" >&2; exit 64)
+	python3 scripts/assistive_technology_qualification.py start-locale \
+		--app "$(PORTAVOZ_ASSISTIVE_APP)" \
+		--evidence-root "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" \
+		--technology "$(PORTAVOZ_ASSISTIVE_TECHNOLOGY)" \
+		--locale "$(PORTAVOZ_ASSISTIVE_LOCALE)" \
+		--confirm-technology-active "$(PORTAVOZ_ASSISTIVE_CONFIRM_TECHNOLOGY)"
+
+## Record exactly the next fixed checkpoint. A fail is retained, closes the
+## owned Dev process, and invalidates the cell; do not turn retries green.
+assistive-qualification-observe:
+	@test -n "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" || \
+		(echo "PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_TECHNOLOGY)" || \
+		(echo "PORTAVOZ_ASSISTIVE_TECHNOLOGY is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_LOCALE)" || \
+		(echo "PORTAVOZ_ASSISTIVE_LOCALE is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_CONFIRM_TECHNOLOGY)" || \
+		(echo "PORTAVOZ_ASSISTIVE_CONFIRM_TECHNOLOGY is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_CHECKPOINT)" || \
+		(echo "PORTAVOZ_ASSISTIVE_CHECKPOINT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_OUTCOME)" || \
+		(echo "PORTAVOZ_ASSISTIVE_OUTCOME is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_CONFIRM_OBSERVATION)" || \
+		(echo "PORTAVOZ_ASSISTIVE_CONFIRM_OBSERVATION is required" >&2; exit 64)
+	python3 scripts/assistive_technology_qualification.py observe \
+		--app "$(PORTAVOZ_ASSISTIVE_APP)" \
+		--evidence-root "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" \
+		--technology "$(PORTAVOZ_ASSISTIVE_TECHNOLOGY)" \
+		--locale "$(PORTAVOZ_ASSISTIVE_LOCALE)" \
+		--checkpoint "$(PORTAVOZ_ASSISTIVE_CHECKPOINT)" \
+		--outcome "$(PORTAVOZ_ASSISTIVE_OUTCOME)" \
+		--confirm-technology-active "$(PORTAVOZ_ASSISTIVE_CONFIRM_TECHNOLOGY)" \
+		--confirm-observation "$(PORTAVOZ_ASSISTIVE_CONFIRM_OBSERVATION)"
+
+assistive-qualification-finish:
+	@test -n "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" || \
+		(echo "PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_TECHNOLOGY)" || \
+		(echo "PORTAVOZ_ASSISTIVE_TECHNOLOGY is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_LOCALE)" || \
+		(echo "PORTAVOZ_ASSISTIVE_LOCALE is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_CONFIRM_TECHNOLOGY)" || \
+		(echo "PORTAVOZ_ASSISTIVE_CONFIRM_TECHNOLOGY is required" >&2; exit 64)
+	python3 scripts/assistive_technology_qualification.py finish-locale \
+		--app "$(PORTAVOZ_ASSISTIVE_APP)" \
+		--evidence-root "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" \
+		--technology "$(PORTAVOZ_ASSISTIVE_TECHNOLOGY)" \
+		--locale "$(PORTAVOZ_ASSISTIVE_LOCALE)" \
+		--confirm-technology-active "$(PORTAVOZ_ASSISTIVE_CONFIRM_TECHNOLOGY)"
+
+assistive-qualification-status:
+	@test -n "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" || \
+		(echo "PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT is required" >&2; exit 64)
+	python3 scripts/assistive_technology_qualification.py status \
+		--evidence-root "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)"
+
+## Mint the authority/qualification pair only after all four physical cells
+## have complete, passing EN and ES chains on the exact candidate.
+assistive-qualification-finalize:
+	@test -n "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" || \
+		(echo "PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_CANDIDATE_RECEIPT)" || \
+		(echo "PORTAVOZ_ASSISTIVE_CANDIDATE_RECEIPT is required" >&2; exit 64)
+	@test -n "$(PORTAVOZ_ASSISTIVE_OUTPUT)" || \
+		(echo "PORTAVOZ_ASSISTIVE_OUTPUT is required" >&2; exit 64)
+	python3 scripts/assistive_technology_qualification.py finalize \
+		--evidence-root "$(PORTAVOZ_ASSISTIVE_EVIDENCE_ROOT)" \
+		--candidate-receipt "$(PORTAVOZ_ASSISTIVE_CANDIDATE_RECEIPT)" \
+		--output "$(PORTAVOZ_ASSISTIVE_OUTPUT)"
 
 ## Build the dev app and install it as "Portavoz Dev" — NEVER touching
 ## /Applications/Portavoz.app, which is the user's notarized release copy

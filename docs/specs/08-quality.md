@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,754 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,769 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2381,10 +2381,11 @@ exits successfully. The distribution receipt additionally requires the commit
 stamped into the app copied from the DMG, with a clean exact-source recheck
 after the app build, and exposes that exact artifact digest on the final
 scorecard. The owner-only JSON/Markdown output contains no meeting
-reference or support payload. Twenty tooling tests cover complete,
+reference or support payload. Twenty-four tooling tests cover complete,
 omitted/missing-path, failed, incomplete, stale deterministic or qualification
 commit, duplicate qualification scope/platform, content-bearing input,
-distribution commit, and invalid-contract behavior. The repository-hygiene
+authority-pair ownership including assistive evidence, distribution commit,
+and invalid-contract behavior. The repository-hygiene
 gate always runs them. An architecture ratchet pins the schema, 29 proofs,
 eight classes, fail-closed predicate, exact artifact stamp, distribution
 receipt ordering, D147, and D391.
@@ -2495,6 +2496,74 @@ and a cross-version pair with one Sequoia Mac and one Tahoe-or-newer Mac; it als
 rejects a fake account switch.
 No deterministic test, XCUITest, packaging check, or locally shaped JSON file
 can replace this authorized two-Mac/account/APNs observation.
+
+**Physical assistive-technology owner (D405).**
+`docs/evidence/assistive-technology-qualification.json` freezes VoiceOver and
+Voice Control on Sequoia and Tahoe-or-newer, English then Spanish, and six
+ordered checkpoints backed by nine existing real-app XCUITest selectors. The
+fixed disposable launch includes the public meeting, duplicate Skills
+proposals, one Waiting receipt, and synthetic Interview Assist. It uses the
+temporary-store Ask adapters and synthetic recording runtime, so routine
+qualification needs no private meeting, external Web source, microphone,
+installed model, account, or network.
+
+`scripts/assistive_technology_qualification.py` requires a clean exact commit,
+the exact-byte complete candidate-automation receipt, and the matching
+Developer-ID-signed `Portavoz Dev` bundle before it writes a run manifest. The
+stable app path is forbidden. The manifest binds version/build/commit,
+contract, candidate receipt, executable, Info.plist, CodeResources, Developer
+ID kind, and a run-salted signing-team scope. A cell binds the technology,
+platform, exact arm64 OS build, a run-salted IOPlatformUUID host scope, and a
+unique nonce. A locale session binds a unique exact process, empty seed-ready
+marker, and fixed activation authority.
+
+VoiceOver requires the explicit human acknowledgment plus
+`NSWorkspace.isVoiceOverEnabled`; Voice Control is explicitly human-observed
+because the owner uses no undocumented active-state mechanism. Each fixed
+observation requires a separately typed checkpoint/outcome acknowledgment and
+extends one immutable SHA-256 chain. A fail remains in the chain, gracefully
+terminates only the identity-checked owned app, removes its disposable runtime
+only after confirmed exit, and blocks the cell. A cleanup timeout retains
+scratch state and fails explicitly. The next attempt must initialize a new run;
+the tool has no receipt-edit, delete, arbitrary-proof, or retry-to-green
+command. Starting a later locale also validates the complete immutable
+authority for every earlier contract locale, so Spanish cannot launch before
+English has finished successfully.
+
+Finalization requires all and only four cells, two complete passing locale
+chains per cell, unique cell/process nonces, one shared host/build for the two
+technologies within each platform, and distinct host scopes across platforms.
+Every file and directory must retain its owner-only mode and exact inventory;
+symlinks, special or extra entries, broken chains, candidate drift, and copied
+sessions fail. Publication uses an owner-only new directory, atomic no-clobber
+files, and an authority-digest-bound generic receipt. Release evaluation now
+requires that receipt beside the unchanged
+`assistive-technology-authority`. Twenty-four tooling cases cover the fixed
+matrix and selector existence, weakened or duplicated contracts, candidate
+receipt/app/signature identity, path and publication permissions, environment
+sanitization, activation authority, host scoping, global launch serialization,
+failed-launch cleanup, strict English-before-Spanish admission, ordered
+content-free chains, immutable observation failure cleanup, fail-closed
+status/completion digests,
+complete finalization, host separation, exact inventory, and process reuse.
+
+The mandatory D405 XCUITest is a minimum-safe deterministic accessibility
+canary, not physical assistive evidence. The full bilingual suite remains the
+candidate/RC gate. Real VoiceOver and Voice Control observations still require
+trusted operators and physical hosts under
+`docs/ASSISTIVE-VALIDATION.md`; run-scoped host inequality alone is not
+hardware attestation.
+
+Final local D405 preflight passed the current-SDK warnings-as-errors build,
+2,769 package tests with 15 explicit environment/model skips and zero failures,
+strict SwiftLint with zero violations across 739 Swift files, all 24 focused
+assistive-owner tooling cases, all 24 generic release-reliability cases, and
+repository hygiene. The read-only UI host preflight stayed clear; 33 stale
+LaunchServices claimants remained warning-only and were not reset. The
+minimum-safe English real-app Skills receipt focus/accessibility journey passed
+1/1 in an 18.004-second test interval. This automation validates the stable
+accessibility contract only; it does not fill any physical VoiceOver or Voice
+Control cell.
 
 **Candidate automation owner (D392–D401).**
 `docs/evidence/candidate-automation.json` is the finite executable contract for

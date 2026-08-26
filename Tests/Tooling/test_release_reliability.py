@@ -226,6 +226,26 @@ class ReleaseReliabilityTests(unittest.TestCase):
                     )
                 )
 
+    def test_assistive_qualification_requires_its_exact_authority_sibling(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipt = self.write_qualification(root, "assistive-technology")
+            receipt.with_name("authority.json").unlink()
+
+            with self.assertRaisesRegex(
+                reliability.ReliabilityError,
+                "qualification receipt 1 authority not found",
+            ):
+                reliability.evaluate_namespace(
+                    self.evaluate_args(
+                        None,
+                        None,
+                        [],
+                        root / "scorecard",
+                        [receipt],
+                    )
+                )
+
     def test_authority_owned_qualification_rejects_sibling_drift(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

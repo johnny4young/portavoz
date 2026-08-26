@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "kind": "assistive-technology-qualification-contract",
+  "scope": "assistive-technology",
+  "candidateScope": "candidate-automation",
+  "app": {
+    "bundleIdentifier": "app.portavoz.mac.dev",
+    "displayName": "Portavoz Dev",
+    "forbiddenPath": "/Applications/Portavoz.app",
+    "requireDeveloperID": true
+  },
+  "platforms": [
+    {
+      "id": "sequoia",
+      "minimumMajor": 15,
+      "maximumMajor": 15
+    },
+    {
+      "id": "tahoe",
+      "minimumMajor": 26,
+      "maximumMajor": null
+    }
+  ],
+  "technologies": [
+    {
+      "id": "voiceover",
+      "activationAuthority": "nsworkspace-and-human",
+      "proofs": {
+        "sequoia": "voiceover-sequoia",
+        "tahoe": "voiceover-tahoe"
+      }
+    },
+    {
+      "id": "voice-control",
+      "activationAuthority": "human-observed",
+      "proofs": {
+        "sequoia": "voice-control-sequoia",
+        "tahoe": "voice-control-tahoe"
+      }
+    }
+  ],
+  "locales": [
+    {
+      "id": "en",
+      "appleLocale": "en_US"
+    },
+    {
+      "id": "es",
+      "appleLocale": "es_ES"
+    }
+  ],
+  "launch": {
+    "arguments": [
+      "-NSTreatUnknownArgumentsAsOpen",
+      "NO",
+      "-ApplePersistenceIgnoreState",
+      "YES",
+      "-use-temp-store",
+      "-reset-app-language",
+      "-seed-demo",
+      "-seed-duplicate-skill-proposals",
+      "-seed-skill-waiting",
+      "-simulate-interview-assist"
+    ],
+    "environmentKeys": [
+      "PORTAVOZ_AUDIO_ROOT",
+      "PORTAVOZ_UI_TEST_DATABASE_PATH",
+      "PORTAVOZ_UI_TEST_DEFAULTS",
+      "PORTAVOZ_UI_TEST_SEED_READY_PATH",
+      "TMPDIR"
+    ]
+  },
+  "checkpoints": [
+    {
+      "id": "library-navigation",
+      "sequence": 1,
+      "automationSelectors": [
+        "PortavozUITests/LibraryUITests/testLibraryRendersRecordButtonAndActionChips",
+        "PortavozUITests/LibraryUITests/testSeededMeetingsGroupByRecency"
+      ]
+    },
+    {
+      "id": "meeting-evidence-navigation",
+      "sequence": 2,
+      "automationSelectors": [
+        "PortavozUITests/MeetingDetailUITests/testSummarySourceJumpsToItsTranscriptAndAudio",
+        "PortavozUITests/MeetingDetailUITests/testMyNotesSectionShowsRawNotesAndOffersEnhancement"
+      ]
+    },
+    {
+      "id": "ask-citation-navigation",
+      "sequence": 3,
+      "automationSelectors": [
+        "PortavozUITests/LibraryUITests/testAskConversationAnswersAndSeeksToExactCitation"
+      ]
+    },
+    {
+      "id": "skills-review-and-focus",
+      "sequence": 4,
+      "automationSelectors": [
+        "PortavozUITests/SkillsSettingsUITests/testSameSkillProposalsHaveDistinctAccessibleActions",
+        "PortavozUITests/SkillsSettingsUITests/testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit"
+      ]
+    },
+    {
+      "id": "interview-assist-navigation",
+      "sequence": 5,
+      "automationSelectors": [
+        "PortavozUITests/InterviewAssistUITests/testInterviewAssistGroundsTheCurrentQuestionInExactEvidence"
+      ]
+    },
+    {
+      "id": "recording-stop-recovery",
+      "sequence": 6,
+      "automationSelectors": [
+        "PortavozUITests/AutomationUITests/testRecordingAutomationRoutesStartAndStopThroughVisibleApp"
+      ]
+    }
+  ],
+  "limits": {
+    "seedReadyTimeoutSeconds": 60,
+    "processExitTimeoutSeconds": 15,
+    "maximumReceiptBytes": 32768
+  }
+}

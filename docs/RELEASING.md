@@ -416,6 +416,26 @@ The release and field-test profile has an expiration date and macOS evaluates
 it at launch. Refresh and re-embed it before expiry; never work around a profile
 failure by signing the restricted entitlements without one.
 
+### Run the physical assistive-technology qualification (D405)
+
+Follow [`ASSISTIVE-VALIDATION.md`](ASSISTIVE-VALIDATION.md) after candidate
+automation has passed for the exact source and the unchanged Developer-ID-
+signed `app.portavoz.mac.dev` bundle is available. The owner runs the public
+disposable seed in English and Spanish through VoiceOver and Voice Control on
+physical Sequoia and Tahoe-or-newer Apple-silicon Macs. It binds every ordered
+human observation to the candidate, app seals, assistive technology, app
+process, run-scoped host, and exact macOS build.
+
+VoiceOver requires both the human acknowledgment and the documented
+`NSWorkspace.isVoiceOverEnabled` observation. Voice Control deliberately uses
+human authority only because this project has no documented public active-
+state API for it. A failed checkpoint is immutable and requires a new run; it
+cannot be overwritten or retried into the same green cell. Finalization writes
+one new `authority.json` plus `qualification.json` pair only after all four
+physical cells have complete EN/ES chains. Host-scope inequality is not
+physical-hardware attestation, and deterministic XCUITest does not replace the
+human VoiceOver/Voice Control observation.
+
 ### Assemble the fail-closed reliability scorecard
 
 Install the candidate-stamped developer build and collect the protocol-2
@@ -433,7 +453,7 @@ make release-reliability \
     --qualification-receipt /path/to/candidate-automation.json
     --qualification-receipt /path/to/source-integration/qualification.json
     --qualification-receipt /path/to/production-sync-authority/qualification.json
-    --qualification-receipt /path/to/assistive-technology.json' \
+    --qualification-receipt /path/to/assistive-technology-authority/qualification.json' \
   PORTAVOZ_FIELD_EVIDENCE_ARGS='
     --field-evidence /path/to/built-in-sequoia
     --field-evidence /path/to/built-in-tahoe
