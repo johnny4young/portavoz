@@ -1,3 +1,4 @@
+import json
 import os
 import plistlib
 import stat
@@ -61,6 +62,64 @@ class ProductionSyncQualificationPackagingTests(unittest.TestCase):
             ).splitlines()
             self.assertEqual(len(verification), 1)
             self.assertIn(".Portavoz-Sync-Qualification.", verification[0])
+
+            tool_log_root = Path(environment["FIXTURE_TOOL_LOG_ROOT"])
+            plutil_calls = [
+                json.loads(line)
+                for line in (tool_log_root / "plutil.log").read_text(
+                    encoding="utf-8"
+                ).splitlines()
+            ]
+            self.assertEqual(
+                [call[:4] for call in plutil_calls[:2]],
+                [
+                    [
+                        "-replace",
+                        "CFBundleDisplayName",
+                        "-string",
+                        "Portavoz Sync Qualification",
+                    ],
+                    [
+                        "-replace",
+                        "CFBundleName",
+                        "-string",
+                        "Portavoz Sync Qualification",
+                    ],
+                ],
+            )
+            self.assertEqual(
+                [call[0] for call in plutil_calls[2:]],
+                ["-lint", "-lint"],
+            )
+            sed_calls = [
+                json.loads(line)
+                for line in (tool_log_root / "sed.log").read_text(
+                    encoding="utf-8"
+                ).splitlines()
+            ]
+            self.assertEqual(len(sed_calls), 2)
+            self.assertEqual([call[:3] for call in sed_calls], [["-i", "", "-e"]] * 2)
+            for locale, call in zip(("en", "es"), sed_calls, strict=True):
+                self.assertTrue(
+                    call[-1].endswith(
+                        f"/{locale}.lproj/InfoPlist.strings"
+                    )
+                )
+                localized = (
+                    output
+                    / "Contents"
+                    / "Resources"
+                    / f"{locale}.lproj"
+                    / "InfoPlist.strings"
+                ).read_text(encoding="utf-8")
+                self.assertIn(
+                    '"CFBundleDisplayName" = "Portavoz Sync Qualification";',
+                    localized,
+                )
+                self.assertIn(
+                    '"CFBundleName" = "Portavoz Sync Qualification";',
+                    localized,
+                )
 
             source = PACKAGER.read_text(encoding="utf-8")
             self.assertNotIn("/Applications/", source)
@@ -224,6 +283,97 @@ class ProductionSyncQualificationPackagingTests(unittest.TestCase):
         )
         codesign.chmod(codesign.stat().st_mode | stat.S_IXUSR)
 
+        plutil = tools / "plutil"
+        plutil.write_text(
+            textwrap.dedent(
+                """\
+                #!/usr/bin/env python3
+                import json
+                import os
+                import plistlib
+                import sys
+                from pathlib import Path
+
+                arguments = sys.argv[1:]
+                log = Path(os.environ["FIXTURE_TOOL_LOG_ROOT"]) / "plutil.log"
+                with log.open("a", encoding="utf-8") as handle:
+                    handle.write(json.dumps(arguments) + "\\n")
+
+                if arguments[:1] == ["-replace"]:
+                    if len(arguments) != 5 or arguments[2] != "-string":
+                        raise SystemExit("unexpected plutil replacement arguments")
+                    path = Path(arguments[4])
+                    with path.open("rb") as handle:
+                        document = plistlib.load(handle)
+                    document[arguments[1]] = arguments[3]
+                    with path.open("wb") as handle:
+                        plistlib.dump(document, handle)
+                elif arguments[:1] == ["-lint"]:
+                    if len(arguments) != 2:
+                        raise SystemExit("unexpected plutil lint arguments")
+                    content = Path(arguments[1]).read_text(encoding="utf-8")
+                    expected = (
+                        '\"CFBundleDisplayName\" = \"Portavoz Sync Qualification\";',
+                        '\"CFBundleName\" = \"Portavoz Sync Qualification\";',
+                    )
+                    if any(line not in content for line in expected):
+                        raise SystemExit("localized display metadata was not rewritten")
+                else:
+                    raise SystemExit("unexpected plutil operation")
+                """
+            ),
+            encoding="utf-8",
+        )
+        plutil.chmod(plutil.stat().st_mode | stat.S_IXUSR)
+
+        sed = tools / "sed"
+        sed.write_text(
+            textwrap.dedent(
+                """\
+                #!/usr/bin/env python3
+                import json
+                import os
+                import sys
+                from pathlib import Path
+
+                arguments = sys.argv[1:]
+                log = Path(os.environ["FIXTURE_TOOL_LOG_ROOT"]) / "sed.log"
+                with log.open("a", encoding="utf-8") as handle:
+                    handle.write(json.dumps(arguments) + "\\n")
+
+                expected = [
+                    "-i",
+                    "",
+                    "-e",
+                    's/^\"CFBundleDisplayName\" = \".*\";$/\"CFBundleDisplayName\" = \"Portavoz Sync Qualification\";/',
+                    "-e",
+                    's/^\"CFBundleName\" = \".*\";$/\"CFBundleName\" = \"Portavoz Sync Qualification\";/',
+                ]
+                if len(arguments) != 7 or arguments[:6] != expected:
+                    raise SystemExit("unexpected sed arguments")
+                path = Path(arguments[6])
+                content = path.read_text(encoding="utf-8")
+                replacements = (
+                    (
+                        '\"CFBundleDisplayName\" = \"Portavoz\";',
+                        '\"CFBundleDisplayName\" = \"Portavoz Sync Qualification\";',
+                    ),
+                    (
+                        '\"CFBundleName\" = \"Portavoz\";',
+                        '\"CFBundleName\" = \"Portavoz Sync Qualification\";',
+                    ),
+                )
+                for original, replacement in replacements:
+                    if original not in content:
+                        raise SystemExit("expected localized metadata was absent")
+                    content = content.replace(original, replacement)
+                path.write_text(content, encoding="utf-8")
+                """
+            ),
+            encoding="utf-8",
+        )
+        sed.chmod(sed.stat().st_mode | stat.S_IXUSR)
+
         subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
         subprocess.run(
             ["git", "config", "user.name", "Portavoz Fixture"],
@@ -251,6 +401,7 @@ class ProductionSyncQualificationPackagingTests(unittest.TestCase):
         environment.update(
             {
                 "FIXTURE_REPOSITORY": str(repository),
+                "FIXTURE_TOOL_LOG_ROOT": str(root),
                 "PATH": f"{tools}:{environment['PATH']}",
                 "PORTAVOZ_RELEASE_VERSION": "1.0.0",
                 "PORTAVOZ_RELEASE_BUILD": "202608250001",

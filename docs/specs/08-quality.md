@@ -2458,10 +2458,11 @@ version/build/commit checkout, real identity, and profile. It invokes the real
 release app builder, confirms profile-materialized production entitlements,
 changes only display metadata, re-signs, and re-verifies the final exact-ID
 artifact under `dist/`.
-Four hermetic packaging tests use a temporary Git repository and fake signing
-boundary to prove exact stamping, final verification, adjacent-commit rejection
-before build, failed-signature cleanup, and the ordinary Dev install's profile
-rejection. Architecture
+Four hermetic packaging tests use a temporary Git repository, fake signing
+boundary, and strict `plutil`/BSD `sed` command adapters to prove the exact
+metadata mutations on Linux as well as macOS. They cover exact stamping, final
+verification, adjacent-commit rejection before build, failed-signature cleanup,
+and the ordinary Dev install's profile rejection. Architecture
 tests additionally forbid `/Applications`, LaunchServices registration, or
 ordinary opening from this script. This evidence validates packaging behavior;
 it does not execute CloudKit, prove a second Mac/account/push path, or create the

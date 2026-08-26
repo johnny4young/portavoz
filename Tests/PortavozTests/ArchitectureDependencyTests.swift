@@ -10190,6 +10190,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let qualification = try Self.contents(
             of: "scripts/make-production-sync-qualification-app.sh")
         let makeApp = try Self.contents(of: "scripts/make-app.sh")
+        let packagingTests = try Self.contents(
+            of: "Tests/Tooling/test_production_sync_qualification_packaging.py")
         let materializer = try Self.contents(
             of: "scripts/materialize-cloudkit-entitlements.py")
         let makefile = try Self.contents(of: "Makefile")
@@ -10229,6 +10231,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(qualification.contains("/Applications/"))
         XCTAssertFalse(qualification.contains("lsregister"))
         XCTAssertFalse(qualification.contains("\nopen \"$OUTPUT\""))
+        XCTAssertTrue(packagingTests.contains(#"plutil = tools / "plutil""#))
+        XCTAssertTrue(packagingTests.contains(#"sed = tools / "sed""#))
+        XCTAssertTrue(packagingTests.contains(
+            "unexpected plutil replacement arguments"))
+        XCTAssertTrue(packagingTests.contains("unexpected sed arguments"))
 
         let resign = try XCTUnwrap(qualification.range(
             of: "--entitlements \"$SIGN_ENTITLEMENTS\" \"$STAGING\""))
