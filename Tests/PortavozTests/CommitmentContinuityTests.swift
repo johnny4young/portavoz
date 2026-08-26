@@ -817,9 +817,7 @@ final class CommitmentContinuityStorageTests: XCTestCase {
         XCTAssertEqual(
             retained.events.last?.evidence?.segmentIDs,
             [fixture.evidenceSegmentID])
-        let foreignKeyFailures = try fixture.store.database.read { database in
-            try Row.fetchAll(database, sql: "PRAGMA foreign_key_check")
-        }
+        let foreignKeyFailures = try foreignKeyFailures(in: fixture.store.database)
         XCTAssertTrue(foreignKeyFailures.isEmpty)
     }
 
@@ -873,6 +871,12 @@ private struct GeneratedFixture {
     let actionItemID: UUID
     let evidenceSegmentID: UUID
     let personID: PersonID
+}
+
+private func foreignKeyFailures(in database: DatabaseQueue) throws -> [Row] {
+    try database.read { database in
+        try Row.fetchAll(database, sql: "PRAGMA foreign_key_check")
+    }
 }
 
 private func continuityCounts(in store: MeetingStore) async throws -> [Int] {
