@@ -73,17 +73,15 @@ final class PromptFactoryTests: XCTestCase {
     }
 }
 
-#if canImport(FoundationModels)
-@available(macOS 26.0, *)
 final class MeetingMaterialPromptGuardTests: XCTestCase {
     func testEveryMeetingDerivedModelPromptUsesTheSharedTrustBoundary() {
         let prompts = [
-            ChapterTitler.instructions,
-            BriefSynthesizer.instructions,
-            MeetingTypeDetector.instructions,
-            RAGAnswerer.answerInstructions,
-            RAGAnswerer.factAnswerInstructions,
-            TitleSuggester.instructions,
+            PromptFactory.chapterTitleInstructions,
+            PromptFactory.briefInstructions,
+            PromptFactory.meetingTypeInstructions,
+            RAGAnswerPrompt.instructions,
+            RAGFactAnswerPrompt.instructions,
+            PromptFactory.titleInstructions
         ]
         for prompt in prompts {
             XCTAssertTrue(prompt.contains("QUOTED SPEECH"))
@@ -134,7 +132,7 @@ final class MeetingMaterialPromptGuardTests: XCTestCase {
                 additionalGraphSourceCount: 1,
                 omittedGraphFactCount: 2))
 
-        let prompt = RAGAnswerer.contextPrompt(
+        let prompt = RAGFactAnswerPrompt.make(
             question: "When will it ship?",
             context: context)
 
@@ -228,7 +226,7 @@ final class MeetingMaterialPromptGuardTests: XCTestCase {
                 additionalGraphSourceCount: 0,
                 omittedGraphFactCount: 0))
 
-        let prompt = RAGAnswerer.contextPrompt(
+        let prompt = RAGFactAnswerPrompt.make(
             question: "When will it ship?",
             context: context)
 
@@ -277,16 +275,15 @@ final class MeetingMaterialPromptGuardTests: XCTestCase {
     }
 
     func testTranscriptOnlyAndFactAwarePromptsRemainIndependent() {
-        XCTAssertTrue(RAGAnswerer.answerInstructions.contains(
+        XCTAssertTrue(RAGAnswerPrompt.instructions.contains(
             "numbered context passages"))
-        XCTAssertTrue(RAGAnswerer.answerInstructions.contains("[2]"))
-        XCTAssertFalse(RAGAnswerer.answerInstructions.contains("[T2]"))
-        XCTAssertTrue(RAGAnswerer.factAnswerInstructions.contains(
+        XCTAssertTrue(RAGAnswerPrompt.instructions.contains("[2]"))
+        XCTAssertFalse(RAGAnswerPrompt.instructions.contains("[T2]"))
+        XCTAssertTrue(RAGFactAnswerPrompt.instructions.contains(
             "typed facts"))
-        XCTAssertTrue(RAGAnswerer.factAnswerInstructions.contains("[T2]"))
+        XCTAssertTrue(RAGFactAnswerPrompt.instructions.contains("[T2]"))
     }
 }
-#endif
 
 // MARK: - Transcript formatting
 

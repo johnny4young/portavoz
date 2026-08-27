@@ -3369,10 +3369,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             "struct RAGFact",
             "struct RAGFactPage",
             "struct RAGAnswerContext",
+            "enum RAGFactAnswerPrompt",
             "func answer(",
             "context: RAGAnswerContext",
-            "factAnswerInstructions",
-            "static func contextPrompt(",
+            "static let instructions",
+            "static func make(",
             "static func uniqueGraphSources(",
             "Fact page disclosure:",
             "Cite only [T…] and [S…]",
@@ -3385,7 +3386,71 @@ final class ArchitectureDependencyTests: XCTestCase {
             "numbered context passages"))
         XCTAssertTrue(sharedAnswering.contains(
             "marker of the passage that supports it"))
+        XCTAssertTrue(answerer.contains("RAGFactAnswerPrompt.make("))
         XCTAssertTrue(decisions.contains("## D285"))
+    }
+
+    func testMeetingPromptContractsStayOutsideFoundationModelsAvailability() throws {
+        let promptFactory = try Self.contents(
+            of: "Sources/IntelligenceKit/PromptFactory.swift")
+        let answerer = try Self.contents(
+            of: "Sources/IntelligenceKit/RAGAnswerer.swift")
+        let tests = try Self.contents(
+            of: "Tests/PortavozTests/IntelligenceTests.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let adapters = [
+            (
+                try Self.contents(
+                    of: "Sources/IntelligenceKit/ChapterTitler.swift"),
+                "PromptFactory.chapterTitleInstructions"
+            ),
+            (
+                try Self.contents(
+                    of: "Sources/IntelligenceKit/BriefSynthesizer.swift"),
+                "PromptFactory.briefInstructions"
+            ),
+            (
+                try Self.contents(
+                    of: "Sources/IntelligenceKit/MeetingTypeDetector.swift"),
+                "PromptFactory.meetingTypeInstructions"
+            ),
+            (
+                try Self.contents(
+                    of: "Sources/IntelligenceKit/TitleSuggester.swift"),
+                "PromptFactory.titleInstructions"
+            )
+        ]
+
+        for authority in [
+            "chapterTitleInstructions",
+            "briefInstructions",
+            "meetingTypeInstructions",
+            "titleInstructions"
+        ] {
+            XCTAssertTrue(promptFactory.contains("static let \(authority)"))
+        }
+        for (adapter, authority) in adapters {
+            XCTAssertTrue(adapter.contains(authority), authority)
+            XCTAssertFalse(adapter.contains("static let instructions"))
+        }
+
+        let promptIndex = try XCTUnwrap(
+            answerer.range(of: "enum RAGFactAnswerPrompt")?.lowerBound)
+        let availabilityIndex = try XCTUnwrap(
+            answerer.range(of: "#if canImport(FoundationModels)")?.lowerBound)
+        XCTAssertLessThan(promptIndex, availabilityIndex)
+        XCTAssertTrue(tests.contains("RAGFactAnswerPrompt.make("))
+        XCTAssertFalse(tests.contains("#if canImport(FoundationModels)"))
+        for unavailableAdapter in [
+            "ChapterTitler.",
+            "BriefSynthesizer.",
+            "MeetingTypeDetector.",
+            "RAGAnswerer.",
+            "TitleSuggester."
+        ] {
+            XCTAssertFalse(tests.contains(unavailableAdapter))
+        }
+        XCTAssertTrue(decisions.contains("## D406"))
     }
 
     func testAskFactAwareSelectionReservesTranscriptRankAndExactSources() throws {

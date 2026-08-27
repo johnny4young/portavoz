@@ -2272,6 +2272,15 @@ graph-aware bundle. The explicit person-commitment explorer instead shows the
 validated typed facts directly, including their exact source navigation, so it
 works without Foundation Models on Sequoia as well as Tahoe.
 
+Deterministic prompt instructions and fact-aware context formatting remain
+provider-neutral and compile before the `FoundationModels` availability
+boundary. The chapter, brief, meeting-type, title, transcript-only RAG, and
+fact-aware RAG adapters consume those pure authorities; only session creation
+and generation live in macOS-26-gated types. Package tests therefore exercise
+the exact prompt bytes and source-marker construction on the oldest supported
+runtime without loading weak-linked model-adapter metadata. A source ratchet
+rejects moving these tests or contracts back behind `canImport(FoundationModels)`.
+
 Before the opt-in provider runs, ApplicationKit applies a deterministic
 **post-RRF fact-aware selector**. Transcript rank is reserved first as the
 unchanged first six exact citations. Graph facts never enter RRF: they preserve

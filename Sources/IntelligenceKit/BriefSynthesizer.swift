@@ -22,17 +22,6 @@ public enum BriefSynthesizer {
         }
     }
 
-    static let instructions = """
-        You brief the user before an upcoming meeting using ONLY the numbered \
-        context passages from their past meetings. Produce two or three short \
-        bullets, each a concrete fact worth remembering (decisions, open \
-        threads, commitments), in the same language as the passages. Each \
-        bullet MUST cite the number of the passage it comes from. Never \
-        comment on the meeting's duration, format or logistics, and never \
-        invent facts that are not in a passage.
-        \(PromptFactory.sourceMaterialGuard())
-        """
-
     /// nil/empty = nothing worth showing; the section simply hides.
     public static func whatToKnow(
         eventTitle: String, passages: [RAGPassage]
@@ -42,7 +31,8 @@ public enum BriefSynthesizer {
             "[\(index + 1)] (\(passage.meetingTitle)) \(passage.text)"
         }.joined(separator: "\n")
 
-        let session = LanguageModelSession(instructions: instructions)
+        let session = LanguageModelSession(
+            instructions: PromptFactory.briefInstructions)
         let generated: GeneratedBrief? = try? await IntelligenceScheduler.shared
             .run(.interactive) {
                 try await session.respond(

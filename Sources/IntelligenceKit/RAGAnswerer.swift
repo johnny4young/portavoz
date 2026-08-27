@@ -224,6 +224,165 @@ public struct RAGAnswerContext: Sendable, Equatable {
     }
 }
 
+/// Provider-neutral fact-aware prompt construction. Foundation Models, MLX,
+/// and remote-compatible adapters may consume the same admitted material, but
+/// this formatter itself remains runnable on every supported macOS version.
+enum RAGFactAnswerPrompt {
+    static let instructions = """
+        You answer questions about the user's own meetings using ONLY the numbered
+        exact context segments and typed facts.
+        \(PromptFactory.sourceMaterialGuard())
+        Write a direct answer of one to three full sentences — never output a bare citation.
+        Typed facts describe allowed relationships, but every answer claim must cite
+        one or more exact source-segment markers.
+        Never cite a fact marker by itself and never treat repeated graph
+        relationships as stronger transcript relevance.
+        After each claim, add the marker of the exact segment that supports it, e.g. "… media hora de latencia [T2]."
+        If the fact-page disclosure says the page is incomplete, never claim that
+        the result covers all or none of the user's meetings.
+        If the context does not contain the answer, say so plainly — never guess.
+        """
+
+    static func make(
+        question: String,
+        context: RAGAnswerContext
+    ) -> String {
+        let transcript = transcriptPrompt(context.transcriptPassages)
+        let transcriptMarkers = transcriptSourceMarkers(
+            context.transcriptPassages)
+        let graph = graphPrompt(
+            facts: context.factPage.facts,
+            transcriptMarkers: transcriptMarkers)
+        return """
+            Transcript passages:
+            \(transcript.isEmpty ? "(none)" : transcript)
+
+            Typed source-backed facts:
+            \(graph.facts.isEmpty ? "(none)" : graph.facts)
+
+            Exact graph source segments:
+            \(graph.sources.isEmpty ? "(none)" : graph.sources)
+
+            Fact page disclosure:
+            \(factPageDisclosure(context.factPage))
+
+            Context selection disclosure:
+            \(selectionDisclosure(context.selection))
+
+            Question: \(question)
+
+            Answer with full sentences, in the same language as the question.
+            Cite only [T…] and [S…] exact segment markers after supported claims; never cite [F…] alone.
+            When complete=false, do not make exhaustive all/none claims.
+            """
+    }
+
+    private static func transcriptPrompt(_ passages: [RAGPassage]) -> String {
+        passages.enumerated().map { index, passage in
+            "[T\(index + 1)] (\(passage.meetingTitle), "
+                + "\(timestamp(passage.timestamp))) \(passage.text)"
+        }.joined(separator: "\n")
+    }
+
+    /// Production calls `make` only after `isFactAwareReady`, which rejects
+    /// duplicate segment IDs. Earliest-marker resolution keeps this pure
+    /// formatter total for focused tests that intentionally bypass admission.
+    private static func transcriptSourceMarkers(
+        _ passages: [RAGPassage]
+    ) -> [UUID: String] {
+        Dictionary(
+            passages.enumerated().compactMap { index, passage in
+                passage.segmentID.map { ($0, "T\(index + 1)") }
+            },
+            uniquingKeysWith: { first, _ in first })
+    }
+
+    private static func graphPrompt(
+        facts: [RAGFact],
+        transcriptMarkers: [UUID: String]
+    ) -> (facts: String, sources: String) {
+        let graphSources = uniqueGraphSources(facts).filter { source in
+            source.segmentID.map { transcriptMarkers[$0] == nil } ?? false
+        }
+        let sourceMarkers = Dictionary(
+            graphSources.enumerated().compactMap { index, passage in
+                passage.segmentID.map { ($0, "S\(index + 1)") }
+            },
+            uniquingKeysWith: { first, _ in first })
+        let factPrompt = facts.enumerated().map { index, fact in
+            let sources = fact.sources.compactMap { source in
+                source.segmentID.flatMap { segmentID in
+                    transcriptMarkers[segmentID] ?? sourceMarkers[segmentID]
+                }
+            }
+            let primary = (
+                transcriptMarkers[fact.primarySourceSegmentID]
+                    ?? sourceMarkers[fact.primarySourceSegmentID]
+            ).map { "[\($0)]" } ?? "[missing]"
+            let sourceList = sources.map { "[\($0)]" }.joined(separator: ", ")
+            return "[F\(index + 1)] relation=\(fact.kind.rawValue); "
+                + "status=\(fact.status.rawValue); "
+                + "subject=\"\(oneLine(fact.subjectText))\"; "
+                + "object=\"\(oneLine(fact.objectText))\"; "
+                + "occurredAt=\(isoDate(fact.occurredAt)); "
+                + "primarySource=\(primary); sources=\(sourceList)"
+        }.joined(separator: "\n")
+        let sourcePrompt = graphSources.enumerated().map { index, passage in
+            "[S\(index + 1)] (\(passage.meetingTitle), "
+                + "\(timestamp(passage.timestamp))) \(passage.text)"
+        }.joined(separator: "\n")
+        return (factPrompt, sourcePrompt)
+    }
+
+    private static func factPageDisclosure(_ page: RAGFactPage) -> String {
+        "complete=\(page.isComplete); "
+            + "hasMore=\(page.hasMore); "
+            + "projectionGeneration=\(page.projectionGeneration); "
+            + "omittedStale=\(page.omittedStaleCount); "
+            + "omittedUnavailable=\(page.omittedUnavailableCount); "
+            + "selectionOmitted=\(page.selectionOmittedCount)"
+    }
+
+    private static func selectionDisclosure(
+        _ selection: RAGAnswerSelectionDisclosure
+    ) -> String {
+        "transcriptCandidates=\(selection.transcriptCandidateCount); "
+            + "selectedTranscript=\(selection.selectedTranscriptCount); "
+            + "graphFactCandidates=\(selection.graphFactCandidateCount); "
+            + "selectedGraphFacts=\(selection.selectedGraphFactCount); "
+            + "additionalGraphSources="
+            + "\(selection.additionalGraphSourceCount); "
+            + "omittedGraphFacts=\(selection.omittedGraphFactCount)"
+    }
+
+    private static func timestamp(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds.rounded()))
+        return String(format: "%02d:%02d", total / 60, total % 60)
+    }
+
+    private static func uniqueGraphSources(_ facts: [RAGFact]) -> [RAGPassage] {
+        var seen: Set<UUID> = []
+        var sources: [RAGPassage] = []
+        for fact in facts {
+            for source in fact.sources {
+                guard let segmentID = source.segmentID,
+                      seen.insert(segmentID).inserted
+                else { continue }
+                sources.append(source)
+            }
+        }
+        return sources
+    }
+
+    private static func oneLine(_ text: String) -> String {
+        text.split(whereSeparator: \.isNewline).joined(separator: " ")
+    }
+
+    private static func isoDate(_ date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
+    }
+}
+
 public enum RAGFusion {
     /// Reciprocal-rank fusion of the lexical (FTS) and semantic result
     /// lists: score(item) = Σ 1/(60 + rank). Items found by both climbs;
@@ -254,23 +413,6 @@ import FoundationModels
 /// not in the passages is "no lo encuentro".
 @available(macOS 26.0, iOS 26.0, *)
 public struct RAGAnswerer: RAGTextAnswering {
-    static let answerInstructions = RAGAnswerPrompt.instructions
-
-    static let factAnswerInstructions = """
-        You answer questions about the user's own meetings using ONLY the numbered
-        exact context segments and typed facts.
-        \(PromptFactory.sourceMaterialGuard())
-        Write a direct answer of one to three full sentences — never output a bare citation.
-        Typed facts describe allowed relationships, but every answer claim must cite
-        one or more exact source-segment markers.
-        Never cite a fact marker by itself and never treat repeated graph
-        relationships as stronger transcript relevance.
-        After each claim, add the marker of the exact segment that supports it, e.g. "… media hora de latencia [T2]."
-        If the fact-page disclosure says the page is incomplete, never claim that
-        the result covers all or none of the user's meetings.
-        If the context does not contain the answer, say so plainly — never guess.
-        """
-
     public init() {}
 
     public func answer(question: String, passages: [RAGPassage]) async throws -> String {
@@ -285,7 +427,8 @@ public struct RAGAnswerer: RAGTextAnswering {
             question: question,
             passages: passages)
 
-        let session = LanguageModelSession(instructions: Self.answerInstructions)
+        let session = LanguageModelSession(
+            instructions: RAGAnswerPrompt.instructions)
         return try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(
                 to: prompt.user,
@@ -313,7 +456,8 @@ public struct RAGAnswerer: RAGTextAnswering {
         let prompt = try RAGAnswerPrompt.make(
             question: question,
             passages: passages)
-        let session = LanguageModelSession(instructions: Self.answerInstructions)
+        let session = LanguageModelSession(
+            instructions: RAGAnswerPrompt.instructions)
         return try await IntelligenceScheduler.shared.run(.interactive) {
             let stream = session.streamResponse(
                 to: prompt.user,
@@ -425,9 +569,11 @@ public struct RAGAnswerer: RAGTextAnswering {
                 "RAG fact context lacks exact source provenance")
         }
 
-        let prompt = Self.contextPrompt(question: question, context: context)
+        let prompt = RAGFactAnswerPrompt.make(
+            question: question,
+            context: context)
         let session = LanguageModelSession(
-            instructions: Self.factAnswerInstructions)
+            instructions: RAGFactAnswerPrompt.instructions)
         return try await IntelligenceScheduler.shared.run(.interactive) {
             try await session.respond(
                 to: prompt,
@@ -436,119 +582,6 @@ public struct RAGAnswerer: RAGTextAnswering {
                     maximumResponseTokens: 500)
             ).content
         }
-    }
-
-    static func contextPrompt(
-        question: String,
-        context: RAGAnswerContext
-    ) -> String {
-        let transcript = Self.transcriptPrompt(context.transcriptPassages)
-        let transcriptMarkers = Self.transcriptSourceMarkers(
-            context.transcriptPassages)
-        let graph = Self.graphPrompt(
-            facts: context.factPage.facts,
-            transcriptMarkers: transcriptMarkers)
-        return """
-            Transcript passages:
-            \(transcript.isEmpty ? "(none)" : transcript)
-
-            Typed source-backed facts:
-            \(graph.facts.isEmpty ? "(none)" : graph.facts)
-
-            Exact graph source segments:
-            \(graph.sources.isEmpty ? "(none)" : graph.sources)
-
-            Fact page disclosure:
-            \(Self.factPageDisclosure(context.factPage))
-
-            Context selection disclosure:
-            \(Self.selectionDisclosure(context.selection))
-
-            Question: \(question)
-
-            Answer with full sentences, in the same language as the question.
-            Cite only [T…] and [S…] exact segment markers after supported claims; never cite [F…] alone.
-            When complete=false, do not make exhaustive all/none claims.
-            """
-    }
-
-    private static func transcriptPrompt(_ passages: [RAGPassage]) -> String {
-        passages.enumerated().map { index, passage in
-            "[T\(index + 1)] (\(passage.meetingTitle), "
-                + "\(Self.timestamp(passage.timestamp))) \(passage.text)"
-        }.joined(separator: "\n")
-    }
-
-    /// `answer` only builds a prompt after `isFactAwareReady`, which rejects
-    /// duplicate segment IDs, so no collision reaches this in production.
-    /// Resolving one to the earliest marker rather than trapping keeps prompt
-    /// construction total for the internal callers that skip that gate.
-    private static func transcriptSourceMarkers(
-        _ passages: [RAGPassage]
-    ) -> [UUID: String] {
-        Dictionary(
-            passages.enumerated().compactMap { index, passage in
-                passage.segmentID.map { ($0, "T\(index + 1)") }
-            },
-            uniquingKeysWith: { first, _ in first })
-    }
-
-    private static func graphPrompt(
-        facts: [RAGFact],
-        transcriptMarkers: [UUID: String]
-    ) -> (facts: String, sources: String) {
-        let graphSources = Self.uniqueGraphSources(facts).filter { source in
-            source.segmentID.map { transcriptMarkers[$0] == nil } ?? false
-        }
-        let sourceMarkers = Dictionary(
-            graphSources.enumerated().compactMap { index, passage in
-                passage.segmentID.map { ($0, "S\(index + 1)") }
-            },
-            uniquingKeysWith: { first, _ in first })
-        let factPrompt = facts.enumerated().map { index, fact in
-            let sources = fact.sources.compactMap { source in
-                source.segmentID.flatMap { segmentID in
-                    transcriptMarkers[segmentID] ?? sourceMarkers[segmentID]
-                }
-            }
-            let primary = (
-                transcriptMarkers[fact.primarySourceSegmentID]
-                    ?? sourceMarkers[fact.primarySourceSegmentID]
-            ).map { "[\($0)]" } ?? "[missing]"
-            let sourceList = sources.map { "[\($0)]" }.joined(separator: ", ")
-            return "[F\(index + 1)] relation=\(fact.kind.rawValue); "
-                + "status=\(fact.status.rawValue); "
-                + "subject=\"\(Self.oneLine(fact.subjectText))\"; "
-                + "object=\"\(Self.oneLine(fact.objectText))\"; "
-                + "occurredAt=\(Self.isoDate(fact.occurredAt)); "
-                + "primarySource=\(primary); sources=\(sourceList)"
-        }.joined(separator: "\n")
-        let sourcePrompt = graphSources.enumerated().map { index, passage in
-            "[S\(index + 1)] (\(passage.meetingTitle), "
-                + "\(Self.timestamp(passage.timestamp))) \(passage.text)"
-        }.joined(separator: "\n")
-        return (factPrompt, sourcePrompt)
-    }
-
-    private static func factPageDisclosure(_ page: RAGFactPage) -> String {
-        "complete=\(page.isComplete); "
-            + "hasMore=\(page.hasMore); "
-            + "projectionGeneration=\(page.projectionGeneration); "
-            + "omittedStale=\(page.omittedStaleCount); "
-            + "omittedUnavailable=\(page.omittedUnavailableCount); "
-            + "selectionOmitted=\(page.selectionOmittedCount)"
-    }
-
-    private static func selectionDisclosure(
-        _ selection: RAGAnswerSelectionDisclosure
-    ) -> String {
-        "transcriptCandidates=\(selection.transcriptCandidateCount); "
-            + "selectedTranscript=\(selection.selectedTranscriptCount); "
-            + "graphFactCandidates=\(selection.graphFactCandidateCount); "
-            + "selectedGraphFacts=\(selection.selectedGraphFactCount); "
-            + "additionalGraphSources="
-            + "\(selection.additionalGraphSourceCount); "
-            + "omittedGraphFacts=\(selection.omittedGraphFactCount)"
     }
 
     /// Multi-query expansion for cross-lingual retrieval: the library is
@@ -586,31 +619,5 @@ public struct RAGAnswerer: RAGTextAnswering {
         return [question] + variants.prefix(2)
     }
 
-    static func timestamp(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%02d:%02d", total / 60, total % 60)
-    }
-
-    static func uniqueGraphSources(_ facts: [RAGFact]) -> [RAGPassage] {
-        var seen: Set<UUID> = []
-        var sources: [RAGPassage] = []
-        for fact in facts {
-            for source in fact.sources {
-                guard let segmentID = source.segmentID,
-                      seen.insert(segmentID).inserted
-                else { continue }
-                sources.append(source)
-            }
-        }
-        return sources
-    }
-
-    static func oneLine(_ text: String) -> String {
-        text.split(whereSeparator: \.isNewline).joined(separator: " ")
-    }
-
-    static func isoDate(_ date: Date) -> String {
-        ISO8601DateFormatter().string(from: date)
-    }
 }
 #endif

@@ -296,26 +296,18 @@ final class EnglishSourceTests: XCTestCase {
             return line.contains("habitual") || line.contains("balance de habla")
                 || line.contains("pregunta")
         }
-        if relative == "Sources/IntelligenceKit/PromptFactory.swift", line.contains("Spanish (español)") {
-            return true
+        if relative == "Sources/IntelligenceKit/PromptFactory.swift" {
+            // Provider-neutral prompt data includes bilingual few-shot examples
+            // so chapter and meeting titles preserve the source language.
+            return line.contains("Spanish (español)")
+                || line.contains("repaso del presupuesto de transcripción")
+                || line.contains("resumen sobre el presupuesto de transcripción")
         }
         if relative == "Sources/IntelligenceKit/SummaryFingerprint.swift", line.contains("José") {
             return true
         }
         if relative == "Sources/TranscriptionKit/VocabularyPrompt.swift",
             line.contains("En esta reunión hablamos de ") {
-            return true
-        }
-        if relative == "Sources/IntelligenceKit/TitleSuggester.swift",
-            line.contains("resumen sobre el presupuesto") {
-            // Intentional Spanish few-shot example: titles must come out in
-            // the summary's language, so the prompt shows both languages.
-            return true
-        }
-        if relative == "Sources/IntelligenceKit/ChapterTitler.swift",
-            line.contains("presupuesto de transcripción") {
-            // Intentional Spanish few-shot: chapter titles must come out in
-            // the transcript's language, so the prompt shows both.
             return true
         }
         return false

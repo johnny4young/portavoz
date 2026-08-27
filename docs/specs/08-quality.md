@@ -2379,6 +2379,51 @@ expected failures in 1,095.145 seconds of test time and 1,119 seconds wall
 budget passing. This remains local Tahoe-family evidence rather than proof that
 the hosted Sequoia signal is closed.
 
+Raw first-attempt logs from both `841045c` and `a7bebfe7` later corrected the
+initial location: XCTest stdout had drained after the signal line. In both
+independent Sequoia runs, all four observation tests completed and the final
+started case without a pass record was
+`MeetingMaterialPromptGuardTests.testTypedRAGContextKeepsFactsAndExactSourcesInSeparateMarkers`.
+That test lived in a class annotated for macOS 26 and called a pure static
+formatter on `RAGAnswerer`, yet SwiftPM/XCTest still discovered and ran it on
+macOS 15 because `canImport(FoundationModels)` described the selected SDK, not
+the host runtime. With no crash report, the exact Swift-runtime mechanism is
+not claimed. The repeated location does prove that the GRDB observation bridge
+was not the failing test and remains an independent structural hardening.
+
+D406 moves all deterministic prompt instructions used by this guard, plus the
+complete fact-aware formatter, below the Foundation Models import/availability
+boundary. The production adapters consume those same pure values; the package
+test contains no Foundation Models conditional or macOS-26 adapter reference.
+One architecture ratchet pins both directions. Focused prompt coverage passed
+6/6 and both affected architecture cases passed on the local macOS 26.6 Swift
+6.3.3 toolchain. Moving the two intentional Spanish few-shot lines also moved
+their English-source policy identity; the first full run correctly rejected the
+stale path exceptions. The exception now admits only those exact lines at
+`PromptFactory`, its focused policy regression passes, and the post-fix package
+run passes 2,780 tests with 15 explicit skips and zero failures in 116.988
+seconds of test time (117.188 seconds total). This is a reasoned portability
+repair, not a claim that the hosted signal is closed; one first-attempt
+exact-head Sequoia run remains the required proof.
+
+The minimum-safe feature selector mapped the six changed IntelligenceKit
+adapters/authorities to 39 real-app English journeys. One shared build passed
+39/39 with zero failures, skips, or expected failures in 297.832 seconds of
+test time; the content-free runtime receipt reported a 19.561-second p95 and
+passed its scoped budget. The read-only preflight stayed clear for both samples.
+This is local Tahoe-family evidence, not hosted Sequoia proof.
+
+The independently running hosted UI gate for the preceding `a7bebfe7` head
+completed its 106-case English catalogue rather than crashing. It failed four
+unique journeys with nine assertion/follow-on failures: Interview Assist
+objective visibility, Commitment Inbox evidence/review visibility, transcript-
+correction sheet controls, and structural-correction split controls. The same
+run took 1,637.884 seconds with a 37.295-second p95, exceeding both the
+1,300-second suite budget and the 30-second p95 budget. These are exact
+launch-agent-host accessibility/viewport and runtime findings; local green
+evidence does not erase them, retries are not acceptance, and a separate
+bounded portability repair remains required.
+
 Full suites and the dedicated receipt-focus journey snapshot the host's global
 `AppleKeyboardUIMode`, enable Keyboard Navigation for the test process, and
 restore either the exact prior integer or the absence of the key through a

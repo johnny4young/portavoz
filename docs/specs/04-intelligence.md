@@ -4,6 +4,11 @@ Status: implemented and verified (ES summary of EN meeting with glossary intact 
 
 D390 adds bounded source-closed proactive meeting assistance.
 
+D406 keeps deterministic meeting prompt instructions and fact-aware RAG
+formatting outside the Foundation Models availability boundary. The pure
+contracts remain executable on Sequoia; macOS-26-gated adapters own only model
+availability, session construction, and generation.
+
 D239 additionally owns explicit evidence-first commitment admission in Meeting
 Detail. D243 adds an explicit Application/Storage link boundary for a later
 meeting's active evidence. D244 adds a pure PortavozCore link ranker over
@@ -583,6 +588,14 @@ cross-lane-inconsistent source provenance fails before model execution. No
 free-form Ask, CLI, MCP, command-palette, or meeting-brief consumer invokes
 this boundary. The separate D361–D366 explorers render validated typed
 facts directly and never call `answerBundle`.
+
+`RAGFactAnswerPrompt` owns this formatting below the Foundation Models import
+and availability boundary. The Foundation Models adapter passes its exact
+result to `LanguageModelSession`, while the package contract tests call only
+the pure formatter. Chapter, brief, meeting-type, and title instructions follow
+the same provider-neutral pattern through `PromptFactory`, so the Sequoia lane
+does not need to instantiate macOS-26-only adapter metadata to validate prompt-
+injection defenses.
 
 ## Bounded post-RRF fact-aware selection (D286)
 

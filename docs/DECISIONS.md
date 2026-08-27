@@ -15172,3 +15172,40 @@ evidence. Until authorized operators complete the four real cells, no
 assistive receipt exists and Portavoz 1.0.0 remains blocked. This decision
 performs no signing, notarization, distribution, CloudKit/account operation,
 remote mutation, or field claim.
+
+## D406 — Keep prompt contracts below model availability (Aug 2026)
+
+**Context:** the Sequoia compatibility lane builds with Xcode 26.3, so
+`canImport(FoundationModels)` is true even though the macOS 15 runtime cannot
+run Foundation Models. SwiftPM/XCTest discovered a test class annotated
+`@available(macOS 26.0, *)` and executed its synchronous methods anyway. Two
+independent first-attempt hosted runs ended with signal 11 after starting the
+same typed-RAG prompt-formatting case. Buffered XCTest output initially made an
+earlier GRDB observation suite look causal; comparison of both raw logs proved
+that suite had completed. No crash report identified the exact Swift-runtime
+fault, so changing production cancellation again or simply skipping the prompt
+contract on Sequoia would be unsupported.
+
+**Decision:** deterministic meeting prompt instructions and fact-aware context
+formatting are provider-neutral contracts, not Foundation Models adapter
+behavior. `PromptFactory` owns the chapter, brief, meeting-type, and title
+instructions. `RAGAnswerPrompt` retains transcript-only admission and
+`RAGFactAnswerPrompt` owns the typed transcript/fact/source markers and page/
+selection disclosure. All compile before the Foundation Models import and
+availability boundary. The macOS-26 adapter consumes these exact values and
+owns only model availability, `LanguageModelSession`, scheduling, streaming,
+and generation.
+
+Package prompt tests reference only those pure authorities and run on every
+supported macOS runtime; they never name an availability-gated adapter. A
+source-level architecture ratchet requires each adapter to use its pure
+authority, keeps fact-aware formatting before `canImport(FoundationModels)`,
+and rejects reintroducing model-adapter references or a Foundation Models
+conditional in the prompt contract suite.
+
+**Consequences:** prompt bytes, marker semantics, model choice, generation,
+egress, UI, storage, and the deployment floor do not change. Sequoia can verify
+the same injection guard and exact-source prompt construction as Tahoe without
+loading weak-linked model metadata. Local success establishes structure only;
+the first fresh exact-head hosted Sequoia run remains the causal acceptance
+gate, and physical Sequoia/Tahoe model quality remains separate field evidence.
