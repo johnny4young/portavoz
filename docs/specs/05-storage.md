@@ -1416,11 +1416,16 @@ the more often it happened. `librarySegmentRegion` covers `meetingID`,
 intersects neither; anything either projection shows still does, including an
 insert or delete. An architecture ratchet refuses a whole-table `segment`
 region in that file. Each source uses newest-value buffering and
-cancels its observation task when the consumer ends. The three persistent
-sidebar sources fail independently, so corrupt meeting projection data does
-not prevent open-item or trash reads from remaining available. Meeting rows
-retain the released partial fallback: if the meeting list is valid but voice
-mix cannot be decoded, rows publish with empty mixes and one inline failure.
+pulls directly from GRDB's async iterator. The shared adapter adds no forwarding
+task or continuation teardown cycle: its consumer owns the only upstream
+iterator, so ending that consumer releases GRDB's cancellable. A short lock
+serializes iterator ownership without crossing an `await`; invalid concurrent
+iteration fails with a typed error instead of racing or trapping. The three
+persistent sidebar sources fail independently, so corrupt meeting projection
+data does not prevent open-item or trash reads from remaining available.
+Meeting rows retain the released partial fallback: if the meeting list is valid
+but voice mix cannot be decoded, rows publish with empty mixes and one inline
+failure.
 
 The existing one-shot `meetings`, `voiceMixes`, `openActionItems`,
 `deletedMeetings`, and `search` APIs share private query helpers with the

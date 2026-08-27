@@ -7814,6 +7814,38 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(trash.contains("services."))
     }
 
+    func testGRDBObservationLifetimeBelongsToTheConsumerIterator() throws {
+        let adapter = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+Observation.swift")
+        let library = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+LibraryObservation.swift")
+
+        for required in [
+            "AsyncThrowingStream(unfolding:",
+            "ObservedStreamIterator(values.makeAsyncIterator())",
+            "Iterator: AsyncIteratorProtocol & GRDBSendableMetatype",
+            "private let lock = NSLock()",
+            "guard var iterator = takeIterator()",
+            "restore(iterator)",
+        ] {
+            XCTAssertTrue(
+                adapter.contains(required),
+                "consumer-owned GRDB adapter is missing \(required)")
+        }
+        for forbidden in [
+            "Task {",
+            "continuation.onTermination",
+            "for try await value in values",
+        ] {
+            XCTAssertFalse(
+                adapter.contains(forbidden),
+                "GRDB observations must not regain forwarding bridge \(forbidden)")
+        }
+        XCTAssertFalse(
+            library.contains("func observedStream"),
+            "the shared lifetime adapter must not return to a feature file")
+    }
+
     func testResidentMenuBarUsesOneScopedReadOwner() throws {
         let readModels = try Self.contents(
             of: "Sources/ApplicationKit/MenuBarReadModels.swift")

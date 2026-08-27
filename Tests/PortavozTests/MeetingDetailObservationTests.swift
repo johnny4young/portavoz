@@ -1,10 +1,29 @@
 import Foundation
+import GRDB
 import PortavozCore
 import XCTest
 
 @testable import StorageKit
 
 final class MeetingDetailObservationTests: XCTestCase {
+    func testObservedStreamReleasesGRDBIteratorWithItsConsumer() async throws {
+        let store = try MeetingStore.inMemory()
+        let cancelled = expectation(description: "GRDB observation cancelled")
+        var token: ObservationLifetimeToken? = ObservationLifetimeToken()
+        weak let releasedToken = token
+
+        try await consumeOneObservation(
+            from: store,
+            retaining: try XCTUnwrap(token),
+            onCancellation: { cancelled.fulfill() })
+        token = nil
+
+        await fulfillment(of: [cancelled], timeout: 1)
+        XCTAssertNil(
+            releasedToken,
+            "Dropping the consumer must release GRDB's observation iterator")
+    }
+
     func testProcessingObservationPublishesDurableRecoveryState() async throws {
         let store = try MeetingStore.inMemory()
         let meeting = Meeting(title: "Recovery", startedAt: Date())
@@ -224,6 +243,23 @@ final class MeetingDetailObservationTests: XCTestCase {
         XCTAssertEqual(newest?.draft.markdown, "Standup")
         XCTAssertEqual(newest?.version, 1)
     }
+}
+
+private func consumeOneObservation(
+    from store: MeetingStore,
+    retaining token: ObservationLifetimeToken,
+    onCancellation: @escaping @Sendable () -> Void
+) async throws {
+    let observation = ValueObservation
+        .tracking { _ in token.marker }
+        .handleEvents(didCancel: onCancellation)
+    var iterator = store.observedStream(observation).makeAsyncIterator()
+    let observed = try await iterator.next()
+    XCTAssertEqual(observed, token.marker)
+}
+
+private final class ObservationLifetimeToken: @unchecked Sendable {
+    let marker = 7
 }
 
 private func nextCore(

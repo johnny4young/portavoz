@@ -172,29 +172,3 @@ private extension MeetingStore {
         }
     }
 }
-
-extension MeetingStore {
-    func observedStream<Reducer>(
-        _ observation: ValueObservation<Reducer>
-    ) -> AsyncThrowingStream<Reducer.Value, Error>
-    where Reducer: ValueReducer, Reducer.Value: Sendable {
-        let values = observation.values(
-            in: database,
-            bufferingPolicy: .bufferingNewest(1))
-        return AsyncThrowingStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
-            let task = Task {
-                do {
-                    for try await value in values {
-                        continuation.yield(value)
-                    }
-                    continuation.finish()
-                } catch is CancellationError {
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-            continuation.onTermination = { _ in task.cancel() }
-        }
-    }
-}

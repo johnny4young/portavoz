@@ -2354,6 +2354,31 @@ Tahoe-family evidence. Because the repaired symptom existed only under a
 launch-agent-owned hosted runner, exact-head hosted XCUITest remains required
 before the repair is considered cross-host qualified.
 
+The first hosted CI attempt for that exact local-network repair passed lint,
+repository hygiene, and the complete current-SDK build/test lane. Its Sequoia
+build also passed, but the Swift 6.2 process later exited with signal 11 after
+all `MeetingDetailObservationTests` assertions had reported green. There was no
+assertion failure or crash stack, so this evidence does not prove a GRDB leak.
+It did expose a redundant shared forwarding `Task` around GRDB's
+`AsyncValueObservation`, whose documented cancellation lifetime belongs to its
+iterator. StorageKit now uses one pull-through `AsyncThrowingStream` adapter:
+dropping a consumer releases the sole upstream iterator and cancellable. A
+focused lifecycle test observes the actual GRDB cancellation callback and
+released fetch closure, while an architecture ratchet rejects the former
+task/continuation bridge. Local Swift 6.3 also released the old bridge, so the
+runtime association remains explicitly unclaimed until a fresh exact-head
+Sequoia lane judges the structured implementation. The structured closure
+passed the current-SDK warnings-as-errors build in 20.21 seconds, all 2,779
+Swift tests with 15 explicit environment/model skips and zero failures in
+128.195 seconds, strict SwiftLint over 741 files, repository hygiene, and all
+21 affected observation tests. Because the shared StorageKit path expands the
+minimum-safe UI scope fail-safe, the mandatory real-app gate exercised all
+106 English journeys from one build: 106 passed with zero failures, skips, or
+expected failures in 1,095.145 seconds of test time and 1,119 seconds wall
+(7.227-second p50, 19.541-second p95, 91.389-second maximum), with the runtime
+budget passing. This remains local Tahoe-family evidence rather than proof that
+the hosted Sequoia signal is closed.
+
 Full suites and the dedicated receipt-focus journey snapshot the host's global
 `AppleKeyboardUIMode`, enable Keyboard Navigation for the test process, and
 restore either the exact prior integer or the absence of the key through a
