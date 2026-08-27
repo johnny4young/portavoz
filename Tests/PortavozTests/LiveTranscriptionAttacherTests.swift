@@ -181,7 +181,7 @@ final class LiveTranscriptionAttacherTests: XCTestCase {
 
 @MainActor
 final class LiveTranslationStateTests: XCTestCase {
-    func testChangingTargetCannotReuseTranslationsFromThePreviousLanguage() {
+    func testChangingTargetCannotReuseTranslationsFromThePreviousLanguage() async {
         let controller = RecordingController()
         let segmentID = UUID()
         let unsupportedID = UUID()
@@ -201,7 +201,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertEqual(controller.translationState, .waitingForTranscript)
     }
 
-    func testChangingSourceLaneRequiresFreshDownloadConsent() {
+    func testChangingSourceLaneRequiresFreshDownloadConsent() async {
         let controller = RecordingController()
         controller.translationTarget = "en"
         controller.beginLiveTranslationPair(LiveTranslationPair(source: "es", target: "en"))
@@ -213,7 +213,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertFalse(controller.translationDownloadApproved)
     }
 
-    func testDisablingTranslationClearsStateAndRenderedRows() {
+    func testDisablingTranslationClearsStateAndRenderedRows() async {
         let controller = RecordingController()
         controller.translationTarget = "es"
         controller.translations[UUID()] = "Texto"
@@ -225,7 +225,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertEqual(controller.translationState, .off)
     }
 
-    func testCanceledPreviousTargetCannotPublishLateTranslationsOrState() {
+    func testCanceledPreviousTargetCannotPublishLateTranslationsOrState() async {
         let controller = RecordingController()
         let segmentID = UUID()
         controller.translationTarget = "es"
@@ -242,7 +242,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertEqual(controller.translationState, .waitingForTranscript)
     }
 
-    func testCanceledPreviousSourceCannotPublishIntoNewPairWithSameTarget() {
+    func testCanceledPreviousSourceCannotPublishIntoNewPairWithSameTarget() async {
         let controller = RecordingController()
         let segmentID = UUID()
         controller.translationTarget = "en"
@@ -260,7 +260,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertEqual(controller.translationState, .waitingForTranscript)
     }
 
-    func testVisibleTranslationStatesDescribeAutomaticFailureRetry() {
+    func testVisibleTranslationStatesDescribeAutomaticFailureRetry() async {
         XCTAssertEqual(
             LiveTranslationState.waitingForTranscript.statusMessageKey,
             "Live translation will start as soon as captions are available.")
@@ -276,7 +276,7 @@ final class LiveTranslationStateTests: XCTestCase {
         XCTAssertNil(LiveTranslationState.active.statusMessageKey)
     }
 
-    func testWaitingTranslationStatusYieldsToTerminalCaptionFailure() {
+    func testWaitingTranslationStatusYieldsToTerminalCaptionFailure() async {
         XCTAssertTrue(LiveTranslationState.waitingForTranscript.shouldPresentStatus(
             liveTranscriptState: .preparing))
         XCTAssertFalse(LiveTranslationState.waitingForTranscript.shouldPresentStatus(
@@ -291,7 +291,7 @@ final class LiveTranslationStateTests: XCTestCase {
             liveTranscriptState: .available))
     }
 
-    func testUnsupportedLaneRemainsVisibleAfterAnotherLaneSucceeds() {
+    func testUnsupportedLaneRemainsVisibleAfterAnotherLaneSucceeds() async {
         let controller = RecordingController()
         controller.translationTarget = "en"
         let unsupportedPair = LiveTranslationPair(source: "zu", target: "en")
@@ -745,14 +745,14 @@ final class TranscriptFocusVisualPolicyTests: XCTestCase {
 
 @MainActor
 final class RecordingSystemCaptureHealthPresentationTests: XCTestCase {
-    func testOnlyProlongedRecoverableOutageSuggestsCallMayHaveEnded() {
+    func testOnlyProlongedRecoverableOutageSuggestsCallMayHaveEnded() async {
         XCTAssertTrue(
             RecordingSystemCaptureHealth.stalled(secondsWithoutFrames: 120)
                 .shouldSuggestStop)
         XCTAssertFalse(RecordingSystemCaptureHealth.failed.shouldSuggestStop)
     }
 
-    func testCompactHUDDistinguishesTerminalFailureFromRecoverableInterruption() {
+    func testCompactHUDDistinguishesTerminalFailureFromRecoverableInterruption() async {
         XCTAssertEqual(
             RecordingSystemCaptureHealth.stalled(secondsWithoutFrames: 8)
                 .compactStatusMessageKey,

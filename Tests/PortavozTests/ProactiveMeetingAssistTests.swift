@@ -329,7 +329,7 @@ final class ProactiveMeetingAssistPolicyTests: XCTestCase {
 
 @MainActor
 final class RecordingProactiveAssistModelTests: XCTestCase {
-    func testExplicitOptInPauseResumeDisableAndResetAreSynchronous() {
+    func testExplicitOptInPauseResumeDisableAndResetAreSynchronous() async {
         let model = RecordingProactiveAssistModel()
         let objective = ProactiveAssistObjective(id: UUID(), text: "Confirm Q3 budget")
         let captions = conversation(count: 18)
@@ -370,7 +370,7 @@ final class RecordingProactiveAssistModelTests: XCTestCase {
             "a new recording lifecycle may emit the same objective identity again")
     }
 
-    func testDismissAndReenableCannotRepeatTheSameSignal() throws {
+    func testDismissAndReenableCannotRepeatTheSameSignal() async throws {
         let model = RecordingProactiveAssistModel()
         let objective = ProactiveAssistObjective(id: UUID(), text: "Confirm Q3 budget")
         let captions = conversation(count: 18)
@@ -383,7 +383,7 @@ final class RecordingProactiveAssistModelTests: XCTestCase {
         XCTAssertTrue(model.suggestions.isEmpty)
     }
 
-    func testVisibleCardsStayCappedAndObjectiveClosureRetractsItsCard() {
+    func testVisibleCardsStayCappedAndObjectiveClosureRetractsItsCard() async {
         let model = RecordingProactiveAssistModel()
         let objectives = (0..<4).map {
             ProactiveAssistObjective(id: UUID(), text: "Objective \($0)")

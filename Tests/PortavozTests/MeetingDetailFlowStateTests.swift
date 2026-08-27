@@ -6,7 +6,7 @@ import XCTest
 
 @MainActor
 final class MeetingDetailFlowStateTests: XCTestCase {
-    func testRenameMeetingOwnsDraftAndReplacesTheActiveSheetRoute() {
+    func testRenameMeetingOwnsDraftAndReplacesTheActiveSheetRoute() async {
         let flow = MeetingDetailFlowState()
         flow.sheet = .recap
 
@@ -16,7 +16,7 @@ final class MeetingDetailFlowStateTests: XCTestCase {
         XCTAssertEqual(flow.renameMeetingTitle, "Weekly planning")
     }
 
-    func testEachPresentationLaneKeepsAtMostOneActiveRoute() {
+    func testEachPresentationLaneKeepsAtMostOneActiveRoute() async {
         let flow = MeetingDetailFlowState()
 
         flow.sheet = .recap
@@ -29,7 +29,7 @@ final class MeetingDetailFlowStateTests: XCTestCase {
         XCTAssertEqual(flow.alert?.id, "failure")
     }
 
-    func testRenameSpeakerCapturesTheSpeakerAndPrefillsItsName() {
+    func testRenameSpeakerCapturesTheSpeakerAndPrefillsItsName() async {
         let flow = MeetingDetailFlowState()
         let speaker = Speaker(
             meetingID: MeetingID(),
@@ -43,7 +43,7 @@ final class MeetingDetailFlowStateTests: XCTestCase {
         XCTAssertEqual(flow.renameSpeakerName, "Ana")
     }
 
-    func testPresentingAnotherSpeakerReplacesTheRenamePayloadAndDraft() {
+    func testPresentingAnotherSpeakerReplacesTheRenamePayloadAndDraft() async {
         let flow = MeetingDetailFlowState()
         let meetingID = MeetingID()
         let first = Speaker(meetingID: meetingID, label: "S1", displayName: "Ana")
@@ -56,7 +56,7 @@ final class MeetingDetailFlowStateTests: XCTestCase {
         XCTAssertEqual(flow.renameSpeakerName, "")
     }
 
-    func testMirrorProjectionRequiresOptInCurrentMeetingAndConversationSignal() {
+    func testMirrorProjectionRequiresOptInCurrentMeetingAndConversationSignal() async {
         let detail = makeMirrorDetail(duration: 600, includeRemoteSpeaker: true)
 
         XCTAssertNil(MeetingDetailMirrorValues.qualifying(
@@ -84,7 +84,7 @@ final class MeetingDetailFlowStateTests: XCTestCase {
         XCTAssertEqual(values?.averageShare, 0.42)
     }
 
-    func testMirrorProjectionRejectsShortOrSingleSpeakerRecordings() {
+    func testMirrorProjectionRejectsShortOrSingleSpeakerRecordings() async {
         let short = makeMirrorDetail(duration: 120, includeRemoteSpeaker: true)
         let solo = makeMirrorDetail(duration: 600, includeRemoteSpeaker: false)
 
@@ -98,7 +98,7 @@ final class MeetingDetailFlowStateTests: XCTestCase {
         }
     }
 
-    func testPlaybackNavigationFocusesComposedEvidenceBeforePlaybackExists() {
+    func testPlaybackNavigationFocusesComposedEvidenceBeforePlaybackExists() async {
         let meetingID = MeetingID()
         let sourceID = UUID()
         let rowID = UUID()

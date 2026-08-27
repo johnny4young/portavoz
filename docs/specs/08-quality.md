@@ -2323,11 +2323,18 @@ provider behaves the same way.
 Sequoia's Xcode 26.3 image carries Swift 6.2.4, whose XCTest synchronous-test
 teardown can abort while releasing a `@MainActor` value with `isolated deinit`
 ([swiftlang/swift#87316](https://github.com/swiftlang/swift/issues/87316)).
-Ask Web presentation tests that own `AskModel` therefore use XCTest's async
-method convention even when their assertions are synchronous. This preserves
-the model's production cancellation deinitializer rather than weakening it for
-a test-runner defect; an architecture ratchet retains the workaround while
-Sequoia remains on the affected runtime.
+Every method in an `@MainActor XCTestCase` therefore uses XCTest's async method
+convention even when its assertions are synchronous. This preserves production
+cancellation deinitializers rather than weakening them for a test-runner defect;
+a repository-wide architecture ratchet rejects new synchronous methods in those
+test classes while Sequoia remains on the affected runtime.
+
+Tests for delayed recording-level delivery and post-sheet focus restoration do
+not sleep past a guessed host deadline. Their production owners inject a
+structured sleep operation with the real continuous-clock behavior as the
+default; tests use one cancellation-aware controlled suspension, observe the
+exact requested duration, and resume or cancel the exact pending call. This
+retains the real scheduling boundary while removing runner-load assumptions.
 
 Full suites and the dedicated receipt-focus journey snapshot the host's global
 `AppleKeyboardUIMode`, enable Keyboard Navigation for the test process, and

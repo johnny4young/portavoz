@@ -287,7 +287,7 @@ final class ReminderDraftModelTests: XCTestCase {
         XCTAssertNotNil(model.state.surfaceFailure)
     }
 
-    func testTargetBoundsOpaqueIdentityAndDisplayName() {
+    func testTargetBoundsOpaqueIdentityAndDisplayName() async {
         XCTAssertNotNil(AppReminderDraftTarget(
             identifier: String(
                 repeating: "x",

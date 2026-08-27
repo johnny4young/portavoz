@@ -96,7 +96,7 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertEqual(model.state.revision, 8)
     }
 
-    func testCorrectionRevisionMarksGeneratedSummaryAndCompanionTruthfullyStale() throws {
+    func testCorrectionRevisionMarksGeneratedSummaryAndCompanionTruthfullyStale() async throws {
         let fixture = MeetingDetailModelFixture()
         let correction = TranscriptCorrectionEvent(
             meetingID: fixture.meeting.id,

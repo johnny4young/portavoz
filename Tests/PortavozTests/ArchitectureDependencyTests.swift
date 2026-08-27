@@ -6097,7 +6097,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(settings.contains("skillReceiptFocus.clear()"))
         XCTAssertTrue(settings.contains("skillReceiptFocus.restoreAfterDismissal"))
         XCTAssertTrue(focusState.contains(
-            "try await Task.sleep(for: .milliseconds(200))"))
+            "try await sleep(.milliseconds(200))"))
         XCTAssertTrue(focusState.contains("restorationTask?.cancel()"))
         XCTAssertTrue(focusState.contains(
             "guard let self, restorationGeneration == generation"))
@@ -8475,6 +8475,32 @@ final class ArchitectureDependencyTests: XCTestCase {
         ] {
             XCTAssertTrue(try Self.contents(of: path).contains("D387"), path)
         }
+    }
+
+    func testMainActorXCTestMethodsStayAsyncForSequoiaCompatibility() throws {
+        XCTAssertEqual(
+            try Self.synchronousMainActorXCTestMethods(),
+            [],
+            "@MainActor XCTest methods must remain async while "
+                + "Sequoia carries swiftlang/swift#87316")
+    }
+
+    func testScheduledPresentationTestsControlSuspensionWithoutWallClockSleeps() throws {
+        let relay = try Self.contents(
+            of: "Sources/portavoz-app/RecordingLevelRelay.swift")
+        let focus = try Self.contents(
+            of: "Sources/portavoz-app/SettingsSkillReceiptFocusState.swift")
+        let relayTests = try Self.contents(
+            of: "Tests/PortavozTests/RecordingLevelRelayTests.swift")
+        let focusTests = try Self.contents(
+            of: "Tests/PortavozTests/SettingsSkillReceiptFocusStateTests.swift")
+
+        XCTAssertTrue(relay.contains("typealias Sleep = @Sendable"))
+        XCTAssertTrue(focus.contains("typealias Sleep = @Sendable"))
+        XCTAssertTrue(relayTests.contains("ControlledTestSleep"))
+        XCTAssertTrue(focusTests.contains("ControlledTestSleep"))
+        XCTAssertFalse(relayTests.contains("Task.sleep"))
+        XCTAssertFalse(focusTests.contains("Task.sleep"))
     }
 
     func testInterviewAssistRemainsPullBasedBoundedAndRecordingScoped() throws {
@@ -11451,6 +11477,92 @@ private extension ArchitectureDependencyTests {
                 let range = NSRange(source.startIndex..., in: source)
                 return regex.firstMatch(in: source, range: range) == nil ? nil : file
             }
+    }
+
+    static func synchronousMainActorXCTestMethods() throws -> [String] {
+        let root = repoRoot.appendingPathComponent("Tests/PortavozTests")
+        guard let enumerator = FileManager.default.enumerator(atPath: root.path) else {
+            throw CocoaError(.fileReadNoSuchFile)
+        }
+
+        return try enumerator.compactMap { $0 as? String }
+            .filter { $0.hasSuffix(".swift") }
+            .sorted()
+            .flatMap { file -> [String] in
+                let source = try String(
+                    contentsOf: root.appendingPathComponent(file),
+                    encoding: .utf8)
+                return synchronousMainActorXCTestMethods(
+                    in: source,
+                    file: file)
+            }
+    }
+
+    static func synchronousMainActorXCTestMethods(
+        in source: String,
+        file: String
+    ) -> [String] {
+        let lines = source.split(
+            separator: "\n",
+            omittingEmptySubsequences: false).map(String.init)
+        var violations: [String] = []
+        var lineIndex = 0
+
+        while lineIndex < lines.count {
+            guard lines[lineIndex].trimmingCharacters(in: .whitespaces)
+                == "@MainActor"
+            else {
+                lineIndex += 1
+                continue
+            }
+
+            var classIndex = lineIndex + 1
+            while classIndex < lines.count {
+                let trimmed = lines[classIndex]
+                    .trimmingCharacters(in: .whitespaces)
+                if trimmed.isEmpty || trimmed.hasPrefix("@") {
+                    classIndex += 1
+                    continue
+                }
+                break
+            }
+            guard classIndex < lines.count,
+                  lines[classIndex].contains("class "),
+                  lines[classIndex].contains(": XCTestCase"),
+                  let classEnd = lines[(classIndex + 1)...].firstIndex(of: "}")
+            else {
+                lineIndex += 1
+                continue
+            }
+
+            var methodIndex = classIndex + 1
+            while methodIndex < classEnd {
+                let line = lines[methodIndex]
+                guard line.hasPrefix("    func test"),
+                      !line.hasPrefix("        ")
+                else {
+                    methodIndex += 1
+                    continue
+                }
+
+                var declaration = line
+                while !declaration.contains("{") && methodIndex + 1 < classEnd {
+                    methodIndex += 1
+                    declaration += "\n" + lines[methodIndex]
+                }
+                if declaration.range(
+                    of: #"\basync\b"#,
+                    options: .regularExpression) == nil {
+                    let name = declaration
+                        .dropFirst("    func ".count)
+                        .prefix { $0 != "(" }
+                    violations.append("\(file):\(name)")
+                }
+                methodIndex += 1
+            }
+            lineIndex = classEnd + 1
+        }
+        return violations
     }
 }
 

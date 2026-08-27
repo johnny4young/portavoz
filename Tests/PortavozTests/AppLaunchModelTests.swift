@@ -5,7 +5,7 @@ import XCTest
 
 @MainActor
 final class AppLaunchModelTests: XCTestCase {
-    func testFailureProducesContentFreeDiagnosticWithoutConstructingNormalUI() throws {
+    func testFailureProducesContentFreeDiagnosticWithoutConstructingNormalUI() async throws {
         let workspace = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: workspace) }
         let databaseURL = workspace.appendingPathComponent(
@@ -94,7 +94,7 @@ final class AppLaunchModelTests: XCTestCase {
         XCTAssertFalse(leavesHiddenStage)
     }
 
-    func testSimulatedOpenFailureRequiresDisposableStore() {
+    func testSimulatedOpenFailureRequiresDisposableStore() async {
         let production = AppStorageIsolationPolicy(
             arguments: ["Portavoz", "-simulate-database-open-failure"])
         let disposable = AppStorageIsolationPolicy(

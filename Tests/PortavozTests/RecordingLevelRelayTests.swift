@@ -130,9 +130,11 @@ final class RecordingLevelBufferTests: XCTestCase {
 final class RecordingLevelRelayTests: XCTestCase {
     func testRelayPublishesOneLatestSnapshotPerCadenceWindow() async throws {
         let probe = RecordingLevelDeliveryProbe()
-        let relay = RecordingLevelRelay(cadence: .milliseconds(10)) {
-            probe.record($0)
-        }
+        let sleep = ControlledTestSleep()
+        let relay = RecordingLevelRelay(
+            cadence: .milliseconds(10),
+            sleep: { try await sleep.wait(for: $0) },
+            delivery: { probe.record($0) })
 
         for index in 0..<100 {
             relay.submit(PersistedAudioLevel(
@@ -142,7 +144,14 @@ final class RecordingLevelRelayTests: XCTestCase {
                 timestamp: TimeInterval(index),
                 duration: 0.01))
         }
-        try await Task.sleep(for: .milliseconds(40))
+        let firstSleepStarted = await sleep.waitUntilCallCount(1)
+        let firstDuration = await sleep.requestedDuration(at: 0)
+        let firstSleepResumed = await sleep.resumeCall(at: 0)
+        let firstSnapshotArrived = await probe.waitUntilSnapshotCount(1)
+        XCTAssertTrue(firstSleepStarted)
+        XCTAssertEqual(firstDuration, .milliseconds(10))
+        XCTAssertTrue(firstSleepResumed)
+        XCTAssertTrue(firstSnapshotArrived)
 
         XCTAssertEqual(probe.snapshots.count, 1)
         XCTAssertEqual(
@@ -156,7 +165,12 @@ final class RecordingLevelRelayTests: XCTestCase {
             rms: 0,
             timestamp: 100,
             duration: 0.01))
-        try await Task.sleep(for: .milliseconds(40))
+        let secondSleepStarted = await sleep.waitUntilCallCount(2)
+        let secondSleepResumed = await sleep.resumeCall(at: 1)
+        let secondSnapshotArrived = await probe.waitUntilSnapshotCount(2)
+        XCTAssertTrue(secondSleepStarted)
+        XCTAssertTrue(secondSleepResumed)
+        XCTAssertTrue(secondSnapshotArrived)
         XCTAssertEqual(probe.snapshots.count, 2)
     }
 }
@@ -167,5 +181,13 @@ private final class RecordingLevelDeliveryProbe {
 
     func record(_ snapshot: RecordingLevelSnapshot) {
         snapshots.append(snapshot)
+    }
+
+    func waitUntilSnapshotCount(_ expected: Int) async -> Bool {
+        for _ in 0..<20_000 {
+            if snapshots.count >= expected { return true }
+            await Task.yield()
+        }
+        return false
     }
 }

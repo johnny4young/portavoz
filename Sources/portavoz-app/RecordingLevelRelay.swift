@@ -150,17 +150,23 @@ struct RecordingLevelBuffer {
 final class RecordingLevelRelay: @unchecked Sendable {
     typealias Delivery =
         @MainActor @Sendable (RecordingLevelSnapshot) -> Void
+    typealias Sleep = @Sendable (Duration) async throws -> Void
 
     private let lock = NSLock()
     private let cadence: Duration
+    private let sleep: Sleep
     private let delivery: Delivery
     private var buffer = RecordingLevelBuffer()
 
     init(
         cadence: Duration = .milliseconds(50),
+        sleep: @escaping Sleep = { duration in
+            try await Task.sleep(for: duration)
+        },
         delivery: @escaping Delivery
     ) {
         self.cadence = cadence
+        self.sleep = sleep
         self.delivery = delivery
     }
 
@@ -171,9 +177,10 @@ final class RecordingLevelRelay: @unchecked Sendable {
         guard let generation else { return }
 
         let cadence = cadence
+        let sleep = sleep
         Task { @MainActor [weak self] in
             do {
-                try await Task.sleep(for: cadence)
+                try await sleep(cadence)
             } catch {
                 return
             }
