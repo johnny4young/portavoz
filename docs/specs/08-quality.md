@@ -2320,6 +2320,15 @@ fixture; an invalid inherited descriptor never falls back. This fixture is
 test infrastructure, not product web authority or evidence that a real
 provider behaves the same way.
 
+Sequoia's Xcode 26.3 image carries Swift 6.2.4, whose XCTest synchronous-test
+teardown can abort while releasing a `@MainActor` value with `isolated deinit`
+([swiftlang/swift#87316](https://github.com/swiftlang/swift/issues/87316)).
+Ask Web presentation tests that own `AskModel` therefore use XCTest's async
+method convention even when their assertions are synchronous. This preserves
+the model's production cancellation deinitializer rather than weakening it for
+a test-runner defect; an architecture ratchet retains the workaround while
+Sequoia remains on the affected runtime.
+
 Full suites and the dedicated receipt-focus journey snapshot the host's global
 `AppleKeyboardUIMode`, enable Keyboard Navigation for the test process, and
 restore either the exact prior integer or the absence of the key through a

@@ -5,7 +5,10 @@ import XCTest
 
 @MainActor
 final class AskWebPresentationModelTests: XCTestCase {
-    func testConsentIsBoundToExactQuestionAndSource() throws {
+    // Swift 6.2.4 XCTest can corrupt TaskLocal teardown when a synchronous
+    // test releases a @MainActor value with isolated deinit. Keep model-owning
+    // tests async while Sequoia carries swiftlang/swift#87316.
+    func testConsentIsBoundToExactQuestionAndSource() async throws {
         let model = AskModel(
             client: WebModelClientStub(),
             webSourcePolicy: .loopbackFixture)
@@ -23,7 +26,7 @@ final class AskWebPresentationModelTests: XCTestCase {
         XCTAssertFalse(model.state.webConsentApproved)
     }
 
-    func testProductionPresentationRejectsHTTPAndLoopbackSources() {
+    func testProductionPresentationRejectsHTTPAndLoopbackSources() async {
         let model = AskModel(client: WebModelClientStub())
         model.selectSourceMode(.web)
         model.updateDraft("When?")

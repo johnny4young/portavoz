@@ -8393,6 +8393,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let packageRunner = try Self.contents(of: "scripts/run-swift-tests.sh")
         let packageIntegration = try Self.contents(
             of: "Tests/PortavozTests/AskWebFixtureIntegrationTests.swift")
+        let presentationTests = try Self.contents(
+            of: "Tests/PortavozTests/AskWebPresentationModelTests.swift")
         let ci = try Self.contents(of: ".github/workflows/ci.yml")
 
         XCTAssertTrue(workflow.contains("case approvedForSingleRequest"))
@@ -8452,6 +8454,11 @@ final class ArchitectureDependencyTests: XCTestCase {
             "fixtureChecksum == canonicalFixtureChecksum"))
         XCTAssertTrue(packageIntegration.contains(
             "environment[externalDescriptorEnvironmentKey]"))
+        XCTAssertTrue(presentationTests.contains(
+            "func testConsentIsBoundToExactQuestionAndSource() async throws"))
+        XCTAssertTrue(presentationTests.contains(
+            "func testProductionPresentationRejectsHTTPAndLoopbackSources() async"))
+        XCTAssertTrue(presentationTests.contains("swiftlang/swift#87316"))
         XCTAssertEqual(
             ci.components(separatedBy: "scripts/run-swift-tests.sh").count,
             3)
