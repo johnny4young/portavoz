@@ -9301,12 +9301,15 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         let admittedObjective = try XCTUnwrap(interviewUITest.range(
             of: "objective admission must publish before revealing its saved row"))
-        let objectiveReveal = try XCTUnwrap(interviewUITest.range(
-            of: "scroll.scroll(byDeltaX: 0, deltaY: -240)"))
         let savedObjective = try XCTUnwrap(interviewUITest.range(
-            of: "identifier BEGINSWITH 'recording-objective-text-'"))
-        XCTAssertLessThan(admittedObjective.lowerBound, objectiveReveal.lowerBound)
-        XCTAssertLessThan(objectiveReveal.lowerBound, savedObjective.lowerBound)
+            of: "identifier BEGINSWITH %@ AND label == %@"))
+        let objectiveReveal = try XCTUnwrap(interviewUITest.range(
+            of: "savedObjective.revealInsideInterviewViewport("))
+        XCTAssertLessThan(admittedObjective.lowerBound, savedObjective.lowerBound)
+        XCTAssertLessThan(savedObjective.lowerBound, objectiveReveal.lowerBound)
+        XCTAssertTrue(interviewUITest.contains("missingTargetDeltaY: 120"))
+        XCTAssertFalse(interviewUITest.contains(
+            "scroll.scroll(byDeltaX: 0, deltaY: -240)"))
         XCTAssertTrue(interviewUITest.contains(
             "answerAction.revealInsideInterviewViewport(scroll)"))
         XCTAssertTrue(interviewUITest.contains(
@@ -9326,6 +9329,33 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(askUITest.contains(
             "waitForFeatureUITestHandshakeRelease("))
         XCTAssertTrue(decisions.contains("## D409"))
+    }
+
+    func testXCUITestRuntimeOptimizationRetainsRiskOwnersWithoutDuplicateWork() throws {
+        let support = try Self.contents(
+            of: "Tests/PortavozUITests/UITestSupport.swift")
+        let skills = try Self.contents(
+            of: "Tests/PortavozUITests/SkillsSettingsUITests.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(support.contains("var candidateFrame: CGRect?"))
+        XCTAssertTrue(support.contains("stableSince = Date()"))
+        XCTAssertTrue(support.contains(
+            "Date().timeIntervalSince(stableSince) >= stableInterval"))
+        XCTAssertFalse(support.contains("var previousFrame: CGRect?"))
+
+        XCTAssertTrue(skills.contains(
+            "the live pane must expose the six-action candidate catalogue"))
+        XCTAssertTrue(skills.contains(
+            "testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable"))
+        XCTAssertTrue(skills.contains(
+            "testSkillActivityFiltersByUpdatePeriodAndResetsExpansion"))
+        XCTAssertFalse(skills.contains("assertReceiptScopes"))
+        XCTAssertEqual(
+            skills.components(separatedBy: "auditSkillDescriptions(in: app)").count - 1,
+            1,
+            "one audit with the receipt sheet open already covers every app window")
+        XCTAssertTrue(decisions.contains("## D410"))
     }
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {

@@ -502,7 +502,10 @@ viewport. The traversal is bounded and still requires a stable hittable frame.
 Saved live objectives attach their UUID identifier and exact text label to the
 containing accessibility row rather than a leaf `Text`, whose representation
 varies across supported macOS versions; its toggle and removal actions remain
-contained children.
+contained children. The real-app journey queries both that prefix and exact
+label, then uses bounded viewport geometry to reveal the row; an absent
+offscreen representation moves toward the row's known earlier-content position
+instead of relying on a host-sized scroll delta.
 
 D233 extends the route projection with derived-artifact freshness rather than
 deleting immutable history. A correction clears route-local generated metadata,

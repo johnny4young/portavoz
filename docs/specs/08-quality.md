@@ -5283,6 +5283,45 @@ is local Tahoe-family automation on the changed code; exact-head hosted scope,
 the complete bilingual integration catalogue, and physical accessibility and
 supported-hardware evidence remain pending.
 
+Exact-head hosted run `33106386007` then selected the intended 56 English
+journeys and passed 55. Interview admission, answer, and evidence were correct,
+but one fixed negative 240-point scroll moved the newly inserted objective
+toward the pruned side of the compact accessibility viewport; the following
+five-second existence and label waits both failed. The same run kept all 23
+Skills journeys functionally green, while seven exceeded their unchanged
+per-case runtime budgets; the broad control-to-receipt journey measured 121.265
+seconds. This result is retained as causal red evidence and was not rerun
+unchanged.
+
+The follow-up removes both measured sources of wasted work without increasing
+any budget. Interview now queries the stable objective prefix together with its
+exact accepted label and performs a bounded geometry-aware reveal that can move
+toward earlier content while an offscreen row is absent from the accessibility
+tree. Stable-frame waiting starts its unchanged interval at the first valid
+hittable frame and resets on movement, avoiding one redundant accessibility
+snapshot per activation. The broad Skills journey still proves the six-action
+live catalogue, representative local/external disclosure, pause, durable window
+reconstruction, resume, explicit confirmation, receipt projection, privacy,
+and the complete three-event timeline. It no longer repeats action-specific
+copy already exercised by Reminder/Brief/Email/Gist journeys, receipt-scope
+transitions owned by the activity journeys, Gist input classes owned by pure
+catalogue tests plus its own real-app journey, or a first accessibility audit
+that the later all-open-window audit necessarily includes. Fresh local and
+hosted runtime evidence must remain separate; a local pass cannot replace the
+independent runner.
+
+The final local run used one build and passed the complete 106-case catalogue
+in both locales without a retry or budget change. English summed XCTest was
+951.857 seconds (976 seconds wall, p95 19.141, maximum 47.456); Spanish was
+949.262 seconds (974 seconds wall, p95 17.802, maximum 45.953). Compared with
+the prior documented 105-case local candidate, summed XCTest fell 14.1% and
+14.8% while adding one catalogue case. Interview passed in 11.564/12.738
+seconds and the broad Skills journey in 45.101/43.439 seconds. All seven Skills
+journeys that exceeded their hosted D409 ceilings now pass those unchanged
+ceilings locally. This closes local D410 qualification; the exact-head hosted
+runner remains independent evidence, and this Tahoe-family result does not
+certify physical Sequoia, another Tahoe machine, or assistive technology.
+
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch
 COPY of a real recording: point `PORTAVOZ_TEST_AUDIO_ROOT` at a folder shaped

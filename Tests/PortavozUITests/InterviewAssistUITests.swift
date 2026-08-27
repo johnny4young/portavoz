@@ -50,13 +50,17 @@ final class InterviewAssistUITests: PortavozUITestCase {
             app.control(withIdentifier: "recording-interview-objective-count")
                 .waitForExistenceFast(timeout: 5),
             "objective admission must publish before revealing its saved row")
-        scroll.scroll(byDeltaX: 0, deltaY: -240)
         let savedObjective = app.descendants(matching: .any)
             .matching(NSPredicate(
-                format: "identifier BEGINSWITH 'recording-objective-text-'"))
+                format: "identifier BEGINSWITH %@ AND label == %@",
+                "recording-objective-text-",
+                objectiveText))
             .firstMatch
-        XCTAssertTrue(savedObjective.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(savedObjective.waitForLabelOrValue(objectiveText, timeout: 5))
+        XCTAssertTrue(
+            savedObjective.revealInsideInterviewViewport(
+                scroll,
+                missingTargetDeltaY: 120),
+            "the admitted objective must be visible with its exact text")
 
         let answerAction = app.control(withIdentifier: "recording-interview-answer")
         XCTAssertTrue(
@@ -94,11 +98,13 @@ private extension XCUIElement {
     @MainActor
     func revealInsideInterviewViewport(
         _ viewportElement: XCUIElement,
-        maxScrolls: Int = 6
+        maxScrolls: Int = 6,
+        missingTargetDeltaY: CGFloat? = nil
     ) -> Bool {
-        guard exists, viewportElement.exists else { return false }
+        guard viewportElement.exists else { return false }
         let viewport = viewportElement.frame.insetBy(dx: 0, dy: 4)
         let isVisible = {
+            guard self.exists else { return false }
             let controlFrame = self.frame
             return self.isHittable
                 && !controlFrame.isEmpty
@@ -108,18 +114,28 @@ private extension XCUIElement {
             return isVisible()
         }
         for _ in 0..<maxScrolls {
-            let controlFrame = frame
             let distance: CGFloat
             let direction: CGFloat
-            if controlFrame.maxY > viewport.maxY {
-                distance = controlFrame.maxY - viewport.maxY + 16
-                direction = -1
-            } else if controlFrame.minY < viewport.minY {
-                distance = viewport.minY - controlFrame.minY + 16
-                direction = 1
+            if !exists {
+                guard let missingTargetDeltaY else { return false }
+                distance = abs(missingTargetDeltaY)
+                direction = missingTargetDeltaY < 0 ? -1 : 1
             } else {
-                distance = 120
-                direction = -1
+                let controlFrame = frame
+                if controlFrame.isEmpty {
+                    guard let missingTargetDeltaY else { return false }
+                    distance = abs(missingTargetDeltaY)
+                    direction = missingTargetDeltaY < 0 ? -1 : 1
+                } else if controlFrame.maxY > viewport.maxY {
+                    distance = controlFrame.maxY - viewport.maxY + 16
+                    direction = -1
+                } else if controlFrame.minY < viewport.minY {
+                    distance = viewport.minY - controlFrame.minY + 16
+                    direction = 1
+                } else {
+                    distance = 120
+                    direction = -1
+                }
             }
             viewportElement.scroll(
                 byDeltaX: 0,

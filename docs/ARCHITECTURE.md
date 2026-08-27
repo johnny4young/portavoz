@@ -4790,7 +4790,10 @@ The UI bundle uses one main-actor, run-loop-driven bounded predicate helper for
 accessibility state instead of XCTest's one-second first-poll floor or fixed
 sleeps. Negative and inequality waits require element existence so absence
 cannot become a false pass. Localized moving controls stabilize their hit frame
-before activation. The Skills Settings form reveals targets with a bounded
+before activation. The stability interval begins with the first valid,
+nonempty hittable frame and resets on every movement or loss of hittability;
+it does not require an extra identical sample before starting the unchanged
+interval. The Skills Settings form reveals targets with a bounded
 geometry-aware scroll over the real viewport rather than a fixed sequence of
 small wheel gestures. Test-only Ask empty-retrieval/evidence/answer phases and
 Skills receipt/proposal refreshes use cancellation-aware, 30-second file handshakes
@@ -4804,15 +4807,27 @@ Foundation's independently resolved default, verifies the directory exists,
 and resolves directory symlinks before the exact comparison. Proven
 overlapping Insights, onboarding, and Skills
 microtests share one journey each while retaining their assertions; unrelated
-behavior remains independently scoped. A failed first pass is evidence to
+behavior remains independently scoped. The Skills end-to-end journey asserts
+the exact six-action live count plus one local and one external disclosure,
+then owns pause, window reconstruction, resume, confirmation, and durable
+receipt projection. Exact catalogue identities and data ceilings remain pure
+package contracts; Reminder, Brief, Email, Gist, receipt-scope, filtering, and
+accessibility behavior retain their dedicated real-app journeys. It therefore
+does not replay those scope transitions or a second whole-window accessibility
+audit. Dynamic Interview objective queries combine their stable identifier
+prefix with the exact accepted label and use a bounded geometry-aware reveal;
+when the row is not yet represented, the reveal moves toward its known earlier
+content position instead of applying a fixed host-sized scroll. A failed first pass is evidence to
 diagnose, never authorization for an unchanged green retry.
 The accepted local candidate on macOS 26.5.2 (25F84), arm64, and Xcode 26.6
-measures 1,108.209 seconds English and 1,114.714 seconds Spanish across the
-105-case catalogue, down 57.2% from the prior 109-case like-for-like baseline;
-p95 is 20.265/20.678 seconds. The versioned gates cap each locale at 1,300
-seconds and p95 at 30 seconds, with independent per-journey ceilings. These are
-one-host performance measurements, not physical Sequoia or separate-hardware
-Tahoe evidence.
+measures 951.857 seconds English and 949.262 seconds Spanish across the complete
+106-case catalogue; wall time is 976/974 seconds after one 13-second shared
+build, p95 is 19.141/17.802 seconds, and the slowest case is 47.456/45.953
+seconds. This is 14.1%/14.8% less summed XCTest time than the prior documented
+105-case candidate while adding one catalogue case. The versioned gates cap
+each locale at 1,300 seconds and p95 at 30 seconds, with independent
+per-journey ceilings. These are one-host performance measurements, not physical
+Sequoia or separate-hardware Tahoe evidence.
 
 Autonomous assistant validation has a separate, non-serving public authority.
 `Fixtures/ApuntadorValidation/public-bilingual-v1.json` freezes six synthetic

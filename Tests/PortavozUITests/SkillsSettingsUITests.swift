@@ -1008,11 +1008,12 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
         XCTAssertTrue(app.waitForSeededLibraryToSettle())
         openSkillsSettings(in: app)
-        try auditSkillDescriptions(in: app)
 
         let receipt = openWaitingReceipt(in: app)
         let inspection = app.control(
             withIdentifier: "skill-receipt-inspection")
+        // XCTest audits every open app window, so this one pass covers both the
+        // Settings surface behind the sheet and the receipt sheet itself.
         try auditSkillDescriptions(in: app)
 
         app.typeKey(.escape, modifierFlags: [])
@@ -1065,6 +1066,14 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(pause.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(recap.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(export.waitForExistenceFast(timeout: 5))
+        let availableToggles = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@ AND identifier ENDSWITH %@",
+                "settings-skill-",
+                "-enabled"))
+        XCTAssertTrue(
+            waitForCount(availableToggles, toEqual: 6, timeout: 5),
+            "the live pane must expose the six-action candidate catalogue")
         XCTAssertFalse(Self.isOn(pause))
         XCTAssertTrue(Self.isOn(recap))
         XCTAssertTrue(Self.isOn(export))
@@ -1074,20 +1083,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                 ? "Sin transferencia directa por red"
                 : "No direct network handoff",
             in: app)
-        let reminderDraft = app.control(
-            withIdentifier: "settings-skill-reminder-draft-enabled")
-        XCTAssertTrue(reminderDraft.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(Self.isOn(reminderDraft))
-        let reminderDescription = UITestLocale.environmentLocale == "es"
-            ? "Crea un recordatorio local a partir de un compromiso confirmado después de que lo apruebes."
-            : "Creates one local reminder from a confirmed commitment after you approve it."
-        XCTAssertTrue(
-            app.staticTexts[reminderDescription].waitForExistenceFast(timeout: 5),
-            "the available Reminder Draft row must not retain planned-feature copy")
-        let brief = app.control(
-            withIdentifier: "settings-skill-pre-meeting-brief-enabled")
-        XCTAssertTrue(brief.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(Self.isOn(brief))
         let email = app.control(
             withIdentifier: "settings-skill-email-recap-draft-enabled")
         XCTAssertTrue(email.waitForExistenceFast(timeout: 5))
@@ -1101,23 +1096,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "the external skill must disclose its exact email-app boundary")
         assertDisclosure(
             skillID: "email-recap-draft",
-            expectedText: UITestLocale.environmentLocale == "es"
-                ? "Puede compartir fuera de Portavoz"
-                : "May share outside Portavoz",
-            in: app)
-        let gist = app.control(
-            withIdentifier: "settings-skill-secret-gist-publish-enabled")
-        XCTAssertTrue(gist.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(scrollToVisible(gist, in: app))
-        XCTAssertTrue(Self.isOn(gist))
-        let gistDescription = UITestLocale.environmentLocale == "es"
-            ? "Publica el documento exacto que revisaste como un Gist secreto de GitHub. Cada ejecución vuelve a pedir confirmación."
-            : "Publishes the exact reviewed meeting document as one secret GitHub Gist. Every run asks first."
-        XCTAssertTrue(
-            app.staticTexts[gistDescription].waitForExistenceFast(timeout: 5),
-            "the Gist row must disclose both exact review and per-run consent")
-        assertDisclosure(
-            skillID: "secret-gist-publish",
             expectedText: UITestLocale.environmentLocale == "es"
                 ? "Puede compartir fuera de Portavoz"
                 : "May share outside Portavoz",
@@ -1181,7 +1159,6 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "the management pane must project the confirmed durable receipt")
         XCTAssertFalse(Self.isOn(app.control(
             withIdentifier: "settings-skill-meeting-package-export-enabled")))
-        assertReceiptScopes(in: app, receipt: receipt)
         scrollToVisible(receipt, in: app)
         receipt.click()
         XCTAssertTrue(
@@ -1191,20 +1168,18 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             app.control(withIdentifier: "skill-receipt-inspection-privacy")
                 .waitForExistenceFast(timeout: 5),
             "the inspector must disclose its content-free boundary")
-        var events: [XCUIElement] = []
-        for sequence in 1...3 {
-            let event = app.control(
-                withIdentifier: "skill-receipt-inspection-event-\(sequence)")
-            XCTAssertTrue(
-                event.waitForExistenceFast(timeout: 5),
-                "the confirmed run must expose its complete causal timeline")
-            events.append(event)
-        }
+        let events = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier BEGINSWITH 'skill-receipt-inspection-event-'"))
+        XCTAssertTrue(
+            waitForCount(events, toEqual: 3, timeout: 5),
+            "the confirmed run must expose its complete causal timeline")
+        let terminalEvent = app.control(
+            withIdentifier: "skill-receipt-inspection-event-3")
         let successTitle = UITestLocale.environmentLocale == "es"
             ? "El intento informó éxito"
             : "Attempt reported success"
         XCTAssertTrue(
-            waitForLabel(events[2], toContain: successTitle),
+            waitForLabel(terminalEvent, toContain: successTitle),
             "the terminal event must expose the localized success state")
         attachScreenshot(of: app, named: "skills-control-recent-receipt")
         app.buttons["skill-receipt-inspection-close"].click()
@@ -1226,72 +1201,16 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             : "A meeting summary is ready to use."
         XCTAssertTrue(waitForLabel(why, toContain: expectedWhy))
 
-        let data = app.descendants(matching: .any).matching(NSPredicate(
-            format: "identifier BEGINSWITH %@",
-            "settings-skill-proposal-data-secret-gist-publish-"
-        )).firstMatch
-        XCTAssertTrue(data.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(scrollToVisible(data, in: app))
-        let expectedData = UITestLocale.environmentLocale == "es"
-            ? "transcripción"
-            : "transcript"
-        XCTAssertTrue(
-            waitForLabel(data, toContain: expectedData),
-            "the explanation must derive from the Gist's exact input declaration")
         let privacy = app.control(
             withIdentifier: "settings-skills-proposals-privacy")
         XCTAssertTrue(privacy.waitForExistenceFast(timeout: 5))
-        for explanation in [why, data, privacy] {
+        for explanation in [why, privacy] {
             XCTAssertFalse(explanation.label.contains("Test meeting"))
             XCTAssertFalse(
                 explanation.label.contains(
                     "El rollout del modelo queda para el viernes."),
                 "the central proposal explanation must not render seeded content")
         }
-    }
-
-    @MainActor
-    private func assertReceiptScopes(
-        in app: XCUIApplication,
-        receipt: XCUIElement
-    ) {
-        let scope = app.control(
-            withIdentifier: "settings-skills-receipt-scope")
-        let recent = app.control(
-            withIdentifier: "settings-skills-receipt-scope-recent")
-        let waiting = app.control(
-            withIdentifier: "settings-skills-receipt-scope-waiting")
-        let attention = app.control(
-            withIdentifier: "settings-skills-receipt-scope-needs-attention")
-        let completed = app.control(
-            withIdentifier: "settings-skills-receipt-scope-completed")
-        XCTAssertTrue(scope.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(scrollToVisible(scope, in: app))
-        for control in [scope, recent, waiting, attention, completed] {
-            XCTAssertTrue(
-                control.waitForExistenceFast(timeout: 5),
-                "every activity scope must be keyboard and accessibility reachable")
-        }
-
-        completed.click()
-        XCTAssertTrue(
-            receipt.waitForExistenceFast(timeout: 5),
-            "the succeeded run belongs to Completed")
-        attention.click()
-        XCTAssertTrue(
-            app.control(withIdentifier:
-                "settings-skills-empty-receipts-needs-attention")
-                .waitForExistenceFast(timeout: 5),
-            "the attention scope must render a verified empty state")
-        waiting.click()
-        XCTAssertTrue(
-            app.control(withIdentifier: "settings-skills-empty-receipts-waiting")
-                .waitForExistenceFast(timeout: 5),
-            "the waiting scope must render a verified empty state")
-        recent.click()
-        XCTAssertTrue(
-            receipt.waitForExistenceFast(timeout: 5),
-            "Recent must restore the newest confirmed receipt")
     }
 
     @MainActor

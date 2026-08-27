@@ -523,20 +523,22 @@ extension XCUIElement {
         stableFor stableInterval: TimeInterval = 0.25
     ) -> Bool {
         guard waitForExistenceFast(timeout: timeout) else { return false }
-        var previousFrame: CGRect?
+        var candidateFrame: CGRect?
         var stableSince: Date?
         return waitForUITestCondition(timeout: timeout) {
             let currentFrame = self.frame
-            if self.isHittable, currentFrame == previousFrame {
-                if let stableSince {
-                    return Date().timeIntervalSince(stableSince) >= stableInterval
-                }
-                stableSince = Date()
-            } else {
-                previousFrame = currentFrame
+            guard self.isHittable, !currentFrame.isEmpty else {
+                candidateFrame = nil
                 stableSince = nil
+                return false
             }
-            return false
+            if currentFrame != candidateFrame {
+                candidateFrame = currentFrame
+                stableSince = Date()
+                return stableInterval <= 0
+            }
+            guard let stableSince else { return false }
+            return Date().timeIntervalSince(stableSince) >= stableInterval
         }
     }
 }

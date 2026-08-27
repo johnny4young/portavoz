@@ -15355,3 +15355,55 @@ hosted qualification and final integration/RC/release still require a fresh
 complete bilingual 106-case run with exact aggregate and per-journey budgets,
 plus the existing physical Sequoia/Tahoe, VoiceOver/Voice Control,
 distribution, CloudKit, and field gates.
+
+## D410 — Assign each XCUITest risk to one bounded journey (Aug 2026)
+
+**Context:** exact D409 head `3b793cfd` passed hosted current-SDK, Sequoia,
+lint, and hygiene CI. Hosted Scoped UI run `33106386007` then selected the
+intended 56 English journeys and passed 55. Interview Assist admitted its
+objective and later returned the exact grounded answer and evidence, but a
+fixed negative 240-point scroll moved the inserted row toward the pruned side
+of the compact accessibility viewport before two five-second waits. All 23
+Skills cases passed functionally, while seven missed their unchanged runtime
+budgets; the broad control-to-receipt journey measured 121.265 seconds. Its
+timeline showed repeated accessibility traversal of action-specific copy,
+receipt scopes already owned by focused activity journeys, all three receipt
+events one by one, and two whole-app accessibility audits. Raising budgets,
+retrying unchanged, or deleting focused risk owners would not improve feedback
+or robustness.
+
+**Decision:** dynamic Interview rows are discovered by the conjunction of
+their stable identifier prefix and exact accepted label. Their existing
+bounded geometry reveal may move toward the known earlier-content position
+while the row is absent from the accessibility tree, then requires a nonempty,
+hittable, viewport-contained, stable frame. No fixed host-sized reveal remains.
+
+Stable-frame waiting retains its 250-millisecond default contract but starts
+that interval with the first valid nonempty hittable frame, resetting it on any
+movement or loss of hittability. It no longer requires a second identical
+sample merely to start the interval and a third to finish it.
+
+The broad Skills journey owns one coherent risk chain: exact six-action live
+count, representative local and external disclosure, global pause, individual
+choice durability across Settings reconstruction, absence while paused,
+resume, explicit confirmation, durable receipt projection, content-free
+privacy, and complete three-event history. Pure package tests retain the exact
+six identities, local/external classification, input ceilings, and policy.
+Dedicated real-app journeys retain Reminder, Brief, Email, Gist, receipt-scope,
+filtering, transition, keyboard-focus, and accessibility behavior. The broad
+journey therefore does not repeat every action's copy, Gist data-class proof,
+or the receipt-scope tour. Its one accessibility audit runs with the receipt
+sheet open; XCTest audits every open app window, so that pass covers both the
+background Settings surface and the sheet. Source ratchets reject the retired
+fixed scroll, redundant scope helper, second audit, or loss of those focused
+risk owners. Runtime budgets are unchanged.
+
+**Consequences:** this is consolidation, not a narrower product claim. One
+failed owner still blocks its risk, the full 106-case bilingual catalogue
+remains the integration/release gate, and no retry can substitute for a code
+change. The final local candidate passed all 106 cases in both locales with no
+budget violation; exact-head hosted receipts must still demonstrate that the
+Interview portability failure and measured Skills overruns are closed on the
+independent runner. Local automation still cannot certify physical
+Sequoia/Tahoe, VoiceOver/Voice Control, distribution, CloudKit, or field
+behavior.
