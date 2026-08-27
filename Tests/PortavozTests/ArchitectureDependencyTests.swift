@@ -5462,6 +5462,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/SkillActivityPeriodFilter.swift")
         let services = try Self.contents(
             of: "Sources/portavoz-app/AppServices+SkillsControl.swift")
+        let featureHandshake = try Self.contents(
+            of: "Sources/portavoz-app/UITestFeatureHandshake.swift")
         let uiFixtures = try Self.contents(
             of: "Sources/portavoz-app/AppServices+UITestFixtures.swift")
         let receiptInspection = try Self.contents(
@@ -5633,7 +5635,22 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(control.contains("receiptLoadState = .unavailable"))
         XCTAssertTrue(services.contains("usesTemporaryMeetingStore"))
         XCTAssertTrue(services.contains(
-            "-simulate-skill-receipt-refresh-delay"))
+            "-simulate-skill-receipt-refresh-handshake"))
+        XCTAssertFalse(services.contains("Task.sleep(for: .seconds(4))"))
+        XCTAssertTrue(featureHandshake.contains("attempts: Int = 600"))
+        XCTAssertTrue(featureHandshake.contains("guard attempts > 0"))
+        XCTAssertTrue(featureHandshake.contains("try Task.checkCancellation()"))
+        XCTAssertTrue(featureHandshake.contains(
+            ".hasPrefix(\"portavoz-uitest-\")"))
+        XCTAssertTrue(featureHandshake.contains(
+            "let signalDirectory = signalURL.deletingLastPathComponent()"))
+        XCTAssertTrue(featureHandshake.contains(
+            "let processTemporaryPath = environment[\"TMPDIR\"]"))
+        XCTAssertTrue(featureHandshake.contains(
+            "signalDirectory == processTemporaryDirectory"))
+        XCTAssertFalse(featureHandshake.contains(
+            "FileManager.default.temporaryDirectory"))
+        XCTAssertTrue(featureHandshake.contains("throw TimedOut()"))
         XCTAssertTrue(services.contains(
             "if usesTemporaryMeetingStore,\n"
                 + "           ProcessInfo.processInfo.arguments.contains(\n"
@@ -5833,7 +5850,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         ].joined(separator: "\n")
         XCTAssertTrue(settings.contains(refreshProposalsContract))
         XCTAssertTrue(services.contains(
-            "-simulate-skill-proposal-refresh-delay"))
+            "-simulate-skill-proposal-refresh-handshake"))
         XCTAssertTrue(fixtures.contains("guard usesTemporaryMeetingStore"))
         XCTAssertTrue(fixtures.contains(
             "-seed-duplicate-skill-proposals"))
@@ -9255,6 +9272,13 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/RecordingLiveAssist.swift")
         let uiTests = try Self.contents(
             of: "Tests/PortavozUITests/MeetingDetailUITests.swift")
+        let interviewUITest = try Self.contents(
+            of: "Tests/PortavozUITests/InterviewAssistUITests.swift")
+        let askServices = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
+        let askUITest = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(transcript.contains(
             "scrollAccessibilityIdentifier: \"detail-transcript-scroll\""))
@@ -9274,6 +9298,34 @@ final class ArchitectureDependencyTests: XCTestCase {
                 + "        .accessibilityLabel(objective.text)\n"
                 + "        .accessibilityIdentifier(\n"
                 + "            \"recording-objective-text-\\(objective.id.uuidString)\")"))
+
+        let admittedObjective = try XCTUnwrap(interviewUITest.range(
+            of: "objective admission must publish before revealing its saved row"))
+        let objectiveReveal = try XCTUnwrap(interviewUITest.range(
+            of: "scroll.scroll(byDeltaX: 0, deltaY: -240)"))
+        let savedObjective = try XCTUnwrap(interviewUITest.range(
+            of: "identifier BEGINSWITH 'recording-objective-text-'"))
+        XCTAssertLessThan(admittedObjective.lowerBound, objectiveReveal.lowerBound)
+        XCTAssertLessThan(objectiveReveal.lowerBound, savedObjective.lowerBound)
+        XCTAssertTrue(interviewUITest.contains(
+            "answerAction.revealInsideInterviewViewport(scroll)"))
+        XCTAssertTrue(interviewUITest.contains(
+            "viewport.contains(controlFrame)"))
+
+        XCTAssertTrue(askServices.contains(
+            "-simulate-ask-progressive-handshake"))
+        XCTAssertFalse(askServices.contains(
+            "Task.sleep(for: .milliseconds(500))"))
+        XCTAssertFalse(askServices.contains(
+            "Task.sleep(for: .milliseconds(350))"))
+        XCTAssertGreaterThanOrEqual(
+            askUITest.components(
+                separatedBy: "continueFeatureUITestHandshake(").count - 1,
+            2,
+            "Ask must explicitly release evidence and partial-answer phases")
+        XCTAssertTrue(askUITest.contains(
+            "waitForFeatureUITestHandshakeRelease("))
+        XCTAssertTrue(decisions.contains("## D409"))
     }
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {

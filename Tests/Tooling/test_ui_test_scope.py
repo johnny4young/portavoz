@@ -240,6 +240,39 @@ class UITestScopeTests(unittest.TestCase):
         self.assertEqual(selection.tests, HARNESS_TESTS)
         self.assertEqual(selection.locales, ("en", "es"))
 
+    def test_feature_handshake_support_selects_only_ask_and_skills(self):
+        expected = set(FEATURE_TESTS["ask"])
+        expected.update(FEATURE_TESTS["settings-skills"])
+        for path in (
+            "Sources/portavoz-app/UITestFeatureHandshake.swift",
+            "Tests/PortavozUITests/FeatureUITestHandshakeSupport.swift",
+        ):
+            selection = select_paths([path])
+            self.assertEqual(set(selection.tests), expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
+
+    def test_pr_synchronize_uses_previous_head_but_manual_runs_stay_full(self):
+        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("PREVIOUS_HEAD_SHA: ${{ github.event.before }}", workflow)
+        self.assertIn('EVENT_ACTION" == "synchronize"', workflow)
+        self.assertIn(
+            'git cat-file -e "${PREVIOUS_HEAD_SHA}^{commit}"',
+            workflow,
+        )
+        self.assertIn('SELECTED_BASE_SHA="$PREVIOUS_HEAD_SHA"', workflow)
+        self.assertIn(
+            "Previous PR head is unavailable; expanding from the base SHA.",
+            workflow,
+        )
+        self.assertIn(
+            "python3 scripts/ui_test_scope.py --all --format github",
+            workflow,
+        )
+
     def test_semantic_asset_preparation_selects_its_settings_journey(self):
         expected = FEATURE_TESTS["settings-intelligence"]
         for path in (

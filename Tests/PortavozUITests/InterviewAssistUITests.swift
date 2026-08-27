@@ -46,21 +46,22 @@ final class InterviewAssistUITests: PortavozUITestCase {
         let add = app.control(withIdentifier: "recording-objective-add")
         XCTAssertTrue(add.waitForHittable(timeout: 5))
         add.click()
+        XCTAssertTrue(
+            app.control(withIdentifier: "recording-interview-objective-count")
+                .waitForExistenceFast(timeout: 5),
+            "objective admission must publish before revealing its saved row")
+        scroll.scroll(byDeltaX: 0, deltaY: -240)
         let savedObjective = app.descendants(matching: .any)
             .matching(NSPredicate(
                 format: "identifier BEGINSWITH 'recording-objective-text-'"))
             .firstMatch
         XCTAssertTrue(savedObjective.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(savedObjective.waitForLabelOrValue(objectiveText, timeout: 5))
-        XCTAssertTrue(
-            app.control(withIdentifier: "recording-interview-objective-count")
-                .exists)
 
         let answerAction = app.control(withIdentifier: "recording-interview-answer")
-        for _ in 0..<4 where !answerAction.isHittable {
-            scroll.swipeDown()
-        }
-        XCTAssertTrue(answerAction.waitForHittable(timeout: 5))
+        XCTAssertTrue(
+            answerAction.revealInsideInterviewViewport(scroll),
+            "the answer action must be fully inside the assist viewport")
         answerAction.click()
 
         let answer = app.control(
@@ -86,5 +87,47 @@ final class InterviewAssistUITests: PortavozUITestCase {
             .compactMap { $0 }
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+    }
+}
+
+private extension XCUIElement {
+    @MainActor
+    func revealInsideInterviewViewport(
+        _ viewportElement: XCUIElement,
+        maxScrolls: Int = 6
+    ) -> Bool {
+        guard exists, viewportElement.exists else { return false }
+        let viewport = viewportElement.frame.insetBy(dx: 0, dy: 4)
+        let isVisible = {
+            let controlFrame = self.frame
+            return self.isHittable
+                && !controlFrame.isEmpty
+                && viewport.contains(controlFrame)
+        }
+        if isVisible(), waitForStableFrame(timeout: 1, stableFor: 0.1) {
+            return isVisible()
+        }
+        for _ in 0..<maxScrolls {
+            let controlFrame = frame
+            let distance: CGFloat
+            let direction: CGFloat
+            if controlFrame.maxY > viewport.maxY {
+                distance = controlFrame.maxY - viewport.maxY + 16
+                direction = -1
+            } else if controlFrame.minY < viewport.minY {
+                distance = viewport.minY - controlFrame.minY + 16
+                direction = 1
+            } else {
+                distance = 120
+                direction = -1
+            }
+            viewportElement.scroll(
+                byDeltaX: 0,
+                deltaY: direction * min(max(distance, 120), 360))
+            if isVisible(), waitForStableFrame(timeout: 1, stableFor: 0.1) {
+                return isVisible()
+            }
+        }
+        return false
     }
 }

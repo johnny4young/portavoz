@@ -19,8 +19,13 @@ extension AppServices {
         if usesTemporaryMeetingStore,
            receiptScope != .recent,
            ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-receipt-refresh-delay") {
-            try await Task.sleep(for: .seconds(4))
+               "-simulate-skill-receipt-refresh-handshake") {
+            try await UITestFeatureHandshake.pauseIfRequested(
+                argument: "-simulate-skill-receipt-refresh-handshake",
+                readyEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_SKILL_RECEIPT_REFRESH_READY_PATH",
+                continueEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_SKILL_RECEIPT_REFRESH_CONTINUE_PATH")
         }
         let snapshot = try await LoadSkillControlCenter(store: store).execute(
             LoadSkillControlCenterRequest(
@@ -60,8 +65,13 @@ extension AppServices {
     func loadSkillOfferReview() async throws -> SkillOfferReviewSnapshot {
         if usesTemporaryMeetingStore,
            ProcessInfo.processInfo.arguments.contains(
-               "-simulate-skill-proposal-refresh-delay") {
-            try await Task.sleep(for: .seconds(4))
+               "-simulate-skill-proposal-refresh-handshake") {
+            try await UITestFeatureHandshake.pauseIfRequested(
+                argument: "-simulate-skill-proposal-refresh-handshake",
+                readyEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_SKILL_PROPOSAL_REFRESH_READY_PATH",
+                continueEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_SKILL_PROPOSAL_REFRESH_CONTINUE_PATH")
         }
         if usesTemporaryMeetingStore,
            ProcessInfo.processInfo.arguments.contains(

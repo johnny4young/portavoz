@@ -445,7 +445,8 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
         await onEvidence(AskEvidenceUpdate(
             phase: .lexical,
             citations: citations))
-        try await Task.sleep(for: .milliseconds(500))
+        try await Self.pauseAfterLexicalEvidenceIfRequested(
+            hasEvidence: !citations.isEmpty)
         await onEvidence(AskEvidenceUpdate(
             phase: .fused,
             citations: citations))
@@ -489,7 +490,8 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
         await onEvidence(AskEvidenceUpdate(
             phase: .lexical,
             citations: citations))
-        try await Task.sleep(for: .milliseconds(500))
+        try await Self.pauseAfterLexicalEvidenceIfRequested(
+            hasEvidence: !citations.isEmpty)
         await onEvidence(AskEvidenceUpdate(
             phase: .fused,
             citations: citations))
@@ -503,6 +505,19 @@ private struct UITestAskMeetingRetrieval: AskMeetingRetrieving {
             segmentID: hit.segmentID,
             snippet: hit.snippet,
             timestamp: hit.startTime)
+    }
+
+    private static func pauseAfterLexicalEvidenceIfRequested(
+        hasEvidence: Bool
+    ) async throws {
+        try await UITestFeatureHandshake.pauseIfRequested(
+            argument: "-simulate-ask-progressive-handshake",
+            readyEnvironmentKey: hasEvidence
+                ? "PORTAVOZ_UI_TEST_ASK_EVIDENCE_READY_PATH"
+                : "PORTAVOZ_UI_TEST_ASK_EMPTY_READY_PATH",
+            continueEnvironmentKey: hasEvidence
+                ? "PORTAVOZ_UI_TEST_ASK_EVIDENCE_CONTINUE_PATH"
+                : "PORTAVOZ_UI_TEST_ASK_EMPTY_CONTINUE_PATH")
     }
 
     private static func meetingID(
@@ -544,9 +559,13 @@ private struct UITestAskMeetingAnswering: AskMeetingAnswering {
         citations _: [AskCitation],
         onAnswer: @escaping AskAnswerReceiver
     ) async throws -> String? {
-        try await Task.sleep(for: .milliseconds(350))
         await onAnswer(AskAnswerUpdate(text: "El presupuesto se revisó"))
-        try await Task.sleep(for: .milliseconds(350))
+        try await UITestFeatureHandshake.pauseIfRequested(
+            argument: "-simulate-ask-progressive-handshake",
+            readyEnvironmentKey:
+                "PORTAVOZ_UI_TEST_ASK_ANSWER_READY_PATH",
+            continueEnvironmentKey:
+                "PORTAVOZ_UI_TEST_ASK_ANSWER_CONTINUE_PATH")
         let final = "El presupuesto se revisó y el rollout quedó para el viernes."
         await onAnswer(AskAnswerUpdate(text: final))
         return final

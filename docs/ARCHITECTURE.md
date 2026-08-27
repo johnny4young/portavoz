@@ -4751,7 +4751,14 @@ Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to the complete
 bilingual catalogue; unknown production Swift paths fall back to the complete
-English suite. Every feature scope names a checked-in production owner, and
+English suite. A synchronized pull-request update compares the new head with
+the immediately preceding pull-request head, so one narrow change does not pay
+again for every older commit on a long-lived branch. Opening or reopening a
+pull request still compares against its base. If a force-pushed previous object
+is absent from the complete scope checkout, selection expands from that base
+instead of failing narrow. Manual integration runs remain explicit
+complete-catalogue runs. Every feature scope names a checked-in
+production owner, and
 catalog validation rejects unscoped tests, empty or orphaned scopes, duplicate
 selectors, retired overlapping journeys, and missing or stale runtime budgets.
 `RecordingToolbar` maps specifically to the external-recording geometry
@@ -4785,7 +4792,17 @@ sleeps. Negative and inequality waits require element existence so absence
 cannot become a false pass. Localized moving controls stabilize their hit frame
 before activation. The Skills Settings form reveals targets with a bounded
 geometry-aware scroll over the real viewport rather than a fixed sequence of
-small wheel gestures. Proven overlapping Insights, onboarding, and Skills
+small wheel gestures. Test-only Ask empty-retrieval/evidence/answer phases and
+Skills receipt/proposal refreshes use cancellation-aware, 30-second file handshakes
+under the disposable store instead of runner-speed sleeps. Each UUID-scoped
+ready/continue pair is constrained to the process temporary directory and
+removed after one release; missing configuration or an unreleased handshake fails
+rather than silently resuming. The runner derives those paths from the app's
+already-isolated launch `TMPDIR`, not from the test-runner process, and path
+validation reads that explicit process environment value rather than
+Foundation's independently resolved default, verifies the directory exists,
+and resolves directory symlinks before the exact comparison. Proven
+overlapping Insights, onboarding, and Skills
 microtests share one journey each while retaining their assertions; unrelated
 behavior remains independently scoped. A failed first pass is evidence to
 diagnose, never authorization for an unchanged green retry.

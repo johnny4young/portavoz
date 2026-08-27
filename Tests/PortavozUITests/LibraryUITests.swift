@@ -562,6 +562,24 @@ final class LibraryUITests: PortavozUITestCase {
             seedDemo: true,
             simulateSequoiaCapabilities: true,
             includeWebFixture: true)
+        app.configureFeatureUITestHandshake(
+            argument: "-simulate-ask-progressive-handshake",
+            name: "ask-empty",
+            readyEnvironmentKey: "PORTAVOZ_UI_TEST_ASK_EMPTY_READY_PATH",
+            continueEnvironmentKey:
+                "PORTAVOZ_UI_TEST_ASK_EMPTY_CONTINUE_PATH")
+        app.configureFeatureUITestHandshake(
+            argument: "-simulate-ask-progressive-handshake",
+            name: "ask-evidence",
+            readyEnvironmentKey: "PORTAVOZ_UI_TEST_ASK_EVIDENCE_READY_PATH",
+            continueEnvironmentKey:
+                "PORTAVOZ_UI_TEST_ASK_EVIDENCE_CONTINUE_PATH")
+        app.configureFeatureUITestHandshake(
+            argument: "-simulate-ask-progressive-handshake",
+            name: "ask-answer",
+            readyEnvironmentKey: "PORTAVOZ_UI_TEST_ASK_ANSWER_READY_PATH",
+            continueEnvironmentKey:
+                "PORTAVOZ_UI_TEST_ASK_ANSWER_CONTINUE_PATH")
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -692,7 +710,13 @@ final class LibraryUITests: PortavozUITestCase {
         field.typeText("sinresultado")
         XCTAssertTrue(app.buttons["ask-submit"].isEnabled)
         app.buttons["ask-submit"].click()
-        let pendingQuestion = app.staticTexts["ask-pending-question"]
+        XCTAssertTrue(
+            app.waitForFeatureUITestHandshakeReady(
+                readyEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_ASK_EMPTY_READY_PATH"),
+            "the empty retrieval must remain cancellable until replacement")
+        let pendingQuestion = app.descendants(matching: .any)[
+            "ask-pending-question"]
         XCTAssertTrue(pendingQuestion.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-pending-source-meeting"]
@@ -701,6 +725,11 @@ final class LibraryUITests: PortavozUITestCase {
         field.click()
         field.typeText("viernes")
         app.buttons["ask-submit"].click()
+        XCTAssertTrue(
+            app.waitForFeatureUITestHandshakeRelease(
+                readyEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_ASK_EMPTY_READY_PATH"),
+            "replacement must cancel and clean the preceding retrieval")
         XCTAssertTrue(
             pendingQuestion.waitForLabelOrValue("viernes", timeout: 5),
             "a new Ask submission must replace pending work")
@@ -717,6 +746,13 @@ final class LibraryUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5),
             "Ask must distinguish lexical evidence from semantic refinement")
         attachScreenshot(of: app, named: "ask-progressive-evidence")
+        XCTAssertTrue(
+            app.continueFeatureUITestHandshake(
+                readyEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_ASK_EVIDENCE_READY_PATH",
+                continueEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_ASK_EVIDENCE_CONTINUE_PATH"),
+            "the deterministic fixture must release lexical evidence exactly once")
 
         XCTAssertTrue(
             app.descendants(matching: .any)["ask-progress-generating"]
@@ -727,6 +763,13 @@ final class LibraryUITests: PortavozUITestCase {
             pendingAnswer.waitForExistenceFast(timeout: 5),
             "the local answer must become readable before generation completes")
         XCTAssertTrue(renderedText(of: pendingAnswer).contains("presupuesto"))
+        XCTAssertTrue(
+            app.continueFeatureUITestHandshake(
+                readyEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_ASK_ANSWER_READY_PATH",
+                continueEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_ASK_ANSWER_CONTINUE_PATH"),
+            "the deterministic fixture must release the partial answer exactly once")
         XCTAssertTrue(
             app.staticTexts["El presupuesto se revisó y el rollout quedó para el viernes."]
                 .waitForExistenceFast(timeout: 10),

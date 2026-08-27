@@ -127,10 +127,10 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     func testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
-            "-seed-skill-waiting",
-            "-simulate-skill-receipt-refresh-delay",
-            "-simulate-skill-proposal-refresh-delay"
+            "-seed-skill-waiting"
         ])
+        configureSkillReceiptRefreshHandshake(on: app)
+        configureSkillProposalRefreshHandshake(on: app)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -141,6 +141,9 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "the real producer must publish the proposal controls first")
         openSkillsSettings(in: app)
+        XCTAssertTrue(
+            continueSkillProposalRefresh(in: app),
+            "the initial verified proposal snapshot must use the handshake")
 
         let pause = app.control(withIdentifier: "settings-skills-pause-all")
         let skill = app.control(
@@ -169,6 +172,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertFalse(
             proposal.isEnabled,
             "retained proposal actions must stay inert until refresh verifies them")
+        XCTAssertTrue(continueSkillProposalRefresh(in: app))
         XCTAssertTrue(proposalRefresh.waitForStableFrame(timeout: 10))
         XCTAssertTrue(proposal.isEnabled)
 
@@ -194,6 +198,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                 "receipt loading must not disable independently verified controls")
         }
 
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(receipt.waitForExistenceFast(timeout: 5))
         scrollToVisible(receipt, in: app, deltaY: -40)
         receipt.click()
@@ -215,6 +220,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(pause.isEnabled)
         XCTAssertTrue(skill.isEnabled)
 
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         let empty = app.control(
             withIdentifier: "settings-skills-empty-receipts-waiting")
         XCTAssertTrue(empty.waitForExistenceFast(timeout: 5))
@@ -321,9 +327,9 @@ final class SkillsSettingsUITests: PortavozUITestCase {
     func testSkillActivityRefreshPreservesTheExpandedCurrentScope() {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
-            "-seed-skill-history",
-            "-simulate-skill-receipt-refresh-delay"
+            "-seed-skill-history"
         ])
+        configureSkillReceiptRefreshHandshake(on: app)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -339,6 +345,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let loading = app.control(
             withIdentifier: "settings-skills-receipt-scope-loading")
         XCTAssertTrue(loading.waitForExistenceFast(timeout: 2))
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         let receiptRows = app.buttons.matching(
             identifier: "settings-skill-receipt-meeting-package-export")
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 20, timeout: 10))
@@ -348,6 +355,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         scrollToVisible(showMore, in: app, deltaY: -120)
         XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
         showMore.click()
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 25, timeout: 10))
 
         let refresh = app.buttons["settings-skills-receipt-refresh"]
@@ -361,6 +369,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(
             waitForCount(receiptRows, toEqual: 0, timeout: 2),
             "refresh must hide the stale same-scope rows while reading")
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(
             waitForCount(receiptRows, toEqual: 25, timeout: 10),
             "refresh must preserve the expanded bounded window")
@@ -379,9 +388,9 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let app = XCUIApplication.portavoz(seedDemo: true)
         app.launchArguments.append(contentsOf: [
             "-seed-skill-history",
-            "-seed-skill-recent-history",
-            "-simulate-skill-receipt-refresh-delay"
+            "-seed-skill-recent-history"
         ])
+        configureSkillReceiptRefreshHandshake(on: app)
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -397,6 +406,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let loading = app.control(
             withIdentifier: "settings-skills-receipt-scope-loading")
         XCTAssertTrue(loading.waitForExistenceFast(timeout: 2))
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         let receiptRows = app.buttons.matching(
             identifier: "settings-skill-receipt-meeting-package-export")
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 20, timeout: 10))
@@ -406,6 +416,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         scrollToVisible(showMore, in: app, deltaY: -120)
         XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
         showMore.click()
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 25, timeout: 10))
 
         let periodFilter = app.control(
@@ -422,6 +433,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             loading.waitForExistenceFast(timeout: 2),
             "a period change must hide rows from the previous query")
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 0, timeout: 2))
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(
             waitForCount(receiptRows, toEqual: 5, timeout: 10),
             "the rolling 24-hour query must return only the five recent rows")
@@ -441,6 +453,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(recap.waitForExistenceFast(timeout: 5))
         recap.click()
         XCTAssertTrue(loading.waitForExistenceFast(timeout: 2))
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         let empty = app.control(
             withIdentifier: "settings-skills-empty-receipts-waiting")
         XCTAssertTrue(empty.waitForExistenceFast(timeout: 10))
@@ -461,6 +474,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(clearFilters.waitForStableFrame(timeout: 5))
         clearFilters.click()
         XCTAssertTrue(loading.waitForExistenceFast(timeout: 2))
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(
             waitForCount(receiptRows, toEqual: 20, timeout: 10),
             "clearing filters must preserve Waiting and reset to its first page")
@@ -480,6 +494,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(pastDay.waitForExistenceFast(timeout: 5))
         pastDay.click()
         XCTAssertTrue(loading.waitForExistenceFast(timeout: 2))
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 5, timeout: 10))
 
         scrollToVisible(skillFilter, in: app, deltaY: 80)
@@ -490,6 +505,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(package.waitForExistenceFast(timeout: 5))
         package.click()
         XCTAssertTrue(loading.waitForExistenceFast(timeout: 2))
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 5, timeout: 10))
 
         scrollToVisible(periodFilter, in: app, deltaY: 80)
@@ -500,6 +516,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(anytime.waitForExistenceFast(timeout: 5))
         anytime.click()
         XCTAssertTrue(loading.waitForExistenceFast(timeout: 2))
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(
             waitForCount(receiptRows, toEqual: 20, timeout: 10),
             "changing the period must reset the 50-row expansion")
@@ -507,6 +524,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(scrollToVisible(showMore, in: app, deltaY: -120))
         XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
         showMore.click()
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(
             waitForCount(receiptRows, toEqual: 25, timeout: 10),
             "the exact package filter must still support explicit expansion")
@@ -519,6 +537,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(allSkills.waitForExistenceFast(timeout: 5))
         allSkills.click()
         XCTAssertTrue(loading.waitForExistenceFast(timeout: 2))
+        XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(
             waitForCount(receiptRows, toEqual: 20, timeout: 10),
             "changing the Skill filter must reset the 50-row expansion")
@@ -1637,6 +1656,52 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             waitForLabel(confirmation, toContain: approvalText),
             "an enabled row must still disclose proposal-scoped approval; "
                 + "label=\(confirmation.label) value=\(String(describing: confirmation.value))")
+    }
+
+    private func configureSkillReceiptRefreshHandshake(
+        on app: XCUIApplication
+    ) {
+        app.configureFeatureUITestHandshake(
+            argument: "-simulate-skill-receipt-refresh-handshake",
+            name: "skill-receipt-refresh",
+            readyEnvironmentKey:
+                "PORTAVOZ_UI_TEST_SKILL_RECEIPT_REFRESH_READY_PATH",
+            continueEnvironmentKey:
+                "PORTAVOZ_UI_TEST_SKILL_RECEIPT_REFRESH_CONTINUE_PATH")
+    }
+
+    private func configureSkillProposalRefreshHandshake(
+        on app: XCUIApplication
+    ) {
+        app.configureFeatureUITestHandshake(
+            argument: "-simulate-skill-proposal-refresh-handshake",
+            name: "skill-proposal-refresh",
+            readyEnvironmentKey:
+                "PORTAVOZ_UI_TEST_SKILL_PROPOSAL_REFRESH_READY_PATH",
+            continueEnvironmentKey:
+                "PORTAVOZ_UI_TEST_SKILL_PROPOSAL_REFRESH_CONTINUE_PATH")
+    }
+
+    @MainActor
+    private func continueSkillReceiptRefresh(
+        in app: XCUIApplication
+    ) -> Bool {
+        app.continueFeatureUITestHandshake(
+            readyEnvironmentKey:
+                "PORTAVOZ_UI_TEST_SKILL_RECEIPT_REFRESH_READY_PATH",
+            continueEnvironmentKey:
+                "PORTAVOZ_UI_TEST_SKILL_RECEIPT_REFRESH_CONTINUE_PATH")
+    }
+
+    @MainActor
+    private func continueSkillProposalRefresh(
+        in app: XCUIApplication
+    ) -> Bool {
+        app.continueFeatureUITestHandshake(
+            readyEnvironmentKey:
+                "PORTAVOZ_UI_TEST_SKILL_PROPOSAL_REFRESH_READY_PATH",
+            continueEnvironmentKey:
+                "PORTAVOZ_UI_TEST_SKILL_PROPOSAL_REFRESH_CONTINUE_PATH")
     }
 
     @MainActor

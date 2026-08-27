@@ -495,6 +495,8 @@ def tests_for_ui_test_file(path: str) -> set[str]:
 
 def app_features(filename: str) -> set[str]:
     lowered = filename.lower()
+    if lowered == "uitestfeaturehandshake.swift":
+        return {"ask", "settings-skills"}
     if "automationentit" in lowered:
         return {"automation-entry", "commitment-radar"}
     if lowered in {"applaunchmodel.swift", "applaunchrecoveryview.swift"}:
@@ -878,6 +880,11 @@ def select_paths(paths: Iterable[str]) -> Selection:
             reasons.append(
                 f"{path}: bilingual deterministic Web Ask journey"
             )
+            continue
+
+        if path == "Tests/PortavozUITests/FeatureUITestHandshakeSupport.swift":
+            selected.update(feature_tests({"ask", "settings-skills"}))
+            reasons.append(f"{path}: Ask and Skills handshake contracts")
             continue
 
         changed_ui_tests = tests_for_ui_test_file(path)

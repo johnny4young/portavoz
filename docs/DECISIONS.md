@@ -15297,3 +15297,61 @@ remains valid, but it was not the complete cause of the hosted failures. The
 four formerly failing English journeys pass 4/4 locally after D408; fresh
 exact-head hosted evidence remains required before closing portability. Physical
 Sequoia/Tahoe and VoiceOver/Voice Control qualification remain separate gates.
+
+## D409 — Replace runner-speed timing with finite feature handshakes (Aug 2026)
+
+**Context:** exact D408 head `600a46ec` passed hosted current-SDK, Sequoia,
+lint, and hygiene CI, then hosted Scoped UI run `33092974838` evaluated all 106
+English journeys because the pull request contained the complete long-lived
+branch diff. It retained 104 passes and two failures. Interview Assist admitted
+the objective and later produced its exact grounded answer/evidence, but the
+new objective row had not been materialized below the compact scroll viewport.
+Ask produced the final exact answer and citation, but a screenshot between its
+refining and generating assertions consumed fixed 500/350 ms fixture windows.
+The same run measured 1,699.537 seconds of summed XCTest, p95 38.424 seconds,
+and 552 seconds of build time; the slowest Skills journeys repeatedly paid
+test-only four-second sleeps. Retrying unchanged, lengthening sleeps, raising
+budgets, dropping transient assertions, or running the complete branch history
+for every feature would preserve neither determinism nor useful feedback time.
+
+**Decision:** intermediate test-fixture state is controlled by observation,
+not elapsed time. Disposable Ask empty retrieval, lexical evidence, and partial
+answers, plus non-Recent Skills receipt and proposal reads, use distinct UUID-scoped
+ready/continue file pairs. The app removes stale signals before each phase,
+accepts only signals directly below its process temporary directory, publishes
+ready, checks cancellation every 50 ms, resumes after the test-owned continue
+signal, and removes both files. A missing/malformed configuration,
+signal-creation failure, cancellation, or 600-probe exhaustion fails; there is
+no timer fallback. These seams require both `-use-temp-store` composition and
+an explicit simulation argument, so production scheduling and data are
+unchanged. The runner derives paths from the app's isolated launch `TMPDIR`,
+not its own process temporary directory, and canonicalizes the parent directory
+before comparison. The app validates against that exact environment value, not
+Foundation's independently resolved default temporary directory; both sides
+fail if the isolated launch root is absent. XCUITest releases each phase only
+after it has asserted the exact loading/refining/partial state; replacement
+cancels the empty retrieval and must remove its ready file.
+
+Interview Assist waits for the admitted-objective count, performs one bounded
+scroll before querying the dynamic row, and requires the answer action's whole
+frame inside the assist viewport before activation. Pull-request `synchronize`
+events select the minimum-safe diff from the immediately preceding PR head;
+initial PR evaluation retains the base-branch diff and manual integration
+dispatch retains the complete catalogue. Shared harness, localization, and
+unknown executable paths keep their existing fail-safe expansion. If a
+force-pushed preceding object is not present in the complete scope checkout,
+selection expands from the base branch instead of failing narrow.
+
+**Consequences:** feature pushes no longer replay hundreds of already-reviewed
+commits or depend on runner speed to catch a transient state. The retained red
+hosted result remains part of the evidence; the next head must change code and
+pass its minimum-safe scope. The changed local code passed the path validator
+3/3, the four causal Ask/Skills journeys 4/4 in 113.595 seconds, and the full
+minimum-safe English selection 56/56 from one reused build without retry. Its
+content-free receipt records 668.084 seconds of summed XCTest, p95 28.095
+seconds, and no budget violation; the Interview journey passed in 11.412
+seconds. This is not permission to merge on scoped evidence alone: exact-head
+hosted qualification and final integration/RC/release still require a fresh
+complete bilingual 106-case run with exact aggregate and per-journey budgets,
+plus the existing physical Sequoia/Tahoe, VoiceOver/Voice Control,
+distribution, CloudKit, and field gates.

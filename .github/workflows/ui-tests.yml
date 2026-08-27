@@ -37,14 +37,26 @@ jobs:
         id: select
         env:
           EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PREVIOUS_HEAD_SHA: ${{ github.event.before }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             python3 scripts/ui_test_scope.py --all --format github >> "$GITHUB_OUTPUT"
           else
+            SELECTED_BASE_SHA="$BASE_SHA"
+            if [[ "$EVENT_ACTION" == "synchronize" \
+               && "$PREVIOUS_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              if git cat-file -e "${PREVIOUS_HEAD_SHA}^{commit}" 2>/dev/null; then
+                SELECTED_BASE_SHA="$PREVIOUS_HEAD_SHA"
+              else
+                echo "::warning::Previous PR head is unavailable; expanding from the base SHA."
+              fi
+            fi
             python3 scripts/ui_test_scope.py \
-              --base "$BASE_SHA" --head "$HEAD_SHA" --format github >> "$GITHUB_OUTPUT"
+              --base "$SELECTED_BASE_SHA" --head "$HEAD_SHA" \
+              --format github >> "$GITHUB_OUTPUT"
           fi
 
       - name: Explain the selection
