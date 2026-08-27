@@ -7,6 +7,21 @@ import XCTest
 @testable import StorageKit
 
 final class AskWebFixtureIntegrationTests: XCTestCase {
+    func testExternalDescriptorRejectsPayloadBeyondBoundedRead() throws {
+        let descriptor = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: descriptor) }
+        try Data(repeating: 0x20, count: 4_097).write(
+            to: descriptor,
+            options: .atomic)
+
+        XCTAssertThrowsError(
+            try UnitTestWebFixtureProcess.start(
+                environment: [
+                    "PORTAVOZ_TEST_WEB_FIXTURE_DESCRIPTOR": descriptor.path,
+                ]))
+    }
+
     func testRealGatewayHandlesBilingualEvidenceAndAdversarialFailures() async throws {
         let fixture = try UnitTestWebFixtureProcess.start()
         defer { fixture.stop() }
@@ -114,23 +129,35 @@ final class AskWebFixtureIntegrationTests: XCTestCase {
 private final class UnitTestWebFixtureProcess: @unchecked Sendable {
     let baseURL: URL
 
-    private let process: Process
-    private let readyFile: URL
-    private let output: Pipe
+    private let ownedProcess: OwnedProcess?
 
     private init(
         baseURL: URL,
-        process: Process,
-        readyFile: URL,
-        output: Pipe
+        ownedProcess: OwnedProcess?
     ) {
         self.baseURL = baseURL
-        self.process = process
-        self.readyFile = readyFile
-        self.output = output
+        self.ownedProcess = ownedProcess
     }
 
-    static func start(timeout: TimeInterval = 30) throws -> UnitTestWebFixtureProcess {
+    static func start(
+        timeout: TimeInterval = 30,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) throws -> UnitTestWebFixtureProcess {
+        if let descriptorPath = environment[externalDescriptorEnvironmentKey] {
+            guard !descriptorPath.isEmpty else {
+                throw FixtureError.invalidDescriptor
+            }
+            return UnitTestWebFixtureProcess(
+                baseURL: try loadDescriptor(
+                    from: URL(fileURLWithPath: descriptorPath)),
+                ownedProcess: nil)
+        }
+        return try startOwned(timeout: timeout)
+    }
+
+    private static func startOwned(
+        timeout: TimeInterval
+    ) throws -> UnitTestWebFixtureProcess {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -169,24 +196,10 @@ private final class UnitTestWebFixtureProcess: @unchecked Sendable {
                 output: output)
             throw FixtureError.didNotStart(diagnostic)
         }
-        let descriptor: Descriptor
+        let baseURL: URL
         do {
-            descriptor = try JSONDecoder().decode(
-                Descriptor.self,
-                from: Data(contentsOf: readyFile))
+            baseURL = try loadDescriptor(from: readyFile)
         } catch {
-            _ = Self.stop(
-                process: process,
-                readyFile: readyFile,
-                output: output)
-            throw FixtureError.invalidDescriptor
-        }
-        guard descriptor.schemaVersion == 1,
-              descriptor.generation == "public-local-v1",
-              descriptor.fixtureChecksum.count == 64,
-              let baseURL = URL(string: descriptor.baseURL),
-              baseURL.host == "127.0.0.1"
-        else {
             _ = Self.stop(
                 process: process,
                 readyFile: readyFile,
@@ -195,9 +208,10 @@ private final class UnitTestWebFixtureProcess: @unchecked Sendable {
         }
         return UnitTestWebFixtureProcess(
             baseURL: baseURL,
-            process: process,
-            readyFile: readyFile,
-            output: output)
+            ownedProcess: OwnedProcess(
+                process: process,
+                readyFile: readyFile,
+                output: output))
     }
 
     func url(_ path: String) -> URL {
@@ -205,11 +219,37 @@ private final class UnitTestWebFixtureProcess: @unchecked Sendable {
     }
 
     func stop(timeout: TimeInterval = 5) {
+        guard let ownedProcess else { return }
         _ = Self.stop(
-            process: process,
-            readyFile: readyFile,
-            output: output,
+            process: ownedProcess.process,
+            readyFile: ownedProcess.readyFile,
+            output: ownedProcess.output,
             timeout: timeout)
+    }
+
+    private static func loadDescriptor(from url: URL) throws -> URL {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        let data = try handle.read(upToCount: 4_097) ?? Data()
+        guard data.count <= 4_096 else {
+            throw FixtureError.invalidDescriptor
+        }
+        let descriptor = try JSONDecoder().decode(Descriptor.self, from: data)
+        guard descriptor.schemaVersion == 1,
+              descriptor.generation == "public-local-v1",
+              descriptor.fixtureChecksum == canonicalFixtureChecksum,
+              descriptor.processID > 0,
+              let baseURL = URL(string: descriptor.baseURL),
+              baseURL.scheme == "http",
+              baseURL.host == "127.0.0.1",
+              (1...65_535).contains(baseURL.port ?? 0),
+              baseURL.path.isEmpty,
+              baseURL.user == nil,
+              baseURL.password == nil,
+              baseURL.query == nil,
+              baseURL.fragment == nil
+        else { throw FixtureError.invalidDescriptor }
+        return baseURL
     }
 
     private static func stop(
@@ -240,11 +280,23 @@ private final class UnitTestWebFixtureProcess: @unchecked Sendable {
 }
 
 private extension UnitTestWebFixtureProcess {
+    static let externalDescriptorEnvironmentKey =
+        "PORTAVOZ_TEST_WEB_FIXTURE_DESCRIPTOR"
+    static let canonicalFixtureChecksum =
+        "97a560b3049bd0d2e0b41fc2e8f7664272f7d20fcf4771b6ec7940295822fd26"
+
+    struct OwnedProcess {
+        let process: Process
+        let readyFile: URL
+        let output: Pipe
+    }
+
     struct Descriptor: Decodable {
         let schemaVersion: Int
         let generation: String
         let fixtureChecksum: String
         let baseURL: String
+        let processID: Int
     }
 
     enum FixtureError: Error {

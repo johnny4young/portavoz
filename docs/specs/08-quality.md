@@ -1648,9 +1648,12 @@ prove Web evidence never enters a meeting passage call and uses the distinct
 `public-web-answer-material` loopback classification. Corrupt provider identity
 and non-finite receipt time fail closed rather than surfacing as privacy truth.
 
-One autonomous integration case launches the canonical Python server on an
-ephemeral IPv4-loopback port and runs the real `URLSessionDataEgressGateway`,
-`MeetingStore`, direct-page adapter, and parser. It covers fresh EN/ES, stale,
+One autonomous integration case runs the real `URLSessionDataEgressGateway`,
+`MeetingStore`, direct-page adapter, and parser against the canonical Python
+server on an ephemeral IPv4-loopback port. Hosted package lanes use
+`scripts/run-swift-tests.sh` to own that process outside XCTest and inject only
+its atomic content-free descriptor; a direct local `swift test` retains the
+same validated process-owning fallback. The case covers fresh EN/ES, stale,
 undated, hostile prompt injection, blocked redirect, 503, partial response,
 disconnect, and slow cancellation. Every attempt—including failures and
 cancellation—leaves only content-free host/policy receipt evidence. It needs no
@@ -2308,10 +2311,14 @@ validation, strict route/status/date/link policy, no-store headers, atomic
 content-free ready files, and deterministic teardown are part of `make
 test-apuntador-validation`. The ready file is a close-then-rename same-host
 handshake, not durable evidence, so it never waits for a volume `fsync`;
-unit-test and XCUITest owners retain a 30-second failure-only startup ceiling,
-return immediately on readiness, and close the child process, pipe, and
-temporary descriptor on every rejection. This fixture is test infrastructure, not product
-web authority or evidence that a real provider behaves the same way.
+package and XCUITest shell owners retain a 30-second failure-only startup
+ceiling, return immediately on readiness, and close the child process, log, and
+temporary descriptor on success, failure, or interruption. The package test
+validates the exact generation/checksum, 4 KiB ceiling, positive process ID,
+and credential-free IPv4-loopback HTTP origin before using an externally owned
+fixture; an invalid inherited descriptor never falls back. This fixture is
+test infrastructure, not product web authority or evidence that a real
+provider behaves the same way.
 
 Full suites and the dedicated receipt-focus journey snapshot the host's global
 `AppleKeyboardUIMode`, enable Keyboard Navigation for the test process, and

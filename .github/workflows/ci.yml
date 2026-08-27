@@ -31,7 +31,7 @@ jobs:
       - name: Build with current-SDK diagnostics as errors
         run: swift build -Xswiftc -warnings-as-errors
       - name: Test
-        run: swift test
+        run: scripts/run-swift-tests.sh
 
   sequoia-compatibility:
     # The product floor is Sonoma 14.4, but Sequoia is the oldest supported
@@ -54,7 +54,7 @@ jobs:
       - name: Build on Sequoia
         run: swift build
       - name: Test on Sequoia
-        run: swift test
+        run: scripts/run-swift-tests.sh
 
   lint:
     runs-on: macos-latest

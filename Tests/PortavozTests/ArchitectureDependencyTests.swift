@@ -8390,6 +8390,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         let uiFixture = try Self.contents(
             of: "Tests/PortavozUITests/ApuntadorWebFixtureSupport.swift")
         let uiRunner = try Self.contents(of: "scripts/run-ui-tests.sh")
+        let packageRunner = try Self.contents(of: "scripts/run-swift-tests.sh")
+        let packageIntegration = try Self.contents(
+            of: "Tests/PortavozTests/AskWebFixtureIntegrationTests.swift")
+        let ci = try Self.contents(of: ".github/workflows/ci.yml")
 
         XCTAssertTrue(workflow.contains("case approvedForSingleRequest"))
         XCTAssertTrue(contracts.contains("protocol AskWebSourceRetrieving"))
@@ -8440,6 +8444,17 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(uiFixture.contains(
             "fixtureChecksum == canonicalFixtureChecksum"))
         XCTAssertFalse(uiFixture.contains("Process()"))
+        XCTAssertTrue(packageRunner.contains(
+            "PORTAVOZ_TEST_WEB_FIXTURE_DESCRIPTOR"))
+        XCTAssertTrue(packageRunner.contains(
+            "scripts/apuntador_web_fixture.py serve"))
+        XCTAssertTrue(packageIntegration.contains(
+            "fixtureChecksum == canonicalFixtureChecksum"))
+        XCTAssertTrue(packageIntegration.contains(
+            "environment[externalDescriptorEnvironmentKey]"))
+        XCTAssertEqual(
+            ci.components(separatedBy: "scripts/run-swift-tests.sh").count,
+            3)
         XCTAssertTrue(uiTest.contains("ask-consented-cited-web-answer"))
         XCTAssertTrue(uiTest.contains("one-request Web consent must be consumed"))
 
