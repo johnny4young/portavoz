@@ -6126,7 +6126,6 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(uiRunner.contains(
             """
             cleanup_ui_test_runner() {
-              stop_web_fixture
               restore_keyboard_ui_mode
             }
             trap cleanup_ui_test_runner EXIT HUP INT TERM
@@ -8387,8 +8386,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         let model = try Self.contents(of: "Sources/portavoz-app/AskModel.swift")
         let view = try Self.contents(of: "Sources/portavoz-app/AskView+Web.swift")
         let uiTest = try Self.contents(of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let uiSupport = try Self.contents(
+            of: "Tests/PortavozUITests/UITestSupport.swift")
         let uiFixture = try Self.contents(
             of: "Tests/PortavozUITests/ApuntadorWebFixtureSupport.swift")
+        let uiTransport = try Self.contents(
+            of: "Sources/portavoz-app/UITestAskWebFixtureURLProtocol.swift")
+        let appComposition = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Ask.swift")
         let uiRunner = try Self.contents(of: "scripts/run-ui-tests.sh")
         let packageRunner = try Self.contents(of: "scripts/run-swift-tests.sh")
         let packageIntegration = try Self.contents(
@@ -8440,12 +8445,27 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
         XCTAssertTrue(uiRunner.contains("scripts/apuntador_web_fixture.py"))
         XCTAssertTrue(uiRunner.contains(
-            "TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR"))
+            "TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD"))
+        XCTAssertTrue(uiRunner.contains("verify-public"))
+        XCTAssertFalse(uiRunner.contains(
+            "scripts/apuntador_web_fixture.py serve"))
+        XCTAssertFalse(uiRunner.contains("stop_web_fixture"))
+        XCTAssertFalse(uiRunner.contains("web_fixture_pid"))
+        XCTAssertFalse(uiRunner.contains("--ready-file"))
         XCTAssertTrue(uiFixture.contains(
-            "PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR"))
+            "PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD"))
         XCTAssertTrue(uiFixture.contains(
-            "fixtureChecksum == canonicalFixtureChecksum"))
+            "sha256(data) == canonicalFixtureChecksum"))
         XCTAssertFalse(uiFixture.contains("Process()"))
+        XCTAssertTrue(uiTest.contains("includeWebFixture: true"))
+        XCTAssertTrue(uiSupport.contains("if includeWebFixture"))
+        XCTAssertTrue(uiTransport.contains("final class UITestAskWebFixtureURLProtocol"))
+        XCTAssertTrue(uiTransport.contains("canonicalFixtureSHA256"))
+        XCTAssertTrue(uiTransport.contains("URLProtocol"))
+        XCTAssertTrue(uiTransport.contains("ProcessInfo.processInfo.environment"))
+        XCTAssertTrue(appComposition.contains("if usesTemporaryStore"))
+        XCTAssertTrue(appComposition.contains(
+            "UITestAskWebFixtureURLProtocol.install"))
         XCTAssertTrue(packageRunner.contains(
             "PORTAVOZ_TEST_WEB_FIXTURE_DESCRIPTOR"))
         XCTAssertTrue(packageRunner.contains(

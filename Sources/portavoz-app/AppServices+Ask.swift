@@ -343,7 +343,8 @@ extension AppServices {
         AskWeb(
             retrieval: URLSessionAskWebSourceRetrieval(
                 gateway: URLSessionDataEgressGateway(
-                    session: makeAskWebSession(),
+                    session: makeAskWebSession(
+                        usesTemporaryStore: usesTemporaryStore),
                     receiptRecorder: store),
                 policy: usesTemporaryStore
                     ? .loopbackFixture
@@ -389,7 +390,9 @@ extension AppServices {
             drain: projector.drain(owner:))
     }
 
-    private static func makeAskWebSession() -> URLSession {
+    private static func makeAskWebSession(
+        usesTemporaryStore: Bool
+    ) -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
         configuration.urlCache = nil
@@ -398,6 +401,11 @@ extension AppServices {
         configuration.timeoutIntervalForRequest = 8
         configuration.timeoutIntervalForResource = 10
         configuration.waitsForConnectivity = false
+        if usesTemporaryStore {
+            _ = UITestAskWebFixtureURLProtocol.install(
+                into: configuration,
+                environment: ProcessInfo.processInfo.environment)
+        }
         return URLSession(configuration: configuration)
     }
 }

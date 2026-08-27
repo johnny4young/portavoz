@@ -38,9 +38,13 @@ D387 makes that Web choice a direct-page surface. The question and URL fields
 jointly authorize one toggle; editing either invalidates consent, submit consumes
 it, and changing source cancels the in-flight request. Production presentation
 accepts remote HTTPS only, while temporary-store real-app tests accept the
-loopback fixture. Pending/completed Web exchanges retain a host badge, direct
-links, observed date/freshness, truncation, and typed source failures separately
-from meeting citations. Every new control and evidence row has a stable
+loopback fixture. That disposable identity installs a checksum-validated
+canonical `URLProtocol` only when the Web journey explicitly forwards the
+runner's public fixture payload; it opens no loopback listener, while the
+package integration lane retains real HTTP coverage. Pending/completed Web
+exchanges retain a host badge, direct links, observed date/freshness,
+truncation, and typed source failures separately from meeting citations. Every
+new control and evidence row has a stable
 `ask-web-*` or `ask-*-source-web` accessibility identifier. The Web-specific
 state, view, and client contracts are split from the bounded core Ask model;
 window closure still cancels both meeting and Web work.

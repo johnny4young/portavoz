@@ -4792,11 +4792,18 @@ temporary-store UI-test identity. Production uses the public-HTTPS URL policy,
 while both paths cross the real receipt-backed gateway and direct-page parser.
 The fixture does not qualify Internet availability, DNS behavior, a search
 provider, or any third-party page; it proves only the deterministic
-direct-source product path. GitHub-hosted package lanes and the XCUITest harness
-own their Python fixture outside XCTest and pass only a bounded, canonical,
-content-free loopback descriptor; direct local package tests retain a validated
-process-owning fallback. Shell traps terminate the external server and remove
-its descriptor on success, failure, and interruption.
+direct-source product path. GitHub-hosted package lanes own the Python server
+outside XCTest and pass only a bounded, canonical, content-free loopback
+descriptor; direct local package tests retain a validated process-owning
+fallback. Shell traps terminate that external server and remove its descriptor
+on success, failure, and interruption. The real-app XCUITest lane instead
+validates and forwards the exact canonical public payload after its shared
+build. Only the Web journey forwards it into temporary-store composition,
+which installs one `URLProtocol`. It opens no listener and makes no Local
+Network privacy choice while preserving the receipt-backed `URLSession`
+gateway, direct-page parser, and presentation path. Exact checksum, schema,
+generation, route-count, origin, and payload-size
+checks fail closed; production composition can never install this transport.
 The runner preserves an explicit `DEVELOPER_DIR`, otherwise follows the active
 `xcode-select` toolchain chosen by CI, and falls back to the conventional local
 Xcode path only when Command Line Tools is active. Before that runner builds,

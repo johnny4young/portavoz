@@ -38,8 +38,6 @@ mkdir -p "$results_root"
 keyboard_ui_mode_should_restore=false
 keyboard_ui_mode_was_set=false
 keyboard_ui_mode=""
-web_fixture_pid=""
-web_fixture_ready=""
 
 restore_keyboard_ui_mode() {
   [[ "$keyboard_ui_mode_should_restore" == true ]] || return 0
@@ -50,24 +48,7 @@ restore_keyboard_ui_mode() {
   fi
 }
 
-stop_web_fixture() {
-  [[ -n "$web_fixture_pid" ]] || return 0
-  if kill -0 "$web_fixture_pid" 2>/dev/null; then
-    kill -TERM "$web_fixture_pid" 2>/dev/null || true
-    for _attempt in {1..250}; do
-      kill -0 "$web_fixture_pid" 2>/dev/null || break
-      sleep 0.02
-    done
-    if kill -0 "$web_fixture_pid" 2>/dev/null; then
-      kill -INT "$web_fixture_pid" 2>/dev/null || true
-    fi
-  fi
-  wait "$web_fixture_pid" 2>/dev/null || true
-  [[ -z "$web_fixture_ready" ]] || rm -f "$web_fixture_ready"
-}
-
 cleanup_ui_test_runner() {
-  stop_web_fixture
   restore_keyboard_ui_mode
 }
 trap cleanup_ui_test_runner EXIT HUP INT TERM
@@ -108,10 +89,11 @@ build_started=$SECONDS
 xcodebuild build-for-testing "${common[@]}"
 build_duration=$((SECONDS - build_started))
 
-# XCUITest runners are App Sandbox processes, so they cannot launch the Xcode
-# Python shim themselves. Own the deterministic loopback fixture here, outside
-# the runner, and forward only its atomic content-free descriptor. One process
-# is reused by every requested locale and is terminated by the runner trap.
+# macOS 15 local-network privacy can present a user-owned permission sheet when
+# a launch-agent-owned Python process opens even a loopback listener. Package
+# integration retains the real server. XCUITest forwards the exact canonical
+# public payload to a temp-store-only URLProtocol, preserving URLSession and the
+# real receipt/parser/UI path without a socket or an automated privacy choice.
 web_fixture_selector="PortavozUITests/LibraryUITests/testAskConversationAnswersAndSeeksToExactCitation"
 needs_web_fixture=false
 if [[ -z "$tests" ]]; then
@@ -126,29 +108,17 @@ else
 fi
 
 if [[ "$needs_web_fixture" == true ]]; then
-  web_fixture_ready="$results_root/apuntador-web-fixture.json"
-  web_fixture_log="$results_root/apuntador-web-fixture.log"
-  rm -f "$web_fixture_ready" "$web_fixture_log"
-  python3 scripts/apuntador_web_fixture.py serve \
-    --fixture Fixtures/ApuntadorWeb/public-local-v1.json \
-    --ready-file "$web_fixture_ready" \
-    >"$web_fixture_log" 2>&1 &
-  web_fixture_pid=$!
-  # Normal startup is immediate. The bounded 30-second ceiling exists only for
-  # heavily contended hosted runners and does not delay the success path.
-  for _attempt in {1..1500}; do
-    [[ -f "$web_fixture_ready" ]] && break
-    kill -0 "$web_fixture_pid" 2>/dev/null || break
-    sleep 0.02
-  done
-  if [[ ! -f "$web_fixture_ready" ]] \
-      || ! kill -0 "$web_fixture_pid" 2>/dev/null; then
-    echo "Deterministic Apuntador Web fixture did not start." >&2
-    cat "$web_fixture_log" >&2 || true
+  web_fixture_path="Fixtures/ApuntadorWeb/public-local-v1.json"
+  python3 scripts/apuntador_web_fixture.py verify-public \
+    --fixture "$web_fixture_path" >/dev/null
+  web_fixture_payload="$(base64 < "$web_fixture_path" | tr -d '\n')"
+  if [[ -z "$web_fixture_payload" \
+      || ${#web_fixture_payload} -gt 12000 ]]; then
+    echo "Deterministic Apuntador Web fixture payload is invalid." >&2
     exit 2
   fi
-  export PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR="$web_fixture_ready"
-  export TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR="$web_fixture_ready"
+  export PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD="$web_fixture_payload"
+  export TEST_RUNNER_PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD="$web_fixture_payload"
 fi
 
 for locale in $locales; do

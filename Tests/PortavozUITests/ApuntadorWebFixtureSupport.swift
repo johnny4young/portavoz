@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 struct ApuntadorWebFixtureDescriptor {
@@ -5,52 +6,50 @@ struct ApuntadorWebFixtureDescriptor {
 
     static func loadFromRunnerEnvironment() throws -> Self {
         let environment = ProcessInfo.processInfo.environment
-        guard let descriptorPath = environment[
-            "PORTAVOZ_UI_WEB_FIXTURE_DESCRIPTOR"],
-            !descriptorPath.isEmpty
-        else { throw FixtureError.missingDescriptor }
-
-        let descriptorURL = URL(fileURLWithPath: descriptorPath)
-        let data = try Data(
-            contentsOf: descriptorURL,
-            options: .mappedIfSafe)
-        guard data.count <= 4_096 else {
-            throw FixtureError.invalidDescriptor
-        }
-        let descriptor = try JSONDecoder().decode(
-            Descriptor.self,
-            from: data)
-        guard descriptor.schemaVersion == 1,
-              descriptor.generation == "public-local-v1",
-              descriptor.fixtureChecksum == canonicalFixtureChecksum,
-              descriptor.processID > 0,
-              let baseURL = URL(string: descriptor.baseURL),
-              baseURL.scheme == "http",
-              baseURL.host == "127.0.0.1",
-              baseURL.port != nil,
-              baseURL.user == nil,
-              baseURL.password == nil,
-              baseURL.query == nil,
-              baseURL.fragment == nil
-        else { throw FixtureError.invalidDescriptor }
-        return Self(baseURL: baseURL)
+        guard let encoded = environment[environmentKey],
+              !encoded.isEmpty,
+              encoded.utf8.count <= maximumEncodedPayloadBytes,
+              let data = Data(base64Encoded: encoded),
+              sha256(data) == canonicalFixtureChecksum,
+              let manifest = try? JSONDecoder().decode(
+                Manifest.self,
+                from: data),
+              manifest.schemaVersion == 1,
+              manifest.generation == "public-local-v1",
+              manifest.kind == "apuntador-local-web-fixture",
+              manifest.contentSource == "public-synthetic-only",
+              manifest.bindHost == "127.0.0.1",
+              manifest.routes.count == 14
+        else { throw FixtureError.invalidPayload }
+        return Self(baseURL: fixtureBaseURL)
     }
 }
 
 private extension ApuntadorWebFixtureDescriptor {
+    static let environmentKey = "PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD"
+    static let maximumEncodedPayloadBytes = 12_000
     static let canonicalFixtureChecksum =
         "97a560b3049bd0d2e0b41fc2e8f7664272f7d20fcf4771b6ec7940295822fd26"
+    static let fixtureBaseURL = URL(string: "http://127.0.0.1:54321")!
 
-    struct Descriptor: Decodable {
+    static func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    struct Manifest: Decodable {
         let schemaVersion: Int
         let generation: String
-        let fixtureChecksum: String
-        let baseURL: String
-        let processID: Int
+        let kind: String
+        let contentSource: String
+        let bindHost: String
+        let routes: [Route]
+    }
+
+    struct Route: Decodable {
+        let path: String
     }
 
     enum FixtureError: Error {
-        case missingDescriptor
-        case invalidDescriptor
+        case invalidPayload
     }
 }

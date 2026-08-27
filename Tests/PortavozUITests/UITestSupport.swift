@@ -88,6 +88,7 @@ extension XCUIApplication {
         showMenuBarContent: Bool = false,
         openSettings: Bool = false,
         showOnboarding: Bool = false,
+        includeWebFixture: Bool = false,
         launchLocale: String? = UITestLocale.environmentLocale
     ) -> XCUIApplication {
         let app = XCUIApplication()
@@ -194,6 +195,13 @@ extension XCUIApplication {
         // tests may replace it with an explicit scratch copy of real audio.
         app.launchEnvironment["PORTAVOZ_AUDIO_ROOT"] =
             NSTemporaryDirectory() + "portavoz-uitest-\(UUID().uuidString)"
+        if includeWebFixture,
+           let webFixture = ProcessInfo.processInfo.environment[
+            "PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD"],
+           !webFixture.isEmpty {
+            app.launchEnvironment["PORTAVOZ_UI_WEB_FIXTURE_PAYLOAD"] =
+                webFixture
+        }
         UITestLocale.apply(launchLocale, to: app)
         return app
     }

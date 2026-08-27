@@ -1659,18 +1659,21 @@ disconnect, and slow cancellation. Every attempt—including failures and
 cancellation—leaves only content-free host/policy receipt evidence. It needs no
 Internet, provider account, user meeting, or private transcript.
 
-The existing Ask XCUITest journey is extended rather than duplicated. The
-shell runner starts one atomic loopback fixture after its shared build and only
-when the selected scope contains the Web journey. This ownership is outside the
-App-Sandbox-signed XCUITest process, which cannot launch the Xcode Python shim.
-The test bundle accepts only a 4 KiB canonical checksum-validated descriptor,
+The existing Ask XCUITest journey is extended rather than duplicated. Only
+when the selected scope contains that Web journey, the shell runner validates
+the canonical public fixture after its shared build and forwards its exact
+base64 payload. It never opens a loopback listener. The test runner and
+temporary-store app independently enforce the 12 KiB encoded ceiling, exact
+checksum, schema, generation, public-synthetic marker, IPv4-loopback origin,
+and 14-route count. Temporary-store composition installs a fixture
+`URLProtocol` only for this explicitly opted-in journey; production and every
+unrelated UI-test launch cannot. The journey still crosses the
+real receipt-backed `URLSession` gateway, direct-page parser, model, and UI,
 then enters a localized EN/ES question and page, proves submit is disabled
-before consent, runs through the real app, asserts the cited deterministic
-answer plus 2026 freshness and Web source badge, proves consent was consumed,
-and continues exact-meeting answer/citation/seek. The direct Link is asserted
-but not opened, so the test never launches a browser or leaves the controlled
-fixture. One fixture is reused across sequential locales and the combined
-signal/exit trap stops it before restoring the host keyboard-navigation value.
+before consent, asserts the cited deterministic answer plus 2026 freshness and
+Web source badge, proves consent was consumed, and continues exact-meeting
+answer/citation/seek. The direct Link is asserted but not opened, so the test
+never launches a browser or leaves the controlled fixture.
 
 The finalized tree passed the current-SDK first-party warnings-as-errors build,
 69/69 focused D387 tests, and the complete 2,693-test Swift package with 15
@@ -2309,16 +2312,20 @@ is deterministic test authority, not a product sleep. Tests additionally prove
 a closed listener produces the offline transport case. Canonical checksum
 validation, strict route/status/date/link policy, no-store headers, atomic
 content-free ready files, and deterministic teardown are part of `make
-test-apuntador-validation`. The ready file is a close-then-rename same-host
-handshake, not durable evidence, so it never waits for a volume `fsync`;
-package and XCUITest shell owners retain a 30-second failure-only startup
-ceiling, return immediately on readiness, and close the child process, log, and
-temporary descriptor on success, failure, or interruption. The package test
-validates the exact generation/checksum, 4 KiB ceiling, positive process ID,
-and credential-free IPv4-loopback HTTP origin before using an externally owned
-fixture; an invalid inherited descriptor never falls back. This fixture is
-test infrastructure, not product web authority or evidence that a real
-provider behaves the same way.
+test-apuntador-validation`. The package shell owner retains a 30-second
+failure-only startup ceiling, returns immediately on readiness, and closes the
+child process, log, and temporary descriptor on success, failure, or
+interruption. The package test validates exact generation/checksum, a 4 KiB
+descriptor ceiling, positive process ID, and credential-free IPv4-loopback
+HTTP origin before using that externally owned fixture; an invalid inherited
+descriptor never falls back. XCUITest does not start this server: the runner
+validates the same tracked fixture and forwards only its exact bounded payload
+to a temporary-store-only `URLProtocol`. This avoids macOS 15 Local Network
+Privacy prompts on launch-agent-owned hosted runners without granting,
+dismissing, or automating a user permission. Real socket, partial-response,
+disconnect, cancellation, and receipt behavior remains independently covered
+by the package integration lane. This fixture is test infrastructure, not
+product web authority or evidence that a real provider behaves the same way.
 
 Sequoia's Xcode 26.3 image carries Swift 6.2.4, whose XCTest synchronous-test
 teardown can abort while releasing a `@MainActor` value with `isolated deinit`
@@ -2335,6 +2342,17 @@ structured sleep operation with the real continuous-clock behavior as the
 default; tests use one cancellation-aware controlled suspension, observe the
 exact requested duration, and resume or cancel the exact pending call. This
 retains the real scheduling boundary while removing runner-load assumptions.
+
+The local closure passed the current-SDK warnings-as-errors build, all 2,777
+Swift tests with 15 explicit environment/model skips and zero failures in
+115.571 seconds, all 688 tooling tests in 26.343 seconds, strict SwiftLint over
+740 files, repository hygiene, and the 106-case scope catalog. The minimum-safe
+real-app Web journey passed once in English (19.421 seconds) and once in Spanish
+(19.870 seconds) from one shared build; both runtime receipts remained inside
+budget and no Local Network permission was requested. This is local
+Tahoe-family evidence. Because the repaired symptom existed only under a
+launch-agent-owned hosted runner, exact-head hosted XCUITest remains required
+before the repair is considered cross-host qualified.
 
 Full suites and the dedicated receipt-focus journey snapshot the host's global
 `AppleKeyboardUIMode`, enable Keyboard Navigation for the test process, and

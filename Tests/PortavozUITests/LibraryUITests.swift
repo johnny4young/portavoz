@@ -560,7 +560,8 @@ final class LibraryUITests: PortavozUITestCase {
             .loadFromRunnerEnvironment()
         let app = XCUIApplication.portavoz(
             seedDemo: true,
-            simulateSequoiaCapabilities: true)
+            simulateSequoiaCapabilities: true,
+            includeWebFixture: true)
         app.launchPortavoz()
         defer { app.terminate() }
 
