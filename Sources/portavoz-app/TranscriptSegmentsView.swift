@@ -33,7 +33,8 @@ struct TranscriptSegmentsView: View {
             FocusedTranscriptView(
                 segments: content.rows,
                 activeID: activeRowID,
-                height: carouselHeight
+                height: carouselHeight,
+                scrollAccessibilityIdentifier: "detail-transcript-scroll"
             ) { row, isActive in
                 transcriptRow(row, isActive: isActive)
             } accessory: { row, _ in
@@ -56,6 +57,7 @@ struct TranscriptSegmentsView: View {
                     }
                 }
             }
+            .accessibilityIdentifier("detail-transcript-scroll")
             .onChange(of: focusedRowID) { _, id in
                 guard let id else { return }
                 scroll(proxy, to: id)

@@ -492,6 +492,18 @@ only reading, seek, rename, correction-presentation, and hidden-evidence intents
 This preserves immutable evidence and fail-closed command validation while
 keeping correction controls reachable in compact supported macOS windows.
 
+D408 closes the remaining cross-version compact-window activation gap. SwiftUI
+can expose a descendant clipped below a `ScrollView` as hittable even though a
+synthesized click lands outside the viewport. The playback and text-only
+transcript readers therefore expose the same stable
+`detail-transcript-scroll` boundary, and XCUITest reveals correction and
+commitment actions until their complete frames are contained by the exact
+viewport. The traversal is bounded and still requires a stable hittable frame.
+Saved live objectives attach their UUID identifier and exact text label to the
+containing accessibility row rather than a leaf `Text`, whose representation
+varies across supported macOS versions; its toggle and removal actions remain
+contained children.
+
 D233 extends the route projection with derived-artifact freshness rather than
 deleting immutable history. A correction clears route-local generated metadata,
 renders the prior summary and Apuntador cards with localized stale guidance, and

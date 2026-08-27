@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,770 cases "
+            "package inventory contains 2,783 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -9248,6 +9248,34 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
+    func testCompactReviewActivationRequiresVisibleViewportGeometry() throws {
+        let transcript = try Self.contents(
+            of: "Sources/portavoz-app/TranscriptSegmentsView.swift")
+        let objectives = try Self.contents(
+            of: "Sources/portavoz-app/RecordingLiveAssist.swift")
+        let uiTests = try Self.contents(
+            of: "Tests/PortavozUITests/MeetingDetailUITests.swift")
+
+        XCTAssertTrue(transcript.contains(
+            "scrollAccessibilityIdentifier: \"detail-transcript-scroll\""))
+        XCTAssertTrue(transcript.contains(
+            ".accessibilityIdentifier(\"detail-transcript-scroll\")"))
+        XCTAssertGreaterThanOrEqual(
+            uiTests.components(
+                separatedBy: "correct.revealVertically(in: transcriptScroll").count - 1,
+            2,
+            "text and structural correction must reveal their exact target")
+        XCTAssertTrue(uiTests.contains("viewportFrame.contains(controlFrame)"))
+        XCTAssertTrue(uiTests.contains("for _ in 0..<maxScrolls"))
+        XCTAssertFalse(uiTests.contains("sleep("))
+
+        XCTAssertTrue(objectives.contains(
+            ".accessibilityElement(children: .contain)\n"
+                + "        .accessibilityLabel(objective.text)\n"
+                + "        .accessibilityIdentifier(\n"
+                + "            \"recording-objective-text-\\(objective.id.uuidString)\")"))
+    }
+
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {
         let view = try Self.contents(of: "Sources/portavoz-app/MeetingDetailView.swift")
         let artifacts = try Self.contents(
@@ -11225,7 +11253,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            430)
+            431)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             14)

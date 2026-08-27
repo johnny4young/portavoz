@@ -2381,6 +2381,12 @@
     {
       "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
       "category": "identifier",
+      "source": ".accessibilityIdentifier(\"detail-transcript-scroll\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/TranscriptSegmentsView.swift",
+      "category": "identifier",
       "source": ".accessibilityIdentifier(\"transcript-segment-\\(row.id.uuidString)\")",
       "occurrences": 1
     },

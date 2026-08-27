@@ -2841,6 +2841,16 @@ that target from a later view snapshot, and an impossible missing target renders
 an explicit unavailable surface rather than an empty sheet that disables the
 meeting window.
 
+Compact review activation is also viewport-bound. The focused transcript
+exposes one stable `detail-transcript-scroll` boundary, and real-app journeys
+require a target's complete nonempty frame to be inside its identified viewport
+as well as reported hittable before activation. Every reveal is bounded and
+state-driven; no sleep or click retry can turn a missed activation green.
+Dynamic recording objectives publish their stable identifier and exact text on
+the containing accessibility element while retaining toggle and removal
+controls as children. This presentation/validation rule changes no correction,
+commitment, interview, storage, or egress authority.
+
 Core also owns one pure resource-admission policy, separate from both
 measurement and runtime scheduling. Its immutable snapshot contains the
 capture lifecycle and source health, categorical hardware memory tier, disk
@@ -5143,12 +5153,12 @@ silently.
 
 ## Quality evidence
 
-The current 23 Aug 2026 local acceptance inventory, with longer-running
+The current 27 Aug 2026 local acceptance inventory, with longer-running
 reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,627 XCTest package cases are defined, with 15 real-model/environment cases
+- 2,783 XCTest package cases are defined, with 15 real-model/environment cases
   gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
@@ -5157,13 +5167,13 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 706
+- strict SwiftLint remains a blocking CI gate and is clean across all 741
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- 499 deterministic tooling cases and the 197-case architecture subset pass;
+- 629 deterministic tooling cases and the 217-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 14 feature
   owners, and 35 explicitly owned UI journeys;
-- 105 XCUITest cases per locale define the 210-case bilingual release gate;
+- 106 XCUITest cases per locale define the 212-case bilingual release gate;
 - pull requests run only their minimum-safe selected feature evidence; shared
   localization/harness changes and release closure expand to the complete
   bilingual gate, while unknown production paths fail safe to complete English;

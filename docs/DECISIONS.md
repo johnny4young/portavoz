@@ -15256,3 +15256,44 @@ with observable accessibility state. Local success is not hosted Sequoia proof:
 the first exact-head hosted correction journeys remain the causal acceptance
 gate, while physical Sequoia/Tahoe and assistive-technology qualification remain
 separate release evidence.
+
+## D408 — Require viewport-contained activation in compact review flows (Aug 2026)
+
+**Context:** exact-head D407 passed every Swift/Sequoia/lint/hygiene job and its
+four target journeys locally, but hosted run `33081639721` retained the same
+four unique XCUITest failures. Direct xcresult SQLite attachment recovery and
+Zstandard hierarchy decoding corrected the causal diagnosis. On the compact
+900-by-674 runner, the accepted-line correction button occupied y=515...543
+outside its transcript viewport y=434...512. After two bounded scrolls, the
+Commitment review action remained y=504...524 outside its artifacts viewport
+y=218...398. In both cases XCTest reported the clipped control hittable, so the
+harness stopped scrolling and synthesized a no-op click; the route never
+received an activation and no sheet could open. The Interview objective was
+successfully admitted—the count and later answer/evidence assertions passed—but
+the identifier attached to its leaf SwiftUI `Text` was absent from the hosted
+accessibility representation.
+
+**Decision:** `isHittable` is necessary but insufficient for controls inside a
+bounded scroll viewport. A review journey may activate such a control only
+after its nonempty frame is completely contained by the identified viewport
+frame and remains stable. The reveal performs at most its declared scroll
+budget, checks after every scroll, and fails rather than sleeping, retrying the
+click, or increasing a timeout. The focused and text-only transcript surfaces
+share the stable `detail-transcript-scroll` identifier. Both correction
+journeys reveal their exact source action through that viewport; the Commitment
+journey applies the same geometry rule to `detail-artifacts-section`.
+
+Dynamic recording-objective identity belongs to its containing accessibility
+row. That row publishes the stable UUID-derived identifier and exact objective
+text as its label while retaining toggle/remove actions with `.contain`.
+Neither fix changes correction targets, commitment confirmation, interview
+admission, persistence, generation, or egress.
+
+**Consequences:** compact user scrolling and test activation now agree on what
+is actually visible across supported macOS accessibility implementations. A
+clipped AX descendant cannot make a no-op click look ready, and the bounded
+policy is architecture-ratcheted. The defensive D407 immutable route target
+remains valid, but it was not the complete cause of the hosted failures. The
+four formerly failing English journeys pass 4/4 locally after D408; fresh
+exact-head hosted evidence remains required before closing portability. Physical
+Sequoia/Tahoe and VoiceOver/Voice Control qualification remain separate gates.

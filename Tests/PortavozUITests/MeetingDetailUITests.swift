@@ -243,9 +243,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             correct.waitForExistenceFast(timeout: 10),
             "a stable accepted source row must expose its correction action")
+        let transcriptScroll = app.control(withIdentifier: "detail-transcript-scroll")
         XCTAssertTrue(
-            correct.waitForStableFrame(timeout: 5),
-            "the correction action must settle before activation")
+            correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
+            "the correction action must be fully visible before activation")
         XCTAssertGreaterThanOrEqual(
             correct.frame.width,
             28,
@@ -297,6 +298,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             correctedReading.waitForExistenceFast(timeout: 10),
             "the composed Meeting Detail reading must update after persistence")
         XCTAssertTrue(correct.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
+            "the corrected source action must remain visible before undo")
         correct.click()
         let undo = app.buttons["transcript-correction-undo"]
         XCTAssertTrue(
@@ -324,7 +328,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let neighborID = "B5F00000-0000-4000-8000-000000000001"
         let correct = app.buttons["transcript-correct-\(sourceID)"]
         XCTAssertTrue(correct.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(correct.waitForStableFrame(timeout: 5))
+        let transcriptScroll = app.control(withIdentifier: "detail-transcript-scroll")
+        XCTAssertTrue(
+            correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
+            "the structural correction action must be fully visible before activation")
         correct.click()
 
         let split = app.buttons["transcript-structure-split"]
@@ -350,6 +357,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             splitCorrection.waitForExistenceFast(timeout: 5),
             "each visible split part must retain a unique correction route")
+        XCTAssertTrue(
+            splitCorrection.revealVertically(in: transcriptScroll, maxScrolls: 4),
+            "the split source action must be fully visible before restore")
         splitCorrection.click()
         let splitUndo = app.buttons["transcript-structure-undo"]
         XCTAssertTrue(splitUndo.waitForExistenceFast(timeout: 5))
@@ -360,6 +370,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 5),
             "restoring a split must recover the exact accepted line")
         XCTAssertTrue(correct.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
+            "the restored source action must be fully visible before merge")
         correct.click()
 
         let merge = app.buttons["transcript-structure-merge-\(neighborID)"]
@@ -1691,15 +1704,32 @@ private extension XCUIElement {
         deltaY: CGFloat = -48
     ) -> Bool {
         guard exists, container.exists else { return false }
-        if isHittable {
-            return waitForStableFrame(timeout: 1, stableFor: 0.1)
+        if waitForVisibleStableFrame(in: container) {
+            return true
         }
         for _ in 0..<maxScrolls {
             container.scroll(byDeltaX: 0, deltaY: deltaY)
-            if isHittable {
-                return waitForStableFrame(timeout: 1, stableFor: 0.1)
+            if waitForVisibleStableFrame(in: container) {
+                return true
             }
         }
         return false
+    }
+
+    @MainActor
+    private func waitForVisibleStableFrame(in container: XCUIElement) -> Bool {
+        isVisiblyHittable(in: container)
+            && waitForStableFrame(timeout: 1, stableFor: 0.1)
+            && isVisiblyHittable(in: container)
+    }
+
+    @MainActor
+    private func isVisiblyHittable(in container: XCUIElement) -> Bool {
+        let controlFrame = frame
+        let viewportFrame = container.frame
+        return isHittable
+            && controlFrame.width > 0
+            && controlFrame.height > 0
+            && viewportFrame.contains(controlFrame)
     }
 }

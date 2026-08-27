@@ -89,8 +89,6 @@ struct RecordingObjectivesPanel: View {
                 .strikethrough(objective.checkedAt != nil)
                 .foregroundStyle(objective.checkedAt == nil
                     ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
-                .accessibilityIdentifier(
-                    "recording-objective-text-\(objective.id.uuidString)")
             if objective.checkedByModel {
                 Image(systemName: "sparkle")
                     .font(.caption2)
@@ -108,6 +106,10 @@ struct RecordingObjectivesPanel: View {
             .accessibilityLabel(L10n.text("Remove objective"))
             .help(L10n.text("Remove objective"))
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(objective.text)
+        .accessibilityIdentifier(
+            "recording-objective-text-\(objective.id.uuidString)")
     }
 
     private func add() {

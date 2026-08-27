@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,770 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,783 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -5175,6 +5175,43 @@ no MLX metallib. This deterministic local Tahoe-family automation does not
 certify physical Sequoia, separate Tahoe hardware, VoiceOver/Voice Control,
 provisioned CloudKit, real external-effect reconciliation, a private-meeting
 quality claim, or MLX runtime behavior.
+
+**D408 viewport-contained compact-review activation.** XCUITest no longer
+equates a clipped descendant's `isHittable` value with an activatable control.
+The Meeting Detail helper requires a nonempty target frame fully contained by
+the identified scroll viewport, then rechecks containment and hittability after
+the frame settles. Both transcript renderers expose the same
+`detail-transcript-scroll` boundary, correction actions are revealed before
+every activation, and Commitment review uses the same bounded rule inside the
+artifacts viewport. Live interview objectives publish their stable UUID-derived
+identity and exact label from the containing accessibility row rather than a
+leaf `Text`. No timeout, sleep, click retry, persistence, correction target,
+generation, egress, or deployment-floor behavior changed.
+
+The four formerly failing compact-window journeys passed 4/4 locally in 68.470
+seconds. Final preflight passed the current-SDK warnings-as-errors build and
+2,783 package tests with 15 explicit environment/model skips and zero failures
+in 119.795 seconds of XCTest execution. All 217 architecture ratchets, 629
+deterministic tooling tests through repository hygiene, both localization-
+catalog validations, the complete 106-case UI catalog, diff whitespace
+validation, and strict SwiftLint with zero violations across 741 production
+Swift files also passed.
+
+Host evidence remained fail closed. A first 48-journey selector left one
+window-visibility timeout after 47 distinct journeys had passed; its exact Clip
+journey then passed in 8.238 seconds. A later selector was discarded after the
+macOS Unified Log proved that AutomationModeUI received its explicit stop
+gesture and disabled Automation Mode; the resulting lost AX connection and
+subsequent `Not authorized for performing UI testing actions` cases are host
+cascade evidence, not product results. No TCC reset, prompt dismissal, or green
+retry was used. After a clean preflight, a one-journey Library canary passed in
+5.609 seconds. The final macOS 26.5.2 (25F84), arm64 minimum-safe selector then
+passed 48/48 English real-app XCUITest journeys with zero failures, skips, or
+expected failures in 403.513 seconds of test time; its content-free receipt
+reported p95 16.499 seconds and passed every per-journey and scoped-run budget
+from one shared build. This is local Tahoe-family automation; exact-head hosted
+Sequoia UI evidence and physical Sequoia/Tahoe plus VoiceOver/Voice Control
+qualification remain separate gates.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch
