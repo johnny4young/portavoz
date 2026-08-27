@@ -59,7 +59,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
         XCTAssertTrue(
             savedObjective.revealInsideInterviewViewport(
                 scroll,
-                missingTargetDeltaY: 120),
+                missingTargetDeltaY: -48),
             "the admitted objective must be visible with its exact text")
 
         let answerAction = app.control(withIdentifier: "recording-interview-answer")
@@ -99,21 +99,19 @@ private extension XCUIElement {
     func revealInsideInterviewViewport(
         _ viewportElement: XCUIElement,
         maxScrolls: Int = 6,
-        missingTargetDeltaY: CGFloat? = nil
+        missingTargetDeltaY: CGFloat? = nil,
+        maximumStep: CGFloat = 48
     ) -> Bool {
         guard viewportElement.exists else { return false }
-        let viewport = viewportElement.frame.insetBy(dx: 0, dy: 4)
-        let isVisible = {
-            guard self.exists else { return false }
-            let controlFrame = self.frame
-            return self.isHittable
-                && !controlFrame.isEmpty
-                && viewport.contains(controlFrame)
-        }
-        if isVisible(), waitForStableFrame(timeout: 1, stableFor: 0.1) {
-            return isVisible()
+        guard maximumStep > 0 else { return false }
+        if waitForStableContainedFrame(
+            in: viewportElement,
+            timeout: 0.25
+        ) {
+            return true
         }
         for _ in 0..<maxScrolls {
+            let viewport = viewportElement.frame.insetBy(dx: 0, dy: 4)
             let distance: CGFloat
             let direction: CGFloat
             if !exists {
@@ -133,17 +131,52 @@ private extension XCUIElement {
                     distance = viewport.minY - controlFrame.minY + 16
                     direction = 1
                 } else {
-                    distance = 120
-                    direction = -1
+                    return waitForStableContainedFrame(
+                        in: viewportElement,
+                        timeout: 1)
                 }
             }
             viewportElement.scroll(
                 byDeltaX: 0,
-                deltaY: direction * min(max(distance, 120), 360))
-            if isVisible(), waitForStableFrame(timeout: 1, stableFor: 0.1) {
-                return isVisible()
+                deltaY: direction * min(max(distance, 16), maximumStep))
+            if waitForStableContainedFrame(in: viewportElement, timeout: 1) {
+                return true
             }
         }
         return false
+    }
+
+    @MainActor
+    private func waitForStableContainedFrame(
+        in viewportElement: XCUIElement,
+        timeout: TimeInterval,
+        stableFor stableInterval: TimeInterval = 0.1
+    ) -> Bool {
+        var candidateFrame: CGRect?
+        var stableSince: Date?
+        return waitForUITestCondition(timeout: timeout) {
+            guard self.exists, viewportElement.exists else {
+                candidateFrame = nil
+                stableSince = nil
+                return false
+            }
+            let controlFrame = self.frame
+            let viewport = viewportElement.frame.insetBy(dx: 0, dy: 4)
+            guard self.isHittable,
+                  !controlFrame.isEmpty,
+                  viewport.contains(controlFrame)
+            else {
+                candidateFrame = nil
+                stableSince = nil
+                return false
+            }
+            if candidateFrame != controlFrame {
+                candidateFrame = controlFrame
+                stableSince = Date()
+                return stableInterval <= 0
+            }
+            guard let stableSince else { return false }
+            return Date().timeIntervalSince(stableSince) >= stableInterval
+        }
     }
 }

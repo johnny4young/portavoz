@@ -5322,6 +5322,56 @@ ceilings locally. This closes local D410 qualification; the exact-head hosted
 runner remains independent evidence, and this Tahoe-family result does not
 certify physical Sequoia, another Tahoe machine, or assistive technology.
 
+Exact-head D410 CI run `33114439386` passed current-SDK, Sequoia, lint, and
+repository-hygiene jobs. Scoped UI run `33114439299` expanded to all 106
+English journeys because the shared support file changed; it retained 104
+passes, but Interview Assist could not reveal its admitted objective and the
+ordinary correction journey overscrolled its action above the transcript
+viewport. The receipt measured 1,375.478 seconds of summed XCTest against the
+unchanged 1,300-second ceiling. The hierarchy and scroll timeline established
+deterministic geometry defects, so the same head was not rerun.
+
+**D411 settling and risk ownership.** Interview now treats the inserted
+objective as later content and caps every missing-target step at 48 points.
+Interview and Meeting Detail both derive direction from current target and
+viewport geometry, then use one predicate that waits for a nonempty, hittable,
+fully contained frame to remain stable. An already-contained target waits
+without another scroll. This removes the immediate precheck that could observe
+an old accessibility frame and overscroll before layout settled.
+
+The disposable scale fixture also replaces its three-second summary delay with
+the existing finite file handshake. The 20,000-segment journey observes
+revision 1, releases revision 2, and verifies the live update plus chapters;
+the 5,000-segment journey alone owns the representative screenshot. Structural
+correction UI retains split, merge, durable restore, suppression, visible-row
+removal, and hidden-evidence recovery. Real-store tests own merge-boundary
+search, restored accepted identity, and suppressed-row exclusion, while the
+seeded Library journey owns real-app search navigation. Email retains its
+complete preview, handoff, local receipt, privacy, and offer-retirement chain;
+Gist and central Skills journeys own cross-window Settings receipt projection.
+Source ratchets preserve every replacement owner and reject the removed
+duplicate work. No timeout or runtime budget increased. A fresh six-case
+causal slice passed 6/6 in 106.080 seconds with p95 26.521. The changed-file
+selector then selected 36/106 English Interview and Meeting Detail journeys;
+the real app used disposable seeded state, reused one 13-second build, and
+passed 36/36 in 320.085 summed XCTest seconds (341 seconds test wall, p95
+23.262, maximum 26.792). Interview measured 11.975 seconds, ordinary correction
+15.325, structural correction 26.792, Commitment 23.262, email 11.359, and the
+20,000-segment observed update 15.765. The receipt has no aggregate,
+percentile, or per-case violation.
+
+Local build, current-SDK first-party diagnostics-as-errors, strict SwiftLint
+over 742 files, repository hygiene, and 25/25 independent recording/recovery
+stress iterations are green; each stress iteration executed 237 tests. The
+first complete package run executed 2,787 tests with 15 explicit model-gated
+skips and found one documentation-only violation: the architecture document
+named decision/sequencing vocabulary instead of durable as-built facts. That
+prose was corrected, its focused ratchet passed, and a fresh canonical run
+then passed all 2,787 tests with the same 15 skips in 121.050 seconds. This
+closes local D411 qualification. Exact-head hosted receipts are still required;
+the final complete bilingual gate and physical Sequoia/Tahoe plus
+assistive-technology evidence remain separate.
+
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch
 COPY of a real recording: point `PORTAVOZ_TEST_AUDIO_ROOT` at a folder shaped

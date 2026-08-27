@@ -4816,9 +4816,26 @@ accessibility behavior retain their dedicated real-app journeys. It therefore
 does not replay those scope transitions or a second whole-window accessibility
 audit. Dynamic Interview objective queries combine their stable identifier
 prefix with the exact accepted label and use a bounded geometry-aware reveal;
-when the row is not yet represented, the reveal moves toward its known earlier
-content position instead of applying a fixed host-sized scroll. A failed first pass is evidence to
-diagnose, never authorization for an unchanged green retry.
+when the row is not yet represented, the reveal moves toward its known later
+content position in steps of at most 48 points instead of applying a fixed
+host-sized scroll. Meeting Detail correction and commitment activation uses
+the same capped geometry principle. One local predicate waits for a nonempty,
+hittable, viewport-contained frame to remain stable after each scroll; an
+already-contained but settling target waits without receiving another wheel
+event. A failed first pass is evidence to diagnose, never authorization for an
+unchanged green retry.
+
+Scale-fixture replacement is also observation-driven. The 20,000-segment
+journey sees summary revision 1, releases one UUID-scoped ready/continue
+handshake, and then requires revision 2 while the same detail route completes
+its chapter projection. The 5,000-segment journey owns the representative
+scale screenshot, so the larger performance journey does not repeat image
+capture. Structural correction UI owns transformations, durable restore,
+suppression, and hidden-evidence recovery; real-store tests own structural
+search semantics and the Library journey owns timestamp navigation. Email UI
+owns its external handoff and local receipt, while the Gist and central Skills
+journeys own cross-window Settings receipt projection. Architecture ratchets
+reject restoration of these measured duplicate chains.
 The accepted local candidate on macOS 26.5.2 (25F84), arm64, and Xcode 26.6
 measures 951.857 seconds English and 949.262 seconds Spanish across the complete
 106-case catalogue; wall time is 976/974 seconds after one 13-second shared
@@ -4828,6 +4845,17 @@ seconds. This is 14.1%/14.8% less summed XCTest time than the prior documented
 each locale at 1,300 seconds and p95 at 30 seconds, with independent
 per-journey ceilings. These are one-host performance measurements, not physical
 Sequoia or separate-hardware Tahoe evidence.
+
+The hosted predecessor commit passed CI, while its fail-safe 106-case English
+UI run retained 104 passes and failed the aggregate runtime budget. The fresh
+minimum-safe selector chose the 36 affected English Interview and Meeting
+Detail journeys; one build fed all 36, which passed in 320.085 summed XCTest
+seconds (341 seconds test wall, p95 23.262, maximum 26.792) without a retry or
+budget change. Its preceding six-case causal group passed in 106.080 seconds
+with p95 26.521. This local receipt closes the two reproduced interaction
+failures but does not supersede the red hosted evidence: exact-head hosted
+qualification remains required. Final integration retains the complete
+bilingual catalogue and every unchanged aggregate and per-journey ceiling.
 
 Autonomous assistant validation has a separate, non-serving public authority.
 `Fixtures/ApuntadorValidation/public-bilingual-v1.json` freezes six synthetic

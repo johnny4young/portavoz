@@ -9290,6 +9290,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             2,
             "text and structural correction must reveal their exact target")
         XCTAssertTrue(uiTests.contains("viewportFrame.contains(controlFrame)"))
+        XCTAssertTrue(uiTests.contains("waitForStableContainedFrame(in: container"))
+        XCTAssertTrue(uiTests.contains("maximumStep: CGFloat = 48"))
+        XCTAssertFalse(uiTests.contains("deltaY: CGFloat = -48"))
+        XCTAssertFalse(uiTests.contains("waitForVisibleStableFrame"))
         XCTAssertTrue(uiTests.contains("for _ in 0..<maxScrolls"))
         XCTAssertFalse(uiTests.contains("sleep("))
 
@@ -9307,7 +9311,10 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "savedObjective.revealInsideInterviewViewport("))
         XCTAssertLessThan(admittedObjective.lowerBound, savedObjective.lowerBound)
         XCTAssertLessThan(savedObjective.lowerBound, objectiveReveal.lowerBound)
-        XCTAssertTrue(interviewUITest.contains("missingTargetDeltaY: 120"))
+        XCTAssertTrue(interviewUITest.contains("missingTargetDeltaY: -48"))
+        XCTAssertTrue(interviewUITest.contains("maximumStep: CGFloat = 48"))
+        XCTAssertTrue(interviewUITest.contains("waitForStableContainedFrame("))
+        XCTAssertFalse(interviewUITest.contains("max(distance, 120)"))
         XCTAssertFalse(interviewUITest.contains(
             "scroll.scroll(byDeltaX: 0, deltaY: -240)"))
         XCTAssertTrue(interviewUITest.contains(
@@ -9336,6 +9343,14 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Tests/PortavozUITests/UITestSupport.swift")
         let skills = try Self.contents(
             of: "Tests/PortavozUITests/SkillsSettingsUITests.swift")
+        let meeting = try Self.contents(
+            of: "Tests/PortavozUITests/MeetingDetailUITests.swift")
+        let library = try Self.contents(
+            of: "Tests/PortavozUITests/LibraryUITests.swift")
+        let correctedSearch = try Self.contents(
+            of: "Tests/PortavozTests/SegmentCorrectedTextSearchTests.swift")
+        let scaleFixture = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
         XCTAssertTrue(support.contains("var candidateFrame: CGRect?"))
@@ -9355,7 +9370,45 @@ final class ArchitectureDependencyTests: XCTestCase {
             skills.components(separatedBy: "auditSkillDescriptions(in: app)").count - 1,
             1,
             "one audit with the receipt sheet open already covers every app window")
+
+        XCTAssertFalse(
+            meeting.contains("library-search-field"),
+            "structural search belongs to real-store tests plus the Library journey")
+        for owner in [
+            "testMergeSearchesAcrossAcceptedBoundariesWithOrderedProvenance",
+            "testRestoreAfterMergeRemovesStructuralIdentityAndReactivatesSources",
+            "testSuppressedSegmentStaysOutOfSearchEntirely",
+        ] {
+            XCTAssertTrue(correctedSearch.contains(owner), owner)
+        }
+        XCTAssertTrue(library.contains("testSeededMeetingsGroupByRecency"))
+        XCTAssertTrue(library.contains("library-search-hit-"))
+
+        XCTAssertTrue(meeting.contains("skill-receipt-email-recap-draft"))
+        XCTAssertTrue(meeting.contains("handoff requested"))
+        XCTAssertFalse(meeting.contains(
+            "settings-skill-receipt-email-recap-draft"))
+        XCTAssertTrue(meeting.contains(
+            "settings-skill-receipt-secret-gist-publish"))
+
+        XCTAssertEqual(
+            meeting.components(separatedBy: "scaleAutoSummaryUpdate: true").count - 1,
+            1,
+            "one scale journey owns live summary replacement")
+        XCTAssertTrue(meeting.contains("Scale baseline summary revision 1."))
+        XCTAssertTrue(meeting.contains("continueFeatureUITestHandshake("))
+        XCTAssertTrue(scaleFixture.contains("-scale-auto-summary-handshake"))
+        XCTAssertTrue(scaleFixture.contains(
+            "PORTAVOZ_UI_TEST_SCALE_SUMMARY_READY_PATH"))
+        XCTAssertFalse(scaleFixture.contains(
+            "Task.sleep(for: .seconds(3))"))
+        XCTAssertTrue(meeting.contains(
+            #"named: "meeting-detail-scale-5000-segments""#))
+        XCTAssertFalse(meeting.contains(
+            #"named: "meeting-detail-scale-20000-segments""#))
+
         XCTAssertTrue(decisions.contains("## D410"))
+        XCTAssertTrue(decisions.contains("## D411"))
     }
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {

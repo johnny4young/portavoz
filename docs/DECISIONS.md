@@ -15407,3 +15407,68 @@ Interview portability failure and measured Skills overruns are closed on the
 independent runner. Local automation still cannot certify physical
 Sequoia/Tahoe, VoiceOver/Voice Control, distribution, CloudKit, or field
 behavior.
+
+## D411 — Settle viewport geometry and keep one UI owner per risk (Aug 2026)
+
+**Context:** exact D410 head `5b6db823` passed hosted current-SDK, Sequoia,
+lint, and hygiene CI. Hosted Scoped UI run `33114439299` selected the complete
+106-case English catalogue because D410 changed the shared XCUITest support
+file. It retained 104 functional passes, but Interview Assist never exposed
+its admitted objective and the ordinary transcript-correction journey scrolled
+its action above the compact viewport before activation. The run also measured
+1,375.478 seconds of summed XCTest against the unchanged 1,300-second ceiling.
+Its timeline and recovered hierarchy established two deterministic causes:
+Interview moved toward earlier content although an inserted objective lives
+later in the assist scroll, while Meeting Detail performed an immediate
+visibility precheck after each fixed wheel step and could overscroll before the
+accessibility frame settled. The structural-correction journey also repeated
+real-store merge/search/restore/suppress semantics and generic Library
+navigation, and the email journey repeated the central Settings receipt
+projection already owned by other real-app journeys. Retrying the same head,
+raising budgets, or increasing waits would preserve those defects and costs.
+
+**Decision:** absent Interview rows move toward later content in at most
+48-point steps. Interview and Meeting Detail each use a local bounded
+geometry-aware reveal: direction comes from the target relative to the current
+viewport, every step is capped, and one predicate waits for a nonempty,
+hittable, completely contained frame to remain unchanged for the declared
+interval. A target already inside the viewport waits without another scroll;
+an unresolvable target fails instead of clicking, sleeping, or retrying.
+
+The disposable 20,000-segment journey replaces its three-second summary delay
+with the existing UUID-scoped ready/continue handshake. It observes summary
+revision 1 before releasing revision 2, then verifies chapters and the live
+replacement. The 5,000-segment journey owns the representative scale
+screenshot and initial-summary rendering; the 20,000-segment journey owns the
+larger subscription/performance boundary without taking a duplicate image.
+
+The structural real-app journey continues to prove split, merge, both durable
+restores, suppression, disappearance from the visible transcript, and recovery
+through hidden evidence. Real-store tests exclusively own search across a
+merged boundary, restoration of accepted result identity, and suppression
+exclusion; the seeded Library journey owns search-result navigation to the
+exact timestamp. The email real-app journey owns preview, recipient and send
+boundaries, external handoff, receipt wording, clipboard isolation, host-app
+containment, and independent offer retirement. The Gist journey plus central
+Skills journeys own the cross-window Settings receipt projection. Source
+ratchets require each retained owner and reject those known duplicate chains.
+No runtime budget changes.
+
+**Consequences:** compact runners cannot advance a second scroll while the
+first target frame is still settling, and the known later-content Interview
+row no longer receives a directionally wrong reveal. Fixed-time scale
+synchronization and measured duplicate UI work leave the hosted path without
+weakening product assertions: every removed UI assertion has an explicit
+real-store or real-app owner. A fresh six-case causal slice passed 6/6 in
+106.080 seconds, then the changed-file selector passed all 36 affected English
+journeys in 320.085 summed XCTest seconds (p95 23.262, maximum 26.792) with one
+build and unchanged budgets. The D410 red run remains evidence; D411 still
+requires exact-head hosted qualification. Local Swift build, current-SDK
+warnings-as-errors, strict SwiftLint, repository hygiene, the canonical
+2,787-test package suite (15 explicit model-gated skips), and 25 independent
+237-test recording/recovery stress iterations are green. The first complete
+package run found and then closed one documentation-vocabulary violation; the
+accepted complete run followed that fix rather than treating a retry as proof.
+The complete bilingual catalogue remains the integration/release gate, and
+physical Sequoia/Tahoe, VoiceOver/Voice Control, distribution, CloudKit, and
+field behavior remain separate evidence.

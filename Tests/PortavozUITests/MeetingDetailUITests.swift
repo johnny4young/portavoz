@@ -12,8 +12,7 @@ final class MeetingDetailUITests: PortavozUITestCase {
     func testFiveThousandSegmentDetailRendersFromDisposableScaleFixture() {
         let app = XCUIApplication.portavoz(
             seedScale: true,
-            scaleSegmentCount: 5_000,
-            scaleAutoSummaryUpdate: true)
+            scaleSegmentCount: 5_000)
         defer { app.terminate() }
         app.launchPortavoz()
 
@@ -26,12 +25,12 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 10),
             "Meeting Detail must render first content for 5,000 segments")
         XCTAssertTrue(
+            app.staticTexts["Scale baseline summary revision 1."]
+                .waitForExistenceFast(timeout: 15),
+            "the 5,000-segment detail must render its initial summary")
+        XCTAssertTrue(
             app.control(withIdentifier: "detail-chapters").waitForExistenceFast(timeout: 10),
             "the scale detail must complete its chapter projection")
-        XCTAssertTrue(
-            app.staticTexts["Scale baseline summary revision 2."]
-                .waitForExistenceFast(timeout: 15),
-            "the scoped summary observation must update without replacing the detail route")
         attachScreenshot(of: app, named: "meeting-detail-scale-5000-segments")
     }
 
@@ -41,6 +40,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
             seedScale: true,
             scaleSegmentCount: 20_000,
             scaleAutoSummaryUpdate: true)
+        app.configureFeatureUITestHandshake(
+            argument: "-scale-auto-summary-handshake",
+            name: "scale-summary-20000",
+            readyEnvironmentKey: "PORTAVOZ_UI_TEST_SCALE_SUMMARY_READY_PATH",
+            continueEnvironmentKey: "PORTAVOZ_UI_TEST_SCALE_SUMMARY_CONTINUE_PATH")
         defer { app.terminate() }
         app.launchPortavoz()
 
@@ -53,13 +57,22 @@ final class MeetingDetailUITests: PortavozUITestCase {
                 .waitForExistenceFast(timeout: 15),
             "Meeting Detail must render first content for 20,000 segments")
         XCTAssertTrue(
+            app.staticTexts["Scale baseline summary revision 1."]
+                .waitForExistenceFast(timeout: 15),
+            "the first subscribed summary must render before the fixture updates it")
+        XCTAssertTrue(
+            app.continueFeatureUITestHandshake(
+                readyEnvironmentKey: "PORTAVOZ_UI_TEST_SCALE_SUMMARY_READY_PATH",
+                continueEnvironmentKey:
+                    "PORTAVOZ_UI_TEST_SCALE_SUMMARY_CONTINUE_PATH"),
+            "the test must release the summary update only after observing revision 1")
+        XCTAssertTrue(
             app.control(withIdentifier: "detail-chapters").waitForExistenceFast(timeout: 15),
             "the 20,000-segment detail must complete its chapter projection")
         XCTAssertTrue(
             app.staticTexts["Scale baseline summary revision 2."]
                 .waitForExistenceFast(timeout: 15),
             "the 20,000-segment detail must stay subscribed to scoped summary updates")
-        attachScreenshot(of: app, named: "meeting-detail-scale-20000-segments")
     }
 
     /// Launches the app on the seeded meeting with isolated audio. Point
@@ -247,12 +260,13 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
             "the correction action must be fully visible before activation")
+        let correctFrame = correct.frame
         XCTAssertGreaterThanOrEqual(
-            correct.frame.width,
+            correctFrame.width,
             28,
             "the correction action must expose a usable pointer target")
         XCTAssertGreaterThanOrEqual(
-            correct.frame.height,
+            correctFrame.height,
             28,
             "the correction action must expose a usable pointer target")
         correct.click()
@@ -392,29 +406,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
             ].waitForExistenceFast(timeout: 5),
             "an explicit merge must preserve both accepted texts")
 
-        // Structural search uses the merge's stable composed-row identity,
-        // so a query may span the two accepted source boundaries and still
-        // navigate to the exact first timestamp.
-        let search = app.textFields["library-search-field"]
-        XCTAssertTrue(search.waitForExistenceFast(timeout: 5))
-        search.click()
-        search.typeText("viernes cuándo")
-        let structuralHit = app.descendants(matching: .any)
-            .matching(NSPredicate(
-                format: "identifier BEGINSWITH 'library-search-hit-'"))
-            .firstMatch
-        XCTAssertTrue(
-            structuralHit.waitForExistenceFast(timeout: 10),
-            "a merge must be searchable across accepted source boundaries")
-        structuralHit.click()
-        let currentTime = app.staticTexts["player-current-time"]
-        XCTAssertTrue(currentTime.waitForExistenceFast(timeout: 5))
-        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 10))
-
-        search.click()
-        search.typeKey("a", modifierFlags: .command)
-        search.typeKey(.delete, modifierFlags: [])
         XCTAssertTrue(correct.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
+            "the merged source action must be fully visible before restore")
         correct.click()
         let undo = app.buttons["transcript-structure-undo"]
         XCTAssertTrue(
@@ -422,26 +417,25 @@ final class MeetingDetailUITests: PortavozUITestCase {
             "merged evidence must expose durable restore-based undo")
         undo.click()
 
+        let restoredReading = app.control(
+            withIdentifier: "detail-transcript-section").staticTexts[
+            "El rollout del modelo queda para el viernes."]
         XCTAssertTrue(
-            app.staticTexts["El rollout del modelo queda para el viernes."]
-                .waitForExistenceFast(timeout: 5))
-        search.click()
-        search.typeText("viernes")
-        let acceptedHit = app.descendants(matching: .any)
-            .matching(NSPredicate(
-                format: "identifier BEGINSWITH 'library-search-hit-'"))
-            .firstMatch
-        XCTAssertTrue(
-            acceptedHit.waitForExistenceFast(timeout: 10),
-            "restore-based merge undo must reactivate accepted search identity")
+            restoredReading.waitForExistenceFast(timeout: 5),
+            "restore-based merge undo must reactivate the accepted reading")
         XCTAssertTrue(correct.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            correct.revealVertically(in: transcriptScroll, maxScrolls: 4),
+            "the restored source action must be fully visible before hiding")
         correct.click()
         let hide = app.buttons["transcript-structure-suppress"]
         XCTAssertTrue(hide.waitForExistenceFast(timeout: 5))
         hide.click()
         app.buttons["transcript-structure-confirm"].click()
 
-        XCTAssertTrue(acceptedHit.waitForDisappearance(timeout: 10))
+        XCTAssertTrue(
+            restoredReading.waitForDisappearance(timeout: 10),
+            "hiding must remove the accepted reading from the visible transcript")
 
         let hiddenLines = app.buttons["transcript-hidden-lines"]
         XCTAssertTrue(
@@ -460,12 +454,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
         restore.click()
 
         XCTAssertTrue(
-            app.staticTexts["El rollout del modelo queda para el viernes."]
-                .waitForExistenceFast(timeout: 5),
+            restoredReading.waitForExistenceFast(timeout: 5),
             "restore must recover the accepted row without erasing history")
-        XCTAssertTrue(
-            acceptedHit.waitForExistenceFast(timeout: 10),
-            "restoring hidden speech must reactivate its accepted search result")
     }
 
     @MainActor
@@ -995,24 +985,6 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(app.menuItems["skill-offer-secret-gist-publish"].exists)
         XCTAssertTrue(app.menuItems["skill-offer-package-export"].exists)
         attachScreenshot(of: app, named: "meeting-detail-email-recap-handoff")
-
-        app.typeKey(.escape, modifierFlags: [])
-        XCTAssertTrue(app.openSettingsWindow())
-        XCTAssertTrue(app.openSettingsCategory(
-            "settings-category-skills",
-            revealing: "settings-skills-pause-all"))
-        let settingsReceipt = app.control(
-            withIdentifier: "settings-skill-receipt-email-recap-draft")
-        XCTAssertTrue(
-            settingsReceipt.waitForExistenceFast(timeout: 10),
-            "Skills Settings must project the same durable handoff receipt")
-        let expectedSettingsReceipt = UITestLocale.environmentLocale == "es"
-            ? "Entrega solicitada"
-            : "Handoff requested"
-        let settingsReceiptText = accessibleText(of: settingsReceipt)
-        XCTAssertTrue(
-            settingsReceiptText.contains(expectedSettingsReceipt),
-            "Settings must describe the external boundary as a handoff; got: \(settingsReceiptText)")
     }
 
     /// D328 — exact canonical Markdown is visible before the single GitHub
@@ -1701,15 +1673,31 @@ private extension XCUIElement {
     func revealVertically(
         in container: XCUIElement,
         maxScrolls: Int = 8,
-        deltaY: CGFloat = -48
+        maximumStep: CGFloat = 48
     ) -> Bool {
-        guard exists, container.exists else { return false }
-        if waitForVisibleStableFrame(in: container) {
+        guard exists, container.exists, maximumStep > 0 else { return false }
+        if waitForStableContainedFrame(in: container, timeout: 0.25) {
             return true
         }
         for _ in 0..<maxScrolls {
+            guard exists, container.exists else { return false }
+            let controlFrame = frame
+            let viewportFrame = container.frame.insetBy(dx: 0, dy: 4)
+            guard !controlFrame.isEmpty else { return false }
+
+            let deltaY: CGFloat
+            if controlFrame.maxY > viewportFrame.maxY {
+                let distance = controlFrame.maxY - viewportFrame.maxY + 8
+                deltaY = -min(max(distance, 12), maximumStep)
+            } else if controlFrame.minY < viewportFrame.minY {
+                let distance = viewportFrame.minY - controlFrame.minY + 8
+                deltaY = min(max(distance, 12), maximumStep)
+            } else {
+                return waitForStableContainedFrame(in: container, timeout: 1)
+            }
+
             container.scroll(byDeltaX: 0, deltaY: deltaY)
-            if waitForVisibleStableFrame(in: container) {
+            if waitForStableContainedFrame(in: container, timeout: 1) {
                 return true
             }
         }
@@ -1717,19 +1705,36 @@ private extension XCUIElement {
     }
 
     @MainActor
-    private func waitForVisibleStableFrame(in container: XCUIElement) -> Bool {
-        isVisiblyHittable(in: container)
-            && waitForStableFrame(timeout: 1, stableFor: 0.1)
-            && isVisiblyHittable(in: container)
-    }
-
-    @MainActor
-    private func isVisiblyHittable(in container: XCUIElement) -> Bool {
-        let controlFrame = frame
-        let viewportFrame = container.frame
-        return isHittable
-            && controlFrame.width > 0
-            && controlFrame.height > 0
-            && viewportFrame.contains(controlFrame)
+    private func waitForStableContainedFrame(
+        in container: XCUIElement,
+        timeout: TimeInterval,
+        stableFor stableInterval: TimeInterval = 0.1
+    ) -> Bool {
+        var candidateFrame: CGRect?
+        var stableSince: Date?
+        return waitForUITestCondition(timeout: timeout) {
+            guard self.exists, container.exists else {
+                candidateFrame = nil
+                stableSince = nil
+                return false
+            }
+            let controlFrame = self.frame
+            let viewportFrame = container.frame.insetBy(dx: 0, dy: 4)
+            guard self.isHittable,
+                  !controlFrame.isEmpty,
+                  viewportFrame.contains(controlFrame)
+            else {
+                candidateFrame = nil
+                stableSince = nil
+                return false
+            }
+            if candidateFrame != controlFrame {
+                candidateFrame = controlFrame
+                stableSince = Date()
+                return stableInterval <= 0
+            }
+            guard let stableSince else { return false }
+            return Date().timeIntervalSince(stableSince) >= stableInterval
+        }
     }
 }

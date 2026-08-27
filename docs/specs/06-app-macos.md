@@ -504,8 +504,14 @@ containing accessibility row rather than a leaf `Text`, whose representation
 varies across supported macOS versions; its toggle and removal actions remain
 contained children. The real-app journey queries both that prefix and exact
 label, then uses bounded viewport geometry to reveal the row; an absent
-offscreen representation moves toward the row's known earlier-content position
-instead of relying on a host-sized scroll delta.
+offscreen representation moves toward the row's known later-content position
+in steps of at most 48 points instead of relying on a host-sized scroll delta.
+Meeting Detail correction and commitment tests derive each bounded scroll
+direction from the target relative to the current identified viewport. One
+predicate waits for the nonempty, hittable, fully contained frame to remain
+stable after a scroll; a target already inside the viewport is allowed to
+settle without another wheel event, and an unresolved target fails before
+activation.
 
 D233 extends the route projection with derived-artifact freshness rather than
 deleting immutable history. A correction clears route-local generated metadata,

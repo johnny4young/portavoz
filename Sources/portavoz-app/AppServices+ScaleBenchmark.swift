@@ -109,7 +109,17 @@ extension AppServices {
 
     private func scheduleScaleSummaryUpdate(meetingID: MeetingID) {
         Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(3))
+            do {
+                try await UITestFeatureHandshake.pauseIfRequested(
+                    argument: "-scale-auto-summary-handshake",
+                    readyEnvironmentKey:
+                        "PORTAVOZ_UI_TEST_SCALE_SUMMARY_READY_PATH",
+                    continueEnvironmentKey:
+                        "PORTAVOZ_UI_TEST_SCALE_SUMMARY_CONTINUE_PATH")
+            } catch {
+                assertionFailure("Could not synchronize scale summary update: \(error)")
+                return
+            }
             guard let self else { return }
             _ = try? await store.saveSummary(Self.scaleSummary(
                 meetingID: meetingID,
