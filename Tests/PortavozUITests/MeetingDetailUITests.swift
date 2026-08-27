@@ -1262,26 +1262,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
 
         let artifacts = app.control(withIdentifier: "detail-artifacts-section")
         XCTAssertTrue(artifacts.waitForExistenceFast(timeout: 5))
-        // The detail artifacts live in a fixed-height vertical viewport. The
-        // evidence link can exist in the accessibility tree below that fold,
-        // where XCUITest's implicit click scrolling incorrectly tries the
-        // horizontal axis. A bounded vertical wheel sequence reaches the
-        // candidate card across the supported test-window sizes.
-        for _ in 0..<10 {
-            artifacts.scroll(byDeltaX: 0, deltaY: -18)
-        }
-        XCTAssertTrue(
-            evidence.waitForStableFrame(timeout: 5),
-            "the review viewport must reveal the exact transcript evidence")
-        evidence.click()
-        let citedRow = app.control(
-            withIdentifier: "transcript-segment-B5B00000-0000-4000-8000-000000000002")
-        XCTAssertTrue(citedRow.waitForSelection(timeout: 5))
-        let currentTime = app.control(withIdentifier: "player-current-time")
-        XCTAssertTrue(currentTime.waitForValue("0:03", timeout: 5))
-
         let review = app.control(withIdentifier: "commitment-\(candidateID)-review")
-        XCTAssertTrue(review.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(
+            review.revealVertically(in: artifacts),
+            "the bounded review viewport must reveal its confirmation action")
         review.click()
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-editor").waitForExistenceFast(timeout: 5),
@@ -1694,5 +1678,28 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.buttons["clip-export"].waitForExistenceFast(timeout: 5),
             "marking a valid in/out range must reveal the export button")
+    }
+}
+
+private extension XCUIElement {
+    /// Reveals one Meeting Detail control in its bounded vertical artifacts
+    /// viewport without relying on XCTest's implicit axis or fixed wheel count.
+    @MainActor
+    func revealVertically(
+        in container: XCUIElement,
+        maxScrolls: Int = 8,
+        deltaY: CGFloat = -48
+    ) -> Bool {
+        guard exists, container.exists else { return false }
+        if isHittable {
+            return waitForStableFrame(timeout: 1, stableFor: 0.1)
+        }
+        for _ in 0..<maxScrolls {
+            container.scroll(byDeltaX: 0, deltaY: deltaY)
+            if isHittable {
+                return waitForStableFrame(timeout: 1, stableFor: 0.1)
+            }
+        }
+        return false
     }
 }

@@ -9163,6 +9163,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(transcript.contains("struct MeetingTranscriptValues"))
         XCTAssertTrue(transcript.contains("struct MeetingTranscriptActions"))
         XCTAssertTrue(transcript.contains("MeetingTranscriptContent"))
+        XCTAssertTrue(transcript.contains("presentCorrection:"))
+        XCTAssertFalse(transcript.contains("@State private var correctionRow"))
+        XCTAssertFalse(transcript.contains(".sheet(item: $correctionRow)"))
         XCTAssertFalse(transcript.contains("ChapterExtractor"))
         XCTAssertTrue(player.contains("struct MeetingDetailPlayerValues"))
         XCTAssertTrue(player.contains("struct MeetingDetailPlayerActions"))
@@ -9189,6 +9192,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(scene.contains("disableMirrorAfterMeeting: {"))
         XCTAssertTrue(flow.contains("@Observable"))
         XCTAssertTrue(flow.contains("enum SheetRoute"))
+        XCTAssertTrue(flow.contains("TranscriptCorrectionTarget"))
+        XCTAssertTrue(flow.contains("presentTranscriptCorrection("))
         XCTAssertTrue(flow.contains("enum DialogRoute"))
         XCTAssertTrue(flow.contains("enum AlertRoute"))
         for legacyState in [
@@ -9265,6 +9270,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             ".frame(minHeight: 180, idealHeight: 240, maxHeight: 240)"))
         XCTAssertTrue(view.contains(".layoutPriority(1)"))
         XCTAssertTrue(flowHost.contains("MeetingDetailRefineReviewSheet("))
+        XCTAssertTrue(flowHost.contains("TranscriptCorrectionEditor("))
+        XCTAssertTrue(flowHost.contains("TranscriptStructuralCorrectionEditor("))
         for obsoletePresentation in [
             "private func notesHeader(", "private func notesContent(",
             "private func refineReviewSheet(", "private func sheetContent(",
@@ -11218,7 +11225,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            431)
+            430)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             14)

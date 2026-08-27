@@ -56,6 +56,65 @@ final class MeetingDetailFlowStateTests: XCTestCase {
         XCTAssertEqual(flow.renameSpeakerName, "")
     }
 
+    func testTranscriptCorrectionCapturesOneCompleteSnapshotBeforePresenting() async throws {
+        let flow = MeetingDetailFlowState()
+        let row = MeetingTranscriptContent.Row(
+            id: UUID(),
+            sourceSegmentIDs: [UUID()],
+            speakerID: nil,
+            channel: .system,
+            text: "Accepted evidence",
+            language: "en",
+            startTime: 2,
+            endTime: 4,
+            confidence: nil,
+            isFinal: true)
+        let accepted = MeetingTranscriptContent(
+            baseTranscriptRevision: 7,
+            rows: [row],
+            chapters: [])
+        let editor = TranscriptCorrectionEditorContext(
+            original: row,
+            current: row,
+            history: [],
+            hasTextCorrection: false,
+            hasSpeakerCorrection: false,
+            hasStructuralCorrection: false)
+
+        flow.presentTranscriptCorrection(
+            editorContext: editor,
+            structuralContext: nil,
+            accepted: accepted,
+            baseTranscriptRevision: 7)
+
+        XCTAssertEqual(flow.sheet?.id, "correctTranscript")
+        let target = try XCTUnwrap(flow.transcriptCorrectionTarget)
+        XCTAssertEqual(target.editorContext?.original.id, row.id)
+        XCTAssertEqual(target.accepted, accepted)
+        XCTAssertEqual(target.baseTranscriptRevision, 7)
+
+        flow.sheet = .recap
+
+        XCTAssertNil(flow.transcriptCorrectionTarget)
+    }
+
+    func testTranscriptCorrectionRejectsAnEmptyPresentationTarget() async {
+        let flow = MeetingDetailFlowState()
+        let accepted = MeetingTranscriptContent(
+            baseTranscriptRevision: 1,
+            rows: [],
+            chapters: [])
+
+        flow.presentTranscriptCorrection(
+            editorContext: nil,
+            structuralContext: nil,
+            accepted: accepted,
+            baseTranscriptRevision: 1)
+
+        XCTAssertNil(flow.sheet)
+        XCTAssertNil(flow.transcriptCorrectionTarget)
+    }
+
     func testMirrorProjectionRequiresOptInCurrentMeetingAndConversationSignal() async {
         let detail = makeMirrorDetail(duration: 600, includeRemoteSpeaker: true)
 

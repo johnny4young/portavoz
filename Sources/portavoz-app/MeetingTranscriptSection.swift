@@ -17,11 +17,7 @@ struct MeetingTranscriptValues {
 struct MeetingTranscriptActions {
     let seekAndPlay: @MainActor (TimeInterval) -> Void
     let renameSpeaker: @MainActor (Speaker) -> Void
-    let correct: @MainActor (
-        MeetingTranscriptContent.Row,
-        String,
-        SpeakerID?
-    ) async -> String?
+    let presentCorrection: @MainActor (MeetingTranscriptContent.Row) -> Void
     let restructure: @MainActor (
         TranscriptStructuralCorrectionOperation
     ) async -> String?
@@ -33,7 +29,6 @@ struct MeetingTranscriptActions {
 struct MeetingTranscriptSection: View {
     let values: MeetingTranscriptValues
     let actions: MeetingTranscriptActions
-    @State private var correctionRow: MeetingTranscriptContent.Row?
     @State private var showingHiddenLines = false
 
     var body: some View {
@@ -45,9 +40,6 @@ struct MeetingTranscriptSection: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("detail-transcript-section")
-        .sheet(item: $correctionRow) { row in
-            correctionEditor(for: row)
-        }
         .sheet(isPresented: $showingHiddenLines) {
             SuppressedTranscriptCorrectionsSheet(
                 contexts: values.structureProjection.suppressedContexts,
@@ -107,34 +99,8 @@ struct MeetingTranscriptSection: View {
                 values.correctionContext($0) != nil
                     || values.structureProjection.context(for: $0) != nil
             },
-            onCorrect: { correctionRow = $0 },
+            onCorrect: actions.presentCorrection,
             carouselHeight: carouselHeight)
-    }
-
-    @ViewBuilder
-    private func correctionEditor(
-        for row: MeetingTranscriptContent.Row
-    ) -> some View {
-        if let context = values.correctionContext(row) {
-            TranscriptCorrectionEditor(
-                context: context,
-                structuralContext: values.structureProjection.context(for: row),
-                speakers: values.speakers,
-                save: { text, speakerID in
-                    await actions.correct(context.original, text, speakerID)
-                },
-                undo: {
-                    await actions.correct(
-                        context.original,
-                        context.original.text,
-                        context.original.speakerID)
-                },
-                restructure: actions.restructure)
-        } else if let context = values.structureProjection.context(for: row) {
-            TranscriptStructuralCorrectionEditor(
-                context: context,
-                perform: actions.restructure)
-        }
     }
 }
 

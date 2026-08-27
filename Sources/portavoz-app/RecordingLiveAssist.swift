@@ -89,6 +89,8 @@ struct RecordingObjectivesPanel: View {
                 .strikethrough(objective.checkedAt != nil)
                 .foregroundStyle(objective.checkedAt == nil
                     ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                .accessibilityIdentifier(
+                    "recording-objective-text-\(objective.id.uuidString)")
             if objective.checkedByModel {
                 Image(systemName: "sparkle")
                     .font(.caption2)

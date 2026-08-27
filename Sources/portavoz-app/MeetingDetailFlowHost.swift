@@ -67,6 +67,17 @@ struct MeetingDetailFlowActions {
     let confirmSkill:
         @MainActor (MeetingDetailFlowState.SkillConfirmTarget)
             async -> MeetingDetailFlowState.SkillConfirmationResult
+    let correctTranscript: @MainActor (
+        MeetingTranscriptContent.Row,
+        String,
+        SpeakerID?,
+        Int
+    ) async -> String?
+    let restructureTranscript: @MainActor (
+        MeetingTranscriptContent,
+        Int,
+        TranscriptStructuralCorrectionOperation
+    ) async -> String?
 }
 
 /// Presentation host for all Meeting Detail sheets, dialogs, alerts, and
@@ -176,6 +187,56 @@ struct MeetingDetailFlowHost<Content: View>: View {
                         flow.sheet = nil
                     })
             }
+        case .correctTranscript:
+            transcriptCorrectionSheet
+        }
+    }
+
+    @ViewBuilder
+    private var transcriptCorrectionSheet: some View {
+        if let target = flow.transcriptCorrectionTarget,
+           let editorContext = target.editorContext {
+            TranscriptCorrectionEditor(
+                context: editorContext,
+                structuralContext: target.structuralContext,
+                speakers: values.detail.speakers,
+                save: { text, speakerID in
+                    await actions.correctTranscript(
+                        editorContext.original,
+                        text,
+                        speakerID,
+                        target.baseTranscriptRevision)
+                },
+                undo: {
+                    await actions.correctTranscript(
+                        editorContext.original,
+                        editorContext.original.text,
+                        editorContext.original.speakerID,
+                        target.baseTranscriptRevision)
+                },
+                restructure: {
+                    await actions.restructureTranscript(
+                        target.accepted,
+                        target.baseTranscriptRevision,
+                        $0)
+                })
+        } else if let target = flow.transcriptCorrectionTarget,
+                  let structuralContext = target.structuralContext {
+            TranscriptStructuralCorrectionEditor(
+                context: structuralContext,
+                perform: {
+                    await actions.restructureTranscript(
+                        target.accepted,
+                        target.baseTranscriptRevision,
+                        $0)
+                })
+        } else {
+            ContentUnavailableView(
+                "Couldn’t complete",
+                systemImage: "exclamationmark.triangle",
+                description: Text(
+                    "This transcript line no longer matches the accepted recording."))
+                .accessibilityIdentifier("transcript-correction-unavailable")
         }
     }
 

@@ -649,6 +649,7 @@ def app_features(filename: str) -> set[str]:
         }
     if "meetingdetailflowhost" in lowered:
         return {
+            "meeting-correction",
             "meeting-export",
             "meeting-health",
             "meeting-naming",

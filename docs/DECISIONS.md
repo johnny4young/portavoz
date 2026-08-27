@@ -15209,3 +15209,50 @@ the same injection guard and exact-source prompt construction as Tahoe without
 loading weak-linked model metadata. Local success establishes structure only;
 the first fresh exact-head hosted Sequoia run remains the causal acceptance
 gate, and physical Sequoia/Tahoe model quality remains separate field evidence.
+
+## D407 — Bind correction sheets to immutable route targets (Aug 2026)
+
+**Context:** the first exact-head hosted XCUITest after D406 passed all Swift,
+Sequoia, lint, and hygiene jobs, but both transcript-correction journeys failed
+on the compact 900-by-674 test window. The correction accessory was stable and
+its click was synthesized. The captured accessibility hierarchy then contained
+one disabled main window and no sheet, dialog, editor, or structural control.
+`MeetingTranscriptSection` set a row in local state and presented a native sheet
+whose body recomputed optional editor contexts from a later view snapshot. If
+both lookups were absent during presentation, SwiftUI could open conditionally
+empty content and leave no accessible recovery surface. Reclassifying the
+XCUITest query, adding delay, retrying the run, or increasing a timeout would
+not repair that product state.
+
+**Decision:** make correction presentation part of the existing D227/D228
+scene-owned flow contract. A visible row first resolves its optional text and
+structural editor contexts and captures those values with the exact accepted
+reading and base transcript revision in one immutable
+`TranscriptCorrectionTarget`. Only a nonempty target may activate the typed
+`correctTranscript` route. `MeetingDetailFlowHost` renders the text/structural
+editor from that captured payload and sends its exact reading and revision back
+through explicit actions; dismissal clears the payload with the route. An
+impossible missing payload renders a localized-safe unavailable surface rather
+than an empty sheet. The nested transcript section owns no correction sheet or
+correction-row state, though its separate hidden-evidence review remains local
+pending its own migration.
+
+The same portability band gives each saved live objective one stable
+accessibility identifier instead of querying a localized `Text` element type.
+The Commitment Inbox journey continues to prove exact current evidence and the
+full explicit confirmation boundary, but uses a bounded predicate-driven
+vertical reveal for its action. Exact evidence-to-audio navigation remains
+covered by the summary, decision, action-item, and Apuntador journeys that all
+exercise the same `MeetingEvidenceSources` component; the commitment test no
+longer duplicates that navigation or fixed host-specific wheel counts.
+
+**Consequences:** correction commands retain their immutable-evidence,
+append-only, revision-fenced behavior; this changes presentation ownership, not
+correction policy or storage. Compact supported macOS windows cannot enter the
+known disabled-empty-sheet state, and every invariant violation remains visible
+instead of trapping the user. XCUITest removes one duplicated navigation path
+without removing component coverage and replaces timing/geometry assumptions
+with observable accessibility state. Local success is not hosted Sequoia proof:
+the first exact-head hosted correction journeys remain the causal acceptance
+gate, while physical Sequoia/Tahoe and assistive-technology qualification remain
+separate release evidence.

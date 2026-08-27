@@ -202,6 +202,7 @@ class UITestScopeTests(unittest.TestCase):
                 "meeting-processing",
             ),
             "Sources/portavoz-app/MeetingDetailFlowHost.swift": (
+                "meeting-correction",
                 "meeting-export",
                 "meeting-health",
                 "meeting-naming",

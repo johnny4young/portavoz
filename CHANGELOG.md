@@ -4,6 +4,11 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## August 27, 2026
+
+- **🛠️ Transcript fixes stay reachable** — Open text, speaker, split, merge, and hide corrections reliably even in a compact meeting window, without losing the immutable original evidence.
+- **🎯 Interview objectives stay identifiable** — Newly added objectives remain readable and reachable by assistive technologies throughout the live interview flow.
+
 ## 0.7.0 — July 28, 2026
 
 **Live help, safer recordings.**

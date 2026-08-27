@@ -29,8 +29,19 @@ final class MeetingDetailFlowState {
         case newStructure
         case confirmDecision
         case confirmSkill
+        case correctTranscript
 
         var id: String { rawValue }
+    }
+
+    /// One immutable correction snapshot captured before presentation.
+    /// Keeping the payload beside the route prevents a later view update from
+    /// opening an empty native sheet while it tries to reconstruct the row.
+    struct TranscriptCorrectionTarget: Sendable, Equatable {
+        let editorContext: TranscriptCorrectionEditorContext?
+        let structuralContext: TranscriptStructuralCorrectionContext?
+        let accepted: MeetingTranscriptContent
+        let baseTranscriptRevision: Int
     }
 
     /// The offer the skill confirmation sheet is acting on, with the exact
@@ -99,13 +110,20 @@ final class MeetingDetailFlowState {
         }
     }
 
-    var sheet: SheetRoute?
+    var sheet: SheetRoute? {
+        didSet {
+            if sheet != .correctTranscript {
+                transcriptCorrectionTarget = nil
+            }
+        }
+    }
     var dialog: DialogRoute?
     var alert: AlertRoute?
     var export: MeetingDetailExportRoute?
     var includeCorrectionProvenance = false
 
     var renameMeetingTitle = ""
+    var transcriptCorrectionTarget: TranscriptCorrectionTarget?
     var decisionConfirmTarget: DecisionConfirmTarget?
     var skillConfirmTarget: SkillConfirmTarget?
     var renameSpeakerName = ""
@@ -132,6 +150,21 @@ final class MeetingDetailFlowState {
     func presentRenameSpeaker(_ speaker: Speaker) {
         renameSpeakerName = speaker.displayName ?? ""
         alert = .renameSpeaker(speaker)
+    }
+
+    func presentTranscriptCorrection(
+        editorContext: TranscriptCorrectionEditorContext?,
+        structuralContext: TranscriptStructuralCorrectionContext?,
+        accepted: MeetingTranscriptContent,
+        baseTranscriptRevision: Int
+    ) {
+        guard editorContext != nil || structuralContext != nil else { return }
+        transcriptCorrectionTarget = TranscriptCorrectionTarget(
+            editorContext: editorContext,
+            structuralContext: structuralContext,
+            accepted: accepted,
+            baseTranscriptRevision: baseTranscriptRevision)
+        sheet = .correctTranscript
     }
 
     func presentPersonChoice(_ offer: PersonRememberOffer, candidates: [Person]) {

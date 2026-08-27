@@ -46,7 +46,12 @@ final class InterviewAssistUITests: PortavozUITestCase {
         let add = app.control(withIdentifier: "recording-objective-add")
         XCTAssertTrue(add.waitForHittable(timeout: 5))
         add.click()
-        XCTAssertTrue(app.staticTexts[objectiveText].waitForExistenceFast(timeout: 5))
+        let savedObjective = app.descendants(matching: .any)
+            .matching(NSPredicate(
+                format: "identifier BEGINSWITH 'recording-objective-text-'"))
+            .firstMatch
+        XCTAssertTrue(savedObjective.waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(savedObjective.waitForLabelOrValue(objectiveText, timeout: 5))
         XCTAssertTrue(
             app.control(withIdentifier: "recording-interview-objective-count")
                 .exists)

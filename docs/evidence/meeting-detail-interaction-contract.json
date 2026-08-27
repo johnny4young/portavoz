@@ -856,6 +856,12 @@
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"transcript-correction-unavailable\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
       "category": "keyboard",
       "source": ".keyboardShortcut(.cancelAction)",
       "occurrences": 1
@@ -1860,18 +1866,6 @@
       "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
       "category": "presentation",
       "source": ".sheet(isPresented: $showingHiddenLines) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
-      "category": "presentation",
-      "source": ".sheet(item: $correctionRow) { row in",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
-      "category": "state",
-      "source": "@State private var correctionRow: MeetingTranscriptContent.Row?",
       "occurrences": 1
     },
     {

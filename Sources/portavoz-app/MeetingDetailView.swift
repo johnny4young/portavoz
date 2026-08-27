@@ -137,12 +137,12 @@ private extension MeetingDetailView {
             actions: MeetingTranscriptActions(
                 seekAndPlay: seekAndPlay,
                 renameSpeaker: flow.presentRenameSpeaker,
-                correct: { original, text, speakerID in
-                    await coordinator.correctTranscript(
-                        original,
-                        text: text,
-                        speakerID: speakerID,
-                        revision: detail.meeting.transcriptRevision)
+                presentCorrection: { row in
+                    flow.presentTranscriptCorrection(
+                        editorContext: detail.transcriptCorrectionEditorContext(for: row),
+                        structuralContext: structureProjection.context(for: row),
+                        accepted: structureProjection.accepted,
+                        baseTranscriptRevision: detail.meeting.transcriptRevision)
                 },
                 restructure: { operation in
                     await coordinator.restructureTranscript(
@@ -419,7 +419,10 @@ private extension MeetingDetailView {
                 sceneActions.clearJustRecorded()
             },
             confirmDecision: coordinator.confirmDecision,
-            linkableTopics: model.state.linkableTopics, confirmSkill: coordinator.confirmSkill)
+            linkableTopics: model.state.linkableTopics,
+            confirmSkill: coordinator.confirmSkill,
+            correctTranscript: coordinator.correctTranscript,
+            restructureTranscript: coordinator.restructureTranscript)
     }
 
     private func summaryLanguage(

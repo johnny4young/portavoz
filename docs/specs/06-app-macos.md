@@ -481,6 +481,17 @@ One immutable structural projection precomputes row contexts and hidden evidence
 for each observed detail snapshot, avoiding transcript-wide work per rendered
 row.
 
+D407 makes correction presentation a scene-flow invariant rather than a
+transcript-viewport side effect. Activating a visible correction accessory
+captures its text context, structural context, exact accepted reading, and base
+revision before setting one typed sheet route. `MeetingDetailFlowHost` renders
+from that immutable target and passes the same revision/reading back to the
+application commands; a missing target produces an explicit unavailable sheet
+instead of conditionally empty native content. The transcript section retains
+only reading, seek, rename, correction-presentation, and hidden-evidence intents.
+This preserves immutable evidence and fail-closed command validation while
+keeping correction controls reachable in compact supported macOS windows.
+
 D233 extends the route projection with derived-artifact freshness rather than
 deleting immutable history. A correction clears route-local generated metadata,
 renders the prior summary and Apuntador cards with localized stale guidance, and

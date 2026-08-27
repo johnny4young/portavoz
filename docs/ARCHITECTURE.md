@@ -2834,6 +2834,13 @@ storage, model, or provider capabilities. Architecture tests cap the root at
 500 lines and reject model effects or broad composition dependencies in these
 presentation children.
 
+Transcript correction follows the same modal boundary. The flow captures the
+editor context, structural context, accepted reading, and revision as one
+immutable target before activating its typed route. The host never reconstructs
+that target from a later view snapshot, and an impossible missing target renders
+an explicit unavailable surface rather than an empty sheet that disables the
+meeting window.
+
 Core also owns one pure resource-admission policy, separate from both
 measurement and runtime scheduling. Its immutable snapshot contains the
 capture lifecycle and source health, categorical hardware memory tier, disk
