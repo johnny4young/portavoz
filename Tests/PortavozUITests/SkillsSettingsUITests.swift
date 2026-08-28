@@ -154,12 +154,12 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             in: app)
         XCTAssertTrue(proposal.waitForExistenceFast(timeout: 10))
         scrollToVisible(proposal, in: app, deltaY: -40)
-        XCTAssertTrue(proposal.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(proposal.waitForHittable(timeout: 5))
 
         let proposalRefresh = app.buttons[
             "settings-skills-proposals-refresh"]
         scrollToVisible(proposalRefresh, in: app, deltaY: 40)
-        XCTAssertTrue(proposalRefresh.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(proposalRefresh.waitForHittable(timeout: 5))
         proposalRefresh.click()
         let proposalRefreshing = app.control(
             withIdentifier: "settings-skills-proposals-refreshing")
@@ -179,7 +179,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let waiting = app.control(
             withIdentifier: "settings-skills-receipt-scope-waiting")
         scrollToVisible(waiting, in: app, deltaY: -40)
-        XCTAssertTrue(waiting.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(waiting.waitForHittable(timeout: 5))
         let receipt = app.control(
             withIdentifier: "settings-skill-receipt-recap-draft")
         XCTAssertTrue(receipt.exists, "Recent must begin with verified evidence")
@@ -278,7 +278,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let showMore = app.buttons[
             "settings-skills-receipt-show-more"]
         XCTAssertTrue(scrollToVisible(showMore, in: app, deltaY: -120))
-        XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(showMore.waitForHittable(timeout: 5))
         showMore.click()
 
         XCTAssertTrue(
@@ -339,7 +339,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let waiting = app.control(
             withIdentifier: "settings-skills-receipt-scope-waiting")
         scrollToVisible(waiting, in: app, deltaY: -40)
-        XCTAssertTrue(waiting.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(waiting.waitForHittable(timeout: 5))
         waiting.click()
 
         let loading = app.control(
@@ -353,14 +353,14 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let showMore = app.buttons[
             "settings-skills-receipt-show-more"]
         scrollToVisible(showMore, in: app, deltaY: -120)
-        XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(showMore.waitForHittable(timeout: 5))
         showMore.click()
         XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 25, timeout: 10))
 
         let refresh = app.buttons["settings-skills-receipt-refresh"]
         scrollToVisible(refresh, in: app, deltaY: 120)
-        XCTAssertTrue(refresh.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(refresh.waitForHittable(timeout: 5))
         refresh.click()
 
         XCTAssertTrue(
@@ -400,7 +400,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let waiting = app.control(
             withIdentifier: "settings-skills-receipt-scope-waiting")
         scrollToVisible(waiting, in: app, deltaY: -40)
-        XCTAssertTrue(waiting.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(waiting.waitForHittable(timeout: 5))
         waiting.click()
 
         let loading = app.control(
@@ -414,7 +414,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let showMore = app.buttons[
             "settings-skills-receipt-show-more"]
         scrollToVisible(showMore, in: app, deltaY: -120)
-        XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(showMore.waitForHittable(timeout: 5))
         showMore.click()
         XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 25, timeout: 10))
@@ -422,7 +422,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let periodFilter = app.control(
             withIdentifier: "settings-skills-receipt-period-filter")
         scrollToVisible(periodFilter, in: app, deltaY: 120)
-        XCTAssertTrue(periodFilter.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(periodFilter.waitForHittable(timeout: 5))
         periodFilter.click()
         let pastDay = app.menuItems[
             "settings-skills-receipt-period-past-day"]
@@ -446,7 +446,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let skillFilter = app.control(
             withIdentifier: "settings-skills-receipt-skill-filter")
         scrollToVisible(skillFilter, in: app, deltaY: 80)
-        XCTAssertTrue(skillFilter.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(skillFilter.waitForHittable(timeout: 5))
         skillFilter.click()
         let recap = app.menuItems[
             "settings-skills-receipt-skill-recap-draft"]
@@ -471,7 +471,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let clearFilters = app.buttons[
             "settings-skills-receipt-clear-filters"]
         scrollToVisible(clearFilters, in: app, deltaY: -80)
-        XCTAssertTrue(clearFilters.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(clearFilters.waitForHittable(timeout: 5))
         clearFilters.click()
         XCTAssertTrue(loading.waitForExistenceFast(timeout: 2))
         XCTAssertTrue(continueSkillReceiptRefresh(in: app))
@@ -489,7 +489,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertFalse(clearFilters.exists)
 
         scrollToVisible(periodFilter, in: app, deltaY: 80)
-        XCTAssertTrue(periodFilter.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(periodFilter.waitForHittable(timeout: 5))
         periodFilter.click()
         XCTAssertTrue(pastDay.waitForExistenceFast(timeout: 5))
         pastDay.click()
@@ -498,7 +498,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 5, timeout: 10))
 
         scrollToVisible(skillFilter, in: app, deltaY: 80)
-        XCTAssertTrue(skillFilter.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(skillFilter.waitForHittable(timeout: 5))
         skillFilter.click()
         let package = app.menuItems[
             "settings-skills-receipt-skill-meeting-package-export"]
@@ -509,7 +509,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         XCTAssertTrue(waitForCount(receiptRows, toEqual: 5, timeout: 10))
 
         scrollToVisible(periodFilter, in: app, deltaY: 80)
-        XCTAssertTrue(periodFilter.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(periodFilter.waitForHittable(timeout: 5))
         periodFilter.click()
         let anytime = app.menuItems[
             "settings-skills-receipt-period-anytime"]
@@ -522,7 +522,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "changing the period must reset the 50-row expansion")
 
         XCTAssertTrue(scrollToVisible(showMore, in: app, deltaY: -120))
-        XCTAssertTrue(showMore.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(showMore.waitForHittable(timeout: 5))
         showMore.click()
         XCTAssertTrue(continueSkillReceiptRefresh(in: app))
         XCTAssertTrue(
@@ -530,7 +530,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "the exact package filter must still support explicit expansion")
 
         scrollToVisible(skillFilter, in: app, deltaY: 80)
-        XCTAssertTrue(skillFilter.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(skillFilter.waitForHittable(timeout: 5))
         skillFilter.click()
         let allSkills = app.menuItems[
             "settings-skills-receipt-skill-all"]
@@ -609,7 +609,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             skillID: "email-recap-draft",
             in: app)
         scrollToVisible(review, in: app, deltaY: -40)
-        XCTAssertTrue(review.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(review.waitForHittable(timeout: 5))
         review.click()
 
         let offerMenu = app.control(withIdentifier: "skill-offer-menu")
@@ -710,7 +710,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             skillID: "email-recap-draft",
             in: app)
         scrollToVisible(dismiss, in: app, deltaY: -40)
-        XCTAssertTrue(dismiss.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(dismiss.waitForHittable(timeout: 5))
         dismiss.click()
         XCTAssertTrue(
             waitForDisappearance(proposalRow),
@@ -750,7 +750,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             skillID: "email-recap-draft",
             in: app)
         scrollToVisible(dismiss, in: app, deltaY: -40)
-        XCTAssertTrue(dismiss.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(dismiss.waitForHittable(timeout: 5))
         dismiss.click()
 
         let error = proposalDismissalControl(
@@ -763,7 +763,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             skillID: "email-recap-draft",
             in: app)
         scrollToVisible(retry, in: app, deltaY: -40)
-        XCTAssertTrue(retry.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(retry.waitForHittable(timeout: 5))
         XCTAssertTrue(proposalRow.exists,
             "an unverified mutation must retain the original offer")
         XCTAssertFalse(dismiss.exists,
@@ -1668,15 +1668,14 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         // Use the target's actual vertical distance instead of a fixed series
         // of tiny wheel gestures. The clamp stays bounded while letting a
         // deeply nested row reach the viewport in a few deterministic steps.
-        let isVisible = {
+        for _ in 0..<6 {
             guard element.exists else { return false }
             let frame = element.frame
-            return !frame.isEmpty
-                && frame.minY >= viewport.minY
-                && frame.maxY <= viewport.maxY
-        }
-        for _ in 0..<6 where !isVisible() {
-            let frame = element.frame
+            if !frame.isEmpty,
+               frame.minY >= viewport.minY,
+               frame.maxY <= viewport.maxY {
+                return true
+            }
             let fallbackDirection: CGFloat = deltaY < 0 ? -1 : 1
             let distance: CGFloat
             let direction: CGFloat
@@ -1693,7 +1692,11 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             let magnitude = min(max(max(distance, abs(deltaY)), 240), 900)
             form.scroll(byDeltaX: 0, deltaY: direction * magnitude)
         }
-        return isVisible()
+        guard element.exists else { return false }
+        let finalFrame = element.frame
+        return !finalFrame.isEmpty
+            && finalFrame.minY >= viewport.minY
+            && finalFrame.maxY <= viewport.maxY
     }
 
     @MainActor

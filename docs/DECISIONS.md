@@ -15894,3 +15894,80 @@ variance dominates the total. The first exact-head hosted receipt therefore
 remains the authority for whether this bounded query reduction repairs that
 runner's runtime gate. Automated evidence does not certify physical
 Sequoia/Tahoe, assistive technology, distribution, CloudKit, or field behavior.
+
+That first hosted authority is retained as red rather than retried. Exact D418
+commit `a1199bee` passed hosted current-SDK, Sequoia, lint, and hygiene run
+`33203798869`. Scoped UI run `33203798892` passed all 106 English journeys
+functionally but stopped before Spanish on 1,771.372 summed seconds, p50
+11.712, p95 32.243, maximum 109.240, 20 individual overages, and failed
+aggregate plus p95 gates. D418 therefore preserved behavior but did not close
+the hosted runtime gate.
+
+## D419 — Let containment own geometry and spend one actionable query per edge (Aug 2026)
+
+**Context:** the exact D417 and D418 activity trees reject both an assertion
+regression and a useful hosted query reduction. The largest D418 owner, the
+consolidated Skills period/filter journey, kept effectively the same work:
+341 versus 342 top-level activities, 522 versus 523 activities recursively,
+and 337 aligned operations. Both runs issued 151 existence and 184 find
+activities. Its duration nevertheless rose from 63.732 to 109.240 seconds;
+within the aligned sequence, existence gaps added 16.537 seconds and find gaps
+added 19.122 seconds. The D418 Interview tree saved only one existence activity
+and retained all 44 find activities.
+
+On this slow runner, one accessibility sample already took at least the
+250-millisecond stable interval, so admission and acceptance already occurred
+on adjacent samples before D418 changed their run-loop cadence. The remaining
+cost is remote property count. A stable sample separately asked `exists`,
+`frame`, and `isHittable`. Twenty-one Skills controls also repeated the complete
+stable-frame proof immediately after their bounded geometry helper had already
+established viewport containment. Retrying the same commit, raising budgets,
+or removing risk assertions would preserve that duplicate work.
+
+**Decision:** every stable-frame sample first asks `isHittable`, which is the
+existing safe predicate used by the suite for absent, disabled, or obscured
+queries. A false result clears the candidate and clock before any frame read.
+A true result admits the frame read; the same guard runs again at the declared
+acceptance edge before the accepted frame is read. This preserves D417's
+absence-before-frame behavior and D418's final-actionability requirement while
+removing one separate remote property at each edge. Candidate reset, nonempty
+geometry, frame equality, stable interval, run-loop cadence, and every deadline
+remain unchanged.
+
+For Skills Settings, the existing bounded `scrollToVisible` helper continues
+to own viewport containment. It reads the target frame once per bounded
+attempt, returns immediately when contained, and performs one final frame proof
+only after all six attempts are exhausted. This replaces the former `where`
+filter, which resampled visibility for every loop value and then read the same
+frame again inside an admitted attempt. Controls immediately following that
+proof use one bounded `waitForHittable` before activation instead of
+recomputing stable geometry. This extends the accepted D413 rule to all 21
+remaining duplicate chains; controls without a containment proof retain
+stable-frame waiting. Source ratchets require hittability before frame, reject
+a separate existence query inside the stable helper, reject a contained Skills
+control followed by another stable-frame proof, and bound the scroll helper to
+one frame snapshot per attempt plus its exhausted-loop proof. No selector,
+launch, gesture direction or clamp, assertion, timeout, locale, aggregate
+budget, or individual budget changes.
+
+**Consequences:** the correction reduces remote accessibility work instead of
+assuming a faster host or relabeling the retained failure. The first eight-owner
+real-app slice passed in 180.340 summed seconds after the stable-frame and
+contained-control changes. Repeating the same selectors only after the helper
+itself changed passed in 150.734 seconds, 29.606 seconds (16.42%) faster, with
+every individual budget green. The consolidated Skills filter owner fell from
+287 to 173 top-level and 468 to 354 recursive activities, including 127 to 73
+existence and 154 to 94 find activities; its six gestures and ten match-count
+queries were unchanged. Interview retained its exact 65/107 activity shape,
+showing that the reduction is scoped to the changed helper rather than a broad
+host-speed claim. The one-build complete gate then passed all 106 English
+journeys in 905.317 summed seconds (p50 6.721, p95 18.695, maximum 38.083) and
+all 106 Spanish journeys in 905.670 seconds (p50 6.603, p95 18.594, maximum
+37.976), with no aggregate or individual budget violation. Against D418 local
+evidence this is 75.796 seconds (7.73%) faster in English and 97.882 seconds
+(9.75%) faster in Spanish. Warnings-as-errors build, 2,788 Swift tests with 15
+expected model-gated skips, strict lint over 742 files, repository hygiene,
+catalogue/scope policy, and diff checks also passed. The first exact-head
+hosted CI/UI receipt remains required before D419 closes. Automated evidence
+remains separate from physical Sequoia/Tahoe, assistive technology,
+distribution, CloudKit, and field behavior.

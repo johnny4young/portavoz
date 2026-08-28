@@ -536,7 +536,10 @@ extension XCUIElement {
             timeout: timeout,
             pollInterval: stableProbeInterval
         ) {
-            guard self.exists else {
+            // `isHittable` is already a safe absence/disabled/occlusion query.
+            // Gate the frame read with it instead of paying a separate remote
+            // `exists` query and then repeating hittability for the same edge.
+            guard self.isHittable else {
                 candidateFrame = nil
                 stableSince = nil
                 return false
@@ -548,14 +551,9 @@ extension XCUIElement {
                 return false
             }
             if currentFrame != candidateFrame {
-                // Admit a candidate only while it is actionable. The next
-                // run-loop probe occurs at the requested stability boundary;
-                // activation safety is proved again at that acceptance edge.
-                guard self.isHittable else {
-                    candidateFrame = nil
-                    stableSince = nil
-                    return false
-                }
+                // The preceding guard owns actionable candidate admission.
+                // The next run-loop probe repeats that guard at the requested
+                // stability boundary before reading the accepted frame.
                 candidateFrame = currentFrame
                 stableSince = Date()
                 return stableInterval <= 0
@@ -563,13 +561,6 @@ extension XCUIElement {
             guard let candidateStableSince = stableSince,
                   Date().timeIntervalSince(candidateStableSince) >= stableInterval
             else {
-                return false
-            }
-            // Hittability at acceptance prevents a transiently disabled or
-            // obscured control from inheriting an earlier actionable sample.
-            guard self.isHittable else {
-                candidateFrame = nil
-                stableSince = nil
                 return false
             }
             return true

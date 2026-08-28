@@ -5698,8 +5698,72 @@ Compared with D417, English increased by 12.911 seconds (1.33%), Spanish by
 six owners that exceeded unchanged budgets only on the hosted D417 runner
 passed locally; four were modestly faster, while ordinary per-run variance
 dominated the complete-suite total. The first exact-head hosted receipt remains
-required to close D418. Physical Sequoia/Tahoe, assistive-technology,
-distribution, CloudKit, and field evidence remain separate authorities.
+required to close D418. It is now retained as red: exact D418 commit `a1199bee`
+passed all four hosted CI jobs in run `33203798869`, then Scoped UI run
+`33203798892` passed 106/106 English journeys functionally but stopped before
+Spanish on 1,771.372 summed seconds, p50 11.712, p95 32.243, maximum 109.240,
+20 individual overages, and failed aggregate plus p95 gates. D418 did not
+deliver a hosted end-to-end runtime improvement. Physical Sequoia/Tahoe,
+assistive-technology, distribution, CloudKit, and field evidence remain
+separate authorities.
+
+**D419 actionable-edge and contained-Skills query compaction.** Exact activity
+comparison keeps the D418 diagnosis causal. The consolidated Skills
+period/filter journey had 341/342 top-level and 522/523 recursive activities in
+D417/D418, with 337 aligned operations and the same 151 existence plus 184
+find activities. It rose from 63.732 to 109.240 seconds because the same remote
+operations became slower: aligned existence gaps added 16.537 seconds and find
+gaps added 19.122 seconds. Interview saved one existence activity but retained
+all 44 finds. The retained first attempt is not rerun unchanged.
+
+Stable-frame samples now use `isHittable` as their safe absent/disabled/
+occluded gate before reading `frame`. The same source guard executes at
+candidate admission and the declared acceptance edge, clearing candidate state
+before a frame read whenever actionability is lost. This preserves absence
+safety, nonempty geometry, frame equality, the 0.25-second default interval,
+and final actionability while removing the separate `exists` property from
+both edges. The enforced run-loop cadence and every deadline remain unchanged.
+
+Twenty-one Skills controls already proven contained by the bounded
+`scrollToVisible` helper use one bounded `waitForHittable` before their click
+rather than paying a second stable-frame proof. Controls without that geometry
+owner are unchanged. The same helper now reuses one target-frame snapshot for
+both containment and scroll-distance calculation on each of its six bounded
+attempts, returns as soon as containment is true, and takes a final snapshot
+only if all attempts are exhausted. A source contract requires hittability
+before frame, rejects the separate stable-helper existence query, rejects
+containment-then-stability duplication, and prevents the prior visibility
+closure from reintroducing duplicate frame reads. Selectors, launches, gesture
+direction and clamp, assertions, timeouts, locales, aggregate budgets, and
+individual budgets are unchanged. Focused, complete bilingual local, and first
+exact-head hosted evidence remain required before D419 closes.
+
+The first same-eight-owner English real-app slice passed 8/8 in 180.340 summed
+seconds after actionable-edge and contained-control compaction. A second run
+was justified by the subsequent scroll-helper code change and passed the same
+8/8 in 150.734 seconds (p50 13.976, p95/maximum 38.395), 29.606 seconds or
+16.42% faster, with every individual budget green. The six affected Skills
+owners all improved; the two non-Skills controls varied by +0.630 and -0.157
+seconds. The consolidated filter journey's activity tree fell from 287 to 173
+top-level and 468 to 354 recursive activities, including 127 to 73 existence
+and 154 to 94 find operations, while six gestures and ten match-count queries
+remained unchanged. Interview retained 65 top-level, 107 recursive, 15
+existence, and 44 find activities. These exact count changes demonstrate
+code-owned query reduction; they do not predict the final complete-suite or
+hosted runtime result.
+
+The final complete real-app gate reused one build and passed 106/106 English
+journeys in 905.317 summed seconds (p50 6.721, p95 18.695, maximum 38.083) and
+106/106 Spanish journeys in 905.670 seconds (p50 6.603, p95 18.594, maximum
+37.976), with no aggregate or individual budget violation. Relative to D418's
+local complete receipts, English improved by 75.796 seconds (7.73%) and Spanish
+by 97.882 seconds (9.75%). A warnings-as-errors build completed in 20.71
+seconds; all 2,788 Swift tests passed with 15 expected model-gated skips in
+131.183 test seconds; strict lint covered 742 files with zero violations; and
+repository hygiene, the 106-test scope catalogue and policy suite, fail-safe
+bilingual selection, and diff checks passed. This closes D419 locally, not on
+the hosted runner; the first exact-head hosted CI and Scoped UI remain the
+delivery authority.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

@@ -9465,14 +9465,15 @@ final class ArchitectureDependencyTests: XCTestCase {
         let stableFrameBody = support[
             stableFrameStart.lowerBound..<revealStart.lowerBound]
         XCTAssertFalse(stableFrameBody.contains("waitForExistenceFast"))
-        let stableFrameExistence = try XCTUnwrap(stableFrameBody.range(
-            of: "guard self.exists else"))
+        XCTAssertFalse(stableFrameBody.contains("guard self.exists else"))
+        let stableFrameHittable = try XCTUnwrap(stableFrameBody.range(
+            of: "guard self.isHittable else"))
         let stableFrameRead = try XCTUnwrap(stableFrameBody.range(
             of: "let currentFrame = self.frame"))
         XCTAssertLessThan(
-            stableFrameExistence.lowerBound,
+            stableFrameHittable.lowerBound,
             stableFrameRead.lowerBound,
-            "a transiently absent dynamic query must not trap while reading frame")
+            "a transiently absent or obscured query must fail before reading frame")
         XCTAssertTrue(stableFrameBody.contains(
             "guard !currentFrame.isEmpty else"))
         XCTAssertFalse(stableFrameBody.contains(
@@ -9485,21 +9486,16 @@ final class ArchitectureDependencyTests: XCTestCase {
             "return waitForUITestCondition(timeout: timeout)"))
         XCTAssertEqual(
             stableFrameBody.components(separatedBy: "self.isHittable").count - 1,
-            2,
-            "hittability belongs only to candidate admission and final acceptance")
+            1,
+            "one guard must own both candidate-admission and acceptance samples")
         let candidateTransition = try XCTUnwrap(stableFrameBody.range(
             of: "if currentFrame != candidateFrame"))
-        let admittedHittable = try XCTUnwrap(stableFrameBody.range(
-            of: "guard self.isHittable else {",
-            range: candidateTransition.upperBound..<stableFrameBody.endIndex))
         let stableInterval = try XCTUnwrap(stableFrameBody.range(
             of: "Date().timeIntervalSince(candidateStableSince) >= stableInterval",
-            range: admittedHittable.upperBound..<stableFrameBody.endIndex))
-        let acceptedHittable = try XCTUnwrap(stableFrameBody.range(
-            of: "guard self.isHittable else {",
-            range: stableInterval.upperBound..<stableFrameBody.endIndex))
-        XCTAssertLessThan(admittedHittable.lowerBound, stableInterval.lowerBound)
-        XCTAssertLessThan(stableInterval.lowerBound, acceptedHittable.lowerBound)
+            range: candidateTransition.upperBound..<stableFrameBody.endIndex))
+        XCTAssertLessThan(stableFrameHittable.lowerBound, stableFrameRead.lowerBound)
+        XCTAssertLessThan(stableFrameRead.lowerBound, candidateTransition.lowerBound)
+        XCTAssertLessThan(candidateTransition.lowerBound, stableInterval.lowerBound)
         XCTAssertTrue(stableFrameBody.contains(
             "candidateFrame = nil\n                stableSince = nil"))
 
@@ -9526,6 +9522,34 @@ final class ArchitectureDependencyTests: XCTestCase {
                 skills.contains(containedHittableProof),
                 "contained Settings controls must not repeat stable-frame polling")
         }
+        let skillsLines = skills.split(
+            separator: "\n",
+            omittingEmptySubsequences: false)
+        for (index, line) in skillsLines.enumerated()
+        where line.contains(".waitForStableFrame(timeout: 5)") {
+            let priorStart = max(0, index - 2)
+            let priorLines = skillsLines[priorStart..<index]
+            XCTAssertFalse(
+                priorLines.contains { $0.contains("scrollToVisible(") },
+                "a contained Settings control must use one hittability proof")
+        }
+        let scrollStart = try XCTUnwrap(skills.range(
+            of: "private func scrollToVisible("))
+        let isOnStart = try XCTUnwrap(skills.range(
+            of: "private static func isOn(",
+            range: scrollStart.upperBound..<skills.endIndex))
+        let scrollBody = skills[scrollStart.lowerBound..<isOnStart.lowerBound]
+        XCTAssertFalse(
+            scrollBody.contains("let isVisible ="),
+            "visibility must not be resampled separately from the scroll attempt")
+        XCTAssertEqual(
+            scrollBody.components(separatedBy: "element.frame").count - 1,
+            2,
+            "each bounded attempt and the exhausted-loop proof own one frame read")
+        XCTAssertTrue(scrollBody.contains("for _ in 0..<6"))
+        XCTAssertTrue(scrollBody.contains(
+            "let magnitude = min(max(max(distance, abs(deltaY)), 240), 900)"))
+        XCTAssertTrue(scrollBody.contains("let finalFrame = element.frame"))
 
         XCTAssertFalse(
             meeting.contains("library-search-field"),
@@ -9583,6 +9607,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D412"))
         XCTAssertTrue(decisions.contains("## D417"))
         XCTAssertTrue(decisions.contains("## D418"))
+        XCTAssertTrue(decisions.contains("## D419"))
     }
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {
