@@ -5493,6 +5493,45 @@ individual unchanged budgets passed. Exact-head hosted runtime evidence remains
 pending; local automation does not claim physical, distribution, CloudKit, or
 field authority.
 
+**D414 hosted first-attempt ownership.** Exact D413 commit `b0650928` is
+published. Hosted CI run `33168727132` passed all four jobs. The first hosted
+Scoped UI run `33168727155` expanded to 106 English cases, passed 104, failed
+Interview Assist and Commitment evidence review, and did not start Spanish.
+The retained receipt records 1,374.951 summed XCTest seconds, p50 9.418, p95
+25.261, maximum 77.134, build 518 seconds, and wall 1,429 seconds; the unchanged
+1,300-second aggregate budget failed. Passing individual overages were the
+Automation App Entity, Ask conversation, and 20,000-segment detail owners. The
+functional failures are retained as evidence rather than retried unchanged.
+
+Interview's exact objective is clipped immediately above its visible count
+anchor and therefore absent from SwiftUI's accessibility tree until scrolling
+materializes it. The anchor-aware reveal now moves in that known direction
+before requiring existence, then transfers only its remaining bounded attempts
+to ordinary stable containment. The Commitment hierarchy and the retained D412
+pass establish that AppKit can coalesce one synthesized wheel event: a single
+no-movement observation now consumes an attempt instead of terminating the
+journey. The shared helper refreshes live viewport geometry and compares raw
+frames with raw frames, while stable-frame waiting uses one combined nonempty-
+frame/hittability deadline instead of a duplicate existence preflight. Step
+size, waits, aggregate and individual budgets, selectors, assertions, and
+locales are unchanged.
+
+The initial causal repair passed the exact two hosted-red English journeys 2/2
+without retry in 33.579 summed XCTest seconds. Adversarial review then fixed an
+inset/raw viewport comparison and the anchor handoff's total attempt accounting
+before final qualification. The accepted package run passed all 2,788 tests
+with 15 explicit model-gated skips; warnings-as-errors, strict SwiftLint,
+repository hygiene, and diff checks are green.
+
+The final candidate reused one eight-second build and passed 106/106 in both
+locales without retry or budget change. English measured 939.336 summed XCTest
+seconds (p50 6.564, p95 17.090, maximum 46.836, wall 961); Spanish measured
+975.360 (p50 6.669, p95 17.355, maximum 49.792, wall 994). Interview passed in
+12.107/13.042 seconds and Commitment in 14.711/15.413 seconds. Every aggregate
+and individual budget is green. Fresh exact-head hosted receipts remain
+required. These automated results do not certify physical Sequoia/Tahoe,
+assistive technology, distribution, CloudKit, or field behavior.
+
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch
 COPY of a real recording: point `PORTAVOZ_TEST_AUDIO_ROOT` at a folder shaped

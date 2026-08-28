@@ -4826,15 +4826,23 @@ package contracts; Reminder, Brief, Email, Gist, receipt-scope, filtering, and
 accessibility behavior retain their dedicated real-app journeys. It therefore
 does not replay those scope transitions or a second whole-window accessibility
 audit. Dynamic Interview objective queries combine their stable identifier
-prefix with the exact accepted label and wait for that exact accessibility row
-to publish before reveal. Interview and Meeting Detail share one bounded
-geometry-aware vertical reveal helper. Each outside-viewport step is capped at
-48 points and waits only for an observed frame change; the nonempty, hittable,
-stable-containment proof runs once the target is actually inside the cached
-viewport. An already-contained but settling target waits without receiving
-another wheel event, and an absent or immovable target fails instead of
-guessing, sleeping, or scrolling again. A failed first pass is evidence to
-diagnose, never authorization for an unchanged green retry.
+prefix with the exact accepted label. A fully clipped SwiftUI row may be absent
+from the accessibility tree after its model state is admitted, so Interview
+first reveals the visible objective-count anchor and then materializes the
+preceding row with bounded positive scroll steps before applying ordinary
+containment. Existence is not used as an impossible precondition for that
+materialization. Interview and Meeting Detail share one bounded geometry-aware
+vertical reveal helper. Each outside-viewport step is capped at 48 points,
+compares like-for-like raw viewport and target frames, and refreshes the live
+viewport before containment. One coalesced wheel event is not terminal; only
+exhaustion of the total attempt budget is. The nonempty, hittable, stable-
+containment proof runs once the target is actually inside the viewport. An
+already-contained but settling target waits without receiving another wheel
+event, while a target that remains unresolved after the bounded attempts fails
+without a sleep or retry. Stable-frame waiting uses one combined frame-and-
+hittability deadline rather than first paying a duplicate existence preflight.
+A failed first pass is evidence to diagnose, never authorization for an
+unchanged green retry.
 
 The harness retains `XCUIApplication.terminate()` for ordinary teardown: a
 measured AppKit termination request still made XCTest account for the same
@@ -4862,14 +4870,13 @@ search semantics and the Library journey owns timestamp navigation. Email UI
 owns its external handoff and local receipt, while the Gist and central Skills
 journeys own cross-window Settings receipt projection. Architecture ratchets
 reject restoration of these measured duplicate chains.
-The accepted local candidate on macOS 26.5.2 (25F84), arm64, and Xcode 26.6
-measures 951.857 seconds English and 949.262 seconds Spanish across the complete
-106-case catalogue; wall time is 976/974 seconds after one 13-second shared
-build, p95 is 19.141/17.802 seconds, and the slowest case is 47.456/45.953
-seconds. This is 14.1%/14.8% less summed XCTest time than the prior documented
-105-case candidate while adding one catalogue case. The versioned gates cap
-each locale at 1,300 seconds and p95 at 30 seconds, with independent
-per-journey ceilings. These are one-host performance measurements, not physical
+The current local candidate on macOS 26.5.2 (25F84), arm64, and Xcode 26.6
+uses one eight-second build for the complete 106-case catalogue in both
+locales. English measures 939.336 summed XCTest seconds, 961 seconds wall, p50
+6.564, p95 17.090, and maximum 46.836. Spanish measures 975.360 summed XCTest
+seconds, 994 seconds wall, p50 6.669, p95 17.355, and maximum 49.792. Both pass
+the unchanged 1,300-second aggregate, 30-second p95, and independent per-
+journey ceilings. These are one-host performance measurements, not physical
 Sequoia or separate-hardware Tahoe evidence.
 
 The hosted predecessor commit passed CI, while its fail-safe 106-case English

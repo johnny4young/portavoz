@@ -526,12 +526,11 @@ extension XCUIElement {
         timeout: TimeInterval = 5,
         stableFor stableInterval: TimeInterval = 0.25
     ) -> Bool {
-        guard waitForExistenceFast(timeout: timeout) else { return false }
         var candidateFrame: CGRect?
         var stableSince: Date?
         return waitForUITestCondition(timeout: timeout) {
             let currentFrame = self.frame
-            guard self.isHittable, !currentFrame.isEmpty else {
+            guard !currentFrame.isEmpty, self.isHittable else {
                 candidateFrame = nil
                 stableSince = nil
                 return false
@@ -559,19 +558,22 @@ extension XCUIElement {
         guard exists, viewportElement.exists, maximumStep > 0 else {
             return false
         }
-        let viewportFrame = viewportElement.frame.insetBy(dx: 0, dy: 4)
+        var viewportFrame = viewportElement.frame.insetBy(dx: 0, dy: 4)
         guard !viewportFrame.isEmpty else { return false }
 
         if viewportFrame.contains(frame) {
             return waitForStableContainedFrame(
-                in: viewportFrame,
+                in: viewportElement,
                 timeout: 1)
         }
 
         for _ in 0..<maxScrolls {
-            guard exists else { return false }
+            guard exists, viewportElement.exists else { return false }
             let controlFrame = frame
+            let rawViewportFrame = viewportElement.frame
+            viewportFrame = rawViewportFrame.insetBy(dx: 0, dy: 4)
             guard !controlFrame.isEmpty else { return false }
+            guard !viewportFrame.isEmpty else { return false }
 
             let deltaY: CGFloat
             if controlFrame.maxY > viewportFrame.maxY {
@@ -582,32 +584,92 @@ extension XCUIElement {
                 deltaY = min(max(distance, 12), maximumStep)
             } else {
                 return waitForStableContainedFrame(
-                    in: viewportFrame,
+                    in: viewportElement,
                     timeout: 1)
             }
 
             viewportElement.scroll(byDeltaX: 0, deltaY: deltaY)
-            let targetMoved = waitForUITestCondition(
+            let geometryChanged = waitForUITestCondition(
                 timeout: 0.5,
                 pollInterval: 0.02
             ) {
                 let updatedFrame = self.frame
-                return !updatedFrame.isEmpty && updatedFrame != controlFrame
+                let updatedViewportFrame = viewportElement.frame
+                return (!updatedFrame.isEmpty && updatedFrame != controlFrame)
+                    || (!updatedViewportFrame.isEmpty
+                        && updatedViewportFrame != rawViewportFrame)
             }
-            guard targetMoved else { return false }
 
+            viewportFrame = viewportElement.frame.insetBy(dx: 0, dy: 4)
             if viewportFrame.contains(frame) {
                 return waitForStableContainedFrame(
-                    in: viewportFrame,
+                    in: viewportElement,
                     timeout: 1)
             }
+            // One synthesized wheel event can be coalesced by AppKit while a
+            // scroll view is settling. Treat only the total bounded attempt
+            // budget as terminal evidence that the target cannot be revealed.
+            if !geometryChanged { continue }
+        }
+        return false
+    }
+
+    /// Materializes an accessibility element that precedes a visible semantic
+    /// anchor in a SwiftUI scroll view, then applies the ordinary containment
+    /// proof. SwiftUI may omit a fully clipped row from AX even when its model
+    /// state has already been admitted, so existence cannot be the first gate.
+    @MainActor
+    func revealVertically(
+        in viewportElement: XCUIElement,
+        above anchorElement: XCUIElement,
+        maxScrolls: Int = 6,
+        maximumStep: CGFloat = 48
+    ) -> Bool {
+        guard viewportElement.exists,
+              anchorElement.exists,
+              maximumStep > 0
+        else {
+            return false
+        }
+        if exists {
+            return revealVertically(
+                in: viewportElement,
+                maxScrolls: maxScrolls,
+                maximumStep: maximumStep)
+        }
+
+        for attempt in 0..<maxScrolls {
+            let anchorFrame = anchorElement.exists
+                ? anchorElement.frame
+                : .null
+            viewportElement.scroll(byDeltaX: 0, deltaY: maximumStep)
+            let materializedOrMoved = waitForUITestCondition(
+                timeout: 0.5,
+                pollInterval: 0.02
+            ) {
+                if self.exists { return true }
+                guard anchorElement.exists else { return false }
+                let updatedAnchorFrame = anchorElement.frame
+                return !anchorFrame.isEmpty
+                    && !updatedAnchorFrame.isEmpty
+                    && updatedAnchorFrame != anchorFrame
+            }
+            if exists {
+                return revealVertically(
+                    in: viewportElement,
+                    maxScrolls: max(0, maxScrolls - attempt - 1),
+                    maximumStep: maximumStep)
+            }
+            // An ignored wheel event is not terminal; the total attempt count
+            // remains the bounded failure authority.
+            if !materializedOrMoved { continue }
         }
         return false
     }
 
     @MainActor
     private func waitForStableContainedFrame(
-        in viewportFrame: CGRect,
+        in viewportElement: XCUIElement,
         timeout: TimeInterval,
         stableFor stableInterval: TimeInterval = 0.1
     ) -> Bool {
@@ -615,9 +677,11 @@ extension XCUIElement {
         var stableSince: Date?
         return waitForUITestCondition(timeout: timeout) {
             let controlFrame = self.frame
-            guard self.isHittable,
-                  !controlFrame.isEmpty,
-                  viewportFrame.contains(controlFrame)
+            let viewportFrame = viewportElement.frame.insetBy(dx: 0, dy: 4)
+            guard !controlFrame.isEmpty,
+                  !viewportFrame.isEmpty,
+                  viewportFrame.contains(controlFrame),
+                  self.isHittable
             else {
                 candidateFrame = nil
                 stableSince = nil

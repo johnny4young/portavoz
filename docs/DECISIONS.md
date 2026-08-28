@@ -15606,3 +15606,57 @@ green without retry. A new exact-head hosted bilingual first attempt remains
 required before D413 can close the integration boundary; physical
 Sequoia/Tahoe, assistive-technology, distribution, CloudKit, and field evidence
 remain separate authorities.
+
+## D414 — Materialize clipped accessibility rows and tolerate bounded scroll stalls (Aug 2026)
+
+**Context:** exact D413 commit `b0650928` was published without force. Hosted
+CI run `33168727132` passed the current-SDK, Sequoia, strict-lint, and
+repository-hygiene jobs. The first hosted Scoped UI run `33168727155` expanded
+the shared-harness change to all 106 English cases, passed 104, failed
+Interview Assist and Commitment evidence review, and did not start Spanish.
+Its retained content-free receipt measured 1,374.951 summed XCTest seconds,
+p95 25.261 seconds, and a failed 1,300-second aggregate budget. The Interview
+hierarchy showed the admitted objective count while the preceding exact
+objective row remained clipped out of the accessibility tree. Commitment
+stopped after one synthesized wheel event produced no observed movement; the
+retained D412 pass of the same owner required six bounded gestures. A single
+missed wheel event was therefore not terminal evidence. Common stable-frame
+paths also paid a separate existence wait before their frame-and-hittability
+predicate.
+
+**Decision:** an Interview objective that precedes a visible semantic count
+anchor may materialize through a dedicated bounded overload before its
+existence is required. It scrolls only in that known direction, caps each step
+at 48 points, and transfers the remaining total attempt budget to the ordinary
+containment proof once the row appears. The shared reveal refreshes viewport
+geometry on every attempt and compares raw viewport frames with raw frames;
+inset and uninset rectangles are never compared as motion evidence. A
+coalesced wheel event consumes one bounded attempt but does not immediately
+fail. Exhausting the declared attempt count remains the only terminal scroll
+authority.
+
+Stable-frame waiting uses one bounded predicate that requires a nonempty,
+hittable frame and then observes its unchanged interval. It does not pay an
+independent existence preflight. Timeouts, step size, runtime budgets, product
+assertions, locale scope, and official activation/teardown behavior remain
+unchanged. Source ratchets reject restoration of the impossible Interview
+existence gate, inset/raw viewport comparison, a terminal single-event stall,
+an unbounded anchor transfer, or the duplicate stable-frame preflight.
+
+**Consequences:** the initial causal repair passed the exact two hosted-red
+English owners 2/2 without retry in 33.579 summed XCTest seconds. Adversarial
+review then corrected one inset-versus-raw viewport comparison and preserved
+one total attempt budget before final qualification. The accepted package run
+passed 2,788 tests with 15 explicit model-gated skips; current-SDK first-party
+warnings-as-errors, strict SwiftLint, repository hygiene, and diff checks are
+green.
+
+The final candidate reused one eight-second build and passed the complete
+106-case catalogue in both locales without retry or budget change. English
+measured 939.336 summed XCTest seconds (p50 6.564, p95 17.090, maximum 46.836,
+wall 961); Spanish measured 975.360 (p50 6.669, p95 17.355, maximum 49.792,
+wall 994). Interview passed in 12.107/13.042 seconds and Commitment in
+14.711/15.413 seconds. Every aggregate and individual budget is green. Fresh
+exact-head hosted qualification remains required before this correction
+closes. Physical Sequoia/Tahoe, assistive-technology, distribution, CloudKit,
+and field evidence remain separate authorities.

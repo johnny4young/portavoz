@@ -61,11 +61,11 @@ final class InterviewAssistUITests: PortavozUITestCase {
                 objectiveText))
             .firstMatch
         XCTAssertTrue(
-            savedObjective.waitForExistenceFast(timeout: 5),
-            "the admitted objective must publish its exact accessibility row")
-        XCTAssertTrue(
-            savedObjective.revealVertically(in: scroll),
-            "the admitted objective must be visible with its exact text")
+            savedObjective.revealVertically(
+                in: scroll,
+                above: objectiveCount),
+            "the admitted objective must materialize above its exact count "
+                + "and become visible with its exact text")
 
         let answerAction = app.control(withIdentifier: "recording-interview-answer")
         XCTAssertTrue(

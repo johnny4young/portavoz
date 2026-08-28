@@ -9295,8 +9295,16 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(support.contains("viewportFrame.contains(controlFrame)"))
         XCTAssertTrue(support.contains("private func waitForStableContainedFrame("))
         XCTAssertTrue(support.contains("maximumStep: CGFloat = 48"))
-        XCTAssertTrue(support.contains("let targetMoved = waitForUITestCondition("))
+        XCTAssertTrue(support.contains("let geometryChanged = waitForUITestCondition("))
+        XCTAssertTrue(support.contains("let rawViewportFrame = viewportElement.frame"))
+        XCTAssertTrue(support.contains("updatedViewportFrame != rawViewportFrame"))
+        XCTAssertFalse(support.contains("updatedViewportFrame != viewportFrame"))
         XCTAssertTrue(support.contains("pollInterval: 0.02"))
+        XCTAssertTrue(support.contains("above anchorElement: XCUIElement"))
+        XCTAssertTrue(support.contains(
+            "maxScrolls: max(0, maxScrolls - attempt - 1)"))
+        XCTAssertTrue(support.contains("if !geometryChanged { continue }"))
+        XCTAssertFalse(support.contains("guard targetMoved else { return false }"))
         XCTAssertFalse(uiTests.contains("private extension XCUIElement"))
         XCTAssertFalse(uiTests.contains("deltaY: CGFloat = -48"))
         XCTAssertFalse(uiTests.contains("waitForVisibleStableFrame"))
@@ -9316,16 +9324,17 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "objectiveCount.revealVertically(in: scroll)"))
         let savedObjective = try XCTUnwrap(interviewUITest.range(
             of: "identifier BEGINSWITH %@ AND label == %@"))
-        let savedObjectivePublished = try XCTUnwrap(interviewUITest.range(
-            of: "the admitted objective must publish its exact accessibility row"))
         let objectiveReveal = try XCTUnwrap(interviewUITest.range(
-            of: "savedObjective.revealVertically(in: scroll)"))
+            of: "savedObjective.revealVertically("))
+        let objectiveAnchor = try XCTUnwrap(interviewUITest.range(
+            of: "above: objectiveCount"))
         XCTAssertLessThan(admittedObjective.lowerBound, savedObjective.lowerBound)
         XCTAssertLessThan(admittedObjective.lowerBound, objectiveCountReveal.lowerBound)
         XCTAssertLessThan(objectiveCountReveal.lowerBound, savedObjective.lowerBound)
-        XCTAssertLessThan(savedObjective.lowerBound, savedObjectivePublished.lowerBound)
-        XCTAssertLessThan(savedObjectivePublished.lowerBound, objectiveReveal.lowerBound)
         XCTAssertLessThan(savedObjective.lowerBound, objectiveReveal.lowerBound)
+        XCTAssertLessThan(objectiveReveal.lowerBound, objectiveAnchor.lowerBound)
+        XCTAssertFalse(interviewUITest.contains(
+            "savedObjective.waitForExistenceFast(timeout: 5)"))
         XCTAssertFalse(interviewUITest.contains("missingTargetDeltaY"))
         XCTAssertFalse(interviewUITest.contains("private extension XCUIElement"))
         XCTAssertFalse(interviewUITest.contains("waitForStableContainedFrame("))
@@ -9349,6 +9358,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(askUITest.contains(
             "waitForFeatureUITestHandshakeRelease("))
         XCTAssertTrue(decisions.contains("## D409"))
+        XCTAssertTrue(decisions.contains("## D414"))
     }
 
     func testXCUITestInteractionPreparationReassertsFrontmostOwnership() throws {
@@ -9398,6 +9408,16 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(support.contains(
             "Date().timeIntervalSince(stableSince) >= stableInterval"))
         XCTAssertFalse(support.contains("var previousFrame: CGRect?"))
+        let stableFrameStart = try XCTUnwrap(support.range(
+            of: "func waitForStableFrame("))
+        let revealStart = try XCTUnwrap(support.range(
+            of: "func revealVertically(",
+            range: stableFrameStart.upperBound..<support.endIndex))
+        let stableFrameBody = support[
+            stableFrameStart.lowerBound..<revealStart.lowerBound]
+        XCTAssertFalse(stableFrameBody.contains("waitForExistenceFast"))
+        XCTAssertTrue(stableFrameBody.contains(
+            "guard !currentFrame.isEmpty, self.isHittable"))
 
         XCTAssertTrue(skills.contains(
             "the live pane must expose the six-action candidate catalogue"))
