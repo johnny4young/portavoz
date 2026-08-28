@@ -15717,3 +15717,99 @@ p95 18.164. Every aggregate and individual budget passed. Exact commit
 publication and fresh hosted evidence remain required before this correction
 closes. Physical Sequoia/Tahoe, assistive technology, distribution, CloudKit,
 and field evidence remain separate authorities.
+
+## D416 — Prove admission before testing dynamic-row publication (Aug 2026)
+
+**Context:** exact D415 commit `b63010bf` passed hosted current-SDK, Sequoia,
+strict-lint, and repository-hygiene run `33184784185`. Its first Scoped UI run
+`33184784215` selected and executed 48 English journeys, passed 47, failed only
+Interview Assist, and did not start Spanish. The retained receipt measured
+894.906 summed XCTest seconds and p95 49.019 seconds; Interview measured 30.672
+against its unchanged 20-second budget. `xcresulttool` exposed two assertions:
+the UUID row did not exist and therefore could not be contained.
+
+The activity tree and screen recording prove the failure preceded D415's
+product scroll. The objective-count element existed before activation because
+Interview mode always renders it. The exact text remained in the focused field
+after the partially bottom-clipped plus control received one synthesized click;
+no objective was admitted, so no UUID insertion or product scroll could occur.
+The later grounded answer and exact citation still passed. The same plus control
+retains independent real-app coverage in the consolidated recording journey.
+
+**Decision:** a dynamic-row journey must first prove the exact admitted state,
+not the existence of a permanent status element. Interview submits through the
+field's advertised Return path while the field still owns keyboard focus, then
+requires the exact localized `1 of 8`/`1 de 8` counter before querying the
+UUID-prefix plus exact-label row. Only that admitted row may satisfy D415's
+zero-gesture containment proof. The test does not click the boundary-clipped
+plus control or retry an ignored event; the independent recording journey
+continues to cover that button.
+
+Exact label/content predicates subsume redundant preceding existence probes for
+the current question, grounded answer, and citation. No product source,
+selector catalogue, sleep, retry, wait ceiling, aggregate budget, individual
+budget, assertion, or locale requirement changes. D416 by itself maps to the
+one changed Interview journey; the combined correction also changes shared UI
+support under D417, so the fail-safe selector expands fresh hosted evidence to
+the complete bilingual suite. Complete bilingual XCUITest remains the local
+band gate and the final integration/release gate.
+
+**Consequences:** this separates activation authority, admitted model state,
+and product-owned publication into three ordered observations. A hosted no-op
+can no longer masquerade as a scroll/materialization defect, and the journey
+spends no time polling for a state whose mutation never occurred. The first
+focused English real-app run passed without retry in 12.745 seconds under the
+unchanged 20-second budget; its exact one-of-eight count and UUID-row
+containment prove D415's production scroll once admission actually occurs.
+Post-D417 complete local qualification passed 106/106 English journeys in
+968.202 summed XCTest seconds with p95 18.543 and 106/106 Spanish journeys in
+964.891 seconds with p95 18.746. Interview passed in 11.544 and 11.704 seconds,
+respectively. Fresh exact-head hosted qualification remains required before
+D416 closes. Physical Sequoia/Tahoe, assistive technology, distribution,
+CloudKit, and field evidence remain separate authorities.
+
+## D417 — Fail closed while a dynamic accessibility query is absent (Aug 2026)
+
+**Context:** D416's first complete English qualification passed all 106 product
+journeys, but an unrelated Brave crash inflated one meeting-row click to 14.483
+seconds and made the otherwise-passing Decision journey exceed its unchanged
+20-second budget. The retained receipt remains red. After Brave relaunched, a
+single replacement qualification restored the suite to 948.048 summed XCTest
+seconds and p95 17.837, but exposed a different functional failure in the
+tabbed-summary journey before it reached any summary assertion.
+
+The seed transaction, foreground handoff, and first library-row readiness proof
+had completed. The row then disappeared during the seeded sidebar's one-time
+observation replacement. `waitForStableFrame` read `frame` before proving that
+its dynamic query still matched, so XCTest emitted `Failed to get matching
+snapshot` instead of treating the transient absence as an unsatisfied bounded
+predicate. A preceding assertion did not provide safety because XCTest
+assertions record failure and continue execution.
+
+**Decision:** stable-frame polling must fail closed on a temporarily absent
+query. Every poll first evaluates `exists`; an absent element clears the frame
+candidate and stability clock and returns `false`. Only an existing match may
+read `frame` and evaluate the existing non-empty-frame plus hittability gate.
+This is not a retry, sleep, timeout increase, gesture, selector, or budget
+change. The architecture contract preserves the single bounded stability
+predicate and now requires the existence guard to precede the frame read.
+
+**Consequences:** dynamic SwiftUI identity replacement can consume the existing
+bounded poll window without causing an abrupt XCTest snapshot failure. A query
+that never returns still fails at the original timeout, and a reappearing row
+must establish a fresh stable interval before activation. The two red receipts
+remain retained as causal evidence rather than being relabeled as green retries.
+The first focused post-change real-app run passed Interview in 11.742 seconds
+and the formerly failing tabbed-summary journey in 8.567 seconds, with 20.310
+summed seconds and p95 11.742. The complete post-change bilingual gate then
+passed 106/106 English journeys in 968.202 summed seconds with p95 18.543 and
+106/106 Spanish journeys in 964.891 seconds with p95 18.746; every aggregate
+and individual budget passed. The warnings-as-errors build passed in 22.35
+seconds, and the full Swift suite passed 2,788 tests with 15 expected
+model-gated skips and zero failures in 119.718 test seconds. Fresh exact-head
+hosted qualification remains required. The 106-test selector catalogue, its 56
+policy tests, both focused source-order ratchets, strict SwiftLint across 742
+files, repository hygiene, and diff whitespace checks also passed. The shared-
+support delta selects the complete bilingual suite rather than a feature-only
+subset. Physical Sequoia/Tahoe, assistive technology, distribution, CloudKit,
+and field evidence remain separate authorities.

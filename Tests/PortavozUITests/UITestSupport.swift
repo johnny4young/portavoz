@@ -529,6 +529,11 @@ extension XCUIElement {
         var candidateFrame: CGRect?
         var stableSince: Date?
         return waitForUITestCondition(timeout: timeout) {
+            guard self.exists else {
+                candidateFrame = nil
+                stableSince = nil
+                return false
+            }
             let currentFrame = self.frame
             guard !currentFrame.isEmpty, self.isHittable else {
                 candidateFrame = nil

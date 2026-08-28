@@ -24,32 +24,28 @@ final class InterviewAssistUITests: PortavozUITestCase {
         XCTAssertTrue(panel.waitForExistenceFast(timeout: 10))
         let question = app.control(
             withIdentifier: "recording-interview-current-question")
-        XCTAssertTrue(question.waitForExistenceFast(timeout: 10))
         let expectedQuestion = isSpanish
             ? "¿Qué haría Camila primero durante el incidente?"
             : "What would Jordan do first during the database incident?"
-        XCTAssertTrue(question.waitForLabelOrValue(expectedQuestion, timeout: 5))
+        XCTAssertTrue(question.waitForLabelOrValue(expectedQuestion, timeout: 10))
 
         let scroll = app.control(withIdentifier: "recording-assist-scroll")
         XCTAssertTrue(scroll.waitForExistenceFast(timeout: 5))
         let objective = app.control(withIdentifier: "recording-objective-field")
-        XCTAssertTrue(objective.waitForExistenceFast(timeout: 5))
-        for _ in 0..<4 where !objective.isHittable {
-            scroll.swipeUp()
-        }
         XCTAssertTrue(objective.waitForHittable(timeout: 5))
         objective.click()
         let objectiveText = isSpanish
             ? "Evaluar criterio de respuesta a incidentes"
             : "Evaluate incident-response judgment"
         app.typeText(objectiveText)
-        let add = app.control(withIdentifier: "recording-objective-add")
-        XCTAssertTrue(add.waitForHittable(timeout: 5))
-        add.click()
+        objective.typeKey(.return, modifierFlags: [])
         let objectiveCount = app.control(
             withIdentifier: "recording-interview-objective-count")
+        let expectedObjectiveCount = isSpanish
+            ? "1 de 8 objetivos de entrevista"
+            : "1 of 8 interview objectives"
         XCTAssertTrue(
-            objectiveCount.waitForExistenceFast(timeout: 5),
+            objectiveCount.waitForLabelOrValue(expectedObjectiveCount, timeout: 5),
             "objective admission must publish before proving its saved row")
         let savedObjective = app.descendants(matching: .any)
             .matching(NSPredicate(
@@ -75,19 +71,17 @@ final class InterviewAssistUITests: PortavozUITestCase {
 
         let answer = app.control(
             withIdentifier: "recording-interview-grounded-answer")
-        XCTAssertTrue(answer.waitForExistenceFast(timeout: 10))
-        XCTAssertTrue(waitForUITestCondition(timeout: 5) {
+        XCTAssertTrue(waitForUITestCondition(timeout: 10) {
             self.accessibleText(of: answer).contains(isSpanish
                 ? "cinco minutos"
                 : "within five minutes")
-        })
+        }, "the grounded answer must publish its exact bounded fact")
         let evidence = app.control(withIdentifier: "recording-interview-evidence-1")
-        XCTAssertTrue(evidence.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(waitForUITestCondition(timeout: 5) {
             self.accessibleText(of: evidence).contains(isSpanish
                 ? "Avisaría a la responsable de base de datos"
                 : "page the database owner within five minutes")
-        })
+        }, "the answer must retain its exact same-meeting citation")
     }
 
     @MainActor

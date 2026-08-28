@@ -9328,7 +9328,11 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(recording.contains(
             "assistScroll.scrollTo(addedObjectiveID, anchor: .center)"))
 
-        let admittedObjective = try XCTUnwrap(interviewUITest.range(
+        let objectiveSubmit = try XCTUnwrap(interviewUITest.range(
+            of: "objective.typeKey(.return, modifierFlags: [])"))
+        let objectiveAdmission = try XCTUnwrap(interviewUITest.range(
+            of: "objectiveCount.waitForLabelOrValue(expectedObjectiveCount, timeout: 5)"))
+        let admissionFailure = try XCTUnwrap(interviewUITest.range(
             of: "objective admission must publish before proving its saved row"))
         let savedObjective = try XCTUnwrap(interviewUITest.range(
             of: "identifier BEGINSWITH %@ AND label == %@"))
@@ -9336,9 +9340,14 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "savedObjective.waitForExistenceFast(timeout: 5)"))
         let zeroGestureContainment = try XCTUnwrap(interviewUITest.range(
             of: "maxScrolls: 0"))
-        XCTAssertLessThan(admittedObjective.lowerBound, savedObjective.lowerBound)
+        XCTAssertLessThan(objectiveSubmit.lowerBound, objectiveAdmission.lowerBound)
+        XCTAssertLessThan(objectiveAdmission.lowerBound, admissionFailure.lowerBound)
+        XCTAssertLessThan(admissionFailure.lowerBound, savedObjective.lowerBound)
         XCTAssertLessThan(savedObjective.lowerBound, objectiveExistence.lowerBound)
         XCTAssertLessThan(objectiveExistence.lowerBound, zeroGestureContainment.lowerBound)
+        XCTAssertFalse(interviewUITest.contains("add.click()"))
+        XCTAssertTrue(askUITest.contains(
+            "app.control(withIdentifier: \"recording-objective-add\").click()"))
         XCTAssertFalse(interviewUITest.contains(
             "objectiveCount.revealVertically(in: scroll)"))
         XCTAssertFalse(interviewUITest.contains("above: objectiveCount"))
@@ -9383,6 +9392,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D409"))
         XCTAssertTrue(decisions.contains("## D414"))
         XCTAssertTrue(decisions.contains("## D415"))
+        XCTAssertTrue(decisions.contains("## D416"))
     }
 
     func testXCUITestInteractionPreparationReassertsFrontmostOwnership() throws {
@@ -9440,6 +9450,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         let stableFrameBody = support[
             stableFrameStart.lowerBound..<revealStart.lowerBound]
         XCTAssertFalse(stableFrameBody.contains("waitForExistenceFast"))
+        let stableFrameExistence = try XCTUnwrap(stableFrameBody.range(
+            of: "guard self.exists else"))
+        let stableFrameRead = try XCTUnwrap(stableFrameBody.range(
+            of: "let currentFrame = self.frame"))
+        XCTAssertLessThan(
+            stableFrameExistence.lowerBound,
+            stableFrameRead.lowerBound,
+            "a transiently absent dynamic query must not trap while reading frame")
         XCTAssertTrue(stableFrameBody.contains(
             "guard !currentFrame.isEmpty, self.isHittable"))
 
@@ -9521,6 +9539,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D410"))
         XCTAssertTrue(decisions.contains("## D411"))
         XCTAssertTrue(decisions.contains("## D412"))
+        XCTAssertTrue(decisions.contains("## D417"))
     }
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {

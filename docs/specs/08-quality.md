@@ -5569,6 +5569,69 @@ passed. Fresh exact-head hosted receipts remain required; these automated
 results do not certify physical Sequoia/Tahoe, assistive technology,
 distribution, CloudKit, or field behavior.
 
+**D416 admission-first Interview evidence.** Exact D415 commit `b63010bf`
+passed all four hosted CI jobs in run `33184784185`. First-attempt Scoped UI run
+`33184784215` selected and executed 48 English journeys, passed 47, and failed
+only Interview Assist; Spanish did not start. The retained receipt measured
+894.906 summed XCTest seconds and p95 49.019 seconds. Interview measured 30.672
+against 20.000 and reported both a missing exact UUID row and failed zero-scroll
+containment.
+
+The exported activity tree and recording prove the plus-control click was a
+visible no-op at the compact viewport boundary: the typed text never cleared.
+The count element was already present before the click, so its existence did
+not prove a successful add. D415's UUID insertion observer was never exercised.
+The later grounded-answer and citation assertions passed, isolating the failure
+to objective admission rather than Interview inference.
+
+The corrected journey submits through the focused field's visible Return
+contract, requires the exact localized one-of-eight count, then proves the exact
+UUID-prefix plus label row and zero-gesture containment. The consolidated live-
+assist journey still covers the plus control, so coverage is not removed or
+duplicated. Exact label/content predicates replace redundant preceding
+existence probes. No sleep, retry, timeout increase, selector change, budget
+change, or product-only test switch was introduced. The first focused English
+real-app run passed without retry in 12.745 seconds under the unchanged
+20-second budget; its exact one-of-eight count and UUID row passed zero-scroll
+containment. D416 alone maps to that one Interview selector, but D417 changes
+shared UI support and therefore expands the combined correction fail-safe to
+complete bilingual hosted evidence. The post-D417 local gate passed all 106
+English journeys in 968.202 summed XCTest seconds with p95 18.543 and all 106
+Spanish journeys in 964.891 seconds with p95 18.746. Interview measured 11.544
+and 11.704 seconds, respectively. Fresh exact-head hosted receipts remain
+pending.
+
+**D417 absent-query-safe stable frames.** D416's first complete English attempt
+passed 106/106 functionally, including Interview at 12.657 seconds, but retained
+a red runtime receipt after an unrelated Brave crash made one meeting-row click
+consume 14.483 seconds. Its Decision journey measured 25.007 against 20.000.
+After the external browser relaunched, one replacement attempt restored p95 to
+17.837 seconds and uncovered a separate tabbed-summary failure during seeded
+library navigation.
+
+The second xcresult shows the fixture-ready and foreground boundaries had
+completed and the seeded row had already been observed. During the sidebar's
+one-time identity replacement the dynamic row query temporarily had no match.
+`waitForStableFrame` accessed `frame` first, which makes XCTest raise an abrupt
+`Failed to get matching snapshot` failure instead of returning an unsatisfied
+predicate. Stable-frame polling now checks `exists` before reading geometry;
+absence resets both the candidate frame and stability clock. The original
+timeout, stable interval, selectors, gestures, assertions, and runtime budgets
+remain unchanged, and the source contract enforces the safe ordering. The first
+focused post-change real-app gate passed Interview in 11.742 seconds and the
+formerly failing tabbed-summary journey in 8.567 seconds, for 20.310 summed
+seconds and p95 11.742. The complete post-change bilingual gate then passed
+106/106 English journeys in 968.202 summed seconds with p95 18.543 and 106/106
+Spanish journeys in 964.891 seconds with p95 18.746; every aggregate and
+individual budget passed. The warnings-as-errors build passed in 22.35 seconds,
+and the full Swift suite passed 2,788 tests with 15 expected model-gated skips
+and zero failures in 119.718 test seconds. Fresh exact-head hosted evidence
+remains pending. The 106-test selector catalogue, its 56 policy tests, both
+focused source-order ratchets, strict SwiftLint across 742 files, repository
+hygiene, and diff whitespace checks also passed. The shared-support delta
+selects the complete bilingual suite rather than a feature-only subset. Neither
+retained red receipt is presented as a green retry.
+
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch
 COPY of a real recording: point `PORTAVOZ_TEST_AUDIO_ROOT` at a folder shaped
