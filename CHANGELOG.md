@@ -4,6 +4,10 @@ Public releases are summarized first; the dated ledger keeps every
 user-visible change in the order it landed. Contributors: add one short,
 catchy entry for every user-visible change — feature name + what it gives you.
 
+## August 28, 2026
+
+- **🎯 New objectives stay in view** — Add a live meeting or interview objective and Portavoz brings the accepted row into view automatically, even in a compact recording window.
+
 ## August 27, 2026
 
 - **🛠️ Transcript fixes stay reachable** — Open text, speaker, split, merge, and hide corrections reliably even in a compact meeting window, without losing the immutable original evidence.

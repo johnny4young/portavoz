@@ -4825,14 +4825,15 @@ receipt projection. Exact catalogue identities and data ceilings remain pure
 package contracts; Reminder, Brief, Email, Gist, receipt-scope, filtering, and
 accessibility behavior retain their dedicated real-app journeys. It therefore
 does not replay those scope transitions or a second whole-window accessibility
-audit. Dynamic Interview objective queries combine their stable identifier
-prefix with the exact accepted label. A fully clipped SwiftUI row may be absent
-from the accessibility tree after its model state is admitted, so Interview
-first reveals the visible objective-count anchor and then materializes the
-preceding row with bounded positive scroll steps before applying ordinary
-containment. Existence is not used as an impossible precondition for that
-materialization. Interview and Meeting Detail share one bounded geometry-aware
-vertical reveal helper. Each outside-viewport step is capped at 48 points,
+audit. Each admitted live objective is a stable ScrollView target keyed by its
+domain UUID. The recording surface observes only identifier insertion and
+centers the newly accepted row itself; removal, reset, check-off, and rejected
+or duplicate input do not move the user's assist viewport. Interview
+XCUITest therefore waits for the exact identifier-plus-label row and proves
+stable containment with a zero-scroll budget instead of synthesizing a wheel
+gesture to create product state. Meeting Detail correction and Interview
+answer actions retain the bounded geometry-aware vertical reveal helper. Each
+outside-viewport step is capped at 48 points,
 compares like-for-like raw viewport and target frames, and refreshes the live
 viewport before containment. One coalesced wheel event is not terminal; only
 exhaustion of the total attempt budget is. The nonempty, hittable, stable-
@@ -4841,7 +4842,11 @@ already-contained but settling target waits without receiving another wheel
 event, while a target that remains unresolved after the bounded attempts fails
 without a sleep or retry. Stable-frame waiting uses one combined frame-and-
 hittability deadline rather than first paying a duplicate existence preflight.
-A failed first pass is evidence to diagnose, never authorization for an
+Commitment review uses one native XCTest activation after exact control
+existence and requires the exact editor as its postcondition. It does not reject
+a visibly contained working action solely because hosted accessibility reports
+stale frame or hittability state, and it never retries that activation. A
+failed first pass is evidence to diagnose, never authorization for an
 unchanged green retry.
 
 The harness retains `XCUIApplication.terminate()` for ordinary teardown: a

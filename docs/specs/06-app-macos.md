@@ -59,7 +59,11 @@ keeps the question/evidence readable when the selected local engine cannot
 answer. Stable `recording-interview-*` identifiers cover the toggle, panel,
 question, action, lifecycle states, answer, and numbered evidence. Stop and
 recording reset disable the mode and clear all ephemeral answer state; nothing
-is promoted to a user note or external action.
+is promoted to a user note or external action. Every admitted objective row is
+also a stable UUID-keyed target in the compact assist scroll. The recording
+surface centers only a newly inserted row, so the user immediately sees what
+was accepted without moving the viewport for duplicates, rejected input,
+check-off, removal, or reset.
 D389 adds **Notes** as a fourth explicit source in the full Ask
 conversation. `AskModel` keeps pending and completed note citations in a
 separate typed collection, cancels and generation-fences them on source or

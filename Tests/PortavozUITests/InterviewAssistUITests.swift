@@ -50,10 +50,7 @@ final class InterviewAssistUITests: PortavozUITestCase {
             withIdentifier: "recording-interview-objective-count")
         XCTAssertTrue(
             objectiveCount.waitForExistenceFast(timeout: 5),
-            "objective admission must publish before revealing its saved row")
-        XCTAssertTrue(
-            objectiveCount.revealVertically(in: scroll),
-            "the admitted objective count must enter the assist viewport")
+            "objective admission must publish before proving its saved row")
         let savedObjective = app.descendants(matching: .any)
             .matching(NSPredicate(
                 format: "identifier BEGINSWITH %@ AND label == %@",
@@ -61,11 +58,14 @@ final class InterviewAssistUITests: PortavozUITestCase {
                 objectiveText))
             .firstMatch
         XCTAssertTrue(
+            savedObjective.waitForExistenceFast(timeout: 5),
+            "the product must materialize the exact admitted objective")
+        XCTAssertTrue(
             savedObjective.revealVertically(
                 in: scroll,
-                above: objectiveCount),
-            "the admitted objective must materialize above its exact count "
-                + "and become visible with its exact text")
+                maxScrolls: 0),
+            "the product must keep the admitted objective fully visible "
+                + "without a test-owned wheel gesture")
 
         let answerAction = app.control(withIdentifier: "recording-interview-answer")
         XCTAssertTrue(

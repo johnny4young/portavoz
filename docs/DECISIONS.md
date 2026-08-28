@@ -15660,3 +15660,60 @@ wall 994). Interview passed in 12.107/13.042 seconds and Commitment in
 exact-head hosted qualification remains required before this correction
 closes. Physical Sequoia/Tahoe, assistive-technology, distribution, CloudKit,
 and field evidence remain separate authorities.
+
+## D415 — Let product state reveal dynamic rows and prove activation outcomes (Aug 2026)
+
+**Context:** exact D414 commit `70ca33ab` passed hosted current-SDK, Sequoia,
+strict-lint, and repository-hygiene run `33175667643`. Scoped UI run
+`33175667674` executed all 106 English journeys, passed 104, failed Interview
+Assist and Commitment evidence review, and did not start Spanish. Its retained
+receipt measured 1,687.208 summed XCTest seconds and p95 34.501 seconds against
+unchanged budgets. Decoded screen recordings corrected the earlier inference.
+Interview entered the exact objective text, but all six positive 48-point wheel
+events were visible no-ops: neither content nor scrollbar moved. Its later
+grounded answer and citation still worked. Commitment's review button became
+fully visible and remained visible, but the AX containment/hittability helper
+returned false. The single click after that failed assertion invoked XCTest's
+native scroll and opened the exact editor. A focused local diagnostic found the
+objective's exact label and UUID-derived identifier and passed in 14.182
+seconds; it did not make the hosted wheel delivery reliable.
+
+**Decision:** accepted dynamic state owns its visible publication. Each live
+objective row is a SwiftUI scroll target keyed by its existing domain UUID.
+`RecordingView` observes only a one-row identifier insertion and centers that
+new target without animation or a test-only argument. Removal, reset, check-off,
+duplicate input, and rejected input cannot recenter the assist surface.
+Interview XCUITest waits for the identifier-plus-exact-label row, then invokes
+the ordinary stable containment proof with zero permitted scrolls. A wheel
+gesture can no longer be the mechanism that makes an accepted product row
+visible.
+
+Commitment review requires exact action existence, performs one native XCTest
+activation, and accepts success only when the exact editor appears. It does not
+repeat the click or reject a working visible action solely from stale hosted AX
+geometry. Geometry-aware reveal remains required for transcript correction and
+Interview answer actions whose product state does not itself request focus.
+Timeouts, step size, selectors, aggregate and individual runtime budgets, and
+locale requirements are unchanged. Source ratchets require the product-owned
+UUID scroll, zero-gesture Interview proof, and Commitment's ordered existence,
+single activation, and exact postcondition.
+
+**Consequences:** compact-window users see a newly accepted objective
+immediately instead of depending on an external wheel event. The test now
+observes that product guarantee rather than implementing it, and Commitment
+evidence distinguishes one successful route activation from an unreliable AX
+precondition. The focused architecture contract compiles and passes. Full
+causal English XCUITest then passed both formerly hosted-red owners without
+retry in 21.844 summed seconds: Interview 12.099 and Commitment 9.745, with p95
+12.099 and every unchanged budget green. The accepted full package run passed
+2,788 tests with 15 explicit model-gated skips and no failure in 131.417
+seconds. Current-SDK first-party warnings-as-errors, strict SwiftLint across
+742 files, repository hygiene, and diff checks are green.
+
+The final local UI gate reused one build and passed the complete 106-case
+catalogue in both locales without retry or budget change. English measured
+932.267 summed XCTest seconds with p95 17.428; Spanish measured 931.961 with
+p95 18.164. Every aggregate and individual budget passed. Exact commit
+publication and fresh hosted evidence remain required before this correction
+closes. Physical Sequoia/Tahoe, assistive technology, distribution, CloudKit,
+and field evidence remain separate authorities.

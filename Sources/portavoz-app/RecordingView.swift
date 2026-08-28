@@ -77,35 +77,45 @@ struct RecordingView: View {
                 LiveRecordingCaptionsView(controller: controller)
                     .frame(maxHeight: .infinity)
                     .padding(.horizontal, 20)
-                ScrollView {
-                    VStack(spacing: 10) {
-                        if let state = controller.catchUp.state {
-                            catchUpPanel(state)
-                        }
-                        if let state = controller.nextQuestion.state {
-                            RecordingNextQuestionCard(state: state) {
-                                controller.nextQuestion.dismiss()
+                ScrollViewReader { assistScroll in
+                    ScrollView {
+                        VStack(spacing: 10) {
+                            if let state = controller.catchUp.state {
+                                catchUpPanel(state)
+                            }
+                            if let state = controller.nextQuestion.state {
+                                RecordingNextQuestionCard(state: state) {
+                                    controller.nextQuestion.dismiss()
+                                }
+                            }
+                            if controller.interviewAssist.isEnabled {
+                                RecordingInterviewAssistView(controller: controller)
+                            }
+                            RecordingObjectivesPanel(controller: controller)
+                            if controller.proactiveAssist.isEnabled {
+                                RecordingProactiveAssistView(controller: controller)
+                            }
+                            companionCardsPanel
+                            notesPanel
+                            if let live = controller.liveSummary {
+                                liveSummaryPanel(live)
                             }
                         }
-                        if controller.interviewAssist.isEnabled {
-                            RecordingInterviewAssistView(controller: controller)
-                        }
-                        RecordingObjectivesPanel(controller: controller)
-                        if controller.proactiveAssist.isEnabled {
-                            RecordingProactiveAssistView(controller: controller)
-                        }
-                        companionCardsPanel
-                        notesPanel
-                        if let live = controller.liveSummary {
-                            liveSummaryPanel(live)
-                        }
+                        .padding(.horizontal, 20)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, 20)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxHeight: 260)
+                    .accessibilityIdentifier("recording-assist-scroll")
+                    .padding(.bottom, 16)
+                    .onChange(of: controller.objectives.objectives.map(\.id)) { previousIDs, currentIDs in
+                        guard currentIDs.count == previousIDs.count + 1,
+                              let addedObjectiveID = currentIDs.first(where: {
+                                  !previousIDs.contains($0)
+                              })
+                        else { return }
+                        assistScroll.scrollTo(addedObjectiveID, anchor: .center)
+                    }
                 }
-                .frame(maxHeight: 260)
-                .accessibilityIdentifier("recording-assist-scroll")
-                .padding(.bottom, 16)
 
             case .processing(let step):
                 Spacer()

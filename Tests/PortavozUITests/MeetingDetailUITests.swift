@@ -1263,8 +1263,8 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(artifacts.waitForExistenceFast(timeout: 5))
         let review = app.control(withIdentifier: "commitment-\(candidateID)-review")
         XCTAssertTrue(
-            review.revealVertically(in: artifacts),
-            "the bounded review viewport must reveal its confirmation action")
+            review.waitForExistenceFast(timeout: 5),
+            "the exact commitment review action must exist before activation")
         review.click()
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-editor").waitForExistenceFast(timeout: 5),

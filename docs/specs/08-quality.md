@@ -5532,6 +5532,43 @@ and individual budget is green. Fresh exact-head hosted receipts remain
 required. These automated results do not certify physical Sequoia/Tahoe,
 assistive technology, distribution, CloudKit, or field behavior.
 
+**D415 product-owned materialization and postcondition activation.** Exact D414
+commit `70ca33ab` is published, and hosted CI run `33175667643` passed all four
+jobs. Scoped UI run `33175667674` executed 106 English journeys, passed 104,
+failed Interview Assist and Commitment evidence review, and did not start
+Spanish. It measured 1,687.208 summed XCTest seconds and p95 34.501 seconds
+against unchanged budgets. Retained video proves Interview entered the exact
+objective, then six positive 48-point wheel events produced no visible content
+or scrollbar movement. Commitment's Review action became fully visible, but AX
+geometry/hittability still rejected it; the one subsequent native click opened
+the exact editor.
+
+The production recording scroll now identifies every objective row by its
+domain UUID, observes only a one-row insertion, and centers that accepted row.
+The Interview journey waits for the identifier-plus-exact-label element and
+proves stable viewport containment with `maxScrolls: 0`; it cannot synthesize
+the state it asserts. Commitment waits only for exact action existence,
+activates once, and requires the exact editor postcondition. Geometry-aware
+reveal remains for transcript corrections and the Interview answer action.
+Source ratchets reject reintroducing objective-count scrolling, an anchor-owned
+Interview reveal, repeated Commitment activation, or loss of the production
+scroll target. No timeout, selector, locale requirement, aggregate budget, or
+individual budget changed. The focused architecture contract compiles and
+passes. The first causal English XCUITest passed both formerly hosted-red
+owners without retry in 21.844 summed seconds: Interview 12.099 and Commitment
+9.745, with p95 12.099 and every unchanged budget green.
+
+The accepted complete package run passed 2,788 tests with 15 explicit
+model-gated skips and no failure in 131.417 seconds. Current-SDK first-party
+warnings-as-errors, strict SwiftLint across 742 files, repository hygiene, and
+diff checks are green. The final local UI gate reused one build and passed the
+complete 106-case catalogue in both locales without retry or budget change:
+English measured 932.267 summed XCTest seconds with p95 17.428, and Spanish
+measured 931.961 with p95 18.164. Every aggregate and individual budget
+passed. Fresh exact-head hosted receipts remain required; these automated
+results do not certify physical Sequoia/Tahoe, assistive technology,
+distribution, CloudKit, or field behavior.
+
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch
 COPY of a real recording: point `PORTAVOZ_TEST_AUDIO_ROOT` at a folder shaped

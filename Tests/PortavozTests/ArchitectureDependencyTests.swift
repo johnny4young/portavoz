@@ -9265,11 +9265,13 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
     }
 
-    func testCompactReviewActivationRequiresVisibleViewportGeometry() throws {
+    func testCompactReviewActivationUsesOwnedRevealAndExactPostconditions() throws {
         let support = try Self.contents(
             of: "Tests/PortavozUITests/UITestSupport.swift")
         let transcript = try Self.contents(
             of: "Sources/portavoz-app/TranscriptSegmentsView.swift")
+        let recording = try Self.contents(
+            of: "Sources/portavoz-app/RecordingView.swift")
         let objectives = try Self.contents(
             of: "Sources/portavoz-app/RecordingLiveAssist.swift")
         let uiTests = try Self.contents(
@@ -9316,25 +9318,30 @@ final class ArchitectureDependencyTests: XCTestCase {
             ".accessibilityElement(children: .contain)\n"
                 + "        .accessibilityLabel(objective.text)\n"
                 + "        .accessibilityIdentifier(\n"
-                + "            \"recording-objective-text-\\(objective.id.uuidString)\")"))
+                + "            \"recording-objective-text-\\(objective.id.uuidString)\")\n"
+                + "        .id(objective.id)"))
+        XCTAssertTrue(recording.contains("ScrollViewReader { assistScroll in"))
+        XCTAssertTrue(recording.contains(
+            ".onChange(of: controller.objectives.objectives.map(\\.id))"))
+        XCTAssertTrue(recording.contains(
+            "currentIDs.count == previousIDs.count + 1"))
+        XCTAssertTrue(recording.contains(
+            "assistScroll.scrollTo(addedObjectiveID, anchor: .center)"))
 
         let admittedObjective = try XCTUnwrap(interviewUITest.range(
-            of: "objective admission must publish before revealing its saved row"))
-        let objectiveCountReveal = try XCTUnwrap(interviewUITest.range(
-            of: "objectiveCount.revealVertically(in: scroll)"))
+            of: "objective admission must publish before proving its saved row"))
         let savedObjective = try XCTUnwrap(interviewUITest.range(
             of: "identifier BEGINSWITH %@ AND label == %@"))
-        let objectiveReveal = try XCTUnwrap(interviewUITest.range(
-            of: "savedObjective.revealVertically("))
-        let objectiveAnchor = try XCTUnwrap(interviewUITest.range(
-            of: "above: objectiveCount"))
+        let objectiveExistence = try XCTUnwrap(interviewUITest.range(
+            of: "savedObjective.waitForExistenceFast(timeout: 5)"))
+        let zeroGestureContainment = try XCTUnwrap(interviewUITest.range(
+            of: "maxScrolls: 0"))
         XCTAssertLessThan(admittedObjective.lowerBound, savedObjective.lowerBound)
-        XCTAssertLessThan(admittedObjective.lowerBound, objectiveCountReveal.lowerBound)
-        XCTAssertLessThan(objectiveCountReveal.lowerBound, savedObjective.lowerBound)
-        XCTAssertLessThan(savedObjective.lowerBound, objectiveReveal.lowerBound)
-        XCTAssertLessThan(objectiveReveal.lowerBound, objectiveAnchor.lowerBound)
+        XCTAssertLessThan(savedObjective.lowerBound, objectiveExistence.lowerBound)
+        XCTAssertLessThan(objectiveExistence.lowerBound, zeroGestureContainment.lowerBound)
         XCTAssertFalse(interviewUITest.contains(
-            "savedObjective.waitForExistenceFast(timeout: 5)"))
+            "objectiveCount.revealVertically(in: scroll)"))
+        XCTAssertFalse(interviewUITest.contains("above: objectiveCount"))
         XCTAssertFalse(interviewUITest.contains("missingTargetDeltaY"))
         XCTAssertFalse(interviewUITest.contains("private extension XCUIElement"))
         XCTAssertFalse(interviewUITest.contains("waitForStableContainedFrame("))
@@ -9343,6 +9350,22 @@ final class ArchitectureDependencyTests: XCTestCase {
             "scroll.scroll(byDeltaX: 0, deltaY: -240)"))
         XCTAssertTrue(interviewUITest.contains(
             "answerAction.revealVertically(in: scroll)"))
+
+        let commitmentExistence = try XCTUnwrap(uiTests.range(
+            of: "review.waitForExistenceFast(timeout: 5)"))
+        let commitmentActivation = try XCTUnwrap(uiTests.range(
+            of: "review.click()"))
+        let commitmentPostcondition = try XCTUnwrap(uiTests.range(
+            of: "app.control(withIdentifier: \"commitment-editor\")"
+                + ".waitForExistenceFast(timeout: 5)"))
+        XCTAssertLessThan(
+            commitmentExistence.lowerBound,
+            commitmentActivation.lowerBound)
+        XCTAssertLessThan(
+            commitmentActivation.lowerBound,
+            commitmentPostcondition.lowerBound)
+        XCTAssertFalse(uiTests.contains(
+            "review.revealVertically(in: artifacts)"))
 
         XCTAssertTrue(askServices.contains(
             "-simulate-ask-progressive-handshake"))
@@ -9359,6 +9382,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "waitForFeatureUITestHandshakeRelease("))
         XCTAssertTrue(decisions.contains("## D409"))
         XCTAssertTrue(decisions.contains("## D414"))
+        XCTAssertTrue(decisions.contains("## D415"))
     }
 
     func testXCUITestInteractionPreparationReassertsFrontmostOwnership() throws {

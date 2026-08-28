@@ -110,6 +110,7 @@ struct RecordingObjectivesPanel: View {
         .accessibilityLabel(objective.text)
         .accessibilityIdentifier(
             "recording-objective-text-\(objective.id.uuidString)")
+        .id(objective.id)
     }
 
     private func add() {
