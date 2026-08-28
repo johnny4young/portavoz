@@ -1695,6 +1695,17 @@ body invalidation counts remain unavailable rather than being reported as
 zero. This contract is a refactor-parity guard, not product telemetry or a
 performance budget.
 
+Disposable detail-scale launches publish an empty terminal seed marker when
+their seeding attempt returns. A successful attempt has already stored the
+meeting, speakers, segments, initial summary, and exact route; a rejected or
+failed attempt still releases the finite wait so the following content
+assertion reports the defect instead of timing out. Their presentation fixture
+deliberately does not start Spotlight, semantic-index, or memory-graph
+reconciliation; those systems retain separate product-path and scale
+authorities. The detail fixture therefore measures only initial detail
+projection, chapters, and its explicitly handshaken live-summary replacement
+rather than host-dependent contention from unrelated maintenance.
+
 The reviewed interaction boundary includes the scene shell and extracted
 header, actions, trust, generated-document, transcript, chapter, player,
 secondary-rail, and Companion sections. It

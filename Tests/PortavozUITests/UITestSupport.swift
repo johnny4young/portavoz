@@ -103,7 +103,11 @@ extension XCUIApplication {
             app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
                 NSTemporaryDirectory() + "portavoz-showcase-ready-\(UUID().uuidString)"
         }
-        if seedScale { app.launchArguments.append("-seed-scale") }
+        if seedScale {
+            app.launchArguments.append("-seed-scale")
+            app.launchEnvironment["PORTAVOZ_UI_TEST_SEED_READY_PATH"] =
+                NSTemporaryDirectory() + "portavoz-scale-ready-\(UUID().uuidString)"
+        }
         if let scaleSegmentCount {
             app.launchArguments += ["-scale-segments", String(scaleSegmentCount)]
         }

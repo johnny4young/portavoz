@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,783 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,787 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -5371,6 +5371,71 @@ then passed all 2,787 tests with the same 15 skips in 121.050 seconds. This
 closes local D411 qualification. Exact-head hosted receipts are still required;
 the final complete bilingual gate and physical Sequoia/Tahoe plus
 assistive-technology evidence remain separate.
+
+**D412 hosted-failure ownership.** Exact D411 head `2e00e18a` passed hosted
+current-SDK, Sequoia, lint, and repository-hygiene run `33122838333`. Scoped UI
+run `33122838235` selected 36 English journeys and passed 33/36. Its retained
+result bundle showed three independent owner defects: Interview guessed six
+scroll moves before the accepted objective row existed in the accessibility
+tree; the Commitment editor's SwiftUI Picker projected its selected option's
+dynamic identifier onto the native pop-up; and the 20,000-segment detail
+fixture launched three unrelated search-reconciliation lanes before its first
+detail projection. The red run measured 690.209 summed XCTest seconds and p95
+55.350 seconds. It was diagnosed rather than blindly retried or admitted by a
+larger budget.
+
+Interview now reveals the already-published objective-count anchor before it
+resolves the exact identifier-plus-label row, and its bounded geometry helper
+fails rather than guessing when a target has not materialized. The Commitment
+journey requires the single native pop-up inside the stable editor boundary;
+the exact menu-item identifier still proves the selected owner. Disposable
+detail-scale launches publish a terminal seed marker when their attempt
+returns; successful seeds have completed persistence and routing, while failed
+seeds proceed to an exact missing-content failure instead of a blind timeout.
+Spotlight, semantic-index, and memory-graph reconciliation stay with their
+independent product and scale gates. Both scale journeys wait for that marker,
+and the 20,000-segment revision handshake remains unchanged. No timeout or
+runtime budget increased.
+
+The final fresh local causal slice passed the three formerly hosted-red
+journeys 3/3 without retry in 53.481 summed XCTest seconds, p95 24.260 seconds:
+Interview exact evidence, Commitment evidence review, and 20,000-segment
+initial detail plus live summary. The accepted canonical package run passed all
+2,787 tests with 15 explicit model-gated skips in 121.371 seconds. Swift build,
+first-party current-SDK warnings-as-errors, strict SwiftLint over 742 files, and
+repository hygiene also passed.
+
+The shared-harness fallback retained all 106 cases per locale. One complete
+English run was functionally green but withheld by an unchanged Skills runtime
+budget after a 26.503-second host accessibility delay; the same owner measured
+15.320 seconds in one controlled focused remeasurement, so no budget changed.
+The next complete English receipt passed 106/106 in 984.522 summed XCTest
+seconds (999-second test wall, p50 6.766, p95 18.997, maximum 47.438) with a
+five-second build and no violation.
+
+That invocation's Spanish result was invalid shared-host evidence rather than
+a product red. Across the failing interval, XCTest repeatedly named a
+foreground `com.github.Electron` window; its retained crash report identifies
+the ChatGPT/Codex coalition and a fault inside `XCTAutomationSupport`. A second
+attempt was stopped after the same external window appeared from a concurrent
+Puntovivo Electron lane, instead of consuming the rest of the catalogue. Once
+that lane finished, the exact interrupted Spanish journey passed in 4.464
+seconds. The controlled complete Spanish receipt then passed 106/106 in
+1,048.014 summed XCTest seconds (1,062-second test wall, p50 7.025, p95 25.170,
+maximum 55.292) with a five-second build and no violation. Code and budgets
+were unchanged between the accepted English and Spanish receipts. This closes
+the D412 local bilingual boundary without treating retries as proof; exact-head
+hosted, a final single-invocation candidate run, physical Sequoia/Tahoe,
+assistive-technology, distribution, CloudKit, and field evidence remain
+separate authorities.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was then rebuilt and
+deeply verified before `make install` copied, registered, and opened it only at
+`/Applications/Portavoz Dev.app`. An independent deep-strict verification after
+quitting the Dev process passed for both that installed bundle and the
+`app.portavoz.mac` release bundle; their identities remained distinct. The
+build reported no CloudKit provisioning profile, so this is local Dev-install
+evidence rather than production-sync or distribution evidence.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

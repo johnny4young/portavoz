@@ -15472,3 +15472,62 @@ accepted complete run followed that fix rather than treating a retry as proof.
 The complete bilingual catalogue remains the integration/release gate, and
 physical Sequoia/Tahoe, VoiceOver/Voice Control, distribution, CloudKit, and
 field behavior remain separate evidence.
+
+## D412 — Anchor dynamic UI state and isolate detail-scale evidence (Aug 2026)
+
+**Context:** exact D411 head `2e00e18a` passed hosted current-SDK,
+Sequoia, lint, and repository-hygiene run `33122838333`. Hosted Scoped UI run
+`33122838235` selected 36 English journeys and passed 33. Its retained xcresult
+showed three distinct failures rather than grounds for a retry: Interview made
+six guessed scrolls while the new objective row was absent from the
+accessibility tree; SwiftUI exposed the selected Commitment owner option's
+dynamic identifier on the native pop-up instead of the outer Picker identifier;
+and the 20,000-segment detail fixture started three unrelated search-
+reconciliation lanes before its first presentation settled. The latter missed
+both initial-detail assertions and contributed to a 690.209-second suite with
+p95 55.350 seconds. Raising budgets or rerunning the unchanged head would hide
+these ownership defects.
+
+**Decision:** Interview first reveals the already-materialized objective-count
+anchor, then resolves and contains the exact identifier-plus-label row. Its
+geometry helper no longer guesses a direction for an absent target. The
+Commitment journey resolves the single native pop-up inside the stable editor
+boundary; exact menu-item identifiers continue to prove the selected assignee
+without depending on which option identifier SwiftUI projects onto the pop-up.
+
+Disposable detail-scale launches publish the same terminal seed file signal as
+other finite fixtures. Both scale journeys wait for the seeding attempt to
+return before presentation assertions; rejected or failed seeds release the
+wait and then fail on their missing exact content instead of consuming a blind
+timeout. The detail-scale fixture does not start Spotlight, semantic, or graph
+reconciliation: those paths retain independent product and scale gates, while
+this fixture owns first detail content, chapters, and live summary replacement.
+The revision-1/continue/revision-2 handshake remains, and no timeout or runtime
+budget increases.
+
+**Consequences:** every wait now corresponds to an observable owner state, and
+the detail benchmark no longer measures unrelated background indexing. The
+retained hosted red result remains causal evidence. The three exact hosted-red
+journeys passed 3/3 locally in 53.481 summed XCTest seconds with p95 24.260.
+The accepted package run passed all 2,787 tests with 15 explicit model-gated
+skips; current-SDK build, first-party warnings-as-errors, strict lint, and
+repository hygiene are also green.
+
+Because the shared support file changed, local UI qualification retained the
+complete bilingual boundary. The accepted English receipt passed 106/106 in
+984.522 summed seconds with p95 18.997; the accepted Spanish receipt passed
+106/106 in 1,048.014 summed seconds with p95 25.170. Both used unchanged
+budgets. An intervening Spanish run is not product evidence: its result bundle
+identified a foreground `com.github.Electron` window from a concurrent task
+and retained that external process's crash inside `XCTAutomationSupport`.
+After that lane ended, the exact interrupted Spanish journey passed in 4.464
+seconds before the complete catalogue passed. No Portavoz assertion, timeout,
+or budget was weakened. `make install` then rebuilt, signed, copied, registered,
+and opened only the `app.portavoz.mac.dev` bundle at `/Applications/Portavoz
+Dev.app`; its pre-launch deep verification passed. After quitting that Dev
+process, an independent deep-strict check passed for both the installed Dev
+bundle and the untouched `app.portavoz.mac` release bundle. No CloudKit
+provisioning profile was available, so the Dev install remains local-only.
+Exact-head hosted qualification remains required after publication; complete
+one-run bilingual candidate automation and physical supported-host evidence
+remain later integration authorities.

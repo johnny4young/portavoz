@@ -15,6 +15,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             scaleSegmentCount: 5_000)
         defer { app.terminate() }
         app.launchPortavoz()
+        XCTAssertTrue(
+            app.waitForSeedFixtureReady(timeout: 45),
+            "the disposable 5,000-segment aggregate must finish before presentation checks")
 
         XCTAssertTrue(
             app.staticTexts["Scale baseline · 2 h · 5000 segments"]
@@ -47,6 +50,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             continueEnvironmentKey: "PORTAVOZ_UI_TEST_SCALE_SUMMARY_CONTINUE_PATH")
         defer { app.terminate() }
         app.launchPortavoz()
+        XCTAssertTrue(
+            app.waitForSeedFixtureReady(timeout: 45),
+            "the disposable 20,000-segment aggregate must finish before presentation checks")
 
         XCTAssertTrue(
             app.staticTexts["Scale baseline · 2 h · 20000 segments"]
@@ -1255,8 +1261,16 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.control(withIdentifier: "commitment-editor").waitForExistenceFast(timeout: 5),
             "the user must get one explicit wording, owner, and deadline review boundary")
-        let ownerPicker = app.control(withIdentifier: "commitment-editor-owner")
-        XCTAssertTrue(ownerPicker.waitForExistenceFast(timeout: 5))
+        let editor = app.control(withIdentifier: "commitment-editor")
+        let ownerPickers = editor.descendants(matching: .popUpButton)
+        XCTAssertEqual(
+            ownerPickers.count,
+            1,
+            "the editor must expose exactly one native owner picker")
+        let ownerPicker = ownerPickers.firstMatch
+        XCTAssertTrue(
+            ownerPicker.waitForExistenceFast(timeout: 5),
+            "the editor's native owner picker must be reachable")
         ownerPicker.click()
         let me = app.menuItems["commitment-owner-me"]
         XCTAssertTrue(

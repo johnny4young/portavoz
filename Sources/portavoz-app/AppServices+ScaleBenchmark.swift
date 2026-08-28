@@ -25,9 +25,12 @@ extension AppServices {
     func seedScaleBenchmarkIfRequested() async {
         let arguments = ProcessInfo.processInfo.arguments
         guard arguments.contains("-use-temp-store"),
-              arguments.contains("-seed-scale"),
-              ((try? await store.meetings()) ?? []).isEmpty
+              arguments.contains("-seed-scale")
         else { return }
+        // Publish terminal fixture completion even on a rejected/failed seed so
+        // the UI assertion reports missing content instead of timing out blindly.
+        defer { markUITestSeedReady() }
+        guard ((try? await store.meetings()) ?? []).isEmpty else { return }
 
         let segmentCount = Self.scaleSegmentCount(arguments: arguments)
         let duration: TimeInterval = 2 * 60 * 60
@@ -72,7 +75,9 @@ extension AppServices {
             return
         }
 
-        requestSearchReconciliation()
+        // Detail-scale evidence owns presentation, not search throughput. Running
+        // three disposable reconciliation lanes here only contends with the first
+        // detail snapshot; search has independent scale and product-path gates.
         pendingRoute = .meeting(meeting.id)
         if arguments.contains("-scale-auto-summary-update") {
             scheduleScaleSummaryUpdate(meetingID: meeting.id)

@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,783 cases "
+            "package inventory contains 2,787 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -9305,13 +9305,17 @@ final class ArchitectureDependencyTests: XCTestCase {
 
         let admittedObjective = try XCTUnwrap(interviewUITest.range(
             of: "objective admission must publish before revealing its saved row"))
+        let objectiveCountReveal = try XCTUnwrap(interviewUITest.range(
+            of: "objectiveCount.revealInsideInterviewViewport(scroll)"))
         let savedObjective = try XCTUnwrap(interviewUITest.range(
             of: "identifier BEGINSWITH %@ AND label == %@"))
         let objectiveReveal = try XCTUnwrap(interviewUITest.range(
             of: "savedObjective.revealInsideInterviewViewport("))
         XCTAssertLessThan(admittedObjective.lowerBound, savedObjective.lowerBound)
+        XCTAssertLessThan(admittedObjective.lowerBound, objectiveCountReveal.lowerBound)
+        XCTAssertLessThan(objectiveCountReveal.lowerBound, savedObjective.lowerBound)
         XCTAssertLessThan(savedObjective.lowerBound, objectiveReveal.lowerBound)
-        XCTAssertTrue(interviewUITest.contains("missingTargetDeltaY: -48"))
+        XCTAssertFalse(interviewUITest.contains("missingTargetDeltaY"))
         XCTAssertTrue(interviewUITest.contains("maximumStep: CGFloat = 48"))
         XCTAssertTrue(interviewUITest.contains("waitForStableContainedFrame("))
         XCTAssertFalse(interviewUITest.contains("max(distance, 120)"))
@@ -9406,9 +9410,20 @@ final class ArchitectureDependencyTests: XCTestCase {
             #"named: "meeting-detail-scale-5000-segments""#))
         XCTAssertFalse(meeting.contains(
             #"named: "meeting-detail-scale-20000-segments""#))
+        XCTAssertEqual(
+            meeting.components(separatedBy: "waitForSeedFixtureReady(timeout: 45)").count - 1,
+            2,
+            "both detail-scale journeys wait for the complete disposable aggregate")
+        XCTAssertTrue(support.contains("portavoz-scale-ready-"))
+        XCTAssertTrue(scaleFixture.contains("defer { markUITestSeedReady() }"))
+        XCTAssertFalse(scaleFixture.contains("requestSearchReconciliation()"))
+        XCTAssertTrue(meeting.contains("ownerPickers.count"))
+        XCTAssertTrue(meeting.contains(
+            "editor.descendants(matching: .popUpButton)"))
 
         XCTAssertTrue(decisions.contains("## D410"))
         XCTAssertTrue(decisions.contains("## D411"))
+        XCTAssertTrue(decisions.contains("## D412"))
     }
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {
