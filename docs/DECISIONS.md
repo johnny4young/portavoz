@@ -15531,3 +15531,78 @@ provisioning profile was available, so the Dev install remains local-only.
 Exact-head hosted qualification remains required after publication; complete
 one-run bilingual candidate automation and physical supported-host evidence
 remain later integration authorities.
+
+## D413 — Pay UI containment and activation only when required (Aug 2026)
+
+**Context:** exact D412 commit `35c76f9f` was published without force. Hosted
+CI run `33132928134` passed the current SDK, Sequoia, strict lint, and repository
+hygiene. The first hosted Scoped UI run `33132928108` correctly expanded a
+shared-harness change to the complete bilingual catalogue. English passed
+105/106 before the Interview journey failed; Spanish did not run. Its retained
+activity tree showed the objective count becoming visible before the exact
+identifier-plus-label objective row entered the accessibility tree, and the
+reveal helper returned after a few immediate absence probes. The same receipt
+measured 1,425.288 summed XCTest seconds and p95 30.584 against unchanged
+1,300/30-second gates, plus eight individual overages.
+
+The activity tree also exposed systematic costs rather than grounds to raise
+budgets. Interview and Meeting Detail each owned a near-identical helper that
+spent up to one second trying to prove stable containment after every 48-point
+scroll even while the target was still geometrically outside the viewport.
+Common launch and Settings paths also activated an app that XCTest already
+reported foreground, and three over-budget Skills paths repeated a stable-frame
+proof immediately after their geometry helper had established full viewport
+containment.
+
+**Decision:** the Interview journey waits up to five seconds for the exact
+accepted objective row before attempting geometry. Interview and Meeting
+Detail use one shared vertical reveal implementation. It caches the viewport,
+caps every step at 48 points, observes a real target-frame change after an
+outside step, and performs the stable hittable containment proof only after the
+target is inside. An absent, immovable, or still-uncontained target fails; no
+sleep, retry, timeout increase, or budget increase is admitted.
+
+The affected Skills controls use their existing contained geometry proof
+followed by `waitForHittable`, rather than a second stable-frame loop. Ordinary
+`XCUIApplication.terminate()` teardown remains:
+an instrumented `NSRunningApplication.terminate()` experiment still appeared
+as the same roughly one-second clean process-exit interval in XCTest activity,
+so the official test API was retained instead of committing an unmeasured
+workaround. Startup still fences both `.notRunning` and the exact
+`app.portavoz.mac.uitest-host` process inventory.
+
+An activation-elision experiment was also rejected by broader evidence.
+Although `launch()` is synchronous and `.runningForeground` proves process
+state, that state does not prove frontmost key-window ownership across a long
+macOS catalogue. The first complete English run after elision executed all 106
+cases but recorded ten failures across five owners: four interactions produced
+no expected route or mutation, one Settings window placement missed its proof,
+and structural undo resolved against text still visible inside its editor.
+Startup and critical interaction preparation therefore retain explicit
+`activate()`. Structural undo waits for the correction editor to disappear
+before it resolves the restored row; editor-local source text is not a terminal
+publication signal.
+
+**Consequences:** the hosted race now has an observable publication owner,
+outside scroll steps no longer pay an impossible containment wait, and common
+contained paths avoid redundant automation queries without hiding a moving
+control. The first diagnostic nine-case English run passed 9/9 in 159.921
+summed XCTest seconds with p95 29.573 and disproved the proposed AppKit teardown
+saving. The next nine-case run passed 9/9 in 137.181 summed seconds, p50 15.255,
+p95/maximum 24.003, and every individual budget green, but the later complete
+106-case English attempt invalidated activation elision: it retained 96 passing
+cases and measured 1,130.824 summed seconds with p95 26.295, while five owners
+failed. Those first-attempt failures are retained rather than retried unchanged.
+After restoring explicit activation and adding terminal editor-dismissal proof,
+the changed-code causal English selector for those five owners passed 5/5 in
+51.271 summed XCTest seconds with p95 24.543 and every unchanged individual
+budget green.
+Functional assertions, selector scope, screenshots, locale coverage, timeouts,
+and runtime budgets remain unchanged. The final local gate reused one build and
+passed 106/106 English in 1,001.211 summed seconds (p50 6.724, p95 18.849,
+wall 1,017) plus 106/106 Spanish in 977.724 summed seconds (p50 7.381,
+p95 19.048, wall 1,003); both unchanged aggregate and individual budgets were
+green without retry. A new exact-head hosted bilingual first attempt remains
+required before D413 can close the integration boundary; physical
+Sequoia/Tahoe, assistive-technology, distribution, CloudKit, and field evidence
+remain separate authorities.

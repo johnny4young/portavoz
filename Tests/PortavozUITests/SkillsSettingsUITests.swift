@@ -656,8 +656,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         let proposalRow = proposalReviewRow(
             skillID: "email-recap-draft",
             in: app)
-        scrollToVisible(review, in: app, deltaY: -40)
-        XCTAssertTrue(review.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(scrollToVisible(review, in: app, deltaY: -40))
+        XCTAssertTrue(review.waitForHittable(timeout: 5))
         review.click()
 
         let error = proposalReviewControl(
@@ -669,8 +669,8 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             "retry",
             skillID: "email-recap-draft",
             in: app)
-        scrollToVisible(retry, in: app, deltaY: -40)
-        XCTAssertTrue(retry.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(scrollToVisible(retry, in: app, deltaY: -40))
+        XCTAssertTrue(retry.waitForHittable(timeout: 5))
         XCTAssertTrue(
             proposalRow.exists,
             "an unverified route must retain the durable proposal")
@@ -1283,13 +1283,13 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-skills-receipt-scope-waiting")
         XCTAssertTrue(waiting.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(scrollToVisible(waiting, in: app, deltaY: -40))
-        XCTAssertTrue(waiting.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(waiting.waitForHittable(timeout: 5))
         waiting.click()
         let receipt = app.control(
             withIdentifier: "settings-skill-receipt-recap-draft")
         XCTAssertTrue(receipt.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(scrollToVisible(receipt, in: app, deltaY: -40))
-        XCTAssertTrue(receipt.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(receipt.waitForHittable(timeout: 5))
         receipt.click()
         XCTAssertTrue(
             app.control(withIdentifier: "skill-receipt-inspection")
@@ -1303,13 +1303,13 @@ final class SkillsSettingsUITests: PortavozUITestCase {
             withIdentifier: "settings-skills-receipt-scope-needs-attention")
         XCTAssertTrue(attention.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(scrollToVisible(attention, in: app, deltaY: -40))
-        XCTAssertTrue(attention.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(attention.waitForHittable(timeout: 5))
         attention.click()
         let receipt = app.control(
             withIdentifier: "settings-skill-receipt-recap-draft")
         XCTAssertTrue(receipt.waitForExistenceFast(timeout: 5))
         XCTAssertTrue(scrollToVisible(receipt, in: app, deltaY: -40))
-        XCTAssertTrue(receipt.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(receipt.waitForHittable(timeout: 5))
         receipt.click()
         XCTAssertTrue(
             app.control(withIdentifier: "skill-receipt-inspection")

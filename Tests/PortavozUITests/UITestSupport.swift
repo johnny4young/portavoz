@@ -545,6 +545,93 @@ extension XCUIElement {
             return Date().timeIntervalSince(stableSince) >= stableInterval
         }
     }
+
+    /// Reveals one control inside a bounded vertical viewport without fixed
+    /// host-sized wheel gestures. Intermediate positions observe only a real
+    /// frame change; the more expensive hittable/stable proof runs once the
+    /// target is geometrically contained.
+    @MainActor
+    func revealVertically(
+        in viewportElement: XCUIElement,
+        maxScrolls: Int = 8,
+        maximumStep: CGFloat = 48
+    ) -> Bool {
+        guard exists, viewportElement.exists, maximumStep > 0 else {
+            return false
+        }
+        let viewportFrame = viewportElement.frame.insetBy(dx: 0, dy: 4)
+        guard !viewportFrame.isEmpty else { return false }
+
+        if viewportFrame.contains(frame) {
+            return waitForStableContainedFrame(
+                in: viewportFrame,
+                timeout: 1)
+        }
+
+        for _ in 0..<maxScrolls {
+            guard exists else { return false }
+            let controlFrame = frame
+            guard !controlFrame.isEmpty else { return false }
+
+            let deltaY: CGFloat
+            if controlFrame.maxY > viewportFrame.maxY {
+                let distance = controlFrame.maxY - viewportFrame.maxY + 8
+                deltaY = -min(max(distance, 12), maximumStep)
+            } else if controlFrame.minY < viewportFrame.minY {
+                let distance = viewportFrame.minY - controlFrame.minY + 8
+                deltaY = min(max(distance, 12), maximumStep)
+            } else {
+                return waitForStableContainedFrame(
+                    in: viewportFrame,
+                    timeout: 1)
+            }
+
+            viewportElement.scroll(byDeltaX: 0, deltaY: deltaY)
+            let targetMoved = waitForUITestCondition(
+                timeout: 0.5,
+                pollInterval: 0.02
+            ) {
+                let updatedFrame = self.frame
+                return !updatedFrame.isEmpty && updatedFrame != controlFrame
+            }
+            guard targetMoved else { return false }
+
+            if viewportFrame.contains(frame) {
+                return waitForStableContainedFrame(
+                    in: viewportFrame,
+                    timeout: 1)
+            }
+        }
+        return false
+    }
+
+    @MainActor
+    private func waitForStableContainedFrame(
+        in viewportFrame: CGRect,
+        timeout: TimeInterval,
+        stableFor stableInterval: TimeInterval = 0.1
+    ) -> Bool {
+        var candidateFrame: CGRect?
+        var stableSince: Date?
+        return waitForUITestCondition(timeout: timeout) {
+            let controlFrame = self.frame
+            guard self.isHittable,
+                  !controlFrame.isEmpty,
+                  viewportFrame.contains(controlFrame)
+            else {
+                candidateFrame = nil
+                stableSince = nil
+                return false
+            }
+            if candidateFrame != controlFrame {
+                candidateFrame = controlFrame
+                stableSince = Date()
+                return stableInterval <= 0
+            }
+            guard let stableSince else { return false }
+            return Date().timeIntervalSince(stableSince) >= stableInterval
+        }
+    }
 }
 
 extension XCTestCase {

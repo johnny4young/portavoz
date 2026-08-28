@@ -384,6 +384,11 @@ final class MeetingDetailUITests: PortavozUITestCase {
         let splitUndo = app.buttons["transcript-structure-undo"]
         XCTAssertTrue(splitUndo.waitForExistenceFast(timeout: 5))
         splitUndo.click()
+        let correctionEditor = app.control(
+            withIdentifier: "transcript-correction-editor")
+        XCTAssertTrue(
+            correctionEditor.waitForDisappearance(timeout: 5),
+            "split undo must finish and dismiss before resolving the restored row")
 
         XCTAssertTrue(
             app.staticTexts["El rollout del modelo queda para el viernes."]
@@ -422,6 +427,9 @@ final class MeetingDetailUITests: PortavozUITestCase {
             undo.waitForExistenceFast(timeout: 5),
             "merged evidence must expose durable restore-based undo")
         undo.click()
+        XCTAssertTrue(
+            correctionEditor.waitForDisappearance(timeout: 5),
+            "merge undo must finish and dismiss before resolving the restored row")
 
         let restoredReading = app.control(
             withIdentifier: "detail-transcript-section").staticTexts[
@@ -1677,78 +1685,5 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.buttons["clip-export"].waitForExistenceFast(timeout: 5),
             "marking a valid in/out range must reveal the export button")
-    }
-}
-
-private extension XCUIElement {
-    /// Reveals one Meeting Detail control in its bounded vertical artifacts
-    /// viewport without relying on XCTest's implicit axis or fixed wheel count.
-    @MainActor
-    func revealVertically(
-        in container: XCUIElement,
-        maxScrolls: Int = 8,
-        maximumStep: CGFloat = 48
-    ) -> Bool {
-        guard exists, container.exists, maximumStep > 0 else { return false }
-        if waitForStableContainedFrame(in: container, timeout: 0.25) {
-            return true
-        }
-        for _ in 0..<maxScrolls {
-            guard exists, container.exists else { return false }
-            let controlFrame = frame
-            let viewportFrame = container.frame.insetBy(dx: 0, dy: 4)
-            guard !controlFrame.isEmpty else { return false }
-
-            let deltaY: CGFloat
-            if controlFrame.maxY > viewportFrame.maxY {
-                let distance = controlFrame.maxY - viewportFrame.maxY + 8
-                deltaY = -min(max(distance, 12), maximumStep)
-            } else if controlFrame.minY < viewportFrame.minY {
-                let distance = viewportFrame.minY - controlFrame.minY + 8
-                deltaY = min(max(distance, 12), maximumStep)
-            } else {
-                return waitForStableContainedFrame(in: container, timeout: 1)
-            }
-
-            container.scroll(byDeltaX: 0, deltaY: deltaY)
-            if waitForStableContainedFrame(in: container, timeout: 1) {
-                return true
-            }
-        }
-        return false
-    }
-
-    @MainActor
-    private func waitForStableContainedFrame(
-        in container: XCUIElement,
-        timeout: TimeInterval,
-        stableFor stableInterval: TimeInterval = 0.1
-    ) -> Bool {
-        var candidateFrame: CGRect?
-        var stableSince: Date?
-        return waitForUITestCondition(timeout: timeout) {
-            guard self.exists, container.exists else {
-                candidateFrame = nil
-                stableSince = nil
-                return false
-            }
-            let controlFrame = self.frame
-            let viewportFrame = container.frame.insetBy(dx: 0, dy: 4)
-            guard self.isHittable,
-                  !controlFrame.isEmpty,
-                  viewportFrame.contains(controlFrame)
-            else {
-                candidateFrame = nil
-                stableSince = nil
-                return false
-            }
-            if candidateFrame != controlFrame {
-                candidateFrame = controlFrame
-                stableSince = Date()
-                return stableInterval <= 0
-            }
-            guard let stableSince else { return false }
-            return Date().timeIntervalSince(stableSince) >= stableInterval
-        }
     }
 }

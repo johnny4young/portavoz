@@ -4826,15 +4826,30 @@ package contracts; Reminder, Brief, Email, Gist, receipt-scope, filtering, and
 accessibility behavior retain their dedicated real-app journeys. It therefore
 does not replay those scope transitions or a second whole-window accessibility
 audit. Dynamic Interview objective queries combine their stable identifier
-prefix with the exact accepted label and use a bounded geometry-aware reveal;
-when the row is not yet represented, the reveal moves toward its known later
-content position in steps of at most 48 points instead of applying a fixed
-host-sized scroll. Meeting Detail correction and commitment activation uses
-the same capped geometry principle. One local predicate waits for a nonempty,
-hittable, viewport-contained frame to remain stable after each scroll; an
-already-contained but settling target waits without receiving another wheel
-event. A failed first pass is evidence to diagnose, never authorization for an
-unchanged green retry.
+prefix with the exact accepted label and wait for that exact accessibility row
+to publish before reveal. Interview and Meeting Detail share one bounded
+geometry-aware vertical reveal helper. Each outside-viewport step is capped at
+48 points and waits only for an observed frame change; the nonempty, hittable,
+stable-containment proof runs once the target is actually inside the cached
+viewport. An already-contained but settling target waits without receiving
+another wheel event, and an absent or immovable target fails instead of
+guessing, sleeping, or scrolling again. A failed first pass is evidence to
+diagnose, never authorization for an unchanged green retry.
+
+The harness retains `XCUIApplication.terminate()` for ordinary teardown: a
+measured AppKit termination request still made XCTest account for the same
+clean process-exit interval and therefore was not adopted as a cosmetic
+optimization. Startup continues to fence both XCTest state and LaunchServices'
+exact test-host process inventory. On macOS, `.runningForeground` does not
+prove that Portavoz owns the frontmost key window throughout a long catalogue;
+startup and `prepareForInteraction()` therefore keep explicit activation. The
+first complete English attempt demonstrated that removing it can synthesize
+apparently successful clicks without publishing the expected route or mutation.
+Skills controls whose geometry helper already proves full viewport containment
+still wait only for hittability before activation instead of repeating a second
+stable-frame proof. Structural-undo journeys also wait for the editor's terminal
+dismissal before resolving restored row identity; visible source text inside the
+editor is not accepted as completion evidence.
 
 Scale-fixture replacement is also observation-driven. The 20,000-segment
 journey sees summary revision 1, releases one UUID-scoped ready/continue

@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,787 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,788 cases (15 environment-gated) + 106
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -5436,6 +5436,62 @@ quitting the Dev process passed for both that installed bundle and the
 `app.portavoz.mac` release bundle; their identities remained distinct. The
 build reported no CloudKit provisioning profile, so this is local Dev-install
 evidence rather than production-sync or distribution evidence.
+
+**D413 hosted first-attempt ownership and harness repair.** Exact D412 commit
+`35c76f9f` is published. Hosted CI run `33132928134` passed all four jobs. The
+first hosted Scoped UI run `33132928108` expanded to the full bilingual
+catalogue because the shared harness changed. English executed all 106 cases,
+passed 105, and failed only
+`testInterviewAssistGroundsTheCurrentQuestionInExactEvidence`; Spanish did not
+start. The retained receipt reports 1,425.288 summed XCTest seconds, p95 30.584,
+and eight individual-budget violations against unchanged limits. That red run
+is retained as evidence and was not converted into an unchanged retry.
+
+The activity tree shows the admitted-objective count publishing before the
+exact objective row appeared in the accessibility tree. Interview therefore
+now waits for the exact identifier-plus-label row before reveal. Interview and
+Meeting Detail also use one shared bounded reveal: it caches the viewport,
+caps steps at 48 points, observes only a target-frame change while the target
+remains outside, and pays stable hittable containment once the frame is inside.
+This removes repeated one-second impossible containment probes without adding
+a sleep, retry, timeout, or larger budget.
+
+Startup and interaction preparation retain explicit activation. On macOS,
+`.runningForeground` proves process state but not frontmost key-window
+ownership throughout a long catalogue. The three over-budget Skills owners use
+the geometry helper's full containment plus a hittability wait instead of
+repeating stable-frame polling. An instrumented AppKit termination request did
+not reduce the roughly one-second clean process-exit interval recorded by
+XCTest, so ordinary teardown deliberately retains the official
+`XCUIApplication.terminate()` path and the existing next-launch process fence.
+
+The first diagnostic nine-case English run passed 9/9 in 159.921 summed XCTest
+seconds (p50 17.225, p95/maximum 29.573) with every unchanged individual budget
+green; build time was 16 seconds and test wall time 185 seconds. Because that
+build still included the rejected teardown experiment, the exact same selector
+set ran again after restoring official teardown. That run passed 9/9 in 137.181
+summed seconds (p50 15.255, p95/maximum 24.003), with an 8-second reused build,
+153-second test wall, and every unchanged individual budget green.
+
+The later complete English attempt exposed why activation cannot be inferred
+from `.runningForeground`. It executed 106 cases, passed 96, and failed five
+owners with ten assertions: Summary and custom-structure interactions produced
+no mutation or route, Showcase did not leave Library, one Settings placement
+proof failed while the rest of its journey passed, and structural undo resolved
+against non-terminal text inside its editor. The retained receipt measured
+1,130.824 summed seconds and p95 26.295; Spanish did not start. D413 restores
+explicit activation and adds the exact structural-editor dismissal proof. The
+changed-code causal English run of those five owners then passed 5/5 in 51.271
+summed seconds with p95 24.543 and every unchanged individual budget green.
+Architecture tests reject duplicated reveal helpers, removal of the exact
+objective-row publication wait, activation elision, or structurally ambiguous
+undo completion. The final local gate reused one build and passed the complete
+106-case catalogue in both locales without retry: English measured 1,001.211
+summed seconds (p50 6.724, p95 18.849, wall 1,017), and Spanish measured
+977.724 summed seconds (p50 7.381, p95 19.048, wall 1,003). Both aggregate and
+individual unchanged budgets passed. Exact-head hosted runtime evidence remains
+pending; local automation does not claim physical, distribution, CloudKit, or
+field authority.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

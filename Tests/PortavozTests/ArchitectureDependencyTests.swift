@@ -2613,7 +2613,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,787 cases "
+            "package inventory contains 2,788 cases "
                 + "(15 environment-gated) + 106"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -9266,6 +9266,8 @@ final class ArchitectureDependencyTests: XCTestCase {
     }
 
     func testCompactReviewActivationRequiresVisibleViewportGeometry() throws {
+        let support = try Self.contents(
+            of: "Tests/PortavozUITests/UITestSupport.swift")
         let transcript = try Self.contents(
             of: "Sources/portavoz-app/TranscriptSegmentsView.swift")
         let objectives = try Self.contents(
@@ -9289,12 +9291,17 @@ final class ArchitectureDependencyTests: XCTestCase {
                 separatedBy: "correct.revealVertically(in: transcriptScroll").count - 1,
             2,
             "text and structural correction must reveal their exact target")
-        XCTAssertTrue(uiTests.contains("viewportFrame.contains(controlFrame)"))
-        XCTAssertTrue(uiTests.contains("waitForStableContainedFrame(in: container"))
-        XCTAssertTrue(uiTests.contains("maximumStep: CGFloat = 48"))
+        XCTAssertTrue(support.contains("func revealVertically("))
+        XCTAssertTrue(support.contains("viewportFrame.contains(controlFrame)"))
+        XCTAssertTrue(support.contains("private func waitForStableContainedFrame("))
+        XCTAssertTrue(support.contains("maximumStep: CGFloat = 48"))
+        XCTAssertTrue(support.contains("let targetMoved = waitForUITestCondition("))
+        XCTAssertTrue(support.contains("pollInterval: 0.02"))
+        XCTAssertFalse(uiTests.contains("private extension XCUIElement"))
         XCTAssertFalse(uiTests.contains("deltaY: CGFloat = -48"))
         XCTAssertFalse(uiTests.contains("waitForVisibleStableFrame"))
-        XCTAssertTrue(uiTests.contains("for _ in 0..<maxScrolls"))
+        XCTAssertTrue(support.contains("for _ in 0..<maxScrolls"))
+        XCTAssertFalse(support.contains("Task.sleep"))
         XCTAssertFalse(uiTests.contains("sleep("))
 
         XCTAssertTrue(objectives.contains(
@@ -9306,25 +9313,27 @@ final class ArchitectureDependencyTests: XCTestCase {
         let admittedObjective = try XCTUnwrap(interviewUITest.range(
             of: "objective admission must publish before revealing its saved row"))
         let objectiveCountReveal = try XCTUnwrap(interviewUITest.range(
-            of: "objectiveCount.revealInsideInterviewViewport(scroll)"))
+            of: "objectiveCount.revealVertically(in: scroll)"))
         let savedObjective = try XCTUnwrap(interviewUITest.range(
             of: "identifier BEGINSWITH %@ AND label == %@"))
+        let savedObjectivePublished = try XCTUnwrap(interviewUITest.range(
+            of: "the admitted objective must publish its exact accessibility row"))
         let objectiveReveal = try XCTUnwrap(interviewUITest.range(
-            of: "savedObjective.revealInsideInterviewViewport("))
+            of: "savedObjective.revealVertically(in: scroll)"))
         XCTAssertLessThan(admittedObjective.lowerBound, savedObjective.lowerBound)
         XCTAssertLessThan(admittedObjective.lowerBound, objectiveCountReveal.lowerBound)
         XCTAssertLessThan(objectiveCountReveal.lowerBound, savedObjective.lowerBound)
+        XCTAssertLessThan(savedObjective.lowerBound, savedObjectivePublished.lowerBound)
+        XCTAssertLessThan(savedObjectivePublished.lowerBound, objectiveReveal.lowerBound)
         XCTAssertLessThan(savedObjective.lowerBound, objectiveReveal.lowerBound)
         XCTAssertFalse(interviewUITest.contains("missingTargetDeltaY"))
-        XCTAssertTrue(interviewUITest.contains("maximumStep: CGFloat = 48"))
-        XCTAssertTrue(interviewUITest.contains("waitForStableContainedFrame("))
+        XCTAssertFalse(interviewUITest.contains("private extension XCUIElement"))
+        XCTAssertFalse(interviewUITest.contains("waitForStableContainedFrame("))
         XCTAssertFalse(interviewUITest.contains("max(distance, 120)"))
         XCTAssertFalse(interviewUITest.contains(
             "scroll.scroll(byDeltaX: 0, deltaY: -240)"))
         XCTAssertTrue(interviewUITest.contains(
-            "answerAction.revealInsideInterviewViewport(scroll)"))
-        XCTAssertTrue(interviewUITest.contains(
-            "viewport.contains(controlFrame)"))
+            "answerAction.revealVertically(in: scroll)"))
 
         XCTAssertTrue(askServices.contains(
             "-simulate-ask-progressive-handshake"))
@@ -9340,6 +9349,33 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(askUITest.contains(
             "waitForFeatureUITestHandshakeRelease("))
         XCTAssertTrue(decisions.contains("## D409"))
+    }
+
+    func testXCUITestInteractionPreparationReassertsFrontmostOwnership() throws {
+        let support = try Self.contents(
+            of: "Tests/PortavozUITests/UITestSupport.swift")
+        let launchForeground = try XCTUnwrap(support.range(
+            of: "wait(for: .runningForeground, timeout: 15)"))
+        let launchWindow = try XCTUnwrap(support.range(
+            of: "let mainWindow = windows[\"main-AppWindow-1\"]"))
+        let launchTail = support[launchForeground.upperBound..<launchWindow.lowerBound]
+        XCTAssertTrue(
+            launchTail.contains("activate()"),
+            "macOS foreground state does not prove frontmost key-window ownership")
+
+        let prepare = try XCTUnwrap(support.range(
+            of: "func prepareForInteraction(timeout: TimeInterval = 10)"))
+        let activation = try XCTUnwrap(support.range(
+            of: "activate()", range: prepare.upperBound..<support.endIndex))
+        let foregroundWait = try XCTUnwrap(support.range(
+            of: "wait(for: .runningForeground, timeout: timeout)",
+            range: activation.upperBound..<support.endIndex))
+        XCTAssertLessThan(activation.lowerBound, foregroundWait.lowerBound)
+        XCTAssertFalse(support[prepare.upperBound..<foregroundWait.lowerBound].contains(
+            "if state == .runningForeground"))
+        XCTAssertTrue(support.contains("waitForPortavozProcessExit()"))
+        XCTAssertTrue(support.contains("wait(for: .notRunning, timeout: 10)"))
+        XCTAssertTrue(try Self.contents(of: "docs/DECISIONS.md").contains("## D413"))
     }
 
     func testXCUITestRuntimeOptimizationRetainsRiskOwnersWithoutDuplicateWork() throws {
@@ -9374,10 +9410,27 @@ final class ArchitectureDependencyTests: XCTestCase {
             skills.components(separatedBy: "auditSkillDescriptions(in: app)").count - 1,
             1,
             "one audit with the receipt sheet open already covers every app window")
+        for containedHittableProof in [
+            "XCTAssertTrue(scrollToVisible(review, in: app, deltaY: -40))\n"
+                + "        XCTAssertTrue(review.waitForHittable(timeout: 5))",
+            "XCTAssertTrue(scrollToVisible(waiting, in: app, deltaY: -40))\n"
+                + "        XCTAssertTrue(waiting.waitForHittable(timeout: 5))",
+            "XCTAssertTrue(scrollToVisible(attention, in: app, deltaY: -40))\n"
+                + "        XCTAssertTrue(attention.waitForHittable(timeout: 5))",
+        ] {
+            XCTAssertTrue(
+                skills.contains(containedHittableProof),
+                "contained Settings controls must not repeat stable-frame polling")
+        }
 
         XCTAssertFalse(
             meeting.contains("library-search-field"),
             "structural search belongs to real-store tests plus the Library journey")
+        XCTAssertEqual(
+            meeting.components(separatedBy:
+                "correctionEditor.waitForDisappearance(timeout: 5)").count - 1,
+            2,
+            "structural undo must publish terminal dismissal before row resolution")
         for owner in [
             "testMergeSearchesAcrossAcceptedBoundariesWithOrderedProvenance",
             "testRestoreAfterMergeRemovesStructuralIdentityAndReactivatesSources",
