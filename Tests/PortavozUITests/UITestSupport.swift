@@ -22,10 +22,13 @@ func waitForUITestCondition(
     let deadline = Date().addingTimeInterval(timeout)
     while Date() < deadline {
         let nextProbe = min(deadline, Date().addingTimeInterval(pollInterval))
-        _ = RunLoop.current.run(mode: .default, before: nextProbe)
+        // `run(mode:before:)` may return after any handled source, which turns
+        // a requested polling interval into an unbounded AX-query loop. Keep
+        // servicing the default run loop until the actual probe boundary.
+        RunLoop.current.run(until: nextProbe)
         if condition() { return true }
     }
-    return condition()
+    return false
 }
 
 enum UITestLocale {
@@ -528,25 +531,48 @@ extension XCUIElement {
     ) -> Bool {
         var candidateFrame: CGRect?
         var stableSince: Date?
-        return waitForUITestCondition(timeout: timeout) {
+        let stableProbeInterval = stableInterval > 0 ? stableInterval : 0.05
+        return waitForUITestCondition(
+            timeout: timeout,
+            pollInterval: stableProbeInterval
+        ) {
             guard self.exists else {
                 candidateFrame = nil
                 stableSince = nil
                 return false
             }
             let currentFrame = self.frame
-            guard !currentFrame.isEmpty, self.isHittable else {
+            guard !currentFrame.isEmpty else {
                 candidateFrame = nil
                 stableSince = nil
                 return false
             }
             if currentFrame != candidateFrame {
+                // Admit a candidate only while it is actionable. The next
+                // run-loop probe occurs at the requested stability boundary;
+                // activation safety is proved again at that acceptance edge.
+                guard self.isHittable else {
+                    candidateFrame = nil
+                    stableSince = nil
+                    return false
+                }
                 candidateFrame = currentFrame
                 stableSince = Date()
                 return stableInterval <= 0
             }
-            guard let stableSince else { return false }
-            return Date().timeIntervalSince(stableSince) >= stableInterval
+            guard let candidateStableSince = stableSince,
+                  Date().timeIntervalSince(candidateStableSince) >= stableInterval
+            else {
+                return false
+            }
+            // Hittability at acceptance prevents a transiently disabled or
+            // obscured control from inheriting an earlier actionable sample.
+            guard self.isHittable else {
+                candidateFrame = nil
+                stableSince = nil
+                return false
+            }
+            return true
         }
     }
 

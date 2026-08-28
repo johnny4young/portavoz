@@ -15813,3 +15813,84 @@ files, repository hygiene, and diff whitespace checks also passed. The shared-
 support delta selects the complete bilingual suite rather than a feature-only
 subset. Physical Sequoia/Tahoe, assistive technology, distribution, CloudKit,
 and field evidence remain separate authorities.
+
+## D418 — Prove stable controls at admission and acceptance, not every poll (Aug 2026)
+
+**Context:** exact D416/D417 commit `4bc23129` passed all four hosted CI jobs in
+run `33195622267`. The first exact-head Scoped UI run `33195622246` selected
+the complete bilingual catalogue because shared support changed. All 106
+English journeys passed functionally, including Interview in 16.156 seconds
+and the formerly abrupt tabbed-summary journey in 11.826 seconds; Spanish did
+not start because the unchanged runtime gate failed after English. The retained
+receipt measured 1,458.192 summed XCTest seconds, p50 11.335, p95 28.187, and
+maximum 66.325 against the 1,300-second aggregate budget, with six additional
+individual overages.
+
+The equivalent accepted local English receipt measured 968.202 summed seconds,
+p50 6.904, p95 18.543, and maximum 49.688. Across all 106 owners, the hosted
+median duration ratio was 1.472 and the aggregate delta was 489.990 seconds.
+The Interview activity tree retained the same 67-step query/action sequence but
+spanned 16.124 seconds hosted versus 11.469 locally; launch, typing, geometry,
+and accessibility operations were all slower. The 48 owners shared with the
+previous hosted correction improved from 894.904 to 619.765 summed seconds,
+which rejects a general D417 regression. `waitForStableFrame` has 77 call sites
+and queried `exists`, `frame`, and `isHittable` on every 50-millisecond sample
+inside its unchanged stability window.
+
+The first endpoint-only focused slice passed 5/5 real-app journeys in 109.506
+summed seconds. A second changed-code slice asked the shared condition helper to
+sample stable geometry at the 0.25-second acceptance boundary, but passed the
+same 5/5 in 112.854 seconds and still emitted six existence/frame samples for
+one stable control. `RunLoop.run(mode:before:)` may return whenever it handles
+an ordinary source, so the prior implementation re-evaluated the condition
+before `nextProbe`; its public `pollInterval` was not an enforced cadence.
+
+**Decision:** stable-frame waiting keeps D417's existence-before-frame guard,
+nonempty-frame requirement, candidate reset rules, 0.25-second default stable
+interval, and original timeout. A new frame is admitted only when it is
+hittable. The next run-loop-driven sample occurs at the already-declared stable
+interval instead of repeating remote existence, geometry, and hittability
+queries every 50 milliseconds. Once the same sampled frame has covered that
+interval, hittability is evaluated again immediately before success; a changed
+frame restarts the clock, and a failed final check clears both candidate and
+clock. A zero stable interval still succeeds only after the admission-edge
+hittability proof and retains the ordinary positive polling fallback if the
+first candidate is unavailable.
+
+The shared condition primitive now uses `RunLoop.run(until:)` to continue
+servicing default-mode events through the declared probe boundary. It remains
+responsive to application work and is not a fixed sleep, but an early run-loop
+source can no longer trigger an extra accessibility query. Every existing
+50-millisecond predicate keeps its declared cadence, deadline, initial probe,
+and final deadline probe. An unsatisfied deadline returns that last result
+instead of issuing one duplicate post-deadline query.
+
+Source ratchets require exactly those two hittability evaluations, preserve
+their order around the stable-interval check, and retain the absence guard
+before geometry. They also reject restoring the one-source run-loop call that
+made `pollInterval` advisory. This slice does not change the separate contained-
+scroll helper. No sleep, retry, timeout, selector, gesture, product assertion,
+locale, aggregate budget, or individual budget changes.
+
+**Consequences:** the most common stable-control helper no longer spends host
+accessibility round trips on samples that cannot yet be accepted, while a
+temporarily absent, empty, disabled, obscured, or final-frame-changed target
+still fails closed. After enforcing the run-loop boundary, the third changed-
+code focused slice passed the same five high-risk journeys 5/5 in 111.179
+summed seconds. The final complete real-app gate reused one build and passed
+106/106 English journeys in 981.113 summed seconds (p50 6.920, p95 18.761,
+maximum 51.068) and 106/106 Spanish journeys in 1,003.552 seconds (p50 7.012,
+p95 18.930, maximum 53.432), with no aggregate or individual budget violation.
+Warnings-as-errors build, 2,788 Swift tests with 15 expected model-gated skips,
+strict lint over 742 files, repository hygiene, catalogue/scope policy, and
+diff checks also passed.
+
+That local result proves preserved behavior and budget compliance, not a
+measured end-to-end speedup: versus D417, English increased 12.911 seconds
+(1.33%) and Spanish increased 38.661 seconds (4.01%), while the English median
+per-owner ratio was 1.011. The six owners that failed only on the hosted D417
+runner all passed locally and four became modestly faster, but ordinary run
+variance dominates the total. The first exact-head hosted receipt therefore
+remains the authority for whether this bounded query reduction repairs that
+runner's runtime gate. Automated evidence does not certify physical
+Sequoia/Tahoe, assistive technology, distribution, CloudKit, or field behavior.

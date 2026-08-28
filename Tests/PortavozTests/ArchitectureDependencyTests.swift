@@ -9437,6 +9437,21 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/AppServices+ScaleBenchmark.swift")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
+        let conditionStart = try XCTUnwrap(support.range(
+            of: "func waitForUITestCondition("))
+        let localeStart = try XCTUnwrap(support.range(
+            of: "enum UITestLocale",
+            range: conditionStart.upperBound..<support.endIndex))
+        let conditionBody = support[
+            conditionStart.lowerBound..<localeStart.lowerBound]
+        XCTAssertTrue(conditionBody.contains(
+            "RunLoop.current.run(until: nextProbe)"))
+        XCTAssertFalse(conditionBody.contains(
+            "RunLoop.current.run(mode: .default, before: nextProbe)"))
+        XCTAssertFalse(conditionBody.contains("return condition()"))
+        XCTAssertTrue(conditionBody.contains(
+            "if condition() { return true }\n    }\n    return false"))
+
         XCTAssertTrue(support.contains("var candidateFrame: CGRect?"))
         XCTAssertTrue(support.contains("stableSince = Date()"))
         XCTAssertTrue(support.contains(
@@ -9459,7 +9474,34 @@ final class ArchitectureDependencyTests: XCTestCase {
             stableFrameRead.lowerBound,
             "a transiently absent dynamic query must not trap while reading frame")
         XCTAssertTrue(stableFrameBody.contains(
+            "guard !currentFrame.isEmpty else"))
+        XCTAssertFalse(stableFrameBody.contains(
             "guard !currentFrame.isEmpty, self.isHittable"))
+        XCTAssertTrue(stableFrameBody.contains(
+            "let stableProbeInterval = stableInterval > 0 ? stableInterval : 0.05"))
+        XCTAssertTrue(stableFrameBody.contains(
+            "pollInterval: stableProbeInterval"))
+        XCTAssertFalse(stableFrameBody.contains(
+            "return waitForUITestCondition(timeout: timeout)"))
+        XCTAssertEqual(
+            stableFrameBody.components(separatedBy: "self.isHittable").count - 1,
+            2,
+            "hittability belongs only to candidate admission and final acceptance")
+        let candidateTransition = try XCTUnwrap(stableFrameBody.range(
+            of: "if currentFrame != candidateFrame"))
+        let admittedHittable = try XCTUnwrap(stableFrameBody.range(
+            of: "guard self.isHittable else {",
+            range: candidateTransition.upperBound..<stableFrameBody.endIndex))
+        let stableInterval = try XCTUnwrap(stableFrameBody.range(
+            of: "Date().timeIntervalSince(candidateStableSince) >= stableInterval",
+            range: admittedHittable.upperBound..<stableFrameBody.endIndex))
+        let acceptedHittable = try XCTUnwrap(stableFrameBody.range(
+            of: "guard self.isHittable else {",
+            range: stableInterval.upperBound..<stableFrameBody.endIndex))
+        XCTAssertLessThan(admittedHittable.lowerBound, stableInterval.lowerBound)
+        XCTAssertLessThan(stableInterval.lowerBound, acceptedHittable.lowerBound)
+        XCTAssertTrue(stableFrameBody.contains(
+            "candidateFrame = nil\n                stableSince = nil"))
 
         XCTAssertTrue(skills.contains(
             "the live pane must expose the six-action candidate catalogue"))
@@ -9540,6 +9582,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D411"))
         XCTAssertTrue(decisions.contains("## D412"))
         XCTAssertTrue(decisions.contains("## D417"))
+        XCTAssertTrue(decisions.contains("## D418"))
     }
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {

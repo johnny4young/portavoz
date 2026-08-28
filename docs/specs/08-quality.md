@@ -5632,6 +5632,75 @@ hygiene, and diff whitespace checks also passed. The shared-support delta
 selects the complete bilingual suite rather than a feature-only subset. Neither
 retained red receipt is presented as a green retry.
 
+**D418 endpoint-owned stable-frame queries.** Exact D416/D417 commit `4bc23129`
+passed hosted current-SDK, Sequoia, strict-lint, and repository-hygiene run
+`33195622267`. The first exact-head Scoped UI run `33195622246` selected all
+106 journeys and both locales. Every English journey passed functionally,
+including Interview in 16.156 seconds and tabbed summary in 11.826 seconds, but
+Spanish did not start because the unchanged runtime gate failed. The retained
+English receipt measured 1,458.192 summed XCTest seconds, p50 11.335, p95
+28.187, and maximum 66.325; the aggregate budget is 1,300 seconds and six
+individual budgets also failed.
+
+This was a broad host-cost signal rather than one product failure. The accepted
+local English receipt measured 968.202 summed seconds, and the median ratio over
+all 106 hosted/local owners was 1.472. The exact Interview activity sequence had
+67 top-level operations in both environments but spanned 16.124 seconds hosted
+versus 11.469 locally. The 48 journeys shared with the preceding hosted run also
+improved from 894.904 to 619.765 summed seconds. The first hosted receipt is
+retained and is not retried unchanged.
+
+The endpoint-only implementation first passed the five high-risk English
+journeys 5/5 in 109.506 summed seconds. A second changed-code slice also passed
+5/5 in 112.854 seconds but did not reduce the sampled queries: the activity log
+still showed six existence/frame evaluations inside one nominal 0.25-second
+window. `RunLoop.run(mode:before:)` is allowed to return after an ordinary
+source is handled, so `waitForUITestCondition` had treated `pollInterval` as a
+latest wake rather than a minimum probe cadence.
+
+The shared `waitForStableFrame` path is used at 77 activation boundaries. It
+continues to check query existence before geometry, reject an empty frame, and
+admit a new candidate only while hittable. The next run-loop-driven sample now
+occurs at the requested stable interval instead of repeating remote existence,
+geometry, and hittability queries every 50 milliseconds. At that acceptance
+edge, a different frame restarts the existing clock; the same frame must still
+be hittable, or both candidate and clock reset. The default 0.25-second stable
+interval and every timeout, selector, gesture, assertion, locale, and runtime
+budget are unchanged. A source contract requires the stable interval to own the
+probe cadence, exactly two ordered hittability evaluations, and D417's
+absence-before-frame rule. The contained-scroll helper remains outside this
+bounded slice.
+
+The common condition primitive uses `RunLoop.run(until:)` through each declared
+probe boundary. Application and accessibility events remain serviced; unlike a
+fixed sleep, the main run loop stays live. Handled sources can no longer cause
+an early repeated AX condition evaluation. The initial probe, final deadline
+probe, declared 50-millisecond cadence for other predicates, and all wait
+deadlines remain intact. A failed final deadline probe returns false without a
+duplicate post-deadline query. The source contract rejects both that redundant
+evaluation and the previous one-source `run(mode:before:)` call.
+
+After enforcing that boundary, the third changed-code focused slice passed the
+same five high-risk journeys 5/5 in 111.179 summed seconds. Final complete
+real-app evidence reused one build and passed 106/106 English journeys in
+981.113 summed seconds (p50 6.920, p95 18.761, maximum 51.068) and 106/106
+Spanish journeys in 1,003.552 seconds (p50 7.012, p95 18.930, maximum 53.432).
+All aggregate and individual runtime budgets passed. Warnings-as-errors build,
+2,788 Swift tests with 15 expected model-gated skips, strict lint over 742
+files, repository hygiene, catalogue/scope policy, and diff checks also passed.
+The normal UI preflight reported only Notification Center; the explicitly
+authorized exception was bounded to that signal, and two read-only samples
+excluded SecurityAgent, Secure Input, `xcodebuild test`, and a UI test runner.
+
+The final local runtime is intentionally not called an optimization win.
+Compared with D417, English increased by 12.911 seconds (1.33%), Spanish by
+38.661 seconds (4.01%), and the English median per-owner ratio was 1.011. All
+six owners that exceeded unchanged budgets only on the hosted D417 runner
+passed locally; four were modestly faster, while ordinary per-run variance
+dominated the complete-suite total. The first exact-head hosted receipt remains
+required to close D418. Physical Sequoia/Tahoe, assistive-technology,
+distribution, CloudKit, and field evidence remain separate authorities.
+
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch
 COPY of a real recording: point `PORTAVOZ_TEST_AUDIO_ROOT` at a folder shaped
