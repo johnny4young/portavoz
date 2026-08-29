@@ -14937,7 +14937,7 @@ a change request; bots, outsiders, self-review, stale-head approvals, and
 dismissed reviews do not count.
 
 Hosted evidence is the exact commit's `CI` push workflow on `main`, with
-`build-and-test`, `sequoia-compatibility`, `lint`, and
+`build-and-test`, `ios-portability`, `sequoia-compatibility`, `lint`, and
 `repository-hygiene` each present once and successful. The contract rejects
 multiple unchanged-commit CI runs and any `run_attempt` other than one, so a
 green retry cannot replace the first observation. Missing, queued, cancelled,
@@ -16913,3 +16913,68 @@ destructive actions still require exact per-proposal review. Automated tests do
 not certify real EventKit/TCC delivery, physical Sequoia/Tahoe behavior,
 VoiceOver/Voice Control, notarized distribution, CloudKit, or field usefulness;
 those remain separate release authorities.
+
+## D438 — Prove shared iOS portability before composing a mobile product (Aug 2026)
+
+**Context:** `Package.swift` declared iOS 17, while the iOS plan described
+several Kits as portable without a destination build. A real iPhone Simulator
+compile immediately found macOS-only home-directory fallbacks in the default
+model, database, and voiceprint roots; after those were fixed, Foundation Models
+macros still had macOS-only availability and the CloudKit capability adapter
+used the macOS-only `SecTask` API. The future companion also lacked a defined
+conflict rule for confirmed commitments and a bounded identity/lease contract
+for asking a Mac to perform heavier work. Adding an app target on top of those
+unknowns would mix source portability, product behavior, signing, sync, and
+hardware failures in one noisy gate.
+
+**Decision:** make source portability its own compiler authority.
+`scripts/check-ios-portability.sh` resolves one installed iPhone Simulator 26+
+SDK and sequentially builds `PortavozCore`, `StorageKit`, `ApplicationKit`, and
+`IntegrationsKit` for `arm64-apple-ios17.0-simulator` in one scratch graph. The
+fixed-Xcode macOS-26 CI workflow owns this as an independent required job rather
+than duplicating the macOS test suite. Model, storage, and voice defaults use
+`URL.applicationSupportDirectory`. Every Foundation Models provider and
+generated response type declares iOS 26 as well as macOS 26 availability;
+`canImport` is never treated as a deployment-version check. IntegrationsKit
+cross-builds its sync types, but signed-entitlement inspection remains macOS-
+only and returns capability unavailable on iOS until a real signed app adapter
+exists.
+
+Freeze two future domain contracts without composing them. First,
+`CommitmentReplicaMerge` performs deterministic canonical set union over two
+validated format-3 continuity envelopes. Shared source and event identities
+must be exactly equal, the immutable title cannot change, and the combined
+events must replay through the existing lifecycle. Compatible histories are
+commutative, idempotent, and associative; an incompatible concurrent lifecycle
+is an explicit conflict, never timestamp last-writer-wins. Commitments remain
+outside the current meeting CloudKit aggregate.
+
+Second, `DeferredMacWorkRequest` carries only a UUID, meeting/device identity,
+closed refine/diarization/summary kind, source transcript revision, lowercase
+SHA-256 input fingerprint, three-attempt maximum, and time. Its stable
+idempotency key excludes transport UUIDs and binds the exact material. A
+versioned `DeferredMacWorkSnapshot` uses compare-and-swap revision, one opaque
+Mac owner and lease token, at-most-15-minute renewal, expiry takeover, exact
+command replay, typed failure, cancellation, supersession, and source-fenced
+success. No audio, transcript, path, prompt, model, provider, credential, or
+result content enters either value. There is no persistence, CloudKit record,
+worker, iOS requester, or UI composition in this decision.
+
+Mobile implementation must remain finite and evidence-ordered: signed
+read-only text continuity first; in-person microphone capture second; notes,
+review, corrections, and commitments third; explicit heavy-work handoff only
+after text sync is field-proven; iPad PiP and Watch notifications only as later
+feasibility experiments. Public/synthetic bilingual corpora, deterministic
+real-app seed journeys, offline/slow/corrupt/relaunch/cancellation faults,
+installed-asset receipts, resource stress, and no-crash tests own routine QA.
+Permissions, interactive AI setup, external accounts, physical devices,
+Bluetooth routes, battery/thermal behavior, VoiceOver/Voice Control, signed
+distribution, production CloudKit, two-device convergence, and 30-day no-loss
+remain explicit field authorities.
+
+**Consequences:** the repository now detects a real iOS API/deployment break at
+the compiler boundary with a separately attributable CI failure, and the first
+mobile sync/handoff implementation has deterministic conflict and ownership
+contracts to adopt. This does not create or ship an iOS/iPadOS/watchOS target,
+enable CloudKit on iOS, sync commitments or audio, execute remote work, prove a
+model on an iPhone, or satisfy any physical/release gate.

@@ -94,6 +94,7 @@ python3 -m unittest Tests.Tooling.test_production_sync_qualification_packaging
 python3 -m unittest Tests.Tooling.test_assistive_technology_qualification
 python3 -m unittest Tests.Tooling.test_swift_test_failure_summary
 python3 -m unittest Tests.Tooling.test_ci_workflow
+python3 -m unittest Tests.Tooling.test_ios_portability
 python3 -m unittest Tests.Tooling.test_ui_test_ci_gate
 python3 -m unittest Tests.Tooling.test_ui_test_execution
 python3 -m unittest Tests.Tooling.test_ui_test_verified_base
@@ -106,6 +107,7 @@ bash -n scripts/run-ui-tests.sh
 bash -n scripts/run-ci-swiftlint.sh
 bash -n scripts/install-ci-xcodegen.sh
 bash -n scripts/verify-ci-toolchain.sh
+bash -n scripts/check-ios-portability.sh
 bash -n scripts/run-resource-baseline.sh
 bash -n scripts/run-resource-recording-baseline.sh
 bash -n scripts/run-live-assist-validation.sh

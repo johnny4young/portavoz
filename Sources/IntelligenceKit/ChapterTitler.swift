@@ -10,7 +10,7 @@ import FoundationModels
 /// fallback; this labels them for navigation. Suggestion-only and best-effort:
 /// nil when the model is unavailable or returns something unusable, and the
 /// caller falls back to the excerpt.
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 public enum ChapterTitler {
     /// A topic title for the chapter's text, or nil when the model is
     /// unavailable/unsure or the passage is too thin to label.
@@ -36,7 +36,7 @@ public enum ChapterTitler {
     }
 }
 
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "A short topic heading for a meeting chapter")
 struct GeneratedChapterTitle {
     @Guide(description: "2 to 4 words, same language as the transcript, the topic — never a verbatim quote")

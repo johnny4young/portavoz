@@ -172,7 +172,7 @@ fingerprint held by the Application observer.
 
 ## Database
 
-GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `~/Library/Application Support/Portavoz/portavoz.sqlite` (`MeetingStore.defaultDatabaseURL`; CLI accepts `--db`).
+GRDB 7 (`upToNextMajor(from: 7.11.1)`), SQLite WAL, at `Portavoz/portavoz.sqlite` inside the platform Application Support container (`~/Library/Application Support` on macOS; the app container on iOS). `MeetingStore.defaultDatabaseURL` owns that default and the CLI accepts `--db`.
 
 ### Database-open recovery (D319)
 

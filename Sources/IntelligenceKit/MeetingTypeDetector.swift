@@ -9,7 +9,7 @@ import FoundationModels
 /// user clicks to regenerate; nothing restructures on its own. The gate is
 /// deterministic: only known non-general recipe ids survive, everything
 /// else (including model doubt) collapses to nil.
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 public enum MeetingTypeDetector {
     /// The excerpt the classifier sees: speaker count (a 1:1 needs exactly
     /// two people) plus the first substantial lines, capped so the prompt
@@ -49,7 +49,7 @@ public enum MeetingTypeDetector {
     }
 }
 
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "Meeting type classification")
 struct DetectedMeetingType {
     @Guide(description: "Exactly one of: standup, one-on-one, planning, interview, "

@@ -774,6 +774,35 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    exact_owners = {
+        # Shared-store roots affect startup/model preparation, not every
+        # feature that happens to consume the stores after composition.
+        "sources/modelstorekit/modelstore.swift": {"settings-intelligence"},
+        "sources/storagekit/meetingstore.swift": {"launch-recovery", "library"},
+        "sources/diarizationkit/voiceprintstore.swift": {
+            "meeting-health", "meeting-naming", "onboarding", "settings-voice"
+        },
+        # These model adapters have one presentation owner each. Their unit
+        # tests retain provider/availability coverage; XCUITest owns the real
+        # app surface instead of expanding the generic "intelligence" bucket.
+        "sources/intelligencekit/briefsynthesizer.swift": {"meeting-brief"},
+        "sources/intelligencekit/chaptertitler.swift": {"meeting-naming"},
+        "sources/intelligencekit/meetingtypedetector.swift": {"meeting-naming"},
+        "sources/intelligencekit/objectivecheck.swift": {"live-assist"},
+        "sources/intelligencekit/titlesuggester.swift": {"meeting-naming"},
+        # IOS-READY contracts are intentionally dormant. Keep their future
+        # continuity and worker-center presentation owners explicit now so a
+        # later edit cannot silently fall through to an unrelated full suite.
+        "sources/portavozcore/commitmentreplicamerge.swift": {
+            "meeting-commitments", "production-sync"
+        },
+        "sources/portavozcore/deferredmacwork.swift": {"background-work"},
+        "sources/integrationskit/cloudkitmeetingsyncplatform.swift": {
+            "production-sync"
+        },
+    }
+    if owners := exact_owners.get(lowered):
+        return set(owners)
     if any(token in lowered for token in (
         "standingskill", "standingpremeetingbrief"
     )):

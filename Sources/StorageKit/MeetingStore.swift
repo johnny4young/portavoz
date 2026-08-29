@@ -225,13 +225,10 @@ public final class MeetingStore: Sendable {
     /// still never exposed publicly.
     let database: DatabaseQueue
 
-    /// `~/Library/Application Support/Portavoz/portavoz.sqlite`
+    /// The platform Application Support container under `Portavoz/portavoz.sqlite`.
     public static var defaultDatabaseURL: URL {
-        let base =
-            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
-                "Library/Application Support")
-        return base.appendingPathComponent("Portavoz/portavoz.sqlite")
+        URL.applicationSupportDirectory
+            .appendingPathComponent("Portavoz/portavoz.sqlite")
     }
 
     public init(databaseURL: URL) throws {

@@ -9,7 +9,7 @@ import FoundationModels
 /// Never-trust-verify (the naming filter's lesson): a bullet survives only
 /// when its cited passage exists AND shares literal evidence with the text —
 /// filler like "the meeting will be brief" can't ground itself and dies.
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 public enum BriefSynthesizer {
     public struct Point: Sendable, Equatable {
         public let text: String
@@ -79,14 +79,14 @@ public enum BriefSynthesizer {
     }
 }
 
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "Pre-meeting brief points")
 struct GeneratedBrief {
     @Guide(description: "Two or three bullets; each cites its source passage")
     var points: [GeneratedBriefPoint]
 }
 
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "One brief point grounded in a passage")
 struct GeneratedBriefPoint {
     @Guide(description: "One short, concrete fact in the passages' language")

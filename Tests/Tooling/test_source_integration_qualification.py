@@ -84,6 +84,7 @@ class SourceIntegrationQualificationTests(unittest.TestCase):
             self.contract["requiredJobs"],
             (
                 "build-and-test",
+                "ios-portability",
                 "sequoia-compatibility",
                 "lint",
                 "repository-hygiene",

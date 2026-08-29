@@ -28,13 +28,10 @@ public struct VoiceprintStore: Sendable {
     private let keyIdentifier: SecretIdentifier
     private let fileURL: URL
 
-    /// `~/Library/Application Support/Portavoz/voiceprint.enc`
+    /// The platform Application Support container under `Portavoz/voiceprint.enc`.
     public static var defaultDirectory: URL {
-        let base =
-            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
-                "Library/Application Support")
-        return base.appendingPathComponent("Portavoz", isDirectory: true)
+        URL.applicationSupportDirectory
+            .appendingPathComponent("Portavoz", isDirectory: true)
     }
 
     public init(

@@ -1973,6 +1973,51 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Persist only explicitly confirmed commitment continuity"))
     }
 
+    func testIOSReadinessUsesRealCompilationAndDormantContentFreeContracts() throws {
+        let runner = try Self.contents(of: "scripts/check-ios-portability.sh")
+        let workflow = try Self.contents(of: ".github/workflows/ci.yml")
+        let commitmentMerge = try Self.contents(
+            of: "Sources/PortavozCore/CommitmentReplicaMerge.swift")
+        let deferredWork = try Self.contents(
+            of: "Sources/PortavozCore/DeferredMacWork.swift")
+        let cloudPlatform = try Self.contents(
+            of: "Sources/IntegrationsKit/CloudKitMeetingSyncPlatform.swift")
+        let meetingSync = try Self.contents(
+            of: "Sources/StorageKit/MeetingStore+SyncAggregate.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertTrue(runner.contains(
+            "targets=(PortavozCore StorageKit ApplicationKit IntegrationsKit)"))
+        XCTAssertTrue(runner.contains("arm64-apple-ios17.0-simulator"))
+        XCTAssertTrue(runner.contains("for target in \"${targets[@]}\""))
+        XCTAssertTrue(workflow.contains("  ios-portability:"))
+        XCTAssertTrue(workflow.contains("run: scripts/check-ios-portability.sh"))
+        XCTAssertFalse(runner.contains("xcodebuild test"))
+
+        XCTAssertTrue(commitmentMerge.contains(
+            "CommitmentContinuityPolicy.projectedCommitment"))
+        XCTAssertTrue(commitmentMerge.contains("immutableSourceRewrite"))
+        XCTAssertTrue(commitmentMerge.contains("immutableEventRewrite"))
+        XCTAssertFalse(meetingSync.contains("CommitmentContinuityEnvelope"))
+
+        for forbidden in [
+            "transcript", "audio", "path", "prompt", "provider", "credential",
+        ] {
+            XCTAssertFalse(
+                deferredWork.contains("public let \(forbidden)"),
+                forbidden)
+        }
+        XCTAssertTrue(deferredWork.contains("maximumLeaseDuration"))
+        XCTAssertTrue(deferredWork.contains("case staleSource"))
+        XCTAssertTrue(deferredWork.contains("case cancel"))
+        XCTAssertTrue(deferredWork.contains("case supersede"))
+
+        XCTAssertTrue(cloudPlatform.contains("#if os(macOS)"))
+        XCTAssertTrue(cloudPlatform.contains("SecTaskCreateFromSelf"))
+        XCTAssertTrue(cloudPlatform.contains("containerIdentifiers: []"))
+        XCTAssertTrue(decisions.contains("## D438"))
+    }
+
     func testCommitmentReviewFeedbackRemainsSourceBoundAndTransient() throws {
         let core = try Self.contents(
             of: "Sources/PortavozCore/CommitmentReview.swift")
@@ -2615,8 +2660,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,880 cases "
-                + "(15 environment-gated) + 103"))
+            "package inventory contains 2,903 cases "
+                + "(15 environment-gated) + 104"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(

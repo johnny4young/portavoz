@@ -114,7 +114,7 @@ self-contained over system frameworks and carries no module dependency.
 
 | Module | Implemented responsibility |
 |---|---|
-| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, direct-Web citation/retrieval, language, privacy, sync, immutable transcript-correction, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
+| `PortavozCore` | Typed meeting, transcript, speaker, person, audio, processing, provenance, evidence, direct-Web citation/retrieval, language, privacy, sync, immutable transcript-correction, deterministic commitment-replica merge, content-free deferred-Mac-work, secret-identifier, and content-free resource-workload values plus capability ports, the universal lexical transcript-content policy, and deterministic generated-card admission. Its only imports are Foundation and CryptoKit (digest values); it links no UI, persistence, media, logging, or platform-service framework. |
 | `ApplicationKit` | Delete, restore, purge, summary and explicit Apuntador regeneration, local summary-provider discovery and clean-install selection, external-audio import, file transcription/diarization/summarization, meeting-bundle import/export, coherent meeting-document preparation and explicit document/action publishing, whole-library Markdown backup plus publication-recovery contracts, Ask search/evidence/answer coordination, bounded source-closed live interview question assistance, deterministic semantic-corpus indexing and speaker-safe retrieval-chunk candidate derivation, command-library reads, verified calendar-backed speaker-name suggestions, inert Meeting Detail title/structure/chapter suggestions, correction-ready Meeting Detail transcript reading snapshots, pure transcript-correction composition, focused text/speaker correction, and accepted-snapshot structural correction commands, Meeting Detail playback preparation, waveform/filter coordination, failure-safe channel compression and clip export, deterministic pre-meeting reminder resolution, local voice capture/enrollment/status/deletion, explicit participant-voice memory and privacy-safe gallery management, microphone discovery, resumable recording-root management, pinned-model management, first-run eligibility, exact local-data receipts, pre-meeting preparation, refine/apply, recording start/stop/recovery, durable post-capture execution, typed workflow failures, storage-independent Library/Insights/Meeting Detail/menu-bar contracts, and deterministic product/read policies. |
 | `PlatformKit` | Concrete Apple platform and security adapters. It currently owns device-only Keychain access, microphone authorization, and regular persistent file bookmarks while depending only on `PortavozCore`. |
 | `ModelStoreKit` | Task-oriented model catalog, pinned artifact metadata, streaming SHA-256 verification, atomic download repair, verified-installation evidence, and process-scoped model lifecycle. |
@@ -124,7 +124,7 @@ self-contained over system frameworks and carries no module dependency.
 | `IntelligenceKit` | Foundation Models, Ollama/OpenAI-compatible, and embedded MLX summary providers; structured summaries with deterministic action/evidence admission; Apuntador plus pure bounded proactive meeting-assist admission; retrieval and answer primitives; embeddings; provider fingerprints; and egress-aware clients. |
 | `StorageKit` | GRDB schema, migrations, strict record conversion, transactions, FTS5, scoped observations, query-specific projections, durable jobs, generation provenance, privacy receipts, typed evidence, immutable transcript-correction history with atomic multi-lane appends and sparse correction-search lineage, explicit topic and decision continuity with immutable evidence and append-only relationship history, explicitly confirmed decision-topic authority, local feedback, people, sync journal, aggregate replay, support-safe snapshots, and correction-fenced Spotlight projections. |
 | `AudioPlaybackKit` | Synchronized channel playback, reversible role-aware clear mixing validated on the timescale it is delivered on, stateless task-cancellable Accelerate waveform generation, silence skipping, voice-only playback, clip export, and AAC compression. |
-| `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport and direct public-page Web retrieval; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. |
+| `IntegrationsKit` | Canonical Markdown/PDF, identity-preserving diarized SRT/WebVTT, and issue exports; meeting bundles; EventKit mapping; MCP protocol handling; policy-checked HTTP transport and direct public-page Web retrieval; deterministic sync envelopes; protected CloudKit record/state adapters; and sync lifecycle policy. The current signed-entitlement capability probe is a macOS composition and fails closed on iOS until a signed iOS app adapter exists. |
 | `portavoz-app` | macOS scenes, navigation, localization, accessibility, observable feature owners including recording-scoped proactive-assist state, dependency construction, native panels, model-lifecycle composition, and background supervisors. |
 | `portavoz-cli` | Command parsing, terminal and MCP-tool presentation, benchmark harnesses, and one process composition surface. |
 
@@ -1913,6 +1913,16 @@ of the per-meeting `.portavoz` bundle, meeting CloudKit replica, CLI, MCP, or
 SwiftUI. This keeps generated candidates and the candidate benchmark separate
 from confirmed user truth; the visual surface crosses the aggregate boundary
 only after explicit evidence review and does not select a candidate engine.
+
+The transport-neutral `CommitmentReplicaMerge` freezes the future multi-device
+conflict rule without widening the production meeting replica. It performs
+canonical append-only set union, requires shared source/event identities and
+the immutable title to match exactly, and replays the combined history through
+`CommitmentContinuityPolicy`. Compatible disjoint history is commutative,
+idempotent, and associative; a lifecycle that is valid on each replica but
+invalid when combined remains an explicit conflict. Current CloudKit
+aggregates still exclude commitments, and no storage or app runtime invokes
+this merge yet.
 
 Schema v21 adds only reversible review feedback for generated action-item
 sources. `commitmentReviewDecision` is keyed by the immutable `ActionItem` and
@@ -4845,6 +4855,26 @@ push entitlements before constructing the container. Account status precedes
 private-database identity. Local and UI-test builds use a no-cloud composition.
 Audio never syncs.
 
+The package also contains a dormant, content-free `DeferredMacWorkRequest` and
+`DeferredMacWorkSnapshot` contract for future iPhone-to-Mac refine,
+diarization, and summary handoff. Material identity derives from meeting,
+operation kind, transcript revision, and a 64-character input fingerprint; the
+wire values contain no audio, transcript, path, prompt, model, provider,
+credential, or result content. A revisioned compare-and-swap policy admits one
+opaque Mac lease, bounded renewal and expiry takeover, at most three attempts,
+exact transition replay, cancellation/supersession, and publication only while
+the current source revision and fingerprint still match. No current storage,
+CloudKit record, worker, app target, or UI composes this contract.
+
+`scripts/check-ios-portability.sh` is the compiler authority for the existing
+shared iOS surface. It resolves one installed iPhone Simulator SDK and
+sequentially cross-builds `PortavozCore`, `StorageKit`, `ApplicationKit`, and
+`IntegrationsKit` for `arm64-apple-ios17.0-simulator` in one scratch graph. The
+current-SDK CI job owns that gate separately from macOS behavior tests. Passing
+it proves source/API portability only: it does not prove an iOS app target,
+signed entitlements, CloudKit account behavior, microphone/background audio,
+thermal or battery behavior, physical devices, or two-device convergence.
+
 ## Concurrency and failure handling
 
 - The package compiles under strict Swift 6 concurrency.
@@ -5377,8 +5407,14 @@ behind aspirational diagrams:
   call `MeetingStore`; or import database and platform-adapter frameworks.
   Concrete construction remains in executable composition, nonvisual live
   capability owners, diagnostics, and disposable benchmark harnesses.
-- IntegrationsKit's CloudKit capability probe imports Security only to inspect
-  signed entitlements; it does not own or store secrets.
+- IntegrationsKit's macOS CloudKit capability probe imports Security only to
+  inspect signed entitlements; it does not own or store secrets. The same
+  target cross-builds for iOS, where that macOS probe returns unavailable until
+  a signed iOS composition supplies an equivalent public capability boundary.
+- The tracked iOS portability gate compiles Core, Storage, Application, and
+  Integrations against the real iOS 17 Simulator destination. It is not a
+  substitute for an iOS executable, runtime tests, signing, hardware, or sync
+  evidence.
 - Durable post-capture product policy enters
   `ApplicationKit.ProcessPostCaptureJobs`. The app composes its StorageKit port
   and concrete audio/model/preference/automation capabilities, supervises the

@@ -122,6 +122,39 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(len(selection.tests), 1, path)
             self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
+    def test_ios_readiness_sources_select_only_their_owned_canaries(self):
+        expected_features = {
+            "Sources/ModelStoreKit/ModelStore.swift": ("settings-intelligence",),
+            "Sources/StorageKit/MeetingStore.swift": ("launch-recovery", "library"),
+            "Sources/DiarizationKit/VoiceprintStore.swift": (
+                "meeting-health", "meeting-naming", "onboarding", "settings-voice"
+            ),
+            "Sources/IntelligenceKit/BriefSynthesizer.swift": ("meeting-brief",),
+            "Sources/IntelligenceKit/ChapterTitler.swift": ("meeting-naming",),
+            "Sources/IntelligenceKit/MeetingTypeDetector.swift": ("meeting-naming",),
+            "Sources/IntelligenceKit/ObjectiveCheck.swift": ("live-assist",),
+            "Sources/IntelligenceKit/TitleSuggester.swift": ("meeting-naming",),
+            "Sources/PortavozCore/CommitmentReplicaMerge.swift": (
+                "meeting-commitments", "production-sync"
+            ),
+            "Sources/PortavozCore/DeferredMacWork.swift": ("background-work",),
+            "Sources/IntegrationsKit/CloudKitMeetingSyncPlatform.swift": (
+                "production-sync",
+            ),
+        }
+
+        for path, features in expected_features.items():
+            expected_set = {
+                test
+                for feature in features
+                for test in FEATURE_TESTS[feature]
+            }
+            expected = tuple(test for test in ALL_TESTS if test in expected_set)
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertLess(len(selection.tests), len(ALL_TESTS), path)
+
     def test_docs_governance_and_local_tooling_do_not_spend_a_ui_runner(self):
         selection = select_paths(
             [

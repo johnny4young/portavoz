@@ -38,7 +38,7 @@ import FoundationModels
 /// addressed. Deterministic gate on the way out — indexes outside the
 /// pending list are dropped, so model drift can never check an objective
 /// that was not offered.
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 public enum ObjectiveCheckDetector {
     /// Few-shot on purpose, like the meeting-type detector: the 3B needs
     /// literal examples, and the bar is deliberately high — mentioning a
@@ -99,7 +99,7 @@ public enum ObjectiveCheckDetector {
     }
 }
 
-@available(macOS 26.0, *)
+@available(macOS 26.0, iOS 26.0, *)
 @Generable(description: "Which objectives the excerpt shows as addressed")
 struct DetectedObjectiveCoverage {
     @Guide(description: "1-based numbers of objectives genuinely addressed; empty when none")

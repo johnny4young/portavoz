@@ -17,6 +17,7 @@ class CIWorkflowTests(unittest.TestCase):
 
         expected = [
             "build-and-test",
+            "ios-portability",
             "sequoia-compatibility",
             "lint",
             "repository-hygiene",
@@ -54,6 +55,22 @@ class CIWorkflowTests(unittest.TestCase):
         self.assertIn("scripts/verify-ci-toolchain.sh 15 26.3", workflow)
         self.assertIn("scripts/run-swift-tests.sh", workflow)
 
+    def test_ios_portability_is_isolated_without_fake_runtime_evidence(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        runner = (ROOT / "scripts/check-ios-portability.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertEqual(workflow.count("  ios-portability:\n"), 1)
+        self.assertIn("run: scripts/check-ios-portability.sh", workflow)
+        self.assertIn("arm64-apple-ios17.0-simulator", runner)
+        self.assertIn(
+            "targets=(PortavozCore StorageKit ApplicationKit IntegrationsKit)",
+            runner,
+        )
+        self.assertNotIn("xcodebuild test", runner)
+        self.assertNotIn("CloudKit", runner)
+
     def test_lint_uses_checksum_pinned_official_archive_on_linux(self):
         workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         runner = (ROOT / "scripts/run-ci-swiftlint.sh").read_text(encoding="utf-8")
@@ -90,7 +107,7 @@ class CIWorkflowTests(unittest.TestCase):
         ui = (ROOT / ".github/workflows/ui-tests.yml").read_text(encoding="utf-8")
 
         self.assertEqual(ci.count("run: scripts/check-repository-hygiene.sh"), 1)
-        self.assertEqual(ci.count("needs: repository-hygiene"), 3)
+        self.assertEqual(ci.count("needs: repository-hygiene"), 4)
         self.assertNotIn("python3 -m unittest Tests.Tooling", ui)
         self.assertEqual(
             ui.count("scripts/ui_test_scope.py --validate-catalog"),

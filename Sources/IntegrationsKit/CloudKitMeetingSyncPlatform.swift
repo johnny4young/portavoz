@@ -1,6 +1,8 @@
 import CloudKit
 import Foundation
+#if os(macOS)
 import Security
+#endif
 
 public struct CloudKitMeetingSyncSignedCapabilities: Equatable, Sendable {
     public let containerIdentifiers: [String]
@@ -188,6 +190,7 @@ private extension CloudKitMeetingSyncPlatform {
 }
 
 private extension CloudKitMeetingSyncCapabilityProbe {
+#if os(macOS)
     static func readSignedCapabilities(
         bundle: Bundle
     ) -> CloudKitMeetingSyncSignedCapabilities {
@@ -224,4 +227,17 @@ private extension CloudKitMeetingSyncCapabilityProbe {
         else { return nil }
         return value
     }
+#else
+    static func readSignedCapabilities(
+        bundle: Bundle
+    ) -> CloudKitMeetingSyncSignedCapabilities {
+        _ = bundle
+        return CloudKitMeetingSyncSignedCapabilities(
+            containerIdentifiers: [],
+            services: [],
+            containerEnvironment: nil,
+            pushEnvironment: nil,
+            hasEmbeddedProvisioningProfile: false)
+    }
+#endif
 }

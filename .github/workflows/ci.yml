@@ -59,6 +59,22 @@ jobs:
       - name: Build and test on Sequoia
         run: scripts/run-swift-tests.sh
 
+  ios-portability:
+    needs: repository-hygiene
+    # Compile the exact future shared surface in its own current-SDK lane. A
+    # failure means an iOS deployment/API break, not a duplicate macOS test or
+    # an unavailable signed-container/device assertion.
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Verify fixed Tahoe toolchain
+        run: scripts/verify-ci-toolchain.sh 26 26.6
+      - name: Compile transport-neutral iOS 17 surface
+        run: scripts/check-ios-portability.sh
+
   lint:
     needs: repository-hygiene
     runs-on: ubuntu-latest
