@@ -267,8 +267,9 @@ public struct ExecuteStandingPreMeetingBrief: ApplicationUseCase {
         guard pending.action == .preparePreMeetingBrief,
               pending.record.skillID == PreMeetingBriefSkill.id,
               pending.record.skillVersion == PreMeetingBriefSkill.version,
-              pending.occurrence.eventID == event.id,
-              pending.occurrence.eventStartAt == event.startDate
+              pending.occurrence.matches(
+                eventID: event.id,
+                eventStartAt: event.startDate)
         else { throw StandingPreMeetingBriefError.eventChanged }
         return try await resume(record: pending.record, event: event)
     }
@@ -308,10 +309,10 @@ public struct ExecuteStandingPreMeetingBrief: ApplicationUseCase {
                 try await preparer.prepareStandingPreMeetingBrief(for: event)
             }
             try Task.checkCancellation()
-            guard brief.event == event,
+            guard Self.isSameEventSnapshot(brief.event, event),
                   let currentEvent = try await events.upcomingEvent(
                     matching: event.id),
-                  currentEvent == event
+                  Self.isSameEventSnapshot(currentEvent, event)
             else { throw StandingPreMeetingBriefError.eventChanged }
             let completedAt = now()
             let artifact = try StandingPreMeetingBriefArtifactCodec.encode(
@@ -374,6 +375,21 @@ public struct ExecuteStandingPreMeetingBrief: ApplicationUseCase {
         else { return false }
         let lead = event.startDate.timeIntervalSince(timestamp)
         return lead >= 0 && lead <= maximumPreparationLeadTime
+    }
+
+    private static func isSameEventSnapshot(
+        _ lhs: UpcomingEvent,
+        _ rhs: UpcomingEvent
+    ) -> Bool {
+        let occurrence = StandingSkillOccurrence(
+            eventID: lhs.id,
+            eventStartAt: lhs.startDate)
+        return occurrence.isValid
+            && occurrence.matches(
+                eventID: rhs.id,
+                eventStartAt: rhs.startDate)
+            && lhs.title == rhs.title
+            && lhs.attendees == rhs.attendees
     }
 
     private static func dailyWindow(

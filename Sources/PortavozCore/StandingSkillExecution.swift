@@ -4,7 +4,7 @@ import Foundation
 /// remains opaque; its start instant is part of the identity so a moved event
 /// cannot inherit authority granted to an earlier occurrence.
 public struct StandingSkillOccurrence: Equatable, Sendable {
-    public static let fingerprintVersion = "standing-skill-occurrence-v1"
+    public static let fingerprintVersion = "standing-skill-occurrence-v2"
 
     public let eventID: String
     public let eventStartAt: Date
@@ -20,21 +20,44 @@ public struct StandingSkillOccurrence: Equatable, Sendable {
 
     public var isValid: Bool {
         UpcomingEvent.isValidIdentity(eventID)
-            && eventStartAt.timeIntervalSinceReferenceDate.isFinite
+            && Self.canonicalStartMilliseconds(eventStartAt) != nil
             && fingerprint == Self.makeFingerprint(
                 eventID: eventID,
                 eventStartAt: eventStartAt)
+    }
+
+    /// EventKit and SQLite do not promise identical floating-point `Date`
+    /// payloads. GRDB persists dates at millisecond precision, so durable
+    /// occurrence identity uses that same canonical boundary.
+    public static func canonicalStartMilliseconds(_ date: Date) -> Int64? {
+        let seconds = date.timeIntervalSinceReferenceDate
+        guard seconds.isFinite else { return nil }
+        let milliseconds = (seconds * 1_000).rounded()
+        guard milliseconds.isFinite else { return nil }
+        return Int64(exactly: milliseconds)
+    }
+
+    public func matches(eventID: String, eventStartAt: Date) -> Bool {
+        guard self.eventID == eventID,
+              let storedStart = Self.canonicalStartMilliseconds(
+                self.eventStartAt),
+              let candidateStart = Self.canonicalStartMilliseconds(
+                eventStartAt)
+        else { return false }
+        return storedStart == candidateStart
     }
 
     public static func makeFingerprint(
         eventID: String,
         eventStartAt: Date
     ) -> String {
-        OperationFingerprint.make(
+        let canonicalStart = canonicalStartMilliseconds(eventStartAt)
+            .map(String.init) ?? "invalid"
+        return OperationFingerprint.make(
             version: fingerprintVersion,
             components: [
                 eventID,
-                String(eventStartAt.timeIntervalSinceReferenceDate.bitPattern)
+                canonicalStart
             ])
     }
 }

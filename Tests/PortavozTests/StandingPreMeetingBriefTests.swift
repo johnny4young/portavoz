@@ -81,9 +81,48 @@ final class StandingPreMeetingBriefTests: XCTestCase {
         XCTAssertEqual(
             try StandingPreMeetingBriefArtifactCodec.decode(artifact),
             expectedBrief)
+        let center = try await LoadStandingSkillAutomationCenter(store: store)
+            .execute(StandingSkillAutomationCenterRequest())
+        XCTAssertEqual(center.controls.rules.count, 1)
+        XCTAssertEqual(center.history.count, 1)
+        XCTAssertEqual(center.history.first?.record.proposalID, proposalID)
+        XCTAssertEqual(center.history.first?.record.state, .succeeded)
+        XCTAssertEqual(center.history.first?.hasArtifact, true)
+        XCTAssertFalse(center.hasMoreHistory)
+        let loadedBrief = try await LoadStandingSkillBrief(store: store)
+            .execute(proposalID)
+        XCTAssertEqual(loadedBrief, expectedBrief)
         let history = try await store.skillExecutionHistory(
             proposalID: proposalID)
         XCTAssertEqual(history.map(\.kind), ["confirm", "begin", "succeed"])
+    }
+
+    func testStandingHistoryRejectsSucceededRowWithoutArtifact() async throws {
+        let store = try MeetingStore.inMemory()
+        let rule = try await createRule(in: store)
+        let event = upcomingEvent()
+        let proposalID = UUID()
+        let useCase = makeUseCase(
+            store: store,
+            preparer: StandingBriefPreparer(result: brief(for: event)),
+            resolver: StandingEventResolver(event: event),
+            proposalID: proposalID)
+        let outcome = try await useCase.execute((rule, event))
+        XCTAssertEqual(outcome, .prepared(proposalID))
+        try await store.database.write { database in
+            try database.execute(
+                sql: "DELETE FROM standingSkillArtifact WHERE proposalID = ?",
+                arguments: [proposalID.uuidString])
+        }
+
+        do {
+            _ = try await store.standingSkillExecutionReceipts(limit: 20)
+            XCTFail("a completed standing receipt must retain its exact artifact")
+        } catch let error as StorageError {
+            XCTAssertEqual(
+                error.errorDescription,
+                "invalid standing Skill execution: history artifact does not match succeeded state")
+        }
     }
 
     func testCancellationCancelsNewClaimWithoutArtifact() async throws {
@@ -139,6 +178,13 @@ final class StandingPreMeetingBriefTests: XCTestCase {
         let owner = try XCTUnwrap(pending.first)
         XCTAssertEqual(owner.record.state, .failed)
         XCTAssertEqual(owner.record.attempt, 1)
+        let failedCenter = try await LoadStandingSkillAutomationCenter(
+            store: store
+        ).execute(StandingSkillAutomationCenterRequest())
+        XCTAssertEqual(failedCenter.controls.rules.count, 1)
+        XCTAssertEqual(failedCenter.history.count, 1)
+        XCTAssertEqual(failedCenter.history.first?.record.state, .failed)
+        XCTAssertEqual(failedCenter.history.first?.hasArtifact, false)
 
         let relaunched = makeUseCase(
             store: store,
@@ -155,6 +201,29 @@ final class StandingPreMeetingBriefTests: XCTestCase {
                 "confirm:1", "begin:1", "fail:1",
                 "begin:2", "succeed:2"
             ])
+    }
+
+    func testHistoryPreservesASubmillisecondCalendarOccurrence() async throws {
+        let store = try MeetingStore.inMemory()
+        let rule = try await createRule(in: store)
+        let event = UpcomingEvent(
+            id: "calendar-submillisecond",
+            title: "Precise event",
+            startDate: now.addingTimeInterval(600.123_456),
+            attendees: [])
+        let proposalID = UUID()
+        let useCase = makeUseCase(
+            store: store,
+            preparer: StandingBriefPreparer(result: brief(for: event)),
+            resolver: StandingEventResolver(event: event),
+            proposalID: proposalID)
+
+        let result = try await useCase.execute((rule, event))
+        XCTAssertEqual(result, .prepared(proposalID))
+        let center = try await LoadStandingSkillAutomationCenter(store: store)
+            .execute(StandingSkillAutomationCenterRequest())
+        XCTAssertEqual(center.history.first?.occurrence.eventID, event.id)
+        XCTAssertEqual(center.history.first?.record.state, .succeeded)
     }
 
     func testMovedEventCancelsClaimAndCannotPublishStaleDraft() async throws {

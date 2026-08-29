@@ -10,6 +10,12 @@ secret-Gist Skill through the existing protected Gist transport. D434 adds one
 review-first pending-action-item GitHub issue through the existing protected
 issue transport.
 
+D437's standing pre-meeting brief is deliberately a macOS Settings/EventKit
+surface, not a CLI, MCP, App Intent, exporter, or network adapter. Neither
+terminal interface can create, enable, retry, or delete unattended authority,
+and the local brief artifact is not added to portable meeting bundles, support
+diagnostics, or CloudKit. External interface actions remain proposal-scoped.
+
 The email recap Skill is an AppKit interface adapter, not a network
 integration. ApplicationKit composes one summary-derived `MeetingRecap` behind
 an explicit `sendRemote` proposal. Meeting Detail shows the exact plain-text

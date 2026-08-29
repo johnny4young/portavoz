@@ -39,6 +39,8 @@ struct SkillsSettingsSection: View {
     @State private var proposalReviewFailedID: UUID?
     @State private var dismissingProposalID: UUID?
     @State private var proposalDismissalFailedID: UUID?
+    @State private var standingPolicyRevision = 0
+    @State private var standingMutationInFlight = false
 
     var body: some View {
         Group {
@@ -55,6 +57,13 @@ struct SkillsSettingsSection: View {
             }
 
             if snapshot != nil {
+                StandingSkillRulesSection(
+                    policyRevision: standingPolicyRevision,
+                    externalMutationInFlight: $standingMutationInFlight,
+                    didChangeExecutionAuthority: {
+                        Task { await load() }
+                    })
+
                 Section("Available actions") {
                     ForEach(availableSkills) { skill in
                         availableSkillRow(skill)
@@ -73,7 +82,7 @@ struct SkillsSettingsSection: View {
                     SkillProposalSection(
                         snapshot: proposalSnapshot,
                         isLoading: proposalsAreLoading,
-                        isMutating: isMutating || proposalMutationInFlight,
+                        isMutating: isMutating || auxiliaryMutationInFlight,
                         loadFailed: proposalLoadFailed,
                         reviewingOfferID: reviewingProposalID,
                         reviewFailedOfferID: proposalReviewFailedID,
@@ -96,8 +105,9 @@ struct SkillsSettingsSection: View {
                         receiptPeriod: $receiptPeriod,
                         snapshot: snapshot,
                         skills: snapshot?.skills ?? [],
-                        isLoading: isLoading || isMutating,
-                        isMutating: isMutating || proposalMutationInFlight,
+                        isLoading: isLoading || isMutating
+                            || standingMutationInFlight,
+                        isMutating: isMutating || auxiliaryMutationInFlight,
                         loadFailed: receiptScopeLoadFailed,
                         focusRequestID: receiptFocusRequestID,
                         historyWindow: receiptHistoryWindow,
@@ -158,7 +168,7 @@ struct SkillsSettingsSection: View {
                 .accessibilityIdentifier(
                     "settings-skill-\(skill.id)-enabled")
                 .disabled(
-                    isMutating || proposalMutationInFlight
+                    isMutating || auxiliaryMutationInFlight
                         || controlLoadFailed)
         }
         .padding(.vertical, 4)
@@ -255,7 +265,7 @@ struct SkillsSettingsSection: View {
 
     @MainActor
     private func load() async {
-        guard !isMutating, !proposalMutationInFlight else { return }
+        guard !isMutating, !auxiliaryMutationInFlight else { return }
         let requestedScope = receiptScope
         let requestedSkillID = receiptSkillID
         let requestedPeriod = receiptPeriod
@@ -330,7 +340,7 @@ struct SkillsSettingsSection: View {
         guard snapshot != nil,
               !controlLoadFailed,
               !isMutating,
-              !proposalMutationInFlight
+              !auxiliaryMutationInFlight
         else {
             return
         }
@@ -349,6 +359,7 @@ struct SkillsSettingsSection: View {
                 receiptPeriod: receiptPeriod,
                 receiptLimit: receiptHistoryWindow.requestedLimit)
             adopt(loaded)
+            standingPolicyRevision &+= 1
             await loadProposals()
         } catch {
             controlLoadFailed = true
@@ -366,7 +377,7 @@ struct SkillsSettingsSection: View {
                   hasMoreReceipts: snapshot.hasMoreReceipts),
               !isLoading,
               !isMutating,
-              !proposalMutationInFlight
+              !auxiliaryMutationInFlight
         else { return }
         receiptHistoryWindow.expand()
         await load()
@@ -381,7 +392,7 @@ struct SkillsSettingsSection: View {
               snapshot.receiptLoadState == .verified,
               !isLoading,
               !isMutating,
-              !proposalMutationInFlight
+              !auxiliaryMutationInFlight
         else { return }
         await load()
     }
@@ -397,7 +408,7 @@ struct SkillsSettingsSection: View {
               receiptSkillID != nil || receiptPeriod != .anytime,
               !isLoading,
               !isMutating,
-              !proposalMutationInFlight
+              !auxiliaryMutationInFlight
         else { return }
         receiptSkillID = nil
         receiptPeriod = .anytime
@@ -452,7 +463,7 @@ private extension SkillsSettingsSection {
               !proposalLoadFailed,
               !proposalsAreLoading,
               !isMutating,
-              !proposalMutationInFlight
+              !auxiliaryMutationInFlight
         else { return }
         await loadProposals()
     }
@@ -462,7 +473,7 @@ private extension SkillsSettingsSection {
         guard proposalSnapshot?.offers.contains(where: { $0.id == offer.id }) == true,
               !proposalsAreLoading,
               !isMutating,
-              !proposalMutationInFlight
+              !auxiliaryMutationInFlight
         else { return }
 
         dismissingProposalID = offer.id
@@ -527,7 +538,7 @@ private extension SkillsSettingsSection {
                 .accessibilityIdentifier("settings-skills-pause-all")
                 .disabled(
                     snapshot == nil || isMutating
-                        || proposalMutationInFlight || controlLoadFailed)
+                        || auxiliaryMutationInFlight || controlLoadFailed)
             Text(
                 // Keep this as one literal so localization validation sees it.
                 // swiftlint:disable:next line_length
@@ -554,7 +565,7 @@ private extension SkillsSettingsSection {
                     }
                     .accessibilityIdentifier("settings-skills-stale-retry")
                     .disabled(
-                        isLoading || isMutating || proposalMutationInFlight)
+                        isLoading || isMutating || auxiliaryMutationInFlight)
                 }
             }
         }
@@ -564,13 +575,17 @@ private extension SkillsSettingsSection {
         reviewingProposalID != nil || dismissingProposalID != nil
     }
 
+    var auxiliaryMutationInFlight: Bool {
+        proposalMutationInFlight || standingMutationInFlight
+    }
+
     @MainActor
     func reviewProposal(_ offer: SkillOfferReviewItem) async {
         guard offer.reason != .upcomingCalendarEvent,
               proposalSnapshot?.offers.contains(where: { $0.id == offer.id }) == true,
               !proposalsAreLoading,
               !isMutating,
-              !proposalMutationInFlight
+              !auxiliaryMutationInFlight
         else { return }
 
         reviewingProposalID = offer.id

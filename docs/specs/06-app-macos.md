@@ -18,7 +18,8 @@ one-shot secret-Gist publication with a pre-transport duplicate fence; D434
 adds one review-first GitHub issue from an exact pending action item; D333
 derives Skills privacy disclosure from the executable capability contract.
 D435/D436 add the closed standing pre-meeting brief authority and its
-signal-driven crash-safe macOS execution owner.
+signal-driven crash-safe macOS execution owner. D437 adds its bounded bilingual
+control/history surface and millisecond-canonical relaunch identity.
 D373/D374 compose exact-Skill and rolling update-time activity filters at query
 time while keeping the Settings window bounded and generation-fenced.
 D384 makes full Ask latest-submission-wins, displays bounded cumulative answer
@@ -3358,10 +3359,33 @@ owner, and the inactive transition resumes reconciliation. Global pause and an
 empty enabled-rule set cancel any stale boundary wake. Temporary-store launches
 install an empty event source and never read the user's host calendar.
 
-AUTO-5b still exposes no ordinary SwiftUI creation, status, artifact, or
-recovery surface. Settings cannot create the rule until the bilingual AUTO-5c
-boundary is implemented. Clipboard, export, reminders, email, Gist, GitHub,
-network, and destructive effects remain explicit-per-proposal only.
+### Standing action control and recovery (D437)
+
+`StandingSkillAutomationCenterSnapshot` combines the verified D435 controls
+with a standing-authority-only receipt projection. It returns 20 visible rows
+by default, probes one successor, and expands once to 50; general Skill
+receipts are never filtered in memory to manufacture this history. A brief
+artifact loads separately by proposal UUID and must pass Storage digest/bounds
+plus the Application codec before presentation.
+
+Suggested actions Settings now contains one bilingual **Automatic local
+actions** section. It owns a deterministic preview and 1...8 daily-limit
+Stepper, create, inherited global pause, enable/disable, inline delete
+confirmation, state/history, explicit recoverable-failure retry, and a private
+brief review sheet. Ambiguous writes retain the last verified view and offer
+only a read reload. Create, enable, and delete call the existing serialized
+supervisor's `reconcileNow`; retry calls its proposal-scoped `retryNow` so the
+selected failed receipt is the only owner resumed and no new calendar work is
+discovered. The view and `AppServices` do not own a second executor. Deleting
+the rule restores the preview but retains immutable history and artifacts.
+
+Temporary-store XCUITest composition uses the production store and supervisor
+with a public/synthetic bilingual brief, an empty host-calendar adapter, a
+no-model preparer, and one explicit fail-once launch argument. The complete
+create → failure → retry → artifact → pause → disable → delete journey therefore
+tests real app state without Calendar permission, model assets, or private user
+meetings. Clipboard, export, reminders, email, Gist, GitHub, network, and
+destructive effects remain explicit-per-proposal only.
 
 D379 historically froze the 0.8.0 public catalogue at six actions. The current
 implemented catalogue contains seven fixed definitions after D434; public copy

@@ -1063,6 +1063,122 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         assertRecentReceiptInSettings(in: app)
     }
 
+    /// AUTO-5c — one disposable, bilingual-capable journey covers the entire
+    /// standing-rule lifecycle without Calendar, a model download, or private
+    /// meeting data. The injected first-attempt failure is deterministic and
+    /// recovery still enters the production serialized supervisor.
+    @MainActor
+    func testAutomaticBriefRuleRecoversAndKeepsInspectableHistory() {
+        let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            seedBrief: true)
+        app.launchArguments.append("-simulate-standing-brief-failure-once")
+        app.launchPortavoz()
+        defer { app.terminate() }
+
+        XCTAssertTrue(app.waitForSeededLibraryToSettle())
+        openSkillsSettings(in: app)
+
+        let preview = app.control(
+            withIdentifier: "settings-standing-preview")
+        XCTAssertTrue(scrollToVisible(preview, in: app))
+        XCTAssertTrue(preview.waitForExistenceFast(timeout: 5))
+
+        let create = app.buttons["settings-standing-create"]
+        XCTAssertTrue(scrollToVisible(create, in: app))
+        XCTAssertTrue(create.waitForHittable(timeout: 5))
+        create.click()
+
+        let retry = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "settings-standing-history-retry-"
+        )).firstMatch
+        guard retry.waitForExistenceFast(timeout: 10) else {
+            XCTFail(
+                "the first deterministic preparation failure must remain reviewable")
+            attachScreenshot(of: app, named: "standing-rule-missing-retry")
+            return
+        }
+        XCTAssertTrue(scrollToVisible(retry, in: app))
+        XCTAssertTrue(retry.waitForHittable(timeout: 5))
+        retry.click()
+
+        let review = app.buttons.matching(NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            "settings-standing-history-review-"
+        )).firstMatch
+        guard review.waitForExistenceFast(timeout: 10) else {
+            XCTFail("explicit retry must publish one immutable local artifact")
+            attachScreenshot(of: app, named: "standing-rule-missing-review")
+            return
+        }
+        XCTAssertTrue(scrollToVisible(review, in: app))
+        XCTAssertTrue(review.waitForHittable(timeout: 5))
+        review.click()
+
+        let briefSheet = app.control(withIdentifier: "standing-brief-sheet")
+        guard briefSheet.waitForExistenceFast(timeout: 5) else {
+            XCTFail("the prepared brief must open in its review sheet")
+            attachScreenshot(of: app, named: "standing-rule-missing-sheet")
+            return
+        }
+        XCTAssertTrue(
+            app.staticTexts["Presupuesto rollout"]
+                .waitForExistenceFast(timeout: 5))
+        XCTAssertTrue(
+            app.control(withIdentifier: "standing-brief-privacy")
+                .waitForExistenceFast(timeout: 5))
+        app.buttons["standing-brief-close"].click()
+        XCTAssertTrue(
+            waitForDisappearance(
+                briefSheet))
+
+        let pause = app.control(
+            withIdentifier: "settings-skills-pause-all")
+        XCTAssertTrue(scrollToVisible(pause, in: app, deltaY: 120))
+        XCTAssertTrue(pause.waitForHittable(timeout: 5))
+        pause.click()
+        XCTAssertTrue(waitForToggle(pause, toBeOn: true))
+
+        let standingStatus = app.staticTexts["settings-standing-status"]
+        XCTAssertTrue(scrollToVisible(standingStatus, in: app))
+        let pausedStatus = UITestLocale.environmentLocale == "es"
+            ? "En pausa junto con todas las acciones"
+            : "Paused with all actions"
+        XCTAssertTrue(waitForLabel(standingStatus, toContain: pausedStatus))
+
+        XCTAssertTrue(scrollToVisible(pause, in: app, deltaY: 120))
+        pause.click()
+        XCTAssertTrue(waitForToggle(pause, toBeOn: false))
+
+        let enabled = app.control(
+            withIdentifier: "settings-standing-enabled")
+        XCTAssertTrue(scrollToVisible(enabled, in: app))
+        XCTAssertTrue(enabled.waitForHittable(timeout: 5))
+        enabled.click()
+        XCTAssertTrue(waitForToggle(enabled, toBeOn: false))
+        enabled.click()
+        XCTAssertTrue(waitForToggle(enabled, toBeOn: true))
+
+        let delete = app.buttons["settings-standing-delete"]
+        XCTAssertTrue(scrollToVisible(delete, in: app))
+        XCTAssertTrue(delete.waitForHittable(timeout: 5))
+        delete.click()
+        let confirm = app.buttons["settings-standing-delete-confirm"]
+        XCTAssertTrue(confirm.waitForHittable(timeout: 5))
+        confirm.click()
+
+        guard preview.waitForExistenceFast(timeout: 10) else {
+            XCTFail("deleting the rule must restore the creation preview")
+            attachScreenshot(of: app, named: "standing-rule-delete-failed")
+            return
+        }
+        XCTAssertTrue(scrollToVisible(review, in: app))
+        XCTAssertTrue(
+            review.exists,
+            "deleting authority must retain its contentful receipt for review")
+    }
+
     @MainActor
     private func assertInitialCatalogueAndPause(in app: XCUIApplication) {
         let pause = app.control(

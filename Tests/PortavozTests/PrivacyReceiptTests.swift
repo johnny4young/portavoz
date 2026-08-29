@@ -51,7 +51,7 @@ final class PrivacyReceiptTests: XCTestCase {
         XCTAssertEqual(receipt.status, .noRemoteTransferRecorded)
 
         try await store.database.read { db in
-            XCTAssertEqual(StorageSchema.version, 47)
+            XCTAssertEqual(StorageSchema.version, 48)
             XCTAssertEqual(
                 try String.fetchAll(
                     db, sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"),
@@ -60,7 +60,7 @@ final class PrivacyReceiptTests: XCTestCase {
                     "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18",
                     "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28",
                     "v29", "v30", "v31", "v32", "v33", "v34", "v35", "v36", "v37", "v38", "v39", "v40",
-                    "v41", "v42", "v43", "v44", "v45", "v46", "v47",
+                    "v41", "v42", "v43", "v44", "v45", "v46", "v47", "v48",
                 ])
             XCTAssertEqual(
                 try Set(db.columns(in: "dataEgressEvent").map(\.name)),
@@ -239,8 +239,8 @@ final class PrivacyReceiptTests: XCTestCase {
                 Array(try String.fetchAll(
                     db,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid"
-                ).suffix(4)),
-                ["v44", "v45", "v46", "v47"])
+                ).suffix(5)),
+                ["v44", "v45", "v46", "v47", "v48"])
         }
     }
 

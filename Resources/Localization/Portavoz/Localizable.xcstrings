@@ -16400,6 +16400,356 @@
           }
         }
       }
+    },
+    "Automatic local actions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acciones locales automáticas"
+          }
+        }
+      }
+    },
+    "You create these rules yourself. They run only reversible work on this Mac and can be paused or deleted at any time.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tú creas estas reglas. Solo ejecutan tareas reversibles en este Mac y puedes pausarlas o eliminarlas en cualquier momento."
+          }
+        }
+      }
+    },
+    "The last rule change could not be verified. Reload before trying again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar el último cambio de la regla. Recarga antes de volver a intentarlo."
+          }
+        }
+      }
+    },
+    "Reload automatic actions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recargar acciones automáticas"
+          }
+        }
+      }
+    },
+    "Loading automatic actions…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando acciones automáticas…"
+          }
+        }
+      }
+    },
+    "Automatic actions are unavailable": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las acciones automáticas no están disponibles"
+          }
+        }
+      }
+    },
+    "No rule or run is shown until Portavoz verifies its local authority.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se muestra ninguna regla ni ejecución hasta que Portavoz verifique su autoridad local."
+          }
+        }
+      }
+    },
+    "Prepare every upcoming brief": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparar cada brief próximo"
+          }
+        }
+      }
+    },
+    "Within two hours of each upcoming calendar event, Portavoz prepares one cited brief from your local library. Nothing is sent, shared, or written to a file.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En las dos horas previas a cada evento próximo del calendario, Portavoz prepara un brief con citas desde tu biblioteca local. Nada se envía, comparte ni escribe en un archivo."
+          }
+        }
+      }
+    },
+    "Create automatic action": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear acción automática"
+          }
+        }
+      }
+    },
+    "Automatic pre-meeting briefs": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Briefs automáticos previos a reuniones"
+          }
+        }
+      }
+    },
+    "Delete this rule? Existing receipts and prepared briefs stay available for review.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar esta regla? Los recibos y briefs ya preparados seguirán disponibles para revisión."
+          }
+        }
+      }
+    },
+    "Keep rule": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conservar regla"
+          }
+        }
+      }
+    },
+    "Delete rule": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar regla"
+          }
+        }
+      }
+    },
+    "Delete automatic action": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar acción automática"
+          }
+        }
+      }
+    },
+    "Automatic action history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historial de acciones automáticas"
+          }
+        }
+      }
+    },
+    "Refresh automatic action history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar historial de acciones automáticas"
+          }
+        }
+      }
+    },
+    "No automatic briefs have run on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se ha ejecutado ningún brief automático en este Mac."
+          }
+        }
+      }
+    },
+    "Show more automatic runs": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar más ejecuciones automáticas"
+          }
+        }
+      }
+    },
+    "Review prepared brief": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar brief preparado"
+          }
+        }
+      }
+    },
+    "Retry preparation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar preparación"
+          }
+        }
+      }
+    },
+    "The prepared brief could not be verified.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar el brief preparado."
+          }
+        }
+      }
+    },
+    "Prepared brief": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brief preparado"
+          }
+        }
+      }
+    },
+    "This brief stays in Portavoz on this Mac. Nothing was sent or shared.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este brief permanece en Portavoz en este Mac. Nada se envió ni compartió."
+          }
+        }
+      }
+    },
+    "Up to %d briefs per day": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hasta %d briefs por día"
+          }
+        }
+      }
+    },
+    "Needs review after an app update": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requiere revisión después de una actualización de la app"
+          }
+        }
+      }
+    },
+    "Paused with all actions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En pausa junto con todas las acciones"
+          }
+        }
+      }
+    },
+    "Blocked by the Pre-meeting brief action setting": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bloqueado por el ajuste de la acción Brief previo a la reunión"
+          }
+        }
+      }
+    },
+    "On — prepares briefs in the final two hours": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activo — prepara briefs en las dos horas previas"
+          }
+        }
+      }
+    },
+    "Waiting to prepare": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando para preparar"
+          }
+        }
+      }
+    },
+    "Needs attention after interruption — not retried": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requiere atención tras una interrupción — no se reintentó"
+          }
+        }
+      }
+    },
+    "Brief ready — attempt %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brief listo — intento %d"
+          }
+        }
+      }
+    },
+    "Retry available — attempt %d of %d": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintento disponible — intento %d de %d"
+          }
+        }
+      }
+    },
+    "Needs attention — retry limit reached": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Requiere atención — se alcanzó el límite de reintentos"
+          }
+        }
+      }
+    },
+    "Cancelled before preparation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelado antes de la preparación"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

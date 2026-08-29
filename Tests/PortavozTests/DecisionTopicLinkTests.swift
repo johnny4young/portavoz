@@ -24,7 +24,7 @@ final class DecisionTopicLinkTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 47)
+            XCTAssertEqual(StorageSchema.version, 48)
             XCTAssertEqual(
                 try Set(database.columns(in: "decisionTopicLink").map(\.name)),
                 ["id", "decisionID", "topicID", "status", "createdAt",

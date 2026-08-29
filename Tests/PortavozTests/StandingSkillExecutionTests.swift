@@ -14,10 +14,9 @@ final class StandingSkillExecutionTests: XCTestCase {
         let migrator = StorageSchema.migrator()
         try migrator.migrate(database, upTo: "v46")
 
-        try migrator.migrate(database)
+        try migrator.migrate(database, upTo: "v47")
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 47)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
@@ -46,6 +45,161 @@ final class StandingSkillExecutionTests: XCTestCase {
                     && $0.columns == ["action", "occurrenceFingerprint"]
             }))
         }
+    }
+
+    func testV48CanonicalizesPersistedOccurrenceIdentity() throws {
+        let database = try DatabaseQueue()
+        let migrator = StorageSchema.migrator()
+        try migrator.migrate(database, upTo: "v47")
+
+        let proposalID = UUID()
+        let eventID = "calendar-submillisecond"
+        let ruleID = StandingSkillRuleID()
+        let eventStartAt = now.addingTimeInterval(600.123_456)
+        let oldFingerprint = OperationFingerprint.make(
+            version: "standing-skill-occurrence-v1",
+            components: [
+                eventID,
+                String(eventStartAt.timeIntervalSinceReferenceDate.bitPattern)
+            ])
+        let oldKey = "standing-skill:"
+            + ruleID.rawValue.uuidString.lowercased()
+            + ":\(oldFingerprint)"
+        let eventRecordID = UUID()
+
+        try database.write { database in
+            try database.execute(
+                sql: """
+                    INSERT INTO skillExecutionEvent (
+                        id, proposalID, previousEventID, kind, attempt,
+                        failureCategory, occurredAt
+                    ) VALUES (?, ?, NULL, 'confirm', 1, NULL, ?)
+                    """,
+                arguments: [
+                    eventRecordID.uuidString,
+                    proposalID.uuidString,
+                    now
+                ])
+            try database.execute(
+                sql: """
+                    INSERT INTO skillExecutionState (
+                        proposalID, skillID, skillVersion, idempotencyKey,
+                        state, attempt, latestEventID, createdAt, updatedAt,
+                        failureCategory
+                    ) VALUES (?, ?, ?, ?, 'confirmed', 1, ?, ?, ?, NULL)
+                    """,
+                arguments: [
+                    proposalID.uuidString,
+                    PreMeetingBriefSkill.id,
+                    PreMeetingBriefSkill.version,
+                    oldKey,
+                    eventRecordID.uuidString,
+                    now,
+                    now
+                ])
+            try database.execute(
+                sql: """
+                    INSERT INTO skillExecutionSubject (
+                        proposalID, subjectKind, meetingID, commitmentID,
+                        calendarEventID
+                    ) VALUES (?, 'calendar-event', NULL, NULL, ?)
+                    """,
+                arguments: [proposalID.uuidString, eventID])
+            try database.execute(
+                sql: """
+                    INSERT INTO standingSkillExecutionAuthority (
+                        proposalID, ruleID, action, occurrenceFingerprint,
+                        eventStartAt, budgetWindowStart, budgetWindowEnd,
+                        authorizedAt
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    proposalID.uuidString,
+                    ruleID.rawValue.uuidString,
+                    StandingSkillRuleAction.preparePreMeetingBrief.rawValue,
+                    oldFingerprint,
+                    eventStartAt,
+                    now.addingTimeInterval(-60),
+                    now.addingTimeInterval(3_600),
+                    now
+                ])
+        }
+
+        try migrator.migrate(database)
+
+        try database.read { database in
+            XCTAssertEqual(StorageSchema.version, 48)
+            XCTAssertEqual(
+                try String.fetchOne(
+                    database,
+                    sql: """
+                        SELECT identifier FROM grdb_migrations
+                        ORDER BY rowid DESC LIMIT 1
+                        """),
+                "v48")
+            let row = try XCTUnwrap(Row.fetchOne(
+                database,
+                sql: """
+                    SELECT authority.eventStartAt,
+                           authority.occurrenceFingerprint,
+                           execution.idempotencyKey
+                    FROM standingSkillExecutionAuthority AS authority
+                    JOIN skillExecutionState AS execution
+                      ON execution.proposalID = authority.proposalID
+                    WHERE authority.proposalID = ?
+                    """,
+                arguments: [proposalID.uuidString]))
+            let persistedStart: Date = row["eventStartAt"]
+            let occurrence = StandingSkillOccurrence(
+                eventID: eventID,
+                eventStartAt: persistedStart)
+            let migratedFingerprint: String = row["occurrenceFingerprint"]
+            let migratedKey: String = row["idempotencyKey"]
+            XCTAssertNotEqual(migratedFingerprint, oldFingerprint)
+            XCTAssertEqual(migratedFingerprint, occurrence.fingerprint)
+            XCTAssertEqual(
+                migratedKey,
+                StandingSkillExecutionIdentity.idempotencyKey(
+                    ruleID: ruleID,
+                    occurrence: occurrence))
+            XCTAssertTrue(occurrence.matches(
+                eventID: eventID,
+                eventStartAt: eventStartAt))
+        }
+    }
+
+    func testOccurrenceIdentityUsesDurableMillisecondPrecision() {
+        let first = Date(timeIntervalSinceReferenceDate: 700_000_000.123_2)
+        let sameStoredMillisecond = Date(
+            timeIntervalSinceReferenceDate: 700_000_000.123_4)
+        let nextMillisecond = Date(
+            timeIntervalSinceReferenceDate: 700_000_000.124_2)
+        let occurrence = StandingSkillOccurrence(
+            eventID: "calendar-event",
+            eventStartAt: first)
+
+        XCTAssertTrue(occurrence.matches(
+            eventID: "calendar-event",
+            eventStartAt: sameStoredMillisecond))
+        XCTAssertEqual(
+            occurrence.fingerprint,
+            StandingSkillOccurrence.makeFingerprint(
+                eventID: "calendar-event",
+                eventStartAt: sameStoredMillisecond))
+        XCTAssertFalse(occurrence.matches(
+            eventID: "calendar-event",
+            eventStartAt: nextMillisecond))
+        XCTAssertNotEqual(
+            occurrence.fingerprint,
+            StandingSkillOccurrence.makeFingerprint(
+                eventID: "calendar-event",
+                eventStartAt: nextMillisecond))
+        XCTAssertFalse(StandingSkillOccurrence(
+            eventID: "calendar-event",
+            eventStartAt: Date(timeIntervalSinceReferenceDate: .infinity)
+        ).matches(
+            eventID: "calendar-event",
+            eventStartAt: Date(timeIntervalSinceReferenceDate: .infinity)))
     }
 
     func testClaimRechecksPolicyAndConsumesDailyBudgetAtomically() async throws {

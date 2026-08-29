@@ -37,6 +37,37 @@ final class StandingPreMeetingBriefSupervisorTests: XCTestCase {
         await supervisor.stop()
     }
 
+    func testExplicitReconciliationWaitsForTheSerializedOwner() async throws {
+        let store = try MeetingStore.inMemory()
+        _ = try await createRule(in: store)
+        let event = upcomingEvent(id: "explicit-retry", offset: 30 * 60)
+        let source = StandingSupervisorEventSource(events: [event])
+        let preparer = GatedStandingBriefPreparer()
+        let supervisor = makeSupervisor(
+            store: store,
+            preparer: preparer,
+            source: source)
+        let completion = StandingReconciliationCompletion()
+
+        let request = Task {
+            await supervisor.reconcileNow()
+            await completion.markFinished()
+        }
+        await preparer.waitUntilStarted()
+        let finishedBeforeRelease = await completion.isFinished
+        XCTAssertFalse(finishedBeforeRelease)
+        await preparer.release()
+        await request.value
+
+        let finishedAfterRelease = await completion.isFinished
+        XCTAssertTrue(finishedAfterRelease)
+        let history = try await store.standingSkillExecutionReceipts(limit: 20)
+        XCTAssertEqual(history.count, 1)
+        XCTAssertEqual(history.first?.record.state, .succeeded)
+        XCTAssertEqual(history.first?.hasArtifact, true)
+        await supervisor.stop()
+    }
+
     func testActiveCaptureDefersUntilExplicitInactiveSignal() async throws {
         let calendar = utcCalendar()
         XCTAssertEqual(
@@ -159,6 +190,53 @@ final class StandingPreMeetingBriefSupervisorTests: XCTestCase {
                 "begin:2", "succeed:2"
             ])
         await relaunched.stop()
+    }
+
+    func testExplicitRetryResumesOnlyTheSelectedFailedOwner() async throws {
+        let store = try MeetingStore.inMemory()
+        let rule = try await createRule(in: store)
+        let first = upcomingEvent(id: "unselected-failure", offset: 20 * 60)
+        let second = upcomingEvent(id: "selected-failure", offset: 40 * 60)
+        let source = StandingSupervisorEventSource(events: [first, second])
+        let firstProposalID = UUID()
+        let secondProposalID = UUID()
+
+        for (event, proposalID) in [
+            (first, firstProposalID),
+            (second, secondProposalID),
+        ] {
+            let executor = makeExecutor(
+                store: store,
+                preparer: AlwaysFailingStandingBriefPreparer(),
+                source: source,
+                proposalID: proposalID)
+            let outcome = try await executor.execute((rule, event))
+            XCTAssertEqual(outcome, .failed(proposalID))
+        }
+
+        let preparer = RecordingStandingBriefPreparer()
+        let supervisor = makeSupervisor(
+            store: store,
+            preparer: preparer,
+            source: source)
+        await supervisor.retryNow(secondProposalID)
+
+        let retriedEventIDs = await preparer.eventIDs
+        XCTAssertEqual(retriedEventIDs, [second.id])
+        let firstHistory = try await store.skillExecutionHistory(
+            proposalID: firstProposalID)
+        XCTAssertEqual(
+            firstHistory.map { "\($0.kind):\($0.attempt)" },
+            ["confirm:1", "begin:1", "fail:1"])
+        let secondHistory = try await store.skillExecutionHistory(
+            proposalID: secondProposalID)
+        XCTAssertEqual(
+            secondHistory.map { "\($0.kind):\($0.attempt)" },
+            [
+                "confirm:1", "begin:1", "fail:1",
+                "begin:2", "succeed:2",
+            ])
+        await supervisor.stop()
     }
 
     private func makeSupervisor(
@@ -345,6 +423,14 @@ private struct AlwaysFailingStandingBriefPreparer:
 
 private enum StandingSupervisorTestError: Error {
     case failed
+}
+
+private actor StandingReconciliationCompletion {
+    private(set) var isFinished = false
+
+    func markFinished() {
+        isFinished = true
+    }
 }
 
 private func standingBrief(for event: UpcomingEvent) -> MeetingBrief {

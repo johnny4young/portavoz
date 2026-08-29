@@ -731,6 +731,22 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.tests, expected, path)
             self.assertEqual(selection.locales, ("en",), path)
 
+    def test_standing_skill_sources_select_only_the_composed_lifecycle(self):
+        expected = FEATURE_TESTS["settings-standing-skills"]
+        for path in [
+            "Sources/PortavozCore/StandingSkillRule.swift",
+            "Sources/ApplicationKit/StandingSkillAutomationCenter.swift",
+            "Sources/ApplicationKit/StandingPreMeetingBriefs.swift",
+            "Sources/StorageKit/MeetingStore+StandingSkillHistory.swift",
+            "Sources/portavoz-app/AppServices+StandingSkills.swift",
+            "Sources/portavoz-app/StandingPreMeetingBriefSupervisor.swift",
+            "Sources/portavoz-app/StandingSkillRulesSection.swift",
+        ]:
+            selection = select_paths([path])
+            self.assertEqual(selection.tests, expected, path)
+            self.assertEqual(selection.locales, ("en",), path)
+            self.assertEqual(len(selection.tests), 1, path)
+
     def test_harness_change_expands_to_the_complete_bilingual_catalog(self):
         selection = select_paths(["Makefile"])
         self.assertEqual(selection.tests, HARNESS_TESTS)

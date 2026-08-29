@@ -658,8 +658,9 @@ proposal menus, history, receipts, and recovery call them **Suggested actions**
 in English and **Acciones sugeridas** in Spanish, and Settings explains that
 every action is derived from meeting evidence and remains inert until review
 and confirmation. Swift `Skill` symbols, catalogue IDs, persistence, telemetry,
-and stable accessibility identifiers remain unchanged. The release candidate
-adds no user-authored action, standing rule, or new execution authority.
+and stable accessibility identifiers remain unchanged. Arbitrary user-authored
+actions remain absent; the only unattended authority is the closed local rule
+described below.
 
 ### Standing-rule control plane
 
@@ -690,6 +691,9 @@ immutable local artifact with a format version, 128-KiB ceiling, and verified
 digest. Success publishes artifact plus `begin`/`succeed` atomically; failure
 publishes `begin`/typed `fail` atomically. Confirmed and recoverable-failed work
 can resume for at most three attempts, while an `executing` owner never repeats.
+Schema v48 canonicalizes the occurrence start to the same millisecond precision
+GRDB persists, atomically rekeys v47 authority and Skill idempotency values, and
+uses that durable temporal identity during resume and final event revalidation.
 
 The macOS composition owns one signal-driven supervisor. It recovers pending
 owners before new events, treats EventKit notifications only as invalidation,
@@ -700,9 +704,16 @@ worker but preserves its confirmed durable owner, and the inactive transition
 resumes it. The supervisor never polls EventKit or SQLite, never asks for
 Calendar permission, and disposable automation never reads the host calendar.
 
-This implementation still has no released Settings creation, status, artifact,
-or recovery surface. Those bilingual controls remain a separate presentation
-boundary. External, destructive, clipboard, file, reminder, email, Gist, and
+`StandingSkillAutomationCenterSnapshot` is the separate Settings read boundary:
+it combines verified rule controls with only standing-authority receipts in a
+20-row window, probes one successor, and expands once to 50. Artifacts load by
+proposal only after explicit review. Create, enable, and delete request full
+reconciliation; retry queues only its selected proposal. Both paths return a
+new durable snapshot through the same serialized supervisor, and no Settings
+path owns an executor. The bilingual section exposes preview, 1...8 daily
+ceiling, inherited global pause, rule enablement, inline deletion confirmation,
+history, bounded retry, and a private artifact sheet. Rule deletion preserves
+history. External, destructive, clipboard, file, reminder, email, Gist, and
 GitHub work still require their exact per-proposal confirmation.
 
 Application failures cross into presentation as bounded categories or stable

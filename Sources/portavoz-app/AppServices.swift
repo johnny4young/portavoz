@@ -348,14 +348,23 @@ final class AppServices {
         self.upcomingEventSource = upcomingEventSource
         reminderDraftPlatform = Self.makeReminderDraftPlatform(usesTemporaryStore: usesTemporaryStore)
         meetingBriefSkillDelivery = AppMeetingBriefSkillDelivery()
+        let meetingBriefSynthesizer: any MeetingBriefSynthesizing =
+            usesTemporaryStore
+                ? UITestMeetingBriefSynthesizer()
+                : AppOnDeviceMeetingBriefSynthesizer()
         let meetingBriefUseCase = PrepareMeetingBrief(
             ask: askUseCase,
             library: AppMeetingBriefLibraryReader(store: store),
-            synthesizer: AppOnDeviceMeetingBriefSynthesizer())
+            synthesizer: meetingBriefSynthesizer)
         self.meetingBriefUseCase = meetingBriefUseCase
+        let standingBriefPreparer: any StandingPreMeetingBriefPreparing =
+            usesTemporaryStore
+                && arguments.contains("-simulate-standing-brief-failure-once")
+                ? UITestFailOnceStandingBriefPreparer(base: meetingBriefUseCase)
+                : meetingBriefUseCase
         standingPreMeetingBriefs = StandingPreMeetingBriefSupervisor(
             store: store,
-            preparer: meetingBriefUseCase,
+            preparer: standingBriefPreparer,
             events: upcomingEventSource,
             captureState: resourceCaptureState)
         palette = CommandPaletteController(model: CommandPaletteModel(client: askClient))

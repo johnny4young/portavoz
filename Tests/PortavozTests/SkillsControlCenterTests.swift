@@ -17,12 +17,12 @@ final class SkillsControlCenterTests: XCTestCase {
         try migrator.migrate(database)
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 47)
+            XCTAssertEqual(StorageSchema.version, 48)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid").last,
-                "v47")
+                "v48")
             XCTAssertEqual(
                 try Set(database.columns(in: "skillControl").map(\.name)),
                 ["id", "isPaused", "updatedAt"])

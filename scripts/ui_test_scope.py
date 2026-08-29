@@ -377,6 +377,12 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit",
         ),
     ),
+    "settings-standing-skills": (
+        test_id(
+            "SkillsSettingsUITests",
+            "testAutomaticBriefRuleRecoversAndKeepsInspectableHistory",
+        ),
+    ),
     "settings-data": (
         test_id("SettingsUITests", "testLocalDataLedgerShowsExactCountsAndHonestNetworkPolicy"),
         test_id("SettingsUITests", "testSyncPaneKeepsOptInAndExistingLibrarySeparate"),
@@ -469,6 +475,7 @@ FEATURE_SOURCE_SENTINELS: dict[str, str] = {
     "meeting-correction": "Sources/portavoz-app/TranscriptStructuralCorrectionEditor.swift",
     "settings-navigation": "Sources/portavoz-app/SettingsView.swift",
     "settings-skills": "Sources/portavoz-app/SkillsSettingsSection.swift",
+    "settings-standing-skills": "Sources/portavoz-app/StandingSkillRulesSection.swift",
     "settings-data": "Sources/portavoz-app/AppServices+MeetingSync.swift",
     "production-sync": "Sources/portavoz-app/ProductionSyncQualificationRunner.swift",
     "settings-intelligence": "Sources/portavoz-app/SemanticSearchPreparationModel.swift",
@@ -635,6 +642,10 @@ def app_features(filename: str) -> set[str]:
         return {"library"}
     if "menubar" in lowered:
         return {"menu-bar-brief"}
+    if any(token in lowered for token in (
+        "standingskill", "standingpremeetingbriefsupervisor"
+    )):
+        return {"settings-standing-skills"}
     if any(token in lowered for token in ("meetingbrief", "meetingreminder")):
         return {"meeting-brief", "library"}
     if "legacyscrollinteractiontracker" in lowered:
@@ -763,6 +774,10 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
+    if any(token in lowered for token in (
+        "standingskill", "standingpremeetingbrief"
+    )):
+        return {"settings-standing-skills"}
     if lowered in {
         "sources/intelligencekit/companion.swift",
         "sources/intelligencekit/companiongenerationprovenance.swift",

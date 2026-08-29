@@ -6,6 +6,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 29, 2026
 
+- **🤖 Automatic briefs stay under your control** — Create, pause, inspect, retry, and delete one private local pre-meeting rule, with every prepared brief and run status visible in Suggested actions.
 - **🐙 Review-first GitHub issues** — Turn one cited pending action item into an exact issue only after reviewing its repository, title, body, and evidence.
 - **✨ Live help survives missing models** — Keep useful rolling highlights on Sequoia or Tahoe while local AI refines them only when ready and live translation recovers without stale captions.
 - **💬 Apuntador reaches every supported Mac** — Detect English and Spanish questions privately on Sequoia or Tahoe, with honest question-only cards whenever no answer engine is available.

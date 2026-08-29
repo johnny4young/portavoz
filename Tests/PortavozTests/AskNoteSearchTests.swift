@@ -129,7 +129,7 @@ final class AskNoteSearchTests: XCTestCase {
                 try String.fetchOne(
                     database,
                     sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid DESC LIMIT 1"),
-                "v47")
+                "v48")
         }
     }
 

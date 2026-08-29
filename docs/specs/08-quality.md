@@ -4622,6 +4622,48 @@ not an install target and remained untouched. The local build had no CloudKit
 provisioning profile, so this is deliberately not CloudKit, notarization,
 distribution, or physical-device evidence.
 
+**D437 bilingual standing-control gate.** The storage/application regression
+matrix adds submillisecond calendar persistence, v47-to-v48 authority and
+idempotency rekeying, millisecond-equivalent provider snapshots, standing-only
+history, failed history without artifacts, corrupted success without an
+artifact, explicit serialized reconciliation, proposal-scoped retry that leaves
+an unrelated failed owner untouched, and the complete existing D436
+retry/capture/relaunch matrix. Architecture policy pins schema v48, canonical
+temporal identity, the 20/50 receipt bounds, a standing-authority SQL source,
+the same-supervisor mutation paths, the absence of a second executor, D437, and
+every new accessibility identifier.
+
+One scoped real-app journey uses public/synthetic bilingual seed data and one
+deterministic first-attempt failure. In one launch it creates the rule, observes
+recoverable history, explicitly retries, opens the digest-verified private
+artifact, pauses/resumes all actions, disables/re-enables the rule, deletes it,
+and proves the immutable artifact remains reviewable. Required checkpoints
+guard and return after the first missing state, so a real failure does not spend
+the remaining budget on cascading assertions. The selector belongs only to
+`settings-standing-skills`; changed standing production owners select it, while
+shared/localization/unknown production paths retain the existing fail-safe
+expansion. Its provisional 90-second budget was replaced after the first clean
+English pass measured 15.989 seconds; the enforced catalog budget is 20 seconds.
+The exact candidate then passed all 2,886 package cases with 15 explicit
+environment/model skips and zero failures in 137.670 seconds of XCTest
+execution under current-SDK first-party warnings-as-errors. Preflight also
+passed repository hygiene, strict SwiftLint across 772 Swift files, all 82 UI
+scope/runtime policy cases, the complete 104-selector catalog, and the focused
+localization/standing/architecture regressions. One build was reused for the
+final scoped bilingual journey: English passed 1/1 in 16.989 seconds and Spanish
+passed 1/1 in 15.772 seconds, both inside the 20-second budget with zero retry
+or harness adjustment. The explicit host override ignored only Notification
+Center alerts; all other preflight blockers remained enforced.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was rebuilt in release
+configuration, deeply verified before and after copying, installed only at
+`/Applications/Portavoz Dev.app`, registered, and launched. The notarized
+`/Applications/Portavoz.app` release copy was not an install target and remained
+untouched. The local build had no CloudKit provisioning profile, so real
+EventKit/TCC delivery, physical Sequoia/Tahoe, VoiceOver/Voice Control,
+CloudKit, notarization, distribution, and field usefulness remain separate
+authorities.
+
 **D335 content-free Skill receipt inspection gate.** Sixteen Skills control
 center cases, including six D335 cases, cover a valid retry timeline plus
 missing, overlong, malformed, unknown-category, broken-predecessor,

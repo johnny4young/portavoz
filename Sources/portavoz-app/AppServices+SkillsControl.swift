@@ -59,6 +59,9 @@ extension AppServices {
                "-simulate-skill-control-mutation-unavailable") {
             throw SimulatedSkillControlMutationFailure()
         }
+        if outcome == .updated {
+            await standingPreMeetingBriefs.kick()
+        }
         return outcome
     }
 

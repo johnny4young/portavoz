@@ -16861,3 +16861,55 @@ unexposed until the bilingual AUTO-5c controls/history surface is implemented;
 ordinary users still cannot create the rule in this slice. Real EventKit/TCC
 delivery, physical Sequoia/Tahoe behavior, accessibility, signed distribution,
 and field usefulness remain separate qualification gates.
+
+## D437 — Standing actions share one inspectable control and execution owner (Aug 2026)
+
+**Context:** D435/D436 made the closed local rule and its crash-safe executor
+real, but ordinary users still could not create, pause, recover, or inspect it.
+A Settings implementation could not safely infer history from the general
+receipt list, expose calendar content in a control projection, or construct a
+second executor for retries. Real-app validation also found that v47 hashed the
+floating-point bit pattern of an EventKit `Date` while GRDB durably stores dates
+at millisecond precision, so a valid submillisecond occurrence changed identity
+after its first SQLite round trip.
+
+**Decision:** ApplicationKit owns one `StandingSkillAutomationCenterSnapshot`
+that composes the bounded standing-rule control projection with only standing-
+authority receipts. The default history window is 20, expands once to 50 using
+one successor sentinel, and never scans general Skill history. Contentful brief
+artifacts load separately by proposal UUID and pass the existing size, digest,
+format, and codec validation before entering presentation. Create, enable, and
+delete mutations enter the existing supervisor through `reconcileNow`; an
+explicit retry enters that same serialized owner through `retryNow(proposalID)`
+and processes only the selected failed receipt, without discovering new events
+or resuming unrelated owners. Every mutation returns a newly verified snapshot;
+none instantiates or bypasses the serialized executor. Deleting current
+authority preserves immutable receipts and artifacts.
+
+Settings presents one bilingual **Automatic local actions** section under
+Suggested actions. It explains the local/reversible boundary, previews the only
+admitted template, lets the user select a 1...8 daily ceiling, create the rule,
+inherit the existing global pause, enable or disable it, delete it through an
+inline confirmation, inspect bounded status/history, retry only a recoverable
+failed owner, and open a verified private brief. Reads and mutations fail
+closed; an ambiguous mutation offers a read-only reload and never repeats the
+write. Every control has a stable accessibility identifier.
+
+Schema v48 changes standing occurrence identity to the opaque event ID plus the
+start instant rounded to the same millisecond precision GRDB persists. Resume
+and final event-snapshot validation use that canonical temporal equality while
+still requiring exact ID, title, and attendee values. The migration rekeys v47
+authority fingerprints and their Skill idempotency keys atomically through
+proposal-scoped staging values, preserving uniqueness independently of update
+order. A public/synthetic bilingual real-app seed uses the production store,
+supervisor, receipt, retry, and artifact paths with no model or host Calendar;
+one deterministic first-attempt failure covers the complete lifecycle without
+private user data.
+
+**Consequences:** AUTO-5 is now an inspectable user feature rather than hidden
+authority. It remains one closed, bounded, reversible, device-local pre-meeting
+brief rule; clipboard, files, reminders, email, Gist, GitHub, network, and
+destructive actions still require exact per-proposal review. Automated tests do
+not certify real EventKit/TCC delivery, physical Sequoia/Tahoe behavior,
+VoiceOver/Voice Control, notarized distribution, CloudKit, or field usefulness;
+those remain separate release authorities.

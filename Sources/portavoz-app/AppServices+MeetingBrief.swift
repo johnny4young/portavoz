@@ -56,3 +56,39 @@ struct AppOnDeviceMeetingBriefSynthesizer: MeetingBriefSynthesizing {
         }
     }
 }
+
+/// Disposable app automation never borrows an installed host model. The rest
+/// of the real retrieval and artifact pipeline still runs against its private
+/// SQLite fixture.
+struct UITestMeetingBriefSynthesizer: MeetingBriefSynthesizing {
+    func synthesizeMeetingBrief(
+        eventTitle: String,
+        sources: [MeetingBrief.SynthesisSource]
+    ) async throws -> [MeetingBrief.SynthesisPoint] {
+        []
+    }
+}
+
+/// The first standing attempt can fail deterministically so XCUITest proves
+/// explicit recovery without timing out, using a provider, or touching TCC.
+actor UITestFailOnceStandingBriefPreparer:
+    StandingPreMeetingBriefPreparing {
+    private let base: any StandingPreMeetingBriefPreparing
+    private var hasFailed = false
+
+    init(base: any StandingPreMeetingBriefPreparing) {
+        self.base = base
+    }
+
+    func prepareStandingPreMeetingBrief(
+        for event: UpcomingEvent
+    ) async throws -> MeetingBrief {
+        guard hasFailed else {
+            hasFailed = true
+            throw UITestStandingBriefFailure()
+        }
+        return try await base.prepareStandingPreMeetingBrief(for: event)
+    }
+}
+
+private struct UITestStandingBriefFailure: Error {}

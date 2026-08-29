@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 103
+    "expectedCaseCount": 104
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -96,6 +96,7 @@
     "SettingsUITests/testSyncPaneKeepsOptInAndExistingLibrarySeparate()": 20.0,
     "SettingsUITests/testUnreadableVoiceStorageStaysVisibleAndOffersExplicitRecovery()": 20.0,
     "SettingsUITests/testVoicePaneOffersTheMirrorOptIn()": 20.0,
+    "SkillsSettingsUITests/testAutomaticBriefRuleRecoversAndKeepsInspectableHistory()": 20.0,
     "SkillsSettingsUITests/testFailedProposedSkillDismissalKeepsTheOfferAndAllowsRetry()": 27.119,
     "SkillsSettingsUITests/testFailedProposedSkillReviewKeepsTheOfferAndAllowsRetry()": 20.0,
     "SkillsSettingsUITests/testFailedRecoveryResolutionKeepsTheReceiptAndAllowsRetry()": 25.086,

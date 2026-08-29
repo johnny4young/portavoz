@@ -24,6 +24,8 @@ actor StandingPreMeetingBriefSupervisor {
     private var worker: Task<Void, Never>?
     private var wakeTask: Task<Void, Never>?
     private var needsReconciliation = false
+    private var explicitRetryProposalIDs = Set<UUID>()
+    private var reconciliationWaiters: [CheckedContinuation<Void, Never>] = []
 
     init(
         store: MeetingStore,
@@ -61,6 +63,33 @@ actor StandingPreMeetingBriefSupervisor {
 
     func kick() {
         needsReconciliation = true
+        startWorkerIfNeeded()
+    }
+
+    /// Lets an explicit Settings action wait for the same serialized owner
+    /// that background signals use. It never starts a second executor, polls,
+    /// or bypasses capture priority.
+    func reconcileNow() async {
+        kick()
+        await waitForReconciliation()
+    }
+
+    /// Retries only the failed owner selected in Settings. The request joins
+    /// the same serialized worker as background reconciliation, but it neither
+    /// resumes unrelated owners nor discovers new calendar work.
+    func retryNow(_ proposalID: UUID) async {
+        explicitRetryProposalIDs.insert(proposalID)
+        startWorkerIfNeeded()
+        await waitForReconciliation()
+    }
+
+    private func waitForReconciliation() async {
+        await withCheckedContinuation { continuation in
+            reconciliationWaiters.append(continuation)
+        }
+    }
+
+    private func startWorkerIfNeeded() {
         guard worker == nil else { return }
         worker = Task { [weak self] in
             await self?.drain()
@@ -80,21 +109,41 @@ actor StandingPreMeetingBriefSupervisor {
         worker = nil
         cancelScheduledWake()
         needsReconciliation = false
+        explicitRetryProposalIDs.removeAll(keepingCapacity: true)
+        finishReconciliationWaiters()
     }
 
     private func drain() async {
-        while needsReconciliation, !Task.isCancelled {
-            needsReconciliation = false
+        while hasPendingWork, !Task.isCancelled {
             guard captureState.current == .inactive else { break }
-            try? await reconcile()
+            if !explicitRetryProposalIDs.isEmpty {
+                let proposalIDs = explicitRetryProposalIDs
+                explicitRetryProposalIDs.removeAll(keepingCapacity: true)
+                try? await reconcile(.retry(proposalIDs))
+            } else {
+                needsReconciliation = false
+                try? await reconcile(.all)
+            }
         }
         worker = nil
-        if needsReconciliation, captureState.current == .inactive {
-            kick()
+        if hasPendingWork, captureState.current == .inactive {
+            startWorkerIfNeeded()
+            return
         }
+        finishReconciliationWaiters()
     }
 
-    private func reconcile() async throws {
+    private var hasPendingWork: Bool {
+        needsReconciliation || !explicitRetryProposalIDs.isEmpty
+    }
+
+    private func finishReconciliationWaiters() {
+        let waiters = reconciliationWaiters
+        reconciliationWaiters.removeAll(keepingCapacity: true)
+        for waiter in waiters { waiter.resume() }
+    }
+
+    private func reconcile(_ scope: ReconciliationScope) async throws {
         let snapshot = try await LoadStandingSkillRules(store: store).execute(())
         guard !snapshot.isPaused else {
             cancelScheduledWake()
@@ -106,10 +155,19 @@ actor StandingPreMeetingBriefSupervisor {
         let pending = try await store.pendingStandingSkillExecutions(
             limit: StandingSkillExecutionPolicy.maximumPendingExecutionCount)
         let executor = makeExecutor()
+        let selectedPending = switch scope {
+        case .all:
+            pending
+        case .retry(let proposalIDs):
+            pending.filter { proposalIDs.contains($0.record.proposalID) }
+        }
         try await resumePending(
-            pending,
+            selectedPending,
             activeRules: activeRules,
-            executor: executor)
+            executor: executor,
+            scope: scope)
+
+        guard scope == .all else { return }
 
         guard captureState.current == .inactive else {
             needsReconciliation = true
@@ -123,12 +181,15 @@ actor StandingPreMeetingBriefSupervisor {
     private func resumePending(
         _ pending: [PendingStandingSkillExecution],
         activeRules: [StandingSkillRuleID: StandingSkillRule],
-        executor: ExecuteStandingPreMeetingBrief
+        executor: ExecuteStandingPreMeetingBrief,
+        scope: ReconciliationScope
     ) async throws {
-        for owner in pending {
+        for (index, owner) in pending.enumerated() {
             try Task.checkCancellation()
             guard captureState.current == .inactive else {
-                needsReconciliation = true
+                deferReconciliation(
+                    scope,
+                    remaining: pending[index...])
                 return
             }
             guard owner.record.state != .executing,
@@ -141,13 +202,28 @@ actor StandingPreMeetingBriefSupervisor {
             }
             guard let event = try await events.upcomingEvent(
                 matching: owner.occurrence.eventID),
-                  event.startDate == owner.occurrence.eventStartAt,
+                  owner.occurrence.matches(
+                    eventID: event.id,
+                    eventStartAt: event.startDate),
                   ExecuteStandingPreMeetingBrief.isEligible(event, at: now())
             else {
                 await cancelConfirmedIfRevoked(owner)
                 continue
             }
             _ = try? await executor.resume(owner, event: event)
+        }
+    }
+
+    private func deferReconciliation(
+        _ scope: ReconciliationScope,
+        remaining: ArraySlice<PendingStandingSkillExecution>
+    ) {
+        switch scope {
+        case .all:
+            needsReconciliation = true
+        case .retry:
+            explicitRetryProposalIDs.formUnion(
+                remaining.map(\.record.proposalID))
         }
     }
 
@@ -237,6 +313,11 @@ actor StandingPreMeetingBriefSupervisor {
                 return
             }
         }
+    }
+
+    private enum ReconciliationScope: Equatable {
+        case all
+        case retry(Set<UUID>)
     }
 
     static func nextWakeDate(
