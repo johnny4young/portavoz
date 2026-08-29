@@ -9307,6 +9307,18 @@ final class ArchitectureDependencyTests: XCTestCase {
             "maxScrolls: max(0, maxScrolls - attempt - 1)"))
         XCTAssertTrue(support.contains("if !geometryChanged { continue }"))
         XCTAssertFalse(support.contains("guard targetMoved else { return false }"))
+        XCTAssertEqual(
+            support.components(
+                separatedBy: "if viewportFrame.contains(frame),").count - 1,
+            2,
+            "geometric containment alone must not terminate before hittability")
+        XCTAssertTrue(support.contains(
+            "let inwardDelta = viewportFrame.midY - controlFrame.midY"))
+        XCTAssertTrue(support.contains(
+            "deltaY = min(max(inwardDelta, -maximumStep), maximumStep)"))
+        XCTAssertFalse(support.contains(
+            "if viewportFrame.contains(frame) {\n"
+                + "                return waitForStableContainedFrame("))
         XCTAssertFalse(uiTests.contains("private extension XCUIElement"))
         XCTAssertFalse(uiTests.contains("deltaY: CGFloat = -48"))
         XCTAssertFalse(uiTests.contains("waitForVisibleStableFrame"))
@@ -9393,6 +9405,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(decisions.contains("## D414"))
         XCTAssertTrue(decisions.contains("## D415"))
         XCTAssertTrue(decisions.contains("## D416"))
+        XCTAssertTrue(decisions.contains("## D426"))
     }
 
     func testXCUITestInteractionPreparationReassertsFrontmostOwnership() throws {

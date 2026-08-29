@@ -5295,9 +5295,9 @@ reliability evidence retained from 9 Aug, is:
 - the Meeting Detail interaction contract contains 431 signals, 15 feature
   owners, and 30 explicitly owned UI journeys;
 - 101 XCUITest cases per locale define the 202-case bilingual release gate;
-- the latest controlled phased run reused one 13-second build and passed all
-  101 English cases in 816.160 summed seconds (p95 17.342) and all 101 Spanish
-  cases in 824.903 seconds (p95 17.938), with every unchanged budget green;
+- the latest controlled phased run reused one 5-second build and passed all
+  101 English cases in 815.706 summed seconds (p95 17.835) and all 101 Spanish
+  cases in 819.278 seconds (p95 17.505), with every unchanged budget green;
 - pull requests run only their minimum-safe selected feature evidence; shared
   localization/harness changes and release closure expand to the complete
   bilingual gate, while unknown production paths fail safe to complete English;
@@ -5311,6 +5311,14 @@ reliability evidence retained from 9 Aug, is:
   runners report those wall-clock comparisons as advisory while functional
   failures, skips, malformed/missing receipts, and infrastructure uncertainty
   remain blocking;
+- the first phased hosted classifier proved that separation fails closed: Spanish
+  passed 101/101 with only runtime advisories, while one English structural-
+  correction interaction remained non-passing and therefore blocked the job.
+  The retained activity showed the bounded reveal helper terminating at mere
+  geometric containment even though the following native click performed one
+  more inward reveal and completed the workflow. The helper now continues its
+  existing bounded attempt budget toward the viewport center until containment
+  is also stably hittable; it adds no retry, sleep, or assertion exception;
 - deterministic UI runs use the real application with disposable storage and
   app-window or identified-panel screenshot attachments;
 - measured scale fixtures cover 5,000-segment detail, 100,000-segment search,

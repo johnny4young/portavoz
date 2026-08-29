@@ -585,10 +585,12 @@ extension XCUIElement {
         var viewportFrame = viewportElement.frame.insetBy(dx: 0, dy: 4)
         guard !viewportFrame.isEmpty else { return false }
 
-        if viewportFrame.contains(frame) {
-            return waitForStableContainedFrame(
-                in: viewportElement,
-                timeout: 1)
+        if viewportFrame.contains(frame),
+           waitForStableContainedFrame(
+               in: viewportElement,
+               timeout: 1)
+        {
+            return true
         }
 
         for _ in 0..<maxScrolls {
@@ -607,9 +609,17 @@ extension XCUIElement {
                 let distance = viewportFrame.minY - controlFrame.minY + 8
                 deltaY = min(max(distance, 12), maximumStep)
             } else {
-                return waitForStableContainedFrame(
-                    in: viewportElement,
-                    timeout: 1)
+                // Geometric containment can precede AppKit hit-test ownership
+                // while a transformed transcript row is settling. Move the
+                // target toward the viewport center instead of returning a
+                // false terminal result; native XCUI click would otherwise do
+                // this same automatic reveal after the assertion has failed.
+                let inwardDelta = viewportFrame.midY - controlFrame.midY
+                if abs(inwardDelta) >= 1 {
+                    deltaY = min(max(inwardDelta, -maximumStep), maximumStep)
+                } else {
+                    deltaY = controlFrame.midY >= viewportFrame.midY ? -12 : 12
+                }
             }
 
             viewportElement.scroll(byDeltaX: 0, deltaY: deltaY)
@@ -625,10 +635,12 @@ extension XCUIElement {
             }
 
             viewportFrame = viewportElement.frame.insetBy(dx: 0, dy: 4)
-            if viewportFrame.contains(frame) {
-                return waitForStableContainedFrame(
-                    in: viewportElement,
-                    timeout: 1)
+            if viewportFrame.contains(frame),
+               waitForStableContainedFrame(
+                   in: viewportElement,
+                   timeout: 1)
+            {
+                return true
             }
             // One synthesized wheel event can be coalesced by AppKit while a
             // scroll view is settling. Treat only the total bounded attempt

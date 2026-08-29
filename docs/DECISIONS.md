@@ -16268,3 +16268,42 @@ summed seconds (p50 6.356, p95 17.342, maximum 34.668), and Spanish passed
 101/101 in 824.903 seconds (p50 6.519, p95 17.938, maximum 35.157). Every
 unchanged individual, aggregate, and p95 budget passed under controlled
 authority. Fresh replacement-head hosted evidence remains required.
+
+## D426 — Geometric containment is not XCUITest interaction readiness (Aug 2026)
+
+**Context:** the first exact D425 hosted run `33233725996` proved that its final
+classifier did not convert a functional red into a timing advisory. Spanish
+passed all 101 cases and crossed only four hosted wall-clock ceilings. English
+emitted a complete 101-case receipt but
+`testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence` failed
+its explicit pre-click hittability assertion. The retained activity showed the
+shared `revealVertically` helper synthesize one 12-point scroll, observe the
+split correction button geometrically inside the transcript viewport, and then
+return false when stable hittability had not yet arrived. XCTest continued the
+method after recording the assertion: the immediately following native click
+automatically performed another 12-point inward reveal, activated the exact
+button, and completed every remaining split/undo/merge/hide/restore assertion.
+The product workflow was intact; the helper had made `CGRect.contains` a false
+terminal authority.
+
+**Decision:** geometric containment can finish a reveal only when the target
+also proves one stable hittable frame. A contained but not-yet-hittable control
+continues within the same existing `maxScrolls` bound. Each next gesture moves
+the target toward the viewport's vertical center, clamped by the unchanged
+48-point maximum; an exactly centered but occluded target receives a bounded
+12-point nudge. The helper still waits on observed geometry/hittability, never
+sleeps, never retries a test, and returns false after the original finite
+attempt budget. The structural-correction assertion and every functional
+postcondition remain unchanged.
+
+**Consequences:** transformed SwiftUI transcript rows no longer fail merely
+because AppKit hit-test ownership lags geometric containment by one scroll
+event. The source contract ratchets the two containment checks, inward clamp,
+and absence of the prior early-return form. The focused architecture test and
+the exact real-app structural journey passed in English and Spanish with hard
+budgets (24.713 and 25.542 seconds). Because the shared XCUITest harness changed,
+the complete controlled bilingual gate was mandatory and passed without retry
+from one 5-second build: English 101/101 in 815.706 summed seconds (p50 6.339,
+p95 17.835, maximum 37.262) and Spanish 101/101 in 819.278 seconds (p50 6.469,
+p95 17.505, maximum 35.363). All unchanged individual, aggregate, and p95
+budgets passed. Fresh replacement-head hosted evidence remains required.

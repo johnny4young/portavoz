@@ -5945,3 +5945,24 @@ controlled run built once in 13 seconds and did not retry: English passed
 101/101 in 816.160 summed seconds (p50 6.356, p95 17.342, maximum 34.668), and
 Spanish passed 101/101 in 824.903 seconds (p50 6.519, p95 17.938, maximum
 35.157). Every unchanged hard runtime budget passed.
+
+**Contained controls still require interaction readiness.** The bounded
+`XCUIElement.revealVertically` helper does not equate a control's frame being
+inside its viewport with the control being ready for input. If stable
+hittability has not arrived, the helper spends another attempt moving the
+control toward the vertical center, clamped to the same 48-point maximum. An
+exactly centered target receives a 12-point nudge. It succeeds only after a
+stable contained+hittable frame and still fails after the existing finite
+attempt count; no fixed sleep, test retry, or assertion bypass exists.
+
+This closes a retained first-attempt hosted false negative without hiding it.
+Run `33233725996` produced a complete 101-case English receipt with one failed
+structural-correction interaction and a 101/101 Spanish receipt with runtime
+advisories only. The English activity proved the helper returned at geometric
+containment, after which native click performed one additional inward reveal
+and completed all remaining workflow assertions. D425 correctly blocked that
+non-passing case. After D426, the focused real-app journey passed EN/ES with
+hard budgets, and the required shared-harness qualification passed 101/101 in
+both locales without retry from one build: English 815.706 summed seconds (p95
+17.835), Spanish 819.278 seconds (p95 17.505), and every unchanged hard budget
+green. Replacement-head hosted evidence remains separate and pending.
