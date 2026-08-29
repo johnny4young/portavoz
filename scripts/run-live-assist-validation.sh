@@ -63,6 +63,9 @@ done
     fail "PORTAVOZ_LIVE_ASSIST_TIMEOUT_SECONDS must be an integer"
 (( TIMEOUT_SECONDS >= 60 && TIMEOUT_SECONDS <= 7200 )) || \
     fail "PORTAVOZ_LIVE_ASSIST_TIMEOUT_SECONDS must be between 60 and 7200"
+SIGN_ID="${PORTAVOZ_SIGN_IDENTITY:-}"
+[[ -n "$SIGN_ID" && "$SIGN_ID" != "-" ]] || \
+    fail "PORTAVOZ_SIGN_IDENTITY must select a real Developer ID identity"
 
 cd "$ROOT"
 FIXTURE="$ROOT/Fixtures/LiveAssistValidation/public-bilingual-v1.json"
@@ -103,7 +106,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-PORTAVOZ_SIGN_IDENTITY="${PORTAVOZ_SIGN_IDENTITY:--}" \
+PORTAVOZ_SIGN_IDENTITY="$SIGN_ID" \
     scripts/make-app.sh --release
 APP_EXECUTABLE="$ROOT/dist/Portavoz.app/Contents/MacOS/portavoz-app"
 [[ -x "$APP_EXECUTABLE" ]] || fail "the Release app executable is missing"

@@ -12345,6 +12345,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(launch.contains("!BenchMode.runsBeforeAppServices"))
         XCTAssertTrue(wrapper.contains("--live-assist-source-state"))
         XCTAssertTrue(wrapper.contains("--require-targets"))
+        XCTAssertTrue(wrapper.contains(
+            "PORTAVOZ_SIGN_IDENTITY must select a real Developer ID identity"))
+        XCTAssertFalse(wrapper.contains("PORTAVOZ_SIGN_IDENTITY:--"))
         XCTAssertFalse(wrapper.contains("-seed-demo"))
         XCTAssertFalse(wrapper.contains("MeetingStore"))
         XCTAssertTrue(scorer.contains("os.link(temporary, path)"))

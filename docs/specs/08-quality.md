@@ -2381,11 +2381,15 @@ publication, latency, footprint growth, and thermal admission. The public
 fixture is synthetic and may be redistributed; no user meeting or account is
 needed.
 
-The app-owned Release runner receives scenario inputs but not expected outputs.
-Its model-free lane measures the released deterministic endpoint prefilter on
-Sequoia and Tahoe. Its explicit Foundation Models lane runs only when macOS 26
-reports already-installed availability; it never prepares or downloads an
-asset. D431 adds a third `bundled-question` lane over the exact compiled
+The app-owned Developer-ID-signed Release runner receives scenario inputs but
+not expected outputs. It rejects a missing or ad-hoc signing identity before
+building: Hardened Runtime library validation cannot treat an ad-hoc app and
+its embedded Sparkle framework as signed distribution evidence, and a late
+dynamic-loader abort would not be a valid scorecard. Its model-free lane
+measures the released deterministic endpoint prefilter on Sequoia and Tahoe.
+Its explicit Foundation Models lane runs only when macOS 26 reports already-
+installed availability; it never prepares or downloads an asset. D431 adds a
+third `bundled-question` lane over the exact compiled
 Natural Language classifier shipped in the app. It declares an installed
 serving model, not the model-free baseline, and its receipt carries only the
 pinned model identity. The same process exercises production Interview, summary, and
