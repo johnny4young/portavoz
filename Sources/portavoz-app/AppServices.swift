@@ -109,7 +109,7 @@ final class AppServices {
     @ObservationIgnored var resourcePressureMonitor: AppResourcePressureMonitor?
     /// Content-free recording phase readable from non-MainActor residency
     /// callbacks without reaching into the observable controller.
-    @ObservationIgnored let resourceCaptureState = AppResourceCaptureState()
+    @ObservationIgnored let resourceCaptureState: AppResourceCaptureState
     @ObservationIgnored let microphonePermissions: MicrophonePermissionClient
     /// Shared async credential workflow for Settings and publishing surfaces.
     @ObservationIgnored let secrets: ManageSecrets
@@ -158,6 +158,10 @@ final class AppServices {
     /// One no-prompt calendar boundary supplies opaque event references to
     /// Library, reminders, and the resident brief proposal.
     @ObservationIgnored let upcomingEventSource: AppUpcomingEventSource
+    /// Signal-driven, capture-deferred owner for the one bounded standing
+    /// local-draft action. It never requests calendar permission or polls.
+    @ObservationIgnored let standingPreMeetingBriefs:
+        StandingPreMeetingBriefSupervisor
     /// One process-owned Reminders boundary. Disposable automation always
     /// receives an in-memory fake and can never reach host TCC or EventKit.
     @ObservationIgnored let reminderDraftPlatform:
@@ -291,6 +295,8 @@ final class AppServices {
         recording = RecordingController(defaults: defaults)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         usesTemporaryMeetingStore = usesTemporaryStore
+        let resourceCaptureState = AppResourceCaptureState()
+        self.resourceCaptureState = resourceCaptureState
         // Open the authority before constructing process runtimes or installing
         // global telemetry. A failed retry therefore leaves no half-composed
         // service graph, model task, sensitive store, or background owner.
@@ -336,13 +342,22 @@ final class AppServices {
         askClient = Self.makeAskModelClient(composition: semanticSearch, store: store)
         recapSkillDelivery = Self.makeRecapSkillDelivery(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
         emailRecapDraftDelivery = Self.makeEmailRecapDraftDelivery(usesTemporaryStore: usesTemporaryStore)
-        upcomingEventSource = AppUpcomingEventSource(arguments: arguments, usesTemporaryStore: usesTemporaryStore)
+        let upcomingEventSource = AppUpcomingEventSource(
+            arguments: arguments,
+            usesTemporaryStore: usesTemporaryStore)
+        self.upcomingEventSource = upcomingEventSource
         reminderDraftPlatform = Self.makeReminderDraftPlatform(usesTemporaryStore: usesTemporaryStore)
         meetingBriefSkillDelivery = AppMeetingBriefSkillDelivery()
-        meetingBriefUseCase = PrepareMeetingBrief(
+        let meetingBriefUseCase = PrepareMeetingBrief(
             ask: askUseCase,
             library: AppMeetingBriefLibraryReader(store: store),
             synthesizer: AppOnDeviceMeetingBriefSynthesizer())
+        self.meetingBriefUseCase = meetingBriefUseCase
+        standingPreMeetingBriefs = StandingPreMeetingBriefSupervisor(
+            store: store,
+            preparer: meetingBriefUseCase,
+            events: upcomingEventSource,
+            captureState: resourceCaptureState)
         palette = CommandPaletteController(model: CommandPaletteModel(client: askClient))
         meetingSync = Self.makeMeetingSyncModel(
             store: store, usesTemporaryStore: usesTemporaryStore,

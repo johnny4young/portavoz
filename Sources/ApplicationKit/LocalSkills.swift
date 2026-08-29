@@ -274,6 +274,18 @@ public enum PreMeetingBriefSkill {
         subjectKind: .calendarEvent,
         confirmationPolicy: .explicitPerProposal)
 
+    /// The same bounded action when an exact current standing rule, rather
+    /// than a per-proposal confirmation, supplies authority. Keeping the
+    /// confirmation policy on a separate immutable definition prevents an
+    /// autonomous run from masquerading as a reviewed one-shot proposal.
+    public static let standingRuleDefinition = SkillDefinition(
+        id: id,
+        version: version,
+        capabilities: definition.capabilities,
+        inputDataClasses: definition.inputDataClasses,
+        subjectKind: definition.subjectKind,
+        confirmationPolicy: .standingRule)
+
     public static func idempotencyKey(forEvent identifier: String) -> String {
         "\(id):\(identifier)"
     }

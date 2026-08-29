@@ -178,6 +178,7 @@ final class AppLaunchModel {
         guard !runsIsolatedBenchmark else { return }
 
         services.startResourcePressureMonitoring()
+        Task { await services.standingPreMeetingBriefs.start() }
         services.requestSearchReconciliation()
         Task { @MainActor in
             await services.commitmentReminders.send(.start)

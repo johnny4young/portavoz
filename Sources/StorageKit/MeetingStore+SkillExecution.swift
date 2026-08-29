@@ -354,7 +354,7 @@ extension MeetingStore {
         return .alreadySettled(existing)
     }
 
-    private static func insertSkillExecution(
+    static func insertSkillExecution(
         _ confirmation: SkillExecutionConfirmation,
         in database: Database
     ) throws -> SkillExecutionAdmission {
@@ -426,7 +426,7 @@ extension MeetingStore {
             arguments: [offerKey])
     }
 
-    private static func skillExecution(
+    static func skillExecution(
         _ proposalID: UUID,
         in database: Database
     ) throws -> SkillExecutionRecord? {
@@ -607,7 +607,7 @@ extension MeetingStore {
         return eventID
     }
 
-    private static func advanceSkillExecution(
+    static func advanceSkillExecution(
         _ transition: SkillExecutionTransition,
         in database: Database
     ) throws {
@@ -648,7 +648,7 @@ private struct SkillExecutionHistoryRead {
     let latestEventID: String?
 }
 
-private struct SkillExecutionEventWrite {
+struct SkillExecutionEventWrite {
     let proposalID: UUID
     let previousEventID: String?
     let kind: PersistedSkillExecutionEventKind
@@ -657,7 +657,7 @@ private struct SkillExecutionEventWrite {
     let occurredAt: Date
 }
 
-private struct SkillExecutionTransition {
+struct SkillExecutionTransition {
     let proposalID: UUID
     let transition: PersistedSkillExecutionTransition
     let attempt: Int
@@ -674,7 +674,7 @@ private struct SkillExecutionTransition {
     }
 }
 
-private enum PersistedSkillExecutionEventKind: String {
+enum PersistedSkillExecutionEventKind: String {
     case confirm
     case begin
     case succeed
@@ -682,7 +682,7 @@ private enum PersistedSkillExecutionEventKind: String {
     case cancel
 }
 
-private enum PersistedSkillExecutionTransition {
+enum PersistedSkillExecutionTransition {
     case begin
     case succeeded
     case failed(FailureCategory)

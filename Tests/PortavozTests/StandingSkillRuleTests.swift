@@ -14,10 +14,10 @@ final class StandingSkillRuleTests: XCTestCase {
         let migrator = StorageSchema.migrator()
         try migrator.migrate(database, upTo: "v45")
 
-        try migrator.migrate(database)
+        try migrator.migrate(database, upTo: "v46")
 
         try database.read { database in
-            XCTAssertEqual(StorageSchema.version, 46)
+            XCTAssertGreaterThanOrEqual(StorageSchema.version, 46)
             XCTAssertEqual(
                 try String.fetchAll(
                     database,

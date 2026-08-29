@@ -3,7 +3,8 @@ import Foundation
 /// A calendar event reduced to the neutral facts used by meeting preparation,
 /// reminders, and recording context. Platform calendar adapters create this
 /// value without leaking EventKit into domain or application policy.
-public struct UpcomingEvent: Sendable, Equatable, Hashable, Identifiable {
+public struct UpcomingEvent:
+    Codable, Sendable, Equatable, Hashable, Identifiable {
     /// Keeps an opaque provider reference bounded before it enters a Skill
     /// argument or an EventKit lookup. The value is not otherwise parsed.
     public static let maximumIdentifierLength = 2_000

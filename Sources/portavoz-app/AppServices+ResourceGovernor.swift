@@ -110,10 +110,12 @@ extension AppServices {
         guard next != .inactive else {
             semanticIndexingSupervisor.kick()
             memoryGraphProjectionSupervisor.kick()
+            Task { await standingPreMeetingBriefs.kick() }
             meetingSync.maintenanceMayResume()
             libraryMarkdownBackup.maintenanceMayResume()
             return
         }
+        Task { await standingPreMeetingBriefs.suspendForCapture() }
         let pressure = resourcePressureMonitor?.current ?? .nominal
         Task { @MainActor [weak self] in
             await self?.reconcileModelPressure(pressure)

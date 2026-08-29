@@ -35,6 +35,22 @@ public struct CalendarAttendeeSource: Sendable {
         EKEventStore.authorizationStatus(for: .event) == .notDetermined
     }
 
+    /// EventKit's explicit invalidation signal. This is a wakeup only: every
+    /// consumer must re-read exact current events rather than treating the
+    /// notification as content or authority.
+    public static func eventChanges() -> AsyncStream<Void> {
+        AsyncStream { continuation in
+            let task = Task { @MainActor in
+                for await _ in NotificationCenter.default.notifications(
+                    named: .EKEventStoreChanged) {
+                    guard !Task.isCancelled else { return }
+                    continuation.yield()
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     /// The rest of today's meetings plus tomorrow's (non-all-day, still
     /// ongoing or future), sorted by start — the sidebar's prep agenda.
     public func upcomingEvents() -> [UpcomingEvent] {

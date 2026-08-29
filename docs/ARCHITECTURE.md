@@ -233,6 +233,8 @@ The implemented application workflows include:
   before clip export;
 - pre-meeting reminder resolution from one sampled clock value, one configured
   lead window, session deduplication, and an injected upcoming-event source;
+- crash-safe standing pre-meeting brief execution with exact-event admission,
+  bounded daily accounting, local artifact publication, and relaunch recovery;
 - degradable participant-voice suggestions, duplicate-offer admission, and
   explicit remembered-voice persistence without automatic speaker mutation;
 - asynchronous user-managed secret reads, writes, presence checks, and deletion
@@ -650,7 +652,7 @@ destination may still sync independently. Enablement remains visually separate
 from the definition's confirmation policy, so an enabled explicit-per-proposal
 Skill still says that every run requires approval.
 
-The 0.8.0 scope freeze keeps the catalogue at those six fixed definitions and draws an
+The implemented catalogue contains seven fixed definitions and draws an
 explicit presentation boundary around the internal domain term. Settings,
 proposal menus, history, receipts, and recovery call them **Suggested actions**
 in English and **Acciones sugeridas** in Spanish, and Settings explains that
@@ -661,8 +663,8 @@ adds no user-authored action, standing rule, or new execution authority.
 
 ### Standing-rule control plane
 
-Schema v46 and the application boundary persist device-local,
-content-free authority for future unattended Skills without changing the
+Schema v46 and the application boundary persist device-local, content-free
+authority for bounded unattended Skills without changing the
 one-shot proposal contract. `StandingSkillRule` carries only a UUID, exact Skill
 ID/version, closed trigger/predicate/action values, a 1...8 daily ceiling,
 enabled state, and timestamps. The store returns at most 32 rules, makes the
@@ -676,15 +678,32 @@ file. The loaded control projection combines the rule with the existing global
 pause and per-Skill disablement; an unknown or version-stale definition is
 never effectively enabled and may only be disabled or deleted. No meeting,
 event, title, attendee, transcript, provider, destination, prompt, credential,
-or result is stored.
+or result enters that control table.
 
-This is an authority substrate, not an executor or released Settings surface.
-It observes no calendar events, performs no Skill, consumes no daily budget,
-writes no execution receipt, and adds no background task. Event admission,
-duplicate/recursion fencing, crash-safe daily accounting, relaunch recovery,
-execution receipts, and bilingual user controls remain explicit later slices.
-External, destructive, clipboard, file, reminder, email, Gist, and GitHub work
-still require their exact per-proposal confirmation.
+Schema v47 binds an exact event occurrence to the existing durable Skill
+execution owner through one append-once standing authority row. Its unique
+closed-action plus SHA-256 occurrence fingerprint prevents duplicate automatic
+and observer delivery, while claim-time checks reject an existing manual event
+owner, prior dismissal, global/per-Skill policy changes, active rule work, and
+the persisted local-day budget. The bounded contentful result is a separate
+immutable local artifact with a format version, 128-KiB ceiling, and verified
+digest. Success publishes artifact plus `begin`/`succeed` atomically; failure
+publishes `begin`/typed `fail` atomically. Confirmed and recoverable-failed work
+can resume for at most three attempts, while an `executing` owner never repeats.
+
+The macOS composition owns one signal-driven supervisor. It recovers pending
+owners before new events, treats EventKit notifications only as invalidation,
+and holds at most one future wake for the next two-hour preparation boundary
+or local-day calendar-horizon refresh, whichever comes first.
+Concurrent wakes coalesce behind one serialized worker. Recording preempts the
+worker but preserves its confirmed durable owner, and the inactive transition
+resumes it. The supervisor never polls EventKit or SQLite, never asks for
+Calendar permission, and disposable automation never reads the host calendar.
+
+This implementation still has no released Settings creation, status, artifact,
+or recovery surface. Those bilingual controls remain a separate presentation
+boundary. External, destructive, clipboard, file, reminder, email, Gist, and
+GitHub work still require their exact per-proposal confirmation.
 
 Application failures cross into presentation as bounded categories or stable
 workflow codes. Raw filesystem paths, localized dependency errors, model
@@ -1220,7 +1239,7 @@ Persisted identifiers are never replaced with random fallback values. Deleted
 meetings are excluded from live aggregate reads, and child records cannot make
 a tombstoned root visible again.
 
-The current schema version is 46. It includes:
+The current schema version is 47. It includes:
 
 - meetings with lifecycle state and transcript revision;
 - audio assets with capture/publication/health metadata;
@@ -1270,7 +1289,8 @@ The current schema version is 46. It includes:
   execution admission;
 - one bounded content-free standing-rule table with exact Skill/version,
   closed trigger/predicate/action identity, per-rule daily ceiling, and
-  device-local enabled state; it currently owns no execution or receipt path;
+  device-local enabled state, plus append-once exact-occurrence authority and
+  one bounded digest-verified local artifact per successful standing run;
 - immutable generation-run provenance;
 - one regenerable enhanced-notes document per meeting (raw notes stay
   untouched; provenance commits atomically with the artifact);

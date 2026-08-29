@@ -17,6 +17,8 @@ D327 adds a review-first system email-composer handoff; D328 adds exact
 one-shot secret-Gist publication with a pre-transport duplicate fence; D434
 adds one review-first GitHub issue from an exact pending action item; D333
 derives Skills privacy disclosure from the executable capability contract.
+D435/D436 add the closed standing pre-meeting brief authority and its
+signal-driven crash-safe macOS execution owner.
 D373/D374 compose exact-Skill and rolling update-time activity filters at query
 time while keeping the Settings window bounded and generation-fenced.
 D384 makes full Ask latest-submission-wins, displays bounded cumulative answer
@@ -3328,19 +3330,46 @@ disabled or deleted but cannot be re-enabled. Control mutations contain no
 event title, attendee, transcript, meeting identity, provider, destination,
 prompt, credential, or result, and they create no execution receipt.
 
-No SwiftUI surface or execution scheduler is included in this slice. Settings
-still cannot create or run a standing rule, and the app observes no calendar
-event on its behalf. Event admission, exact-event idempotency, daily accounting,
-duplicate/recursion prevention, crash/relaunch recovery, cancellation,
-immutable execution evidence, and bilingual rule/history controls remain the
-next AUTO-5 slices. Clipboard, export, reminders, email, Gist, GitHub, network,
-and destructive effects remain explicit-per-proposal only.
+This D435 slice alone included no SwiftUI surface or execution scheduler. Its
+authority was therefore inert until the separate execution owner below.
 
-D379 freezes the 0.8.0 public catalogue at these six actions. Public copy uses
-action vocabulary consistently while internal `Skill` types, IDs, migrations,
-telemetry, and accessibility identifiers stay stable. User-authored actions,
-standing rules, and additional workflow kinds are post-release scope rather
-than incomplete 0.8.0 behavior.
+### Standing brief execution (D436)
+
+Schema v47 and `ExecuteStandingPreMeetingBrief` bind one effectively enabled
+rule to one exact upcoming event occurrence. Admission is limited to the final
+two hours before start and rechecks the rule snapshot, global pause,
+per-Skill disablement, one-shot dismissal, manual ownership of the event,
+single flight, and the local-day daily budget in the claim transaction. The
+existing local `PrepareMeetingBrief` workflow runs under a 30-second deadline;
+the complete event is re-resolved and must remain unchanged before the bounded
+brief artifact and successful receipt publish atomically. Confirmed or
+recoverable-failed work may resume for at most three automatic attempts.
+Persisted `executing` work is outcome-unknown and never repeated.
+
+`StandingPreMeetingBriefSupervisor` is the single process owner. It starts only
+after normal app readiness, recovers bounded pending owners before considering
+new events, consumes EventKit change notifications only as invalidation
+signals, and retains at most one wake for the next lead-window boundary.
+That wake also considers the next local midnight so the bounded
+today-plus-tomorrow EventKit horizon refreshes even without a calendar edit.
+Signals coalesce behind one actor worker; there is no polling or retry timer.
+Recording cancels background preparation while preserving its exact confirmed
+owner, and the inactive transition resumes reconciliation. Global pause and an
+empty enabled-rule set cancel any stale boundary wake. Temporary-store launches
+install an empty event source and never read the user's host calendar.
+
+AUTO-5b still exposes no ordinary SwiftUI creation, status, artifact, or
+recovery surface. Settings cannot create the rule until the bilingual AUTO-5c
+boundary is implemented. Clipboard, export, reminders, email, Gist, GitHub,
+network, and destructive effects remain explicit-per-proposal only.
+
+D379 historically froze the 0.8.0 public catalogue at six actions. The current
+implemented catalogue contains seven fixed definitions after D434; public copy
+continues to use action vocabulary while internal `Skill` types, IDs,
+migrations, telemetry, and accessibility identifiers stay stable. The only
+standing action admitted for 1.0 is D435/D436's closed, reversible, local
+pre-meeting brief template; user-authored actions and additional standing
+workflow kinds remain out of scope.
 
 Twenty bilingual XCUITest journeys cover the pane: plain-language review-first
 comprehension; fail-closed control

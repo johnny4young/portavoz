@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,861 cases (15 environment-gated) + 103
+Status: the package inventory contains 2,880 cases (15 environment-gated) + 103
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -4565,10 +4565,62 @@ Developer-ID-signed `app.portavoz.mac.dev` bundle was rebuilt, deeply verified,
 installed, and launched only as `/Applications/Portavoz Dev.app`; the release
 copy was untouched.
 
-This evidence cannot certify event delivery, autonomous execution, daily
-accounting, cancellation, relaunch recovery of work, physical Sequoia/Tahoe,
-assistive technology, signed distribution, CloudKit, or field usefulness;
-those remain AUTO-5b/AUTO-5c and release authorities.
+That paragraph records the D435 point-in-time gate. D436 closes autonomous
+execution, accounting, cancellation, and relaunch recovery in deterministic
+code tests; EventKit/TCC delivery, physical Sequoia/Tahoe, assistive
+technology, signed distribution, CloudKit, and field usefulness remain
+separate release authorities.
+
+**D436 crash-safe standing execution gate.** Nineteen focused domain, storage,
+application, and real app-composition cases cover the v47 append-once authority
+and immutable artifact schema; transactional policy and daily-budget checks;
+manual owner, dismissal, disablement, deletion, and concurrent-claim refusal;
+atomic artifact/receipt publication; bounded retries; outcome-unknown executing
+state; exact event revalidation; timeout, explicit cancellation, moved event,
+pause/completion race, corrupt occurrence/artifact/state-attempt input, invalid
+window, and oversized content; plus burst-signal
+coalescing, active-capture deferral, capture preemption with same-owner resume,
+and relaunch ordering of failed recovery before new work. In-memory fixtures
+use exact clocks, UUIDs, events, and briefs; they also require the earliest
+lead-window wake to beat the local-day horizon wake and an empty event set to
+retain the next horizon refresh. No host calendar, private meeting, network,
+retry, or UI-only seed substitutes for the contract.
+
+Architecture ratchets pin schema v47, immutable-table triggers, bounded
+attempt/pending/artifact/lead/deadline constants, exact-event revalidation,
+typed non-public Skill transitions, the one signal-driven supervisor, stale
+wake cancellation on global pause, local-day horizon refresh, and D436. They
+forbid polling and keep Core free of storage ownership. AUTO-5b still adds no
+ordinary UI surface, so the mandatory real-app evidence remains the minimum
+bilingual Suggested-actions control journey; AUTO-5c owns the new bilingual
+creation/status/history UI.
+
+After repairing one architecture-vocabulary ratchet caught by the focused run,
+the exact candidate passed 225 architecture cases plus all 19 focused standing
+cases, then all 2,880 package cases with 15 explicit environment/model skips
+and zero failures in 130.695 seconds of XCTest execution. The current-SDK
+warnings-as-errors build, strict SwiftLint across 768 Swift files, repository
+hygiene including its deterministic loopback Web fixtures, and diff whitespace
+check also passed. The first sandboxed hygiene attempt was not product evidence:
+macOS denied the local fixture's loopback `bind`; the unchanged authorized run
+passed instead.
+
+One XCUITest build was reused sequentially for the mandatory minimum-safe
+Suggested-actions canary. It passed 1/1 English in 6.590 seconds and 1/1 Spanish
+in 5.437 seconds, both inside the unchanged budget with zero retry or harness
+adjustment. The explicit host override ignored only Notification Center alerts;
+the quiet-host preflight and every other blocker remained enforced. This
+canary proves the surrounding bilingual global/per-Skill controls still launch
+and render in the real app; it does not pretend that AUTO-5c's absent standing
+rule UI has been exercised.
+
+The Developer-ID-signed `app.portavoz.mac.dev` bundle was then rebuilt in
+release configuration, deeply verified before and after copying, installed
+only at `/Applications/Portavoz Dev.app`, registered, and observed running from
+that exact bundle. The notarized `/Applications/Portavoz.app` release copy was
+not an install target and remained untouched. The local build had no CloudKit
+provisioning profile, so this is deliberately not CloudKit, notarization,
+distribution, or physical-device evidence.
 
 **D335 content-free Skill receipt inspection gate.** Sixteen Skills control
 center cases, including six D335 cases, cover a valid retry timeline plus

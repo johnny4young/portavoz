@@ -123,7 +123,7 @@ extension MeetingStore {
         }
     }
 
-    private static func standingSkillRule(
+    static func standingSkillRule(
         from row: Row
     ) throws -> StandingSkillRule {
         let rawID: String = row["id"]

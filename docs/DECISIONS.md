@@ -16800,3 +16800,64 @@ valid merely because a stale Skill is re-enabled. It is not yet an automation
 feature a user can activate, and it does not prove event delivery, relaunch
 execution, UI, physical Sequoia/Tahoe behavior, accessibility, signed
 distribution, CloudKit, or field usefulness.
+
+## D436 — Execute standing briefs through one crash-safe local owner (Aug 2026)
+
+**Context:** Persisted standing authority is not enough to run unattended work.
+An EventKit notification can be duplicated, delayed, or delivered while a
+manual proposal already owns the event; a process can terminate between
+generation and receipt settlement; and recording can begin while a brief is
+being prepared. Treating an observer callback, timer, or in-memory task as
+execution authority would create duplicate drafts, unbounded retry, or model
+contention during capture.
+
+**Decision:** schema v47 adds an append-once
+`standingSkillExecutionAuthority` row joined to the existing durable Skill
+execution owner and one immutable `standingSkillArtifact`. The authority stores
+only the rule snapshot identity, closed action, SHA-256 fingerprint of the
+opaque event identifier plus exact start instant, bounded local-day window, and
+authorization time. One unique action/fingerprint pair owns an occurrence;
+rule deletion cannot erase historical authority. The artifact stores one
+format-versioned local pre-meeting brief, capped at 128 KiB and verified by a
+persisted SHA-256 digest. Neither table participates in CloudKit, portable
+meeting bundles, or support diagnostics.
+
+Claim is one SQLite transaction. It re-reads the exact current rule, global
+pause, per-Skill disablement, one-shot dismissal, any manual owner for the same
+event, the rule's single-flight state, and the local-day daily count before it
+creates the normal `confirmed` Skill execution plus standing authority. The
+application computes a DST-safe local-day window whose duration cannot exceed
+30 hours. Invalid identities, stale versions, malformed time, duplicate
+proposal/idempotency ownership, or a budget beyond the rule's 1...8 ceiling
+fail closed.
+
+Preparation is admitted only from zero to two hours before the exact event and
+has a 30-second execution deadline. It uses the existing local
+`PrepareMeetingBrief` workflow, then re-resolves the event and requires the
+complete event value to remain equal before encoding. Success appends
+`begin`/`succeed` and inserts the artifact in one transaction; failure appends
+`begin`/typed `fail` in one transaction. Confirmed and recoverable-failed
+owners may resume through at most three automatic attempts. An `executing`
+owner is outcome-unknown and is never repeated. Explicit cancellation or a
+changed event retires a new confirmed owner, while recording preemption keeps
+that exact owner confirmed for later resumption.
+
+The macOS composition owns one signal-driven supervisor. Launch recovers
+bounded pending owners before admitting new events. EventKit change
+notifications are invalidation signals only, and the supervisor schedules at
+most one wake for the next two-hour boundary or the next local-day horizon
+refresh, whichever comes first; it never polls EventKit or SQLite. The daily
+boundary is required because EventKit's bounded today-plus-tomorrow query would
+otherwise become stale while a long-running app receives no calendar edits.
+Concurrent wakes coalesce behind one serialized worker. Every capture phase
+cancels current background preparation and the inactive transition re-kicks
+it. Disposable-store composition installs neither a host-calendar read nor a
+TCC prompt.
+
+**Consequences:** a persisted rule can now produce one durable, local,
+relaunch-safe brief for an exact calendar occurrence without external egress,
+duplicate recursion, or recording contention. The contentful artifact remains
+unexposed until the bilingual AUTO-5c controls/history surface is implemented;
+ordinary users still cannot create the rule in this slice. Real EventKit/TCC
+delivery, physical Sequoia/Tahoe behavior, accessibility, signed distribution,
+and field usefulness remain separate qualification gates.

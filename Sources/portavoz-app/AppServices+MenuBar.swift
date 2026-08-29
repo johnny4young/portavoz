@@ -106,7 +106,7 @@ extension AppServices: MenuBarModelClient {
 /// EventKit stays behind one actor so the resident brief proposal never reads
 /// calendars on the main actor. The temporary-store fixture is admitted only
 /// with its exact seed flag and never consults the host calendar or TCC state.
-actor AppUpcomingEventSource: UpcomingEventResolving {
+actor AppUpcomingEventSource: StandingPreMeetingBriefEventSource {
     private let usesTemporaryStore: Bool
     private let seededEvent: UpcomingEvent?
 
@@ -132,6 +132,19 @@ actor AppUpcomingEventSource: UpcomingEventResolving {
             return seededEvent?.id == identifier ? seededEvent : nil
         }
         return CalendarAttendeeSource().event(matching: identifier)
+    }
+
+    func upcomingStandingBriefEvents() -> [UpcomingEvent] {
+        if usesTemporaryStore { return seededEvent.map { [$0] } ?? [] }
+        guard !CalendarAttendeeSource.accessUndetermined else { return [] }
+        return CalendarAttendeeSource().upcomingEvents()
+    }
+
+    func standingBriefEventChanges() -> AsyncStream<Void> {
+        guard !usesTemporaryStore else {
+            return AsyncStream { $0.finish() }
+        }
+        return CalendarAttendeeSource.eventChanges()
     }
 }
 
