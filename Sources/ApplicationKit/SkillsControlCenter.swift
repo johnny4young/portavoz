@@ -49,6 +49,9 @@ public enum SkillCatalogue {
             availability: .available),
         SkillCatalogueEntry(
             definition: SecretGistPublishSkill.definition,
+            availability: .available),
+        SkillCatalogueEntry(
+            definition: GitHubIssueCreateSkill.definition,
             availability: .available)
     ]
 }

@@ -291,6 +291,13 @@ final class EnglishSourceTests: XCTestCase {
             return line.contains("reunión") || line.contains("transcripción")
                 || line.contains("título")
         }
+        if relative == "Sources/ApplicationKit/GitHubIssueSkill.swift" {
+            // The reviewed issue scaffold follows the meeting-summary
+            // language, so these exact Spanish labels are shared content,
+            // not app UI or explanatory source prose.
+            return line.contains("Tarea de reunión de")
+                || line.contains("revisión explícita")
+        }
         if relative == "Sources/IntelligenceKit/Companion.swift" {
             return line.contains("qué") || line.contains("cómo") || line.contains("¿")
                 || line.contains("quién") || line.contains("cuál") || line.contains("cuánto")

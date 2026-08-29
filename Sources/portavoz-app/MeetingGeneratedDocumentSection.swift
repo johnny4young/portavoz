@@ -37,6 +37,7 @@ struct MeetingGeneratedDocumentActions {
     let dismissRecipeSuggestion: @MainActor () -> Void
     let dismissThinSuggestion: @MainActor () -> Void
     let setActionItem: @MainActor (ActionItem, Bool) -> Void
+    let createGitHubIssue: @MainActor (ActionItem) -> Void
     let focusEvidence: @MainActor (TranscriptSegment) -> Void
     let setClaimFeedback:
         @MainActor (SummaryClaimID, SummaryClaimFeedback?) async -> Bool
@@ -269,41 +270,7 @@ struct MeetingGeneratedDocumentSection: View {
     }
 
     private var actionItems: some View {
-        let evidenceByItem = values.summary.draft.actionItemEvidence.reduce(
-            into: [UUID: SummaryActionItemEvidence]()
-        ) { result, evidence in
-            if result[evidence.actionItemID] == nil {
-                result[evidence.actionItemID] = evidence
-            }
-        }
-        return ForEach(values.summary.draft.actionItems) { item in
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle(isOn: actionItemBinding(item)) {
-                    Text(item.text).strikethrough(item.isDone)
-                }
-                .toggleStyle(.checkbox)
-                .accessibilityIdentifier("action-item-\(item.id.uuidString)")
-                if let evidence = evidenceByItem[item.id] {
-                    let resolution = currentResolution(evidence.resolveEvidence(
-                        currentTranscriptRevision: values.transcriptRevision,
-                        segments: values.segments))
-                    evidenceSources(
-                        resolution,
-                        sourceIdentifier:
-                            "summary-action-item-\(item.id.uuidString)-evidence",
-                        staleIdentifier:
-                            "summary-action-item-\(item.id.uuidString)-stale",
-                        unavailableIdentifier:
-                            "summary-action-item-\(item.id.uuidString)-unavailable")
-                }
-            }
-        }
-    }
-
-    private func actionItemBinding(_ item: ActionItem) -> Binding<Bool> {
-        Binding(
-            get: { item.isDone },
-            set: { actions.setActionItem(item, $0) })
+        MeetingActionItemsView(values: values, actions: actions)
     }
 
     @ViewBuilder

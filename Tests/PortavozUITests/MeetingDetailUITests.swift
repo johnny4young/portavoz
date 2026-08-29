@@ -1172,9 +1172,10 @@ final class MeetingDetailUITests: PortavozUITestCase {
         attachScreenshot(of: app, named: "meeting-detail-email-recap-handoff")
     }
 
-    /// D328 — exact canonical Markdown is visible before the single GitHub
-    /// mutation. The disposable gateway writes the real content-free egress
-    /// receipt and returns a provider-shaped URL without touching network.
+    /// D328/D434 — one launch covers both GitHub mutations. Exact Gist
+    /// Markdown and one cited action-item issue are visible before their
+    /// independent confirmations; disposable gateways write real content-free
+    /// egress receipts without touching Keychain or the network.
     @MainActor
     func testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument() {
         let app = launchOnSeededMeeting()
@@ -1256,17 +1257,88 @@ final class MeetingDetailUITests: PortavozUITestCase {
         XCTAssertTrue(
             remoteReceiptTexts.contains { $0.contains("api.github.com") },
             "the egress ledger must include api.github.com; got: \(remoteReceiptTexts)")
+        let remoteCountAfterGist = remoteReceipts.count
 
-        menu.click()
-        XCTAssertFalse(
-            app.menuItems["skill-offer-secret-gist-publish"].exists,
-            "one remote creation must retire its proposal")
-        XCTAssertTrue(app.menuItems["skill-offer-recap-draft"].exists)
-        XCTAssertTrue(app.menuItems["skill-offer-email-recap-draft"].exists)
-        XCTAssertTrue(app.menuItems["skill-offer-package-export"].exists)
-        attachScreenshot(of: app, named: "meeting-detail-secret-gist-receipts")
+        let todos = app.control(withIdentifier: "summary-tab-todos")
+        XCTAssertTrue(todos.waitForHittable(timeout: 5))
+        todos.click()
+        let issueAction = app.buttons[
+            "action-item-B5E00000-0000-4000-8000-000000000001-github"]
+        XCTAssertTrue(
+            issueAction.waitForHittable(timeout: 5),
+            "one current pending action item must expose its issue action")
+        issueAction.click()
 
-        app.typeKey(.escape, modifierFlags: [])
+        let issueSheet = app.control(withIdentifier: "github-issue-sheet")
+        XCTAssertTrue(issueSheet.waitForExistenceFast(timeout: 5))
+        let repository = app.textFields["github-issue-repository"]
+        XCTAssertTrue(repository.waitForHittable(timeout: 5))
+        repository.click()
+        repository.typeText("portavoz/demo")
+        let reviewIssue = app.buttons["github-issue-review"]
+        XCTAssertTrue(reviewIssue.waitForHittable(timeout: 5))
+        reviewIssue.click()
+
+        let issueDestination = app.control(
+            withIdentifier: "github-issue-preview-repository")
+        let issueTitle = app.control(
+            withIdentifier: "github-issue-preview-title")
+        let issueBody = app.control(
+            withIdentifier: "github-issue-preview-body")
+        let issueCitation = app.control(
+            withIdentifier: "github-issue-citation-0")
+        let issueBoundary = app.control(
+            withIdentifier: "github-issue-boundary")
+        XCTAssertTrue(issueBoundary.waitForExistenceFast(timeout: 5))
+        let issueDestinationText = accessibleText(of: issueDestination)
+        let issueBodyText = accessibleText(of: issueBody)
+        let issueCitationText = accessibleText(of: issueCitation)
+        XCTAssertTrue(issueDestinationText.contains("portavoz/demo"))
+        XCTAssertTrue(issueDestinationText.contains("api.github.com"))
+        XCTAssertTrue(accessibleText(of: issueTitle).contains("Prepare the rollout"))
+        XCTAssertTrue(issueBodyText.contains("Test meeting"))
+        XCTAssertTrue(issueBodyText.contains("Ana"))
+        XCTAssertTrue(issueBodyText.contains(
+            "El rollout del modelo queda para el viernes."))
+        XCTAssertTrue(issueCitationText.contains("00:03"))
+        XCTAssertTrue(issueCitationText.contains(
+            "El rollout del modelo queda para el viernes."))
+        let expectedIssueBoundary = UITestLocale.environmentLocale == "es"
+            ? "crea un issue"
+            : "creates one issue"
+        XCTAssertTrue(
+            accessibleText(of: issueBoundary)
+                .localizedCaseInsensitiveContains(expectedIssueBoundary))
+
+        let createIssue = app.buttons["github-issue-confirm"]
+        XCTAssertTrue(createIssue.waitForHittable(timeout: 5))
+        let expectedCreateIssue = UITestLocale.environmentLocale == "es"
+            ? "Crear un issue"
+            : "Create one issue"
+        XCTAssertEqual(createIssue.label, expectedCreateIssue)
+        createIssue.click()
+
+        let issueResultURL = app.control(withIdentifier: "github-issue-result-url")
+        XCTAssertTrue(issueResultURL.waitForExistenceFast(timeout: 10))
+        XCTAssertTrue(accessibleText(of: issueResultURL).contains(
+            "https://github.com/portavoz/demo/issues/42"))
+        app.buttons["github-issue-result-dismiss"].click()
+
+        let issueReceipt = app.control(
+            withIdentifier: "skill-receipt-github-issue-create")
+        XCTAssertTrue(issueReceipt.waitForExistenceFast(timeout: 10))
+        let expectedDetailIssueReceipt = UITestLocale.environmentLocale == "es"
+            ? "Issue de GitHub — creado"
+            : "GitHub issue — created"
+        XCTAssertTrue(accessibleText(of: issueReceipt)
+            .localizedCaseInsensitiveContains(expectedDetailIssueReceipt))
+        let issueRemoteReceipts = app.staticTexts.matching(NSPredicate(
+            format: "identifier BEGINSWITH 'privacy-remote-event-'"))
+        XCTAssertTrue(waitForUITestCondition(timeout: 10) {
+            issueRemoteReceipts.count == remoteCountAfterGist + 1
+        }, "one issue confirmation must add exactly one egress receipt")
+        attachScreenshot(of: app, named: "meeting-detail-github-issue-receipts")
+
         XCTAssertTrue(app.openSettingsWindow())
         XCTAssertTrue(app.openSettingsCategory(
             "settings-category-skills",
@@ -1279,6 +1351,14 @@ final class MeetingDetailUITests: PortavozUITestCase {
             : "Secret Gist published"
         XCTAssertTrue(
             accessibleText(of: settingsReceipt).contains(expectedSettingsStatus))
+        let settingsIssueReceipt = app.control(
+            withIdentifier: "settings-skill-receipt-github-issue-create")
+        XCTAssertTrue(settingsIssueReceipt.waitForExistenceFast(timeout: 10))
+        let expectedSettingsIssueReceipt = UITestLocale.environmentLocale == "es"
+            ? "Issue de GitHub creado"
+            : "GitHub issue created"
+        XCTAssertTrue(accessibleText(of: settingsIssueReceipt)
+            .localizedCaseInsensitiveContains(expectedSettingsIssueReceipt))
     }
 
     @MainActor

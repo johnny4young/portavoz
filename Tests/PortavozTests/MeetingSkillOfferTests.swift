@@ -56,6 +56,7 @@ final class MeetingSkillOfferTests: XCTestCase {
         ])
         XCTAssertEqual(prefixReads, [
             "\(MeetingPackageExportSkill.id):\(meetingID.rawValue.uuidString):",
+            "\(GitHubIssueCreateSkill.id):\(meetingID.rawValue.uuidString):",
         ])
     }
 

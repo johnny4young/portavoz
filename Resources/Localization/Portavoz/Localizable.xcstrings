@@ -1,6 +1,306 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Create one GitHub issue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear un issue de GitHub"
+          }
+        }
+      }
+    },
+    "Repository": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repositorio"
+          }
+        }
+      }
+    },
+    "Portavoz never guesses a repository.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portavoz nunca adivina un repositorio."
+          }
+        }
+      }
+    },
+    "Reviewing is local. Nothing leaves this Mac until you confirm the exact issue.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La revisión es local. Nada sale de este Mac hasta que confirmes el issue exacto."
+          }
+        }
+      }
+    },
+    "Review issue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisar issue"
+          }
+        }
+      }
+    },
+    "Review the exact GitHub issue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa el issue exacto de GitHub"
+          }
+        }
+      }
+    },
+    "Body": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contenido"
+          }
+        }
+      }
+    },
+    "Evidence included": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evidencia incluida"
+          }
+        }
+      }
+    },
+    "Confirming sends this title, body, and cited excerpts to this repository and creates one issue.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al confirmar, se envían este título, contenido y los fragmentos citados a este repositorio y se crea un issue."
+          }
+        }
+      }
+    },
+    "Create one issue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear un issue"
+          }
+        }
+      }
+    },
+    "GitHub issue created": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Issue de GitHub creado"
+          }
+        }
+      }
+    },
+    "This exact issue was already recorded as completed.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este issue exacto ya estaba registrado como completado."
+          }
+        }
+      }
+    },
+    "Issue outcome unknown — check GitHub": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resultado del issue desconocido — revisa GitHub"
+          }
+        }
+      }
+    },
+    "Enter a GitHub repository as owner/name.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ingresa un repositorio de GitHub como owner/name."
+          }
+        }
+      }
+    },
+    "The transcript changed. Regenerate the summary before creating an issue.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción cambió. Regenera el resumen antes de crear un issue."
+          }
+        }
+      }
+    },
+    "This action item does not have current evidence for an issue draft.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta tarea no tiene evidencia actual para un borrador de issue."
+          }
+        }
+      }
+    },
+    "This issue draft changed. Review it again before publishing.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este borrador de issue cambió. Revísalo de nuevo antes de publicarlo."
+          }
+        }
+      }
+    },
+    "GitHub may have created this issue. Check the repository before trying again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puede que GitHub haya creado este issue. Revisa el repositorio antes de volver a intentarlo."
+          }
+        }
+      }
+    },
+    "This issue could not be created. Nothing left Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo crear este issue. Nada salió de Portavoz."
+          }
+        }
+      }
+    },
+    "The issue draft could not be prepared.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo preparar el borrador del issue."
+          }
+        }
+      }
+    },
+    "The issue could not be created. Nothing left Portavoz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo crear el issue. Nada salió de Portavoz."
+          }
+        }
+      }
+    },
+    "GitHub issue creation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creación de issue de GitHub"
+          }
+        }
+      }
+    },
+    "GitHub issue — created": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Issue de GitHub — creado"
+          }
+        }
+      }
+    },
+    "GitHub issue — outcome unknown, check GitHub": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Issue de GitHub — resultado desconocido, revisa GitHub"
+          }
+        }
+      }
+    },
+    "Creates one cited GitHub issue from a pending action item after you review the repository and exact body.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea un issue de GitHub con citas desde una tarea pendiente después de que revises el repositorio y el contenido exacto."
+          }
+        }
+      }
+    },
+    "Personal token": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token personal"
+          }
+        }
+      }
+    },
+    "A token is stored in this device’s Keychain. It is used only after you confirm a Gist or issue.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay un token guardado en el Llavero de este dispositivo. Solo se usa después de que confirmes un Gist o un issue."
+          }
+        }
+      }
+    },
+    "For Gists, grant gist access. For issues, use a fine-grained token with Issues write access only to the repositories you choose. The token stays in Keychain.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para Gists, concede acceso a gist. Para issues, usa un token detallado con permiso de escritura en Issues solo para los repositorios que elijas. El token permanece en el Llavero."
+          }
+        }
+      }
+    },
+    "Create GitHub issue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crear issue de GitHub"
+          }
+        }
+      }
+    },
+    "Review the repository, exact issue body, and transcript evidence before anything leaves this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revisa el repositorio, el contenido exacto del issue y la evidencia de la transcripción antes de que algo salga de este Mac."
+          }
+        }
+      }
+    },
     "Attempt: %d": {
       "localizations": {
         "es": {

@@ -77,6 +77,7 @@ extension MeetingDetailCoordinator {
             setActionItem: { item, done in
                 Task { await model.send(.setActionItem(item.id, done: done)) }
             },
+            createGitHubIssue: openGitHubIssueSkill,
             focusEvidence: focusEvidence,
             setClaimFeedback: { claimID, feedback in
                 let effect = await model.send(.setSummaryClaimFeedback(claimID, feedback))

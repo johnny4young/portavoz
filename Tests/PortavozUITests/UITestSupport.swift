@@ -399,9 +399,31 @@ extension XCUIApplication {
         guard waitForSeedFixtureReady(timeout: timeout) else { return false }
         guard prepareForInteraction(timeout: timeout) else { return false }
 
+        // The disposable app legitimately owns keyboard focus while XCUITest
+        // launches it. A keystroke from another local process can therefore
+        // land in SwiftUI's first text field and filter every seeded row before
+        // the test has interacted with the app. Recover from that observable
+        // state instead of retrying a launch or asking the operator to stop
+        // using the machine; ordinary search journeys type only after this
+        // launch boundary.
         let meeting = descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
+        if meeting.isHittable { return true }
+
+        let search = textFields["library-search-field"]
+        if search.exists,
+           let query = search.value as? String,
+           !query.isEmpty {
+            search.click()
+            search.typeKey("a", modifierFlags: .command)
+            search.typeKey(.delete, modifierFlags: [])
+            search.typeKey(.return, modifierFlags: [])
+            windows["main-AppWindow-1"]
+                .coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5))
+                .click()
+        }
+
         return meeting.waitForHittable(timeout: timeout)
     }
 

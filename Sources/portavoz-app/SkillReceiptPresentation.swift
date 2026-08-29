@@ -7,6 +7,7 @@ enum SkillReceiptPresentation {
         case RecapDraftSkill.id: L10n.text("Recap draft")
         case EmailRecapDraftSkill.id: L10n.text("Email recap draft")
         case SecretGistPublishSkill.id: L10n.text("Secret Gist publication")
+        case GitHubIssueCreateSkill.id: L10n.text("GitHub issue creation")
         case MeetingPackageExportSkill.id: L10n.text("Text-only meeting package")
         case ReminderDraftSkill.id: L10n.text("Reminder draft")
         case PreMeetingBriefSkill.id: L10n.text("Pre-meeting brief")
@@ -44,6 +45,36 @@ enum SkillReceiptPresentation {
         }
     }
 
+    static func meetingDetailTitle(
+        skillID: String,
+        state: SkillExecutionState
+    ) -> String? {
+        switch (skillID, state) {
+        case (EmailRecapDraftSkill.id, .succeeded):
+            L10n.text("Email recap draft — handoff requested")
+        case (EmailRecapDraftSkill.id, .failed):
+            L10n.text("Email recap draft — did not open")
+        case (EmailRecapDraftSkill.id, .executing):
+            L10n.text("Email recap draft — handoff status unknown")
+        case (SecretGistPublishSkill.id, .succeeded):
+            L10n.text("Secret Gist — published")
+        case (SecretGistPublishSkill.id, .failed),
+             (SecretGistPublishSkill.id, .executing):
+            L10n.text("Secret Gist — outcome unknown, check GitHub")
+        case (GitHubIssueCreateSkill.id, .succeeded):
+            L10n.text("GitHub issue — created")
+        case (GitHubIssueCreateSkill.id, .failed),
+             (GitHubIssueCreateSkill.id, .executing):
+            L10n.text("GitHub issue — outcome unknown, check GitHub")
+        case (EmailRecapDraftSkill.id, _),
+             (SecretGistPublishSkill.id, _),
+             (GitHubIssueCreateSkill.id, _):
+            L10n.format("%@ — did not finish", skillTitle(skillID))
+        default:
+            nil
+        }
+    }
+
     private static func externalStatus(
         skillID: String,
         state: SkillExecutionState,
@@ -64,6 +95,14 @@ enum SkillReceiptPresentation {
             L10n.text("Publication outcome unknown — check GitHub")
         case (SecretGistPublishSkill.id, .executing):
             L10n.text("Publication outcome unknown — check GitHub")
+        case (GitHubIssueCreateSkill.id, .succeeded):
+            L10n.text("GitHub issue created")
+        case (GitHubIssueCreateSkill.id, .failed)
+            where failureCategory == .external
+                || failureCategory == .destructive:
+            L10n.text("Issue outcome unknown — check GitHub")
+        case (GitHubIssueCreateSkill.id, .executing):
+            L10n.text("Issue outcome unknown — check GitHub")
         default:
             nil
         }

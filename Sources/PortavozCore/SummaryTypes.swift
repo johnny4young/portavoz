@@ -461,7 +461,11 @@ func resolveTranscriptEvidence(
     guard unavailableEvidenceCount == 0, !evidenceSegmentIDs.isEmpty else {
         return TranscriptEvidenceResolution(status: .unavailable)
     }
-    let byID = Dictionary(uniqueKeysWithValues: segments.map { ($0.id, $0) })
+    let grouped = Dictionary(grouping: segments, by: \.id)
+    guard grouped.values.allSatisfy({ $0.count == 1 }) else {
+        return TranscriptEvidenceResolution(status: .unavailable)
+    }
+    let byID = grouped.compactMapValues(\.first)
     let resolved = evidenceSegmentIDs.compactMap { byID[$0] }
     guard resolved.count == evidenceSegmentIDs.count else {
         return TranscriptEvidenceResolution(status: .unavailable)

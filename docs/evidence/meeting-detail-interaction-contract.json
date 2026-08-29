@@ -10,6 +10,8 @@
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
     "Sources/portavoz-app/DecisionConfirmSheet.swift",
+    "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+    "Sources/portavoz-app/MeetingActionItemsView.swift",
     "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
     "Sources/portavoz-app/MeetingDetailActionSection.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
@@ -246,6 +248,246 @@
       "path": "Sources/portavoz-app/DecisionConfirmSheet.swift",
       "category": "state",
       "source": "@State private var topicLabel = \"\"",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button {",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button(\"Back\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Cancel\"), action: dismiss)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Copy link\")) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Done\"), action: dismiss)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "Button(L10n.text(\"Open\")) { openURL(outputURL) }",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "control",
+      "source": "TextField(\"owner/name\", text: $repository)",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-action-item\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-back\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-boundary\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-cancel\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-citation-\\(index)\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-confirm\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-error\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-preview-body\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-preview-repository\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-preview-title\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-repository\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-copy\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-dismiss\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-message\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-open\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-title\")",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-result-url\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-review\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"github-issue-sheet\")",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.cancelAction)",
+      "occurrences": 2
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "keyboard",
+      "source": ".keyboardShortcut(.defaultAction)",
+      "occurrences": 3
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var completion:",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var draft: GitHubIssueDraft?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var failure: String?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var isConfirming = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var isPreparing = false",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var proposalID: UUID?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var proposedAt: Date?",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+      "category": "state",
+      "source": "@State private var repository = \"\"",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "control",
+      "source": "Button(\"Create GitHub issue\") {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "control",
+      "source": "Toggle(isOn: actionItemBinding(item)) {",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(",
+      "occurrences": 1
+    },
+    {
+      "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+      "category": "identifier",
+      "source": ".accessibilityIdentifier(\"action-item-\\(item.id.uuidString)\")",
       "occurrences": 1
     },
     {
@@ -699,6 +941,12 @@
       "occurrences": 1
     },
     {
+      "path": "Sources/portavoz-app/MeetingDetailCoordinator+Skills.swift",
+      "category": "presentation",
+      "source": "flow.sheet = .githubIssueSkill",
+      "occurrences": 1
+    },
+    {
       "path": "Sources/portavoz-app/MeetingDetailCoordinator.swift",
       "category": "navigation",
       "source": "NSWorkspace.shared.open(url)",
@@ -936,7 +1184,7 @@
       "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
       "category": "presentation",
       "source": "flow.sheet = nil",
-      "occurrences": 2
+      "occurrences": 3
     },
     {
       "path": "Sources/portavoz-app/MeetingDetailFlowHost.swift",
@@ -1439,12 +1687,6 @@
     {
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "control",
-      "source": "Toggle(isOn: actionItemBinding(item)) {",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
-      "category": "control",
       "source": "return Button {",
       "occurrences": 1
     },
@@ -1470,12 +1712,6 @@
       "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
       "category": "identifier",
       "source": ".accessibilityIdentifier(\"\\(sourceIdentifier)-\\(index)\")",
-      "occurrences": 1
-    },
-    {
-      "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
-      "category": "identifier",
-      "source": ".accessibilityIdentifier(\"action-item-\\(item.id.uuidString)\")",
       "occurrences": 1
     },
     {
@@ -2882,6 +3118,14 @@
       ],
       "sourceAnchors": [
         {
+          "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+          "anchor": "\"github-issue-sheet\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+          "anchor": "\"action-item-\\(item.id.uuidString)-github\""
+        },
+        {
           "path": "Sources/portavoz-app/MeetingDetailTrustSection.swift",
           "anchor": "\"skill-receipt-\\(receipt.skillID)\""
         },
@@ -2896,7 +3140,7 @@
       ],
       "screenshots": [
         "meeting-detail-email-recap-handoff",
-        "meeting-detail-secret-gist-receipts",
+        "meeting-detail-github-issue-receipts",
         "meeting-detail-skill-receipt",
         "meeting-detail-skill-retry-receipt"
       ]

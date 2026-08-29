@@ -335,6 +335,84 @@ final class MeetingDetailModelTests: XCTestCase {
         XCTAssertNil(model.state.lastActionError)
     }
 
+    func testGitHubIssuePreparationAndExecutionPreserveExactReviewedMaterial() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let draft = GitHubIssueDraft(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.actionItem.id,
+            repository: try XCTUnwrap(GitHubRepository("portavoz/demo")),
+            title: fixture.actionItem.text,
+            body: "Approved body",
+            citations: [GitHubIssueCitation(
+                segmentID: fixture.segment.id,
+                timestamp: fixture.segment.startTime,
+                speaker: "Ana",
+                excerpt: fixture.segment.text)])
+        client.gitHubIssueDraft = draft
+        client.gitHubIssueExecutionResult = .succeeded(
+            outputURL: URL(string: "https://github.com/portavoz/demo/issues/42"))
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+        let request = PrepareGitHubIssueDraftRequest(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.actionItem.id,
+            repository: "portavoz/demo")
+        let proposalID = UUID()
+        let proposedAt = Date(timeIntervalSince1970: 100)
+
+        let prepared = await model.send(.prepareGitHubIssue(request))
+        let performed = await model.send(.performGitHubIssue(
+            draft,
+            proposalID: proposalID,
+            proposedAt: proposedAt))
+
+        guard case .gitHubIssuePrepared(let preparedDraft) = prepared else {
+            return XCTFail("preparation must return the exact immutable draft")
+        }
+        XCTAssertEqual(preparedDraft, draft)
+        guard case .gitHubIssuePerformed(let outputURL) = performed else {
+            return XCTFail("successful confirmation must preserve the GitHub URL")
+        }
+        XCTAssertEqual(outputURL?.absoluteString, "https://github.com/portavoz/demo/issues/42")
+        XCTAssertTrue(client.calls.contains(.prepareGitHubIssue(request)))
+        XCTAssertTrue(client.calls.contains(
+            .performGitHubIssue(draft, proposalID, proposedAt)))
+        XCTAssertNil(model.state.lastActionError)
+    }
+
+    func testAmbiguousGitHubIssueResultIsTerminalAndPreservesKnownURL() async throws {
+        let fixture = MeetingDetailModelFixture()
+        let client = MeetingDetailModelClientFake(updates: [])
+        let outputURL = URL(string: "https://github.com/portavoz/demo/issues/42")
+        let draft = GitHubIssueDraft(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.actionItem.id,
+            repository: try XCTUnwrap(GitHubRepository("portavoz/demo")),
+            title: fixture.actionItem.text,
+            body: "Approved body",
+            citations: [GitHubIssueCitation(
+                segmentID: fixture.segment.id,
+                timestamp: fixture.segment.startTime,
+                speaker: "Ana",
+                excerpt: fixture.segment.text)])
+        client.gitHubIssueExecutionResult = .outcomeUnknown(
+            message: "Check GitHub before taking another action.",
+            outputURL: outputURL)
+        let model = MeetingDetailModel(meetingID: fixture.meeting.id, client: client)
+
+        let effect = await model.send(.performGitHubIssue(
+            draft,
+            proposalID: UUID(),
+            proposedAt: Date()))
+
+        guard case .gitHubIssueOutcomeUnknown(let message, let preservedURL) = effect else {
+            return XCTFail("ambiguous remote work must not become retryable")
+        }
+        XCTAssertEqual(message, "Check GitHub before taking another action.")
+        XCTAssertEqual(preservedURL, outputURL)
+        XCTAssertNil(model.state.lastActionError)
+    }
+
     func testCommitmentAdmissionAndReviewStayBehindTheFeatureOwner() async {
         let fixture = MeetingDetailModelFixture()
         let client = MeetingDetailModelClientFake(updates: [])
@@ -1015,6 +1093,8 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
     var compressionResult = MeetingAudioCompressionResult(bytesFreed: 1_024)
     var skillFailuresRemaining = 0
     var skillExecutionResult: MeetingDetailSkillExecutionResult?
+    var gitHubIssueDraft: GitHubIssueDraft?
+    var gitHubIssueExecutionResult: MeetingDetailSkillExecutionResult?
     var confirmedCommitmentResult = Commitment(
         title: "Prepare the rollout",
         createdAt: Date(timeIntervalSince1970: 1_700_000_000))
@@ -1198,6 +1278,25 @@ private final class MeetingDetailModelClientFake: MeetingDetailModelClient {
             return .retryableFailure("failed")
         }
         return skillExecutionResult ?? .succeeded(outputURL: nil)
+    }
+
+    func prepareMeetingDetailGitHubIssueDraft(
+        _ request: PrepareGitHubIssueDraftRequest
+    ) throws -> GitHubIssueDraft {
+        calls.append(.prepareGitHubIssue(request))
+        guard let gitHubIssueDraft else {
+            throw GitHubIssueSkillError.invalidDraft
+        }
+        return gitHubIssueDraft
+    }
+
+    func performMeetingDetailGitHubIssue(
+        _ draft: GitHubIssueDraft,
+        proposalID: UUID,
+        proposedAt: Date
+    ) throws -> MeetingDetailSkillExecutionResult {
+        calls.append(.performGitHubIssue(draft, proposalID, proposedAt))
+        return gitHubIssueExecutionResult ?? .succeeded(outputURL: nil)
     }
 
     func dismissMeetingDetailSkillOffer(_ offer: MeetingSkillOffer) throws {
@@ -1400,5 +1499,7 @@ private enum MeetingDetailModelCall: Equatable {
     case retractDecisionTopic(DecisionTopicLinkID)
     case loadSkillOffers(MeetingID, Bool)
     case performSkill(String, UUID, Date, MeetingSkillPreview, String?)
+    case prepareGitHubIssue(PrepareGitHubIssueDraftRequest)
+    case performGitHubIssue(GitHubIssueDraft, UUID, Date)
     case dismissSkillOffer(String)
 }

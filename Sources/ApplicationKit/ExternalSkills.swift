@@ -8,7 +8,8 @@ public enum ExternalSkills {
     public static var definitions: [SkillDefinition] {
         [
             EmailRecapDraftSkill.definition,
-            SecretGistPublishSkill.definition
+            SecretGistPublishSkill.definition,
+            GitHubIssueCreateSkill.definition
         ]
     }
 

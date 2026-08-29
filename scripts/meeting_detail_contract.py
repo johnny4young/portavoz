@@ -24,6 +24,8 @@ INTERACTION_SOURCE_PATHS = (
     "Sources/portavoz-app/ChipLabel.swift",
     "Sources/portavoz-app/CustomStructureSheet.swift",
     "Sources/portavoz-app/DecisionConfirmSheet.swift",
+    "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+    "Sources/portavoz-app/MeetingActionItemsView.swift",
     "Sources/portavoz-app/MeetingCommitmentInboxSection.swift",
     "Sources/portavoz-app/MeetingDetailActionSection.swift",
     "Sources/portavoz-app/MeetingDetailCoordinator+Commitments.swift",
@@ -171,6 +173,14 @@ DEFAULT_FEATURE_OWNERSHIP = (
             "testSkillProposalJourneyFromBannerToReceipt",
         ],
         "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/GitHubIssueSkillSheet.swift",
+                "anchor": '"github-issue-sheet"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingActionItemsView.swift",
+                "anchor": '"action-item-\\(item.id.uuidString)-github"',
+            },
             {
                 "path": "Sources/portavoz-app/SkillOfferBanner.swift",
                 "anchor": '"skill-offer-menu"',

@@ -35,7 +35,7 @@ final class MeetingDetailModel {
     private(set) var state = State()
     let meetingID: MeetingID
 
-    private let client: any MeetingDetailModelClient
+    let client: any MeetingDetailModelClient
     private let firstContentTrace: MeetingDetailFirstContentTrace
     private var reviewAccumulator = MeetingDetailReviewAccumulator()
     private var metadataSuggestionState = MeetingDetailMetadataSuggestionState()
@@ -60,25 +60,19 @@ final class MeetingDetailModel {
     }
 
     /// Any explicit summary regeneration supersedes the optional recipe chip.
-    func dismissSuggestedRecipe() {
-        state.suggestedRecipe = nil
-    }
+    func dismissSuggestedRecipe() { state.suggestedRecipe = nil }
 
-    func dismissSuggestedTitle() {
-        state.suggestedTitle = nil
-    }
+    func dismissSuggestedTitle() { state.suggestedTitle = nil }
 
-    func dismissNameSuggestion(label: String) {
-        state.nameSuggestions.removeAll { $0.label == label }
-    }
+    func dismissNameSuggestion(label: String) { state.nameSuggestions.removeAll { $0.label == label } }
 
     func dismissVoiceSuggestion(speakerLabel: String) {
         state.voiceSuggestions.removeAll { $0.speakerLabel == speakerLabel }
     }
 
-    func dismissThinSummarySuggestion(version: Int) {
-        state.dismissedThinSummaryVersion = version
-    }
+    func dismissThinSummarySuggestion(version: Int) { state.dismissedThinSummaryVersion = version }
+
+    func recordLastActionError(_ error: String?) { state.lastActionError = error }
 
     /// The route owns the AVFoundation observer lifetime. Leaving the detail
     /// invalidates the application playback facade and allows a clean reload
@@ -167,6 +161,8 @@ final class MeetingDetailModel {
             return nil
         case .performSkill(let offer, let context):
             return await performSkill(offer, context: context)
+        case .performGitHubIssue(let context):
+            return await performGitHubIssue(context)
         case .dismissSkillOffer(let offer):
             await dismissSkillOffer(offer)
             return nil
@@ -224,6 +220,8 @@ final class MeetingDetailModel {
         case .loadSkillOffers:
             await loadSkillOffers()
             return nil
+        case .prepareGitHubIssue(let request):
+            return await prepareGitHubIssue(request)
         }
     }
 

@@ -864,7 +864,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         _ = openFailedReceipt(in: app)
 
         let recovery = app.buttons["skill-receipt-recovery-action"]
-        XCTAssertTrue(recovery.waitForStableFrame(timeout: 5))
+        XCTAssertTrue(recovery.waitForHittable(timeout: 5))
         XCTAssertGreaterThan(
             app.windows.count,
             1,
@@ -873,7 +873,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
         let offerMenu = app.control(withIdentifier: "skill-offer-menu")
         XCTAssertTrue(
-            offerMenu.waitForStableFrame(timeout: 10),
+            offerMenu.waitForHittable(timeout: 10),
             "safe recovery must return to the exact meeting surface")
         XCTAssertTrue(
             waitForWindowCount(1, in: app, timeout: 10),
@@ -1079,9 +1079,25 @@ final class SkillsSettingsUITests: PortavozUITestCase {
                 format: "identifier BEGINSWITH %@ AND identifier ENDSWITH %@",
                 "settings-skill-",
                 "-enabled"))
+        let expectedSkillIdentifiers: Set<String> = [
+            "settings-skill-recap-draft-enabled",
+            "settings-skill-meeting-package-export-enabled",
+            "settings-skill-reminder-draft-enabled",
+            "settings-skill-pre-meeting-brief-enabled",
+            "settings-skill-email-recap-draft-enabled",
+            "settings-skill-secret-gist-publish-enabled",
+            "settings-skill-github-issue-create-enabled"
+        ]
         XCTAssertTrue(
-            waitForCount(availableToggles, toEqual: 6, timeout: 5),
-            "the live pane must expose the six-action candidate catalogue")
+            waitForCount(
+                availableToggles,
+                toEqual: expectedSkillIdentifiers.count,
+                timeout: 5),
+            "the live pane must expose the seven-action candidate catalogue")
+        XCTAssertEqual(
+            Set(availableToggles.allElementsBoundByIndex.map(\.identifier)),
+            expectedSkillIdentifiers,
+            "the live pane must expose exactly the reviewed Skill catalogue")
         XCTAssertFalse(Self.isOn(pause))
         XCTAssertTrue(Self.isOn(recap))
         XCTAssertTrue(Self.isOn(export))

@@ -10,6 +10,12 @@ extension MeetingDetailModel {
         let destination: String?
     }
 
+    struct GitHubIssueExecutionContext {
+        let draft: GitHubIssueDraft
+        let proposalID: UUID
+        let proposedAt: Date
+    }
+
     enum CommitmentAction {
         case confirm(ConfirmMeetingCommitmentRequest)
         case review(ReviewMeetingCommitmentRequest)
@@ -37,6 +43,7 @@ extension MeetingDetailModel {
         case confirmDecision(ConfirmDecisionAboutTopicRequest)
         case retractDecisionTopic(DecisionTopicLinkRetraction)
         case performSkill(MeetingSkillOffer, SkillExecutionContext)
+        case performGitHubIssue(GitHubIssueExecutionContext)
         case dismissSkillOffer(MeetingSkillOffer)
     }
 
@@ -58,6 +65,7 @@ extension MeetingDetailModel {
         case loadMetadataSuggestions
         case loadDecisionConfirmations
         case loadSkillOffers
+        case prepareGitHubIssue(PrepareGitHubIssueDraftRequest)
     }
 
     enum AudioAction {
@@ -184,6 +192,24 @@ extension MeetingDetailModel {
             .content(.artifact(.dismissSkillOffer(offer)))
         }
 
+        static func performGitHubIssue(
+            _ draft: GitHubIssueDraft,
+            proposalID: UUID,
+            proposedAt: Date
+        ) -> Self {
+            .content(.artifact(.performGitHubIssue(
+                GitHubIssueExecutionContext(
+                    draft: draft,
+                    proposalID: proposalID,
+                    proposedAt: proposedAt))))
+        }
+
+        static func prepareGitHubIssue(
+            _ request: PrepareGitHubIssueDraftRequest
+        ) -> Self {
+            .review(.preparation(.prepareGitHubIssue(request)))
+        }
+
         static var loadSkillOffers: Self {
             .review(.preparation(.loadSkillOffers))
         }
@@ -256,6 +282,9 @@ extension MeetingDetailModel {
             MeetingSkillOffer,
             message: String,
             outputURL: URL?)
+        case gitHubIssuePrepared(GitHubIssueDraft)
+        case gitHubIssuePerformed(outputURL: URL?)
+        case gitHubIssueOutcomeUnknown(message: String, outputURL: URL?)
         case meetingDeleted(MeetingID)
         case documentPrepared(PreparedMeetingDocument)
         case gistPublished(URL)

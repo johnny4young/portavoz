@@ -8,6 +8,52 @@ import UniformTypeIdentifiers
 /// the native save panel), so the sheet can show the exact artifact and the
 /// confirmed proposal never resolves anything behind the user's back.
 extension MeetingDetailCoordinator {
+    func openGitHubIssueSkill(_ item: ActionItem) {
+        flow.githubIssueTarget = MeetingDetailFlowState.GitHubIssueTarget(
+            meetingID: meetingID,
+            actionItemID: item.id,
+            actionItemText: item.text)
+        flow.sheet = .githubIssueSkill
+    }
+
+    func prepareGitHubIssueSkill(
+        _ target: MeetingDetailFlowState.GitHubIssueTarget,
+        repository: String
+    ) async -> MeetingDetailFlowState.GitHubIssueDraftResult {
+        let effect = await model.send(.prepareGitHubIssue(
+            PrepareGitHubIssueDraftRequest(
+                meetingID: target.meetingID,
+                actionItemID: target.actionItemID,
+                repository: repository)))
+        guard case .gitHubIssuePrepared(let draft) = effect else {
+            return .failed(model.state.lastActionError ?? L10n.text(
+                "The issue draft could not be prepared."))
+        }
+        return .prepared(draft)
+    }
+
+    func confirmGitHubIssueSkill(
+        _ draft: GitHubIssueDraft,
+        proposalID: UUID,
+        proposedAt: Date
+    ) async -> MeetingDetailFlowState.GitHubIssueConfirmationResult {
+        let effect = await model.send(.performGitHubIssue(
+            draft,
+            proposalID: proposalID,
+            proposedAt: proposedAt))
+        switch effect {
+        case .gitHubIssuePerformed(let outputURL):
+            return .published(outputURL)
+        case .gitHubIssueOutcomeUnknown(let message, let outputURL):
+            return .outcomeUnknown(
+                outputURL: outputURL,
+                message: message)
+        default:
+            return .failed(model.state.lastActionError ?? L10n.text(
+                "The issue could not be created. Nothing left Portavoz."))
+        }
+    }
+
     func openSkillOffer(
         _ offer: MeetingSkillOffer,
         detail: MeetingReviewReadModel

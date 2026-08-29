@@ -58,6 +58,10 @@ public enum SkillInputDataClass: String, Codable, Sendable, CaseIterable {
 public enum SkillArgument: Equatable, Sendable {
     case meeting(MeetingID)
     case segment(UUID)
+    /// One generated action item selected by the user. Keeping its stable UUID
+    /// typed prevents repository text or transcript material from masquerading
+    /// as the item that an external Skill is allowed to publish.
+    case actionItem(UUID)
     case person(PersonID)
     case commitment(CommitmentID)
     case text(String)
@@ -74,7 +78,7 @@ public enum SkillArgument: Equatable, Sendable {
             return !trimmed.isEmpty && value.count <= Self.maximumTextLength
         case .date(let value):
             return value.timeIntervalSinceReferenceDate.isFinite
-        case .meeting, .segment, .person, .commitment:
+        case .meeting, .segment, .actionItem, .person, .commitment:
             return true
         }
     }

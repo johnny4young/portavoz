@@ -63,7 +63,8 @@ final class LocalSkillsTests: XCTestCase {
         XCTAssertTrue(ExternalSkills.requiresExplicitEgress)
         XCTAssertEqual(ExternalSkills.definitions, [
             EmailRecapDraftSkill.definition,
-            SecretGistPublishSkill.definition
+            SecretGistPublishSkill.definition,
+            GitHubIssueCreateSkill.definition
         ])
         for definition in ExternalSkills.definitions {
             XCTAssertTrue(definition.isValid, definition.id)

@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,834 cases (15 environment-gated) + 103
+Status: the package inventory contains 2,852 cases (15 environment-gated) + 103
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -4481,6 +4481,58 @@ Settings receipt. The fake runs the real request codec, metadata checks,
 execution state machine, and disposable store; it cannot prove Keychain access,
 GitHub authentication, physical network interruption, browser behavior, or
 provider state on Sequoia or Tahoe.
+
+**D434 review-first GitHub issue gate.** Eight domain cases pin canonical
+repository grammar, exact pending-item selection, stale/duplicate/missing
+evidence refusal, correction-aware citations, bounded title/body material, and
+English/Spanish summary-language scaffolding. Ten exporter cases require the
+exact reviewed title/body, zero transport for malformed repositories, canonical
+request construction without force unwraps, and rejection of forged or
+mismatched provider success URLs. Thirteen app-boundary cases cover exact
+preview recomputation before claim or egress, proposal-ID receipt identity, one
+durable egress event, replay refusal, ambiguous transport, and the bounded
+ephemeral network configuration. Meeting Detail model coverage separately
+requires exact success and terminal outcome-unknown presentation.
+
+Architecture ratchets keep the typed action-item argument and external
+definition in ApplicationKit, prohibit IntegrationsKit or URLSession ownership
+there, require the app adapter to reuse `GitHubIssuesExporter` plus the existing
+Keychain token, pin receipt-before-transport identity and bounded session
+policy, forbid `URLSession.shared`, preserve the exact provider response fence,
+and retain stable two-stage sheet/action/receipt identifiers plus D434. The
+existing Gist real-app journey was extended rather than adding a launch. It
+previews repository, exact title/body, Spanish seeded evidence and time,
+confirms through the no-network provider-shaped gateway, then requires the
+exact `/issues/42` result, one additional privacy event, and both Meeting Detail
+and Settings receipts. On macOS 26.5.2, one shared build passed English in
+25.151 seconds and Spanish in 25.081 seconds, each below the unchanged
+25.789-second journey budget. These tests cannot certify a real Keychain token,
+GitHub repository permissions, provider state, slow/interrupted network,
+browser behavior, or physical Sequoia/Tahoe operation.
+
+The final D434 gate passed the current-SDK warnings-as-errors build, all 2,852
+package cases with 15 explicit environment/model skips and zero failures, 224
+architecture ratchets, repository hygiene, localization validation, and strict
+SwiftLint over 759 production Swift files. The first complete English UI gate
+correctly rejected the stale six-action Settings catalogue after D434 added a
+seventh action; the repaired contract now requires the exact seven identifiers
+rather than a count. A later functional 103/103 pass exceeded one unchanged
+per-journey budget because 4.762 seconds elapsed before XCTest setup and the
+journey repeated stable-frame probes. Replacing only those probes with bounded
+hittability predicates retained route, window, no-execution, and fresh-offer
+assertions and reduced the focused journey from 27.268 seconds to 15.069
+seconds English and 12.153 seconds Spanish. No retry, timeout increase, budget
+change, or assertion removal was accepted as proof.
+
+One shared build then passed the complete sequential bilingual catalogue with
+zero retry or harness adjustment: English passed 103/103 in 893.301 summed
+XCTest seconds (p95 18.785), and Spanish passed 103/103 in 873.241 seconds (p95
+18.555). The Developer-ID-signed `app.portavoz.mac.dev` bundle was rebuilt,
+deeply verified, installed only at `/Applications/Portavoz Dev.app`, and
+launched from its exact executable. This is controlled local Tahoe-family
+evidence, not a real GitHub account/permission/network proof, physical
+Sequoia/Tahoe qualification, VoiceOver/Voice Control evidence, provisioned
+CloudKit, signed distribution, or field behavior.
 
 **D335 content-free Skill receipt inspection gate.** Sixteen Skills control
 center cases, including six D335 cases, cover a valid retry timeline plus

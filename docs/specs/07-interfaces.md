@@ -6,7 +6,9 @@ Native automation decisions: D324 (honest Start/Stop actions), D325 (bounded
 meeting/person/commitment App Entities and exact open routes), and D326
 (availability-shaped protected entity publication). D327 adds one review-first
 email-composer handoff without adding an email transport. D328 adds one exact
-secret-Gist Skill through the existing protected Gist transport.
+secret-Gist Skill through the existing protected Gist transport. D434 adds one
+review-first pending-action-item GitHub issue through the existing protected
+issue transport.
 
 The email recap Skill is an AppKit interface adapter, not a network
 integration. ApplicationKit composes one summary-derived `MeetingRecap` behind
@@ -33,6 +35,23 @@ pre-transport insert is also the local no-duplicate fence. Missing credentials
 are retryable before claim; every later failure is outcome unknown and never
 authorizes another automatic request. The returned Gist URL is immediate UI
 output, not durable receipt content.
+
+The GitHub issue Skill reuses `GitHubIssuesExporter` rather than adding an app-
+specific publisher. ApplicationKit owns a bounded correction-aware
+`GitHubIssueDraft` for one current pending action item and exactly one current
+evidence record. The two-stage app sheet first admits a canonical ASCII
+`owner/repository`, then shows the exact destination, title, body, citations,
+and egress disclosure. Confirmation recomputes every reviewed byte before the
+Keychain token, durable claim, or egress event can exist. The proposal UUID is
+the data-egress event UUID; the event insert precedes transport and the
+idempotency key includes action item plus repository. The production adapter
+uses an ephemeral no-cookie/no-cache session with 15-second request and
+20-second resource deadlines and no waits-for-connectivity. A response is
+accepted only when it names the exact reviewed repository at
+`https://github.com/<owner>/<repository>/issues/<positive id>` without port,
+userinfo, query, or fragment. Missing credentials remain known before claim;
+every later transport, provider, decode, settlement, or interruption failure
+is terminal outcome unknown and cannot authorize an automatic retry.
 
 ## CLI — `portavoz-cli` (dispatch in `Sources/portavoz-cli/CLI.swift`)
 
@@ -190,7 +209,7 @@ closed before a renderer or publisher receives content.
   canonical document, or construct IntegrationsKit publishers.
 - **Whole-library Markdown backup (D99/D181–D189):** ApplicationKit receives a process-owned staged-source session through `LibraryMarkdownBackupStore`, the canonical renderer through `LibraryMarkdownBackupDocuments`, filesystem publication and exact destination evidence through `LibraryMarkdownBackupFiles`, opaque destination identity plus bounded access through `LibraryMarkdownBackupDestinationAccess`, and owner-private publication evidence through `LibraryMarkdownBackupRecoveryStore`; IntegrationsKit and `FileManager` never enter Settings SwiftUI. StorageKit creates one coherent private SQLite stage through bounded GRDB page checkpoints and exposes one newest-first aggregate at a time. The ApplicationKit actor checkpoints before each source read and after content load, render, and atomic publication while retaining at most one pending aggregate/document. The app renderer runs at utility priority. The destination adapter prepares identity only after admission, resolves a fresh lease for each execution interval, and closes it on completion, suspension, or failure. The current non-App-Sandbox PlatformKit implementation uses a regular Foundation bookmark with `withoutImplicitSecurityScope`; a future sandbox adapter can balance security-scoped access behind the same port. The filesystem adapter enumerates visible existing Markdown names, atomically writes a UUID temporary file in the resolved directory, and moves it to the final portable name without replacement. Before that move, the use case atomically persists the exact portable filename, meeting identity, SHA-256, byte count, and—when safe—the matching content-free source cursor; after the move it records completion. No transcript, summary, or Markdown bytes enter the journal. A post-move journal failure preserves the published in-process result and retries the exact completion before advancing; bookmark refresh and failed-publication clearing likewise persist before their in-memory transitions. After immutable completion, the use case persists the stage's content-free cursor; equal retries are idempotent, backward cursors and pending-publication checkpoints fail closed, and a failed cursor write retries without repeating the destination move. Each source, document-render, or publication failure is recorded as a bounded immutable typed outcome at the exact staged-source cursor before that cursor may advance; ApplicationKit normalizes its title to at most 4 KiB of UTF-8, the journal stores no transcript, summary, or rendered Markdown bytes, and exact failure-record retries are idempotent. A successful render that has not yet produced a reservation is replayed from the immutable stage after interruption. A bounded reconciliation use case can inspect the exact no-follow regular destination file, clear a missing reservation for source retry, complete exact matching bytes, repair the checkpoint to the furthest immutable publication or failure cursor, or preserve conflicting or cursor-less evidence fail-closed. Failure-only and already-completed checkpoint repair do not reacquire the destination. Terminal retry removes the journal before closing the stage and does not reacquire the destination. A collision advances the application allocator; source, document, and publication failures remain typed per meeting while healthy files continue. Stage directories use Portavoz's canonical lowercase UUID form. Launch catalogs every canonical journal UUID before root-coordinated cleanup, preserving matching stages even when strict journal shape later fails. Zero journals cleans only provably abandoned unprotected stages; multiple journals fail closed without choosing. One journal enters the maintenance gate, reconciles exact destination evidence, and then adopts only its exact read-only stage and cursor. Validation requires contiguous unique outcomes and a checkpoint at the furthest durable cursor; the exporter rebuilds filename allocation from destination and journal evidence, reconstructs the typed result, and resumes after the checkpoint. Completed recovery removes the journal before closing the stage without destination access. Ambiguous, malformed, missing, conflicting, cursor-less, or unavailable evidence remains untouched and blocks a second backup. Setup failure abandons the adopted lease without deleting the immutable source, and capture-stop signals retry suspended recovery without polling.
 - `GistPublisher`: exact `https://api.github.com/gists`, secret by default, explicit `--public`; token from Keychain. Construction requires a `DataEgressGateway`, and publication requires the source `MeetingID`.
-- `GitHubIssuesExporter` (canonical REST `https://api.github.com/repos/{owner}/{repo}/issues`) and `LinearExporter` (exact GraphQL `https://api.linear.app/graphql`; **the token is sent bare in Authorization, WITHOUT a Bearer prefix**): action items → issues. Both require a gateway and source meeting. Tested offline; real publishing pending the user's tokens.
+- `GitHubIssuesExporter` (canonical REST `https://api.github.com/repos/{owner}/{repo}/issues`) and `LinearExporter` (exact GraphQL `https://api.linear.app/graphql`; **the token is sent bare in Authorization, WITHOUT a Bearer prefix**): action items → issues. Both require a gateway and source meeting. GitHub repository input uses the shared canonical ASCII value, accepts exact reviewed title/body material, and validates the returned issue URL against that same repository and a positive issue number. The review-first app path and CLI are tested offline; real publishing remains field evidence requiring test credentials and repositories.
 - Output to external services ALWAYS requires explicit confirmation (D8): the UI confirms before the gist; the CLI is opt-in by nature.
 
 ### Shared data-egress adapter (D67–D69)
@@ -230,6 +249,12 @@ or a canonical GitHub repository-issues path with no port, query, fragment,
 empty owner/repository, or dot traversal. Forged metadata fails before
 transport. App confirmation, CLI opt-in/warnings, body and authorization shape,
 response parsing, and failure behavior remain unchanged.
+
+D434 makes the GitHub app path use that same contract with one exact
+proposal-scoped event identity. It adds no reusable egress consent, automatic
+retry, direct `URLSession.shared` path, or durable issue URL/content. A forged
+success URL for another owner or repository is rejected after the attempt and
+therefore becomes outcome unknown rather than a retryable failure.
 
 Every current HTTP path that carries meeting content now crosses this gateway.
 Content-free Ollama discovery and model downloads remain direct by design. The

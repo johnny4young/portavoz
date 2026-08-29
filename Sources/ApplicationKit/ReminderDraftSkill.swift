@@ -71,7 +71,7 @@ public enum ReminderDraftSkill {
                 dates.append(value)
             case .commitment(let value):
                 commitments.append(value)
-            case .meeting, .segment, .person:
+            case .meeting, .segment, .actionItem, .person:
                 continue
             }
         }

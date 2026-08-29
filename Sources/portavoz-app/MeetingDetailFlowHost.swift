@@ -4,6 +4,18 @@ import PortavozCore
 import SwiftUI
 import TranscriptionKit
 
+struct MeetingDetailRefinePresentation {
+    let status: String?
+    let error: String?
+    let draft: RefineDraft?
+
+    init(_ phase: RefineService.Phase?) {
+        if case .running(let status) = phase { self.status = status } else { self.status = nil }
+        if case .failed(let message) = phase { error = message } else { error = nil }
+        if case .draft(let draft) = phase { self.draft = draft } else { self.draft = nil }
+    }
+}
+
 struct MeetingDetailMirrorValues {
     let myShare: Double
     let myQuestions: Int
@@ -67,6 +79,12 @@ struct MeetingDetailFlowActions {
     let confirmSkill:
         @MainActor (MeetingDetailFlowState.SkillConfirmTarget)
             async -> MeetingDetailFlowState.SkillConfirmationResult
+    let prepareGitHubIssue:
+        @MainActor (MeetingDetailFlowState.GitHubIssueTarget, String)
+            async -> MeetingDetailFlowState.GitHubIssueDraftResult
+    let confirmGitHubIssue:
+        @MainActor (GitHubIssueDraft, UUID, Date)
+            async -> MeetingDetailFlowState.GitHubIssueConfirmationResult
     let correctTranscript: @MainActor (
         MeetingTranscriptContent.Row,
         String,
@@ -184,6 +202,21 @@ struct MeetingDetailFlowHost<Content: View>: View {
                     openURL: actions.openURL,
                     dismiss: {
                         flow.skillConfirmTarget = nil
+                        flow.sheet = nil
+                    })
+            }
+        case .githubIssueSkill:
+            if let target = flow.githubIssueTarget {
+                GitHubIssueSkillSheet(
+                    target: target,
+                    prepare: { repository in
+                        await actions.prepareGitHubIssue(target, repository)
+                    },
+                    confirm: actions.confirmGitHubIssue,
+                    copyText: actions.copyText,
+                    openURL: actions.openURL,
+                    dismiss: {
+                        flow.githubIssueTarget = nil
                         flow.sheet = nil
                     })
             }

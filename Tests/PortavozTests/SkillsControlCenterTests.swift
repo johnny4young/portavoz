@@ -254,7 +254,8 @@ final class SkillsControlCenterTests: XCTestCase {
                 ReminderDraftSkill.id,
                 PreMeetingBriefSkill.id,
                 EmailRecapDraftSkill.id,
-                SecretGistPublishSkill.id
+                SecretGistPublishSkill.id,
+                GitHubIssueCreateSkill.id
             ])
         XCTAssertEqual(
             snapshot.skills.filter { $0.availability == .planned }.map(\.id),
@@ -459,7 +460,8 @@ final class SkillsControlCenterTests: XCTestCase {
             }.map(\.id),
             [
                 EmailRecapDraftSkill.id,
-                SecretGistPublishSkill.id
+                SecretGistPublishSkill.id,
+                GitHubIssueCreateSkill.id
             ])
         XCTAssertTrue(snapshot.skills.allSatisfy {
             $0.definition.confirmationPolicy == .explicitPerProposal

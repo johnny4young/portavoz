@@ -14,7 +14,8 @@ permission/effect), D324 (honest Start/Stop App Intents), and D325 (bounded App
 Entities with exact reversible routes), and D326 (one availability-shaped
 protected Spotlight generation).
 D327 adds a review-first system email-composer handoff; D328 adds exact
-one-shot secret-Gist publication with a pre-transport duplicate fence; D333
+one-shot secret-Gist publication with a pre-transport duplicate fence; D434
+adds one review-first GitHub issue from an exact pending action item; D333
 derives Skills privacy disclosure from the executable capability contract.
 D373/D374 compose exact-Skill and rolling update-time activity filters at query
 time while keeping the Settings window bounded and generation-fenced.
@@ -2952,14 +2953,60 @@ transport with a stable
 provider-shaped response. That proves app behavior, not physical GitHub,
 browser, Keychain, or network behavior on Sequoia or Tahoe.
 
+## Review-first GitHub issue creation (D434, Aug 2026)
+
+One current pending action item with exactly one current evidence record exposes
+**Create GitHub issue** beside its checkbox. The control is item-scoped rather
+than part of the meeting document proposal menu because its subject is one
+explicit action item. The first sheet stage accepts only one canonical ASCII
+`owner/repository`: owners use alphanumeric characters and interior hyphens;
+repository names additionally admit `-`, `_`, and `.`, while paths, queries,
+fragments, percent encoding, empty components, `.` and `..` fail closed. The
+second stage displays the exact repository, title, complete body, numbered
+transcript citations, and the fact that these reviewed bytes will leave the
+Mac. Stable `github-issue-*` identifiers cover every interactive control and
+evidence/result state.
+
+`PrepareGitHubIssueDraft` reads one coherent correction-aware Meeting Detail
+projection, refuses stale summaries, completed or missing action items,
+duplicate evidence records, and absent/stale/ambiguous transcript evidence,
+then emits at most eight citations of at most 400 characters. Titles are
+single-line and at most 240 characters; bodies are at most 20,000 characters.
+Issue scaffolding follows the generated summary language rather than the app
+locale, so shared meeting content remains English or Spanish consistently.
+Confirmation rebuilds and compares the entire draft before it reads the
+existing Keychain GitHub token or enters `ExecuteSkill`; changed material must
+be reviewed again and cannot create a durable claim or egress event.
+
+The proposal UUID is also the content-free `DataEgressEventID`, inserted before
+the existing `GitHubIssuesExporter` starts transport. The stable execution key
+contains meeting, action item, and canonical repository. Production uses an
+ephemeral session with cookies and caches disabled, 15-second request and
+20-second resource deadlines, and no waits-for-connectivity. The response is a
+success only when its URL is HTTPS `github.com`, has no authority/query/fragment
+ambiguity, names the exact reviewed owner/repository, and ends in one positive
+issue number. Every failure after the remote attempt begins is shown as
+**outcome unknown**, suppresses automatic retry, and directs the user to inspect
+GitHub. The returned URL and issue material are transient; durable Skill and
+privacy receipts remain content-free.
+
+The disposable real-app path never reads Keychain or uses the network. It
+passes the same draft, request codec, metadata validation, execution, receipt,
+and response-fence boundaries with one stable provider-shaped URL. The combined
+Gist-and-issue journey covers exact English and Spanish UI paths without a
+second app launch. Physical GitHub authentication, provider state, slow or
+interrupted networks, browser opening, and actual Sequoia/Tahoe behavior remain
+field evidence.
+
 ## Suggested-actions control center in Settings (D317/D333/D335–D343/D359/D369–D379, Aug 2026)
 
 Settings includes a dedicated **Suggested actions** / **Acciones sugeridas**
 pane driven by
 `LoadSkillControlCenter`, not preferences or view-owned policy. Its central
 catalogue marks recap draft, review-first email recap, secret Gist publication,
-text-only package export, resident pre-meeting brief, and confirmed-commitment
-reminder draft as available. The pane exposes an independent
+review-first GitHub issue creation, text-only package export, resident pre-
+meeting brief, and confirmed-commitment reminder draft as available. The pane
+exposes an independent
 global pause, per-available-skill enablement, and a segmented content-free
 history view. A localized explanation states that Portavoz derives these
 review-first actions from meeting evidence and that nothing runs before review

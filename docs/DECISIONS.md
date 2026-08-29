@@ -16679,3 +16679,75 @@ cannot flash a stale result from an earlier form of a growing caption. The
 deterministic corpus and tests establish policy/reliability behavior, not model
 prose quality, installed challenger compatibility, physical-device latency,
 Instruments leak freedom, or field usefulness; those remain explicit gates.
+
+## D434 — Create one GitHub issue only from an exact reviewed action item (Aug 2026)
+
+**Context:** Portavoz already had a tested GitHub issue exporter and a
+Keychain-backed GitHub token, but issue creation was available only through the
+explicit CLI boundary. Reusing the whole-meeting proposal menu or silently
+choosing a repository would hide the real subject and destination. GitHub's
+create-issue endpoint supplies no caller idempotency token, so a lost response
+cannot prove whether the remote mutation occurred. The 1.0 expansion requires
+one narrow external adapter without weakening the review-first or content-free
+receipt contracts established by D327/D328.
+
+**Decision:** add `github-issue-create` as an external, irreversible,
+`explicitPerProposal` Skill over one current pending action item. Its direct
+Todo-row control appears only when the current summary has exactly one evidence
+record for that item and the evidence resolves against the current transcript.
+The two-stage SwiftUI sheet first admits one canonical ASCII
+`owner/repository`, then displays the exact repository, title, complete body,
+numbered citations, and remote-egress boundary. Owners are 1...39 ASCII
+alphanumeric characters with interior hyphens; repository names are 1...100
+ASCII alphanumeric, hyphen, underscore, or dot characters except `.` and `..`.
+Path, query, fragment, percent, empty-component, or Unicode ambiguity fails
+closed.
+
+`PrepareGitHubIssueDraft` reads one coherent correction-aware Meeting Detail
+projection. It refuses stale summaries, missing or completed items, multiple
+evidence records, unavailable/stale evidence, duplicate transcript identities,
+or malformed correction history. At most eight current citations of at most
+400 characters enter the body; the single-line title is at most 240 characters
+and the complete body at most 20,000. Citation identity, timestamp, speaker,
+and excerpt are exact reviewed material. Scaffolding follows the summary
+language (English or Spanish), not the app locale, because it is shareable
+meeting content. Duplicate speaker records resolve first-record-wins rather
+than terminating the process; ambiguous transcript evidence refuses the draft.
+
+Confirmation recomputes the complete draft and requires byte-for-byte equality
+before reading the existing Keychain token, claiming the Skill, writing a
+receipt, or starting transport. `ExecuteSkill` re-reads current policy at the
+normal admission and claim boundaries. The proposal contains exact meeting,
+action-item, and repository arguments; its stable idempotency key also contains
+all three. Its proposal UUID is the `DataEgressEventID`, whose content-free
+primary-key row is inserted before `GitHubIssuesExporter` can observe the
+request. The app reuses the existing canonical exporter and gateway; no second
+GitHub request codec or token store is introduced.
+
+Production transport uses an ephemeral session with cookies and caches
+disabled, 15-second request and 20-second resource deadlines, and
+`waitsForConnectivity = false`. A success is accepted only for HTTPS
+`github.com`, no user/port/query/fragment ambiguity, exact reviewed owner and
+repository, literal `issues`, and one positive decimal issue number. Any
+provider, transport, decode, settlement, or interruption failure after remote
+attempt handoff is terminal **outcome unknown**. Portavoz never retries it
+automatically and directs the user to inspect GitHub before any deliberate new
+attempt. The returned URL is transient; tokens, repository, issue material,
+and provider URL never enter Skill or privacy receipts.
+
+Disposable real-app automation keeps the production draft, request codec,
+metadata, receipt-before-transport, execution, response-fence, and settlement
+boundaries while substituting a no-network provider-shaped response and never
+reading Keychain. The existing Gist journey is extended in the same launch and
+remains bilingual under its unchanged runtime budget. Real repository
+permissions, Keychain, provider behavior, slow/offline/interrupted network,
+browser opening, physical Sequoia/Tahoe behavior, VoiceOver/Voice Control, and
+signed distribution remain separate field authorities.
+
+**Consequences:** Portavoz can turn one explicit meeting commitment into one
+reviewed GitHub issue without inventing a repository, silently changing
+evidence, or claiming a remote failure is safe to retry. Adding another
+repository adapter, OpenAI-compatible mutation, mutable MCP operation, batch
+issue creation, or standing rule requires a separate named contract and cannot
+reuse this proposal's consent. AUTO-5 remains limited to reversible local
+effects and cannot invoke this Skill.

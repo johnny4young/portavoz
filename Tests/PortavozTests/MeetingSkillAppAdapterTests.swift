@@ -7,6 +7,22 @@ import XCTest
 @testable import portavoz_app
 
 final class MeetingSkillAppAdapterTests: XCTestCase {
+    func testGitHubIssueTransportIsEphemeralAndBounded() {
+        let configuration = AppGitHubIssueNetworkPolicy.makeSession().configuration
+
+        XCTAssertEqual(
+            configuration.timeoutIntervalForRequest,
+            AppGitHubIssueNetworkPolicy.requestTimeout)
+        XCTAssertEqual(
+            configuration.timeoutIntervalForResource,
+            AppGitHubIssueNetworkPolicy.resourceTimeout)
+        XCTAssertFalse(configuration.waitsForConnectivity)
+        XCTAssertFalse(configuration.httpShouldSetCookies)
+        XCTAssertEqual(
+            configuration.requestCachePolicy,
+            .reloadIgnoringLocalAndRemoteCacheData)
+    }
+
     func testConfirmedRecapMaterialReplaysTheExactApprovedPreview() async throws {
         let meeting = Meeting(
             title: "Platform sync",
@@ -324,6 +340,155 @@ final class MeetingSkillAppAdapterTests: XCTestCase {
         XCTAssertTrue(startedAfterFailure)
         XCTAssertNil(outputURL)
     }
+
+    @MainActor
+    func testGitHubIssueUsesExactPreviewAndOneDurableEgressFence() async throws {
+        let services = try AppServices(arguments: [
+            "portavoz-app", "-use-temp-store"
+        ])
+        let fixture = try await saveGitHubIssueMeeting(in: services)
+        let request = PrepareGitHubIssueDraftRequest(
+            meetingID: fixture.meeting.id,
+            actionItemID: fixture.item.id,
+            repository: "portavoz/demo")
+        let draft = try await services.prepareMeetingDetailGitHubIssueDraft(request)
+        XCTAssertEqual(draft.title, fixture.item.text)
+        XCTAssertTrue(draft.body.contains(fixture.segment.text))
+        let proposalID = UUID()
+        let proposedAt = Date()
+
+        let first = try await services.performMeetingDetailGitHubIssue(
+            draft,
+            proposalID: proposalID,
+            proposedAt: proposedAt)
+        XCTAssertEqual(
+            first,
+            .succeeded(outputURL: URL(
+                string: "https://github.com/portavoz/demo/issues/42")))
+
+        let replay = try await services.performMeetingDetailGitHubIssue(
+            draft,
+            proposalID: UUID(),
+            proposedAt: Date(timeIntervalSince1970: 200))
+        XCTAssertEqual(replay, .succeeded(outputURL: nil))
+        let egress = try await services.store.dataEgressEvents(for: fixture.meeting.id)
+        XCTAssertEqual(egress.count, 1)
+        XCTAssertEqual(egress.first?.id.rawValue, proposalID)
+        XCTAssertEqual(egress.first?.operation, .createGitHubIssue)
+        XCTAssertEqual(egress.first?.destinationHost, "api.github.com")
+        let records = try await services.store.skillExecutions(
+            idempotencyKeyPrefix: "\(GitHubIssueCreateSkill.id):")
+        XCTAssertEqual(records.count, 1)
+        XCTAssertEqual(records.first?.state, .succeeded)
+    }
+
+    @MainActor
+    func testChangedGitHubIssueDraftIsRefusedBeforeClaimOrEgress() async throws {
+        let services = try AppServices(arguments: [
+            "portavoz-app", "-use-temp-store"
+        ])
+        let fixture = try await saveGitHubIssueMeeting(in: services)
+        let approved = try await services.prepareMeetingDetailGitHubIssueDraft(
+            PrepareGitHubIssueDraftRequest(
+                meetingID: fixture.meeting.id,
+                actionItemID: fixture.item.id,
+                repository: "portavoz/demo"))
+        let changed = GitHubIssueDraft(
+            meetingID: approved.meetingID,
+            actionItemID: approved.actionItemID,
+            repository: approved.repository,
+            title: approved.title,
+            body: approved.body + "\nInjected after preview.",
+            citations: approved.citations)
+
+        let result = try await services.performMeetingDetailGitHubIssue(
+            changed,
+            proposalID: UUID(),
+            proposedAt: Date())
+        guard case .retryableFailure = result else {
+            return XCTFail("changed material must require a fresh preview")
+        }
+        let executions = try await services.store.skillExecutions(
+            idempotencyKeyPrefix: "\(GitHubIssueCreateSkill.id):")
+        XCTAssertTrue(executions.isEmpty)
+        let egress = try await services.store.dataEgressEvents(for: fixture.meeting.id)
+        XCTAssertTrue(egress.isEmpty)
+    }
+
+    func testGitHubIssuePublisherMarksAmbiguousAttemptWithoutResponseURL() async throws {
+        let repository = try XCTUnwrap(GitHubRepository("portavoz/demo"))
+        let publisher = AppGitHubIssueSkillPublisher(
+            repository: repository,
+            disposableToken: "token",
+            gateway: FailingGitHubIssueGateway())
+        try await publisher.prepare()
+        let citation = GitHubIssueCitation(
+            segmentID: UUID(),
+            timestamp: 3,
+            speaker: "Ana",
+            excerpt: "Ship Friday.")
+        let draft = GitHubIssueDraft(
+            meetingID: MeetingID(),
+            actionItemID: UUID(),
+            repository: repository,
+            title: "Ship",
+            body: "## Evidence\n\nShip Friday.",
+            citations: [citation])
+
+        do {
+            _ = try await publisher.publish(draft)
+            XCTFail("the transport double must fail")
+        } catch {
+            XCTAssertEqual(error as? GitHubIssueSkillError, .outcomeUnknown)
+        }
+        let didStart = await publisher.remoteAttemptStarted()
+        let outputURL = await publisher.outputURL()
+        XCTAssertTrue(didStart)
+        XCTAssertNil(outputURL)
+    }
+
+    @MainActor
+    private func saveGitHubIssueMeeting(
+        in services: AppServices
+    ) async throws -> (
+        meeting: Meeting,
+        item: ActionItem,
+        segment: TranscriptSegment
+    ) {
+        let meeting = Meeting(
+            title: "Platform Sync",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            language: "en")
+        let speaker = Speaker(
+            meetingID: meeting.id,
+            label: "S1",
+            displayName: "Ana")
+        let segment = TranscriptSegment(
+            meetingID: meeting.id,
+            speakerID: speaker.id,
+            channel: .system,
+            text: "The rollout stays on Friday.",
+            startTime: 3,
+            endTime: 5,
+            isFinal: true)
+        let item = ActionItem(
+            text: "Prepare the rollout",
+            ownerSpeakerID: speaker.id)
+        try await services.store.save(meeting)
+        try await services.store.save([speaker])
+        try await services.store.save([segment])
+        _ = try await services.store.saveSummary(SummaryDraft(
+            meetingID: meeting.id,
+            recipeID: "general",
+            language: "en",
+            markdown: "## Action items",
+            actionItems: [item],
+            actionItemEvidence: [SummaryActionItemEvidence(
+                actionItemID: item.id,
+                sourceTranscriptRevision: meeting.transcriptRevision,
+                evidenceSegmentIDs: [segment.id])]))
+        return (meeting, item, segment)
+    }
 }
 
 private actor RecordingRecapPasteboard: RecapPasteboardWriting {
@@ -346,6 +511,17 @@ private struct FailingGistDocumentPublisher: MeetingDocumentPublishing {
         filename: String,
         description: String
     ) async throws -> URL {
+        throw URLError(.cannotConnectToHost)
+    }
+}
+
+private struct FailingGitHubIssueGateway: DataEgressGateway {
+    func perform(
+        _ networkRequest: URLRequest,
+        metadata: DataEgressRequest
+    ) async throws -> DataEgressResponse {
+        _ = networkRequest
+        _ = metadata
         throw URLError(.cannotConnectToHost)
     }
 }

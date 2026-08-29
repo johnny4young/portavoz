@@ -2,18 +2,6 @@ import ApplicationKit
 import IntelligenceKit
 import PortavozCore
 import SwiftUI
-import TranscriptionKit
-private struct MeetingDetailRefinePresentation {
-    let status: String?
-    let error: String?
-    let draft: RefineDraft?
-
-    init(_ phase: RefineService.Phase?) {
-        if case .running(let status) = phase { self.status = status } else { self.status = nil }
-        if case .failed(let message) = phase { error = message } else { error = nil }
-        if case .draft(let draft) = phase { self.draft = draft } else { self.draft = nil }
-    }
-}
 
 /// Composition surface for one reviewed meeting.
 ///
@@ -421,6 +409,8 @@ private extension MeetingDetailView {
             confirmDecision: coordinator.confirmDecision,
             linkableTopics: model.state.linkableTopics,
             confirmSkill: coordinator.confirmSkill,
+            prepareGitHubIssue: coordinator.prepareGitHubIssueSkill,
+            confirmGitHubIssue: coordinator.confirmGitHubIssueSkill,
             correctTranscript: coordinator.correctTranscript,
             restructureTranscript: coordinator.restructureTranscript)
     }

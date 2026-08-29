@@ -631,6 +631,11 @@ private extension SkillsSettingsSection {
         case SecretGistPublishSkill.id:
             L10n.text(
                 "Publishes the exact reviewed meeting document as one secret GitHub Gist. Every run asks first.")
+        case GitHubIssueCreateSkill.id:
+            L10n.text(
+                // Keep this as one literal so localization validation sees it.
+                // swiftlint:disable:next line_length
+                "Creates one cited GitHub issue from a pending action item after you review the repository and exact body.")
         case MeetingPackageExportSkill.id:
             L10n.text("Writes a text-only package to the destination you approve.")
         case ReminderDraftSkill.id:
@@ -647,6 +652,7 @@ private extension SkillsSettingsSection {
         case RecapDraftSkill.id: "doc.on.clipboard"
         case EmailRecapDraftSkill.id: "envelope.open"
         case SecretGistPublishSkill.id: "chevron.left.forwardslash.chevron.right"
+        case GitHubIssueCreateSkill.id: "ladybug"
         case MeetingPackageExportSkill.id: "shippingbox"
         case ReminderDraftSkill.id: "checklist"
         case PreMeetingBriefSkill.id: "calendar.badge.clock"

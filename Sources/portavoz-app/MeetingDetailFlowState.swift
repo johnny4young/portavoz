@@ -29,6 +29,7 @@ final class MeetingDetailFlowState {
         case newStructure
         case confirmDecision
         case confirmSkill
+        case githubIssueSkill
         case correctTranscript
 
         var id: String { rawValue }
@@ -67,6 +68,23 @@ final class MeetingDetailFlowState {
         case succeeded
         case gistPublished(URL)
         case gistOutcomeUnknown(outputURL: URL?, message: String)
+        case failed(String)
+    }
+
+    struct GitHubIssueTarget: Equatable {
+        let meetingID: MeetingID
+        let actionItemID: UUID
+        let actionItemText: String
+    }
+
+    enum GitHubIssueDraftResult: Equatable {
+        case prepared(GitHubIssueDraft)
+        case failed(String)
+    }
+
+    enum GitHubIssueConfirmationResult: Equatable {
+        case published(URL?)
+        case outcomeUnknown(outputURL: URL?, message: String)
         case failed(String)
     }
 
@@ -115,6 +133,9 @@ final class MeetingDetailFlowState {
             if sheet != .correctTranscript {
                 transcriptCorrectionTarget = nil
             }
+            if sheet != .githubIssueSkill {
+                githubIssueTarget = nil
+            }
         }
     }
     var dialog: DialogRoute?
@@ -126,6 +147,7 @@ final class MeetingDetailFlowState {
     var transcriptCorrectionTarget: TranscriptCorrectionTarget?
     var decisionConfirmTarget: DecisionConfirmTarget?
     var skillConfirmTarget: SkillConfirmTarget?
+    var githubIssueTarget: GitHubIssueTarget?
     var renameSpeakerName = ""
     var isRegenerating = false
     var isRefreshingCompanion = false

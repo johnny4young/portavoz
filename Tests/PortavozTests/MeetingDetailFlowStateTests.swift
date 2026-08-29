@@ -29,6 +29,23 @@ final class MeetingDetailFlowStateTests: XCTestCase {
         XCTAssertEqual(flow.alert?.id, "failure")
     }
 
+    func testGitHubIssueTargetLivesOnlyForItsSheetRoute() async {
+        let flow = MeetingDetailFlowState()
+        let target = MeetingDetailFlowState.GitHubIssueTarget(
+            meetingID: MeetingID(),
+            actionItemID: UUID(),
+            actionItemText: "Prepare the rollout")
+
+        flow.githubIssueTarget = target
+        flow.sheet = .githubIssueSkill
+
+        XCTAssertEqual(flow.githubIssueTarget, target)
+
+        flow.sheet = .recap
+
+        XCTAssertNil(flow.githubIssueTarget)
+    }
+
     func testRenameSpeakerCapturesTheSpeakerAndPrefillsItsName() async {
         let flow = MeetingDetailFlowState()
         let speaker = Speaker(

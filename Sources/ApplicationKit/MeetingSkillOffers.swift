@@ -224,6 +224,8 @@ public struct LoadMeetingSkillReceipts: ApplicationUseCase {
         ])
         records += try await store.skillExecutions(
             idempotencyKeyPrefix: "\(MeetingPackageExportSkill.id):\(key):")
+        records += try await store.skillExecutions(
+            idempotencyKeyPrefix: "\(GitHubIssueCreateSkill.id):\(key):")
         return records
             .sorted {
                 if $0.updatedAt != $1.updatedAt {

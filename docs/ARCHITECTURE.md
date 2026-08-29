@@ -310,6 +310,27 @@ potentially long Markdown preview uses one read-only selectable TextKit
 viewport rather than one monolithic SwiftUI `Text` layout; it does not truncate
 the approved bytes to gain responsiveness.
 
+The third external effect creates one reviewed GitHub issue from one current,
+pending action item with exactly one current evidence record. The action-item
+row opens a two-stage sheet: first a canonical ASCII `owner/repository`, then
+the exact repository, title, body, bounded transcript citations, and remote-
+egress boundary. `ApplicationKit` composes the correction-aware draft from one
+coherent meeting projection and follows the summary language for the English
+or Spanish issue scaffolding. Confirmation recomputes the complete draft before
+reading the existing Keychain GitHub token, claiming the Skill, writing an
+egress receipt, or starting transport. The proposal UUID is also the
+`DataEgressEventID`; the durable insert precedes `GitHubIssuesExporter`, and the
+idempotency key includes the action item plus canonical repository. Production
+uses an ephemeral no-cookie/no-cache session with 15-second request and
+20-second resource deadlines and never waits for connectivity. A success URL
+is accepted only for `https://github.com/<reviewed owner>/<reviewed repo>/issues/<positive id>`.
+Any provider, transport, decode, settlement, or interruption failure after the
+attempt begins is terminal outcome unknown and cannot trigger an automatic
+retry. Disposable UI automation exercises the same draft, codec, metadata,
+receipt, and settlement paths through a no-network provider-shaped response;
+real Keychain, GitHub, network, and physical Sequoia/Tahoe behavior remain
+field evidence.
+
 The resident pre-meeting brief uses the same execution authority without
 turning the existing manual Library brief into an implicit action. Its
 `UpcomingEvent` carries one bounded opaque EventKit reference; title and time

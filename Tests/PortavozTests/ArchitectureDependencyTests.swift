@@ -2615,7 +2615,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,834 cases "
+            "package inventory contains 2,852 cases "
                 + "(15 environment-gated) + 103"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -5993,7 +5993,7 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(uiTest.contains("Pause all actions"))
 
         XCTAssertTrue(decisions.contains("## D379"))
-        XCTAssertTrue(gaps.contains("SIX-ACTION BASELINE FROZEN"))
+        XCTAssertTrue(gaps.contains("SEVEN-ACTION BASELINE IN CODE"))
         XCTAssertTrue(gaps.contains("Portavoz 1.0.0 candidate scope and exit gates"))
         XCTAssertTrue(product.contains("### 1.0.0 candidate boundary"))
         XCTAssertTrue(appSpec.contains(
@@ -6442,6 +6442,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(sheet.contains("skill-confirm-email-boundary"))
         XCTAssertTrue(sheet.contains("you still press Send"))
         XCTAssertTrue(trust.contains(
+            "SkillReceiptPresentation.meetingDetailTitle("))
+        XCTAssertTrue(receiptPresentation.contains(
             "Email recap draft — handoff status unknown"))
         XCTAssertTrue(receiptPresentation.contains("Handoff status unknown"))
         XCTAssertTrue(decisions.contains("## D327"))
@@ -6498,6 +6500,82 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(coordinator.contains("return .gistOutcomeUnknown("))
         XCTAssertFalse(coordinator.contains("flow.alert"))
         XCTAssertTrue(decisions.contains("## D328"))
+    }
+
+    func testGitHubIssueSkillReusesCanonicalEgressAndCannotDuplicateTransport() throws {
+        let external = try Self.contents(
+            of: "Sources/ApplicationKit/ExternalSkills.swift")
+        let domain = try Self.contents(
+            of: "Sources/ApplicationKit/GitHubIssueSkill.swift")
+        let repository = try Self.contents(
+            of: "Sources/PortavozCore/GitHubRepository.swift")
+        let appAdapter = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+GitHubIssueSkill.swift")
+        let exporter = try Self.contents(
+            of: "Sources/IntegrationsKit/IssueExporters.swift")
+        let sheet = try Self.contents(
+            of: "Sources/portavoz-app/GitHubIssueSkillSheet.swift")
+        let actionItems = try Self.contents(
+            of: "Sources/portavoz-app/MeetingActionItemsView.swift")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let githubStart = try XCTUnwrap(exporter.range(
+            of: "public struct GitHubIssuesExporter"))
+        let linearStart = try XCTUnwrap(exporter.range(
+            of: "// MARK: - Linear",
+            range: githubStart.upperBound..<exporter.endIndex))
+        let githubExporter = exporter[
+            githubStart.lowerBound..<linearStart.lowerBound]
+
+        XCTAssertTrue(external.contains("GitHubIssueCreateSkill.definition"))
+        XCTAssertTrue(domain.contains(".actionItem(draft.actionItemID)"))
+        XCTAssertTrue(domain.contains("case outcomeUnknown"))
+        XCTAssertTrue(domain.contains(".explicitPerProposal"))
+        XCTAssertFalse(domain.contains("import IntegrationsKit"))
+        XCTAssertFalse(domain.contains("URLSession"))
+        XCTAssertFalse(domain.contains("GitHubIssuesExporter("))
+        for trap in ["try!", "as!", "fatalError", "preconditionFailure"] {
+            XCTAssertFalse(repository.contains(trap), trap)
+        }
+
+        XCTAssertTrue(appAdapter.contains(
+            "let eventID = DataEgressEventID(rawValue: proposalID)"))
+        XCTAssertTrue(appAdapter.contains("GitHubIssuesExporter("))
+        XCTAssertTrue(appAdapter.contains(
+            "URLSessionDataEgressGateway("))
+        XCTAssertTrue(appAdapter.contains(
+            "AppDisposableGitHubIssueEgressGateway"))
+        XCTAssertTrue(appAdapter.contains(
+            "URLSessionConfiguration.ephemeral"))
+        XCTAssertTrue(appAdapter.contains(
+            "configuration.timeoutIntervalForRequest = requestTimeout"))
+        XCTAssertTrue(appAdapter.contains(
+            "configuration.waitsForConnectivity = false"))
+        XCTAssertFalse(appAdapter.contains("URLSession.shared"))
+
+        XCTAssertTrue(githubExporter.contains(
+            "guard let repository = GitHubRepository(repository)"))
+        XCTAssertTrue(githubExporter.contains(
+            "url.pathComponents[1] == expectedRepository.owner"))
+        XCTAssertTrue(githubExporter.contains(
+            "url.pathComponents[2] == expectedRepository.name"))
+        XCTAssertTrue(githubExporter.contains(
+            "UInt64(url.pathComponents[4]).map({ $0 > 0 }) == true"))
+        XCTAssertFalse(githubExporter.contains("request.url!"))
+
+        for control in [
+            "github-issue-sheet", "github-issue-action-item",
+            "github-issue-repository", "github-issue-review",
+            "github-issue-preview-repository", "github-issue-preview-title",
+            "github-issue-preview-body",
+            #"github-issue-citation-\(index)"#,
+            "github-issue-boundary", "github-issue-confirm",
+            "github-issue-result-title", "github-issue-result-url",
+        ] {
+            XCTAssertTrue(sheet.contains(control), control)
+        }
+        XCTAssertTrue(actionItems.contains(
+            #"action-item-\(item.id.uuidString)-github"#))
+        XCTAssertTrue(decisions.contains("## D434"))
     }
 
     func testCommandLibraryReadsEnterThroughApplicationKitComposition() throws {
@@ -9726,7 +9804,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "the screenshot request itself must own each static evidence snapshot")
 
         XCTAssertTrue(skills.contains(
-            "the live pane must expose the six-action candidate catalogue"))
+            "the live pane must expose the seven-action candidate catalogue"))
         XCTAssertTrue(skills.contains(
             "testSkillActivityTransitionsHideStaleRowsAndKeepVerifiedControlsUsable"))
         XCTAssertTrue(skills.contains(
@@ -9833,6 +9911,8 @@ final class ArchitectureDependencyTests: XCTestCase {
             "settings-skill-receipt-email-recap-draft"))
         XCTAssertTrue(meeting.contains(
             "settings-skill-receipt-secret-gist-publish"))
+        XCTAssertTrue(meeting.contains(
+            "settings-skill-receipt-github-issue-create"))
 
         XCTAssertEqual(
             meeting.components(separatedBy: "scaleAutoSummaryUpdate: true").count - 1,
@@ -10297,6 +10377,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         let bundle = try Self.contents(of: "Sources/IntegrationsKit/MeetingBundle.swift")
         let generatedDocument = try Self.contents(
             of: "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift")
+        let actionItems = try Self.contents(
+            of: "Sources/portavoz-app/MeetingActionItemsView.swift")
         let companion = try Self.contents(of: "Sources/IntelligenceKit/Companion.swift")
         let diagnostics = try Self.contents(
             of: "Sources/StorageKit/MeetingStore+SupportDiagnostics.swift")
@@ -10311,7 +10393,8 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(structured.contains("translatedActionItemEvidence"))
         XCTAssertTrue(provider.contains("\"evidence\": [\"E3\"]"))
         XCTAssertTrue(bundle.contains("actionItemMap[evidence.actionItemID]"))
-        XCTAssertTrue(generatedDocument.contains("summary-action-item-"))
+        XCTAssertTrue(generatedDocument.contains("MeetingActionItemsView"))
+        XCTAssertTrue(actionItems.contains("summary-action-item-"))
         XCTAssertFalse(companion.contains("SummaryActionItemEvidence"))
         XCTAssertFalse(diagnostics.contains("SummaryActionItemEvidence"))
     }
@@ -11937,7 +12020,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "meeting-detail-interaction-baseline")
         XCTAssertEqual(
             (interactionContract["interactionSignals"] as? [[String: Any]])?.count,
-            431)
+            470)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
             15)

@@ -72,6 +72,14 @@ protocol MeetingDetailModelClient: AnyObject {
         preview: MeetingSkillPreview,
         destination: String?
     ) async throws -> MeetingDetailSkillExecutionResult
+    func prepareMeetingDetailGitHubIssueDraft(
+        _ request: PrepareGitHubIssueDraftRequest
+    ) async throws -> GitHubIssueDraft
+    func performMeetingDetailGitHubIssue(
+        _ draft: GitHubIssueDraft,
+        proposalID: UUID,
+        proposedAt: Date
+    ) async throws -> MeetingDetailSkillExecutionResult
     func dismissMeetingDetailSkillOffer(_ offer: MeetingSkillOffer) async throws
     func deleteMeetingDetailCompanionCard(_ id: UUID) async throws
     func deleteMeetingDetail(_ id: MeetingID) async throws
