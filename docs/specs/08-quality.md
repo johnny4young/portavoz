@@ -2455,6 +2455,23 @@ explicitly enabled for this run; every other blocker stayed fail-closed. The
 Release-app serving evidence is controlled-local at clean feature commit
 `b660eff8`; later source changes remain independently exact-head gated.
 
+The clean LIVE-2 feature head `211d6188` then passed the expanded controlled-
+local Release-app authority with every serving target green. Precision, recall,
+abstention, fault outcome, Interview, deterministic-summary policy, and
+translation policy accuracy were 1.0, with zero false prompts and zero late
+publication. Cold/steady-p95 latency was 4.334/0.700 ms for question detection,
+0.309/0.070 ms for rolling summary, and 0.075/0.006 ms for translation policy;
+footprint growth was 2,080,792 bytes under nominal thermal state and AC power.
+The scorecard SHA-256 is
+`6eb4e5d95ccbe83c1f63493557ce2d11cff9459bc672952f74d55e3970cb73e4`.
+The same feature tree passed 2,834 package tests with 15 explicit skips, the
+current-SDK warnings-as-errors build, strict SwiftLint across 753 production
+files, repository hygiene, and the one shared-build scoped recording journey in
+English (14.701 seconds) and Spanish (13.939 seconds), both within budget with
+zero harness adjustment. This is not the complete bilingual release catalogue,
+content-quality, Instruments leak, physical Sequoia/Tahoe, signed-distribution,
+CloudKit, accessibility, or field evidence.
+
 Sequoia's Xcode 26.3 image carries Swift 6.2.4, whose XCTest synchronous-test
 teardown can abort while releasing a `@MainActor` value with `isolated deinit`
 ([swiftlang/swift#87316](https://github.com/swiftlang/swift/issues/87316)).
