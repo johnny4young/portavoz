@@ -252,22 +252,19 @@ class UITestScopeTests(unittest.TestCase):
             self.assertEqual(selection.locales, ("en",), path)
             self.assertLess(len(selection.tests), len(ALL_TESTS), path)
 
-    def test_pr_synchronize_uses_previous_head_but_manual_runs_stay_full(self):
+    def test_pr_scope_advances_only_from_verified_ancestor_artifacts(self):
         workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn("PREVIOUS_HEAD_SHA: ${{ github.event.before }}", workflow)
-        self.assertIn('EVENT_ACTION" == "synchronize"', workflow)
-        self.assertIn(
-            'git cat-file -e "${PREVIOUS_HEAD_SHA}^{commit}"',
-            workflow,
-        )
-        self.assertIn('SELECTED_BASE_SHA="$PREVIOUS_HEAD_SHA"', workflow)
-        self.assertIn(
-            "Previous PR head is unavailable; expanding from the base SHA.",
-            workflow,
-        )
+        self.assertNotIn("PREVIOUS_HEAD_SHA", workflow)
+        self.assertNotIn("github.event.before", workflow)
+        self.assertIn("actions: read", workflow)
+        self.assertIn("scripts/ui_test_verified_base.py", workflow)
+        self.assertIn('--base "$VERIFIED_BASE_SHA"', workflow)
+        self.assertIn("github.run_attempt == 1", workflow)
+        self.assertIn("ui-verification-${{", workflow)
+        self.assertIn("retention-days: 90", workflow)
         self.assertIn(
             "python3 scripts/ui_test_scope.py --all --format github",
             workflow,
@@ -289,10 +286,25 @@ class UITestScopeTests(unittest.TestCase):
         self.assertIn("id: ui_es", workflow)
         self.assertIn("ENGLISH_OUTCOME: ${{ steps.ui_en.outcome }}", workflow)
         self.assertIn("SPANISH_OUTCOME: ${{ steps.ui_es.outcome }}", workflow)
+        self.assertIn("runs-on: macos-26", workflow)
+        self.assertIn("Xcode_26.6.app/Contents/Developer", workflow)
+        self.assertIn("scripts/install-ci-xcodegen.sh", workflow)
+        self.assertNotIn("brew install xcodegen", workflow)
         artifact = workflow.index("Preserve scoped UI evidence")
         gate = workflow.index("Classify functional evidence and hosted runtime drift")
         self.assertLess(artifact, gate)
         self.assertNotIn("run: make test-ui-scoped", workflow)
+
+    def test_ui_scope_does_not_duplicate_repository_tooling_suites(self):
+        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertEqual(
+            workflow.count("scripts/ui_test_scope.py --validate-catalog"),
+            1,
+        )
+        self.assertNotIn("python3 -m unittest Tests.Tooling", workflow)
 
     def test_semantic_asset_preparation_selects_its_settings_journey(self):
         expected = FEATURE_TESTS["settings-intelligence"]

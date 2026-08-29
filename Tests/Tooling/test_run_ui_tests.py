@@ -23,6 +23,7 @@ class RunUITestsTests(unittest.TestCase):
         require_runtime_receipt: bool = False,
         phase: str = "build-and-test",
         prepared_build_duration: int | None = None,
+        preseed_stale_receipts: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -107,6 +108,14 @@ class RunUITestsTests(unittest.TestCase):
                     f"{prepared_build_duration}\n",
                     encoding="utf-8",
                 )
+            if preseed_stale_receipts:
+                results.mkdir(exist_ok=True)
+                for name in (
+                    "en-runtime.json",
+                    "en-execution.json",
+                    "en-execution.log",
+                ):
+                    (results / name).write_text("stale", encoding="utf-8")
 
             environment = os.environ.copy()
             environment.pop("DEVELOPER_DIR", None)
@@ -162,6 +171,13 @@ class RunUITestsTests(unittest.TestCase):
                 path.name: path.read_text(encoding="utf-8")
                 for path in (root / "results").glob("*-runtime.json")
             }
+            self.execution_receipts = {
+                path.name: path.read_text(encoding="utf-8")
+                for path in (root / "results").glob("*-execution.json")
+            }
+            self.execution_logs = tuple(
+                path.name for path in (root / "results").glob("*-execution.log")
+            )
             build_receipt = results / "build-duration-seconds.txt"
             self.build_duration_receipt = (
                 build_receipt.read_text(encoding="utf-8")
@@ -380,6 +396,28 @@ class RunUITestsTests(unittest.TestCase):
             json.loads(self.runtime_receipts["en-runtime.json"])["budgetStatus"],
             "passed",
         )
+        self.assertEqual(
+            json.loads(self.execution_receipts["en-execution.json"])[
+                "classification"
+            ],
+            "test-failure",
+        )
+
+    def test_locale_run_replaces_stale_evidence_before_atomic_writes(self):
+        selector = "PortavozUITests/LibraryUITests/testLibrary"
+        result, _ = self.run_runner(
+            selector,
+            require_runtime_receipt=True,
+            preseed_stale_receipts=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        runtime = json.loads(self.runtime_receipts["en-runtime.json"])
+        execution = json.loads(self.execution_receipts["en-execution.json"])
+        self.assertEqual(runtime["schemaVersion"], 2)
+        self.assertEqual(execution["classification"], "completed")
+        self.assertEqual(execution["selectorCount"], runtime["selectorCount"])
+        self.assertEqual(self.execution_logs, ())
 
 
 if __name__ == "__main__":

@@ -16409,3 +16409,63 @@ need the exclusion path: English passed 103/103 in 853.399 seconds (p50 6.379,
 p95 17.811, maximum 36.339) and Spanish passed 103/103 in 859.154 seconds (p50
 6.554, p95 18.181, maximum 36.890), with zero adjustments, zero retries, and
 every unchanged budget green.
+
+## D429 — Advance CI only through deterministic evidence boundaries (Aug 2026)
+
+**Context:** PR #30's exact remote head `19084e4e` eventually passed the four
+package CI jobs and all 103 English plus 103 Spanish real-app journeys on their
+first attempts. The retained run history nevertheless showed three different
+signals under the same red workflow name: genuine failed assertions, complete
+functional passes whose only red signal was heterogeneous hosted wall-clock
+drift, and host automation becoming unavailable before a test case began. The
+workflow also selected a synchronized push from `github.event.before` without
+proving that the previous head had completed its selected UI evidence. A failed
+or infrastructure-only head could therefore become the next incremental base.
+Meanwhile `macos-latest`, newest-installed-Xcode selection, and unversioned
+Homebrew installs made the environment change independently of source; the
+current-SDK job separately built and tested with different compiler flags.
+
+**Decision:** keep the existing release-authority job identities but give each
+one a single deterministic owner. `repository-hygiene` runs the repository and
+tooling policy corpus once on Linux before macOS allocation. `build-and-test`
+uses the explicit `macos-26` image, Xcode 26.6 through `DEVELOPER_DIR`, and one
+`run-swift-tests.sh -Xswiftc -warnings-as-errors` invocation so compilation and
+tests share flags. `sequoia-compatibility` uses `macos-15`, Xcode 26.3, and one
+complete package invocation. `lint` runs the official SwiftLint 0.65.0 Linux
+archive only after verifying its fixed SHA-256. Hosted XcodeGen similarly uses
+the official 2.46.0 archive and fixed digest. Missing versions or digest drift
+fail as environment-contract errors rather than silently selecting a newer
+tool.
+
+Scoped UI no longer trusts the immediately previous push. A first-attempt
+successful workflow may publish one content-free artifact named for its exact
+head only after either selecting no UI work or completing every selected
+functional case. The next run queries at most 30 completed runs, accepts one
+unique non-expired artifact only from `run_attempt == 1`, and requires its SHA
+to be both a descendant of the PR base and an ancestor of the new head. API,
+shape, artifact, expiry, force-push, or ancestry uncertainty falls back to the
+PR base. Manual dispatch remains complete bilingual. A rerun may diagnose but
+cannot publish an anchor or satisfy the final UI gate.
+
+Each locale now also writes a strict content-free execution receipt before the
+workflow classifies it. Product assertions, executed-but-incomplete suites,
+unknown nonzero exits, missing or malformed receipts, scope/count mismatch,
+and every unknown infrastructure signal remain blocking. The sole hosted
+exception is the exact pre-case `Timed out while enabling automation mode`
+signature with no runtime receipt: it becomes an annotated infrastructure
+advisory, never verified evidence and never an incremental anchor. The next
+push therefore reselects all changes since the last actually verified head.
+There is no test retry, timeout increase, assertion suppression, selector
+truncation, or runtime-budget change. Local/stable-Mac integration, RC, and
+release still require the full bilingual hard-budget gate.
+
+**Consequences:** a feature push pays only for changes since durable functional
+UI proof, while a failed or unavailable hosted attempt cannot erase missing
+coverage. Known host-service unavailability stops making a product PR red but
+also cannot claim a UI pass. Deterministic policy tests ratchet the release job
+names, exact OS/Xcode pairs, checksums, first-attempt ancestry, duplicate or
+expired artifacts, force-push fallback, execution classifications, and absence
+of test retries. This local implementation is not hosted evidence: a fresh
+published first-attempt run is still required. Physical Sequoia/Tahoe,
+VoiceOver/Voice Control, signed distribution, production CloudKit, provider
+accounts, and field behavior remain separate gates.

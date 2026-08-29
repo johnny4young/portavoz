@@ -164,7 +164,9 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(showcase.contains("_ = try? await store.saveSummary"))
         XCTAssertTrue(translation.contains("status = await availability.status("))
         XCTAssertFalse(translation.contains("try? await availability.status("))
-        XCTAssertTrue(ci.contains("run: swift build -Xswiftc -warnings-as-errors"))
+        XCTAssertTrue(ci.contains(
+            "run: scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors"))
+        XCTAssertFalse(ci.contains("run: swift build"))
         XCTAssertTrue(ios.contains("destination supports"))
         XCTAssertTrue(decisions.contains("## D118"))
         XCTAssertTrue(decisions.contains("## D119"))
@@ -9441,6 +9443,14 @@ final class ArchitectureDependencyTests: XCTestCase {
         let runner = try Self.contents(of: "scripts/run-ui-tests.sh")
         let runtime = try Self.contents(of: "scripts/ui_test_runtime.py")
         let gate = try Self.contents(of: "scripts/ui_test_ci_gate.py")
+        let execution = try Self.contents(of: "scripts/ui_test_execution.py")
+        let verifiedBase = try Self.contents(
+            of: "scripts/ui_test_verified_base.py")
+        let anchor = try Self.contents(
+            of: "scripts/ui_test_verification_anchor.py")
+        let ci = try Self.contents(of: ".github/workflows/ci.yml")
+        let swiftLint = try Self.contents(of: "scripts/run-ci-swiftlint.sh")
+        let xcodegen = try Self.contents(of: "scripts/install-ci-xcodegen.sh")
         let candidate = try Self.contents(of: "scripts/candidate_automation.py")
         let decisions = try Self.contents(of: "docs/DECISIONS.md")
 
@@ -9466,6 +9476,12 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(workflow.contains("steps.ui_en.outcome"))
         XCTAssertTrue(workflow.contains("steps.ui_es.outcome"))
         XCTAssertFalse(workflow.contains("run: make test-ui-scoped"))
+        XCTAssertTrue(workflow.contains("scripts/ui_test_verified_base.py"))
+        XCTAssertTrue(workflow.contains("ui-verification-${{"))
+        XCTAssertTrue(workflow.contains("github.run_attempt == 1"))
+        XCTAssertFalse(workflow.contains("github.event.before"))
+        XCTAssertTrue(workflow.contains("runs-on: macos-26"))
+        XCTAssertTrue(workflow.contains("Xcode_26.6.app/Contents/Developer"))
 
         XCTAssertTrue(makefile.contains("test-ui-scoped: test-ui-build"))
         XCTAssertTrue(makefile.contains("test-ui-build: project"))
@@ -9483,11 +9499,31 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(runner.contains("UI_TEST_PHASE:-build-and-test"))
         XCTAssertTrue(runner.contains("build-duration-seconds.txt"))
         XCTAssertTrue(runner.contains("UI_TEST_ENFORCE_RUNTIME_BUDGET:-true"))
+        XCTAssertTrue(runner.contains("scripts/ui_test_execution.py"))
+        XCTAssertTrue(runner.contains("execution_receipt"))
         XCTAssertTrue(gate.contains("hosted-runtime-drift"))
         XCTAssertTrue(gate.contains("product-or-test-regression"))
         XCTAssertTrue(gate.contains("infrastructure-or-harness"))
         XCTAssertTrue(gate.contains("evidence-contract violations"))
         XCTAssertTrue(gate.contains("wall-clock budgets remain advisory"))
+        XCTAssertTrue(gate.contains("known-host-infrastructure"))
+        XCTAssertTrue(gate.contains("automation-mode-timeout"))
+        XCTAssertTrue(execution.contains(
+            "Timed out while enabling automation mode"))
+        XCTAssertTrue(execution.contains(
+            "if runtime_cases is not None and runtime_cases > 0"))
+        XCTAssertTrue(verifiedBase.contains("raw_run.get(\"run_attempt\") != 1"))
+        XCTAssertTrue(verifiedBase.contains(
+            "history.is_ancestor(candidate, head)"))
+        XCTAssertTrue(anchor.contains("ui-functional-verification"))
+        XCTAssertTrue(anchor.contains("selectorSHA256"))
+        XCTAssertTrue(ci.contains("runs-on: macos-26"))
+        XCTAssertTrue(ci.contains(
+            "scripts/run-swift-tests.sh -Xswiftc -warnings-as-errors"))
+        XCTAssertFalse(ci.contains("run: swift build"))
+        XCTAssertFalse(ci.contains("Select newest Xcode"))
+        XCTAssertTrue(swiftLint.contains("version=\"0.65.0\""))
+        XCTAssertTrue(xcodegen.contains("version=\"2.46.0\""))
         XCTAssertTrue(runtime.contains("RECEIPT_SCHEMA_VERSION = 2"))
         XCTAssertTrue(runtime.contains(
             "POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0"))
@@ -9506,6 +9542,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "UI_POST_TEARDOWN_NOISE_THRESHOLD_SECONDS = 1.0"))
         XCTAssertTrue(decisions.contains("## D425"))
         XCTAssertTrue(decisions.contains("## D428"))
+        XCTAssertTrue(decisions.contains("## D429"))
     }
 
     func testXCUITestRuntimeOptimizationRetainsRiskOwnersWithoutDuplicateWork() throws {

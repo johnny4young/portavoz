@@ -4577,7 +4577,7 @@ real-app XCUITest.
 Specialized validators then require the deterministic receipt's exact release
 identity, an authoritative performance inventory, three passing resource
 samples for every scenario plus the Ask timing pipeline, zero-drift bounded
-long capture, and the exact 106-case EN/ES UI catalog with one reused build and
+long capture, and the exact current 103-case EN/ES UI catalog with one reused build and
 passing runtime budgets. Only that in-process sequence can write the
 owner-only `candidate-automation` qualification receipt; there is no CLI for
 caller-supplied proof state.
@@ -4779,8 +4779,13 @@ AVAudioConverter input callback receives its immutable source through one
 lock-protected, one-shot Sendable bridge; unchecked conformance is confined to
 that bridge and no import-wide concurrency suppression is used. First-party
 Swift sources compile against the current SDK with warnings treated as errors
-both locally and in the primary GitHub Actions build lane; the Sequoia lane
-continues to prove compatibility with the oldest supported runtime/toolchain.
+both locally and in the primary GitHub Actions build lane. Hosted CI uses the
+explicit macos-26/Xcode 26.6 pair for that lane and macos-15/Xcode 26.3 for the
+oldest supported runtime lane; `DEVELOPER_DIR` is verified instead of selecting
+the newest installed Xcode. Each lane owns one complete test invocation so its
+compiler flags cannot trigger a second differently configured package build.
+SwiftLint 0.65.0 and XcodeGen 2.46.0 come from official release archives with
+fixed SHA-256 digests instead of floating Homebrew state.
 Third-party GitHub Actions are pinned to immutable full commit SHAs with their
 human-readable versions in comments; repository hygiene rejects mutable tags.
 
@@ -4788,13 +4793,14 @@ Pull-request UI evidence is selected deterministically from changed paths.
 Known presentation and application files map to feature-level XCUITest
 selectors; localization and shared-harness changes expand to the complete
 bilingual catalogue; unknown production Swift paths fall back to the complete
-English suite. A synchronized pull-request update compares the new head with
-the immediately preceding pull-request head, so one narrow change does not pay
-again for every older commit on a long-lived branch. Opening or reopening a
-pull request still compares against its base. If a force-pushed previous object
-is absent from the complete scope checkout, selection expands from that base
-instead of failing narrow. Manual integration runs remain explicit
-complete-catalogue runs. Every feature scope names a checked-in
+English suite. A pull-request update compares the new head with the newest
+successful first-attempt ancestor that published one exact-SHA, content-free
+verification artifact after complete selected functional evidence (or a
+verified no-UI selection). The resolver rejects retries, failed runs,
+duplicate or expired artifacts, and candidates outside the current base-to-head
+ancestry. Any API, artifact, or force-push uncertainty expands from the PR base
+instead of failing narrow. Manual integration runs remain explicit complete-
+catalogue runs. Every feature scope names a checked-in
 production owner, and
 catalog validation rejects unscoped tests, empty or orphaned scopes, duplicate
 selectors, retired overlapping journeys, and missing or stale runtime budgets.
@@ -4813,9 +4819,11 @@ arguments are assembled without empty-array expansion on the system Bash
 runtime. One `build-for-testing` result is reused across selected locales.
 Locales run sequentially because macOS XCUITest shares host services and a
 parallel pass would measure contention rather than product behavior. Every real
-run retains an xcresult plus a content-free receipt containing only test
-identity, result, duration distribution, build/wall duration, and budget
-verdict. Full runs must contain the complete catalogue; scoped runs must contain
+run retains an xcresult plus content-free runtime and execution receipts. The
+first contains only test identity, result, duration distribution, build/wall
+duration, and budget verdict. The second binds locale, selector count,
+xcodebuild exit, result/runtime presence, log digest, and a closed execution
+classification. Full runs must contain the complete catalogue; scoped runs must contain
 exactly their requested selectors. Passing every catalogue selector explicitly
 is still a full run and therefore cannot evade aggregate budgets. The runner
 attempts the receipt after a failed XCTest pass but preserves XCTest's original
@@ -4835,6 +4843,15 @@ that still cross a budget retain the reported duration and fail closed. Hosted
 and candidate classifiers validate the adjustment identity and arithmetic.
 The raw xcresult remains available, and no adjustment changes a functional
 result, selector, assertion, timeout, locale, or retry policy.
+
+Hosted functional classification remains fail closed for product assertions,
+executed-but-incomplete selections, missing or malformed evidence, unknown
+nonzero exits, and unknown infrastructure. One exact pre-case host-service
+signature, `Timed out while enabling automation mode`, may be reported as an
+infrastructure advisory only when no runtime receipt exists. That run remains
+unverified and publishes no incremental artifact, so a later head must include
+all changes since the last actual functional proof. A workflow rerun is
+diagnostic only and cannot satisfy the final gate or publish an anchor.
 
 The UI bundle uses one main-actor, run-loop-driven bounded predicate helper for
 accessibility state instead of XCTest's one-second first-poll floor or fixed
@@ -4953,12 +4970,11 @@ the unchanged 1,300-second aggregate, 30-second p95, and independent per-
 journey ceilings without retry or runtime adjustment. These are one-host
 measurements, not physical Sequoia or separate-hardware Tahoe evidence.
 
-The published hosted predecessor passed its four CI jobs and all 106 English
-real-app journeys functionally, but the first hosted UI receipt remained red:
-1,482.123 summed seconds, p95 28.231, nine individual overages, and the
-unchanged 1,300-second aggregate violation. The consolidated local evidence
-does not supersede that retained receipt; the correction requires a fresh
-first exact-head hosted result. These are one-host performance measurements,
+The published predecessor `19084e4e` passed its four CI jobs and all 103
+English plus 103 Spanish real-app journeys on their first attempts. Earlier red
+receipts remain diagnosis for genuine assertion failures and hosted runtime
+variance rather than being erased by reruns. Changes after that published head
+still require fresh hosted evidence. These are hosted functional observations,
 not physical Sequoia or separate-hardware Tahoe evidence.
 
 Autonomous assistant validation has a separate, non-serving public authority.
@@ -5039,7 +5055,7 @@ treating the destination element's first frame as completion. The production
 navigation contract, not a UI-test retry, guarantees that same-meeting citation
 requests are applied; the palette regression explicitly starts from an already-
 open destination so a no-op route assignment cannot satisfy it accidentally.
-The complete 92-case English and Spanish suites remain the
+The complete current 103-case English and Spanish suites remain the
 release/architecture closure gate rather than the default cost for
 documentation or isolated surface changes.
 
@@ -5349,12 +5365,17 @@ reliability evidence retained from 9 Aug, is:
   independent first attempt, preserve all result bundles, and then apply one
   fail-closed functional/receipt classifier; one locale cannot prevent the next
   selected locale from producing evidence;
-- every UI run emits a content-free runtime receipt. Controlled local/stable-
-  Mac integration and release runs enforce the unchanged per-journey, exact-
+- every UI run emits content-free runtime and execution receipts. Controlled
+  local/stable-Mac integration and release runs enforce the unchanged per-journey, exact-
   catalogue, total-duration, and p95 budgets. Heterogeneous GitHub-hosted macOS
   runners report those wall-clock comparisons as advisory while functional
-  failures, skips, malformed/missing receipts, and infrastructure uncertainty
-  remain blocking;
+  failures, skips, malformed/missing receipts, unknown exits, and unknown
+  infrastructure remain blocking. Only the exact pre-case automation-mode
+  timeout is a hosted advisory, and such a head cannot become an incremental
+  verification anchor;
+- pull-request scope advances only from a first-attempt exact-SHA functional
+  verification artifact inside current ancestry; retry, expiry, duplication,
+  API uncertainty, or force-push divergence expands fail-safe from the PR base;
 - the first phased hosted classifier proved that separation fails closed: Spanish
   passed 101/101 with only runtime advisories, while one English structural-
   correction interaction remained non-passing and therefore blocked the job.

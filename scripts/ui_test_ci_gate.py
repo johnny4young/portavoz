@@ -55,6 +55,34 @@ SUITE_RUNTIME_DRIFT_PATTERNS = (
 )
 SUPPORTED_LOCALES = ("en", "es")
 SUPPORTED_OUTCOMES = frozenset({"success", "failure", "cancelled", "skipped"})
+EXECUTION_KEYS = frozenset(
+    {
+        "classification",
+        "failureSignature",
+        "locale",
+        "logSHA256",
+        "resultBundlePresent",
+        "runtimeReceiptPresent",
+        "schemaVersion",
+        "selectorCount",
+        "xcodebuildExitStatus",
+    }
+)
+EXECUTION_SCHEMA_VERSION = 1
+EXECUTION_CLASSIFICATIONS = frozenset(
+    {
+        "completed",
+        "evidence-failure",
+        "known-host-infrastructure",
+        "test-failure",
+        "unclassified-failure",
+    }
+)
+KNOWN_HOST_SIGNATURES = frozenset({"automation-mode-timeout"})
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+FUNCTIONAL_RESULT_PATTERN = re.compile(
+    r"^(?P<identifier>[^:]+): result=(?P<result>[A-Za-z]+)$"
+)
 
 
 class GateError(RuntimeError):
@@ -68,6 +96,7 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--english-outcome", required=True)
     value.add_argument("--spanish-outcome", required=True)
     value.add_argument("--summary", type=Path)
+    value.add_argument("--github-output", type=Path)
     return value
 
 
@@ -93,6 +122,17 @@ def is_runtime_drift_violation(
     if case_match is not None:
         return case_match.group("identifier") in case_identifiers
     return False
+
+
+def is_functional_result_violation(
+    value: str,
+    cases_by_identifier: dict[str, dict[str, Any]],
+) -> bool:
+    match = FUNCTIONAL_RESULT_PATTERN.fullmatch(value)
+    if match is None:
+        return False
+    case = cases_by_identifier.get(match.group("identifier"))
+    return case is not None and case["result"] == match.group("result") != "Passed"
 
 
 def load_receipt(path: Path, expected_locale: str) -> dict[str, Any]:
@@ -190,12 +230,74 @@ def load_receipt(path: Path, expected_locale: str) -> dict[str, Any]:
         violation
         for violation in violations
         if not is_runtime_drift_violation(violation, set(tests_by_identifier))
+        and not is_functional_result_violation(violation, tests_by_identifier)
     ]
     if non_runtime_violations:
         raise GateError(
             f"{expected_locale}: runtime receipt has evidence-contract violations"
         )
     return receipt
+
+
+def load_execution(path: Path, expected_locale: str) -> dict[str, Any]:
+    try:
+        execution = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise GateError(f"{expected_locale}: execution receipt is unreadable") from error
+    if not isinstance(execution, dict) or set(execution) != EXECUTION_KEYS:
+        raise GateError(f"{expected_locale}: execution receipt shape differs")
+    if (
+        execution["schemaVersion"] != EXECUTION_SCHEMA_VERSION
+        or execution["locale"] != expected_locale
+        or execution["classification"] not in EXECUTION_CLASSIFICATIONS
+        or not isinstance(execution["logSHA256"], str)
+        or SHA256_PATTERN.fullmatch(execution["logSHA256"]) is None
+        or not isinstance(execution["resultBundlePresent"], bool)
+        or not isinstance(execution["runtimeReceiptPresent"], bool)
+        or not isinstance(execution["selectorCount"], int)
+        or isinstance(execution["selectorCount"], bool)
+        or execution["selectorCount"] < 0
+        or not isinstance(execution["xcodebuildExitStatus"], int)
+        or isinstance(execution["xcodebuildExitStatus"], bool)
+        or not 0 <= execution["xcodebuildExitStatus"] <= 255
+    ):
+        raise GateError(f"{expected_locale}: execution receipt is invalid")
+
+    classification = execution["classification"]
+    signature = execution["failureSignature"]
+    exit_status = execution["xcodebuildExitStatus"]
+    result_present = execution["resultBundlePresent"]
+    runtime_present = execution["runtimeReceiptPresent"]
+    if classification == "completed":
+        valid = (
+            exit_status == 0
+            and result_present
+            and runtime_present
+            and signature is None
+        )
+    elif classification == "evidence-failure":
+        valid = (
+            exit_status == 0
+            and (not result_present or not runtime_present)
+            and signature is None
+        )
+    elif classification == "known-host-infrastructure":
+        valid = (
+            exit_status > 0
+            and not runtime_present
+            and signature in KNOWN_HOST_SIGNATURES
+        )
+    elif classification in {"test-failure", "unclassified-failure"}:
+        valid = exit_status > 0 and signature is None
+        if classification == "test-failure":
+            valid = valid and runtime_present
+    else:
+        valid = False
+    if not valid:
+        raise GateError(
+            f"{expected_locale}: execution classification contradicts its evidence"
+        )
+    return execution
 
 
 def annotation(message: str) -> str:
@@ -227,6 +329,14 @@ def write_summary(path: Path | None, rows: Sequence[str]) -> None:
             output.write(row + "\n")
 
 
+def write_github_outputs(path: Path | None, *, verified: bool, state: str) -> None:
+    if path is None:
+        return
+    with path.open("a", encoding="utf-8") as output:
+        output.write(f"verified={'true' if verified else 'false'}\n")
+        output.write(f"state={state}\n")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser().parse_args(argv)
     selected = tuple(dict.fromkeys(arguments.locales.split()))
@@ -242,6 +352,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     failures: list[str] = []
+    infrastructure_advisories: list[str] = []
     summary_rows: list[str] = []
     for locale in SUPPORTED_LOCALES:
         outcome = outcomes[locale]
@@ -253,12 +364,51 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             continue
 
+        execution: dict[str, Any] | None = None
+        execution_error: str | None = None
+        try:
+            execution = load_execution(
+                arguments.results / f"{locale}-execution.json",
+                locale,
+            )
+        except GateError as error:
+            execution_error = str(error)
+
         receipt: dict[str, Any] | None = None
         receipt_error: str | None = None
         try:
             receipt = load_receipt(arguments.results / f"{locale}-runtime.json", locale)
         except GateError as error:
             receipt_error = str(error)
+
+        if execution_error is not None:
+            failures.append(f"{locale}: evidence-contract: {execution_error}")
+            summary_rows.append(
+                f"| {locale} | {outcome} | "
+                f"{receipt['caseCount'] if receipt else '-'} | "
+                "evidence-contract | unavailable | - |"
+            )
+            continue
+
+        assert execution is not None
+        if (
+            outcome == "failure"
+            and execution["classification"] == "known-host-infrastructure"
+            and receipt is None
+        ):
+            detail = execution["failureSignature"]
+            infrastructure_advisories.append(f"{locale}: {detail}")
+            print(
+                "::warning title=Hosted UI infrastructure advisory::"
+                + annotation(
+                    f"{locale}: {detail}; functional evidence remains unverified"
+                )
+            )
+            summary_rows.append(
+                f"| {locale} | {outcome} | - | infrastructure advisory | "
+                "unavailable | - |"
+            )
+            continue
 
         if outcome != "success" or receipt_error is not None:
             classification = classify_failure(receipt)
@@ -272,6 +422,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             continue
 
         assert receipt is not None
+        if execution["classification"] != "completed":
+            failures.append(
+                f"{locale}: evidence-contract: successful step lacks completed execution"
+            )
+            summary_rows.append(
+                f"| {locale} | {outcome} | {receipt['caseCount']} | "
+                "evidence-contract | unavailable | - |"
+            )
+            continue
+        if execution["selectorCount"] != receipt["selectorCount"]:
+            failures.append(
+                f"{locale}: evidence-contract: selector counts disagree"
+            )
+            summary_rows.append(
+                f"| {locale} | {outcome} | {receipt['caseCount']} | "
+                "evidence-contract | unavailable | - |"
+            )
+            continue
         nonpassing = [case for case in receipt["tests"] if case["result"] != "Passed"]
         if nonpassing:
             failures.append(f"{locale}: product-or-test-regression: non-passing cases")
@@ -295,14 +463,33 @@ def main(argv: Sequence[str] | None = None) -> int:
     if summary_path is None and os.environ.get("GITHUB_STEP_SUMMARY"):
         summary_path = Path(os.environ["GITHUB_STEP_SUMMARY"])
     write_summary(summary_path, summary_rows)
+    verified = not failures and not infrastructure_advisories
+    state = (
+        "regression-or-evidence-failure"
+        if failures
+        else "infrastructure-advisory"
+        if infrastructure_advisories
+        else "passed"
+    )
+    write_github_outputs(
+        arguments.github_output,
+        verified=verified,
+        state=state,
+    )
     if failures:
         for failure in failures:
             print(f"UI CI gate failed: {failure}", file=sys.stderr)
         return 1
-    print(
-        "Hosted UI functional gate passed; wall-clock budgets remain advisory "
-        "outside controlled performance authority."
-    )
+    if infrastructure_advisories:
+        print(
+            "Hosted UI infrastructure was unavailable; the PR remains green, "
+            "but this head cannot become an incremental verification anchor."
+        )
+    else:
+        print(
+            "Hosted UI functional gate passed; wall-clock budgets remain advisory "
+            "outside controlled performance authority."
+        )
     return 0
 
 

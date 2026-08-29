@@ -389,7 +389,7 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertNotIn("typeKey(.escape", source)
         self.assertIn("installs no interruption monitor", source)
 
-    def test_ci_and_hygiene_keep_the_preflight_regressions_blocking(self):
+    def test_hygiene_owns_preflight_policy_without_ui_workflow_duplication(self):
         workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
             encoding="utf-8"
         )
@@ -398,8 +398,9 @@ class UITestHostPreflightTests(unittest.TestCase):
         )
 
         command = "python3 -m unittest Tests.Tooling.test_ui_test_host_preflight"
-        self.assertIn(command, workflow)
         self.assertIn(command, hygiene)
+        self.assertNotIn(command, workflow)
+        self.assertIn("make test-ui-run", workflow)
         self.assertIn("timeout-minutes: 60", workflow)
 
 

@@ -93,12 +93,19 @@ python3 -m unittest Tests.Tooling.test_production_sync_qualification
 python3 -m unittest Tests.Tooling.test_production_sync_qualification_packaging
 python3 -m unittest Tests.Tooling.test_assistive_technology_qualification
 python3 -m unittest Tests.Tooling.test_swift_test_failure_summary
+python3 -m unittest Tests.Tooling.test_ci_workflow
 python3 -m unittest Tests.Tooling.test_ui_test_ci_gate
+python3 -m unittest Tests.Tooling.test_ui_test_execution
+python3 -m unittest Tests.Tooling.test_ui_test_verified_base
+python3 -m unittest Tests.Tooling.test_ui_test_verification_anchor
 bash -n scripts/make-app.sh
 bash -n scripts/make-production-sync-qualification-app.sh
 bash -n scripts/verify-cloudkit-capabilities.sh
 bash -n scripts/run-release-reliability-gates.sh
 bash -n scripts/run-ui-tests.sh
+bash -n scripts/run-ci-swiftlint.sh
+bash -n scripts/install-ci-xcodegen.sh
+bash -n scripts/verify-ci-toolchain.sh
 bash -n scripts/run-resource-baseline.sh
 bash -n scripts/run-resource-recording-baseline.sh
 bash -n scripts/run-exact-path-mutation-benchmark.sh

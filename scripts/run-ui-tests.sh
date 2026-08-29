@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+umask 077
 
 locales="${UI_TEST_LOCALES:-default}"
 tests="${UI_TESTS:-}"
@@ -172,7 +173,11 @@ for locale in $locales; do
   esac
 
   result_bundle="$results_root/$locale.xcresult"
+  runtime_receipt="$results_root/$locale-runtime.json"
+  execution_receipt="$results_root/$locale-execution.json"
+  execution_log="$results_root/$locale-execution.log"
   rm -rf "$result_bundle"
+  rm -f "$runtime_receipt" "$execution_receipt" "$execution_log"
   selector_label="$selector_count scoped selectors"
   if [[ -z "$tests" ]]; then
     selector_label="all tests"
@@ -184,8 +189,8 @@ for locale in $locales; do
   set +e
   xcodebuild test-without-building \
     "${test_args[@]}" \
-    -resultBundlePath "$result_bundle"
-  test_status=$?
+    -resultBundlePath "$result_bundle" 2>&1 | tee "$execution_log"
+  test_status=${PIPESTATUS[0]}
   set -e
   test_wall_duration=$((SECONDS - test_started))
 
@@ -198,7 +203,7 @@ for locale in $locales; do
       runtime_args=(
         --result "$result_bundle"
         --budget "$runtime_budget"
-        --output "$results_root/$locale-runtime.json"
+        --output "$runtime_receipt"
         --locale "$locale"
         --selector-count "$selector_count"
         --build-duration "$build_duration"
@@ -214,10 +219,29 @@ for locale in $locales; do
     fi
   fi
 
+  execution_status=0
+  set +e
+  python3 scripts/ui_test_execution.py \
+    --locale "$locale" \
+    --selector-count "$selector_count" \
+    --exit-status "$test_status" \
+    --log "$execution_log" \
+    --result "$result_bundle" \
+    --runtime-receipt "$runtime_receipt" \
+    --output "$execution_receipt"
+  execution_status=$?
+  set -e
+  if (( execution_status == 0 )); then
+    rm -f "$execution_log"
+  fi
+
   # Preserve the real XCTest failure as the primary signal while still
   # attempting a content-free receipt for diagnosis and trend evidence.
   if (( test_status != 0 )); then
     exit "$test_status"
+  fi
+  if (( execution_status != 0 )); then
+    exit "$execution_status"
   fi
   if (( receipt_status != 0 )); then
     exit "$receipt_status"
