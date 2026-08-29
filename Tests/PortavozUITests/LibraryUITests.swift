@@ -378,8 +378,13 @@ final class LibraryUITests: PortavozUITestCase {
     @MainActor
     func testRecordingOffersObjectivesNextQuestionAndTalkBalance() {
         let app = XCUIApplication.portavoz(
+            seedDemo: true,
+            simulateSequoiaCapabilities: true,
             simulateLiveTranscriptBrowsing: true,
+            simulateLiveApuntador: true,
             simulateProactiveAssist: true)
+        app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
+            #"{"companionEnabled":true}"#
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -391,6 +396,18 @@ final class LibraryUITests: PortavozUITestCase {
         XCTAssertTrue(
             app.waitForLiveTranscriptFrontier(),
             "the live-assist assertions require closed captions")
+        let expectedQuestion = UITestLocale.environmentLocale == "es"
+            ? "¿Puedes explicar por qué el despliegue pasó al viernes?"
+            : "Could you explain why the rollout moved to Friday?"
+        XCTAssertTrue(
+            app.staticTexts[expectedQuestion].waitForExistenceFast(timeout: 10),
+            "the real bundled detector must surface the frozen bilingual question")
+        let questionOnlyStatus = UITestLocale.environmentLocale == "es"
+            ? "pregunta detectada"
+            : "question detected"
+        XCTAssertTrue(
+            app.staticTexts[questionOnlyStatus].waitForExistenceFast(timeout: 5),
+            "without an answer engine Sequoia must show an honest question-only card")
         let transcript = app.control(withIdentifier: "recording-live-transcript")
         XCTAssertTrue(transcript.waitForExistenceFast(timeout: 8))
 

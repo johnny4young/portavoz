@@ -27,8 +27,9 @@ public enum TurnEndpointPolicy {
 
     /// Whether the open row is worth a speculative detection once the
     /// deadline fires. Mirrors the real-close gates exactly — remote
-    /// channel, not noise, question-shaped or an owner mention — so
-    /// speculation can never surface something a real close would not.
+    /// channel, not noise, and enough material for calibrated admission. The
+    /// 20 KB bundled classifier now owns question shape; making the old lexical
+    /// heuristic a hard gate would lose punctuation-free noisy ASR.
     public static func isTurnEndCandidate(
         channel: AudioChannel,
         text: String,
@@ -38,8 +39,9 @@ public enum TurnEndpointPolicy {
         guard channel == .system else { return false }
         guard !TranscriptNoiseFilter.isLikelyNoise(text: text, confidence: confidence)
         else { return false }
-        return QuestionHeuristic.looksLikeQuestion(text)
-            || ownerName.map { QuestionHeuristic.mentions($0, in: text) } == true
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.count >= 12
+            || ownerName.map { QuestionHeuristic.mentions($0, in: trimmed) } == true
     }
 
     /// One detection per (row, text length). The row stays OPEN after a

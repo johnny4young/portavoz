@@ -283,6 +283,7 @@ struct MeetingDetailCompanionSection: View {
                 ? L10n.text("asked you")
                 : "\(L10n.text("asked you")) · \(base)"
         }
+        if card.answer.isEmpty { return L10n.text("question detected") }
         return base
     }
 }

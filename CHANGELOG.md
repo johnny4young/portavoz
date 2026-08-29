@@ -6,6 +6,7 @@ catchy entry for every user-visible change — feature name + what it gives you.
 
 ## August 29, 2026
 
+- **💬 Apuntador reaches every supported Mac** — Detect English and Spanish questions privately on Sequoia or Tahoe, with honest question-only cards whenever no answer engine is available.
 - **⚙️ Background work stays visible** — Follow recovery, meeting processing, Spotlight, semantic search, and memory-graph activity from one private status center, with recording always taking priority.
 
 ## August 28, 2026

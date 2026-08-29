@@ -16522,3 +16522,98 @@ translation challengers. `make test-live-assist-validation`,
 `make live-assist-foundation-models` keep contract testing, observation, and
 serving admission distinct. One bounded bilingual real-app journey remains the
 mandatory UI canary; the hidden benchmark adds no user-facing control.
+
+## D431 — Make live question admission provider-neutral on Sequoia (Aug 2026)
+
+**Context:** the released Apuntador used a deterministic lexical prefilter and
+then required Apple's Foundation Models classifier. That made the feature
+unavailable on the supported Sequoia floor, even though question admission is a
+small classification problem rather than a generative one. BYOK could answer a
+general-knowledge question but could not replace the Apple classifier, so
+Settings correctly hid the toggle. LIVE-0 then showed that both the released
+prefilter and the installed Foundation Models comparison lane were below the
+frozen bilingual quality target. Replacing one opaque provider with another
+without a reproducible corpus, abstention policy, packaged asset, provenance,
+or real-app journey would only move the gate.
+
+**Decision:** make one checked-in compiled Natural Language classifier the
+authoritative live question admission path on Sequoia and Tahoe. Its frozen
+Create ML max-entropy source is trained from a byte-reproducible 560-example
+CC0 public-synthetic corpus across English, Spanish, code switching, noisy ASR,
+quoted questions, and fragments; training and LIVE-0 holdout sentences must be
+disjoint. Pin the training corpus, source model, and complete compiled model
+tree. SwiftPM copies the compiled asset into the IntelligenceKit resource
+bundle, and app packaging fails if that serving resource is missing.
+
+Keep deterministic surface features calibrated but non-authoritative. Reject
+invalid probability vectors, admit a sufficiently strong independent question
+or a lower-confidence model result only beside exact syntax/name evidence, and
+preserve a separate explicit abstention class. The original normalized caption
+is the displayed/evidenced question; neither the classifier nor an optional
+challenger rewrites source speech. Classify routing conservatively: meeting-
+specific material stays context, non-directed logistics stays silent, exact
+owner-directed logistics becomes an asked-you question-only card, and only
+remaining factual/technical material is eligible for BYOK general knowledge.
+
+Compose one provider-neutral generator inside the existing recording-scoped
+bounded/cancellable owner. The bundled detector always owns admission.
+Foundation Models may challenge and answer on macOS 26 when the app-owned
+capability is available, but its classifier identity is recorded separately
+and it cannot gate the base result. Without a usable answer engine, publish an
+honest question-only card; a BYOK failure falls back to that card rather than a
+hidden provider. Content-free generation provenance records the authoritative
+classifier, optional challenger, and actual answer provider separately.
+Question-only presentation never offers copy or invents answer provenance.
+
+Settings exposes the existing Apuntador toggle and owner name on every
+supported OS when the mandatory resource loads; a load failure disables the
+toggle and explains the required reinstall rather than leaving a dead control.
+It says that offline bilingual
+detection works on Sequoia and that Tahoe/Apple Intelligence supplies optional
+on-device answers; explicitly configured BYOK remains general-knowledge-only.
+The correction-aware post-meeting refresh retains its existing macOS-26
+Foundation Models requirement and must remain described separately.
+
+Extend the D430 Release-app authority with a `bundled-question` adapter that
+runs every frozen scenario through the real checked-in model and declares the
+asset installed. A deterministic EN/ES XCUITest enables Apuntador through
+volatile temporary-store defaults, emits one frozen remote question through the
+normal caption callback, disables the optional Tahoe challenger via the
+app-owned simulated capability, and expects a question-only card. Scope policy
+maps the LIVE-1 owners to that consolidated recording/Sequoia journey; copy or
+localization changes still expand fail-safe to the complete bilingual gate.
+
+**Consequences:** live detection now works without Foundation Models on the
+Sequoia floor, while richer Tahoe answers remain an additive enhancement. The
+first dirty-tree real-app candidate run passed all frozen targets with 1.0
+precision/recall/abstention, zero false prompts and late publication, 3.284 ms
+cold latency, 0.606 ms steady p95, and 1,556,528 bytes footprint growth, but it
+is diagnostic only until repeated from the clean exact commit. Model/corpus
+changes must intentionally update every digest and rerun the same authority.
+Physical Sequoia/Tahoe, real-meeting usefulness, answer prose, signed
+distribution, Instruments leaks, and assistive technology remain explicit
+external gates; deterministic or hosted tests cannot certify them.
+
+## D432 — Keep Notification Center bypass local and category-scoped (Aug 2026)
+
+**Context:** the read-only XCUITest host preflight correctly stopped before the
+LIVE-1 bilingual run because a Notification Center alert was visible. The
+operator explicitly accepted that category for this feature run. Dismissing the
+alert would mutate user-owned state, while disabling the entire preflight would
+also admit authentication windows, Secure Input, or competing automation and
+turn host contamination into misleading product failures.
+
+**Decision:** retain the fail-closed preflight by default and add one exact
+local environment switch,
+`PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS=true`. It removes only the
+content-free Notification Center count from both bounded samples. SecurityAgent,
+Secure Input, active `xcodebuild test`, and UI-test runners remain blockers. Any
+value other than exact lowercase `true` or `false` fails closed. CI never sets
+the switch, and the checker still reads no title, content, control, or owner
+identity and dismisses nothing.
+
+**Consequences:** an explicitly accepted local notification overlay no longer
+prevents otherwise deterministic XCUITest, without creating a general
+"force" mode or weakening hosted evidence. The result may still fail naturally
+if the overlay steals focus; that remains an honest functional failure rather
+than something automation retries away.

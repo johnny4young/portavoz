@@ -60,9 +60,10 @@ final class RecordingController {
     private var companionArtifactsByCardID: [UUID: CompanionGenerationArtifact] = [:]
     private var companionTerminalRuns: [GenerationRun] = []
     let liveTranslationWakeHub = LiveTranslationWakeHub()
-    var companionEnabled = UserDefaults.standard.bool(forKey: "companionEnabled") {
+    @ObservationIgnored private let defaults: UserDefaults
+    var companionEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(companionEnabled, forKey: "companionEnabled")
+            defaults.set(companionEnabled, forKey: "companionEnabled")
             // The toggle is available during a recording. Enabling it while a
             // remote row is already open must start that row's silence clock;
             // disabling it must cancel any pending speculative detection.
@@ -203,6 +204,11 @@ final class RecordingController {
     /// finished turn, and the receipt of the last speculative detection.
     var turnEndpointTask: Task<Void, Never>?
     var speculativeTurnMark: SpeculativeTurnMark?
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        companionEnabled = defaults.bool(forKey: "companionEnabled")
+    }
 
     /// User-defined domain terms reused by the optional rolling summary.
     /// StartRecording samples the same setting for transcription hints.

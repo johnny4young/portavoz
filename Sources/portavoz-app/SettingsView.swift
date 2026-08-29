@@ -768,6 +768,7 @@ extension SettingsView {
     private var companionSection: some View {
         CompanionSettingsSection(
             capability: services.foundationModelsCapability,
+            detectorAvailable: services.companionAvailable,
             companionEnabled: companionEnabledBinding,
             companionUserName: $companionUserName,
             mirrorAfterMeeting: $mirrorAfterMeeting)

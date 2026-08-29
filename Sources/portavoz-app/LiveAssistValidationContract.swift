@@ -31,6 +31,7 @@ private enum LiveAssistValidationTranslationCodingKey: String, CodingKey {
 
 enum LiveAssistValidationAdapter: String, Equatable {
     case releasedPrefilter = "released-prefilter"
+    case bundledQuestion = "bundled-question"
     case foundationModels = "foundation-models"
 
     var receipt: LiveAssistValidationObservations.Adapter {
@@ -41,6 +42,12 @@ enum LiveAssistValidationAdapter: String, Equatable {
                 version: "1.0.0",
                 className: "released-prefilter",
                 installedModel: false)
+        case .bundledQuestion:
+            .init(
+                id: LiveQuestionAdmissionPolicy.modelID,
+                version: "1.0.0",
+                className: "bundled-model",
+                installedModel: true)
         case .foundationModels:
             .init(
                 id: "apple-foundation-models-live-question",

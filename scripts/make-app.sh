@@ -116,6 +116,16 @@ printf '%s\n' "$SIGN_ENTITLEMENTS" > dist/.portavoz-sign-entitlements
 # binary can find it relative to itself.
 cp -a "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/"
 
+# LIVE-1 question admission is a tiny SwiftPM resource bundle. It is a
+# mandatory serving asset on both Sequoia and Tahoe: shipping the executable
+# without it would expose a working toggle that can never publish a card.
+QUESTION_BUNDLE="$BIN_DIR/Portavoz_IntelligenceKit.bundle"
+if [[ ! -d "$QUESTION_BUNDLE/PortavozLiveQuestionClassifier.mlmodelc" ]]; then
+  echo "bundled Apuntador question classifier is missing from the SwiftPM build." >&2
+  exit 66
+fi
+cp -R "$QUESTION_BUNDLE" "$APP/Contents/Resources/"
+
 # MLX Metal kernels (D32): SwiftPM cannot compile Metal shaders, so the
 # compiled metallib comes from a cached one-time xcodebuild pass. Without
 # the bundle inside Resources the embedded summarizer cannot initialize

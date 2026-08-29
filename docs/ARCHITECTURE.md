@@ -875,17 +875,30 @@ owns the clipboard. Secure or uninspectable focus, unavailable clipboard or
 event delivery, and held modifiers become visible failures rather than false
 insertion success.
 
-Live Apuntador keeps endpoint admission split across layers: the pure,
-deterministic `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel,
-noise, question/name, and speculative-material rules, while
-`RecordingController` owns exactly one main-actor silence deadline. Both a real
-row close and a two-second silence expiry enter one shared detection dispatch;
-the app never closes or rewrites the coalescer's mutable row. Every accepted
-delta re-arms the deadline, and recording activation or an in-meeting opt-in
-also synchronizes it so an already-visible remote question cannot be stranded
-at either lifecycle boundary. Recording activation first drains every row that
-closed while Start was still preparing, then arms the open tail. Disabling
-Apuntador, stopping, or resetting the session cancels the pending deadline.
+Live Apuntador keeps endpoint and semantic admission split across layers. The
+pure `TurnEndpointPolicy` in `IntelligenceKit` owns the remote-channel, noise,
+minimum-material, and speculative rules; it no longer decides that a sentence
+is a question. `RecordingController` owns exactly one main-actor silence
+deadline, and both a real row close and a two-second silence expiry enter one
+shared detection dispatch without closing or rewriting the coalescer's mutable
+row. A process-shared actor owns the bundled bilingual question classifier and
+serializes its Natural Language model because that framework type is not
+Sendable. The classifier is authoritative on Sequoia and Tahoe; deterministic
+syntax and exact owner-name features adjust only its calibrated admission
+thresholds. Foundation Models may challenge and answer an admitted question on
+Tahoe but never gates detection. Without an answer engine, context and general
+questions render as honest question-only cards; explicitly configured BYOK can
+receive only an admitted general-knowledge question. Non-directed logistics
+remain silent, while an exact owner mention may produce an asked-you card.
+
+The compiled classifier is a mandatory SwiftPM/app resource. Packaging fails
+instead of shipping a working toggle without its serving asset, and Settings
+exposes the toggle on every supported macOS version only while that resource is
+loadable. A missing or unloadable asset leaves a visible reinstall explanation
+instead of a dead control. Foundation Models capability text describes optional answer
+enhancement rather than disabling Apuntador. The separate explicit
+post-meeting refresh still uses its existing macOS-26 provider pipeline and is
+not implied to work on Sequoia by the live detector.
 
 Bounded recording-scoped live Apuntador owns generation separately from that
 deadline. One coordinator admits at most one active generation and one newest
@@ -5055,7 +5068,10 @@ server are not blockers. A separate
 Swift 6 CoreGraphics/HIToolbox probe reads only on-screen window owner/layer
 metadata and the public process-agnostic Secure Input state. It rejects
 visible SecurityAgent or Notification Center alerts and any other process's
-keyboard protection without exposing that process identity. It never reads a
+keyboard protection without exposing that process identity. A local operator
+may explicitly set `PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS=true` to
+ignore only Notification Center for one run; SecurityAgent, Secure Input, and
+active automation remain fail-closed, and CI never sets the override. It never reads a
 window title, dismisses a prompt, kills the host-wide test service, or
 terminates another process. The preflight compiles this probe once into a
 private disposable workspace under a bounded 60-second cold-toolchain budget,
@@ -5188,7 +5204,10 @@ DerivedData bundles therefore cannot compete for one LaunchServices/App Intents
 record. The separate Dev identity requires its own one-time macOS permissions
 and preferences; the stable installation remains untouched. UI tests use
 disposable SQLite, audio, saved-state, and voice-gallery locations and never
-touch the real library or Keychain.
+touch the real library or Keychain. Selected per-launch preferences enter a
+volatile injected defaults authority before the recording owner is composed;
+that owner retains the same authority, so deterministic fixtures cannot sample
+or rewrite the host's persistent Apuntador opt-in.
 
 ## Enforced engineering rules
 
@@ -5367,7 +5386,7 @@ reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,799 XCTest package cases are defined, with 15 real-model/environment cases
+- 2,817 XCTest package cases are defined, with 15 real-model/environment cases
   gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
@@ -5376,16 +5395,16 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 744
+- strict SwiftLint remains a blocking CI gate and is clean across all 749
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
 - the deterministic tooling suites and the 220-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 15 feature
   owners, and 30 explicitly owned UI journeys;
 - 103 XCUITest cases per locale define the 206-case bilingual release gate;
-- the latest controlled run reused one 13-second build and passed all 103
-  English cases in 853.399 summed seconds (p95 17.811) and all 103 Spanish
-  cases in 859.154 seconds (p95 18.181), with every unchanged budget green,
+- the latest controlled run reused one 18-second build and passed all 103
+  English cases in 847.719 summed seconds (p95 17.851) and all 103 Spanish
+  cases in 854.580 seconds (p95 17.901), with every unchanged budget green,
   no retry, and no runtime adjustment;
 - pull requests run only their minimum-safe selected feature evidence; shared
   localization/harness changes and release closure expand to the complete

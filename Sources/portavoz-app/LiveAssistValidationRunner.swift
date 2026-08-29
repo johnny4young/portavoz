@@ -194,9 +194,52 @@ enum LiveAssistValidationRunner {
             confidence: event.confidence)
         else { return "abstain" }
         let directed = QuestionHeuristic.mentions(ownerName, in: event.text)
+        switch adapter {
+        case .releasedPrefilter:
+            return QuestionHeuristic.looksLikeQuestion(event.text) || directed
+                ? "prompt" : "ignore"
+        case .bundledQuestion:
+            return await bundledQuestionDecision(
+                event,
+                ownerName: ownerName,
+                directed: directed)
+        case .foundationModels:
+            return await foundationQuestionDecision(
+                event,
+                ownerName: ownerName,
+                directed: directed)
+        }
+    }
+
+    private static func bundledQuestionDecision(
+        _ event: LiveAssistValidationFixture.QuestionEvent,
+        ownerName: String,
+        directed: Bool
+    ) async -> String {
+        do {
+            let detected = try await BundledLiveQuestionDetector.shared.detect(
+                candidate: event.text,
+                ownerName: ownerName)
+            switch detected.decision {
+            case .question:
+                return detected.kind == .logistics && !directed ? "ignore" : "prompt"
+            case .notQuestion:
+                return "ignore"
+            case .abstain:
+                return "abstain"
+            }
+        } catch {
+            return "abstain"
+        }
+    }
+
+    private static func foundationQuestionDecision(
+        _ event: LiveAssistValidationFixture.QuestionEvent,
+        ownerName: String,
+        directed: Bool
+    ) async -> String {
         guard QuestionHeuristic.looksLikeQuestion(event.text) || directed
         else { return "ignore" }
-        guard adapter == .foundationModels else { return "prompt" }
 
         guard #available(macOS 26.0, *) else { return "abstain" }
         do {
@@ -207,10 +250,10 @@ enum LiveAssistValidationRunner {
                   !detected.question.trimmingCharacters(
                     in: .whitespacesAndNewlines).isEmpty
             else { return "ignore" }
-            switch detected.kind.lowercased() {
-            case "knowledge", "context":
+            switch detected.kind {
+            case .knowledge, .context:
                 return "prompt"
-            default:
+            case .logistics:
                 return directed ? "prompt" : "ignore"
             }
         } catch is CancellationError {

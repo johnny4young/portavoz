@@ -253,7 +253,12 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
         let start = TimeInterval(index * (proactive ? 20 : 2))
         let isRemote = index.isMultiple(of: 2)
         let text: String
-        if ProcessInfo.processInfo.arguments.contains("-seed-showcase") {
+        if ProcessInfo.processInfo.arguments.contains("-simulate-live-apuntador"),
+           index == 2 {
+            text = Locale.current.language.languageCode?.identifier == "es"
+                ? "¿Puedes explicar por qué el despliegue pasó al viernes?"
+                : "Could you explain why the rollout moved to Friday?"
+        } else if ProcessInfo.processInfo.arguments.contains("-seed-showcase") {
             text = PublicShowcaseFixture.liveTranscriptLines[index - 1]
         } else {
             text = isRemote

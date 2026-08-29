@@ -13,7 +13,7 @@ XCODE := DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 
 .PHONY: build test test-ask-quality test-apuntador-validation \
-	test-live-assist-validation live-assist-baseline \
+	test-live-assist-validation live-assist-baseline live-assist-bundled-question \
 	live-assist-foundation-models ask-quality-pair \
 	test-meeting-memory-graph-query-receipt meeting-memory-graph-query-receipt \
 	test-retrieval-chunk-evidence retrieval-chunk-evidence \
@@ -167,6 +167,7 @@ test-apuntador-validation:
 ## runner without loading an installed model or touching a meeting library.
 test-live-assist-validation:
 	python3 -m unittest Tests.Tooling.test_live_assist_validation
+	python3 -m unittest Tests.Tooling.test_live_question_training
 	python3 scripts/live_assist_validation.py verify-public \
 		--fixture Fixtures/LiveAssistValidation/public-bilingual-v1.json \
 		--budget docs/evidence/live-assist-validation-budget.json
@@ -183,6 +184,16 @@ live-assist-baseline:
 			--adapter released-prefilter \
 			--iterations "$(PORTAVOZ_LIVE_ASSIST_ITERATIONS)" \
 			$(if $(PORTAVOZ_LIVE_ASSIST_OUTPUT),--output "$(PORTAVOZ_LIVE_ASSIST_OUTPUT)",--output "dist/live-assist/$$(git rev-parse --short=12 HEAD)/released-prefilter")
+
+## Release-app serving candidate: bundled bilingual model plus deterministic
+## features. It must pass every frozen LIVE-0 target before promotion.
+live-assist-bundled-question:
+	PORTAVOZ_SIGN_IDENTITY=$(PORTAVOZ_SIGN_IDENTITY) \
+		scripts/run-live-assist-validation.sh \
+			--adapter bundled-question \
+			--iterations "$(PORTAVOZ_LIVE_ASSIST_ITERATIONS)" \
+			--require-targets \
+			$(if $(PORTAVOZ_LIVE_ASSIST_OUTPUT),--output "$(PORTAVOZ_LIVE_ASSIST_OUTPUT)",--output "dist/live-assist/$$(git rev-parse --short=12 HEAD)/bundled-question")
 
 ## Explicit opt-in installed-model challenger. It never downloads assets and
 ## exits below target unless every frozen serving budget passes.

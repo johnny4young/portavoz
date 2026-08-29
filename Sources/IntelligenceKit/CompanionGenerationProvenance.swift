@@ -223,8 +223,12 @@ public struct CompanionGenerationAttempt: Sendable {
         card: CompanionCard?,
         at finishedAt: Date
     ) -> GenerationRun {
-        let providerID = trace.answerProviderID ?? Self.foundationProviderID
-        let modelID = trace.answerModelID ?? Self.foundationModelID
+        let providerID = trace.answerProviderID
+            ?? trace.classifierProviderID
+            ?? Self.foundationProviderID
+        let modelID = trace.answerModelID
+            ?? trace.classifierModelID
+            ?? Self.foundationModelID
         return GenerationRun(
             id: id,
             meetingID: request.meetingID,
@@ -235,8 +239,10 @@ public struct CompanionGenerationAttempt: Sendable {
             configJSON: Self.json(Configuration(
                 answerModelID: trace.answerModelID,
                 answerProviderID: trace.answerProviderID,
-                classifierModelID: Self.foundationModelID,
-                classifierProviderID: Self.foundationProviderID,
+                classifierChallengerModelID: trace.classifierChallengerModelID,
+                classifierChallengerProviderID: trace.classifierChallengerProviderID,
+                classifierModelID: trace.classifierModelID ?? Self.foundationModelID,
+                classifierProviderID: trace.classifierProviderID ?? Self.foundationProviderID,
                 classifierInvoked: trace.classifierInvoked,
                 contextPassageCount: request.recentTranscript.count,
                 externalDestinationScope: trace.externalDestinationScope?.rawValue,
@@ -274,6 +280,8 @@ public struct CompanionGenerationAttempt: Sendable {
     private struct Configuration: Encodable {
         let answerModelID: String?
         let answerProviderID: String?
+        let classifierChallengerModelID: String?
+        let classifierChallengerProviderID: String?
         let classifierModelID: String
         let classifierProviderID: String
         let classifierInvoked: Bool

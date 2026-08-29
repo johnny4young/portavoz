@@ -235,7 +235,7 @@ final class AppServices {
     /// THE recording session (one at a time by design): shared so the
     /// recording view, the HUD and the menu bar all observe the same one,
     /// and navigating away can never orphan a live session.
-    let recording = RecordingController()
+    let recording: RecordingController
     /// ⌘K palette (design system 6a-1): floats over any view; state and owned
     /// tasks live here so it works safely with the library window closed.
     let palette: CommandPaletteController
@@ -280,12 +280,15 @@ final class AppServices {
     init( // swiftlint:disable:this function_body_length
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        storagePolicy: AppStorageIsolationPolicy? = nil
+        storagePolicy: AppStorageIsolationPolicy? = nil,
+        defaults: UserDefaults = .standard
     ) throws {
         let storagePolicy = Self.prepareStoragePolicy(
             arguments: arguments,
             environment: environment,
-            override: storagePolicy)
+            override: storagePolicy,
+            defaults: defaults)
+        recording = RecordingController(defaults: defaults)
         let usesTemporaryStore = storagePolicy.usesTemporaryMeetingStore
         usesTemporaryMeetingStore = usesTemporaryStore
         // Open the authority before constructing process runtimes or installing
@@ -369,13 +372,15 @@ final class AppServices {
     private static func prepareStoragePolicy(
         arguments: [String],
         environment: [String: String],
-        override: AppStorageIsolationPolicy?
+        override: AppStorageIsolationPolicy?,
+        defaults: UserDefaults
     ) -> AppStorageIsolationPolicy {
         // The UI-test host has its own bundle identity, but volatile
         // per-launch preferences must land before any service reads defaults.
         UITestDefaults.installIfNeeded(
             arguments: arguments,
-            environment: environment)
+            environment: environment,
+            defaults: defaults)
         return override ?? AppStorageIsolationPolicy(
             arguments: arguments,
             environment: environment)
@@ -544,10 +549,10 @@ final class AppServices {
         foundationModelsCapability.isAvailable
     }
 
-    /// Live Companion currently requires the same Apple classifier. BYOK can
-    /// answer a classified knowledge question but cannot replace that gate.
+    /// Live Apuntador admission is bundled and runs from Sequoia onward.
+    /// Foundation Models is an optional Tahoe refinement/answer lane.
     var companionAvailable: Bool {
-        foundationModelsCapability.isAvailable
+        BundledLiveQuestionDetector.resourceIsLoadable
     }
 
     // MARK: - Embedded MLX model (D25 last mile)

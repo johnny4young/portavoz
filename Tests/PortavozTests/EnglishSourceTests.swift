@@ -142,6 +142,11 @@ final class EnglishSourceTests: XCTestCase {
                 || trimmed.hasPrefix("\"")
                 || trimmed.hasPrefix("return f\"")
         }
+        if relative == "scripts/generate-live-question-training.py" {
+            // The checked-in classifier corpus generator carries only quoted
+            // bilingual training examples; comments and policy stay English.
+            return line.trimmingCharacters(in: .whitespaces).hasPrefix("\"")
+        }
         return false
     }
 
@@ -205,6 +210,7 @@ final class EnglishSourceTests: XCTestCase {
                 || line.contains("de reconstruir réplicas")
                 || line.contains("Camila: No desactivaría alertas")
                 || line.contains("¿Qué haría Camila primero")
+                || line.contains("¿Puedes explicar por qué el despliegue pasó al viernes?")
         }
         if relative
             == "Sources/portavoz-app/ProductionSyncQualificationCorpus.swift" {

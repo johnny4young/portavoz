@@ -87,6 +87,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
             "LibraryUITests",
             "testRecordingOffersObjectivesNextQuestionAndTalkBalance",
         ),
+        test_id(
+            "MeetingDetailUITests",
+            "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
+        ),
     ),
     "recording-interview": (
         test_id(
@@ -616,6 +620,8 @@ def app_features(filename: str) -> set[str]:
         # well as the live catch-up, next-question, mute, and Stop controls.
         # It does not affect Library grouping or unrelated detail surfaces.
         return {"automation-entry", "recording-interview", "recording-recovery"}
+    if "companionsettingssection" in lowered:
+        return {"live-assist"}
     if "interviewassist" in lowered:
         return {"recording-interview"}
     if "proactiveassist" in lowered:
@@ -757,7 +763,13 @@ def app_features(filename: str) -> set[str]:
 
 def lower_layer_features(path: str) -> set[str]:
     lowered = path.lower()
-    if lowered == "sources/intelligencekit/companion.swift":
+    if lowered in {
+        "sources/intelligencekit/companion.swift",
+        "sources/intelligencekit/companiongenerationprovenance.swift",
+        "sources/intelligencekit/livequestiondetector.swift",
+        "sources/intelligencekit/providerneutralcompanion.swift",
+        "sources/intelligencekit/turnendpointpolicy.swift",
+    }:
         return {"live-assist"}
     if any(token in lowered for token in (
         "processsemanticcorpusmaintenance",

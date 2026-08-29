@@ -94,6 +94,49 @@ class UITestHostPreflightTests(unittest.TestCase):
         self.assertIn("Notification Center alert", output)
         self.assertNotIn("window title", output.lower())
 
+    def test_explicit_local_override_ignores_only_notification_alerts(self):
+        output = io.StringIO()
+        probe = FakeProbe(
+            snapshot(notification_center=2),
+            snapshot(notification_center=1),
+        )
+
+        result = preflight.run_preflight(
+            probe,
+            output=output,
+            sleeper=lambda _: None,
+            allow_notification_center_alerts=True,
+        )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(probe.calls, 2)
+        self.assertIn("ignored only Notification Center", output.getvalue())
+
+        blockers = preflight.classify(
+            snapshot(
+                notification_center=1,
+                security_agent=1,
+                secure_input=True,
+            ),
+            allow_notification_center_alerts=True,
+        )
+        self.assertFalse(blockers.notification_center)
+        self.assertTrue(blockers.security_agent)
+        self.assertTrue(blockers.secure_input)
+
+    def test_notification_override_is_explicit_and_fail_closed(self):
+        key = preflight.ALLOW_NOTIFICATION_CENTER_ENV
+        self.assertFalse(preflight.notification_center_override({}))
+        self.assertFalse(preflight.notification_center_override({key: "false"}))
+        self.assertTrue(preflight.notification_center_override({key: "true"}))
+        for value in ("1", "TRUE", "yes", ""):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(
+                    preflight.ProbeFailure,
+                    "must be exactly true or false",
+                ):
+                    preflight.notification_center_override({key: value})
+
     def test_secure_input_fails_without_identifying_or_terminating_its_owner(self):
         result, output, calls, sleeps = self.run_fake(
             snapshot(secure_input=True)

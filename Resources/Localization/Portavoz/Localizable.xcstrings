@@ -16000,6 +16000,106 @@
           }
         }
       }
+    },
+    "Turn it on here or from the recording toolbar. Apuntador detects questions privately; it never speaks or answers for you. Without an available answer engine, it shows an honest question-only card.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actívalo aquí o desde la barra de grabación. Apuntador detecta preguntas de forma privada; nunca habla ni responde por ti. Si no hay un motor de respuestas disponible, muestra una tarjeta honesta solo con la pregunta."
+          }
+        }
+      }
+    },
+    "Question detection and on-device answer suggestions are ready.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La detección de preguntas y las sugerencias de respuestas en el dispositivo están listas."
+          }
+        }
+      }
+    },
+    "Apuntador question detection is ready on this Mac.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La detección de preguntas del Apuntador está lista en este Mac."
+          }
+        }
+      }
+    },
+    "On macOS Sequoia, the bundled bilingual detector works fully offline and shows question-only cards. On-device generated answers require macOS Tahoe with Apple Intelligence; an explicitly enabled BYOK provider may answer general knowledge questions.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En macOS Sequoia, el detector bilingüe integrado funciona totalmente sin conexión y muestra tarjetas solo con la pregunta. Las respuestas generadas en el dispositivo requieren macOS Tahoe con Apple Intelligence; un proveedor BYOK activado explícitamente puede responder preguntas de conocimiento general."
+          }
+        }
+      }
+    },
+    "Apuntador question detection is ready.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La detección de preguntas del Apuntador está lista."
+          }
+        }
+      }
+    },
+    "Apple's optional answer enhancement is unavailable: %@. The bundled detector still works fully offline and shows question-only cards; explicitly enabled BYOK remains limited to general knowledge questions.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La mejora opcional de respuestas de Apple no está disponible: %@. El detector integrado sigue funcionando totalmente sin conexión y muestra tarjetas solo con la pregunta; el BYOK activado explícitamente sigue limitado a preguntas de conocimiento general."
+          }
+        }
+      }
+    },
+    "Detects questions privately and suggests answers when an engine is available. It never answers for you.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detecta preguntas de forma privada y sugiere respuestas cuando hay un motor disponible. Nunca responde por ti."
+          }
+        }
+      }
+    },
+    "question detected": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pregunta detectada"
+          }
+        }
+      }
+    },
+    "Apuntador question detection is unavailable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La detección de preguntas del Apuntador no está disponible."
+          }
+        }
+      }
+    },
+    "Reinstall Portavoz to restore its bundled offline question detector.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinstala Portavoz para restaurar su detector de preguntas integrado y sin conexión."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

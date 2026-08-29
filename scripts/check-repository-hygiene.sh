@@ -145,6 +145,7 @@ python3 scripts/retrieval_chunk_resource_fixture.py verify-public \
 python3 -m unittest Tests.Tooling.test_apuntador_validation
 python3 -m unittest Tests.Tooling.test_apuntador_web_fixture
 python3 -m unittest Tests.Tooling.test_live_assist_validation
+python3 -m unittest Tests.Tooling.test_live_question_training
 python3 -m unittest Tests.Tooling.test_run_swift_tests
 python3 scripts/apuntador_validation.py verify-public \
   --fixture Fixtures/ApuntadorValidation/public-bilingual-v1.json \

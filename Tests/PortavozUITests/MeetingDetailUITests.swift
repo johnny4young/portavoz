@@ -639,13 +639,22 @@ final class MeetingDetailUITests: PortavozUITestCase {
             voiceCategory.waitForStableFrame(timeout: 5),
             "the Voice category must expose its actual button hit target")
         voiceCategory.click()
+        let status = app.control(withIdentifier: "settings-apuntador-status")
         XCTAssertTrue(
-            app.control(withIdentifier: "settings-apuntador-status")
-                .waitForExistenceFast(timeout: 5),
-            "the voice pane must explain Apuntador's real platform requirement")
-        XCTAssertFalse(
-            app.control(withIdentifier: "settings-apuntador-enabled").exists,
-            "Sequoia must not expose a toggle that cannot work")
+            status.waitForExistenceFast(timeout: 5),
+            "the voice pane must explain Apuntador's cross-version capability")
+        let toggle = app.control(withIdentifier: "settings-apuntador-enabled")
+        XCTAssertTrue(
+            toggle.exists,
+            "Sequoia must expose the bundled detector instead of a dead platform gate")
+        let expectedDetectionStatus = UITestLocale.environmentLocale == "es"
+                ? "La detección de preguntas del Apuntador está lista en este Mac."
+                : "Apuntador question detection is ready on this Mac."
+        let detectionStatus = accessibleText(of: status)
+        XCTAssertTrue(
+            detectionStatus.contains(expectedDetectionStatus),
+            "the status must distinguish working detection from optional answer generation; "
+                + "saw '\(detectionStatus)'")
         attachScreenshot(of: app, named: "sequoia-apuntador-requirements")
     }
 

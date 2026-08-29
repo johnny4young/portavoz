@@ -390,10 +390,13 @@ def validate_observations(document: Any, fixture: dict[str, Any], fixture_checks
     adapter_value = {
         "id": identifier(adapter["id"], "observations.adapter.id"),
         "version": identifier(adapter["version"], "observations.adapter.version"),
-        "class": enum(adapter["class"], "observations.adapter.class", {"released-prefilter", "installed-model"}),
+        "class": enum(
+            adapter["class"],
+            "observations.adapter.class",
+            {"released-prefilter", "bundled-model", "installed-model"}),
         "installedModel": boolean(adapter["installedModel"], "observations.adapter.installedModel"),
     }
-    if (adapter_value["class"] == "installed-model") != adapter_value["installedModel"]:
+    if (adapter_value["class"] != "released-prefilter") != adapter_value["installedModel"]:
         raise LiveAssistValidationError("observations adapter model identity differs")
     run = shape(root["run"], "observations.run", ("commit", "build", "platform", "osVersion", "architecture", "sourceState"))
     run_value = {

@@ -2,7 +2,10 @@
 
 Status: implemented and verified (ES summary of EN meeting with glossary intact in 3.8 s; RAG answering with citations via MCP). Decisions: D8 (local by default, explicit BYOK), D18 (FM map-reduce), D22 (RAG), D26 (Apuntador implemented), D44–D47 (application workflows and immutable summary ownership), D62–D66 (atomic summary, Refine transcript, and Apuntador-card provenance), D67–D69 (enforced meeting-content egress; Intelligence owns the Apuntador and summary clients), D72 (capability-driven exact provider selection), D75 (receipt-before-transport privacy evidence), D79 (measured retrieval gate before vector-storage changes), D80 (prefix-evidenced interruption scan), D81 (bounded lexical candidates before vector storage), D82 (isolated semantic resource evidence), D83 (exact semantic adapter retained after budget pass), D87 (typed overview evidence), D88 (human feedback stays outside generation), D89 (position-typed decision evidence), D90 (identity-typed action-item evidence), D91 (role-separated Apuntador evidence), D100 (one evidence-preserving Ask workflow), D103 (terminal audio-summary workflow), D104 (ApplicationKit durable generation policy), D108 (application-owned local-provider discovery), D122 (lexical transcript and generated-output admission), D132 (cast-grounded action owners), D133 (identity-based live-summary admission), D145 (exact-first instant Library semantic augmentation), D148 (content-free resource measurement), D151 (independent MLX inference lane), D152 (one semantic-corpus indexing operation), D161 (composition-owned MLX residency), D170 (recording-scoped bounded live Apuntador generation), D171 (signal-driven bounded live-summary delivery), D172 (deterministic generated-intelligence admission), D176 (one bounded semantic-indexing flight), D177 (capture-prioritized semantic checkpoints), D178 (signal-driven background semantic owner), D192 (content-free staged Ask tracing), D193 (authoritative Ask benchmark receipts), D194 (adapter-neutral multilingual quality contract), D195 (production retrieval observation without answer-quality claims), D196 (corpus-read-only Ask retrieval), D197 (typed semantic readiness and background-only product writes), D198 (revision-fenced semantic publication), D199 (compatibility-fenced semantic vectors), D200 (independent durable semantic maintenance ownership), D201 (progressive exact-first Ask evidence), D206 (injected semantic-index query port with exact control retained), D207–D217 (governed non-serving semantic shadows, exact-path evidence, and research-only baseline retention), D233 (correction-aware generation lineage and stale artifacts), D236 (commitment-candidate benchmark before continuity state), D245 (adapter-neutral cross-meeting link quality), D246 (bounded non-serving product observation), D247 (isolated product-path quality adapter), D248 (profile-bound non-serving similarity evidence), D249 (versioned scored evidence contract), D250 (deterministic non-serving similarity-policy replay), D251 (private anonymized calibration-pack boundary), D252 (isolated private product-path evidence collection), D253 (deterministic private policy replay), D254 (clean-head public/private profile matrix), D255 (explicit private calibration review gate), D270 (query contract before graph schema), D271 (explicit topic identity), D272 (explicit decision continuity), D273 (disposable typed graph projection), D274 (authoritative memory timeline hydration), D275 (exact commitment-change evidence), D276 (explicit topic-scoped question continuity), D277 (explicit decision-to-commitment blocker continuity), D278 (source-backed commitment-blocker query), D279 (canonical blocker product conformance), D280 (authoritative first-discussion query and canonical conformance), D281 (exact source-backed person commitments), D282 (fail-closed alias resolution and canonical person-commitment conformance), D283 (independent exact graph-fact Ask lane), D284 (exact ambiguity-safe graph filters), D285 (typed source-backed graph-fact synthesis), D286 (bounded post-RRF fact-aware selection), D308–D314 (explicit decision-topic authority, complete graph adapters, user confirmation/retraction, relational scale verdict, and near-linear rebuild), D315 (content-free Ask answer judge), D330 (correction-aware semantic maintenance), D331 (explicit correction-aware Apuntador regeneration), D332 (explicit semantic asset preparation), D360 (same-generation graph-profile readmission), D361–D366 (six released exact graph explorers), D380 (Foundation Models context headroom and content-free real-model gate), D384 (bounded progressive Ask ownership), D385 (selected local-engine manual Ask), D386 (explicit fail-closed Ask source authority), D387 (consented direct-Web evidence and hostile-content isolation), D388 (bounded cited interview assistance), D389 (typed raw-note Ask).
 
-D390 adds bounded source-closed proactive meeting assistance.
+D390 adds bounded source-closed proactive meeting assistance. D431 makes the
+bundled bilingual classifier authoritative for live question admission on
+Sequoia and Tahoe while keeping Foundation Models as an optional challenger
+and answer engine.
 
 D406 keeps deterministic meeting prompt instructions and fact-aware RAG
 formatting outside the Foundation Models availability boundary. The pure
@@ -2110,20 +2113,70 @@ completion and failure paths independently fence publication on the recording
 still being active. Unsupported platforms return a truthful local capability
 message without attempting provider fallback.
 
-## Live Apuntador (D26) — `LiveCompanion` + `QuestionHeuristic` + `CompanionCard`
+## Live Apuntador (D26/D431) — bundled admission + provider-neutral serving
 
-3-stage pipeline over coalescer rows. A row closes when the next one is created; since D138 a silence endpointer also treats the still-OPEN remote row as a finished turn after 2.0 s without any new delta (`TurnEndpointPolicy` — one shared channel/noise/question gate for silence and real close, one detection per row+text-length, the row itself stays open for presentation). Every accepted delta re-arms the deadline; entering the recording phase first drains rows that closed while Start was preparing and then arms the open tail. Enabling Apuntador mid-recording arms an already-open remote row, while disabling Apuntador cancels it. Without this synchronization, a question followed by silence produced no card until someone spoke again — or ever, if the meeting stayed quiet:
-1. **Pure gate** (tested, es/en): `looksLikeQuestion` (`?`/`¿`, initial interrogatives, minimum 12 chars) **OR `mentions(ownerName)`** — the "te preguntaron" detector: whole-word, case/diacritic-insensitive match of the first name or full name ("John" does NOT trigger inside "Johnny"). The name comes from Ajustes ("Tu nombre") with default `NSFullUserName()`. The common case (nobody asked) costs zero.
-2. **FM classifier** (`DetectedQuestion` @Generable: isQuestion/question/kind) sent to the scheduler with `.live` + key `companion-detect` (latest-wins: ticks never stack up). `logistics` → no card (the classic failure mode for this class of features), **unless the caption names you**: then the card is a PING ("te preguntaron", question without an invented answer, orange tint). Two lessons from the 3B caught by the gated test: (a) `directed` is ALWAYS the deterministic name gate, never the model's opinion (requesting it as a field → it stripped "Johnny," from the question and reported false); (b) the logistics filter needs literal few-shot examples ("¿nos acompañas mañana…?" is logistics, NOT context) — with only the abstract rule, it leaked through.
-3. **Answer**: `knowledge` → BYOK if the user configured it AND enabled the opt-in (app composition injects the resolved `CompanionBYOKClient`; same instructions as on-device, 400 tokens max, `source` = provider host; if the provider or egress-policy call fails, it falls back to on-device FM and says so in `source`); without BYOK → direct FM (1–3 sentences, same language, greedy, 220 tokens max, `.interactive`). `context` → `RAGAnswerer` with the last ~13 live rows as passages ("¿qué dijimos del budget?" answers from what was JUST said) — meeting context NEVER goes to BYOK, only the text of the `knowledge` question (D8/D67). Explicit cancellation never falls through to the local answer.
+A remote caption becomes a semantic candidate when the next row closes it or
+when the shared two-second silence endpointer observes no further delta. The
+pure `TurnEndpointPolicy` still rejects microphone rows, noise, low-confidence
+material, and fewer than 12 useful characters, and it preserves the short exact
+owner-mention exception. It deliberately no longer decides whether ordinary
+material is a question: punctuation and interrogative words are calibrated
+features, not a hard language gate. This lets noisy and punctuation-free ASR
+reach the tiny local classifier without sending every caption to a generator.
 
-The classifier is also the question-cleaning boundary. It is instructed to use
-normal sentence case, and a narrow deterministic presentation repair runs only
-when a long output overwhelmingly capitalizes every word. The repair preserves
-the configured owner's name and common technical acronyms; it never rewrites
-the source transcript.
+`BundledLiveQuestionDetector` is a process-shared actor around one compiled
+Natural Language `NLModel`. Actor isolation avoids unchecked Sendable claims for
+Apple's model object. Its frozen Create ML max-entropy source uses 560
+public-synthetic examples: 256 question, 260 non-question, and 44 explicit
+abstention examples across English, Spanish, code switching, noisy ASR, quoted
+questions, and fragments. The training corpus SHA-256 is
+`d7d15611f91148ee4e4dd10cb3ea214b747009b82b2e82647bb7a8ab970dbe3d`;
+the source `.mlmodel` SHA-256 is
+`db169ed16b55eef846eb7e779eb0490e158f872c7c5e25fb025af60ff582e1e8`.
+The compiled serving tree is checked in and independently pinned by tooling.
+Training examples are byte-reproducible and disjoint from the LIVE-0 holdout.
 
-App: per-recording opt-in ("Apuntador" toggle next to the translation toggle, persists in `companionEnabled`); unlimited, newest-first, scrollable cards (question + answer + provenance — provider host or "on-device" — + copy/dismiss). On close, they are persisted in `companionCard`; the detail keeps the existing asked-at playback action and additionally separates exact question sources from answer sources. Refine rederives them: an incomplete pass retains the previous snapshot, and a complete pass replaces it, including with an empty set to remove stale questions. Answer cleanup removes only citation markers and trailing verbatim `passage N` references, never legitimate intermediate text. It never answers for you (D26). The classifier requires macOS 26 plus available Apple Intelligence, so the recording and Settings enable controls exist only when `FoundationModelsCapability` is available. On Sequoia, the Voice pane explains the requirement and that BYOK replaces only the knowledge-answer provider, not question detection; the independent post-meeting Mirror remains available. Settings' external-model section keeps its endpoint/model/key readiness rule, additionally disables Apuntador BYOK when the classifier cannot run, and turns the opt-in off when its key is removed (D72). Latency budget: bounded by D29 (replaceable `.live` detection + `.interactive` answer with wait ≤ in-flight call).
+Admission fails closed on a missing label, a non-finite/out-of-range
+probability, or probabilities whose sum drifts by more than 0.02. An explicit
+abstention remains closed when it is the strongest class at 0.42 or above. A
+question is admitted independently at 0.82, or at 0.58 when deterministic
+question syntax or an exact owner mention is present. Material shorter than 12
+characters abstains. The original normalized caption remains the displayed and
+evidenced question; the classifier cannot rewrite source speech. Conservative
+routing sends meeting-specific language to context, recognizes a bounded
+logistics vocabulary, and labels only remaining factual/technical material as
+general knowledge.
+
+`ProviderNeutralProvenanceCompanion` treats that bundled result as authoritative
+on Sequoia and Tahoe. When macOS 26 and Apple Intelligence are available, the
+released `LiveCompanion` can act as a challenger and supply its local
+context/general answer, but its classifier identity is recorded separately and
+cannot replace the bundled admission identity. On Sequoia, when Apple
+Intelligence is unavailable, or when the challenger declines or fails, the
+base result remains usable:
+
+- a context question becomes an honest question-only card;
+- a general-knowledge question may use the explicitly configured BYOK client,
+  sending only that one question through the receipt-backed egress gateway; a
+  provider failure falls back to the question-only card rather than another
+  hidden provider;
+- a non-directed logistics request remains silent, while an exact owner mention
+  becomes an orange asked-you question-only card;
+- cancellation after an attempt starts produces a terminal cancelled run and
+  can never publish a late card.
+
+Question-only cards omit copy/answer UI and say `question detected` (or
+`asked you`) instead of naming a nonexistent model. Every successful card keeps
+exact question evidence and a content-free generation run. Its authoritative
+provider/model are the bundled classifier when no answer provider ran; optional
+Foundation Models challenger identity and actual answer provider remain
+separate trace fields. The recording toggle and owner name are available on the
+Sequoia deployment floor whenever the mandatory bundle loads. A missing or
+unloadable model disables the toggle with a visible reinstall path. Settings states
+that Tahoe/Apple Intelligence adds generated on-device answers and that BYOK is
+limited to general knowledge. The explicit correction-aware post-meeting
+refresh remains the older macOS-26/Foundation-Models pipeline; D431 changes live
+serving, not that separate review action.
 
 ### Bounded live Apuntador work (D170)
 
@@ -2171,6 +2224,30 @@ that ship instead of a parallel simulator. The runner starts before
 model, and writes one owner-only non-replacing content-free observation for the
 external scorer. Physical hosts, real providers, model prose quality, and
 field behavior remain separate evidence lanes.
+
+### Provider-neutral live question admission (D431)
+
+The released live composition now selects the bundled classifier described
+above instead of selecting Foundation Models as the admission gate. LIVE-0's
+released prefilter and Foundation Models adapters remain comparison controls;
+the added `bundled-question` adapter executes the real compiled model over the
+same complete fixture and can request target enforcement without gaining
+serving authority from measurement alone. SwiftPM copies the compiled resource
+into `Portavoz_IntelligenceKit.bundle`, and app packaging fails when it is
+absent. A deterministic bilingual real-app journey enables Apuntador through
+volatile temporary-store preferences, emits one frozen public-synthetic remote
+question, exercises the bundled model, and expects the Sequoia question-only
+state. It never reads a private meeting or requires an installed generative
+model.
+
+The first dirty-tree diagnostic of that exact adapter passed all frozen quality
+and reliability targets: 1.0 precision, recall, and abstention accuracy, zero
+false prompts per hour, zero late publication, 3.284 ms cold question latency,
+0.606 ms p95 steady question latency, and 1,556,528 bytes of footprint growth.
+That run is informational only. A clean exact-commit observation is required
+before treating the candidate as controlled local evidence, and neither run
+certifies physical Sequoia/Tahoe, signed distribution, real meetings, answer
+quality, or assistive technology.
 
 ### Bounded source-closed proactive assistance (D390)
 

@@ -208,25 +208,9 @@ enum CompanionQuestionPresentation {
 #if canImport(FoundationModels)
 import FoundationModels
 
-/// Provider result used by the opt-in LIVE-0 measurement lane. It exposes no
-/// model/session object and keeps serving decisions independent from fixture
-/// ground truth; receipts retain only the closed decision and never this text.
-public struct LiveQuestionDetection: Equatable, Sendable {
-    public let isQuestion: Bool
-    public let question: String
-    public let kind: String
-
-    public init(isQuestion: Bool, question: String, kind: String) {
-        self.isQuestion = isQuestion
-        self.question = question
-        self.kind = kind
-    }
-}
-
 /// The released Foundation Models classifier as an explicit, detect-only
-/// adapter. It never prepares or downloads an asset; callers must opt in only
-/// after capability preflight. LiveCompanion and the validation runner share
-/// the exact prompt, scheduler priority, and structured response path.
+/// challenger. It never prepares or downloads an asset; serving admission is
+/// owned by the bundled bilingual classifier and does not depend on this path.
 @available(macOS 26.0, iOS 26.0, *)
 public struct FoundationModelLiveQuestionDetector: Sendable {
     public init() {}
@@ -239,14 +223,21 @@ public struct FoundationModelLiveQuestionDetector: Sendable {
             candidate,
             ownerName: ownerName)
         return LiveQuestionDetection(
-            isQuestion: detected.isQuestion,
-            question: detected.question,
-            kind: detected.kind)
+            decision: detected.isQuestion ? .question : .notQuestion,
+            question: detected.isQuestion ? detected.question : "",
+            kind: LiveQuestionKind(rawValue: detected.kind.lowercased()) ?? .logistics,
+            confidence: 1,
+            providerID: CompanionGenerationAttempt.foundationProviderID,
+            modelID: CompanionGenerationAttempt.foundationModelID)
     }
 }
 
 public struct CompanionProcessTrace: Equatable, Sendable {
     public internal(set) var classifierInvoked = false
+    public internal(set) var classifierProviderID: String?
+    public internal(set) var classifierModelID: String?
+    public internal(set) var classifierChallengerProviderID: String?
+    public internal(set) var classifierChallengerModelID: String?
     public internal(set) var answerProviderID: String?
     public internal(set) var answerModelID: String?
     public internal(set) var externalDestinationScope: DataEgressDestinationScope?
@@ -255,6 +246,10 @@ public struct CompanionProcessTrace: Equatable, Sendable {
 
     public init(
         classifierInvoked: Bool = false,
+        classifierProviderID: String? = nil,
+        classifierModelID: String? = nil,
+        classifierChallengerProviderID: String? = nil,
+        classifierChallengerModelID: String? = nil,
         answerProviderID: String? = nil,
         answerModelID: String? = nil,
         externalDestinationScope: DataEgressDestinationScope? = nil,
@@ -262,6 +257,10 @@ public struct CompanionProcessTrace: Equatable, Sendable {
         externalTransferSucceeded: Bool = false
     ) {
         self.classifierInvoked = classifierInvoked
+        self.classifierProviderID = classifierProviderID
+        self.classifierModelID = classifierModelID
+        self.classifierChallengerProviderID = classifierChallengerProviderID
+        self.classifierChallengerModelID = classifierChallengerModelID
         self.answerProviderID = answerProviderID
         self.answerModelID = answerModelID
         self.externalDestinationScope = externalDestinationScope
@@ -355,8 +354,10 @@ public struct LiveCompanion: Sendable {
             throw IntelligenceError.modelUnavailable(reason)
         }
 
-        var trace = CompanionProcessTrace()
-        trace.classifierInvoked = true
+        var trace = CompanionProcessTrace(
+            classifierInvoked: true,
+            classifierProviderID: CompanionGenerationAttempt.foundationProviderID,
+            classifierModelID: CompanionGenerationAttempt.foundationModelID)
         do {
             return try await processCandidate(
                 candidate,

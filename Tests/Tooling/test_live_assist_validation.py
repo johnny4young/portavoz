@@ -109,6 +109,26 @@ def perfect_observations(fixture, checksum):
 
 
 class LiveAssistValidationTests(unittest.TestCase):
+    def test_bundled_model_identity_is_accepted_but_cannot_claim_model_free(self):
+        observations = perfect_observations(self.fixture, self.checksum)
+        observations["adapter"] = {
+            "id": "portavoz-live-question-maxent-en-es-v1",
+            "version": "1.0.0",
+            "class": "bundled-model",
+            "installedModel": True,
+        }
+        validated = validation.validate_observations(
+            observations, self.fixture, self.checksum)
+        self.assertEqual(validated["adapter"]["class"], "bundled-model")
+
+        observations["adapter"]["installedModel"] = False
+        with self.assertRaisesRegex(
+            validation.LiveAssistValidationError,
+            "adapter model identity differs",
+        ):
+            validation.validate_observations(
+                observations, self.fixture, self.checksum)
+
     def setUp(self):
         self.fixture_document = raw_fixture()
         self.fixture = validation.validate_fixture(self.fixture_document)

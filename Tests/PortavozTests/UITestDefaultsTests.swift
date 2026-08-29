@@ -154,6 +154,30 @@ final class UITestDefaultsTests: XCTestCase {
             defaults.persistentDomain(forName: suiteName)?["dictationMouseButton"])
     }
 
+    @MainActor
+    func testRecordingControllerReadsInstalledVolatileOverride() throws {
+        let suiteName = "UITestDefaultsTests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            defaults.removeVolatileDomain(forName: UserDefaults.argumentDomain)
+            defaults.removePersistentDomain(forName: suiteName)
+        }
+
+        defaults.set(false, forKey: "companionEnabled")
+        UITestDefaults.installIfNeeded(
+            arguments: ["Portavoz", "-use-temp-store"],
+            environment: [
+                UITestDefaults.environmentKey: #"{"companionEnabled":true}"#
+            ],
+            defaults: defaults)
+
+        XCTAssertTrue(RecordingController(defaults: defaults).companionEnabled)
+        XCTAssertFalse(
+            defaults.persistentDomain(forName: suiteName)?["companionEnabled"] as? Bool
+                ?? true,
+            "the UI override must remain volatile instead of rewriting the host preference")
+    }
+
     func testOrdinaryLaunchAndMalformedPayloadAreIgnored() throws {
         let storagePolicy = AppStorageIsolationPolicy(
             arguments: ["Portavoz"])

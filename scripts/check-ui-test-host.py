@@ -22,6 +22,7 @@ from typing import Callable, Protocol, TextIO
 
 
 SETTLE_SECONDS = 1.0
+ALLOW_NOTIFICATION_CENTER_ENV = "PORTAVOZ_UI_TEST_ALLOW_NOTIFICATION_CENTER_ALERTS"
 PROCESS_PROBE_TIMEOUT_SECONDS = 3.0
 WINDOW_PROBE_BUILD_TIMEOUT_SECONDS = 60.0
 WINDOW_PROBE_OBSERVATION_TIMEOUT_SECONDS = 3.0
@@ -243,14 +244,21 @@ def process_kind(process: ProcessRecord) -> str | None:
     return None
 
 
-def classify(snapshot: HostSnapshot) -> HostBlockers:
+def classify(
+    snapshot: HostSnapshot,
+    *,
+    allow_notification_center_alerts: bool = False,
+) -> HostBlockers:
     kinds = tuple(
         kind
         for process in snapshot.processes
         if (kind := process_kind(process)) is not None
     )
     return HostBlockers(
-        notification_center=snapshot.notification_center_windows > 0,
+        notification_center=(
+            snapshot.notification_center_windows > 0
+            and not allow_notification_center_alerts
+        ),
         security_agent=snapshot.security_agent_windows > 0,
         secure_input=snapshot.secure_input,
         xcode_test_process_count=kinds.count("xcode-test"),
@@ -293,14 +301,21 @@ def run_preflight(
     *,
     output: TextIO,
     sleeper: Callable[[float], None] = time.sleep,
+    allow_notification_center_alerts: bool = False,
 ) -> int:
     try:
-        first = classify(probe.snapshot())
+        first = classify(
+            probe.snapshot(),
+            allow_notification_center_alerts=allow_notification_center_alerts,
+        )
         if not first.is_empty:
             explain(first, output)
             return 1
         sleeper(SETTLE_SECONDS)
-        second = classify(probe.snapshot())
+        second = classify(
+            probe.snapshot(),
+            allow_notification_center_alerts=allow_notification_center_alerts,
+        )
     except ProbeFailure as error:
         print(f"⛔️ XCUITest host preflight failed: {error}.", file=output)
         print(
@@ -315,22 +330,47 @@ def run_preflight(
         "UI-test host preflight passed: the host stayed clear for one second.",
         file=output,
     )
+    if allow_notification_center_alerts:
+        print(
+            "   Explicit local override ignored only Notification Center alerts; "
+            "all other blockers remained enforced.",
+            file=output,
+        )
     return 0
+
+
+def notification_center_override(environment: dict[str, str]) -> bool:
+    value = environment.get(ALLOW_NOTIFICATION_CENTER_ENV, "false")
+    if value == "true":
+        return True
+    if value == "false":
+        return False
+    raise ProbeFailure(
+        f"{ALLOW_NOTIFICATION_CENTER_ENV} must be exactly true or false"
+    )
 
 
 def main() -> int:
     try:
+        allow_notification_center_alerts = notification_center_override(
+            dict(os.environ)
+        )
         with tempfile.TemporaryDirectory(
             prefix="portavoz-ui-host-preflight-"
         ) as directory:
             return run_preflight(
                 SystemHostProbe(workspace=Path(directory)),
                 output=sys.stdout,
+                allow_notification_center_alerts=allow_notification_center_alerts,
             )
-    except OSError:
+    except (OSError, ProbeFailure) as error:
+        reason = (
+            str(error)
+            if isinstance(error, ProbeFailure)
+            else "blocking-window probe workspace unavailable"
+        )
         print(
-            "⛔️ XCUITest host preflight failed: "
-            "blocking-window probe workspace unavailable.",
+            f"⛔️ XCUITest host preflight failed: {reason}.",
             file=sys.stdout,
         )
         print(

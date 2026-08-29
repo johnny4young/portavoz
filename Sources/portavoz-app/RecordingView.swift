@@ -699,9 +699,14 @@ extension RecordingView {
     }
 
     private func companionCardTag(_ card: CompanionCard) -> String {
-        let base = card.kind == .context ? "from this meeting" : "knowledge · \(card.source)"
+        let base = card.kind == .context
+            ? L10n.text("from this meeting")
+            : L10n.format("knowledge · %@", card.source)
+        if card.answer.isEmpty {
+            return card.directed ? L10n.text("asked you") : L10n.text("question detected")
+        }
         if card.directed {
-            return card.answer.isEmpty ? "asked you" : "asked you · \(base)"
+            return "\(L10n.text("asked you")) · \(base)"
         }
         return base
     }

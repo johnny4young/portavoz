@@ -98,6 +98,9 @@ let package = Package(
                 .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
                 .product(name: "MLXHuggingFace", package: "mlx-swift-lm"),
                 .product(name: "Transformers", package: "swift-transformers"),
+            ],
+            resources: [
+                .copy("Resources/PortavozLiveQuestionClassifier.mlmodelc"),
             ]),
         .target(
             name: "StorageKit",

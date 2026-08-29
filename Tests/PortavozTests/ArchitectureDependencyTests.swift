@@ -2615,7 +2615,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,799 cases "
+            "package inventory contains 2,817 cases "
                 + "(15 environment-gated) + 103"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -12314,8 +12314,60 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(scorer.contains("os.link(temporary, path)"))
         XCTAssertFalse(scorer.contains("os.replace(temporary, path)"))
         XCTAssertTrue(makefile.contains("test-live-assist-validation:"))
+        XCTAssertTrue(makefile.contains("live-assist-bundled-question:"))
         XCTAssertTrue(makefile.contains("live-assist-foundation-models:"))
         XCTAssertTrue(decisions.contains("## D430"))
+    }
+
+    func testLiveApuntadorUsesPinnedProviderNeutralSequoiaDetector() throws {
+        let manifest = try Self.contents(of: "Package.swift")
+        let detector = try Self.contents(
+            of: "Sources/IntelligenceKit/LiveQuestionDetector.swift")
+        let provider = try Self.contents(
+            of: "Sources/IntelligenceKit/ProviderNeutralCompanion.swift")
+        let recording = try Self.contents(
+            of: "Sources/portavoz-app/RecordingController+CompanionDetection.swift")
+        let services = try Self.contents(of: "Sources/portavoz-app/AppServices.swift")
+        let settings = try Self.contents(
+            of: "Sources/portavoz-app/CompanionSettingsSection.swift")
+        let packager = try Self.contents(of: "scripts/make-app.sh")
+        let scope = try Self.contents(of: "scripts/ui_test_scope.py")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+        let architecture = try Self.contents(of: "docs/ARCHITECTURE.md")
+        let intelligenceSpec = try Self.contents(
+            of: "docs/specs/04-intelligence.md")
+
+        XCTAssertTrue(manifest.contains(
+            #".copy("Resources/PortavozLiveQuestionClassifier.mlmodelc")"#))
+        XCTAssertTrue(detector.contains("public actor BundledLiveQuestionDetector"))
+        XCTAssertTrue(detector.contains(
+            "d7d15611f91148ee4e4dd10cb3ea214b747009b82b2e82647bb7a8ab970dbe3d"))
+        XCTAssertTrue(detector.contains(
+            "db169ed16b55eef846eb7e779eb0490e158f872c7c5e25fb025af60ff582e1e8"))
+        XCTAssertTrue(provider.contains("authoritativeDetection"))
+        XCTAssertTrue(provider.contains("questionOnlyCard"))
+        XCTAssertTrue(provider.contains("detection.kind == .knowledge, let byok"))
+        XCTAssertTrue(recording.contains("ProviderNeutralProvenanceCompanion("))
+        XCTAssertTrue(recording.contains(
+            "allowsFoundationModelChallenger: services.appleSummaryAvailable"))
+        XCTAssertFalse(recording.contains(
+            "guard FoundationModelsCapability.current().isAvailable"))
+        XCTAssertTrue(services.contains(
+            "BundledLiveQuestionDetector.resourceIsLoadable"))
+        XCTAssertTrue(settings.contains("settings-apuntador-enabled"))
+        XCTAssertTrue(settings.contains(
+            "the bundled bilingual detector works fully offline"))
+        XCTAssertTrue(packager.contains("Portavoz_IntelligenceKit.bundle"))
+        XCTAssertTrue(packager.contains(
+            "PortavozLiveQuestionClassifier.mlmodelc"))
+        XCTAssertTrue(scope.contains("livequestiondetector.swift"))
+        XCTAssertTrue(scope.contains(
+            "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador"))
+        XCTAssertTrue(decisions.contains("## D431"))
+        XCTAssertTrue(architecture.contains(
+            "bundled bilingual question classifier"))
+        XCTAssertTrue(intelligenceSpec.contains(
+            "### Provider-neutral live question admission (D431)"))
     }
 
     func testApplicationUseCaseProvidesOneAsyncBoundary() async throws {

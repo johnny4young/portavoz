@@ -348,12 +348,13 @@ class UITestScopeTests(unittest.TestCase):
 
     def test_mic_bleed_selects_live_and_refine_evidence_without_full_fallback(self):
         selection = select_paths(["Sources/TranscriptionKit/MicBleedFilter.swift"])
+        selected = set(
+            FEATURE_TESTS["recording-recovery"]
+            + FEATURE_TESTS["meeting-processing"]
+        )
         self.assertEqual(
             selection.tests,
-            tuple(dict.fromkeys(
-                FEATURE_TESTS["recording-recovery"]
-                + FEATURE_TESTS["meeting-processing"]
-            )),
+            tuple(test for test in ALL_TESTS if test in selected),
         )
         self.assertLess(len(selection.tests), len(ALL_TESTS))
 
@@ -474,6 +475,11 @@ class UITestScopeTests(unittest.TestCase):
         expected = FEATURE_TESTS["live-assist"]
         for path in (
             "Sources/IntelligenceKit/Companion.swift",
+            "Sources/IntelligenceKit/CompanionGenerationProvenance.swift",
+            "Sources/IntelligenceKit/LiveQuestionDetector.swift",
+            "Sources/IntelligenceKit/ProviderNeutralCompanion.swift",
+            "Sources/IntelligenceKit/TurnEndpointPolicy.swift",
+            "Sources/portavoz-app/CompanionSettingsSection.swift",
             "Sources/portavoz-app/LiveAssistValidationContract.swift",
             "Sources/portavoz-app/LiveAssistValidationFaultRunner.swift",
             "Sources/portavoz-app/LiveAssistValidationRunner.swift",

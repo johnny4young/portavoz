@@ -11,7 +11,7 @@ TIMEOUT_SECONDS="${PORTAVOZ_LIVE_ASSIST_TIMEOUT_SECONDS:-1800}"
 usage() {
     cat >&2 <<'EOF'
 usage: scripts/run-live-assist-validation.sh \
-  [--adapter released-prefilter|foundation-models] \
+  [--adapter released-prefilter|bundled-question|foundation-models] \
   [--iterations 5...100] [--output <directory>] [--require-targets]
 EOF
 }
@@ -53,7 +53,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ "$ADAPTER" == "released-prefilter" || "$ADAPTER" == "foundation-models" ]] || \
+[[ "$ADAPTER" == "released-prefilter" || "$ADAPTER" == "bundled-question" || \
+   "$ADAPTER" == "foundation-models" ]] || \
     fail "--adapter must name one explicit supported lane"
 [[ "$ITERATIONS" =~ ^[0-9]+$ ]] || fail "--iterations must be an integer"
 (( ITERATIONS >= 5 && ITERATIONS <= 100 )) || \

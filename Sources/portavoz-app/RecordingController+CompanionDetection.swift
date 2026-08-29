@@ -72,9 +72,8 @@ extension RecordingController {
             rowID: open.id,
             textCount: open.text.count)
         else { return }
-        // Mark only what actually dispatched: if a gate declined (FM
-        // unavailable, opt-out mid-deadline), the eventual real close must
-        // remain free to detect this row.
+        // Mark only what actually dispatched: if opt-out or lifecycle state
+        // declined the deadline, the eventual real close remains eligible.
         guard dispatchCompanionDetection(for: open) else { return }
         speculativeTurnMark = SpeculativeTurnMark(
             rowID: open.id, textCount: open.text.count)
@@ -94,8 +93,6 @@ extension RecordingController {
             confidence: row.confidence,
             ownerName: ownerName
         ) else { return false }
-        guard FoundationModelsCapability.current().isAvailable else { return false }
-        guard #available(macOS 26.0, *) else { return false }
         let closed = row
 
         let passages = recentPassages()
@@ -123,7 +120,6 @@ extension RecordingController {
         companionWorkCoordinator?.cancel()
     }
 
-    @available(macOS 26.0, *)
     private func companionCoordinator(
         services: AppServices
     ) -> LiveCompanionWorkCoordinator {
@@ -135,9 +131,10 @@ extension RecordingController {
                 guard let services else { return .unavailable }
                 // BYOK exists only after explicit Settings opt-in; otherwise
                 // the injected client is nil and Companion remains on-device.
-                let companion = ProvenanceCompanion(
+                let companion = ProviderNeutralProvenanceCompanion(
                     byok: await services.companionBYOKClient(),
-                    egressConsentSource: .companionBYOKSettings)
+                    egressConsentSource: .companionBYOKSettings,
+                    allowsFoundationModelChallenger: services.appleSummaryAvailable)
                 return await companion.generate(request)
             },
             receiver: { [weak self] request, result in

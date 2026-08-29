@@ -86,11 +86,9 @@ struct RecordingToolbar: View {
                 }
                 .toggleStyle(.button)
                 .controlSize(.small)
-                .help(L10n.text(
-                    "Detects questions and suggests on-device answers. It never answers for you."))
+                .help(companionHelp)
                 .accessibilityIdentifier("recording-companion")
-                .accessibilityHint(L10n.text(
-                    "Detects questions and suggests on-device answers. It never answers for you."))
+                .accessibilityHint(companionHelp)
             }
             Toggle(isOn: proactiveAssistBinding) {
                 Label(L10n.text("Proactive"), systemImage: "sparkles")
@@ -160,6 +158,11 @@ struct RecordingToolbar: View {
             .accessibilityHint(L10n.text(
                 "Floating mini panel with the timer and captions — records without covering your meeting"))
         }
+    }
+
+    private var companionHelp: String {
+        L10n.text(
+            "Detects questions privately and suggests answers when an engine is available. It never answers for you.")
     }
 
     private var stopButton: some View {
