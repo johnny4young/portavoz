@@ -5908,3 +5908,40 @@ maximum 35.965) and Spanish passed 101/101 in 848.513 seconds (p50 6.795, p95
 passed 2,788 tests with 15 explicit skips, warnings-as-errors and strict lint
 were green, and repository hygiene accepted the literal multi-name ownership
 contract.
+
+**Hosted UI functional authority and runtime advisory.** Scoped pull-request
+UI evidence is phased rather than hidden inside one monolithic command. A
+single `build-for-testing` produces the exact application/test products. Each
+selected locale then performs host preflight immediately before an independent
+`test-without-building` first attempt. A failed English step cannot suppress
+the selected Spanish attempt: both real outcomes are retained, artifacts are
+uploaded, and only then does `ui_test_ci_gate.py` issue the job verdict. There
+are no retries.
+
+The final classifier accepts only exact content-free receipt shapes with at
+least one case, finite timings, matching locale identity, and a result for every
+case. Missing or malformed evidence, a selected skipped/cancelled locale, any
+non-passing case, and infrastructure/harness uncertainty are blocking and
+classified explicitly. GitHub-hosted wall-clock budget drift is advisory only
+when every functional case passed. The same unchanged budget file remains
+enforced by default for local/stable-Mac integration and release runs; only the
+hosted workflow opts out of hard wall-clock enforcement.
+
+This split follows retained exact-head evidence rather than relaxing a red
+product test. Run `33230421948` passed 101/101 English cases at `e4767a34`, but
+the heterogeneous hosted runner measured 1,349.604 summed seconds, p50 10.098,
+and p95 31.994, versus the exact controlled local head at 851.326 seconds, p50
+6.720, and p95 18.533. Five unrelated owners crossed fixed ceilings together
+and the monolithic receipt stopped Spanish. The new pipeline preserves that
+drift as an annotation/artifact while reserving hard performance authority for
+the controlled host and keeping functional, completeness, scope, and policy
+gates strict.
+
+The accepted phased implementation passed 104 focused tooling/policy cases and
+the real-app focused path. The package passed 2,789 tests with 15 explicit
+model-gated skips and zero failures in 128.302 seconds; warnings-as-errors,
+strict lint over 742 files, and repository hygiene were green. The complete
+controlled run built once in 13 seconds and did not retry: English passed
+101/101 in 816.160 summed seconds (p50 6.356, p95 17.342, maximum 34.668), and
+Spanish passed 101/101 in 824.903 seconds (p50 6.519, p95 17.938, maximum
+35.157). Every unchanged hard runtime budget passed.

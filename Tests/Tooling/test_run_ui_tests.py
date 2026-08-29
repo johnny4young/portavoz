@@ -21,6 +21,8 @@ class RunUITestsTests(unittest.TestCase):
         test_exit_code: int = 0,
         initial_keyboard_mode: str | None = "0",
         require_runtime_receipt: bool = False,
+        phase: str = "build-and-test",
+        prepared_build_duration: int | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -98,6 +100,13 @@ class RunUITestsTests(unittest.TestCase):
                 '"testBudgetsSeconds":{"LibraryUITests/testLibrary()":10.0}}',
                 encoding="utf-8",
             )
+            results = root / "results"
+            if prepared_build_duration is not None:
+                results.mkdir()
+                (results / "build-duration-seconds.txt").write_text(
+                    f"{prepared_build_duration}\n",
+                    encoding="utf-8",
+                )
 
             environment = os.environ.copy()
             environment.pop("DEVELOPER_DIR", None)
@@ -111,8 +120,9 @@ class RunUITestsTests(unittest.TestCase):
                 {
                     "PATH": f"{binary}:{environment['PATH']}",
                     "UI_TEST_LOCALES": locales,
-                    "UI_TEST_RESULTS_DIR": str(root / "results"),
+                    "UI_TEST_RESULTS_DIR": str(results),
                     "UI_TESTS": tests,
+                    "UI_TEST_PHASE": phase,
                     "XCODEBUILD_LOG": str(log),
                     "XCODEBUILD_TEST_EXIT_CODE": str(test_exit_code),
                     "XCODE_SELECT_PATH": selected_developer_dir,
@@ -138,7 +148,11 @@ class RunUITestsTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
             )
-            calls = log.read_text(encoding="utf-8").splitlines()
+            calls = (
+                log.read_text(encoding="utf-8").splitlines()
+                if log.exists()
+                else []
+            )
             self.defaults_calls = (
                 defaults_log.read_text(encoding="utf-8").splitlines()
                 if defaults_log.exists()
@@ -148,6 +162,12 @@ class RunUITestsTests(unittest.TestCase):
                 path.name: path.read_text(encoding="utf-8")
                 for path in (root / "results").glob("*-runtime.json")
             }
+            build_receipt = results / "build-duration-seconds.txt"
+            self.build_duration_receipt = (
+                build_receipt.read_text(encoding="utf-8")
+                if build_receipt.exists()
+                else None
+            )
             return result, calls
 
     def test_empty_selector_runs_the_complete_suite(self):
@@ -169,6 +189,38 @@ class RunUITestsTests(unittest.TestCase):
         self.assertIn(f"-only-testing:{selector}", calls[1])
         self.assertIn("Running 1 scoped selectors in locale: en", result.stdout)
         self.assertEqual(self.defaults_calls, [])
+
+    def test_build_only_writes_receipt_without_mutating_ui_preferences(self):
+        result, calls = self.run_runner("", phase="build-only")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("build-for-testing", calls[0])
+        self.assertRegex(self.build_duration_receipt or "", r"^[0-9]+\n$")
+        self.assertEqual(self.defaults_calls, [])
+
+    def test_test_only_reuses_prepared_products_and_build_duration(self):
+        selector = "PortavozUITests/LibraryUITests/testSeededMeetingsGroupByRecency"
+        result, calls = self.run_runner(
+            selector,
+            phase="test-only",
+            prepared_build_duration=17,
+            require_runtime_receipt=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn("build-for-testing", calls[0])
+        self.assertIn("test-without-building", calls[0])
+        receipt = json.loads(self.runtime_receipts["en-runtime.json"])
+        self.assertEqual(receipt["buildDurationSeconds"], 17.0)
+
+    def test_test_only_fails_closed_without_the_build_receipt(self):
+        result, calls = self.run_runner("", phase="test-only")
+
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(calls, [])
+        self.assertIn("Missing UI-test build receipt", result.stderr)
 
     def test_web_journey_uses_one_validated_payload_after_the_shared_build(self):
         selector = (
@@ -306,7 +358,11 @@ class RunUITestsTests(unittest.TestCase):
 
         self.assertEqual(source.count("xcodebuild build-for-testing"), 1)
         self.assertIn("xcodebuild test-without-building", source)
+        self.assertIn("UI_TEST_PHASE:-build-and-test", source)
+        self.assertIn("build-duration-seconds.txt", source)
+        self.assertIn("build-and-test|build-only|test-only", source)
         self.assertIn("UI_TEST_REQUIRE_RUNTIME_RECEIPT:-true", source)
+        self.assertIn("UI_TEST_ENFORCE_RUNTIME_BUDGET:-true", source)
         self.assertIn("scripts/ui_test_runtime.py", source)
         self.assertIn("-resultBundlePath", source)
 

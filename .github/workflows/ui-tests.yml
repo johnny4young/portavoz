@@ -31,6 +31,7 @@ jobs:
           python3 -m unittest Tests.Tooling.test_ui_test_scope
           python3 -m unittest Tests.Tooling.test_ui_test_runtime
           python3 -m unittest Tests.Tooling.test_run_ui_tests
+          python3 -m unittest Tests.Tooling.test_ui_test_ci_gate
           python3 -m unittest Tests.Tooling.test_ui_test_host_preflight
 
       - name: Select UI evidence
@@ -74,8 +75,8 @@ jobs:
     if: needs.scope.outputs.required == 'true'
     runs-on: macos-latest
     # Localization/shared-harness and manual integration runs legitimately
-    # select all 101 tests in both locales. Preserve that sequential evidence
-    # and leave time to upload both result bundles instead of weakening it.
+    # select all 101 tests in both locales. One build feeds independent locale
+    # attempts; both receipts are preserved before the deterministic gate.
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,11 +93,33 @@ jobs:
           HOMEBREW_NO_INSTALL_CLEANUP: "1"
         run: command -v xcodegen >/dev/null || brew install xcodegen
 
-      - name: Run only impacted UI tests
+      - name: Build selected UI products once
         env:
           UI_TESTS: ${{ needs.scope.outputs.tests }}
-          UI_TEST_LOCALES: ${{ needs.scope.outputs.locales }}
-        run: make test-ui-scoped
+        run: make test-ui-build
+
+      - name: Run English functional UI evidence
+        id: ui_en
+        if: contains(needs.scope.outputs.locales, 'en')
+        continue-on-error: true
+        env:
+          UI_TESTS: ${{ needs.scope.outputs.tests }}
+          UI_TEST_LOCALES: en
+          # GitHub-hosted macOS wall-clock variance is reported in the receipt,
+          # not promoted to performance authority. Local/stable-Mac integration
+          # keeps the same unchanged budgets blocking by default.
+          UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"
+        run: make test-ui-run
+
+      - name: Run Spanish functional UI evidence
+        id: ui_es
+        if: contains(needs.scope.outputs.locales, 'es')
+        continue-on-error: true
+        env:
+          UI_TESTS: ${{ needs.scope.outputs.tests }}
+          UI_TEST_LOCALES: es
+          UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"
+        run: make test-ui-run
 
       - name: Preserve scoped UI evidence
         if: always()
@@ -106,6 +129,19 @@ jobs:
           path: dist/ui-test-results
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Classify functional evidence and hosted runtime drift
+        if: always()
+        env:
+          UI_TEST_LOCALES: ${{ needs.scope.outputs.locales }}
+          ENGLISH_OUTCOME: ${{ steps.ui_en.outcome }}
+          SPANISH_OUTCOME: ${{ steps.ui_es.outcome }}
+        run: |
+          python3 scripts/ui_test_ci_gate.py \
+            --results dist/ui-test-results \
+            --locales "$UI_TEST_LOCALES" \
+            --english-outcome "$ENGLISH_OUTCOME" \
+            --spanish-outcome "$SPANISH_OUTCOME"
 
   ui-test-gate:
     needs: [scope, scoped-ui-tests]

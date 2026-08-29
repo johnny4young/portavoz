@@ -16205,3 +16205,66 @@ warnings-as-errors, strict lint over 742 files, repository hygiene, and the
 ownership policy suite are green. Replacement-head hosted evidence remains
 required. Automated evidence does not certify physical Sequoia/Tahoe,
 assistive technology, distribution, CloudKit, or field behavior.
+
+## D425 — Separate hosted UI function from controlled runtime authority (Aug 2026)
+
+**Context:** exact correction head `e4767a34` passed all four hosted CI jobs on
+its first attempt. The retained Scoped UI run then passed all 101 English real-
+app journeys with zero functional failures, but the job failed only its fixed
+wall-clock receipt and aborted before Spanish. The hosted distribution measured
+1,349.604 summed seconds, p50 10.098, and p95 31.994. The same exact source had
+already passed the controlled local run at 851.326 seconds, p50 6.720, and p95
+18.533. Five unrelated owners crossed their fixed ceilings together, including
+unchanged transcript-correction journeys, while every assertion passed. This
+was host-wide runtime variance, not evidence of five simultaneous product
+regressions. A heterogeneous GitHub macOS allocation therefore cannot be the
+hard performance authority promised by those local/stable-host budgets.
+
+The monolithic job also coupled build, English, Spanish, receipt enforcement,
+and artifact publication. Any English runtime-policy result stopped Spanish,
+wasting a full build and delaying diagnosis even when the product catalogue was
+functionally green.
+
+**Decision:** hosted Scoped UI has explicit phases. It generates the project
+and builds the application/test products exactly once without acquiring the UI
+automation service. English and Spanish then run, when selected, as independent
+first attempts from those exact products. Each locale performs the read-only
+quiet-host preflight immediately before automation. Locale steps retain their
+real outcomes but use `continue-on-error` only so every selected first attempt
+can finish; it is not a retry and cannot make the job green. Result bundles and
+runtime receipts are uploaded before one final classifier evaluates both step
+outcomes.
+
+The classifier fails closed for a missing/malformed receipt, a selected locale
+that did not run, a non-passing XCUITest, or infrastructure/harness uncertainty.
+It classifies those receipts separately as product/test regression or
+infrastructure/harness failure. GitHub-hosted wall-clock budget drift is an
+annotated advisory only when every functional case passed and the complete
+content-free receipt is valid. The unchanged runtime budget document remains
+blocking by default in `run-ui-tests.sh`, so local/stable-Mac integration, RC,
+and release evidence still enforce every per-journey, total, and p95 ceiling.
+No timeout, budget, selector, locale, assertion, or coverage contract is raised
+or removed.
+
+**Consequences:** ordinary feature PRs still run their minimum-safe selected
+XCUITest scope. Localization, seed/shared-harness, unknown executable impact,
+integration, and release closure still expand fail-safe exactly as before. A
+slow hosted allocation can no longer claim a product regression after 101/101
+functional passes, while runtime drift stays visible in the artifact, warning,
+and step summary. Both selected locales now produce evidence before the final
+verdict. Infrastructure uncertainty still blocks rather than producing a false
+green. The pipeline adds no retries and retains one build, deterministic seed,
+unchanged budgets, complete bilingual release authority, and physical
+Sequoia/Tahoe, assistive-technology, distribution, CloudKit, and field gates.
+
+The phased implementation passed 104 focused orchestration, scope, classifier,
+and host-preflight tests. Its focused real-app path built once in 14 seconds,
+preflighted after the build, and passed 1/1 with a valid hard-budget receipt.
+The complete package then passed 2,789 tests with 15 explicit model-gated skips
+and zero failures in 128.302 seconds; warnings-as-errors, strict lint over 742
+files, and repository hygiene were green. The mandatory complete real-app gate
+reused one 13-second build without retry: English passed 101/101 in 816.160
+summed seconds (p50 6.356, p95 17.342, maximum 34.668), and Spanish passed
+101/101 in 824.903 seconds (p50 6.519, p95 17.938, maximum 35.157). Every
+unchanged individual, aggregate, and p95 budget passed under controlled
+authority. Fresh replacement-head hosted evidence remains required.

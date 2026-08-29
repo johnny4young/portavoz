@@ -10,7 +10,14 @@ results_root="${UI_TEST_RESULTS_DIR:-$ROOT/dist/ui-test-results}"
 runtime_budget="${UI_TEST_RUNTIME_BUDGET:-$ROOT/docs/evidence/ui-test-runtime-budget.json}"
 require_runtime_receipt="${UI_TEST_REQUIRE_RUNTIME_RECEIPT:-true}"
 enforce_runtime_budget="${UI_TEST_ENFORCE_RUNTIME_BUDGET:-true}"
+phase="${UI_TEST_PHASE:-build-and-test}"
+build_duration_receipt="$results_root/build-duration-seconds.txt"
 arch="$(uname -m)"
+
+case "$phase" in
+  build-and-test|build-only|test-only) ;;
+  *) echo "Unsupported UI-test phase: $phase" >&2; exit 2 ;;
+esac
 
 common=(
   -project Portavoz.xcodeproj
@@ -53,18 +60,6 @@ cleanup_ui_test_runner() {
 }
 trap cleanup_ui_test_runner EXIT HUP INT TERM
 
-keyboard_navigation_selector="PortavozUITests/SkillsSettingsUITests/testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit"
-if [[ -z "$tests" || " $tests " == *" $keyboard_navigation_selector "* ]]; then
-  # Keyboard Navigation is a system preference, not an app launch argument.
-  # Snapshot it before mutation and restore it even when xcodebuild is
-  # interrupted. Unrelated scoped suites never touch the preference.
-  keyboard_ui_mode_should_restore=true
-  if keyboard_ui_mode="$(defaults read -g AppleKeyboardUIMode 2>/dev/null)"; then
-    keyboard_ui_mode_was_set=true
-  fi
-  defaults write -g AppleKeyboardUIMode -int 3 >/dev/null
-fi
-
 # An explicit DEVELOPER_DIR wins. Otherwise xcodebuild follows the active
 # xcode-select toolchain (CI selects its newest Xcode before invoking us).
 # Only a Command Line Tools selection needs the conventional local fallback.
@@ -83,11 +78,47 @@ if [[ -n "${PORTAVOZ_TEST_AUDIO_ROOT:-}" ]]; then
   export TEST_RUNNER_PORTAVOZ_TEST_AUDIO_ROOT="$PORTAVOZ_TEST_AUDIO_ROOT"
 fi
 
-# Compile the app and UI bundle once. English and Spanish then reuse the same
-# products through test-without-building instead of paying the build cost twice.
-build_started=$SECONDS
-xcodebuild build-for-testing "${common[@]}"
-build_duration=$((SECONDS - build_started))
+build_duration=""
+if [[ "$phase" != test-only ]]; then
+  # Compile the app and UI bundle once. English and Spanish then reuse the same
+  # products through test-without-building instead of paying the build cost twice.
+  rm -f "$build_duration_receipt"
+  build_started=$SECONDS
+  xcodebuild build-for-testing "${common[@]}"
+  build_duration=$((SECONDS - build_started))
+  temporary_receipt="$build_duration_receipt.tmp.$$"
+  printf '%s\n' "$build_duration" > "$temporary_receipt"
+  mv "$temporary_receipt" "$build_duration_receipt"
+fi
+
+if [[ "$phase" == build-only ]]; then
+  echo "UI test products built once in ${build_duration}s."
+  exit 0
+fi
+
+if [[ "$phase" == test-only ]]; then
+  if [[ ! -f "$build_duration_receipt" ]]; then
+    echo "Missing UI-test build receipt: $build_duration_receipt" >&2
+    exit 2
+  fi
+  build_duration="$(<"$build_duration_receipt")"
+  if [[ ! "$build_duration" =~ ^[0-9]+$ ]]; then
+    echo "Invalid UI-test build receipt: $build_duration_receipt" >&2
+    exit 2
+  fi
+fi
+
+keyboard_navigation_selector="PortavozUITests/SkillsSettingsUITests/testSkillReceiptRestoresKeyboardFocusAndPassesAccessibilityAudit"
+if [[ -z "$tests" || " $tests " == *" $keyboard_navigation_selector "* ]]; then
+  # Keyboard Navigation is a system preference, not an app launch argument.
+  # Snapshot it immediately before UI execution and restore it even when
+  # xcodebuild is interrupted. Build-only phases never mutate it.
+  keyboard_ui_mode_should_restore=true
+  if keyboard_ui_mode="$(defaults read -g AppleKeyboardUIMode 2>/dev/null)"; then
+    keyboard_ui_mode_was_set=true
+  fi
+  defaults write -g AppleKeyboardUIMode -int 3 >/dev/null
+fi
 
 # macOS 15 local-network privacy can present a user-owned permission sheet when
 # a launch-agent-owned Python process opens even a loopback listener. Package

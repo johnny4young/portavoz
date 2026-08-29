@@ -273,6 +273,27 @@ class UITestScopeTests(unittest.TestCase):
             workflow,
         )
 
+    def test_hosted_ui_builds_once_runs_both_locales_and_gates_after_artifacts(self):
+        workflow = (ROOT / ".github/workflows/ui-tests.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertEqual(workflow.count("run: make test-ui-build"), 1)
+        self.assertEqual(workflow.count("run: make test-ui-run"), 2)
+        self.assertEqual(workflow.count("continue-on-error: true"), 2)
+        self.assertEqual(
+            workflow.count('UI_TEST_ENFORCE_RUNTIME_BUDGET: "false"'),
+            2,
+        )
+        self.assertIn("id: ui_en", workflow)
+        self.assertIn("id: ui_es", workflow)
+        self.assertIn("ENGLISH_OUTCOME: ${{ steps.ui_en.outcome }}", workflow)
+        self.assertIn("SPANISH_OUTCOME: ${{ steps.ui_es.outcome }}", workflow)
+        artifact = workflow.index("Preserve scoped UI evidence")
+        gate = workflow.index("Classify functional evidence and hosted runtime drift")
+        self.assertLess(artifact, gate)
+        self.assertNotIn("run: make test-ui-scoped", workflow)
+
     def test_semantic_asset_preparation_selects_its_settings_journey(self):
         expected = FEATURE_TESTS["settings-intelligence"]
         for path in (

@@ -33,7 +33,8 @@ PORTAVOZ_SIGN_IDENTITY ?= 8C8B5B1453BB7E3CC48D78FE2D4A47AC6EBB9D17
 	test-exact-path-cross-host exact-path-cross-host test-exact-path-baseline exact-path-baseline \
 	test-meeting-detail-baseline meeting-detail-baseline \
 	test-recording-stress test-model-gated test-ui-real-audio test-ui test-ui-en test-ui-es \
-	test-ui-bilingual test-ui-scoped test-ui-changed test-ui-preflight project app install \
+	test-ui-bilingual test-ui-scoped test-ui-build test-ui-run test-ui-changed \
+	test-ui-preflight project app install \
 	production-sync-qualification-app production-sync-qualification-init \
 	production-sync-qualification-stage production-sync-qualification-status \
 	production-sync-qualification-finalize \
@@ -727,9 +728,21 @@ test-ui-bilingual: test-ui-scoped
 
 ## Run explicit Xcode selectors, for example:
 ##   make test-ui-scoped UI_TESTS='PortavozUITests/SettingsUITests/testCategoryNavigationRevealsEachPane'
-test-ui-scoped: project
+test-ui-scoped: test-ui-build
+	@$(MAKE) --no-print-directory test-ui-run \
+		UI_TESTS="$(UI_TESTS)" UI_TEST_LOCALES="$(UI_TEST_LOCALES)"
+
+## Compile once without acquiring the host-wide UI automation service. The
+## following locale runs reuse these exact products in the same workspace.
+test-ui-build: project
+	UI_TEST_PHASE=build-only UI_TESTS="$(UI_TESTS)" scripts/run-ui-tests.sh
+
+## Run one or more locales from the prepared products. Preflight happens here,
+## immediately before automation rather than before a potentially long build.
+test-ui-run:
 	@$(MAKE) --no-print-directory test-ui-preflight
-	UI_TESTS="$(UI_TESTS)" UI_TEST_LOCALES="$(UI_TEST_LOCALES)" scripts/run-ui-tests.sh
+	UI_TEST_PHASE=test-only UI_TESTS="$(UI_TESTS)" \
+		UI_TEST_LOCALES="$(UI_TEST_LOCALES)" scripts/run-ui-tests.sh
 
 ## Select UI evidence from committed, staged, unstaged, and untracked changes
 ## against UI_BASE. Known views map to feature-level tests;

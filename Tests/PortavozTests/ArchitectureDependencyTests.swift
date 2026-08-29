@@ -9422,6 +9422,59 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(try Self.contents(of: "docs/DECISIONS.md").contains("## D413"))
     }
 
+    func testHostedUIFunctionalGateSeparatesRunnerDriftFromControlledBudgets() throws {
+        let workflow = try Self.contents(of: ".github/workflows/ui-tests.yml")
+        let makefile = try Self.contents(of: "Makefile")
+        let runner = try Self.contents(of: "scripts/run-ui-tests.sh")
+        let gate = try Self.contents(of: "scripts/ui_test_ci_gate.py")
+        let decisions = try Self.contents(of: "docs/DECISIONS.md")
+
+        XCTAssertEqual(
+            workflow.components(separatedBy: "run: make test-ui-build").count - 1,
+            1)
+        XCTAssertEqual(
+            workflow.components(separatedBy: "run: make test-ui-run").count - 1,
+            2)
+        XCTAssertEqual(
+            workflow.components(separatedBy: "continue-on-error: true").count - 1,
+            2,
+            "both first-attempt locales must finish before the final classifier")
+        XCTAssertEqual(
+            workflow.components(
+                separatedBy: "UI_TEST_ENFORCE_RUNTIME_BUDGET: \"false\"").count - 1,
+            2)
+        let artifact = try XCTUnwrap(workflow.range(
+            of: "Preserve scoped UI evidence"))
+        let classifier = try XCTUnwrap(workflow.range(
+            of: "Classify functional evidence and hosted runtime drift"))
+        XCTAssertLessThan(artifact.lowerBound, classifier.lowerBound)
+        XCTAssertTrue(workflow.contains("steps.ui_en.outcome"))
+        XCTAssertTrue(workflow.contains("steps.ui_es.outcome"))
+        XCTAssertFalse(workflow.contains("run: make test-ui-scoped"))
+
+        XCTAssertTrue(makefile.contains("test-ui-scoped: test-ui-build"))
+        XCTAssertTrue(makefile.contains("test-ui-build: project"))
+        XCTAssertTrue(makefile.contains("test-ui-run:"))
+        let runTarget = try XCTUnwrap(makefile.range(of: "test-ui-run:"))
+        let changedTarget = try XCTUnwrap(makefile.range(
+            of: "test-ui-changed:", range: runTarget.upperBound..<makefile.endIndex))
+        let runBody = makefile[runTarget.lowerBound..<changedTarget.lowerBound]
+        XCTAssertTrue(runBody.contains("test-ui-preflight"))
+        XCTAssertTrue(runBody.contains("UI_TEST_PHASE=test-only"))
+
+        XCTAssertEqual(
+            runner.components(separatedBy: "xcodebuild build-for-testing").count - 1,
+            1)
+        XCTAssertTrue(runner.contains("UI_TEST_PHASE:-build-and-test"))
+        XCTAssertTrue(runner.contains("build-duration-seconds.txt"))
+        XCTAssertTrue(runner.contains("UI_TEST_ENFORCE_RUNTIME_BUDGET:-true"))
+        XCTAssertTrue(gate.contains("hosted-runtime-drift"))
+        XCTAssertTrue(gate.contains("product-or-test-regression"))
+        XCTAssertTrue(gate.contains("infrastructure-or-harness"))
+        XCTAssertTrue(gate.contains("wall-clock budgets remain advisory"))
+        XCTAssertTrue(decisions.contains("## D425"))
+    }
+
     func testXCUITestRuntimeOptimizationRetainsRiskOwnersWithoutDuplicateWork() throws {
         let support = try Self.contents(
             of: "Tests/PortavozUITests/UITestSupport.swift")
