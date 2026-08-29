@@ -4,6 +4,14 @@ import XCTest
 /// policy. This one-launch journey proves both directions plus the bounded
 /// receipt projection without touching the user's real library.
 final class SkillsSettingsUITests: PortavozUITestCase {
+    private struct SkillsScrollViewport {
+        let scrollView: XCUIElement
+        let frame: CGRect
+    }
+
+    @MainActor
+    private var cachedScrollViewport: SkillsScrollViewport?
+
     @MainActor
     func testSuggestedActionsExplainReviewFirstSafety() {
         let app = XCUIApplication.portavoz(openSettings: true)
@@ -1215,6 +1223,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     private func openSkillsSettings(in app: XCUIApplication) {
+        cachedScrollViewport = nil
         XCTAssertTrue(
             app.openSettingsWindow(),
             "the production Settings command must open its window")
@@ -1323,6 +1332,7 @@ final class SkillsSettingsUITests: PortavozUITestCase {
 
     @MainActor
     private func closeSettings(in app: XCUIApplication) {
+        cachedScrollViewport = nil
         app.typeKey("w", modifierFlags: .command)
         XCTAssertTrue(app.prepareForInteraction())
     }
@@ -1630,11 +1640,13 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         timeout: TimeInterval = 5
     ) -> Bool {
         let matches = {
-            let value = element.value as? String
-            return element.exists
-                && (element.label.contains(expectedText)
-                || value?.contains(expectedText) == true
-                || element.title.contains(expectedText))
+            guard element.exists else { return false }
+            if element.label.contains(expectedText) { return true }
+            if let value = element.value as? String,
+               value.contains(expectedText) {
+                return true
+            }
+            return element.title.contains(expectedText)
         }
         return waitForUITestCondition(timeout: timeout, matches)
     }
@@ -1657,14 +1669,11 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         in app: XCUIApplication,
         deltaY: CGFloat = -5
     ) -> Bool {
-        let window = app.windows.containing(
-            .any,
-            identifier: "settings-skills-pause-all"
-        ).firstMatch
-        guard window.exists else { return false }
-        let form = window.scrollViews.element(boundBy: 1)
-        guard form.exists else { return false }
-        let viewport = form.frame.insetBy(dx: 0, dy: 8)
+        guard let scrollViewport = skillsScrollViewport(in: app) else {
+            return false
+        }
+        let form = scrollViewport.scrollView
+        let viewport = scrollViewport.frame
         // Use the target's actual vertical distance instead of a fixed series
         // of tiny wheel gestures. The clamp stays bounded while letting a
         // deeply nested row reach the viewport in a few deterministic steps.
@@ -1697,6 +1706,29 @@ final class SkillsSettingsUITests: PortavozUITestCase {
         return !finalFrame.isEmpty
             && finalFrame.minY >= viewport.minY
             && finalFrame.maxY <= viewport.maxY
+    }
+
+    @MainActor
+    private func skillsScrollViewport(
+        in app: XCUIApplication
+    ) -> SkillsScrollViewport? {
+        if let cachedScrollViewport { return cachedScrollViewport }
+
+        let window = app.windows.containing(
+            .any,
+            identifier: "settings-skills-pause-all"
+        ).firstMatch
+        guard window.exists else { return nil }
+        let form = window.scrollViews.element(boundBy: 1)
+        guard form.exists else { return nil }
+        let frame = form.frame.insetBy(dx: 0, dy: 8)
+        guard !frame.isEmpty else { return nil }
+
+        let viewport = SkillsScrollViewport(
+            scrollView: form,
+            frame: frame)
+        cachedScrollViewport = viewport
+        return viewport
     }
 
     @MainActor

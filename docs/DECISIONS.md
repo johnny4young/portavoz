@@ -15967,7 +15967,126 @@ all 106 Spanish journeys in 905.670 seconds (p50 6.603, p95 18.594, maximum
 evidence this is 75.796 seconds (7.73%) faster in English and 97.882 seconds
 (9.75%) faster in Spanish. Warnings-as-errors build, 2,788 Swift tests with 15
 expected model-gated skips, strict lint over 742 files, repository hygiene,
-catalogue/scope policy, and diff checks also passed. The first exact-head
-hosted CI/UI receipt remains required before D419 closes. Automated evidence
-remains separate from physical Sequoia/Tahoe, assistive technology,
-distribution, CloudKit, and field behavior.
+catalogue/scope policy, and diff checks also passed.
+
+Exact D419 commit `9707b9b5` then passed all four hosted CI jobs in run
+`33215973171`. Its first Scoped UI run `33215972156` passed all 106 English
+journeys functionally but stopped before Spanish on the unchanged runtime
+gate: 1,482.123 summed seconds, p50 10.603, p95 28.231, maximum 69.725, nine
+individual overages, and the 1,300-second aggregate violation. This is a
+material improvement over D418's 1,771.372 seconds and twenty overages, but it
+does not close the PR. The first exact-head receipt remains retained rather
+than retried unchanged.
+
+## D420 — Establish each static accessibility boundary once (Aug 2026)
+
+**Context:** D419 proved its intended query reduction on the hosted runner but
+left 182.123 seconds above the aggregate ceiling. Across all 106 retained
+activity trees, 1,922 find activities consumed 364.252 seconds and 1,659
+existence activities consumed 346.693 seconds. Main-window readiness alone
+issued 110 existence and 440 find activities: every launch separately proved
+existence and then sampled actionable geometry twice. One final main-window
+sample in the 20,000-segment fixture consumed 11.091 seconds while the seed
+transaction was busy even though no journey clicks the window itself.
+
+Settings repeated a full stable-frame proof for each static sidebar category
+after the Settings window had already established its placement. Skills also
+re-resolved the same window, scroll view, and viewport on each bounded reveal,
+and the contained-frame helper sampled every 50 milliseconds despite owning a
+100-millisecond stability interval. These are duplicated boundary proofs, not
+missing product assertions. D413 remains binding: process foreground state is
+not key-window ownership, so explicit activation and official termination may
+not be removed.
+
+**Decision:** launch keeps its ordered foreground wait and explicit activation,
+then proves the main window through one bounded `isHittable` predicate. The
+window is not an activation target; every clicked product control retains its
+own stable or contained actionability proof. Seed readiness similarly lets the
+meeting row's bounded hittability predicate subsume a preceding existence
+poll, while Meeting Detail still reasserts activation and stable row geometry
+before clicking a dynamically replaced library item.
+
+Opening Settings owns one 100-millisecond stable-frame proof on the General
+sidebar anchor. Once that static window boundary is placed, category selection
+reasserts activation, proves only category hittability, clicks, and requires
+the exact destination control. Skills caches that window's immutable scroll-
+view frame for the lifetime of the open Settings window and invalidates the
+cache on every open or close; target frames and every bounded gesture remain
+live. Positive localized-label matching checks the most common label property
+before the value/title fallbacks. Contained-frame polling uses its declared
+stability interval as the minimum probe cadence. A screenshot request owns its
+static window/element snapshot directly instead of paying a preceding existence
+query and then resolving the same snapshot again; screenshots are attached only
+after the journey's exact product assertions have passed, and a failed snapshot
+still fails XCTest.
+
+Source ratchets preserve activation ordering, stable clicked controls, exact
+destination postconditions, cache invalidation, live target geometry, bounded
+six-gesture scrolling, and the absence-safe hittability gates. This slice does
+not change a product source file, selector, product assertion, timeout, retry,
+gesture, test case, locale, aggregate ceiling, or individual runtime budget.
+
+**Consequences:** the correction targets the exact remaining hosted property
+work without inferring a faster machine or hiding a red receipt. The focused
+English boundary suite passed 11/11 without retry in 177.026 summed XCTest
+seconds with every unchanged individual budget green. D420 is locally
+qualified together with D421's complete bilingual receipt below; the first
+exact-head hosted result remains required before the PR closes. Physical
+Sequoia/Tahoe, assistive technology, distribution, CloudKit, and field evidence
+remain separate authorities.
+
+## D421 — Consolidate only same-fixture UI journeys with explicit state resets (Aug 2026)
+
+**Context:** D420 removes duplicated static accessibility discovery, but PR #30
+still needs enough hosted margin below the unchanged 1,300-second aggregate
+ceiling. Seven Meeting Detail cases each launched the same disposable seed to
+assert either four citation routes or three static review surfaces. Keeping
+separate processes for identical immutable fixture setup repeats application,
+database, search, and accessibility startup without adding isolation. Naively
+joining the four citation cases would weaken them: every source points to the
+same row at 00:03, so the first selection could make the next three assertions
+pass without proving another navigation.
+
+**Decision:** four source cases become one bounded evidence journey. It retains
+the summary, decision, action-item, and Apuntador source values, exact selected
+row, 00:03 player assertion, and four screenshot attachments. Before each
+source after the first, the journey activates the transcript's 00:00 row and
+requires the cited row to be unselected and playback to have left 00:03. The
+following source must therefore perform a fresh, observable transition.
+
+The raw-notes, right-rail, and generated-document cases become one review
+journey. Notes, privacy, health, sync disclosure, chapters, Apuntador cards,
+and their three screenshots are asserted before the only durable mutation; the
+generated-document assertion, coauthoring tab, completed action item, and its
+fourth screenshot remain last. No state from that mutation can satisfy an
+earlier surface check.
+
+The authoritative feature catalogue, Meeting Detail ownership contract,
+assistive-technology automation checkpoint, real-audio lane, and runtime
+catalog use the two new selectors. Catalogue size falls from 106 to 101 cases
+per locale because seven owners become two; every original assertion and all
+eight screenshots remain. Each new journey keeps the existing 20-second
+individual budget. The 30-second p95 and 1,300-second per-locale aggregate are
+unchanged. No product source, timeout, retry, gesture bound, locale, or release
+authority changes.
+
+**Consequences:** the catalog validator reports exactly 101 owned and budgeted
+tests with no orphan or retired selector. The two new English journeys passed
+2/2 without retry in 28.538 summed seconds. Their seven predecessors measured
+44.455 seconds on the same host, so the bounded consolidation saves 15.917
+seconds (35.80%) in that slice while retaining all assertions and screenshots.
+
+The accepted complete package run passed 2,788 tests with 15 explicit
+model-gated skips and zero failures in 121.980 XCTest seconds. A single
+13-second build then fed the complete real-app catalogue without retry:
+English passed 101/101 in 837.187 summed seconds (p50 6.655, p95 17.505,
+maximum 36.449) and Spanish passed 101/101 in 841.151 seconds (p50 6.692,
+p95 18.092, maximum 36.805). Every unchanged aggregate and individual budget
+passed. Relative to D419's last pre-consolidation local receipt, this saves
+68.130 seconds (7.53%) in English and 64.519 seconds (7.12%) in Spanish.
+Current-SDK first-party warnings-as-errors, strict SwiftLint across 742 files,
+repository hygiene, catalogue/contract policy, and diff checks are green.
+
+Fresh exact-head hosted evidence remains required. This is a runtime
+optimization, not permission to combine tests that need fresh process,
+permission, failure-injection, persistence, or destructive state.

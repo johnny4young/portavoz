@@ -83,8 +83,8 @@
       "id": "meeting-evidence-navigation",
       "sequence": 2,
       "automationSelectors": [
-        "PortavozUITests/MeetingDetailUITests/testSummarySourceJumpsToItsTranscriptAndAudio",
-        "PortavozUITests/MeetingDetailUITests/testMyNotesSectionShowsRawNotesAndOffersEnhancement"
+        "PortavozUITests/MeetingDetailUITests/testEvidenceSourcesJumpToTheirExactTranscriptAndAudio",
+        "PortavozUITests/MeetingDetailUITests/testMeetingReviewSurfacesRemainCompleteAndActionable"
       ]
     },
     {

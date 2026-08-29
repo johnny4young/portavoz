@@ -1,6 +1,6 @@
 {
   "catalog": {
-    "expectedCaseCount": 106
+    "expectedCaseCount": 101
   },
   "fullSuite": {
     "maximumP95Seconds": 30.0,
@@ -49,14 +49,12 @@
     "LibraryUITests/testUpcomingMeetingBriefShowsRelatedEvidenceAndOpenCommitment()": 20.0,
     "MeetingDetailUITests/testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix()": 20.0,
     "MeetingDetailUITests/testAbandonedAutomaticSummarySaysSoBesideGeneration()": 20.0,
-    "MeetingDetailUITests/testActionItemSourceJumpsToItsTranscriptAndAudio()": 20.0,
-    "MeetingDetailUITests/testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio()": 20.0,
     "MeetingDetailUITests/testClipMarkingRevealsExport()": 20.0,
     "MeetingDetailUITests/testCommitmentInboxRequiresEvidenceReviewBeforeConfirmation()": 26.784,
     "MeetingDetailUITests/testCorrectedTranscriptMarksDerivedArtifactsStale()": 20.0,
     "MeetingDetailUITests/testDecisionCanBeConfirmedAboutATopic()": 20.0,
-    "MeetingDetailUITests/testDecisionSourceJumpsToItsTranscriptAndAudio()": 20.0,
     "MeetingDetailUITests/testEmailRecapSkillPreviewsAndHandsOffWithoutSending()": 24.27,
+    "MeetingDetailUITests/testEvidenceSourcesJumpToTheirExactTranscriptAndAudio()": 20.0,
     "MeetingDetailUITests/testExplicitApuntadorRefreshUsesCorrectedTranscript()": 20.0,
     "MeetingDetailUITests/testExportMenuOffersSubtitleFormats()": 20.0,
     "MeetingDetailUITests/testFailedDurableProcessingOffersOneRecoveryAction()": 20.0,
@@ -64,11 +62,10 @@
     "MeetingDetailUITests/testFiveThousandSegmentDetailRendersFromDisposableScaleFixture()": 20.0,
     "MeetingDetailUITests/testFreshQualifyingMeetingShowsThePostMeetingMirror()": 20.0,
     "MeetingDetailUITests/testMostRecentRecipeRemainsVisibleAfterReload()": 20.0,
-    "MeetingDetailUITests/testMyNotesSectionShowsRawNotesAndOffersEnhancement()": 20.0,
+    "MeetingDetailUITests/testMeetingReviewSurfacesRemainCompleteAndActionable()": 20.0,
     "MeetingDetailUITests/testNamedSpeakerCanBeRememberedAsCanonicalPerson()": 20.0,
     "MeetingDetailUITests/testPlayerExposesSkipAndOnlyMyVoice()": 20.0,
     "MeetingDetailUITests/testRecapSheetDraftsFromTheSummaryWithoutTheTranscript()": 20.0,
-    "MeetingDetailUITests/testRightRailShowsHealthAndChapters()": 20.0,
     "MeetingDetailUITests/testRunningRefineCanBeCanceledWithoutChangingTheTranscript()": 20.0,
     "MeetingDetailUITests/testSecretGistSkillPreviewsPublishesAndReceiptsExactDocument()": 25.789,
     "MeetingDetailUITests/testSequoiaApuntadorRefreshPreservesStaleAnswers()": 20.0,
@@ -76,8 +73,6 @@
     "MeetingDetailUITests/testSkillProposalJourneyFromBannerToReceipt()": 30.848,
     "MeetingDetailUITests/testStructureMenuOffersSeededTemplates()": 20.0,
     "MeetingDetailUITests/testSummaryFeedbackIsExplicitReversibleAndLocal()": 20.0,
-    "MeetingDetailUITests/testSummarySourceJumpsToItsTranscriptAndAudio()": 20.0,
-    "MeetingDetailUITests/testTabbedSummaryRevealsTheCoauthoringBullet()": 20.0,
     "MeetingDetailUITests/testTranscriptCorrectionKeepsOriginalEvidenceAndDurableUndo()": 23.101,
     "MeetingDetailUITests/testTranscriptStructuralCorrectionsSplitMergeHideAndRestoreEvidence()": 36.356,
     "MeetingDetailUITests/testTwentyThousandSegmentDetailRendersFromDisposableScaleFixture()": 23.817,

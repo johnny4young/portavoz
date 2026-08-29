@@ -4804,9 +4804,14 @@ cannot become a false pass. Localized moving controls stabilize their hit frame
 before activation. The stability interval begins with the first valid,
 nonempty hittable frame and resets on every movement or loss of hittability;
 it does not require an extra identical sample before starting the unchanged
-interval. The Skills Settings form reveals targets with a bounded
+interval. The contained-frame path uses that same declared interval as its
+minimum query cadence. The Skills Settings form reveals targets with a bounded
 geometry-aware scroll over the real viewport rather than a fixed sequence of
-small wheel gestures. Test-only Ask empty-retrieval/evidence/answer phases and
+small wheel gestures. Its static form viewport is resolved once per open
+Settings window and invalidated on window open/close; target geometry remains
+live for every bounded attempt. Static screenshot attachments resolve their
+window or element once after exact product assertions; snapshot failure itself
+remains an XCTest failure. Test-only Ask empty-retrieval/evidence/answer phases and
 Skills receipt/proposal refreshes use cancellation-aware, 30-second file handshakes
 under the disposable store instead of runner-speed sleeps. Each UUID-scoped
 ready/continue pair is constrained to the process temporary directory and
@@ -4858,11 +4863,30 @@ prove that Portavoz owns the frontmost key window throughout a long catalogue;
 startup and `prepareForInteraction()` therefore keep explicit activation. The
 first complete English attempt demonstrated that removing it can synthesize
 apparently successful clicks without publishing the expected route or mutation.
+After startup activation, the main shell uses one bounded hittability proof;
+the window is not itself clicked, while every interactive control keeps its
+own stable or contained readiness boundary. Settings owns one stable General
+anchor when its window opens. Static category changes then reassert activation,
+require category hittability, and prove the exact destination instead of
+repeating whole-window placement for every sidebar click. Seed readiness uses
+the meeting row's same bounded hittability predicate to prove both publication
+and actionability before any later foreground/stable-row click boundary.
 Skills controls whose geometry helper already proves full viewport containment
 still wait only for hittability before activation instead of repeating a second
 stable-frame proof. Structural-undo journeys also wait for the editor's terminal
 dismissal before resolving restored row identity; visible source text inside the
 editor is not accepted as completion evidence.
+
+Meeting Detail uses two same-fixture journeys for boundaries that do not need
+fresh process state. One owns raw notes, the independently scrolling trust/
+health/chapter/Apuntador rail, and the generated document; it captures every
+surface before completing the seeded action item. The other owns summary,
+decision, action-item, and Apuntador source navigation. Before each later
+source, it selects the transcript's 00:00 row and requires the original citation
+to become unselected and playback to leave 00:03; every source must then restore
+the exact persisted row and audio time. This removes five launches without
+letting a previous source's selected state satisfy a later assertion. All eight
+screenshots and all original product assertions remain.
 
 Scale-fixture replacement is also observation-driven. The 20,000-segment
 journey sees summary revision 1, releases one UUID-scoped ready/continue
@@ -4875,25 +4899,24 @@ search semantics and the Library journey owns timestamp navigation. Email UI
 owns its external handoff and local receipt, while the Gist and central Skills
 journeys own cross-window Settings receipt projection. Architecture ratchets
 reject restoration of these measured duplicate chains.
-The current local candidate on macOS 26.5.2 (25F84), arm64, and Xcode 26.6
-uses one eight-second build for the complete 106-case catalogue in both
-locales. English measures 939.336 summed XCTest seconds, 961 seconds wall, p50
-6.564, p95 17.090, and maximum 46.836. Spanish measures 975.360 summed XCTest
-seconds, 994 seconds wall, p50 6.669, p95 17.355, and maximum 49.792. Both pass
-the unchanged 1,300-second aggregate, 30-second p95, and independent per-
-journey ceilings. These are one-host performance measurements, not physical
-Sequoia or separate-hardware Tahoe evidence.
 
-The hosted predecessor commit passed CI, while its fail-safe 106-case English
-UI run retained 104 passes and failed the aggregate runtime budget. The fresh
-minimum-safe selector chose the 36 affected English Interview and Meeting
-Detail journeys; one build fed all 36, which passed in 320.085 summed XCTest
-seconds (341 seconds test wall, p95 23.262, maximum 26.792) without a retry or
-budget change. Its preceding six-case causal group passed in 106.080 seconds
-with p95 26.521. This local receipt closes the two reproduced interaction
-failures but does not supersede the red hosted evidence: exact-head hosted
-qualification remains required. Final integration retains the complete
-bilingual catalogue and every unchanged aggregate and per-journey ceiling.
+The current consolidated local candidate on macOS 26.5.2 (25F84), arm64, and
+Xcode 26.6 uses one 13-second build for the complete 101-case catalogue in both
+locales. English measures 837.187 summed XCTest seconds, 862 seconds wall, p50
+6.655, p95 17.505, and maximum 36.449. Spanish measures 841.151 summed XCTest
+seconds, 867 seconds wall, p50 6.692, p95 18.092, and maximum 36.805. Both pass
+the unchanged 1,300-second aggregate, 30-second p95, and independent per-
+journey ceilings without retry. Relative to the last pre-consolidation
+local receipt, English saves 68.130 seconds (7.53%) and Spanish saves 64.519
+seconds (7.12%).
+
+The published hosted predecessor passed its four CI jobs and all 106 English
+real-app journeys functionally, but the first hosted UI receipt remained red:
+1,482.123 summed seconds, p95 28.231, nine individual overages, and the
+unchanged 1,300-second aggregate violation. The consolidated local evidence
+does not supersede that retained receipt; the correction requires a fresh
+first exact-head hosted result. These are one-host performance measurements,
+not physical Sequoia or separate-hardware Tahoe evidence.
 
 Autonomous assistant validation has a separate, non-serving public authority.
 `Fixtures/ApuntadorValidation/public-bilingual-v1.json` freezes six synthetic
@@ -5269,9 +5292,9 @@ reliability evidence retained from 9 Aug, is:
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
 - 629 deterministic tooling cases and the 217-case architecture subset pass;
-- the Meeting Detail interaction contract contains 431 signals, 14 feature
-  owners, and 35 explicitly owned UI journeys;
-- 106 XCUITest cases per locale define the 212-case bilingual release gate;
+- the Meeting Detail interaction contract contains 431 signals, 15 feature
+  owners, and 30 explicitly owned UI journeys;
+- 101 XCUITest cases per locale define the 202-case bilingual release gate;
 - pull requests run only their minimum-safe selected feature evidence; shared
   localization/harness changes and release closure expand to the complete
   bilingual gate, while unknown production paths fail safe to complete English;

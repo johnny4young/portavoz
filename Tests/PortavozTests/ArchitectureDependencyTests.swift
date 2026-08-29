@@ -2614,7 +2614,7 @@ final class ArchitectureDependencyTests: XCTestCase {
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
             "package inventory contains 2,788 cases "
-                + "(15 environment-gated) + 106"))
+                + "(15 environment-gated) + 101"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
         XCTAssertTrue(gaps.contains(
@@ -9499,6 +9499,73 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(stableFrameBody.contains(
             "candidateFrame = nil\n                stableSince = nil"))
 
+        let launchStart = try XCTUnwrap(support.range(
+            of: "func launchPortavoz()"))
+        let processExitStart = try XCTUnwrap(support.range(
+            of: "private func waitForPortavozProcessExit(",
+            range: launchStart.upperBound..<support.endIndex))
+        let launchBody = support[
+            launchStart.lowerBound..<processExitStart.lowerBound]
+        let mainWindowStart = try XCTUnwrap(launchBody.range(
+            of: "let mainWindow = windows[\"main-AppWindow-1\"]"))
+        let settingsBranch = try XCTUnwrap(launchBody.range(
+            of: "if shouldOpenSettings",
+            range: mainWindowStart.upperBound..<launchBody.endIndex))
+        let mainWindowReadiness = launchBody[
+            mainWindowStart.lowerBound..<settingsBranch.lowerBound]
+        XCTAssertTrue(mainWindowReadiness.contains(
+            "mainWindow.waitForHittable(timeout: 15)"))
+        XCTAssertFalse(mainWindowReadiness.contains("waitForExistenceFast"))
+        XCTAssertFalse(mainWindowReadiness.contains("waitForStableFrame"))
+
+        let settingsWindowStart = try XCTUnwrap(support.range(
+            of: "func openSettingsWindow("))
+        let settingsCategoryStart = try XCTUnwrap(support.range(
+            of: "func openSettingsCategory(",
+            range: settingsWindowStart.upperBound..<support.endIndex))
+        let settingsWindowBody = support[
+            settingsWindowStart.lowerBound..<settingsCategoryStart.lowerBound]
+        XCTAssertTrue(settingsWindowBody.contains(
+            "general.waitForStableFrame("))
+        XCTAssertTrue(settingsWindowBody.contains("stableFor: 0.1"))
+
+        let seededSettleStart = try XCTUnwrap(support.range(
+            of: "func waitForSeededLibraryToSettle("))
+        let seededReadyStart = try XCTUnwrap(support.range(
+            of: "func waitForSeedFixtureReady(",
+            range: seededSettleStart.upperBound..<support.endIndex))
+        let categoryBody = support[
+            settingsCategoryStart.lowerBound..<seededSettleStart.lowerBound]
+        XCTAssertTrue(categoryBody.contains(
+            "category.waitForHittable(timeout: timeout)"))
+        XCTAssertFalse(categoryBody.contains("category.waitForStableFrame"))
+        let seededSettleBody = support[
+            seededSettleStart.lowerBound..<seededReadyStart.lowerBound]
+        XCTAssertTrue(seededSettleBody.contains(
+            "return meeting.waitForHittable(timeout: timeout)"))
+        XCTAssertFalse(seededSettleBody.contains(
+            "meeting.waitForExistenceFast"))
+
+        let containedFrameStart = try XCTUnwrap(support.range(
+            of: "private func waitForStableContainedFrame("))
+        let screenshotStart = try XCTUnwrap(support.range(
+            of: "extension XCTestCase",
+            range: containedFrameStart.upperBound..<support.endIndex))
+        let containedFrameBody = support[
+            containedFrameStart.lowerBound..<screenshotStart.lowerBound]
+        XCTAssertTrue(containedFrameBody.contains(
+            "let stableProbeInterval = stableInterval > 0 ? stableInterval : 0.05"))
+        XCTAssertTrue(containedFrameBody.contains(
+            "pollInterval: stableProbeInterval"))
+
+        let screenshotExtension = support[screenshotStart.lowerBound..<support.endIndex]
+        XCTAssertFalse(screenshotExtension.contains(
+            "must exist before capturing evidence"))
+        XCTAssertEqual(
+            screenshotExtension.components(separatedBy: ".screenshot()").count - 1,
+            2,
+            "the screenshot request itself must own each static evidence snapshot")
+
         XCTAssertTrue(skills.contains(
             "the live pane must expose the six-action candidate catalogue"))
         XCTAssertTrue(skills.contains(
@@ -9535,10 +9602,10 @@ final class ArchitectureDependencyTests: XCTestCase {
         }
         let scrollStart = try XCTUnwrap(skills.range(
             of: "private func scrollToVisible("))
-        let isOnStart = try XCTUnwrap(skills.range(
-            of: "private static func isOn(",
+        let viewportStart = try XCTUnwrap(skills.range(
+            of: "private func skillsScrollViewport(",
             range: scrollStart.upperBound..<skills.endIndex))
-        let scrollBody = skills[scrollStart.lowerBound..<isOnStart.lowerBound]
+        let scrollBody = skills[scrollStart.lowerBound..<viewportStart.lowerBound]
         XCTAssertFalse(
             scrollBody.contains("let isVisible ="),
             "visibility must not be resampled separately from the scroll attempt")
@@ -9550,6 +9617,38 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(scrollBody.contains(
             "let magnitude = min(max(max(distance, abs(deltaY)), 240), 900)"))
         XCTAssertTrue(scrollBody.contains("let finalFrame = element.frame"))
+        XCTAssertTrue(scrollBody.contains("skillsScrollViewport(in: app)"))
+        XCTAssertFalse(scrollBody.contains("app.windows.containing"))
+
+        let isOnStart = try XCTUnwrap(skills.range(
+            of: "private static func isOn(",
+            range: viewportStart.upperBound..<skills.endIndex))
+        let viewportBody = skills[
+            viewportStart.lowerBound..<isOnStart.lowerBound]
+        let cachedReturn = try XCTUnwrap(viewportBody.range(
+            of: "if let cachedScrollViewport { return cachedScrollViewport }"))
+        let windowQuery = try XCTUnwrap(viewportBody.range(
+            of: "let window = app.windows.containing"))
+        XCTAssertLessThan(cachedReturn.lowerBound, windowQuery.lowerBound)
+        XCTAssertEqual(
+            skills.components(separatedBy: "cachedScrollViewport = nil").count - 1,
+            2,
+            "opening or closing Settings must invalidate the cached viewport")
+
+        let labelStart = try XCTUnwrap(skills.range(
+            of: "private func waitForLabel("))
+        let countStart = try XCTUnwrap(skills.range(
+            of: "private func waitForCount(",
+            range: labelStart.upperBound..<skills.endIndex))
+        let labelBody = skills[labelStart.lowerBound..<countStart.lowerBound]
+        let labelRead = try XCTUnwrap(labelBody.range(
+            of: "if element.label.contains(expectedText)"))
+        let valueRead = try XCTUnwrap(labelBody.range(
+            of: "if let value = element.value as? String"))
+        let titleRead = try XCTUnwrap(labelBody.range(
+            of: "return element.title.contains(expectedText)"))
+        XCTAssertLessThan(labelRead.lowerBound, valueRead.lowerBound)
+        XCTAssertLessThan(valueRead.lowerBound, titleRead.lowerBound)
 
         XCTAssertFalse(
             meeting.contains("library-search-field"),
@@ -9602,12 +9701,70 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertTrue(meeting.contains(
             "editor.descendants(matching: .popUpButton)"))
 
+        let reviewJourneyStart = try XCTUnwrap(meeting.range(
+            of: "func testMeetingReviewSurfacesRemainCompleteAndActionable()"))
+        let evidenceJourneyStart = try XCTUnwrap(meeting.range(
+            of: "func testEvidenceSourcesJumpToTheirExactTranscriptAndAudio()",
+            range: reviewJourneyStart.upperBound..<meeting.endIndex))
+        let reviewJourney = meeting[
+            reviewJourneyStart.lowerBound..<evidenceJourneyStart.lowerBound]
+        for evidenceName in [
+            "meeting-detail-my-notes",
+            "meeting-detail-privacy-receipt",
+            "meeting-detail-transcript-navigation",
+            "meeting-detail-generated-document",
+        ] {
+            XCTAssertTrue(reviewJourney.contains(evidenceName), evidenceName)
+        }
+
+        let decisionJourneyStart = try XCTUnwrap(meeting.range(
+            of: "func testDecisionCanBeConfirmedAboutATopic()",
+            range: evidenceJourneyStart.upperBound..<meeting.endIndex))
+        let evidenceJourney = meeting[
+            evidenceJourneyStart.lowerBound..<decisionJourneyStart.lowerBound]
+        for evidenceName in [
+            "meeting-detail-summary-evidence",
+            "meeting-detail-decision-evidence",
+            "meeting-detail-action-item-evidence",
+            "meeting-detail-apuntador-evidence",
+        ] {
+            XCTAssertTrue(evidenceJourney.contains(evidenceName), evidenceName)
+        }
+        XCTAssertEqual(
+            evidenceJourney.components(
+                separatedBy: "citedRow.waitForSelection(timeout: 5)").count - 1,
+            4,
+            "each source must prove its exact selected transcript row")
+        XCTAssertEqual(
+            evidenceJourney.components(
+                separatedBy: "currentTime.waitForValue(\"0:03\", timeout: 5)").count - 1,
+            4,
+            "each source must prove its exact audio seek")
+        XCTAssertEqual(
+            evidenceJourney.components(
+                separatedBy: "firstTranscriptTime.click()").count - 1,
+            3,
+            "later source checks must first move to a distinguishable transcript target")
+        for retiredJourney in [
+            "testTabbedSummaryRevealsTheCoauthoringBullet",
+            "testMyNotesSectionShowsRawNotesAndOffersEnhancement",
+            "testSummarySourceJumpsToItsTranscriptAndAudio",
+            "testDecisionSourceJumpsToItsTranscriptAndAudio",
+            "testActionItemSourceJumpsToItsTranscriptAndAudio",
+            "testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio",
+            "testRightRailShowsHealthAndChapters",
+        ] {
+            XCTAssertFalse(meeting.contains(retiredJourney), retiredJourney)
+        }
+
         XCTAssertTrue(decisions.contains("## D410"))
         XCTAssertTrue(decisions.contains("## D411"))
         XCTAssertTrue(decisions.contains("## D412"))
         XCTAssertTrue(decisions.contains("## D417"))
         XCTAssertTrue(decisions.contains("## D418"))
         XCTAssertTrue(decisions.contains("## D419"))
+        XCTAssertTrue(decisions.contains("## D420"))
+        XCTAssertTrue(decisions.contains("## D421"))
     }
 
     func testMeetingDetailCompositionKeepsEffectsOutOfPresentationChildren() throws {
@@ -11590,7 +11747,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             431)
         XCTAssertEqual(
             (interactionContract["featureOwnership"] as? [[String: Any]])?.count,
-            14)
+            15)
 
         let detailZero = try Self.jsonObject(
             at: "docs/evidence/meeting-detail-performance-baseline-20260801.json")

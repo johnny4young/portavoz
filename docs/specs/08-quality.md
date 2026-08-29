@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,788 cases (15 environment-gated) + 106
+Status: the package inventory contains 2,788 cases (15 environment-gated) + 101
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -11,7 +11,7 @@ gate). `.github/workflows/ui-tests.yml` computes feature-level selectors from
 the PR diff and allocates a macOS UI runner only when product presentation is
 affected. The recording-toolbar mapping selects its external-route geometry
 contract plus live-control/recovery cases rather than unrelated Library and
-Meeting Detail tests. The English and Spanish release gates each cover all 106
+Meeting Detail tests. The English and Spanish release gates each cover all 101
 cases and retain app-only
 local-voice Settings/Onboarding, shared local-provider recommendations,
 application-owned Settings device resources and Meeting Detail audio,
@@ -5761,9 +5761,82 @@ by 97.882 seconds (9.75%). A warnings-as-errors build completed in 20.71
 seconds; all 2,788 Swift tests passed with 15 expected model-gated skips in
 131.183 test seconds; strict lint covered 742 files with zero violations; and
 repository hygiene, the 106-test scope catalogue and policy suite, fail-safe
-bilingual selection, and diff checks passed. This closes D419 locally, not on
-the hosted runner; the first exact-head hosted CI and Scoped UI remain the
-delivery authority.
+bilingual selection, and diff checks passed.
+
+Exact D419 commit `9707b9b5` passed hosted current-SDK, Sequoia, strict-lint,
+and repository-hygiene run `33215973171`. The first exact-head Scoped UI run
+`33215972156` passed all 106 English journeys functionally and did not start
+Spanish because the unchanged runtime policy failed: 1,482.123 summed seconds,
+p50 10.603, p95 28.231, maximum 69.725, nine individual overages, and the
+1,300-second aggregate violation. D419 reduced D418 by 289.249 seconds and
+eleven individual overages, but the retained first attempt remains red.
+
+**D420 static-boundary query ownership.** The retained D419 activity trees
+attribute 710.945 seconds to 1,922 find plus 1,659 existence activities.
+Main-window readiness contributes 110 existence and 440 find operations
+because each of 110 launches pays a separate existence poll plus two
+actionable geometry samples. The window itself is not clicked. Launch now
+retains the foreground wait and explicit activation, then uses one bounded
+hittability predicate for that static shell; every interactive product control
+continues to own its stable or contained precondition.
+
+The seeded meeting's hittability proof subsumes its preceding existence poll.
+Settings establishes one 100-millisecond stable General anchor per window;
+static category clicks then retain explicit activation, a bounded hittability
+gate, and exact destination publication rather than repeating window geometry.
+Skills caches only the open window's immutable scroll viewport, invalidates it
+on open/close, and still samples every target frame and bounded wheel gesture.
+Contained-frame sampling now honors its existing 100-millisecond stability
+interval, and positive Skills text waits short-circuit label before value and
+title. Static evidence capture relies on the screenshot operation's own
+fail-closed snapshot rather than a duplicate existence preflight after product
+assertions. Source policy rejects activation elision, repeated main-window/category
+stability, missing cache invalidation, stale target geometry, or a shortened
+containment boundary.
+
+No selector, assertion, timeout, retry, gesture, case count, locale, aggregate
+budget, or individual budget changes in this slice. The focused English
+boundary suite passed 11/11 without retry in 177.026 summed XCTest seconds with
+all unchanged individual budgets green. Complete bilingual qualification is
+recorded with D421 below; first exact-head hosted authority remains required.
+Automated receipts do not certify physical Sequoia/Tahoe, assistive-
+technology, distribution, CloudKit, or field behavior.
+
+**D421 same-fixture journey consolidation.** Seven Meeting Detail microtests
+used the same disposable meeting and repeated five unnecessary app launches.
+They now form two bounded journeys while retaining every original assertion and
+all eight screenshot attachments. The review journey proves raw notes, privacy/
+health/sync/chapter/Apuntador rail content, then the generated-document tabs and
+action-item mutation. Static surfaces and their evidence are captured before
+that mutation, so later state cannot satisfy an earlier check.
+
+The evidence journey proves summary, decision, action-item, and Apuntador
+citations. Because all four cite the same row at 00:03, each source after the
+first is preceded by an explicit click on the transcript's 00:00 row and a
+bounded assertion that the cited row is no longer selected and playback has
+left 00:03. The subsequent source must reselect the exact row and restore the
+exact time; consolidation therefore cannot reuse prior state as evidence.
+
+The scope catalogue, Meeting Detail ownership contract, physical assistive-
+technology checkpoint, real-audio lane, and runtime catalog use the new
+selectors. The complete catalogue is 101 cases per locale. Both consolidated
+journeys retain 20-second individual budgets, and the 30-second p95 plus
+1,300-second aggregate ceilings are unchanged. Catalogue validation passes;
+the two focused English journeys passed 2/2 without retry in 28.538 summed
+seconds. Their seven predecessors measured 44.455 seconds on the same host, a
+15.917-second (35.80%) reduction for the exact retained behavior.
+
+The accepted complete package run passed all 2,788 tests with 15 explicit
+model-gated skips and zero failures in 121.980 XCTest seconds. The complete
+real-app gate reused one 13-second build and passed without retry: 101/101
+English journeys in 837.187 summed seconds (p50 6.655, p95 17.505, maximum
+36.449) and 101/101 Spanish journeys in 841.151 seconds (p50 6.692, p95
+18.092, maximum 36.805). Every unchanged aggregate and individual budget
+passed. Against D419's last pre-consolidation local receipt, English improved
+by 68.130 seconds (7.53%) and Spanish by 64.519 seconds (7.12%).
+Warnings-as-errors, strict SwiftLint across 742 files, repository hygiene,
+catalogue/contract policy, and diff checks are green. Fresh exact-head hosted
+evidence remains required.
 
 **Real recording fragments.** `make test-ui-real-audio` drives the player
 journeys (skip, only-my-voice, clip export, evidence seek) against a scratch

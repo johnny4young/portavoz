@@ -85,8 +85,8 @@ EXPECTED_CHECKPOINTS = (
     (
         "meeting-evidence-navigation",
         (
-            "PortavozUITests/MeetingDetailUITests/testSummarySourceJumpsToItsTranscriptAndAudio",
-            "PortavozUITests/MeetingDetailUITests/testMyNotesSectionShowsRawNotesAndOffersEnhancement",
+            "PortavozUITests/MeetingDetailUITests/testEvidenceSourcesJumpToTheirExactTranscriptAndAudio",
+            "PortavozUITests/MeetingDetailUITests/testMeetingReviewSurfacesRemainCompleteAndActionable",
         ),
     ),
     (

@@ -2716,10 +2716,7 @@
     {
       "feature": "evidence-navigation",
       "tests": [
-        "testActionItemSourceJumpsToItsTranscriptAndAudio",
-        "testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio",
-        "testDecisionSourceJumpsToItsTranscriptAndAudio",
-        "testSummarySourceJumpsToItsTranscriptAndAudio"
+        "testEvidenceSourcesJumpToTheirExactTranscriptAndAudio"
       ],
       "sourceAnchors": [
         {
@@ -2760,21 +2757,15 @@
     {
       "feature": "notes-and-recap",
       "tests": [
-        "testMyNotesSectionShowsRawNotesAndOffersEnhancement",
         "testRecapSheetDraftsFromTheSummaryWithoutTheTranscript"
       ],
       "sourceAnchors": [
-        {
-          "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
-          "anchor": "\"detail-enhance-notes\""
-        },
         {
           "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
           "anchor": "\"recap-title\""
         }
       ],
       "screenshots": [
-        "meeting-detail-my-notes",
         "meeting-detail-share-recap"
       ]
     },
@@ -2833,15 +2824,22 @@
       ]
     },
     {
-      "feature": "right-rail-and-mirror",
+      "feature": "review-surfaces",
       "tests": [
-        "testFreshQualifyingMeetingShowsThePostMeetingMirror",
-        "testRightRailShowsHealthAndChapters"
+        "testMeetingReviewSurfacesRemainCompleteAndActionable"
       ],
       "sourceAnchors": [
         {
+          "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+          "anchor": "\"detail-enhance-notes\""
+        },
+        {
           "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
           "anchor": "\"detail-secondary-rail\""
+        },
+        {
+          "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+          "anchor": "\"detail-generated-document\""
         },
         {
           "path": "Sources/portavoz-app/MeetingHealthView.swift",
@@ -2850,16 +2848,28 @@
         {
           "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
           "anchor": "\"detail-chapters\""
-        },
+        }
+      ],
+      "screenshots": [
+        "meeting-detail-generated-document",
+        "meeting-detail-my-notes",
+        "meeting-detail-privacy-receipt",
+        "meeting-detail-transcript-navigation"
+      ]
+    },
+    {
+      "feature": "right-rail-and-mirror",
+      "tests": [
+        "testFreshQualifyingMeetingShowsThePostMeetingMirror"
+      ],
+      "sourceAnchors": [
         {
           "path": "Sources/portavoz-app/MirrorCard.swift",
           "anchor": "\"mirror-card\""
         }
       ],
       "screenshots": [
-        "meeting-detail-post-meeting-mirror",
-        "meeting-detail-privacy-receipt",
-        "meeting-detail-transcript-navigation"
+        "meeting-detail-post-meeting-mirror"
       ]
     },
     {
@@ -2921,8 +2931,7 @@
       "tests": [
         "testMostRecentRecipeRemainsVisibleAfterReload",
         "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
-        "testStructureMenuOffersSeededTemplates",
-        "testTabbedSummaryRevealsTheCoauthoringBullet"
+        "testStructureMenuOffersSeededTemplates"
       ],
       "sourceAnchors": [
         {
@@ -2935,7 +2944,6 @@
         }
       ],
       "screenshots": [
-        "meeting-detail-generated-document",
         "sequoia-apuntador-requirements",
         "sequoia-summary-actionable-settings"
       ]

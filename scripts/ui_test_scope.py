@@ -139,7 +139,10 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("LibraryUITests", "testLibraryRendersRecordButtonAndActionChips"),
         test_id("LibraryUITests", "testAskConversationAnswersAndSeeksToExactCitation"),
         test_id("InsightsUITests", "testInsightsShowsCompleteLocalDashboard"),
-        test_id("MeetingDetailUITests", "testRightRailShowsHealthAndChapters"),
+        test_id(
+            "MeetingDetailUITests",
+            "testMeetingReviewSurfacesRemainCompleteAndActionable",
+        ),
         test_id("OnboardingUITests", "testAdvancesFromFirstListenToLocalVoiceEnrollment"),
         test_id(
             "CommitmentRadarUITests",
@@ -180,17 +183,19 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         test_id("MeetingDetailUITests", "testRunningRefineCanBeCanceledWithoutChangingTheTranscript"),
     ),
     "meeting-summary": (
-        test_id("MeetingDetailUITests", "testTabbedSummaryRevealsTheCoauthoringBullet"),
+        test_id(
+            "MeetingDetailUITests",
+            "testMeetingReviewSurfacesRemainCompleteAndActionable",
+        ),
         test_id("MeetingDetailUITests", "testMostRecentRecipeRemainsVisibleAfterReload"),
         test_id("MeetingDetailUITests", "testStructureMenuOffersSeededTemplates"),
-        test_id("MeetingDetailUITests", "testMyNotesSectionShowsRawNotesAndOffersEnhancement"),
     ),
     "meeting-evidence": (
-        test_id("MeetingDetailUITests", "testSummarySourceJumpsToItsTranscriptAndAudio"),
-        test_id("MeetingDetailUITests", "testDecisionSourceJumpsToItsTranscriptAndAudio"),
+        test_id(
+            "MeetingDetailUITests",
+            "testEvidenceSourcesJumpToTheirExactTranscriptAndAudio",
+        ),
         test_id("MeetingDetailUITests", "testDecisionCanBeConfirmedAboutATopic"),
-        test_id("MeetingDetailUITests", "testActionItemSourceJumpsToItsTranscriptAndAudio"),
-        test_id("MeetingDetailUITests", "testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio"),
         test_id("MeetingDetailUITests", "testSummaryFeedbackIsExplicitReversibleAndLocal"),
     ),
     "meeting-commitments": (
@@ -215,14 +220,20 @@ FEATURE_TESTS: dict[str, tuple[str, ...]] = {
         ),
     ),
     "meeting-health": (
-        test_id("MeetingDetailUITests", "testRightRailShowsHealthAndChapters"),
+        test_id(
+            "MeetingDetailUITests",
+            "testMeetingReviewSurfacesRemainCompleteAndActionable",
+        ),
         test_id("MeetingDetailUITests", "testFreshQualifyingMeetingShowsThePostMeetingMirror"),
     ),
     "meeting-audio": (
         test_id(
             "MeetingDetailUITests",
             "testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix"),
-        test_id("MeetingDetailUITests", "testSummarySourceJumpsToItsTranscriptAndAudio"),
+        test_id(
+            "MeetingDetailUITests",
+            "testEvidenceSourcesJumpToTheirExactTranscriptAndAudio",
+        ),
         test_id("MeetingDetailUITests", "testPlayerExposesSkipAndOnlyMyVoice"),
         test_id("MeetingDetailUITests", "testClipMarkingRevealsExport"),
     ),

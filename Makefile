@@ -77,7 +77,7 @@ test-ui-real-audio:
 	@$(MAKE) --no-print-directory test-ui-scoped \
 		UI_TESTS="PortavozUITests/MeetingDetailUITests/testPlayerExposesSkipAndOnlyMyVoice \
 			PortavozUITests/MeetingDetailUITests/testClipMarkingRevealsExport \
-			PortavozUITests/MeetingDetailUITests/testSummarySourceJumpsToItsTranscriptAndAudio \
+			PortavozUITests/MeetingDetailUITests/testEvidenceSourcesJumpToTheirExactTranscriptAndAudio \
 			PortavozUITests/MeetingDetailUITests/testAISuggestionsCanBeIgnoredAndPlaybackOffersClearMix" \
 		UI_TEST_LOCALES="en"
 

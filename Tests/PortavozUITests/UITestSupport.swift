@@ -246,11 +246,8 @@ extension XCUIApplication {
         activate()
         let mainWindow = windows["main-AppWindow-1"]
         XCTAssertTrue(
-            mainWindow.waitForExistenceFast(timeout: 15),
-            "the disposable main window must exist before UI assertions")
-        XCTAssertTrue(
-            mainWindow.waitForStableFrame(timeout: 5, stableFor: 0.1),
-            "the disposable main window must finish its first-frame placement")
+            mainWindow.waitForHittable(timeout: 15),
+            "the disposable main window must be actionable before UI assertions")
         if shouldOpenSettings {
             XCTAssertTrue(
                 buttons["library-new-recording-button"]
@@ -260,9 +257,6 @@ extension XCUIApplication {
                 openSettingsWindow(),
                 "the Settings command must open the settings window")
             let general = control(withIdentifier: "settings-category-general")
-            XCTAssertTrue(
-                general.waitForStableFrame(timeout: 10),
-                "the disposable Settings window must finish placement")
             XCTAssertGreaterThanOrEqual(
                 general.frame.minX,
                 0,
@@ -311,13 +305,19 @@ extension XCUIApplication {
     func openSettingsWindow(timeout: TimeInterval = 10) -> Bool {
         let general = control(withIdentifier: "settings-category-general")
         if general.exists {
-            return prepareForInteraction(timeout: timeout)
+            guard prepareForInteraction(timeout: timeout) else { return false }
+            return general.waitForStableFrame(
+                timeout: timeout,
+                stableFor: 0.1)
         }
 
         for attempt in 0..<2 {
             guard prepareForInteraction(timeout: timeout) else { continue }
             typeKey(",", modifierFlags: .command)
-            if general.waitForExistenceFast(timeout: attempt == 0 ? 2 : timeout) {
+            if general.waitForStableFrame(
+                timeout: attempt == 0 ? 2 : timeout,
+                stableFor: 0.1
+            ) {
                 return true
             }
         }
@@ -337,7 +337,10 @@ extension XCUIApplication {
         let expectedControl = control(withIdentifier: expectedControlIdentifier)
         for attempt in 0..<2 {
             guard prepareForInteraction(timeout: timeout) else { continue }
-            guard category.waitForStableFrame(timeout: timeout) else { continue }
+            // `openSettingsWindow` owns the one placement proof for the
+            // whole static sidebar. Each category only needs to remain
+            // actionable after the explicit foreground reassertion.
+            guard category.waitForHittable(timeout: timeout) else { continue }
             category.click()
             if expectedControl.waitForExistenceFast(timeout: attempt == 0 ? 2 : 5) {
                 return true
@@ -357,8 +360,7 @@ extension XCUIApplication {
         let meeting = descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'library-meeting-'"))
             .firstMatch
-        guard meeting.waitForExistenceFast(timeout: timeout) else { return false }
-        return waitForUITestCondition(timeout: timeout) { meeting.isHittable }
+        return meeting.waitForHittable(timeout: timeout)
     }
 
     /// Waits only for the disposable seed transaction. Menu-bar UI tests mount
@@ -697,7 +699,11 @@ extension XCUIElement {
     ) -> Bool {
         var candidateFrame: CGRect?
         var stableSince: Date?
-        return waitForUITestCondition(timeout: timeout) {
+        let stableProbeInterval = stableInterval > 0 ? stableInterval : 0.05
+        return waitForUITestCondition(
+            timeout: timeout,
+            pollInterval: stableProbeInterval
+        ) {
             let controlFrame = self.frame
             let viewportFrame = viewportElement.frame.insetBy(dx: 0, dy: 4)
             guard !controlFrame.isEmpty,
@@ -724,7 +730,6 @@ extension XCTestCase {
     @MainActor
     func attachScreenshot(of app: XCUIApplication, named name: String) {
         let window = app.windows.firstMatch
-        XCTAssertTrue(window.exists, "the app window must exist before capturing evidence")
         let attachment = XCTAttachment(screenshot: window.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
@@ -733,7 +738,6 @@ extension XCTestCase {
 
     @MainActor
     func attachElementScreenshot(of element: XCUIElement, named name: String) {
-        XCTAssertTrue(element.exists, "the app element must exist before capturing evidence")
         let attachment = XCTAttachment(screenshot: element.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways

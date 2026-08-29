@@ -208,10 +208,7 @@ DEFAULT_FEATURE_OWNERSHIP = (
     {
         "feature": "evidence-navigation",
         "tests": [
-            "testActionItemSourceJumpsToItsTranscriptAndAudio",
-            "testApuntadorAnswerSourceJumpsToItsTranscriptAndAudio",
-            "testDecisionSourceJumpsToItsTranscriptAndAudio",
-            "testSummarySourceJumpsToItsTranscriptAndAudio",
+            "testEvidenceSourcesJumpToTheirExactTranscriptAndAudio",
         ],
         "sourceAnchors": [
             {
@@ -241,14 +238,9 @@ DEFAULT_FEATURE_OWNERSHIP = (
     {
         "feature": "notes-and-recap",
         "tests": [
-            "testMyNotesSectionShowsRawNotesAndOffersEnhancement",
             "testRecapSheetDraftsFromTheSummaryWithoutTheTranscript",
         ],
         "sourceAnchors": [
-            {
-                "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
-                "anchor": '"detail-enhance-notes"',
-            },
             {
                 "path": "Sources/portavoz-app/MeetingRecapSheet.swift",
                 "anchor": '"recap-title"',
@@ -306,9 +298,24 @@ DEFAULT_FEATURE_OWNERSHIP = (
         "feature": "right-rail-and-mirror",
         "tests": [
             "testFreshQualifyingMeetingShowsThePostMeetingMirror",
-            "testRightRailShowsHealthAndChapters",
         ],
         "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/MirrorCard.swift",
+                "anchor": '"mirror-card"',
+            },
+        ],
+    },
+    {
+        "feature": "review-surfaces",
+        "tests": [
+            "testMeetingReviewSurfacesRemainCompleteAndActionable",
+        ],
+        "sourceAnchors": [
+            {
+                "path": "Sources/portavoz-app/MeetingDetailNotesSection.swift",
+                "anchor": '"detail-enhance-notes"',
+            },
             {
                 "path": "Sources/portavoz-app/MeetingDetailRailSection.swift",
                 "anchor": '"detail-secondary-rail"',
@@ -318,12 +325,12 @@ DEFAULT_FEATURE_OWNERSHIP = (
                 "anchor": '"detail-meeting-health"',
             },
             {
-                "path": "Sources/portavoz-app/MirrorCard.swift",
-                "anchor": '"mirror-card"',
-            },
-            {
                 "path": "Sources/portavoz-app/MeetingTranscriptSection.swift",
                 "anchor": '"detail-chapters"',
+            },
+            {
+                "path": "Sources/portavoz-app/MeetingGeneratedDocumentSection.swift",
+                "anchor": '"detail-generated-document"',
             },
         ],
     },
@@ -354,7 +361,6 @@ DEFAULT_FEATURE_OWNERSHIP = (
             "testMostRecentRecipeRemainsVisibleAfterReload",
             "testSequoiaSummaryFailureOpensExactSetupAndExplainsApuntador",
             "testStructureMenuOffersSeededTemplates",
-            "testTabbedSummaryRevealsTheCoauthoringBullet",
         ],
         "sourceAnchors": [
             {
