@@ -1,6 +1,6 @@
 # Spec 02 — Transcription (TranscriptionKit, ModelStoreKit)
 
-Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime), D355 (pinned non-serving Nemotron challenger).
+Status: implemented and verified. Decisions: D7 (routing by task), D15 (sha256 pinning), D16 (live captions), D25 (multiple engines), D35 (independent language policies), D46 (external-audio import boundary), D47 (revision-fenced refine boundary), D49 (Start runtime ownership), D65 (accepted Refine transcript provenance), D70 (audio-first start and durable first-pass recovery), D71 (app-scoped proactive Whisper preparation), D73 (role-specific speech-model readiness), D103 (terminal file analysis and persisted refine workflows), D104 (application-owned post-capture execution), D113 (verified model lifecycle), D121 (bounded live hot attachment), D122 (lexical transcript and generated-output admission), D128 (explicit per-turn live-translation lanes), D130 (unhinted automatic Refine), D131 (bounded cross-channel caption admission), D148 (content-free resource measurement), D160 (pinned quality-speech runtime), D162 (pinned live-speech runtime), D169 (signal-driven bounded live translation), D173 (observational clipping evidence), D174 (bounded live-caption presentation derivations), D229 (pure correction composition policy), D230 (durable correction history without product adoption), D231 (focused Meeting Detail text/speaker correction), D232 (explicit structural correction commands), D233 (correction-aware derived-artifact lineage and invalidation), D234 (correction-aware document projection and replica convergence), D320 (structured SpeechAnalyzer and First Listen lifetime), D355 (pinned non-serving Nemotron challenger), D433 (pinned non-serving compact MLX challengers and exact live-translation admission).
 
 Additional decision: D235 (correction recovery and scale gates).
 
@@ -148,7 +148,7 @@ this composer and corrected text remains intentionally unmaterialized.
 
 ## Model registry — ModelStoreKit
 
-- `ModelCatalog` with 8 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), research-only `nemotronLatin1120` (10 artifacts, ~588 MB, lean fused-decoder subset), `speakerDiarization` (10 artifacts, ~14 MB), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperLargeV3_626MB`, `whisperTokenizer` (3 files), the default `mlxQwen35`, and the retained `mlxQwen3` A/B alternative. Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` is pinned to an exact Hugging Face commit.
+- `ModelCatalog` with 10 pinned descriptors: `parakeetTdtV3` (21 artifacts, 483 MB, int8 subset), research-only `nemotronLatin1120` (10 artifacts, ~588 MB, lean fused-decoder subset), `speakerDiarization` (10 artifacts, ~14 MB), `whisperLargeV3Turbo` (24 artifacts, ~1.6 GB), `whisperLargeV3_626MB`, `whisperTokenizer` (3 files), the default `mlxQwen35`, the retained `mlxQwen3` A/B alternative, and evaluation-only Qwen3.5 0.8B/2B MLX challengers. Each `ModelArtifact` = relative path + sha256 + size; `resolveBase` is pinned to an exact Hugging Face commit. The compact challengers are reachable only through exact `--mlx-smoke qwen35-0.8b` or `qwen35-2b` tokens and never through Settings, product routing, or `recommended(for:)`; promotion requires Portavoz quality/resource evidence rather than upstream claims (D433).
 - `ModelStore` (actor): download each artifact into a sibling on the destination volume → verify size + sha256 (CryptoKit streaming 1 MiB) → atomically rename or replace. `verify()` re-hashes; `ensureAvailable()` heals missing/corrupt artifacts without first deleting the old destination. Installed in `~/Library/Application Support/Portavoz/Models/` (`--models-dir` override).
 - `VerifiedModelLifecycle` (actor): coalesces complete descriptor checks, returns an opaque `VerifiedInstallation` only after every pinned digest passes, and caches only successful evidence by descriptor ID + revision. Missing/corrupt results are never cached. Same-descriptor install/remove operations execute in invocation order; invalidation and forced verification supersede stale checks, and waiting callers retry current evidence rather than returning an obsolete result. Cancellation is honored before publication but not reported as false failure after a verified install commits. No app readiness path infers installation from one filename or aggregate size.
 - **Gotcha protected by a test**: Parakeet's `folderName` must be `parakeet-tdt-0.6b-v3` (WITHOUT the `-coreml` suffix) — FluidAudio resolves the folder that way, and if it does not find the files it **re-downloads the entire repository without verification** into a sibling directory.
@@ -515,19 +515,27 @@ spoken row. Routing and state transitions have deterministic mixed
 Spanish/English, same-target, unknown, unsupported-then-supported, consent,
 cancellation, and stale-result tests, including growing-row revisions.
 
-### Signal-driven live translation (D169)
+### Signal-driven live translation (D169/D433)
 
 The active lane subscribes once to a recording-owned `LiveTranslationWakeHub`.
 New captions, live-speaker splits, target/source changes, pair consent, and
 unsupported-passthrough updates broadcast a content-free invalidation signal.
 Each subscriber buffers only the newest wake. Idle, download-gated, and
 unsupported lanes await that signal rather than polling every 300 ms; only
-actual Apple framework errors use timed retry backoff.
+actual Apple framework execution errors use deterministic 1, 2, 4, then
+8-second capped retry backoff. Installed pairs start without repeat consent;
+downloadable pairs wait for exact pair-scoped consent and one preparation
+attempt; unsupported pairs remain visible. Preparation failure returns to the
+consent boundary instead of opening an automatic retry loop.
 
 Routing examines the newest 60 rows as an explicit live-context window and
 sends no more than eight chronological rows in one framework request.
 Successful batches drain immediately through another bounded request. Every
-iteration keeps the full source/target fence and source-revision idempotency.
+iteration keeps the full source/target fence. Result admission additionally
+requires the current row UUID, exact requested source text, and source language
+to match. Duplicate current row identities, blank translations, and partial
+batches fail closed and cannot complete the batch; this prevents a late result
+from flashing over a newer form of a still-growing row.
 Rows that fall outside the live window before translation remain in their
 spoken language. Source captions, final transcript evidence, audio capture,
 and Refine are independent from this optional relay.

@@ -1,6 +1,6 @@
 # Spec 08 — Quality: tests, harnesses, and measured numbers
 
-Status: the package inventory contains 2,817 cases (15 environment-gated) + 103
+Status: the package inventory contains 2,834 cases (15 environment-gated) + 103
 XCUITest UI cases. Supported AppKit-capable CI and release hosts require zero
 failures; a non-windowed shell run is not release evidence for AppKit and
 AVFoundation integration cases. CI
@@ -2370,7 +2370,7 @@ disconnect, cancellation, and receipt behavior remains independently covered
 by the package integration lane. This fixture is test infrastructure, not
 product web authority or evidence that a real provider behaves the same way.
 
-### LIVE-0 live-assistance comparison authority (D430)
+### LIVE-0/LIVE-2 live-assistance authority (D430/D433)
 
 `Fixtures/LiveAssistValidation/public-bilingual-v1.json` freezes 32 English,
 Spanish, code-switched, and noisy-ASR question events plus Interview, rolling-
@@ -2397,6 +2397,24 @@ generated text. Each timing domain carries exactly one complete-corpus aggregate
 per declared iteration; count drift is malformed rather than silently changing
 the percentile population.
 
+D433 extends those same frozen scenarios with blocking content-free reliability
+observations rather than a parallel mock authority. Every summary observation
+records the real deterministic checkpoint identities, resolved language, and
+bounded character count. Every translation observation records the real
+installed/downloadable asset actions, the 1/2/4/8-second retry schedule, and an
+invalid-publication count produced by exercising stale source revisions and
+duplicate current identities. The strict evaluator requires zero invalid
+publication and the exact bounded policy shape; it still receives no caption,
+note, translation, or summary prose.
+
+The catalog additionally pins Qwen3.5 0.8B and 2B MLX challengers and the hidden
+app benchmark selects them only by exact explicit tokens. Descriptor/license/
+digest tests are supply-chain evidence, not model qualification. Until those
+assets are deliberately installed and the complete quality, first/steady
+latency, peak-memory, energy, thermal, cancellation, and real-app gates pass,
+the challengers remain non-serving and the verified 4B descriptor remains the
+only embedded product choice.
+
 `scripts/live_assist_validation.py` validates complete identities and produces
 an owner-only, atomic, non-replacing scorecard. A completed baseline can be
 `belowTarget`; only an explicit `--require-targets` run grants scorecard target
@@ -2421,7 +2439,7 @@ This result does not measure answer prose, Instruments leaks, real meetings,
 physical Sequoia/Tahoe, signed installation, or assistive technology, and no
 later source commit may inherit it without exact-head recollection.
 
-The accepted current-tree closure passed all 2,817 package tests with 15
+The accepted LIVE-1 closure passed all 2,817 package tests with 15
 explicit model/asset skips and zero failures, the current-SDK
 warnings-as-errors build, the focused live-assistance contract, strict
 SwiftLint across 749 production Swift files, repository hygiene, and one

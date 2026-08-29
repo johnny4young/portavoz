@@ -179,9 +179,12 @@ final class RecordingController {
     /// one closed row into several stable rows. An offset can then skip a new
     /// piece or replay unrelated content, while IDs admit exactly unseen rows.
     private var summarizedCaptionIDs: Set<UUID> = []
-    /// Dense notes accumulated window by window; the live summary re-renders
-    /// from these so each tick only pays for the NEW transcript.
-    private var liveNotes: [String] = []
+    /// Always-available extractive authority for the rolling summary. Optional
+    /// local models can refine its Markdown but never own this source cursor.
+    private var liveSummaryCheckpoint: DeterministicLiveSummaryCheckpoint?
+    /// Every content-free invalidation advances this fence. A provider result
+    /// cannot publish after a newer caption, speaker split, or note mutation.
+    private var liveSummarySourceRevision = 0
     private(set) var meetingID = MeetingID()
     // Internal (not private) so the companion-detection extension file
     // can read it; still write-protected by convention.
@@ -238,7 +241,7 @@ final class RecordingController {
         companionTerminalRuns = []
         proactiveAssist.reset()
         contextItems = []
-        liveNotes = []
+        liveSummaryCheckpoint = nil
         cancelLiveSummaryWork()
         cancelCompanionGeneration()
         lastOpenRowID = nil
@@ -318,7 +321,8 @@ final class RecordingController {
         unsupportedTranslationRowIDs = []
         hasUnsupportedTranslationRows = false
         liveSummary = nil
-        liveNotes = []
+        liveSummaryCheckpoint = nil
+        liveSummarySourceRevision = 0
         summarizedCaptionIDs = []
         companionCards = []
         companionArtifactsByCardID = [:]
@@ -464,7 +468,11 @@ final class RecordingController {
     }
 
     func requestLiveSummaryRefresh() {
-        liveSummaryWorkCoordinator?.request()
+        liveSummarySourceRevision &+= 1
+        // The first recording signal must also create the owner. Optional
+        // chaining here would drop every request until some unrelated path
+        // had already materialized the coordinator.
+        liveSummaryCoordinator().request()
     }
 
     func cancelLiveSummaryWork() {
@@ -472,11 +480,9 @@ final class RecordingController {
     }
 
     private func startRollingSummaryIfAvailable() {
-        // Rolling summary is optional and never gates capture.
-        if #available(macOS 26.0, *),
-            FoundationModelSummaryProvider.unavailabilityReason() == nil {
-            liveSummaryCoordinator().request()
-        }
+        // The deterministic checkpoint works on every supported macOS
+        // version. Optional local models refine it but never gate capture.
+        requestLiveSummaryRefresh()
     }
 
     /// Loads a session-dedicated diarizer and consumes system-channel audio in
@@ -823,12 +829,14 @@ private extension RecordingController {
 // The rolling-summary pipeline is a cohesive concern and lives outside the
 // already-large capture/persistence controller body.
 private extension RecordingController {
-    @available(macOS 26.0, *)
     func liveSummaryCoordinator() -> LiveSummaryWorkCoordinator {
         if let liveSummaryWorkCoordinator {
             return liveSummaryWorkCoordinator
         }
+        let interval: Duration = ProcessInfo.processInfo.arguments.contains(
+            "-seed-live-summary-ui") ? .milliseconds(50) : .seconds(40)
         let coordinator = LiveSummaryWorkCoordinator(
+            interval: interval,
             operation: { [weak self] in
                 await self?.runLiveSummaryCycle() ?? false
             })
@@ -836,7 +844,6 @@ private extension RecordingController {
         return coordinator
     }
 
-    @available(macOS 26.0, *)
     func runLiveSummaryCycle() async -> Bool {
         let hasBacklog = await refreshLiveSummary()
         guard !Task.isCancelled, phase == .recording else { return false }
@@ -853,81 +860,129 @@ private extension RecordingController {
         return !Task.isCancelled && phase == .recording && hasBacklog
     }
 
-    @available(macOS 26.0, *)
     func refreshLiveSummary() async -> Bool {
         // The newest row is still growing (coalescer); note only CLOSED rows,
         // and only a bounded oldest-first batch. Remaining IDs stay eligible.
         guard !Task.isCancelled, phase == .recording else { return false }
         let sourceMeetingID = meetingID
+        let sourceRevision = liveSummarySourceRevision
         let closedCount = max(captions.count - 1, 0)
         let window = LiveSummaryWindowPolicy.unsummarizedClosedRows(
             captions,
             summarizedIDs: summarizedCaptionIDs)
-        guard closedCount >= 3, !window.isEmpty else { return false }
+        guard closedCount >= 3 else { return false }
 
         // Attribution runs at stop; live labels are structural: channel.
         let me = Speaker(meetingID: sourceMeetingID, label: "Me", isMe: true)
         let them = Speaker(meetingID: sourceMeetingID, label: "Them")
-        let labeled = window.map { segment -> TranscriptSegment in
+        let labeled = liveSummaryCandidateRows(
+            window: window,
+            microphoneSpeaker: me,
+            systemSpeaker: them)
+        let language = liveSummaryLanguage(for: labeled)
+        guard let checkpoint = DeterministicLiveSummary.advance(
+            checkpoint: liveSummaryCheckpoint,
+            segments: labeled,
+            speakers: [me, them],
+            contextItems: contextItems,
+            targetLanguage: language)
+        else { return false }
+
+        publishLiveSummaryCheckpoint(checkpoint, window: window)
+        do {
+            try await refineLiveSummaryCheckpoint(
+                checkpoint: checkpoint,
+                meetingID: sourceMeetingID,
+                speakers: [me, them],
+                targetLanguage: language,
+                sourceRevision: sourceRevision)
+        } catch {
+            return false
+        }
+        return LiveSummaryWindowPolicy.hasUnsummarizedClosedRows(
+            captions,
+            summarizedIDs: summarizedCaptionIDs)
+    }
+
+    func liveSummaryCandidateRows(
+        window: [TranscriptSegment],
+        microphoneSpeaker: Speaker,
+        systemSpeaker: Speaker
+    ) -> [TranscriptSegment] {
+        let retainedIDs = Set(liveSummaryCheckpoint?.extracts.map(\.id) ?? [])
+        let retainedRows = captions.dropLast().suffix(120).filter {
+            retainedIDs.contains($0.id)
+        }
+        var rowsByID: [UUID: TranscriptSegment] = [:]
+        for row in Array(retainedRows) + window {
+            rowsByID[row.id] = row
+        }
+        return rowsByID.values.sorted { lhs, rhs in
+            if lhs.startTime != rhs.startTime { return lhs.startTime < rhs.startTime }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }.map { segment in
             var copy = segment
-            copy.speakerID = segment.channel == .microphone ? me.id : them.id
+            copy.speakerID = segment.channel == .microphone
+                ? microphoneSpeaker.id
+                : systemSpeaker.id
             return copy
         }
-        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(in: labeled)
-        let language = MeetingLanguagePreferences.resolvedSummaryLanguage(
-            spokenLanguage: spokenLanguage).identifier
-        let provider = FoundationModelSummaryProvider()
+    }
+
+    func liveSummaryLanguage(for rows: [TranscriptSegment]) -> String {
+        let spokenLanguage = SpokenLanguageDetector.homogeneousLanguage(in: rows)
+        return spokenLanguage.map {
+            MeetingLanguagePreferences.resolvedSummaryLanguage(
+                spokenLanguage: $0).identifier
+        } ?? liveSummaryCheckpoint?.targetLanguage
+            ?? MeetingLanguagePreferences.resolvedSummaryLanguage(
+                spokenLanguage: nil).identifier
+    }
+
+    func publishLiveSummaryCheckpoint(
+        _ checkpoint: DeterministicLiveSummaryCheckpoint,
+        window: [TranscriptSegment]
+    ) {
+        // Publish the checkpoint and cursor atomically before optional model
+        // suspension. Provider outages retain useful output without replay.
+        liveSummaryCheckpoint = checkpoint
+        summarizedCaptionIDs.formUnion(window.map(\.id))
+        if LiveSummaryPolicy.shouldReplace(
+            current: liveSummary,
+            candidate: checkpoint.markdown
+        ) {
+            liveSummary = checkpoint.markdown
+        }
+    }
+
+    func refineLiveSummaryCheckpoint(
+        checkpoint: DeterministicLiveSummaryCheckpoint,
+        meetingID sourceMeetingID: MeetingID,
+        speakers: [Speaker],
+        targetLanguage: String,
+        sourceRevision: Int
+    ) async throws(CancellationError) {
         do {
-            // Map: one dense note for the new window; the rest is already noted.
-            let note = try await provider.condenseWindow(
-                segments: labeled, speakers: [me, them], targetLanguage: language,
-                glossary: vocabulary, priority: .background)
-            guard isCurrentLiveSummaryCycle(sourceMeetingID) else { return false }
-            var candidateNotes = liveNotes + [note]
-            var candidateIDs = summarizedCaptionIDs
-            candidateIDs.formUnion(window.map(\.id))
-
-            // Keep the pile bounded so long meetings don't slow the ticks.
-            var joined = candidateNotes.joined(separator: "\n")
-            if joined.count > LiveSummaryPolicy.notesCollapseThreshold {
-                joined = try await provider.condenseNotes(
-                    joined, targetLanguage: language, glossary: vocabulary,
-                    priority: .background)
-                guard isCurrentLiveSummaryCycle(sourceMeetingID) else { return false }
-                candidateNotes = [joined]
-            }
-
-            // Reduce: re-render the structured summary from all notes.
-            let request = SummaryRequest(
+            let refined = try await services?.refineLiveSummary(
+                checkpoint: checkpoint,
                 meetingID: sourceMeetingID,
-                segments: [],
-                speakers: [me, them],
-                recipe: .general,
-                targetLanguage: language,
+                speakers: speakers,
+                targetLanguage: targetLanguage,
                 glossary: vocabulary,
-                contextItems: contextItems
-            )
-            let draft = try await provider.summarizeNotes(
-                joined, request: request, priority: .background)
-            guard isCurrentLiveSummaryCycle(sourceMeetingID) else { return false }
-
-            // Publish one coherent cycle: a failed or cancelled reduce never
-            // advances the source cursor or strands a condensed note.
-            liveNotes = candidateNotes
-            summarizedCaptionIDs = candidateIDs
-            if LiveSummaryPolicy.shouldReplace(
-                current: liveSummary,
-                candidate: draft.markdown
-            ) {
-                liveSummary = draft.markdown
-            }
-            return LiveSummaryWindowPolicy.hasUnsummarizedClosedRows(
-                captions,
-                summarizedIDs: summarizedCaptionIDs)
+                contextItems: contextItems)
+            guard isCurrentLiveSummaryCycle(sourceMeetingID),
+                sourceRevision == liveSummarySourceRevision,
+                let refined,
+                LiveSummaryPolicy.shouldReplace(
+                    current: liveSummary,
+                    candidate: refined)
+            else { return }
+            liveSummary = refined
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
-            // Preserve the source cursor and retry on the next caption or note
-            // signal. A provider outage must not recreate a permanent poll.
-            return false
+            // The checkpoint already advanced. A local-provider outage never
+            // recreates a timer or makes live summary unavailable.
         }
     }
 

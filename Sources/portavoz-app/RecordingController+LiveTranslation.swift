@@ -55,15 +55,20 @@ extension RecordingController {
     @discardableResult
     func storeLiveTranslations(
         _ values: [UUID: String],
-        sourceTexts: [UUID: String] = [:],
+        sourceTexts: [UUID: String],
         for pair: LiveTranslationPair
     ) -> Bool {
         guard translationTarget == pair.target,
             translationSource == pair.source
         else { return false }
-        translations.merge(values) { _, new in new }
-        translatedSourceTexts.merge(sourceTexts) { _, new in new }
-        return !values.isEmpty
+        let admitted = LiveTranslationResultAdmission.admit(
+            values: values,
+            sourceTexts: sourceTexts,
+            currentSegments: captions,
+            pair: pair)
+        translations.merge(admitted.values) { _, new in new }
+        translatedSourceTexts.merge(admitted.sourceTexts) { _, new in new }
+        return !admitted.values.isEmpty
     }
 
     private func presentedLiveTranslationState(

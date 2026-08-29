@@ -67,6 +67,9 @@ def perfect_observations(fixture, checksum):
                 "scenarioID": scenario_id,
                 "selectedIDs": expected["selectedIDs"],
                 "hasBacklog": expected["backlog"],
+                "checkpointIDs": expected["selectedIDs"],
+                "checkpointLanguage": expected["language"],
+                "checkpointCharacterCount": 1,
             }
             for scenario_id, expected in fixture["summaries"].items()
         ],
@@ -75,6 +78,10 @@ def perfect_observations(fixture, checksum):
                 "scenarioID": scenario_id,
                 "pair": expected["pair"],
                 "pendingIDs": expected["pendingIDs"],
+                "installedAssetAction": "translate",
+                "downloadableAssetAction": "requestDownloadConsent",
+                "retryDelaysMilliseconds": [1000, 2000, 4000, 8000, 8000],
+                "invalidPublicationCount": 0,
             }
             for scenario_id, expected in fixture["translations"].items()
         ],
@@ -242,6 +249,20 @@ class LiveAssistValidationTests(unittest.TestCase):
         self.assertEqual(scorecard["servingCandidateStatus"], "belowTarget")
         self.assertFalse(scorecard["gates"]["noLatePublication"])
         self.assertFalse(scorecard["gates"]["faultOutcomeAccuracy"])
+
+    def test_checkpoint_and_translation_reliability_are_blocking_targets(self):
+        observations = perfect_observations(self.fixture, self.checksum)
+        observations["rollingSummaryScenarios"][0]["checkpointIDs"] = []
+        observations["translationScenarios"][0]["invalidPublicationCount"] = 1
+        observations["translationScenarios"][1]["retryDelaysMilliseconds"] = [
+            1, 1, 1, 1, 1,
+        ]
+
+        scorecard = self.score(observations)
+
+        self.assertEqual(scorecard["servingCandidateStatus"], "belowTarget")
+        self.assertFalse(scorecard["gates"]["summaryPolicyExactAccuracy"])
+        self.assertFalse(scorecard["gates"]["translationPolicyExactAccuracy"])
 
     def test_runtime_evidence_rejects_nan_bool_and_impossible_peak(self):
         for value in (True, float("nan"), -1):

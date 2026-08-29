@@ -2,6 +2,9 @@
 
 Status: implemented, signed with Developer ID, and used in real meetings; public release 0.7.0 independently notarizes and staples both the app bundle and DMG. D74 keeps a clean-Sequoia Homebrew install as explicit field validation instead of treating notarization as launch proof. Decisions: D20 (SPM + script, no checked-in Xcode project), D23 (packaging), D10 (distribution), D40 (evidence-first launch recovery), D43 (atomic Stop handoff), D44–D60 (application workflow, feature-state ownership/mutations, scoped Library/Insights/Meeting Detail reads, and inward product/read policy), D61 (implemented package boundaries only), D62–D73 (atomic generated artifacts, enforced meeting-content data-egress verticals, audio-first and role-specific model readiness, app-scoped Whisper preparation, and capability-driven intelligence setup), D74 (independent app/DMG notarization evidence), D75 (store-receipted egress and Meeting Detail privacy receipt), D76 (redacted support export, processing recovery, and content-free signposts), D77 (typed recording failures and app-owned recovery), D78 (measured App Sandbox defer gate), D79–D85 (measured detail, retrieval, waveform, and Spotlight scale), D86 (explicit canonical people), D87 (typed overview evidence navigation), D88 (explicit local claim feedback), D89 (decision evidence navigation), D90 (action-item evidence navigation), D91 (role-separated Apuntador evidence navigation), D97 (provisioned opt-in CloudKit composition), D98 (resident menu-bar ownership), D99 (whole-library backup ownership), D100 (shared Ask workflow and presentation state), D101 (first-run, local-receipt, and meeting-preparation ownership), D102 (PlatformKit security/permission composition and executable read convergence), D104 (application-owned post-capture policy), D105 (application-owned review documents and participant voice memory), D106 (application-owned local voice enrollment), D107 (application-owned speaker-name admission), D108 (application-owned local-provider discovery), D109 (application-owned Settings device resources), D110 (application-owned pre-meeting reminder resolution), D111 (application-owned Meeting Detail metadata suggestions), D112 (application-owned Meeting Detail audio coordination), D113 (catalog-verified model readiness), D114 (executable dependency and presentation boundaries), D115 (honest private-iCloud receipt disclosure), D121 (bounded live-transcription hot attachment and explicit translation state), D123 (long-outage Stop affordance and capture-shape support evidence), D127 (audio-priority Stop recovery), D128 (explicit live-translation lanes), D129 (reader-owned live transcript position), D130 (unhinted automatic Refine), D131/D142 (bounded temporal live-caption bleed admission and view-only paragraphs), D132 (cast-grounded summary owners), D133 (stable split lineage), D135 (regenerable enhanced notes), D143 (deterministic bilingual Library search and exact hit seeks), D144 (reversible role-aware clear playback), D287/D302 (pure clear-playback volume schedule, ordered on the timescale it is delivered on), D145 (exact-first Library semantic augmentation), D157–D189 (pure resource policy, generation-fenced residency, one composition owner, pinned model-family leases, pressure-driven idle release, capture-exclusive Whisper/MLX admission, bounded persisted-level presentation, signal-driven bounded live translation, recording-scoped bounded live Apuntador generation, signal-driven bounded live-summary delivery, deterministic generated-intelligence admission, observational clipping evidence, policy-owned live-caption presentation bounds, route-cancellable bounded waveform delivery, one shared bounded semantic-indexing flight, capture-prioritized semantic checkpoints, signal-driven semantic maintenance, capture-safe existing-library sync admission, staged whole-library backup checkpoints, crash-safe stage ownership, bounded backup-destination identity, durable publication evidence, strict staged-source adoption, successful-publication source checkpoints, fail-closed pending-publication reconciliation, durable typed backup failure outcomes, and fail-closed launch continuation), D224–D234 (Meeting Detail decomposition, correction editing, derived-artifact lineage, correction-aware export, and protected private-sync convergence), D238 (source-bound commitment-review read foundation), D273 (signal-driven typed memory-graph projection), D319 (fail-closed database launch recovery), D331 (explicit correction-aware Apuntador refresh), D332 (explicit semantic asset preparation), D357 (fail-closed encrypted voice identity recovery), D384 (bounded progressive Ask UI), D385 (selected local-engine manual Ask), D386 (explicit Ask source UI and ownership), D387 (one-request direct-Web Ask UI), D388 (pull-based cited interview assistance), D389 (typed raw-note Ask UI), D427 (one content-free owner-fed background-work projection with recording priority), D431 (provider-neutral live Apuntador admission on Sequoia and Tahoe).
 
+D433 additionally owns provider-neutral rolling-summary checkpoints, optional
+selected-provider refinement, and exact-revision live-translation admission.
+
 D403 additionally owns exact-ID production-sync qualification packaging.
 D190 distinguishes intentional cancellation from owner-leased worker death.
 Additional decisions: D320 (structured First Listen and SpeechAnalyzer
@@ -1258,10 +1261,10 @@ model, Web request, or automatic action occurs. The system controls remain
 keyboard- and assistive-technology reachable; physical VoiceOver, Voice
 Control, and Full Keyboard Access evidence remains an external release gate.
 
-### Recording-scoped live-summary coordinator (D171)
+### Recording-scoped live-summary coordinator (D171/D433)
 
-`RecordingController` owns one `LiveSummaryWorkCoordinator` for optional
-Foundation Models rolling intelligence. Initial recording state, each newly
+`RecordingController` owns one `LiveSummaryWorkCoordinator` for deterministic
+rolling intelligence plus optional selected-provider refinement. Initial recording state, each newly
 closed caption row, late live-speaker relabeling, and note additions/removals
 request a refresh. Requests carry no content and collapse into one pending bit.
 The coordinator waits for the 40-second minimum cadence, allows one complete
@@ -1269,12 +1272,20 @@ cycle, and retains one later invalidation or successful backlog signal.
 
 `LiveSummaryWindowPolicy` selects the oldest unseen closed rows, capped at 32
 rows and 6,000 characters. One oversized head row still advances alone.
-Candidate notes and row IDs remain local until condense, optional note-stack
-collapse, and structured reduction all succeed. After each suspension the
-controller checks task cancellation, recording phase, and meeting identity
-before publishing all candidate state atomically. Failure preserves the
-existing summary and cursor and waits for another input signal; it does not
-create an outage poll.
+`DeterministicLiveSummary` merges them with at most 24 retained exact extracts
+and 6,000 characters. Same-ID revisions replace prior text; note-only changes
+rerender the current checkpoint and preserve its language. The controller
+checks task cancellation, recording phase, and meeting identity before
+publishing the checkpoint, row cursor, and visible summary atomically.
+
+The explicitly selected Apple Foundation Models, loopback Ollama, or verified
+embedded MLX engine may then refine the checkpoint. App composition owns those
+adapters; UI temporary stores skip real model work by default. A content-free
+source revision fences late results, and only `admitNow` from the resource
+governor permits optional live inference. The same 12-second application
+timeout fences every provider. Pressure, reduced concurrency, unavailability,
+timeout, failure, or cancellation preserves deterministic progress and waits
+for another input signal rather than polling or replaying old rows.
 
 Preparing another recording, advancing from a completed session, and Stop all
 cancel the same coordinator. A fresh request that arrives while a cancelled

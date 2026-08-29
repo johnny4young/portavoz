@@ -3122,13 +3122,21 @@ or unsupported-passthrough state changes. Each subscriber buffers one wake at
 most: a burst means "recompute from the newest controller state," never one
 queued unit per caption. Idle and download-gated lanes suspend on that stream
 instead of polling the MainActor. Timed sleeps remain only as bounded retry
-backoff after a framework preparation or execution error.
+backoff after a framework execution error. Readiness is explicit: an installed
+pair runs without another consent prompt, a downloadable pair waits for exact
+source/target consent and one preparation attempt, and an unsupported pair
+remains visible without automatic work. Preparation failure returns to the
+consent boundary. Execution failures retry after 1, 2, 4, and then at most 8
+seconds; one complete success resets the sequence.
 
 Routing still examines at most the newest 60 transcript rows, but each
 framework request now admits at most eight chronological rows. Successful
 requests drain another bounded batch immediately, so backlog cannot inflate one
-framework call and the first translated result can publish sooner. Target and
-source changes retain their full pair fence between calls. If translation is
+framework call and the first translated result can publish sooner. A result may
+publish only if its pair, row UUID, exact requested source text, and current
+source language still match. Duplicate current identities, blank results, and
+partial batches fail closed and never mark the requested batch complete. Target
+and source changes retain their full pair fence between calls. If translation is
 unavailable long enough for a row to leave the live window, that row remains
 honestly visible in its spoken language; source captions and durable recording
 evidence never enter or depend on the wake path.
@@ -3142,13 +3150,22 @@ timer loop, and a burst never creates one task per caption.
 
 Each cycle admits the oldest unseen closed rows up to 32 rows and 6,000
 characters. One oversized oldest row is admitted alone so the cursor cannot
-stall. A successful cycle retains any remaining backlog for a later bounded
-pass; a provider failure leaves the cursor untouched and waits for the next
-caption or note signal instead of recreating an outage poll. Notes, processed
-row identities, and the visible summary publish together only after every
-provider step succeeds and the active recording identity, lifecycle state, and
-task cancellation fences still match. Reset, next-session, and Stop cancel the
-same worker.
+stall. A pure provider-neutral reducer merges that window into at most 24 exact
+extracts and 6,000 retained characters, replacing same-identity revisions and
+rerendering note-only changes without transcript replay. The checkpoint,
+processed-row identities, and visible bilingual highlights publish together
+while the active recording, lifecycle, and cancellation fences still match. A
+successful cycle retains any remaining backlog for a later bounded pass.
+
+Only after that deterministic publication may the explicitly selected Apple
+Foundation Models, fixed-loopback Ollama, or verified embedded MLX provider
+refine the highlights. The app owns the adapters and one content-free source
+revision fence. Optional inference runs at background priority where supported
+and only when the resource governor returns immediate admission. Every provider
+also has the same 12-second application timeout. Reduced concurrency, pressure,
+deferral, timeout, failure, or unavailability preserves the checkpoint and
+cannot roll the cursor back or recreate an outage poll. Reset, next-session,
+and Stop cancel the same worker.
 Durable captions, audio, final post-capture summaries, and Stop never depend on
 this optional live intelligence.
 
@@ -5386,7 +5403,7 @@ reliability evidence retained from 9 Aug, is:
 
 - `swift build` succeeds;
 - `swift build -Xswiftc -warnings-as-errors` succeeds for first-party Swift;
-- 2,817 XCTest package cases are defined, with 15 real-model/environment cases
+- 2,834 XCTest package cases are defined, with 15 real-model/environment cases
   gated;
 - disposable clean-install and exact v0.6.0-to-current file-library upgrade
   rehearsals preserve user content, verify SQLite integrity/foreign keys, avoid
@@ -5395,10 +5412,10 @@ reliability evidence retained from 9 Aug, is:
   passed its fail-closed 25-iteration gate (5,525 executions); the generic
   runner refuses fewer than 90 and the release wrapper raises that floor to
   108; focused Thread Sanitizer and Address Sanitizer gates also passed;
-- strict SwiftLint remains a blocking CI gate and is clean across all 749
+- strict SwiftLint remains a blocking CI gate and is clean across all 753
   production Swift files after the audited orchestration and query owners were
   split without blanket suppressions;
-- the deterministic tooling suites and the 220-case architecture subset pass;
+- the deterministic tooling suites and the 223-case architecture subset pass;
 - the Meeting Detail interaction contract contains 431 signals, 15 feature
   owners, and 30 explicitly owned UI journeys;
 - 103 XCUITest cases per locale define the 206-case bilingual release gate;

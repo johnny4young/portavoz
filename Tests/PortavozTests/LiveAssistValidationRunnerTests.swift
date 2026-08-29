@@ -1,10 +1,30 @@
 import Foundation
+import IntelligenceKit
+import ModelStoreKit
 import XCTest
 
 @testable import portavoz_app
 
 @MainActor
 final class LiveAssistValidationRunnerTests: XCTestCase {
+    func testMLXSmokeModelSelectionIsExactAndFailsOnAmbiguity() async throws {
+        XCTAssertEqual(
+            try BenchMode.mlxSmokeDescriptor(arguments: []).id,
+            ModelCatalog.mlxQwen35.id)
+        XCTAssertEqual(
+            try BenchMode.mlxSmokeDescriptor(arguments: ["qwen35-0.8b"]).id,
+            ModelCatalog.mlxQwen35Point8BChallenger.id)
+        XCTAssertEqual(
+            try BenchMode.mlxSmokeDescriptor(arguments: ["qwen35-2b"]).id,
+            ModelCatalog.mlxQwen35TwoBChallenger.id)
+        XCTAssertThrowsError(try BenchMode.mlxSmokeDescriptor(
+            arguments: ["qwen35-0.8b", "qwen35-2b"])) { error in
+                XCTAssertEqual(
+                    error as? BenchMode.MLXSmokeSelectionError,
+                    .conflictingModels)
+            }
+    }
+
     func testConfigurationIsStrictAndKeepsInstalledModelOptInExplicit() async throws {
         let arguments = validArguments()
         let configuration = try XCTUnwrap(
@@ -51,22 +71,41 @@ final class LiveAssistValidationRunnerTests: XCTestCase {
                     questionID: $0.expectedQuestionID?.liveAssistReceiptID,
                     evidenceIDs: $0.expectedEvidenceIDs.map(\.liveAssistReceiptID))
             })
-        XCTAssertEqual(
+        XCTAssertEqual(summaries.count, oracle.rollingSummaryScenarios.count)
+        for (summary, expected) in zip(
             summaries,
-            oracle.rollingSummaryScenarios.map {
-                .init(
-                    scenarioID: $0.id,
-                    selectedIDs: $0.expectedSelectedIDs.map(\.liveAssistReceiptID),
-                    hasBacklog: $0.expectedBacklog)
-            })
-        XCTAssertEqual(
+            oracle.rollingSummaryScenarios
+        ) {
+            let selected = expected.expectedSelectedIDs.map(\.liveAssistReceiptID)
+            XCTAssertEqual(summary.scenarioID, expected.id)
+            XCTAssertEqual(summary.selectedIDs, selected)
+            XCTAssertEqual(summary.hasBacklog, expected.expectedBacklog)
+            XCTAssertEqual(summary.checkpointIDs, selected)
+            XCTAssertEqual(summary.checkpointLanguage, expected.language)
+            XCTAssertGreaterThan(summary.checkpointCharacterCount, 0)
+            XCTAssertLessThanOrEqual(
+                summary.checkpointCharacterCount,
+                DeterministicLiveSummary.maximumCharacters)
+        }
+        XCTAssertEqual(translations.count, oracle.translationScenarios.count)
+        for (translation, expected) in zip(
             translations,
-            oracle.translationScenarios.map {
-                .init(
-                    scenarioID: $0.id,
-                    pair: $0.expectedPair,
-                    pendingIDs: $0.expectedPendingIDs.map(\.liveAssistReceiptID))
-            })
+            oracle.translationScenarios
+        ) {
+            XCTAssertEqual(translation.scenarioID, expected.id)
+            XCTAssertEqual(translation.pair, expected.expectedPair)
+            XCTAssertEqual(
+                translation.pendingIDs,
+                expected.expectedPendingIDs.map(\.liveAssistReceiptID))
+            XCTAssertEqual(translation.installedAssetAction, "translate")
+            XCTAssertEqual(
+                translation.downloadableAssetAction,
+                "requestDownloadConsent")
+            XCTAssertEqual(
+                translation.retryDelaysMilliseconds,
+                [1_000, 2_000, 4_000, 8_000, 8_000])
+            XCTAssertEqual(translation.invalidPublicationCount, 0)
+        }
     }
 
     func testReleasedRunnerWritesContentFreeNonReplacingObservation() async throws {
@@ -121,10 +160,20 @@ final class LiveAssistValidationRunnerTests: XCTestCase {
             raw["interviewScenarios"] as? [[String: Any]])
         let rawTranslations = try XCTUnwrap(
             raw["translationScenarios"] as? [[String: Any]])
+        let rawSummaries = try XCTUnwrap(
+            raw["rollingSummaryScenarios"] as? [[String: Any]])
         XCTAssertTrue(rawInterviews.allSatisfy { $0.keys.contains("questionID") })
         XCTAssertTrue(rawInterviews.contains { $0["questionID"] is NSNull })
         XCTAssertTrue(rawTranslations.allSatisfy { $0.keys.contains("pair") })
         XCTAssertTrue(rawTranslations.contains { $0["pair"] is NSNull })
+        XCTAssertTrue(rawSummaries.allSatisfy {
+            $0.keys.contains("checkpointIDs")
+                && $0.keys.contains("checkpointCharacterCount")
+        })
+        XCTAssertTrue(rawTranslations.allSatisfy {
+            $0.keys.contains("retryDelaysMilliseconds")
+                && $0.keys.contains("invalidPublicationCount")
+        })
         for forbidden in [
             "Could you explain",
             "El presupuesto",
@@ -223,6 +272,7 @@ private struct LiveAssistValidationOracle: Decodable {
 
     struct Summary: Decodable {
         let id: String
+        let language: String
         let expectedSelectedIDs: [UUID]
         let expectedBacklog: Bool
     }

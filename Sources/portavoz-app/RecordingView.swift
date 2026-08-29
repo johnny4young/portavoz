@@ -796,7 +796,7 @@ private extension RecordingView {
     private func liveSummaryPanel(_ markdown: String) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Label("Live summary", systemImage: "sparkles")
+                Label(L10n.text("Live summary"), systemImage: "sparkles")
                     .font(.headline)
                 MarkdownText(text: markdown)
                     .font(.callout)
@@ -805,5 +805,6 @@ private extension RecordingView {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityIdentifier("recording-live-summary")
     }
 }

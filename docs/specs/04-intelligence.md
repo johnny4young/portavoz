@@ -5,7 +5,9 @@ Status: implemented and verified (ES summary of EN meeting with glossary intact 
 D390 adds bounded source-closed proactive meeting assistance. D431 makes the
 bundled bilingual classifier authoritative for live question admission on
 Sequoia and Tahoe while keeping Foundation Models as an optional challenger
-and answer engine.
+and answer engine. D433 makes a bounded deterministic rolling-summary checkpoint
+authoritative before any optional Apple, loopback Ollama, or verified MLX
+refinement and keeps compact MLX candidates non-serving until measured.
 
 D406 keeps deterministic meeting prompt instructions and fact-aware RAG
 formatting outside the Foundation Models availability boundary. The pure
@@ -880,18 +882,27 @@ telemetry, privacy receipts, and support diagnostics. This prevents a private
 correction from becoming an implicit prompt or being misrepresented as model
 output.
 
-**Incremental APIs** (for the rolling summary): `condenseWindow(segments…)`
-(one map pass over ONLY new content), `condenseNotes(text…)` (collapses the
-stack), `summarizeNotes(material, request:)` (reduce+structured pass). The app
-uses them through one signal-driven coordinator (spec 06): caption, speaker,
-and note changes invalidate current state; after the 40-second minimum cadence,
-one cycle admits at most 32 oldest unseen closed rows and 6,000 characters →
-note stack → collapse at > 6,000 characters → render. Successful backlog drains
-through later bounded cycles. Provider failure preserves the cursor and waits
-for the next evidence signal. `LiveSummaryPolicy.shouldReplace` retains renders
-< 90% of the current one (visible monotonicity). The cursor is an identity set,
-not an array offset, so a late live-diarization split cannot skip its fresh child
-(D133).
+**Incremental APIs** remain available to Apple Foundation Models, but they are
+no longer the rolling-summary authority. `DeterministicLiveSummary` folds each
+bounded window into a provider-neutral checkpoint of at most 24 exact extracts
+and 6,000 characters. Caption, speaker, and note changes invalidate current
+state; after the 40-second minimum cadence, one cycle admits at most 32 oldest
+unseen closed rows and 6,000 characters. Same-identity late revisions replace
+their prior material, note-only changes rerender without replaying transcript
+rows, and the checkpoint preserves its resolved English/Spanish language when
+no new language evidence exists. The cursor remains an identity set rather
+than an array offset, so a late live-diarization split cannot skip its fresh
+child (D133/D433).
+
+The checkpoint, visible summary, and admitted identity cursor publish before
+any provider suspension. The explicitly selected Apple Foundation Models,
+fixed-loopback Ollama, or verified embedded MLX engine may refine that result,
+but it cannot roll progress back. The app fences refinement by recording,
+cancellation, and source revision and skips it unless the resource governor
+admits the optional live inference immediately. Provider failure leaves the
+checkpoint useful and waits for a future evidence signal rather than polling.
+`LiveSummaryPolicy.shouldReplace` still prevents a refinement shorter than 90%
+of the current render from regressing visible detail.
 
 ## Prompt-injection guard (Jul 2026, pure, tested)
 
@@ -952,7 +963,7 @@ configured Ollama and verified MLX keep manual answers available on Sequoia.
 Automatic live Apuntador, graph-bundle synthesis, and source-selection policy
 remain separate contracts.
 
-The durable post-capture worker selects Ollama through `OllamaService.summaryProvider(model:gateway:consent:)` (an `OpenAICompatibleSummaryProvider` against `localhost:11434/v1`, **without an API key** — Ollama ignores it, nothing leaves the device), verified embedded MLX, or available Apple FM. Ollama summary generation still crosses the gateway with `local-device` scope and Settings consent; its content-free health and model-discovery requests remain direct because they contain no meeting material. ApplicationKit's regeneration and import adapters consume explicit availability without constructing providers inside the use cases. The **live rolling summary remains FM-only** (it uses the incremental `condenseWindow`/`summarizeNotes` APIs that Ollama/MLX do not have). `OllamaService`: `isRunning()` (GET `/api/version`), `models()` (GET `/api/tags`, pure/tested `parseModels`). Settings retains the engine picker, detection, model list, localized typed reasons, and prominent Apply action. `LocalSummaryProviderPolicy` is pure and tested against Apple availability, name-screened Ollama models, MLX hardware eligibility, and low-memory/disk guidance. **Closes GAPS #7** (a Mac without Apple Intelligence summarizes 100% locally); verified E2E with gpt-oss:20b (ES summary in 24 s) + UITest of the Settings section. Every provider stamps its own material fingerprint, but the released Meeting Detail path performs cache lookup and translation pivot only for Apple FM; configured Ollama/MLX regenerates directly. **Per-meeting override (M12)**: the `RegenerateSummary` provider resolver forces an engine for one meeting without changing the global default; the detail menu offers language (es/en) and, when there is a real choice, the **alternative engine** (Apple↔Ollama — only the one that is not the default and only if it is usable here: Ollama with a configured model, or Apple with `appleSummaryAvailable`). An Apple override preserves its cache and pivot path.
+The durable post-capture worker selects Ollama through `OllamaService.summaryProvider(model:gateway:consent:)` (an `OpenAICompatibleSummaryProvider` against `localhost:11434/v1`, **without an API key** — Ollama ignores it, nothing leaves the device), verified embedded MLX, or available Apple FM. Ollama summary generation still crosses the gateway with `local-device` scope and Settings consent; its content-free health and model-discovery requests remain direct because they contain no meeting material. ApplicationKit's regeneration and import adapters consume explicit availability without constructing providers inside the use cases. The **live rolling summary always has the deterministic D433 checkpoint**; the currently selected Apple, fixed-loopback Ollama, or verified MLX engine may refine it through the same explicit local-provider policy. No live path silently falls back to another engine, and temporary-store UI tests do not run a real provider unless explicitly opted in. `OllamaService`: `isRunning()` (GET `/api/version`), `models()` (GET `/api/tags`, pure/tested `parseModels`). Settings retains the engine picker, detection, model list, localized typed reasons, and prominent Apply action. `LocalSummaryProviderPolicy` is pure and tested against Apple availability, name-screened Ollama models, MLX hardware eligibility, and low-memory/disk guidance. **Closes GAPS #7** (a Mac without Apple Intelligence summarizes 100% locally); verified E2E with gpt-oss:20b (ES summary in 24 s) + UITest of the Settings section. Every provider stamps its own material fingerprint, but the released Meeting Detail path performs cache lookup and translation pivot only for Apple FM; configured Ollama/MLX regenerates directly. **Per-meeting override (M12)**: the `RegenerateSummary` provider resolver forces an engine for one meeting without changing the global default; the detail menu offers language (es/en) and, when there is a real choice, the **alternative engine** (Apple↔Ollama — only the one that is not the default and only if it is usable here: Ollama with a configured model, or Apple with `appleSummaryAvailable`). An Apple override preserves its cache and pivot path.
 
 **Embedded MLX (D32/D151/D161, Jul 2026)**: third engine `summaryEngine = "mlx"` — `MLXSummaryProvider` (IntelligenceKit) runs **Qwen3.5-4B 4-bit** (Apache-2.0, sha256-pinned in `ModelCatalog.mlxQwen35`, 3 GB; `mlxQwen3` remains in the catalog for A/B) in-process on the GPU via `mlx-swift-lm` (exact 3.31.4 — successor to mlx-swift-examples; the tokenizer is provided by `swift-transformers` through the `MLXHuggingFace` macros). **Field A/B (Jul 10, refined 56 min / 852-segment sprint demo)**: Qwen3-4B collapsed into a degenerate loop twice (34k and 68k chars truncated); Qwen3.5-4B with `enable_thinking: false` (additionalContext — the 3.5 family reasons by default and loses the JSON prompt) produced decisions + open questions + 11 action items with owners in clean Spanish in 89 s. `maxTokens` 16384 as a pure anti-runaway safeguard. Reuses the prompt and JSON contract from `OpenAICompatibleSummaryProvider.prompt/parseStructured` — same `StructuredSummary`, same fingerprint. `MLXSummaryRuntime` (actor) keeps one verified `ModelContainer` loaded. Production `MLXSummaryProvider` values receive a narrow client for the AppServices-owned process runtime; AppServices records exact load/use/release transitions, guards model deletion, and preserves the 120-second idle fence. The independent MLX `IntelligenceScheduler` lane still serializes `container.perform` generation with explicit interactive/background priority and content-free queue/execution telemetry. Settings → "Built-in (MLX)": `MLXModelRow` row with verified download/status/delete (`AppServices.mlxDownloaded/downloadMLX/deleteMLXModel`); `LocalSummaryProviderPolicy` suggests it with RAM ≥ 8 GB when Apple Intelligence is unavailable and Ollama has no eligible name-screened model. **Shipping**: SwiftPM does not compile Metal shaders → `scripts/build-mlx-metallib.sh` caches `mlx-swift_Cmlx.bundle` (one-time xcodebuild, keyed by mlx-swift version), and `make-app.sh` copies it to `Contents/Resources`. **E2E verification**: `portavoz-app --mlx-smoke [real]` — synthetic ES in 3 s; with `real`, summarizes the most recent meeting in the library (read-only). Verified with a real meeting of 40 min / 686 segments: 44 s, coherent decisions and action items. Swift tests exercise provider/runtime injection without loading Metal; real generation still requires the bundled metallib. **Memory (critical)**: without `MLX.Memory.cacheLimit`, MLX's buffer cache grows without limit on long prompts — 31 GB of RSS was observed on that same meeting before macOS suspended the process. `MLXSummaryRuntime` sets the supported API to 20 MB (the LLMEval value) and `maxTokens: 16384` as the generation cap; with that, the real peak is ~4.5 GB (2.3 GB weights + KV + runtime) (D118).
 
@@ -2299,22 +2310,28 @@ candidate is rejected. Replacement also replaces the card-keyed provenance
 artifact. This policy changes neither question detection nor model answers and
 never merges cards merely because their generated answers look similar.
 
-### Bounded live-summary delivery (D171)
+### Bounded live-summary delivery (D171/D433)
 
-The FM-only incremental summary is invalidated by closed caption rows, late
-live-speaker splits, and context-note changes. One app-owned coordinator
-collapses those signals into one pending bit, keeps the established 40-second
-minimum cadence, and permits one complete map/collapse/reduce cycle at a time.
-Silence creates no timer work, and input bursts cannot create a task queue.
+Closed caption rows, late live-speaker splits, and context-note changes
+invalidate one app-owned coordinator. It collapses those signals into one
+pending bit, keeps the established 40-second minimum cadence, and permits one
+complete checkpoint cycle at a time. Silence creates no timer work, and input
+bursts cannot create a task queue.
 
-Each map step receives at most 32 oldest unseen closed rows and 6,000
-characters. An oversized oldest row proceeds alone. Successful cycles report
-whether unseen rows remain so backlog drains through later bounded passes. A
-provider failure leaves the identity cursor unchanged and waits for the next
-evidence signal rather than retrying forever. Condensed notes, row identities,
-and the visible summary are candidate state until every provider step succeeds
-and the task still belongs to the same active recording; only then do they
-publish together. Reset, next-session, and Stop cancel the coordinator.
+Each cycle receives at most 32 oldest unseen closed rows and 6,000 characters;
+an oversized oldest row proceeds alone. `DeterministicLiveSummary` merges that
+window with at most 24 retained exact extracts, applies same-identity revisions,
+and renders bounded bilingual highlights. The checkpoint, row identities, and
+visible summary publish atomically while the task still belongs to the active
+recording, before optional inference. Successful cycles report whether unseen
+rows remain so backlog drains through later bounded passes.
+
+The selected local provider may then refine the checkpoint only after immediate
+resource admission and within one 12-second application timeout. A source-
+revision fence rejects any result completed after new captions, speaker
+changes, or notes. Failure, pressure, timeout, cancellation, and unavailability
+preserve deterministic progress and create no outage poll.
+Reset, next-session, and Stop cancel the coordinator.
 
 Automatic objective checking shares the same bounded cycle only when
 Apuntador is enabled. Its detector checks cancellation after inference before

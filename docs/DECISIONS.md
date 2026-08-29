@@ -16622,3 +16622,60 @@ prevents otherwise deterministic XCUITest, without creating a general
 "force" mode or weakening hosted evidence. The result may still fail naturally
 if the overlay steals focus; that remains an honest functional failure rather
 than something automation retries away.
+
+## D433 — Publish provider-neutral live help before optional refinement (Aug 2026)
+
+**Context:** D171 bounded rolling-summary work but still made Foundation Models
+the sole producer and advanced no cursor until the provider completed. That
+left the supported Sequoia floor without a rolling summary and made an optional
+provider outage replay old evidence. Apple Translation also keyed late results
+only by a stable row UUID, even though a live caption can keep that UUID while
+its source text grows. Finally, smaller Qwen conversions looked attractive for
+live latency but had upstream size claims rather than Portavoz quality,
+compatibility, memory, or energy evidence.
+
+**Decision:** make a pure `IntelligenceKit` reducer the authority for rolling
+summary progress on every supported macOS version. Each bounded D171 window is
+folded into a checkpoint of at most 24 exact extracts and 6,000 characters.
+Same-identity caption revisions replace prior material, notes can rerender the
+checkpoint without replaying transcript rows, and English/Spanish headings are
+deterministic. The checkpoint, visible summary, and identity cursor publish
+before any model suspension. The reducer has no model, network, persistence,
+or app dependency.
+
+The explicitly selected Apple Foundation Models, fixed-loopback Ollama, or
+verified embedded MLX engine may refine that already-useful checkpoint. The app
+composition owns those adapters, runs supported model work at background
+priority, skips providers in temporary-store UI tests unless explicitly
+enabled, and fences publication by recording identity, cancellation, and one
+content-free source revision. Every adapter shares one 12-second application
+timeout. Optional inference runs only when the resource governor returns
+`admitNow`; reduced concurrency, pressure, deferral, timeout, or checkpoint-
+pause retains the deterministic result instead of competing with capture.
+Provider failure never rolls the cursor back or creates polling work.
+
+Treat Apple Translation asset state explicitly as installed, downloadable, or
+unsupported. An installed pair runs without asking again; only a downloadable
+exact source/target pair needs user consent. Preparation failure returns to
+that deliberate boundary. Execution failure uses a bounded 1, 2, 4, then
+8-second retry schedule, reset by success. A result may publish only while its
+pair, row identity, exact source text, and source language still match the
+current caption. Partial/blank results and duplicate current row identities
+fail closed and cannot mark a batch complete.
+
+Pin Qwen3.5 0.8B and 2B MLX conversions by exact revision, artifact size, and
+SHA-256 as evaluation-only challengers. They are reachable only through exact
+benchmark tokens; Settings, normal routing, and `recommended(for:)` retain the
+verified 4B serving descriptor. Promotion requires installed-asset Portavoz
+quality, first/steady latency, peak memory, energy, thermal, cancellation, and
+real-app evidence. D430 receipts add only checkpoint identities/language/size,
+translation asset actions/retry schedule, and invalid-publication counts; no
+caption, note, translation, or generated prose enters the receipt.
+
+**Consequences:** Sequoia and Tahoe always have bounded useful rolling
+highlights even when no generative model is ready. Local generation remains an
+additive quality layer rather than a capture dependency, and live translation
+cannot flash a stale result from an earlier form of a growing caption. The
+deterministic corpus and tests establish policy/reliability behavior, not model
+prose quality, installed challenger compatibility, physical-device latency,
+Instruments leak freedom, or field usefulness; those remain explicit gates.

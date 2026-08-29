@@ -27,6 +27,10 @@ private enum LiveAssistValidationTranslationCodingKey: String, CodingKey {
     case scenarioID
     case pair
     case pendingIDs
+    case installedAssetAction
+    case downloadableAssetAction
+    case retryDelaysMilliseconds
+    case invalidPublicationCount
 }
 
 enum LiveAssistValidationAdapter: String, Equatable {
@@ -223,6 +227,7 @@ struct LiveAssistValidationFixture: Decodable {
 
     struct SummaryScenario: Decodable {
         let id: String
+        let language: String
         let segments: [Segment]
         let summarizedIDs: [UUID]
         let maximumRows: Int
@@ -397,21 +402,36 @@ struct LiveAssistValidationObservations: Codable, Equatable {
         let scenarioID: String
         let selectedIDs: [String]
         let hasBacklog: Bool
+        let checkpointIDs: [String]
+        let checkpointLanguage: String
+        let checkpointCharacterCount: Int
     }
 
     struct Translation: Codable, Equatable {
         let scenarioID: String
         let pair: LiveAssistValidationLanguagePair?
         let pendingIDs: [String]
+        let installedAssetAction: String
+        let downloadableAssetAction: String
+        let retryDelaysMilliseconds: [Int]
+        let invalidPublicationCount: Int
 
         init(
             scenarioID: String,
             pair: LiveAssistValidationLanguagePair?,
-            pendingIDs: [String]
+            pendingIDs: [String],
+            installedAssetAction: String,
+            downloadableAssetAction: String,
+            retryDelaysMilliseconds: [Int],
+            invalidPublicationCount: Int
         ) {
             self.scenarioID = scenarioID
             self.pair = pair
             self.pendingIDs = pendingIDs
+            self.installedAssetAction = installedAssetAction
+            self.downloadableAssetAction = downloadableAssetAction
+            self.retryDelaysMilliseconds = retryDelaysMilliseconds
+            self.invalidPublicationCount = invalidPublicationCount
         }
 
         init(from decoder: Decoder) throws {
@@ -422,6 +442,18 @@ struct LiveAssistValidationObservations: Codable, Equatable {
                 LiveAssistValidationLanguagePair.self,
                 forKey: .pair)
             pendingIDs = try values.decode([String].self, forKey: .pendingIDs)
+            installedAssetAction = try values.decode(
+                String.self,
+                forKey: .installedAssetAction)
+            downloadableAssetAction = try values.decode(
+                String.self,
+                forKey: .downloadableAssetAction)
+            retryDelaysMilliseconds = try values.decode(
+                [Int].self,
+                forKey: .retryDelaysMilliseconds)
+            invalidPublicationCount = try values.decode(
+                Int.self,
+                forKey: .invalidPublicationCount)
         }
 
         func encode(to encoder: Encoder) throws {
@@ -434,6 +466,18 @@ struct LiveAssistValidationObservations: Codable, Equatable {
                 try values.encodeNil(forKey: .pair)
             }
             try values.encode(pendingIDs, forKey: .pendingIDs)
+            try values.encode(
+                installedAssetAction,
+                forKey: .installedAssetAction)
+            try values.encode(
+                downloadableAssetAction,
+                forKey: .downloadableAssetAction)
+            try values.encode(
+                retryDelaysMilliseconds,
+                forKey: .retryDelaysMilliseconds)
+            try values.encode(
+                invalidPublicationCount,
+                forKey: .invalidPublicationCount)
         }
     }
 
@@ -509,12 +553,24 @@ enum LiveAssistValidationPolicy {
                 maximumRows: scenario.maximumRows,
                 maximumCharacters: scenario.maximumCharacters)
             let completed = summarized.union(selected.map(\.id))
+            let checkpoint = DeterministicLiveSummary.advance(
+                checkpoint: nil,
+                segments: selected,
+                speakers: [],
+                contextItems: [],
+                targetLanguage: scenario.language)
             return .init(
                 scenarioID: scenario.id,
                 selectedIDs: selected.map { $0.id.liveAssistReceiptID },
                 hasBacklog: LiveSummaryWindowPolicy.hasUnsummarizedClosedRows(
                     rows,
-                    summarizedIDs: completed))
+                    summarizedIDs: completed),
+                checkpointIDs: checkpoint?.extracts.map {
+                    $0.id.liveAssistReceiptID
+                } ?? [],
+                checkpointLanguage: checkpoint?.targetLanguage
+                    ?? scenario.language,
+                checkpointCharacterCount: checkpoint?.material.count ?? 0)
         }
     }
 
@@ -541,7 +597,17 @@ enum LiveAssistValidationPolicy {
                 pair: pair.map {
                     .init(source: $0.source, target: $0.target)
                 },
-                pendingIDs: pending.map(\.liveAssistReceiptID))
+                pendingIDs: pending.map(\.liveAssistReceiptID),
+                installedAssetAction: LiveAssistTranslationReliability.assetActionReceipt(
+                    readiness: .installed),
+                downloadableAssetAction: LiveAssistTranslationReliability.assetActionReceipt(
+                    readiness: .downloadable),
+                retryDelaysMilliseconds: (1...5).map(
+                    LiveTranslationRetryPolicy.delayMilliseconds),
+                invalidPublicationCount: LiveAssistTranslationReliability.invalidPublicationCount(
+                    rows: rows,
+                    pair: pair,
+                    pendingIDs: pending))
         }
     }
 }

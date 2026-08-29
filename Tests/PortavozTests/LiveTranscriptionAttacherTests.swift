@@ -235,6 +235,7 @@ final class LiveTranslationStateTests: XCTestCase {
 
         XCTAssertFalse(controller.storeLiveTranslations(
             [segmentID: "Respuesta antigua"],
+            sourceTexts: [segmentID: "Old source"],
             for: stalePair))
         controller.updateLiveTranslationState(.active, for: stalePair)
 
@@ -252,6 +253,7 @@ final class LiveTranslationStateTests: XCTestCase {
 
         XCTAssertFalse(controller.storeLiveTranslations(
             [segmentID: "Stale Spanish result"],
+            sourceTexts: [segmentID: "Fuente anterior"],
             for: stalePair))
         controller.updateLiveTranslationState(.active, for: stalePair)
 
@@ -310,6 +312,142 @@ final class LiveTranslationStateTests: XCTestCase {
         controller.updateLiveTranslationState(.active, for: supportedPair)
 
         XCTAssertEqual(controller.translationState, .partiallyUnsupported)
+    }
+}
+
+final class LiveTranslationReliabilityPolicyTests: XCTestCase {
+    func testAssetReadinessNeverReusesConsentAcrossStates() {
+        XCTAssertEqual(
+            LiveTranslationAssetPolicy.action(
+                readiness: .installed,
+                downloadApproved: false,
+                preparedInThisLane: false),
+            .translate)
+        XCTAssertEqual(
+            LiveTranslationAssetPolicy.action(
+                readiness: .downloadable,
+                downloadApproved: false,
+                preparedInThisLane: false),
+            .requestDownloadConsent)
+        XCTAssertEqual(
+            LiveTranslationAssetPolicy.action(
+                readiness: .downloadable,
+                downloadApproved: true,
+                preparedInThisLane: false),
+            .prepareAssets)
+        XCTAssertEqual(
+            LiveTranslationAssetPolicy.action(
+                readiness: .downloadable,
+                downloadApproved: false,
+                preparedInThisLane: true),
+            .translate)
+        XCTAssertEqual(
+            LiveTranslationAssetPolicy.action(
+                readiness: .unsupported,
+                downloadApproved: true,
+                preparedInThisLane: true),
+            .passthroughUnsupported)
+    }
+
+    func testOfflineRetryBackoffIsDeterministicAndBounded() {
+        XCTAssertEqual(
+            (1...7).map(LiveTranslationRetryPolicy.delayMilliseconds),
+            [1_000, 2_000, 4_000, 8_000, 8_000, 8_000, 8_000])
+        XCTAssertEqual(
+            LiveTranslationRetryPolicy.delayMilliseconds(afterFailure: 100),
+            LiveTranslationRetryPolicy.maximumDelayMilliseconds)
+    }
+
+    func testExactSourceRevisionOwnsEachPublishedTranslation() {
+        let id = UUID()
+        let meetingID = MeetingID()
+        let original = segment(
+            id: id,
+            meetingID: meetingID,
+            text: "Esta fila sigue creciendo",
+            language: "es")
+        let pair = LiveTranslationPair(source: "es", target: "en")
+
+        let exact = LiveTranslationResultAdmission.admit(
+            values: [id: "This row is still growing"],
+            sourceTexts: [id: original.text],
+            currentSegments: [original],
+            pair: pair)
+        XCTAssertEqual(exact.values[id], "This row is still growing")
+
+        let grown = segment(
+            id: id,
+            meetingID: meetingID,
+            text: "Esta fila sigue creciendo y ahora tiene más contexto",
+            language: "es")
+        let stale = LiveTranslationResultAdmission.admit(
+            values: [id: "This row is still growing"],
+            sourceTexts: [id: original.text],
+            currentSegments: [grown],
+            pair: pair)
+        XCTAssertTrue(stale.values.isEmpty)
+        XCTAssertTrue(stale.sourceTexts.isEmpty)
+    }
+
+    func testRemovedWrongLanguageAndEmptyResponsesFailClosed() {
+        let id = UUID()
+        let meetingID = MeetingID()
+        let english = segment(
+            id: id,
+            meetingID: meetingID,
+            text: "This row was relabeled as English.",
+            language: "en")
+        let pair = LiveTranslationPair(source: "es", target: "en")
+
+        for current in [[], [english]] {
+            let result = LiveTranslationResultAdmission.admit(
+                values: [id: "   "],
+                sourceTexts: [id: english.text],
+                currentSegments: current,
+                pair: pair)
+            XCTAssertTrue(result.values.isEmpty)
+        }
+    }
+
+    func testDuplicateCurrentIdentityCannotPublishOrTrap() {
+        let id = UUID()
+        let meetingID = MeetingID()
+        let original = segment(
+            id: id,
+            meetingID: meetingID,
+            text: "Esta fila tiene una identidad duplicada.",
+            language: "es")
+        let duplicate = segment(
+            id: id,
+            meetingID: meetingID,
+            text: "Esta revisión no debe ganar silenciosamente.",
+            language: "es")
+
+        let result = LiveTranslationResultAdmission.admit(
+            values: [id: "This row has a duplicate identity."],
+            sourceTexts: [id: original.text],
+            currentSegments: [original, duplicate],
+            pair: LiveTranslationPair(source: "es", target: "en"))
+
+        XCTAssertTrue(result.values.isEmpty)
+        XCTAssertTrue(result.sourceTexts.isEmpty)
+    }
+
+    private func segment(
+        id: UUID,
+        meetingID: MeetingID,
+        text: String,
+        language: String
+    ) -> TranscriptSegment {
+        TranscriptSegment(
+            id: id,
+            meetingID: meetingID,
+            channel: .system,
+            text: text,
+            language: language,
+            startTime: 0,
+            endTime: 1,
+            isFinal: true)
     }
 }
 

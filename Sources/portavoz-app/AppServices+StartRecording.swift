@@ -250,11 +250,12 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
     ) async throws {
         let proactive = ProcessInfo.processInfo.arguments.contains(
             "-simulate-proactive-assist")
+        let simulateLiveApuntador = ProcessInfo.processInfo.arguments.contains(
+            "-simulate-live-apuntador")
         let start = TimeInterval(index * (proactive ? 20 : 2))
         let isRemote = index.isMultiple(of: 2)
         let text: String
-        if ProcessInfo.processInfo.arguments.contains("-simulate-live-apuntador"),
-           index == 2 {
+        if simulateLiveApuntador, index == 2 {
             text = Locale.current.language.languageCode?.identifier == "es"
                 ? "¿Puedes explicar por qué el despliegue pasó al viernes?"
                 : "Could you explain why the rollout moved to Friday?"
@@ -269,13 +270,18 @@ private struct UITestLiveTranscriptBrowsingRuntime: StartRecordingRuntime {
                     format: "My local update %02d stays distinct while I browse earlier captions.",
                     index)
         }
+        let language = if ProcessInfo.processInfo.arguments.contains("-seed-showcase") {
+            "es"
+        } else if simulateLiveApuntador, index == 2 {
+            Locale.current.language.languageCode?.identifier ?? "en"
+        } else {
+            "en"
+        }
         await request.callbacks.caption(TranscriptSegment(
             meetingID: request.meetingID,
             channel: isRemote ? .system : .microphone,
             text: text,
-            language: ProcessInfo.processInfo.arguments.contains("-seed-showcase")
-                ? "es"
-                : "en",
+            language: language,
             startTime: start,
             endTime: start + (proactive ? 5 : 1),
             isFinal: true))

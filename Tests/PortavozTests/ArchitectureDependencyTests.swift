@@ -2615,7 +2615,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "### Complete graph product truth, scale, and profile recovery "
                 + "(D308–D314/D360)"))
         XCTAssertTrue(quality.contains(
-            "package inventory contains 2,817 cases "
+            "package inventory contains 2,834 cases "
                 + "(15 environment-gated) + 103"))
         XCTAssertTrue(gaps.contains(
             "| T30 | Meeting Memory Graph serves all six source-backed jobs"))
@@ -4365,7 +4365,7 @@ final class ArchitectureDependencyTests: XCTestCase {
             "Signal-driven bounded live translation"))
         XCTAssertTrue(decisions.contains("## D169"))
         XCTAssertTrue(transcriptionSpec.contains(
-            "### Signal-driven live translation (D169)"))
+            "### Signal-driven live translation (D169/D433)"))
         XCTAssertTrue(appSpec.contains(
             "### Bounded translation wake relay (D169)"))
     }
@@ -4538,8 +4538,14 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "Sources/portavoz-app/LiveSummaryWorkCoordinator.swift")
         let windowPolicy = try Self.contents(
             of: "Sources/portavoz-app/LiveSummaryWindowPolicy.swift")
+        let checkpoint = try Self.contents(
+            of: "Sources/IntelligenceKit/DeterministicLiveSummary.swift")
         let controller = try Self.contents(
             of: "Sources/portavoz-app/RecordingController.swift")
+        let appProviders = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+Application.swift")
+        let resourceGovernor = try Self.contents(
+            of: "Sources/portavoz-app/AppServices+ResourceGovernor.swift")
         let detection = try Self.contents(
             of: "Sources/portavoz-app/RecordingController+CompanionDetection.swift")
         let objectives = try Self.contents(
@@ -4572,23 +4578,48 @@ final class ArchitectureDependencyTests: XCTestCase {
         XCTAssertFalse(
             controller.contains("rollingTask"),
             "Live summary must not restore the permanent timer loop")
-        XCTAssertTrue(controller.contains(
-            "liveSummaryCoordinator().request()"))
+        XCTAssertTrue(controller.contains("requestLiveSummaryRefresh()"))
+        XCTAssertTrue(controller.contains("liveSummaryCoordinator().request()"))
         XCTAssertGreaterThanOrEqual(
             controller.components(
                 separatedBy: "cancelLiveSummaryWork()").count - 1,
             4,
             "Reset, next-session, and Stop must cancel live-summary work")
         XCTAssertTrue(detection.contains("requestLiveSummaryRefresh()"))
-        XCTAssertTrue(controller.contains("var candidateNotes = liveNotes + [note]"))
+        XCTAssertTrue(checkpoint.contains("public enum DeterministicLiveSummary"))
+        XCTAssertTrue(checkpoint.contains("public static let maximumExtracts = 24"))
+        XCTAssertTrue(checkpoint.contains("public static let maximumCharacters = 6_000"))
+        XCTAssertFalse(checkpoint.contains("FoundationModels"))
+        XCTAssertFalse(checkpoint.contains("URLSession"))
         XCTAssertTrue(controller.contains(
-            "var candidateIDs = summarizedCaptionIDs"))
+            "liveSummaryCheckpoint = checkpoint"))
         XCTAssertTrue(controller.contains(
-            "guard isCurrentLiveSummaryCycle(sourceMeetingID) else { return false }"))
-        XCTAssertTrue(controller.contains("liveNotes = candidateNotes"))
-        XCTAssertTrue(controller.contains("summarizedCaptionIDs = candidateIDs"))
+            "summarizedCaptionIDs.formUnion(window.map(\\.id))"))
         XCTAssertTrue(controller.contains(
-            "A provider outage must not recreate a permanent poll"))
+            "sourceRevision == liveSummarySourceRevision"))
+        XCTAssertTrue(controller.contains(
+            "services?.refineLiveSummary("))
+        XCTAssertTrue(appProviders.contains("case .appleOnDevice:"))
+        XCTAssertTrue(appProviders.contains("case .ollama:"))
+        XCTAssertTrue(appProviders.contains("case .mlx:"))
+        XCTAssertTrue(appProviders.contains("priority: .background"))
+        XCTAssertTrue(appProviders.contains("workloadClass: .liveInteractive"))
+        XCTAssertEqual(
+            appProviders.components(
+                separatedBy: "withLiveSummaryRefinementTimeout(.seconds(12)").count - 1,
+            3,
+            "Every optional live-summary provider needs the same latency fence")
+        XCTAssertTrue(appProviders.contains("-use-temp-store"))
+        XCTAssertTrue(resourceGovernor.contains(
+            "workloadClass: .liveInteractive"))
+        XCTAssertTrue(resourceGovernor.contains(
+            "func admitLiveLanguageInference() async -> Bool"))
+        XCTAssertTrue(resourceGovernor.contains(
+            "case .admitNow:\n            return true"))
+        XCTAssertTrue(resourceGovernor.contains(
+            "case .admitWithReducedConcurrency, .defer, .pauseAfterCheckpoint,"))
+        XCTAssertTrue(resourceGovernor.contains(
+            ".reject:\n            return false"))
         XCTAssertTrue(objectives.contains(
             "guard !Task.isCancelled, !addressed.isEmpty else { return }"))
 
@@ -4603,14 +4634,19 @@ final class ArchitectureDependencyTests: XCTestCase {
             of: "docs/specs/04-intelligence.md")
         let appSpec = try Self.contents(
             of: "docs/specs/06-app-macos.md")
+        let qualitySpec = try Self.contents(
+            of: "docs/specs/08-quality.md")
         XCTAssertTrue(architecture.contains(
             "Bounded signal-driven live summary"))
         XCTAssertFalse(architecture.contains("D171"))
         XCTAssertTrue(decisions.contains("## D171"))
+        XCTAssertTrue(decisions.contains("## D433"))
         XCTAssertTrue(intelligenceSpec.contains(
-            "### Bounded live-summary delivery (D171)"))
+            "### Bounded live-summary delivery (D171/D433)"))
         XCTAssertTrue(appSpec.contains(
-            "### Recording-scoped live-summary coordinator (D171)"))
+            "### Recording-scoped live-summary coordinator (D171/D433)"))
+        XCTAssertTrue(qualitySpec.contains(
+            "### LIVE-0/LIVE-2 live-assistance authority (D430/D433)"))
     }
 
     func testLiveSpeechRuntimePinsEveryProductionBorrower() throws {

@@ -385,6 +385,7 @@ final class LibraryUITests: PortavozUITestCase {
             simulateProactiveAssist: true)
         app.launchEnvironment["PORTAVOZ_UI_TEST_DEFAULTS"] =
             #"{"companionEnabled":true}"#
+        app.launchArguments.append("-seed-live-summary-ui")
         app.launchPortavoz()
         defer { app.terminate() }
 
@@ -410,6 +411,16 @@ final class LibraryUITests: PortavozUITestCase {
             "without an answer engine Sequoia must show an honest question-only card")
         let transcript = app.control(withIdentifier: "recording-live-transcript")
         XCTAssertTrue(transcript.waitForExistenceFast(timeout: 8))
+        let liveSummary = app.control(withIdentifier: "recording-live-summary")
+        XCTAssertTrue(
+            liveSummary.waitForExistenceFast(timeout: 8),
+            "Sequoia must render the deterministic rolling-summary checkpoint")
+        let expectedLiveHighlights = UITestLocale.environmentLocale == "es"
+            ? "Puntos clave en vivo"
+            : "Live highlights"
+        XCTAssertTrue(
+            app.staticTexts[expectedLiveHighlights].waitForExistenceFast(timeout: 5),
+            "the model-free checkpoint must disclose its extractive live highlights")
 
         let panel = app.control(withIdentifier: "recording-objectives-panel")
         XCTAssertTrue(

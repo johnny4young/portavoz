@@ -59,6 +59,109 @@ extension AppServices {
             apiKey: try? await secrets.value(for: .byokAPIKey),
             gateway: dataEgressGateway)
     }
+
+    /// Refines the already-published deterministic rolling checkpoint with
+    /// the explicitly selected local engine. Unavailable assets return nil;
+    /// provider failures and cancellation remain errors so the controller can
+    /// fence them without confusing them with a successful empty refinement.
+    func refineLiveSummary(
+        checkpoint: DeterministicLiveSummaryCheckpoint,
+        meetingID: MeetingID,
+        speakers: [Speaker],
+        targetLanguage: String,
+        glossary: [String],
+        contextItems: [ContextItem]
+    ) async throws -> String? {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-use-temp-store"),
+            !arguments.contains("-allow-live-summary-provider") {
+            return nil
+        }
+        guard await admitLiveLanguageInference() else { return nil }
+
+        let request = SummaryRequest(
+            meetingID: meetingID,
+            segments: checkpoint.segments,
+            speakers: speakers,
+            recipe: .general,
+            targetLanguage: targetLanguage,
+            glossary: glossary,
+            contextItems: contextItems)
+        let descriptor = ResourceWorkloadDescriptor(
+            workloadClass: .liveInteractive,
+            kind: .languageInference,
+            operation: .execute)
+
+        switch summaryEngine {
+        case .appleOnDevice:
+            guard foundationModelsCapability.isAvailable else { return nil }
+            guard #available(macOS 26.0, *) else { return nil }
+            return try await withLiveSummaryRefinementTimeout(.seconds(12)) {
+                try await self.workloadTelemetry.measure(descriptor) {
+                    try await FoundationModelSummaryProvider().summarizeNotes(
+                        checkpoint.material,
+                        request: request,
+                        priority: .background).markdown
+                }
+            }
+        case .ollama:
+            guard let ollamaModel else { return nil }
+            let provider = OllamaService.summaryProvider(
+                model: ollamaModel,
+                gateway: dataEgressGateway,
+                consentSource: .summaryEngineSettings)
+            return try await withLiveSummaryRefinementTimeout(.seconds(12)) {
+                try await self.workloadTelemetry.measure(descriptor) {
+                    try await provider.summarize(request).markdown
+                }
+            }
+        case .mlx:
+            guard let directory = await modelLifecycle.installation(
+                for: ModelCatalog.mlxQwen35)?.directory
+            else { return nil }
+            let provider = makeMLXSummaryProvider(
+                modelDirectory: directory,
+                priority: .background,
+                workloadClass: .liveInteractive)
+            return try await withLiveSummaryRefinementTimeout(.seconds(12)) {
+                try await self.workloadTelemetry.measure(descriptor) {
+                    try await provider.summarize(request).markdown
+                }
+            }
+        }
+    }
+}
+
+struct LiveSummaryRefinementTimeoutError: Error {}
+
+private enum LiveSummaryRefinementTimedResult<Value: Sendable>: Sendable {
+    case value(Value)
+    case timedOut
+}
+
+func withLiveSummaryRefinementTimeout<Value: Sendable>(
+    _ duration: Duration,
+    operation: @escaping @Sendable () async throws -> Value
+) async throws -> Value {
+    try await withThrowingTaskGroup(
+        of: LiveSummaryRefinementTimedResult<Value>.self
+    ) { group in
+        group.addTask { .value(try await operation()) }
+        group.addTask {
+            try await Task.sleep(for: duration)
+            return .timedOut
+        }
+        defer { group.cancelAll() }
+        guard let first = try await group.next() else {
+            throw CancellationError()
+        }
+        switch first {
+        case .value(let value):
+            return value
+        case .timedOut:
+            throw LiveSummaryRefinementTimeoutError()
+        }
+    }
 }
 
 /// Production filesystem adapter for permanent meeting-audio removal.

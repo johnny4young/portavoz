@@ -109,7 +109,7 @@ extension BenchMode {
         let pendingBefore: Int
     }
 
-    /// `portavoz-app --mlx-smoke [real]` — loads the (already downloaded)
+    /// `portavoz-app --mlx-smoke [real] [model]` — loads a verified model
     /// embedded model and summarizes either a tiny synthetic Spanish meeting
     /// (default) or, with `real`, the most recent library meeting that has a
     /// transcript (read-only: nothing is saved back). Prints timing and the
@@ -119,10 +119,18 @@ extension BenchMode {
     static func runMLXSmokeIfRequested() {
         let arguments = ProcessInfo.processInfo.arguments
         guard let flag = arguments.firstIndex(of: "--mlx-smoke") else { return }
-        let useRealMeeting = arguments.indices.contains(flag + 1) && arguments[flag + 1] == "real"
-        // Optional extra word picks the model — the A/B switch. Qwen3.5 is
-        // the shipping default; "qwen3" reruns the previous generation.
-        let descriptor = arguments.contains("qwen3") ? ModelCatalog.mlxQwen3 : ModelCatalog.mlxQwen35
+        let trailingArguments = arguments.suffix(from: flag + 1)
+        let useRealMeeting = trailingArguments.contains("real")
+        // Optional exact token picks an evaluation-only model. Ambiguity
+        // fails before any model download; the serving default remains 4B.
+        let descriptor: ModelDescriptor
+        do {
+            descriptor = try mlxSmokeDescriptor(
+                arguments: Array(trailingArguments))
+        } catch {
+            print("MLX smoke FAILED: choose exactly one model")
+            exit(2)
+        }
         // Unbuffered stdout: when piped to a file, progress lines must land
         // as they happen — a killed run would otherwise lose everything.
         setbuf(stdout, nil)

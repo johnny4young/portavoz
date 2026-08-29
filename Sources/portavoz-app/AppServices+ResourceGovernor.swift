@@ -128,6 +128,41 @@ extension AppServices {
             reservesLoad: false)
     }
 
+    /// Content-free admission for optional live-summary refinement. The
+    /// extractive checkpoint has already published before this runs, so any
+    /// deferral simply skips refinement and can never stall recording.
+    func admitLiveLanguageInference() async -> Bool {
+        let pressure = resourcePressureMonitor?.current ?? .nominal
+        let decision = ResourceGovernorPolicy().evaluate(
+            request: ResourceGovernorRequest(
+                descriptor: ResourceWorkloadDescriptor(
+                    workloadClass: .liveInteractive,
+                    kind: .languageInference,
+                    operation: .execute),
+                phase: .admission),
+            snapshot: ResourceGovernorSnapshot(
+                capture: ResourceCaptureSnapshot(
+                    state: resourceCaptureState.current,
+                    sourceHealth: .healthy),
+                memoryTier: .unknown,
+                diskState: .unknown,
+                memoryPressure: pressure.memory,
+                thermalState: pressure.thermal,
+                residentModels: modelResidencyLedger.residentModels,
+                hasForegroundAction: false,
+                durableBacklog: .empty,
+                powerSource: .unknown,
+                isLowPowerModeEnabled: ProcessInfo.processInfo.isLowPowerModeEnabled))
+        await releaseIdleModels(decision.evictIdleModels)
+        switch decision.disposition {
+        case .admitNow:
+            return true
+        case .admitWithReducedConcurrency, .defer, .pauseAfterCheckpoint,
+            .reject:
+            return false
+        }
+    }
+
     func beginAdmittedModelRuntimeLoad(
         _ family: ResourceModelFamily
     ) async throws -> ResourceModelLoadTicket? {

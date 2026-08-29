@@ -59,6 +59,31 @@ final class ModelCatalogTests: XCTestCase {
         XCTAssertNil(ModelCatalog.recommended(for: .summarization))
     }
 
+    func testMLXLiveSummaryChallengersArePinnedAndNonServing() {
+        let challengers = [
+            ModelCatalog.mlxQwen35Point8BChallenger,
+            ModelCatalog.mlxQwen35TwoBChallenger,
+        ]
+        XCTAssertNil(ModelCatalog.recommended(for: .summarization))
+        XCTAssertLessThan(challengers[0].totalSizeBytes, 700_000_000)
+        XCTAssertGreaterThan(challengers[1].totalSizeBytes, 1_700_000_000)
+        XCTAssertLessThan(challengers[1].totalSizeBytes, 1_800_000_000)
+
+        for model in challengers {
+            XCTAssertEqual(model.license, "Apache-2.0")
+            XCTAssertEqual(model.artifacts.count, 10)
+            XCTAssertTrue(model.id.hasSuffix("-challenger"))
+            XCTAssertTrue(model.resolveBase.absoluteString.contains(model.revision))
+            for artifact in model.artifacts {
+                XCTAssertEqual(artifact.sha256.count, 64)
+                XCTAssertTrue(artifact.sha256.allSatisfy {
+                    $0.isHexDigit && (!$0.isLetter || $0.isLowercase)
+                })
+                XCTAssertGreaterThan(artifact.sizeBytes, 0)
+            }
+        }
+    }
+
     func testWhisperDescriptorsAreWellFormed() {
         let model = ModelCatalog.whisperLargeV3Turbo
         XCTAssertEqual(model.artifacts.count, 24)

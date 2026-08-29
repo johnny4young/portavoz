@@ -437,13 +437,20 @@ def validate_observations(document: Any, fixture: dict[str, Any], fixture_checks
         "questionID": nullable(item["questionID"], lambda value, p: identifier(value, p, UUID), f"{path}.questionID"),
         "evidenceIDs": unique_strings(item["evidenceIDs"], f"{path}.evidenceIDs"),
     })
-    summaries = exact_scenarios(root["rollingSummaryScenarios"], "observations.rollingSummaryScenarios", set(fixture["summaries"]), ("scenarioID", "selectedIDs", "hasBacklog"), lambda item, path: {
+    summaries = exact_scenarios(root["rollingSummaryScenarios"], "observations.rollingSummaryScenarios", set(fixture["summaries"]), ("scenarioID", "selectedIDs", "hasBacklog", "checkpointIDs", "checkpointLanguage", "checkpointCharacterCount"), lambda item, path: {
         "selectedIDs": unique_strings(item["selectedIDs"], f"{path}.selectedIDs"),
         "hasBacklog": boolean(item["hasBacklog"], f"{path}.hasBacklog"),
+        "checkpointIDs": unique_strings(item["checkpointIDs"], f"{path}.checkpointIDs"),
+        "checkpointLanguage": enum(item["checkpointLanguage"], f"{path}.checkpointLanguage", {"en", "es"}),
+        "checkpointCharacterCount": integer(item["checkpointCharacterCount"], f"{path}.checkpointCharacterCount", 1, 6_000),
     })
-    translations = exact_scenarios(root["translationScenarios"], "observations.translationScenarios", set(fixture["translations"]), ("scenarioID", "pair", "pendingIDs"), lambda item, path: {
+    translations = exact_scenarios(root["translationScenarios"], "observations.translationScenarios", set(fixture["translations"]), ("scenarioID", "pair", "pendingIDs", "installedAssetAction", "downloadableAssetAction", "retryDelaysMilliseconds", "invalidPublicationCount"), lambda item, path: {
         "pair": None if item["pair"] is None else {key: enum(value, f"{path}.pair.{key}", {"en", "es"}) for key, value in shape(item["pair"], f"{path}.pair", ("source", "target")).items()},
         "pendingIDs": unique_strings(item["pendingIDs"], f"{path}.pendingIDs"),
+        "installedAssetAction": enum(item["installedAssetAction"], f"{path}.installedAssetAction", {"translate"}),
+        "downloadableAssetAction": enum(item["downloadableAssetAction"], f"{path}.downloadableAssetAction", {"requestDownloadConsent"}),
+        "retryDelaysMilliseconds": [integer(value, f"{path}.retryDelaysMilliseconds[{index}]", 1, 8_000) for index, value in enumerate(array(item["retryDelaysMilliseconds"], f"{path}.retryDelaysMilliseconds", 5, 5))],
+        "invalidPublicationCount": integer(item["invalidPublicationCount"], f"{path}.invalidPublicationCount", 0, 1_000),
     })
     faults = exact_scenarios(root["faultScenarios"], "observations.faultScenarios", set(fixture["faults"]), ("scenarioID", "outcome", "latePublicationCount"), lambda item, path: {
         "outcome": enum(item["outcome"], f"{path}.outcome", set(FAULT_OUTCOMES.values())),
@@ -509,11 +516,18 @@ def evaluate(fixture: dict[str, Any], checksum: str, observations: dict[str, Any
     summary_correct = sum(
         observations["summaries"][sid]["selectedIDs"] == expected["selectedIDs"]
         and observations["summaries"][sid]["hasBacklog"] == expected["backlog"]
+        and observations["summaries"][sid]["checkpointIDs"] == expected["selectedIDs"]
+        and observations["summaries"][sid]["checkpointLanguage"] == expected["language"]
+        and observations["summaries"][sid]["checkpointCharacterCount"] <= 6_000
         for sid, expected in fixture["summaries"].items()
     )
     translation_correct = sum(
         observations["translations"][sid]["pair"] == expected["pair"]
         and observations["translations"][sid]["pendingIDs"] == expected["pendingIDs"]
+        and observations["translations"][sid]["installedAssetAction"] == "translate"
+        and observations["translations"][sid]["downloadableAssetAction"] == "requestDownloadConsent"
+        and observations["translations"][sid]["retryDelaysMilliseconds"] == [1_000, 2_000, 4_000, 8_000, 8_000]
+        and observations["translations"][sid]["invalidPublicationCount"] == 0
         for sid, expected in fixture["translations"].items()
     )
     fault_correct = sum(observations["faults"][sid]["outcome"] == expected["outcome"] for sid, expected in fixture["faults"].items())
